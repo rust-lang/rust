@@ -998,169 +998,19 @@ impl LinkCollector<'_, '_> {
                 }
             }
 
-            match disambiguator.map(Disambiguator::ns) {
-                Some(ns @ (ValueNS | TypeNS)) => {
-                    match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment) {
-                        Ok(res) => res,
-                        Err(ErrorKind::Resolve(box mut kind)) => {
-                            // We only looked in one namespace. Try to give a better error if possible.
-                            if kind.full_res().is_none() {
-                                let other_ns = if ns == ValueNS { TypeNS } else { ValueNS };
-                                for &new_ns in &[other_ns, MacroNS] {
-                                    if let Some(res) = self.check_full_res(
-                                        new_ns,
-                                        path_str,
-                                        base_node,
-                                        &current_item,
-                                        &extra_fragment,
-                                    ) {
-                                        kind = ResolutionFailure::WrongNamespace(res, ns);
-                                        break;
-                                    }
-                                }
-                            }
-                            resolution_failure(
-                                self,
-                                &item,
-                                path_str,
-                                disambiguator,
-                                dox,
-                                link_range,
-                                smallvec![kind],
-                            );
-                            // This could just be a normal link or a broken link
-                            // we could potentially check if something is
-                            // "intra-doc-link-like" and warn in that case.
-                            return;
-                        }
-                        Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(cx, &item, &ori_link, dox, link_range, msg);
-                            return;
-                        }
-                    }
-                }
-                None => {
-                    // Try everything!
-                    let mut candidates = PerNS {
-                        macro_ns: self
-                            .macro_resolve(path_str, base_node)
-                            .map(|res| (res, extra_fragment.clone())),
-                        type_ns: match self.resolve(
-                            path_str,
-                            TypeNS,
-                            &current_item,
-                            base_node,
-                            &extra_fragment,
-                        ) {
-                            Ok(res) => {
-                                debug!("got res in TypeNS: {:?}", res);
-                                Ok(res)
-                            }
-                            Err(ErrorKind::AnchorFailure(msg)) => {
-                                anchor_failure(cx, &item, &ori_link, dox, link_range, msg);
-                                return;
-                            }
-                            Err(ErrorKind::Resolve(box kind)) => Err(kind),
-                        },
-                        value_ns: match self.resolve(
-                            path_str,
-                            ValueNS,
-                            &current_item,
-                            base_node,
-                            &extra_fragment,
-                        ) {
-                            Ok(res) => Ok(res),
-                            Err(ErrorKind::AnchorFailure(msg)) => {
-                                anchor_failure(cx, &item, &ori_link, dox, link_range, msg);
-                                return;
-                            }
-                            Err(ErrorKind::Resolve(box kind)) => Err(kind),
-                        }
-                        .and_then(|(res, fragment)| {
-                            // Constructors are picked up in the type namespace.
-                            match res {
-                                Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => {
-                                    Err(ResolutionFailure::WrongNamespace(res, TypeNS))
-                                }
-                                _ => match (fragment, extra_fragment) {
-                                    (Some(fragment), Some(_)) => {
-                                        // Shouldn't happen but who knows?
-                                        Ok((res, Some(fragment)))
-                                    }
-                                    (fragment, None) | (None, fragment) => Ok((res, fragment)),
-                                },
-                            }
-                        }),
-                    };
-
-                    let len = candidates.iter().filter(|res| res.is_ok()).count();
-
-                    if len == 0 {
-                        resolution_failure(
-                            self,
-                            &item,
-                            path_str,
-                            disambiguator,
-                            dox,
-                            link_range,
-                            candidates.into_iter().filter_map(|res| res.err()).collect(),
-                        );
-                        // this could just be a normal link
-                        return;
-                    }
-
-                    if len == 1 {
-                        candidates.into_iter().filter_map(|res| res.ok()).next().unwrap()
-                    } else if len == 2 && is_derive_trait_collision(&candidates) {
-                        candidates.type_ns.unwrap()
-                    } else {
-                        if is_derive_trait_collision(&candidates) {
-                            candidates.macro_ns = Err(ResolutionFailure::Dummy);
-                        }
-                        // If we're reporting an ambiguity, don't mention the namespaces that failed
-                        let candidates =
-                            candidates.map(|candidate| candidate.ok().map(|(res, _)| res));
-                        ambiguity_error(
-                            cx,
-                            &item,
-                            path_str,
-                            dox,
-                            link_range,
-                            candidates.present_items().collect(),
-                        );
-                        return;
-                    }
-                }
-                Some(MacroNS) => {
-                    match self.macro_resolve(path_str, base_node) {
-                        Ok(res) => (res, extra_fragment),
-                        Err(mut kind) => {
-                            // `macro_resolve` only looks in the macro namespace. Try to give a better error if possible.
-                            for &ns in &[TypeNS, ValueNS] {
-                                if let Some(res) = self.check_full_res(
-                                    ns,
-                                    path_str,
-                                    base_node,
-                                    &current_item,
-                                    &extra_fragment,
-                                ) {
-                                    kind = ResolutionFailure::WrongNamespace(res, MacroNS);
-                                    break;
-                                }
-                            }
-                            resolution_failure(
-                                self,
-                                &item,
-                                path_str,
-                                disambiguator,
-                                dox,
-                                link_range,
-                                smallvec![kind],
-                            );
-                            return;
-                        }
-                    }
-                }
+            match self.resolve_with_disambiguator(
+                disambiguator,
+                item,
+                dox,
+                path_str,
+                current_item,
+                base_node,
+                extra_fragment,
+                &ori_link,
+                link_range.clone(),
+            ) {
+                Some(x) => x,
+                None => return,
             }
         };
 
@@ -1272,6 +1122,183 @@ impl LinkCollector<'_, '_> {
             }
             let id = register_res(cx, res);
             item.attrs.links.push(ItemLink { link: ori_link, link_text, did: Some(id), fragment });
+        }
+    }
+
+    fn resolve_with_disambiguator(
+        &self,
+        disambiguator: Option<Disambiguator>,
+        item: &mut Item,
+        dox: &str,
+        path_str: &str,
+        current_item: &Option<String>,
+        base_node: Option<DefId>,
+        extra_fragment: Option<String>,
+        ori_link: &str,
+        link_range: Option<Range<usize>>,
+    ) -> Option<(Res, Option<String>)> {
+        match disambiguator.map(Disambiguator::ns) {
+            Some(ns @ (ValueNS | TypeNS)) => {
+                match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment) {
+                    Ok(res) => Some(res),
+                    Err(ErrorKind::Resolve(box mut kind)) => {
+                        // We only looked in one namespace. Try to give a better error if possible.
+                        if kind.full_res().is_none() {
+                            let other_ns = if ns == ValueNS { TypeNS } else { ValueNS };
+                            for &new_ns in &[other_ns, MacroNS] {
+                                if let Some(res) = self.check_full_res(
+                                    new_ns,
+                                    path_str,
+                                    base_node,
+                                    &current_item,
+                                    &extra_fragment,
+                                ) {
+                                    kind = ResolutionFailure::WrongNamespace(res, ns);
+                                    break;
+                                }
+                            }
+                        }
+                        resolution_failure(
+                            self,
+                            &item,
+                            path_str,
+                            disambiguator,
+                            dox,
+                            link_range,
+                            smallvec![kind],
+                        );
+                        // This could just be a normal link or a broken link
+                        // we could potentially check if something is
+                        // "intra-doc-link-like" and warn in that case.
+                        return None;
+                    }
+                    Err(ErrorKind::AnchorFailure(msg)) => {
+                        anchor_failure(self.cx, &item, &ori_link, dox, link_range, msg);
+                        return None;
+                    }
+                }
+            }
+            None => {
+                // Try everything!
+                let mut candidates = PerNS {
+                    macro_ns: self
+                        .macro_resolve(path_str, base_node)
+                        .map(|res| (res, extra_fragment.clone())),
+                    type_ns: match self.resolve(
+                        path_str,
+                        TypeNS,
+                        &current_item,
+                        base_node,
+                        &extra_fragment,
+                    ) {
+                        Ok(res) => {
+                            debug!("got res in TypeNS: {:?}", res);
+                            Ok(res)
+                        }
+                        Err(ErrorKind::AnchorFailure(msg)) => {
+                            anchor_failure(self.cx, &item, ori_link, dox, link_range, msg);
+                            return None;
+                        }
+                        Err(ErrorKind::Resolve(box kind)) => Err(kind),
+                    },
+                    value_ns: match self.resolve(
+                        path_str,
+                        ValueNS,
+                        &current_item,
+                        base_node,
+                        &extra_fragment,
+                    ) {
+                        Ok(res) => Ok(res),
+                        Err(ErrorKind::AnchorFailure(msg)) => {
+                            anchor_failure(self.cx, &item, ori_link, dox, link_range, msg);
+                            return None;
+                        }
+                        Err(ErrorKind::Resolve(box kind)) => Err(kind),
+                    }
+                    .and_then(|(res, fragment)| {
+                        // Constructors are picked up in the type namespace.
+                        match res {
+                            Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => {
+                                Err(ResolutionFailure::WrongNamespace(res, TypeNS))
+                            }
+                            _ => match (fragment, extra_fragment) {
+                                (Some(fragment), Some(_)) => {
+                                    // Shouldn't happen but who knows?
+                                    Ok((res, Some(fragment)))
+                                }
+                                (fragment, None) | (None, fragment) => Ok((res, fragment)),
+                            },
+                        }
+                    }),
+                };
+
+                let len = candidates.iter().filter(|res| res.is_ok()).count();
+
+                if len == 0 {
+                    resolution_failure(
+                        self,
+                        &item,
+                        path_str,
+                        disambiguator,
+                        dox,
+                        link_range,
+                        candidates.into_iter().filter_map(|res| res.err()).collect(),
+                    );
+                    // this could just be a normal link
+                    return None;
+                }
+
+                if len == 1 {
+                    Some(candidates.into_iter().filter_map(|res| res.ok()).next().unwrap())
+                } else if len == 2 && is_derive_trait_collision(&candidates) {
+                    Some(candidates.type_ns.unwrap())
+                } else {
+                    if is_derive_trait_collision(&candidates) {
+                        candidates.macro_ns = Err(ResolutionFailure::Dummy);
+                    }
+                    // If we're reporting an ambiguity, don't mention the namespaces that failed
+                    let candidates = candidates.map(|candidate| candidate.ok().map(|(res, _)| res));
+                    ambiguity_error(
+                        self.cx,
+                        &item,
+                        path_str,
+                        dox,
+                        link_range,
+                        candidates.present_items().collect(),
+                    );
+                    return None;
+                }
+            }
+            Some(MacroNS) => {
+                match self.macro_resolve(path_str, base_node) {
+                    Ok(res) => Some((res, extra_fragment)),
+                    Err(mut kind) => {
+                        // `macro_resolve` only looks in the macro namespace. Try to give a better error if possible.
+                        for &ns in &[TypeNS, ValueNS] {
+                            if let Some(res) = self.check_full_res(
+                                ns,
+                                path_str,
+                                base_node,
+                                &current_item,
+                                &extra_fragment,
+                            ) {
+                                kind = ResolutionFailure::WrongNamespace(res, MacroNS);
+                                break;
+                            }
+                        }
+                        resolution_failure(
+                            self,
+                            &item,
+                            path_str,
+                            disambiguator,
+                            dox,
+                            link_range,
+                            smallvec![kind],
+                        );
+                        return None;
+                    }
+                }
+            }
         }
     }
 }
