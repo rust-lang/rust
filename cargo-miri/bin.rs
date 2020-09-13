@@ -207,7 +207,10 @@ fn xargo_version() -> Option<(u32, u32, u32)> {
 
 fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
     // Disable interactive prompts in CI (GitHub Actions, Travis, AppVeyor, etc).
-    if ask && env::var_os("CI").is_none() {
+    // Azure doesn't set `CI` though (nothing to see here, just Microsoft being Microsoft),
+    // so we also check their `TF_BUILD`.
+    let is_ci = env::var_os("CI").is_some() || env::var_os("TF_BUILD").is_some();
+    if ask && !is_ci {
         let mut buf = String::new();
         print!("I will run `{:?}` to {}. Proceed? [Y/n] ", cmd, text);
         io::stdout().flush().unwrap();
