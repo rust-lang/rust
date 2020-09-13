@@ -110,6 +110,7 @@
     - [Variance](./variance.md)
     - [Opaque Types](./opaque-types-type-alias-impl-trait.md)
 - [Pattern and Exhaustiveness Checking](./pat-exhaustive-checking.md)
+- [MIR dataflow](./mir/dataflow.md)
 - [The borrow checker](./borrow_check.md)
     - [Tracking moves and initialization](./borrow_check/moves_and_initialization.md)
         - [Move paths](./borrow_check/moves_and_initialization/move_paths.md)
