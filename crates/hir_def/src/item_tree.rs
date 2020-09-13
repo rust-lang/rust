@@ -592,6 +592,7 @@ pub struct TypeAlias {
     pub bounds: Box<[TypeBound]>,
     pub generic_params: GenericParamsId,
     pub type_ref: Option<TypeRef>,
+    pub is_extern: bool,
     pub ast_id: FileAstId<ast::TypeAlias>,
 }
 

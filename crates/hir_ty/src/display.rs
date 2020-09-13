@@ -380,6 +380,15 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ">")?;
                 }
             }
+            TypeCtor::ForeignType(type_alias) => {
+                let type_alias = f.db.type_alias_data(type_alias);
+                write!(f, "{}", type_alias.name)?;
+                if self.parameters.len() > 0 {
+                    write!(f, "<")?;
+                    f.write_joined(&*self.parameters.0, ", ")?;
+                    write!(f, ">")?;
+                }
+            }
             TypeCtor::OpaqueType(opaque_ty_id) => {
                 match opaque_ty_id {
                     OpaqueTyId::ReturnTypeImplTrait(func, idx) => {

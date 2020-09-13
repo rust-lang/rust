@@ -34,9 +34,11 @@ impl ToChalk for Ty {
                     let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
                     chalk_ir::TyData::Function(chalk_ir::FnPointer {
                         num_binders: 0,
-                        abi: (),
-                        safety: chalk_ir::Safety::Safe,
-                        variadic: is_varargs,
+                        sig: chalk_ir::FnSig {
+                            abi: (),
+                            safety: chalk_ir::Safety::Safe,
+                            variadic: is_varargs,
+                        },
                         substitution,
                     })
                     .intern(&Interner)
@@ -48,7 +50,7 @@ impl ToChalk for Ty {
                 }
             },
             Ty::Projection(proj_ty) => {
-                let associated_ty_id = proj_ty.associated_ty.to_chalk(db);
+                let associated_ty_id = TypeAliasAsAssocType(proj_ty.associated_ty).to_chalk(db);
                 let substitution = proj_ty.parameters.to_chalk(db);
                 chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
                     associated_ty_id,
@@ -114,7 +116,8 @@ impl ToChalk for Ty {
                 Ty::Placeholder(db.lookup_intern_type_param_id(interned_id))
             }
             chalk_ir::TyData::Alias(chalk_ir::AliasTy::Projection(proj)) => {
-                let associated_ty = from_chalk(db, proj.associated_ty_id);
+                let associated_ty =
+                    from_chalk::<TypeAliasAsAssocType, _>(db, proj.associated_ty_id).0;
                 let parameters = from_chalk(db, proj.substitution);
                 Ty::Projection(ProjectionTy { associated_ty, parameters })
             }
@@ -125,7 +128,7 @@ impl ToChalk for Ty {
             }
             chalk_ir::TyData::Function(chalk_ir::FnPointer {
                 num_binders,
-                variadic,
+                sig: chalk_ir::FnSig { variadic, .. },
                 substitution,
                 ..
             }) => {
@@ -290,13 +293,20 @@ impl ToChalk for TypeCtor {
     fn to_chalk(self, db: &dyn HirDatabase) -> TypeName<Interner> {
         match self {
             TypeCtor::AssociatedType(type_alias) => {
-                let type_id = type_alias.to_chalk(db);
-                TypeName::AssociatedType(type_id)
+                let assoc_type = TypeAliasAsAssocType(type_alias);
+                let assoc_type_id = assoc_type.to_chalk(db);
+                TypeName::AssociatedType(assoc_type_id)
             }
 
             TypeCtor::OpaqueType(impl_trait_id) => {
                 let id = impl_trait_id.to_chalk(db);
                 TypeName::OpaqueType(id)
+            }
+
+            TypeCtor::ForeignType(type_alias) => {
+                let foreign_type = TypeAliasAsForeignType(type_alias);
+                let foreign_type_id = foreign_type.to_chalk(db);
+                TypeName::Foreign(foreign_type_id)
             }
 
             TypeCtor::Bool => TypeName::Scalar(Scalar::Bool),
@@ -339,7 +349,9 @@ impl ToChalk for TypeCtor {
     fn from_chalk(db: &dyn HirDatabase, type_name: TypeName<Interner>) -> TypeCtor {
         match type_name {
             TypeName::Adt(struct_id) => TypeCtor::Adt(struct_id.0),
-            TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
+            TypeName::AssociatedType(type_id) => {
+                TypeCtor::AssociatedType(from_chalk::<TypeAliasAsAssocType, _>(db, type_id).0)
+            }
             TypeName::OpaqueType(opaque_type_id) => {
                 TypeCtor::OpaqueType(from_chalk(db, opaque_type_id))
             }
@@ -377,6 +389,10 @@ impl ToChalk for TypeCtor {
                 let id: crate::db::ClosureId = id.into();
                 let (def, expr) = db.lookup_intern_closure(id);
                 TypeCtor::Closure { def, expr }
+            }
+
+            TypeName::Foreign(foreign_def_id) => {
+                TypeCtor::ForeignType(from_chalk::<TypeAliasAsForeignType, _>(db, foreign_def_id).0)
             }
 
             TypeName::Error => {
@@ -488,15 +504,31 @@ impl ToChalk for CallableDefId {
     }
 }
 
-impl ToChalk for TypeAliasId {
+pub struct TypeAliasAsAssocType(pub TypeAliasId);
+
+impl ToChalk for TypeAliasAsAssocType {
     type Chalk = AssocTypeId;
 
     fn to_chalk(self, _db: &dyn HirDatabase) -> AssocTypeId {
-        chalk_ir::AssocTypeId(self.as_intern_id())
+        chalk_ir::AssocTypeId(self.0.as_intern_id())
     }
 
-    fn from_chalk(_db: &dyn HirDatabase, type_alias_id: AssocTypeId) -> TypeAliasId {
-        InternKey::from_intern_id(type_alias_id.0)
+    fn from_chalk(_db: &dyn HirDatabase, assoc_type_id: AssocTypeId) -> TypeAliasAsAssocType {
+        TypeAliasAsAssocType(InternKey::from_intern_id(assoc_type_id.0))
+    }
+}
+
+pub struct TypeAliasAsForeignType(pub TypeAliasId);
+
+impl ToChalk for TypeAliasAsForeignType {
+    type Chalk = ForeignDefId;
+
+    fn to_chalk(self, _db: &dyn HirDatabase) -> ForeignDefId {
+        chalk_ir::ForeignDefId(self.0.as_intern_id())
+    }
+
+    fn from_chalk(_db: &dyn HirDatabase, foreign_def_id: ForeignDefId) -> TypeAliasAsForeignType {
+        TypeAliasAsForeignType(InternKey::from_intern_id(foreign_def_id.0))
     }
 }
 
@@ -580,7 +612,7 @@ impl ToChalk for ProjectionTy {
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::ProjectionTy<Interner> {
         chalk_ir::ProjectionTy {
-            associated_ty_id: self.associated_ty.to_chalk(db),
+            associated_ty_id: TypeAliasAsAssocType(self.associated_ty).to_chalk(db),
             substitution: self.parameters.to_chalk(db),
         }
     }
@@ -590,7 +622,11 @@ impl ToChalk for ProjectionTy {
         projection_ty: chalk_ir::ProjectionTy<Interner>,
     ) -> ProjectionTy {
         ProjectionTy {
-            associated_ty: from_chalk(db, projection_ty.associated_ty_id),
+            associated_ty: from_chalk::<TypeAliasAsAssocType, _>(
+                db,
+                projection_ty.associated_ty_id,
+            )
+            .0,
             parameters: from_chalk(db, projection_ty.substitution),
         }
     }
@@ -789,7 +825,8 @@ pub(super) fn generic_predicate_to_inline_bound(
             let alias_eq_bound = rust_ir::AliasEqBound {
                 value: proj.ty.clone().to_chalk(db),
                 trait_bound: rust_ir::TraitBound { trait_id: trait_.to_chalk(db), args_no_self },
-                associated_ty_id: proj.projection_ty.associated_ty.to_chalk(db),
+                associated_ty_id: TypeAliasAsAssocType(proj.projection_ty.associated_ty)
+                    .to_chalk(db),
                 parameters: Vec::new(), // FIXME we don't support generic associated types yet
             };
             Some(rust_ir::InlineBound::AliasEqBound(alias_eq_bound))
