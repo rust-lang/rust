@@ -162,7 +162,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        if self.is_dummy() {
+        if *self == rustc_span::DUMMY_SP {
             return TAG_INVALID_SPAN.encode(s);
         }
 
