@@ -1811,6 +1811,31 @@ pub unsafe fn vld1q_dup_f32(addr: *const f32) -> float32x4_t {
     transmute(f32x4::new(v, v, v, v))
 }
 
+// These float-to-int implementations have undefined behaviour when `a` overflows
+// the destination type. Clang has the same problem: https://llvm.org/PR47510
+
+/// Floating-point Convert to Signed fixed-point, rounding toward Zero (vector)
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon")]
+#[target_feature(enable = "v7")]
+#[cfg_attr(test, assert_instr("vcvt.s32.f32"))]
+pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
+    use crate::core_arch::simd::{f32x4, i32x4};
+    transmute(simd_cast::<_, i32x4>(transmute::<_, f32x4>(a)))
+}
+
+/// Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector)
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon")]
+#[target_feature(enable = "v7")]
+#[cfg_attr(test, assert_instr("vcvt.u32.f32"))]
+pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
+    use crate::core_arch::simd::{f32x4, u32x4};
+    transmute(simd_cast::<_, u32x4>(transmute::<_, f32x4>(a)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1873,6 +1898,24 @@ mod tests {
         let e = f32x4::new(1., 1., 1., 1.);
         let f = [1., 2., 3., 4.];
         let r: f32x4 = transmute(vld1q_dup_f32(f.as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[cfg(target_arch = "arm")]
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_s32_f32() {
+        let f = f32x4::new(-1., 2., 3., 4.);
+        let e = i32x4::new(-1, 2, 3, 4);
+        let r: i32x4 = transmute(vcvtq_s32_f32(transmute(f)));
+        assert_eq!(r, e);
+    }
+
+    #[cfg(target_arch = "arm")]
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_u32_f32() {
+        let f = f32x4::new(1., 2., 3., 4.);
+        let e = u32x4::new(1, 2, 3, 4);
+        let r: u32x4 = transmute(vcvtq_u32_f32(transmute(f)));
         assert_eq!(r, e);
     }
 
