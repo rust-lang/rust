@@ -381,19 +381,24 @@ impl HirDisplay for ApplicationTy {
                 }
             }
             TypeCtor::OpaqueType(opaque_ty_id) => {
-                let bounds = match opaque_ty_id {
+                match opaque_ty_id {
                     OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             f.db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        data.subst(&self.parameters)
+                        let bounds = data.subst(&self.parameters);
+                        write!(f, "impl ")?;
+                        write_bounds_like_dyn_trait(&bounds.value, f)?;
+                        // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
-                };
-                write!(f, "impl ")?;
-                write_bounds_like_dyn_trait(&bounds.value, f)?;
-                // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
+                    OpaqueTyId::AsyncBlockTypeImplTrait(..) => {
+                        write!(f, "impl Future<Output = ")?;
+                        self.parameters[0].hir_fmt(f)?;
+                        write!(f, ">")?;
+                    }
+                }
             }
             TypeCtor::Closure { .. } => {
                 let sig = self.parameters[0].callable_sig(f.db);
@@ -474,18 +479,21 @@ impl HirDisplay for Ty {
                 write_bounds_like_dyn_trait(predicates, f)?;
             }
             Ty::Opaque(opaque_ty) => {
-                let bounds = match opaque_ty.opaque_ty_id {
+                match opaque_ty.opaque_ty_id {
                     OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             f.db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        data.subst(&opaque_ty.parameters)
+                        let bounds = data.subst(&opaque_ty.parameters);
+                        write!(f, "impl ")?;
+                        write_bounds_like_dyn_trait(&bounds.value, f)?;
+                    }
+                    OpaqueTyId::AsyncBlockTypeImplTrait(..) => {
+                        write!(f, "{{async block}}")?;
                     }
                 };
-                write!(f, "impl ")?;
-                write_bounds_like_dyn_trait(&bounds.value, f)?;
             }
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,

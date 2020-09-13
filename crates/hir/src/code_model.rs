@@ -1283,6 +1283,8 @@ impl Type {
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &dyn HirDatabase) -> bool {
+        // No special case for the type of async block, since Chalk can figure it out.
+
         let krate = self.krate;
 
         let std_future_trait =
@@ -1598,6 +1600,11 @@ impl Type {
                         TypeCtor::AssociatedType(_) => {
                             if let Some(_) = ty.associated_type_parent_trait(db) {
                                 cb(type_.derived(ty.clone()));
+                            }
+                        }
+                        TypeCtor::OpaqueType(..) => {
+                            if let Some(bounds) = ty.impl_trait_bounds(db) {
+                                walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                             }
                         }
                         _ => (),

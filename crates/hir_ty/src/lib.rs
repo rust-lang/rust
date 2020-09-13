@@ -129,8 +129,9 @@ pub enum TypeCtor {
 
     /// This represents a placeholder for an opaque type in situations where we
     /// don't know the hidden type (i.e. currently almost always). This is
-    /// analogous to the `AssociatedType` type constructor. As with that one,
-    /// these are only produced by Chalk.
+    /// analogous to the `AssociatedType` type constructor.
+    /// It is also used as the type of async block, with one type parameter
+    /// representing the Future::Output type.
     OpaqueType(OpaqueTyId),
 
     /// The type of a specific closure.
@@ -173,6 +174,8 @@ impl TypeCtor {
                         let generic_params = generics(db.upcast(), func.into());
                         generic_params.len()
                     }
+                    // 1 param representing Future::Output type.
+                    OpaqueTyId::AsyncBlockTypeImplTrait(..) => 1,
                 }
             }
             TypeCtor::FnPtr { num_args, is_varargs: _ } => num_args as usize + 1,
@@ -205,6 +208,7 @@ impl TypeCtor {
                 OpaqueTyId::ReturnTypeImplTrait(func, _) => {
                     Some(func.lookup(db.upcast()).module(db.upcast()).krate)
                 }
+                OpaqueTyId::AsyncBlockTypeImplTrait(def, _) => Some(def.module(db.upcast()).krate),
             },
         }
     }
@@ -843,6 +847,29 @@ impl Ty {
 
     pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<GenericPredicate>> {
         match self {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::OpaqueType(opaque_ty_id), .. }) => {
+                match opaque_ty_id {
+                    OpaqueTyId::AsyncBlockTypeImplTrait(def, _expr) => {
+                        let krate = def.module(db.upcast()).krate;
+                        if let Some(future_trait) = db
+                            .lang_item(krate, "future_trait".into())
+                            .and_then(|item| item.as_trait())
+                        {
+                            // This is only used by type walking.
+                            // Parameters will be walked outside, and projection predicate is not used.
+                            // So just provide the Future trait.
+                            let impl_bound = GenericPredicate::Implemented(TraitRef {
+                                trait_: future_trait,
+                                substs: Substs::empty(),
+                            });
+                            Some(vec![impl_bound])
+                        } else {
+                            None
+                        }
+                    }
+                    OpaqueTyId::ReturnTypeImplTrait(..) => None,
+                }
+            }
             Ty::Opaque(opaque_ty) => {
                 let predicates = match opaque_ty.opaque_ty_id {
                     OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
@@ -853,6 +880,8 @@ impl Ty {
                             data.subst(&opaque_ty.parameters)
                         })
                     }
+                    // It always has an parameter for Future::Output type.
+                    OpaqueTyId::AsyncBlockTypeImplTrait(..) => unreachable!(),
                 };
 
                 predicates.map(|it| it.value)
@@ -1065,6 +1094,7 @@ impl<T: TypeWalk> TypeWalk for Vec<T> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum OpaqueTyId {
     ReturnTypeImplTrait(hir_def::FunctionId, u16),
+    AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

@@ -73,6 +73,9 @@ impl DebugContext<'_> {
                 crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                     write!(f, "{{impl trait {} of {:?}}}", idx, func)?;
                 }
+                crate::OpaqueTyId::AsyncBlockTypeImplTrait(def, idx) => {
+                    write!(f, "{{impl trait of async block {} of {:?}}}", idx.into_raw(), def)?;
+                }
             },
             TypeCtor::Closure { def, expr } => {
                 write!(f, "{{closure {:?} in ", expr.into_raw())?;

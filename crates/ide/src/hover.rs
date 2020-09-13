@@ -2647,6 +2647,70 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
     }
 
     #[test]
+    fn test_hover_async_block_impl_trait_has_goto_type_action() {
+        check_actions(
+            r#"
+struct S;
+fn foo() {
+    let fo<|>o = async { S };
+}
+
+#[prelude_import] use future::*;
+mod future {
+    #[lang = "future_trait"]
+    pub trait Future { type Output; }
+}
+"#,
+            expect![[r#"
+                [
+                    GoToType(
+                        [
+                            HoverGotoTypeData {
+                                mod_path: "test::future::Future",
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        1,
+                                    ),
+                                    full_range: 101..163,
+                                    focus_range: Some(
+                                        140..146,
+                                    ),
+                                    name: "Future",
+                                    kind: TRAIT,
+                                    container_name: None,
+                                    description: Some(
+                                        "pub trait Future",
+                                    ),
+                                    docs: None,
+                                },
+                            },
+                            HoverGotoTypeData {
+                                mod_path: "test::S",
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        1,
+                                    ),
+                                    full_range: 0..9,
+                                    focus_range: Some(
+                                        7..8,
+                                    ),
+                                    name: "S",
+                                    kind: STRUCT,
+                                    container_name: None,
+                                    description: Some(
+                                        "struct S",
+                                    ),
+                                    docs: None,
+                                },
+                            },
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_hover_arg_generic_impl_trait_has_goto_type_action() {
         check_actions(
             r#"
