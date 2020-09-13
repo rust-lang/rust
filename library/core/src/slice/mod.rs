@@ -6680,6 +6680,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 ///       them from other data. You can obtain a pointer that is usable as `data`
 ///       for zero-length slices using [`NonNull::dangling()`].
 ///
+/// * `data` must point to `len` consecutive properly initialized values of type `T`.
+///
 /// * The memory referenced by the returned slice must not be mutated for the duration
 ///   of lifetime `'a`, except inside an `UnsafeCell`.
 ///
@@ -6766,6 +6768,8 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 ///       (including slices of any length) being aligned and non-null to distinguish
 ///       them from other data. You can obtain a pointer that is usable as `data`
 ///       for zero-length slices using [`NonNull::dangling()`].
+///
+/// * `data` must point to `len` consecutive properly initialized values of type `T`.
 ///
 /// * The memory referenced by the returned slice must not be accessed through any other pointer
 ///   (not derived from the return value) for the duration of lifetime `'a`.
