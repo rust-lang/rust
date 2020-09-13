@@ -919,7 +919,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// #![feature(io_input)]
 /// use std::io;
 ///
-/// fn main() -> Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let name = io::read_line("Enter name: ")?;
 ///
 ///     println!("Your name is {}!", name);
@@ -957,7 +957,7 @@ where
 /// #![feature(io_input_prompt)]
 /// use std::io;
 ///
-/// fn main() -> Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let name = io::prompt_line("Enter name: ")?;
 ///
 ///     println!("Your name is {}!", name);
