@@ -191,6 +191,7 @@ struct WaiterQueue<'a> {
 
 impl Once {
     /// Creates a new `Once` value.
+    #[inline]
     #[stable(feature = "once_new", since = "1.2.0")]
     #[rustc_const_stable(feature = "const_once_new", since = "1.32.0")]
     pub const fn new() -> Once {
