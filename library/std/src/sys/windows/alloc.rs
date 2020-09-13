@@ -7,11 +7,17 @@ use crate::sys_common::alloc::{realloc_fallback, MIN_ALIGN};
 #[repr(C)]
 struct Header(*mut u8);
 
+/// # Safety
+///
+/// There must be a `Header` at `ptr.offset(-1)`.
 unsafe fn get_header<'a>(ptr: *mut u8) -> &'a mut Header {
     // SAFETY: the safety contract must be upheld by the caller
     unsafe { &mut *(ptr as *mut Header).offset(-1) }
 }
 
+/// # Safety
+///
+/// `ptr`, once aligned, must have space for a Header at `ptr.offset(-1)`.
 unsafe fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
     // SAFETY: the safety contract must be upheld by the caller
     unsafe {
@@ -30,7 +36,7 @@ unsafe fn allocate_with_flags(layout: Layout, flags: c::DWORD) -> *mut u8 {
 
     let ptr = unsafe {
         // SAFETY: The caller must ensure that
-        // `layout.size()` + `layout.size()` does not overflow.
+        // `layout.size()` + `layout.align()` does not overflow.
         let size = layout.size() + layout.align();
         c::HeapAlloc(c::GetProcessHeap(), flags, size)
     };
@@ -71,17 +77,18 @@ unsafe impl GlobalAlloc for System {
                 c::HeapFree(c::GetProcessHeap(), 0, header.0 as c::LPVOID)
             }
         };
+        // SAFETY: `c::GetLastError()` cannot fail
         debug_assert!(err != 0, "Failed to free heap memory: {}", unsafe { c::GetLastError() });
     }
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        // SAFETY: HeapReAlloc/realloc_fallback is safe if ptr was allocated by this allocator
+        // and new_size is not 0.
+        debug_assert_ne!(new_size, 0);
         if layout.align() <= MIN_ALIGN {
-            // SAFETY: HeapReAlloc is safe if ptr was allocated by this allocator
-            // and new_size is not 0.
             unsafe { c::HeapReAlloc(c::GetProcessHeap(), 0, ptr as c::LPVOID, new_size) as *mut u8 }
         } else {
-            // SAFETY: The safety contract for `realloc_fallback` must be upheld by the caller
             unsafe { realloc_fallback(self, ptr, layout, new_size) }
         }
     }

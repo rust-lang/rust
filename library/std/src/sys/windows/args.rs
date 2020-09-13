@@ -54,7 +54,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(
     const SPACE: u16 = ' ' as u16;
     let mut ret_val = Vec::new();
 
-    //SAFETY: the caller must supply a valid pointer
+    // SAFETY: the caller must supply a pointer that is valid to dereference
     let mut cmd_line = unsafe {
         if lp_cmd_line.is_null() || *lp_cmd_line == 0 {
             ret_val.push(exe_name());
