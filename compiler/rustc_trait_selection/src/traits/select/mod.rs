@@ -593,6 +593,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
+            ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                bug!("TypeWellFormedFromEnv is only used for chalk")
+            }
         }
     }
 

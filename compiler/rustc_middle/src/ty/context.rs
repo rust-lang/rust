@@ -91,8 +91,6 @@ pub struct CtxtInterners<'tcx> {
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
-
-    chalk_environment_clause_list: InternedSet<'tcx, List<traits::ChalkEnvironmentClause<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -110,7 +108,6 @@ impl<'tcx> CtxtInterners<'tcx> {
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
-            chalk_environment_clause_list: Default::default(),
         }
     }
 
@@ -2041,7 +2038,7 @@ direct_interners! {
 }
 
 macro_rules! slice_interners {
-    ($($field:ident: $method:ident($ty:ty)),+) => (
+    ($($field:ident: $method:ident($ty:ty)),+ $(,)?) => (
         $(impl<'tcx> TyCtxt<'tcx> {
             pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
                 self.interners.$field.intern_ref(v, || {
@@ -2060,8 +2057,6 @@ slice_interners!(
     predicates: _intern_predicates(Predicate<'tcx>),
     projs: _intern_projs(ProjectionKind),
     place_elems: _intern_place_elems(PlaceElem<'tcx>),
-    chalk_environment_clause_list:
-        _intern_chalk_environment_clause_list(traits::ChalkEnvironmentClause<'tcx>)
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2460,13 +2455,6 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
     }
 
-    pub fn intern_chalk_environment_clause_list(
-        self,
-        ts: &[traits::ChalkEnvironmentClause<'tcx>],
-    ) -> &'tcx List<traits::ChalkEnvironmentClause<'tcx>> {
-        if ts.is_empty() { List::empty() } else { self._intern_chalk_environment_clause_list(ts) }
-    }
-
     pub fn mk_fn_sig<I>(
         self,
         inputs: I,
@@ -2522,18 +2510,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
-    }
-
-    pub fn mk_chalk_environment_clause_list<
-        I: InternAs<
-            [traits::ChalkEnvironmentClause<'tcx>],
-            &'tcx List<traits::ChalkEnvironmentClause<'tcx>>,
-        >,
-    >(
-        self,
-        iter: I,
-    ) -> I::Output {
-        iter.intern_with(|xs| self.intern_chalk_environment_clause_list(xs))
     }
 
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.

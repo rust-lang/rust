@@ -1399,7 +1399,7 @@ rustc_queries! {
         }
 
         query evaluate_goal(
-            goal: traits::ChalkCanonicalGoal<'tcx>
+            goal: traits::CanonicalChalkEnvironmentAndGoal<'tcx>
         ) -> Result<
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution

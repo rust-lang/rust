@@ -3918,6 +3918,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // code is looking for a self type of a unresolved
                     // inference variable.
                     ty::PredicateAtom::ClosureKind(..) => None,
+                    ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
                 }
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))

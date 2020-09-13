@@ -87,7 +87,7 @@ pub struct PendingPredicateObligation<'tcx> {
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PendingPredicateObligation<'_>, 64);
+static_assert_size!(PendingPredicateObligation<'_>, 56);
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
@@ -355,6 +355,9 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.with(pred.to_predicate(self.selcx.tcx())),
                     ]))
                 }
+                ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
             },
             &ty::PredicateKind::Atom(atom) => match atom {
                 ty::PredicateAtom::Trait(ref data, _) => {
@@ -535,6 +538,9 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             ProcessResult::Unchanged
                         }
                     }
+                }
+                ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
             },
         }

@@ -6,13 +6,10 @@
 //! interned Chalk types.
 
 use rustc_middle::mir::interpret::ConstValue;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, TyCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi::Abi;
-
-use smallvec::SmallVec;
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -376,31 +373,10 @@ impl<'tcx> chalk_ir::interner::HasInterner for RustInterner<'tcx> {
     type Interner = Self;
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
-pub enum ChalkEnvironmentClause<'tcx> {
-    /// A normal rust `ty::Predicate` in the environment.
-    Predicate(ty::Predicate<'tcx>),
-    /// A special clause in the environment that gets lowered to
-    /// `chalk_ir::FromEnv::Ty`.
-    TypeFromEnv(Ty<'tcx>),
-}
-
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ChalkEnvironmentClause<'tcx>> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|t| t.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-        folder.tcx().intern_chalk_environment_clause_list(&v)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.iter().any(|t| t.visit_with(visitor))
-    }
-}
-/// We have to elaborate the environment of a chalk goal *before*
-/// canonicalization. This type wraps the predicate and the elaborated
-/// environment.
+/// A chalk environment and goal.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
 pub struct ChalkEnvironmentAndGoal<'tcx> {
-    pub environment: &'tcx ty::List<ChalkEnvironmentClause<'tcx>>,
+    pub environment: &'tcx ty::List<ty::Predicate<'tcx>>,
     pub goal: ty::Predicate<'tcx>,
 }
 

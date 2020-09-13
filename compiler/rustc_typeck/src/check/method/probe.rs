@@ -814,7 +814,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     | ty::PredicateAtom::ClosureKind(..)
                     | ty::PredicateAtom::TypeOutlives(..)
                     | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..) => None,
+                    | ty::PredicateAtom::ConstEquate(..)
+                    | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
                 },
             );
 

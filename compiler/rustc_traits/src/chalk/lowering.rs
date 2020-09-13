@@ -31,9 +31,7 @@
 //! not. To lower anything wrapped in a `Binder`, we first deeply find any bound
 //! variables from the current `Binder`.
 
-use rustc_middle::traits::{
-    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, ChalkRustInterner as RustInterner,
-};
+use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInterner};
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
@@ -42,8 +40,6 @@ use rustc_middle::ty::{
 use rustc_span::def_id::DefId;
 
 use std::collections::btree_map::{BTreeMap, Entry};
-
-use chalk_ir::fold::shift::Shift;
 
 /// Essentially an `Into` with a `&RustInterner` parameter
 crate trait LowerInto<'tcx, T> {
@@ -82,60 +78,45 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
         self,
         interner: &RustInterner<'tcx>,
     ) -> chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'tcx>>> {
-        let clauses = self.environment.into_iter().map(|clause| match clause {
-            ChalkEnvironmentClause::Predicate(predicate) => {
-                let (predicate, binders, _named_regions) =
-                    collect_bound_vars(interner, interner.tcx, &predicate.bound_atom(interner.tcx));
-                let consequence = match predicate {
-                    ty::PredicateAtom::Trait(predicate, _) => chalk_ir::DomainGoal::FromEnv(
-                        chalk_ir::FromEnv::Trait(predicate.trait_ref.lower_into(interner)),
-                    ),
-                    ty::PredicateAtom::RegionOutlives(predicate) => chalk_ir::DomainGoal::Holds(
-                        chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
-                            a: predicate.0.lower_into(interner),
-                            b: predicate.1.lower_into(interner),
-                        }),
-                    ),
-                    ty::PredicateAtom::TypeOutlives(predicate) => chalk_ir::DomainGoal::Holds(
-                        chalk_ir::WhereClause::TypeOutlives(chalk_ir::TypeOutlives {
-                            ty: predicate.0.lower_into(interner),
-                            lifetime: predicate.1.lower_into(interner),
-                        }),
-                    ),
-                    ty::PredicateAtom::Projection(predicate) => chalk_ir::DomainGoal::Holds(
-                        chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)),
-                    ),
-                    ty::PredicateAtom::WellFormed(..)
-                    | ty::PredicateAtom::ObjectSafe(..)
-                    | ty::PredicateAtom::ClosureKind(..)
-                    | ty::PredicateAtom::Subtype(..)
-                    | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..) => {
-                        bug!("unexpected predicate {}", predicate)
-                    }
-                };
-                let value = chalk_ir::ProgramClauseImplication {
-                    consequence,
-                    conditions: chalk_ir::Goals::empty(interner),
-                    priority: chalk_ir::ClausePriority::High,
-                    constraints: chalk_ir::Constraints::empty(interner),
-                };
-                chalk_ir::ProgramClauseData(chalk_ir::Binders::new(binders, value)).intern(interner)
-            }
-            ChalkEnvironmentClause::TypeFromEnv(ty) => {
-                chalk_ir::ProgramClauseData(chalk_ir::Binders::new(
-                    chalk_ir::VariableKinds::empty(interner),
-                    chalk_ir::ProgramClauseImplication {
-                        consequence: chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(
-                            ty.lower_into(interner).shifted_in(interner),
-                        )),
-                        conditions: chalk_ir::Goals::empty(interner),
-                        priority: chalk_ir::ClausePriority::High,
-                        constraints: chalk_ir::Constraints::empty(interner),
-                    },
-                ))
-                .intern(interner)
-            }
+        let clauses = self.environment.into_iter().map(|predicate| {
+            let (predicate, binders, _named_regions) =
+                collect_bound_vars(interner, interner.tcx, &predicate.bound_atom(interner.tcx));
+            let consequence = match predicate {
+                ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
+                    chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(ty.lower_into(interner)))
+                }
+                ty::PredicateAtom::Trait(predicate, _) => chalk_ir::DomainGoal::FromEnv(
+                    chalk_ir::FromEnv::Trait(predicate.trait_ref.lower_into(interner)),
+                ),
+                ty::PredicateAtom::RegionOutlives(predicate) => chalk_ir::DomainGoal::Holds(
+                    chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
+                        a: predicate.0.lower_into(interner),
+                        b: predicate.1.lower_into(interner),
+                    }),
+                ),
+                ty::PredicateAtom::TypeOutlives(predicate) => chalk_ir::DomainGoal::Holds(
+                    chalk_ir::WhereClause::TypeOutlives(chalk_ir::TypeOutlives {
+                        ty: predicate.0.lower_into(interner),
+                        lifetime: predicate.1.lower_into(interner),
+                    }),
+                ),
+                ty::PredicateAtom::Projection(predicate) => chalk_ir::DomainGoal::Holds(
+                    chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)),
+                ),
+                ty::PredicateAtom::WellFormed(..)
+                | ty::PredicateAtom::ObjectSafe(..)
+                | ty::PredicateAtom::ClosureKind(..)
+                | ty::PredicateAtom::Subtype(..)
+                | ty::PredicateAtom::ConstEvaluatable(..)
+                | ty::PredicateAtom::ConstEquate(..) => bug!("unexpected predicate {}", predicate),
+            };
+            let value = chalk_ir::ProgramClauseImplication {
+                consequence,
+                conditions: chalk_ir::Goals::empty(interner),
+                priority: chalk_ir::ClausePriority::High,
+                constraints: chalk_ir::Constraints::empty(interner),
+            };
+            chalk_ir::ProgramClauseData(chalk_ir::Binders::new(binders, value)).intern(interner)
         });
 
         let goal: chalk_ir::GoalData<RustInterner<'tcx>> = self.goal.lower_into(&interner);
@@ -214,6 +195,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             | ty::PredicateAtom::ConstEquate(..) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::empty(interner))
             }
+            ty::PredicateAtom::TypeWellFormedFromEnv(ty) => chalk_ir::GoalData::DomainGoal(
+                chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(ty.lower_into(interner))),
+            ),
         };
 
         chalk_ir::GoalData::Quantified(
@@ -684,7 +668,10 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::Subtype(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
-            | ty::PredicateAtom::ConstEquate(..) => bug!("unexpected predicate {}", &self),
+            | ty::PredicateAtom::ConstEquate(..)
+            | ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                bug!("unexpected predicate {}", &self)
+            }
         };
         value.map(|value| chalk_ir::Binders::new(binders, value))
     }

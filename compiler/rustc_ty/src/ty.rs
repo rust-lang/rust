@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -5,7 +6,9 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_infer::traits::util;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{
+    self, Binder, Predicate, PredicateAtom, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
+};
 use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -245,7 +248,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     }
     // Compute the bounds on Self and the type parameters.
 
-    let ty::InstantiatedPredicates { predicates, .. } =
+    let ty::InstantiatedPredicates { mut predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 
     // Finally, we have to normalize the bounds in the environment, in
@@ -260,11 +263,13 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
-        traits::Reveal::UserFacing,
-        tcx.sess.opts.debugging_opts.chalk.then_some(def_id),
-    );
+    if tcx.sess.opts.debugging_opts.chalk {
+        let environment = well_formed_types_in_env(tcx, def_id);
+        predicates.extend(environment);
+    }
+
+    let unnormalized_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing);
 
     let body_id = def_id
         .as_local()
@@ -274,6 +279,122 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
+}
+
+/// Elaborate the environment.
+///
+/// Collect a list of `Predicate`'s used for building the `ParamEnv`. Adds `TypeWellFormedFromEnv`'s
+/// that are assumed to be well-formed (because they come from the environment).
+///
+/// Used only in chalk mode.
+fn well_formed_types_in_env<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> &'tcx ty::List<Predicate<'tcx>> {
+    use rustc_hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
+    use rustc_middle::ty::subst::GenericArgKind;
+
+    debug!("environment(def_id = {:?})", def_id);
+
+    // The environment of an impl Trait type is its defining function's environment.
+    if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
+        return well_formed_types_in_env(tcx, parent);
+    }
+
+    // Compute the bounds on `Self` and the type parameters.
+    let ty::InstantiatedPredicates { predicates, .. } =
+        tcx.predicates_of(def_id).instantiate_identity(tcx);
+
+    let clauses = predicates.into_iter();
+
+    if !def_id.is_local() {
+        return ty::List::empty();
+    }
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let node = tcx.hir().get(hir_id);
+
+    enum NodeKind {
+        TraitImpl,
+        InherentImpl,
+        Fn,
+        Other,
+    };
+
+    let node_kind = match node {
+        Node::TraitItem(item) => match item.kind {
+            TraitItemKind::Fn(..) => NodeKind::Fn,
+            _ => NodeKind::Other,
+        },
+
+        Node::ImplItem(item) => match item.kind {
+            ImplItemKind::Fn(..) => NodeKind::Fn,
+            _ => NodeKind::Other,
+        },
+
+        Node::Item(item) => match item.kind {
+            ItemKind::Impl { of_trait: Some(_), .. } => NodeKind::TraitImpl,
+            ItemKind::Impl { of_trait: None, .. } => NodeKind::InherentImpl,
+            ItemKind::Fn(..) => NodeKind::Fn,
+            _ => NodeKind::Other,
+        },
+
+        Node::ForeignItem(item) => match item.kind {
+            ForeignItemKind::Fn(..) => NodeKind::Fn,
+            _ => NodeKind::Other,
+        },
+
+        // FIXME: closures?
+        _ => NodeKind::Other,
+    };
+
+    // FIXME(eddyb) isn't the unordered nature of this a hazard?
+    let mut inputs = FxIndexSet::default();
+
+    match node_kind {
+        // In a trait impl, we assume that the header trait ref and all its
+        // constituents are well-formed.
+        NodeKind::TraitImpl => {
+            let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
+
+            // FIXME(chalk): this has problems because of late-bound regions
+            //inputs.extend(trait_ref.substs.iter().flat_map(|arg| arg.walk()));
+            inputs.extend(trait_ref.substs.iter());
+        }
+
+        // In an inherent impl, we assume that the receiver type and all its
+        // constituents are well-formed.
+        NodeKind::InherentImpl => {
+            let self_ty = tcx.type_of(def_id);
+            inputs.extend(self_ty.walk());
+        }
+
+        // In an fn, we assume that the arguments and all their constituents are
+        // well-formed.
+        NodeKind::Fn => {
+            let fn_sig = tcx.fn_sig(def_id);
+            let fn_sig = tcx.liberate_late_bound_regions(def_id, &fn_sig);
+
+            inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
+        }
+
+        NodeKind::Other => (),
+    }
+    let input_clauses = inputs.into_iter().filter_map(|arg| {
+        match arg.unpack() {
+            GenericArgKind::Type(ty) => {
+                let binder = Binder::dummy(PredicateAtom::TypeWellFormedFromEnv(ty));
+                Some(tcx.mk_predicate(PredicateKind::ForAll(binder)))
+            }
+
+            // FIXME(eddyb) no WF conditions from lifetimes?
+            GenericArgKind::Lifetime(_) => None,
+
+            // FIXME(eddyb) support const generics in Chalk
+            GenericArgKind::Const(_) => None,
+        }
+    });
+
+    tcx.mk_predicates(clauses.chain(input_clauses))
 }
 
 fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {

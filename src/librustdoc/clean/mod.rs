@@ -508,7 +508,8 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
             | ty::PredicateAtom::ObjectSafe(..)
             | ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
-            | ty::PredicateAtom::ConstEquate(..) => panic!("not user writable"),
+            | ty::PredicateAtom::ConstEquate(..)
+            | ty::PredicateAtom::TypeWellFormedFromEnv(..) => panic!("not user writable"),
         }
     }
 }
