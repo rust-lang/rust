@@ -6,8 +6,9 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{
-    self, BufReader, Error, Initializer, IoSlice, IoSliceMut, LineWriter, Result, Write,
+    self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Result, Write,
 };
+use crate::result;
 use crate::str;
 use crate::sync::{Arc, Mutex, MutexGuard, Once};
 use crate::sys::stdio;
@@ -933,7 +934,7 @@ impl fmt::Debug for StderrLock<'_> {
     reason = "this function may be replaced with a more general mechanism",
     issue = "none"
 )]
-pub fn read_line<T: fmt::Display + fmt::Debug>() -> Result<T, <T as str::FromStr>::Err>
+pub fn read_line<T: fmt::Display + fmt::Debug>() -> result::Result<T, <T as str::FromStr>::Err>
 where
     T: str::FromStr,
     <T as str::FromStr>::Err: fmt::Debug,
@@ -971,7 +972,7 @@ where
     reason = "this function may be replaced with a more general mechanism",
     issue = "none"
 )]
-pub fn prompt_line<T: fmt::Display + fmt::Debug>(prompt: &str) -> Result<T, <T as str::FromStr>::Err>
+pub fn prompt_line<T: fmt::Display + fmt::Debug>(prompt: &str) -> result::Result<T, <T as str::FromStr>::Err>
 where
     T: str::FromStr,
     <T as str::FromStr>::Err: fmt::Debug,
