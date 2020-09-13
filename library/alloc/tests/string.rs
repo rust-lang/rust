@@ -278,17 +278,21 @@ fn test_split_off_mid_char() {
 #[test]
 fn test_split_off_ascii() {
     let mut ab = String::from("ABCD");
+    let orig_capacity = ab.capacity();
     let cd = ab.split_off(2);
     assert_eq!(ab, "AB");
     assert_eq!(cd, "CD");
+    assert_eq!(ab.capacity(), orig_capacity);
 }
 
 #[test]
 fn test_split_off_unicode() {
     let mut nihon = String::from("日本語");
+    let orig_capacity = nihon.capacity();
     let go = nihon.split_off("日本".len());
     assert_eq!(nihon, "日本");
     assert_eq!(go, "語");
+    assert_eq!(nihon.capacity(), orig_capacity);
 }
 
 #[test]
