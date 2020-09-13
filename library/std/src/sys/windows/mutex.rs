@@ -67,6 +67,7 @@ impl Mutex {
     #[inline]
     pub unsafe fn init(&mut self) {}
     pub unsafe fn lock(&self) {
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
         unsafe {
             match kind() {
                 Kind::SRWLock => c::AcquireSRWLockExclusive(raw(self)),
@@ -83,6 +84,7 @@ impl Mutex {
         }
     }
     pub unsafe fn try_lock(&self) -> bool {
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
         unsafe {
             match kind() {
                 Kind::SRWLock => c::TryAcquireSRWLockExclusive(raw(self)) != 0,
@@ -102,6 +104,7 @@ impl Mutex {
         }
     }
     pub unsafe fn unlock(&self) {
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
         unsafe {
             match kind() {
                 Kind::SRWLock => c::ReleaseSRWLockExclusive(raw(self)),
@@ -114,6 +117,7 @@ impl Mutex {
         }
     }
     pub unsafe fn destroy(&self) {
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
         unsafe {
             match kind() {
                 Kind::SRWLock => {}
@@ -134,8 +138,10 @@ impl Mutex {
         unsafe {
             inner.remutex.init();
         }
-        let inner = Box::into_raw(inner);
-        
+    }
+
+    unsafe fn flag_locked(&self) -> bool {
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
         unsafe {
             match self.lock.compare_and_swap(0, inner as usize, Ordering::SeqCst) {
                 0 => inner,
