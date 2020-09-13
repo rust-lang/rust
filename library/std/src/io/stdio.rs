@@ -971,7 +971,7 @@ where
     issue = "none"
 )]
 pub fn prompt_line<T: fmt::Display + fmt::Debug>(
-    prompt: &str
+    prompt: &str,
 ) -> result::Result<T, <T as str::FromStr>::Err>
 where
     T: str::FromStr,
