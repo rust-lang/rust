@@ -1,22 +1,22 @@
 # Dataflow Analysis
 
 If you work on the MIR, you will frequently come across various flavors of
-[dataflow analysis][wiki]. For example, `rustc` uses dataflow to find
-uninitialized variables, determine what variables are live across a generator
-`yield` statement, and compute which `Place`s are borrowed at a given point in
-the control-flow graph. Dataflow analysis is a fundamental concept in modern
+[dataflow analysis][wiki]. `rustc` uses dataflow to find uninitialized
+variables, determine what variables are live across a generator `yield`
+statement, and compute which `Place`s are borrowed at a given point in the
+control-flow graph. Dataflow analysis is a fundamental concept in modern
 compilers, and knowledge of the subject will be helpful to prospective
 contributors.
 
 However, this documentation is not a general introduction to dataflow analysis.
 It is merely a description of the framework used to define these analyses in
-`rustc`. It assumes that the reader is familiar with some basic terminology,
-such as "transfer function", "fixpoint" and "lattice". If you're unfamiliar
-with these terms, or if you want a quick refresher, [*Static Program Analysis*]
-by Anders Møller and Michael I. Schwartzbach is an excellent, freely available
-textbook.  For those who prefer audiovisual learning, the Goethe University
-Frankfurt has published a series of short [youtube lectures][goethe] in English
-that are very approachable.
+`rustc`. It assumes that the reader is familiar with the core ideas as well as
+some basic terminology, such as "transfer function", "fixpoint" and "lattice".
+If you're unfamiliar with these terms, or if you want a quick refresher,
+[*Static Program Analysis*] by Anders Møller and Michael I. Schwartzbach is an
+excellent, freely available textbook. For those who prefer audiovisual
+learning, the Goethe University Frankfurt has published a series of short
+[lectures on YouTube][goethe] in English that are very approachable.
 
 ## Defining a Dataflow Analysis
 
@@ -56,14 +56,14 @@ slower as a result. All implementers of `GenKillAnalysis` also implement
 
 ### Transfer Functions and Effects
 
-The dataflow framework in `rustc` allows each statement inside a basic block as
-well as the terminator to define its own transfer function. For brevity, these
+The dataflow framework in `rustc` allows each statement (and terminator) inside
+a basic block define its own transfer function. For brevity, these
 individual transfer functions are known as "effects". Each effect is applied
 successively in dataflow order, and together they define the transfer function
 for the entire basic block. It's also possible to define an effect for
 particular outgoing edges of some terminators (e.g.
 [`apply_call_return_effect`] for the `success` edge of a `Call`
-terminator). Collectively, these are known as per-edge effects.
+terminator). Collectively, these are referred to as "per-edge effects".
 
 The only meaningful difference (besides the "apply" prefix) between the methods
 of the `GenKillAnalysis` trait and the `Analysis` trait is that an `Analysis`
@@ -71,16 +71,21 @@ has direct, mutable access to the dataflow state, whereas a `GenKillAnalysis`
 only sees an implementer of the `GenKill` trait, which only allows the `gen`
 and `kill` operations for mutation.
 
-Observant readers of the documentation for these traits may notice that there
-are actually *two* possible effects for each statement and terminator, the
-"before" effect and the unprefixed (or "primary") effect. The "before" effects
-are applied immediately before the unprefixed effect **regardless of whether
-the analysis is backward or forward**. The vast majority of analyses should use
-only the unprefixed effects: Having multiple effects for each statement makes
-it difficult for consumers to know where they should be looking. However, the
-"before" variants can be useful in some scenarios, such as when the effect of
-the right-hand side of an assignment statement must be considered separately
-from the left-hand side.
+### "Before" Effects
+
+Observant readers of the documentation may notice that there are actually *two*
+possible effects for each statement and terminator, the "before" effect and the
+unprefixed (or "primary") effect. The "before" effects are applied immediately
+before the unprefixed effect **regardless of the direction of the analysis**.
+In other words, a backward analysis will apply the "before" effect and then the
+the "primary" effect when computing the transfer function for a basic block,
+just like a forward analysis.
+
+The vast majority of analyses should use only the unprefixed effects: Having
+multiple effects for each statement makes it difficult for consumers to know
+where they should be looking. However, the "before" variants can be useful in
+some scenarios, such as when the effect of the right-hand side of an assignment
+statement must be considered separately from the left-hand side.
 
 ### Convergence
 
