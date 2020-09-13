@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "thread_local_internals", issue = "none")]
 #![cfg(target_thread_local)]
 

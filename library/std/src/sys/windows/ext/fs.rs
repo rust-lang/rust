@@ -1,5 +1,6 @@
 //! Windows-specific extensions for the primitives in the `std::fs` module.
 
+#![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fs::{self, Metadata, OpenOptions};

@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::io;
 use crate::mem;
 use crate::sys::c;

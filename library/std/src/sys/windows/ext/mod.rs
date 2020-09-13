@@ -6,6 +6,7 @@
 //! `std` types and idioms with Windows in a way that the normal
 //! platform-agnostic idioms would not normally support.
 
+#![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(cfg(windows))]
 #![allow(missing_docs)]

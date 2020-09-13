@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 pub mod os {
     pub const FAMILY: &str = "windows";
     pub const OS: &str = "windows";

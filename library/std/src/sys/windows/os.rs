@@ -1,5 +1,5 @@
 //! Implementation of `std::os` functionality for Windows.
-
+#![deny(unsafe_op_in_unsafe_fn)]
 #![allow(nonstandard_style)]
 
 #[cfg(test)]

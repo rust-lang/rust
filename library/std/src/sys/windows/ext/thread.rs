@@ -1,5 +1,6 @@
 //! Extensions to `std::thread` for Windows.
 
+#![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "thread_extensions", since = "1.9.0")]
 
 use crate::os::windows::io::{AsRawHandle, IntoRawHandle, RawHandle};

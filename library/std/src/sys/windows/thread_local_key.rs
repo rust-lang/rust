@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::mem;
 use crate::ptr;
 use crate::sync::atomic::AtomicPtr;
@@ -47,23 +49,29 @@ pub type Dtor = unsafe extern "C" fn(*mut u8);
 
 #[inline]
 pub unsafe fn create(dtor: Option<Dtor>) -> Key {
-    let key = c::TlsAlloc();
+    // SAFETY: `c::TlsAlloc()` is guranteed to be safe
+    let key = unsafe { c::TlsAlloc() };
     assert!(key != c::TLS_OUT_OF_INDEXES);
     if let Some(f) = dtor {
-        register_dtor(key, f);
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe {
+            register_dtor(key, f);
+        }
     }
     key
 }
 
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    let r = c::TlsSetValue(key, value as c::LPVOID);
-    debug_assert!(r != 0);
+    unsafe {
+        let r = c::TlsSetValue(key, value as c::LPVOID);
+        debug_assert!(r != 0);
+    }
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
-    c::TlsGetValue(key) as *mut u8
+    unsafe { c::TlsGetValue(key) as *mut u8 }
 }
 
 #[inline]
@@ -211,18 +219,25 @@ pub static p_thread_callback: unsafe extern "system" fn(c::LPVOID, c::DWORD, c::
 #[allow(dead_code, unused_variables)]
 unsafe extern "system" fn on_tls_callback(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID) {
     if dwReason == c::DLL_THREAD_DETACH || dwReason == c::DLL_PROCESS_DETACH {
-        run_dtors();
+        unsafe {
+            run_dtors();
+        }
     }
 
-    // See comments above for what this is doing. Note that we don't need this
-    // trickery on GNU windows, just on MSVC.
-    reference_tls_used();
+    // SAFETY: See comments above for what this is doing.
+    // Note that we don't need this trickery on GNU windows, just on MSVC.
+    unsafe {
+        reference_tls_used();
+    }
     #[cfg(target_env = "msvc")]
     unsafe fn reference_tls_used() {
         extern "C" {
             static _tls_used: u8;
         }
-        crate::intrinsics::volatile_load(&_tls_used);
+        // SAFETY: This just inhibits linker removal as described above.
+        unsafe {
+            crate::intrinsics::volatile_load(&_tls_used);
+        }
     }
     #[cfg(not(target_env = "msvc"))]
     unsafe fn reference_tls_used() {}
@@ -237,16 +252,21 @@ unsafe fn run_dtors() {
         }
         any_run = false;
         let mut cur = DTORS.load(SeqCst);
-        while !cur.is_null() {
-            let ptr = c::TlsGetValue((*cur).key);
 
-            if !ptr.is_null() {
-                c::TlsSetValue((*cur).key, ptr::null_mut());
-                ((*cur).dtor)(ptr as *mut _);
-                any_run = true;
+        // SAFETY: If `cur` is non-null, it must be a
+        // valid pointer added by `register_dtor`
+        unsafe {
+            while !cur.is_null() {
+                let ptr = c::TlsGetValue((*cur).key);
+
+                if !ptr.is_null() {
+                    c::TlsSetValue((*cur).key, ptr::null_mut());
+                    ((*cur).dtor)(ptr as *mut _);
+                    any_run = true;
+                }
+
+                cur = (*cur).next;
             }
-
-            cur = (*cur).next;
         }
     }
 }

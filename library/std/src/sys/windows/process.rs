@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "process_internals", issue = "none")]
 
 #[cfg(test)]

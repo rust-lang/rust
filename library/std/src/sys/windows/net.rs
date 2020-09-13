@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(issue = "none", feature = "windows_net")]
 
 use crate::cmp;

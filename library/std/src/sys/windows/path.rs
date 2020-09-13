@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::OsStr;
 use crate::mem;
 use crate::path::Prefix;
@@ -16,7 +18,8 @@ fn os_str_as_u8_slice(s: &OsStr) -> &[u8] {
     unsafe { mem::transmute(s) }
 }
 unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
-    mem::transmute(s)
+    // SAFETY: the safety contract must be upheld by the caller
+    unsafe { mem::transmute(s) }
 }
 
 #[inline]

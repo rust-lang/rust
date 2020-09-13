@@ -1,6 +1,7 @@
 //! C definitions used by libnative that don't belong in liblibc
 
 #![allow(nonstandard_style)]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
 

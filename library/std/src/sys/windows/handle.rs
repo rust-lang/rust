@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(issue = "none", feature = "windows_handle")]
 
 use crate::cmp;
@@ -120,7 +121,10 @@ impl RawHandle {
     ) -> io::Result<Option<usize>> {
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let mut amt = 0;
-        let res = cvt(c::ReadFile(self.0, buf.as_ptr() as c::LPVOID, len, &mut amt, overlapped));
+        // SAFETY: the safety contract must be upheld by the caller
+        let res = unsafe {
+            cvt(c::ReadFile(self.0, buf.as_ptr() as c::LPVOID, len, &mut amt, overlapped))
+        };
         match res {
             Ok(_) => Ok(Some(amt as usize)),
             Err(e) => {

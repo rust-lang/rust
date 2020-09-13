@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::cell::UnsafeCell;
 use crate::sys::c;
 
@@ -14,27 +16,27 @@ impl RWLock {
     }
     #[inline]
     pub unsafe fn read(&self) {
-        c::AcquireSRWLockShared(self.inner.get())
+        unsafe { c::AcquireSRWLockShared(self.inner.get()) }
     }
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
-        c::TryAcquireSRWLockShared(self.inner.get()) != 0
+        unsafe { c::TryAcquireSRWLockShared(self.inner.get()) != 0 }
     }
     #[inline]
     pub unsafe fn write(&self) {
-        c::AcquireSRWLockExclusive(self.inner.get())
+        unsafe { c::AcquireSRWLockExclusive(self.inner.get()) }
     }
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        c::TryAcquireSRWLockExclusive(self.inner.get()) != 0
+        unsafe { c::TryAcquireSRWLockExclusive(self.inner.get()) != 0 }
     }
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        c::ReleaseSRWLockShared(self.inner.get())
+        unsafe { c::ReleaseSRWLockShared(self.inner.get()) }
     }
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        c::ReleaseSRWLockExclusive(self.inner.get())
+        unsafe { c::ReleaseSRWLockExclusive(self.inner.get()) }
     }
 
     #[inline]

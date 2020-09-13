@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 //! System Mutexes
 //!
 //! The Windows implementation of mutexes is a little odd and it may not be
@@ -65,53 +67,61 @@ impl Mutex {
     #[inline]
     pub unsafe fn init(&mut self) {}
     pub unsafe fn lock(&self) {
-        match kind() {
-            Kind::SRWLock => c::AcquireSRWLockExclusive(raw(self)),
-            Kind::CriticalSection => {
-                let inner = &*self.inner();
-                inner.remutex.lock();
-                if inner.held.replace(true) {
-                    // It was already locked, so we got a recursive lock which we do not want.
-                    inner.remutex.unlock();
-                    panic!("cannot recursively lock a mutex");
+        unsafe {
+            match kind() {
+                Kind::SRWLock => c::AcquireSRWLockExclusive(raw(self)),
+                Kind::CriticalSection => {
+                    let inner = &*self.inner();
+                    inner.remutex.lock();
+                    if inner.held.replace(true) {
+                        // It was already locked, so we got a recursive lock which we do not want.
+                        inner.remutex.unlock();
+                        panic!("cannot recursively lock a mutex");
+                    }
                 }
             }
         }
     }
     pub unsafe fn try_lock(&self) -> bool {
-        match kind() {
-            Kind::SRWLock => c::TryAcquireSRWLockExclusive(raw(self)) != 0,
-            Kind::CriticalSection => {
-                let inner = &*self.inner();
-                if !inner.remutex.try_lock() {
-                    false
-                } else if inner.held.replace(true) {
-                    // It was already locked, so we got a recursive lock which we do not want.
-                    inner.remutex.unlock();
-                    false
-                } else {
-                    true
+        unsafe {
+            match kind() {
+                Kind::SRWLock => c::TryAcquireSRWLockExclusive(raw(self)) != 0,
+                Kind::CriticalSection => {
+                    let inner = &*self.inner();
+                    if !inner.remutex.try_lock() {
+                        false
+                    } else if inner.held.replace(true) {
+                        // It was already locked, so we got a recursive lock which we do not want.
+                        inner.remutex.unlock();
+                        false
+                    } else {
+                        true
+                    }
                 }
             }
         }
     }
     pub unsafe fn unlock(&self) {
-        match kind() {
-            Kind::SRWLock => c::ReleaseSRWLockExclusive(raw(self)),
-            Kind::CriticalSection => {
-                let inner = &*(self.lock.load(Ordering::SeqCst) as *const Inner);
-                inner.held.set(false);
-                inner.remutex.unlock();
+        unsafe {
+            match kind() {
+                Kind::SRWLock => c::ReleaseSRWLockExclusive(raw(self)),
+                Kind::CriticalSection => {
+                    let inner = &*(self.lock.load(Ordering::SeqCst) as *const Inner);
+                    inner.held.set(false);
+                    inner.remutex.unlock();
+                }
             }
         }
     }
     pub unsafe fn destroy(&self) {
-        match kind() {
-            Kind::SRWLock => {}
-            Kind::CriticalSection => match self.lock.load(Ordering::SeqCst) {
-                0 => {}
-                n => Box::from_raw(n as *mut Inner).remutex.destroy(),
-            },
+        unsafe {
+            match kind() {
+                Kind::SRWLock => {}
+                Kind::CriticalSection => match self.lock.load(Ordering::SeqCst) {
+                    0 => {}
+                    n => Box::from_raw(n as *mut Inner).remutex.destroy(),
+                },
+            }
         }
     }
 
@@ -121,13 +131,18 @@ impl Mutex {
             n => return n as *const _,
         }
         let inner = box Inner { remutex: ReentrantMutex::uninitialized(), held: Cell::new(false) };
-        inner.remutex.init();
+        unsafe {
+            inner.remutex.init();
+        }
         let inner = Box::into_raw(inner);
-        match self.lock.compare_and_swap(0, inner as usize, Ordering::SeqCst) {
-            0 => inner,
-            n => {
-                Box::from_raw(inner).remutex.destroy();
-                n as *const _
+        
+        unsafe {
+            match self.lock.compare_and_swap(0, inner as usize, Ordering::SeqCst) {
+                0 => inner,
+                n => {
+                    Box::from_raw(inner).remutex.destroy();
+                    n as *const _
+                }
             }
         }
     }
@@ -150,23 +165,38 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn init(&self) {
-        c::InitializeCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
+        unsafe {
+            c::InitializeCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
+        }
     }
 
     pub unsafe fn lock(&self) {
-        c::EnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
+        unsafe {
+            c::EnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
+        }
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        c::TryEnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr())) != 0
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
+        unsafe {
+            c::TryEnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr())) != 0
+        }
     }
 
     pub unsafe fn unlock(&self) {
-        c::LeaveCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
+        unsafe {
+            c::LeaveCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
+        }
     }
 
     pub unsafe fn destroy(&self) {
-        c::DeleteCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
+        // SAFETY: The caller must ensure that the mutex is not moved or copied
+        unsafe {
+            c::DeleteCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
+        }
     }
 }

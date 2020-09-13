@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsStr;
@@ -364,5 +366,6 @@ unsafe fn slice_to_end(v: &mut Vec<u8>) -> &mut [u8] {
     if v.capacity() == v.len() {
         v.reserve(1);
     }
-    slice::from_raw_parts_mut(v.as_mut_ptr().add(v.len()), v.capacity() - v.len())
+    //SAFETY: `v` is a valid slice, and we reserve enough space
+    unsafe { slice::from_raw_parts_mut(v.as_mut_ptr().add(v.len()), v.capacity() - v.len()) }
 }

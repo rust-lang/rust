@@ -1,5 +1,6 @@
 //! Extensions to `std::process` for Windows.
 
+#![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
 use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};

@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 #![cfg(not(test))]
 
 use libc::{c_double, c_float};

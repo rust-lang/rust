@@ -11,6 +11,8 @@
 //! manner we pay a semi-large one-time cost up front for detecting whether a
 //! function is available but afterwards it's just a load and a jump.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::CString;
 use crate::sys::c;
 
@@ -86,7 +88,9 @@ macro_rules! compat_fn {
             }
 
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
-                mem::transmute::<usize, F>(addr())($($argname),*)
+                unsafe {
+                    mem::transmute::<usize, F>(addr())($($argname),*)
+                }
             }
         }
 

@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::CStr;
 use crate::io;
 use crate::ptr;
@@ -29,19 +31,24 @@ impl Thread {
         // Round up to the next 64 kB because that's what the NT kernel does,
         // might as well make it explicit.
         let stack_size = (stack + 0xfffe) & (!0xfffe);
-        let ret = c::CreateThread(
-            ptr::null_mut(),
-            stack_size,
-            thread_start,
-            p as *mut _,
-            c::STACK_SIZE_PARAM_IS_A_RESERVATION,
-            ptr::null_mut(),
-        );
+        // SAFETY: the safety contract must be upheld by the caller
+        let ret = unsafe {
+            c::CreateThread(
+                ptr::null_mut(),
+                stack_size,
+                thread_start,
+                p as *mut _,
+                c::STACK_SIZE_PARAM_IS_A_RESERVATION,
+                ptr::null_mut(),
+            )
+        };
 
         return if ret as usize == 0 {
-            // The thread failed to start and as a result p was not consumed. Therefore, it is
-            // safe to reconstruct the box so that it gets deallocated.
-            drop(Box::from_raw(p));
+            // SAFETY: The thread failed to start and as a result p was not consumed.
+            // Therefore, it is safe to reconstruct the box so that it gets deallocated.
+            unsafe {
+                drop(Box::from_raw(p));
+            };
             Err(io::Error::last_os_error())
         } else {
             Ok(Thread { handle: Handle::new(ret) })

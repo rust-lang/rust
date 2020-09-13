@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsString;
@@ -862,7 +864,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         lpData: c::LPVOID,
     ) -> c::DWORD {
         if dwStreamNumber == 1 {
-            *(lpData as *mut i64) = StreamBytesTransferred;
+            //SAFETY: We pass a *mut i64 as lpData to CopyFileExW, so we must get it back
+            unsafe { *(lpData as *mut i64) = StreamBytesTransferred };
         }
         c::PROGRESS_CONTINUE
     }

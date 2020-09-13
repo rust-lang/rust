@@ -1,5 +1,6 @@
 //! Windows-specific extensions to general I/O primitives.
 
+#![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fs;

@@ -1,4 +1,5 @@
 #![allow(dead_code)] // runtime init functions not used during testing
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
@@ -52,11 +53,14 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(
     const TAB: u16 = '\t' as u16;
     const SPACE: u16 = ' ' as u16;
     let mut ret_val = Vec::new();
-    if lp_cmd_line.is_null() || *lp_cmd_line == 0 {
-        ret_val.push(exe_name());
-        return ret_val;
-    }
-    let mut cmd_line = {
+
+    //SAFETY: the caller must supply a valid pointer
+    let mut cmd_line = unsafe {
+        if lp_cmd_line.is_null() || *lp_cmd_line == 0 {
+            ret_val.push(exe_name());
+            return ret_val;
+        }
+
         let mut end = 0;
         while *lp_cmd_line.offset(end) != 0 {
             end += 1;

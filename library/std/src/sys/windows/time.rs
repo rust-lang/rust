@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::cmp::Ordering;
 use crate::convert::TryInto;
 use crate::fmt;
