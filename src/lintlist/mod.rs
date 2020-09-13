@@ -2637,7 +2637,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "verbose_bit_mask",
-        group: "style",
+        group: "pedantic",
         desc: "expressions where a bit mask is less readable than the corresponding method call",
         deprecation: None,
         module: "bit_mask",
