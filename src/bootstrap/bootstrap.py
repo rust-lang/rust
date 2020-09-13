@@ -429,6 +429,8 @@ class RustBuild(object):
             llvm_assertions = self.get_toml('assertions', 'llvm') == 'true'
             if self.program_out_of_date(self.llvm_stamp(), llvm_sha + str(llvm_assertions)):
                 self._download_ci_llvm(llvm_sha, llvm_assertions)
+                for binary in ["llvm-config", "FileCheck"]:
+                    self.fix_bin_or_dylib("{}/bin/{}".format(self.llvm_root(), binary))
                 with output(self.llvm_stamp()) as llvm_stamp:
                     llvm_stamp.write(self.date + llvm_sha + str(llvm_assertions))
 
