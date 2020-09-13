@@ -1290,8 +1290,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns when using `push_str` with a single-character string literal,
-    /// and `push` with a `char` would work fine.
+    /// **What it does:** Warns when using `push_str` with a single-character string literal
+    /// where `push` with a `char` would work fine.
     ///
     /// **Why is this bad?** It's less clear that we are pushing a single character.
     ///
@@ -1521,6 +1521,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     if match_def_path(cx, fn_def_id, &paths::PUSH_STR) {
                         lint_single_char_push_string(cx, expr, args);
+                    } else if match_def_path(cx, fn_def_id, &paths::INSERT_STR) {
+                        lint_single_char_insert_string(cx, expr, args);
                     }
                 }
 
@@ -3249,6 +3251,25 @@ fn lint_single_char_push_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args
             expr.span,
             "calling `push_str()` using a single-character string literal",
             "consider using `push` with a character literal",
+            sugg,
+            applicability,
+        );
+    }
+}
+
+/// lint for length-1 `str`s as argument for `insert_str`
+fn lint_single_char_insert_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    let mut applicability = Applicability::MachineApplicable;
+    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[2], &mut applicability) {
+        let base_string_snippet = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
+        let pos_arg = snippet(cx, args[1].span, "..");
+        let sugg = format!("{}.insert({}, {})", base_string_snippet, pos_arg, extension_string);
+        span_lint_and_sugg(
+            cx,
+            SINGLE_CHAR_PUSH_STR,
+            expr.span,
+            "calling `insert_str()` using a single-character string literal",
+            "consider using `insert` with a character literal",
             sugg,
             applicability,
         );

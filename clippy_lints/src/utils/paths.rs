@@ -52,6 +52,7 @@ pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entr
 pub const HASHSET: [&str; 5] = ["std", "collections", "hash", "set", "HashSet"];
 pub const INDEX: [&str; 3] = ["core", "ops", "Index"];
 pub const INDEX_MUT: [&str; 3] = ["core", "ops", "IndexMut"];
+pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
 pub const INTO: [&str; 3] = ["core", "convert", "Into"];
 pub const INTO_ITERATOR: [&str; 5] = ["core", "iter", "traits", "collect", "IntoIterator"];
 pub const IO_READ: [&str; 3] = ["std", "io", "Read"];
