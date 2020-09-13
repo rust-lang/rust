@@ -919,12 +919,12 @@ impl fmt::Debug for StderrLock<'_> {
 /// #![feature(io_input)]
 /// use std::io;
 ///
-/// fn main() -> io::Result<()> {
-///     let name = io::read_line("Enter name: ")?;
+/// fn main() {
+///     println!("Enter name: ");
+///
+///     let name = io::read_line().unwrap();
 ///
 ///     println!("Your name is {}!", name);
-///
-///     Ok(())
 /// }
 /// ```
 #[unstable(
@@ -957,12 +957,10 @@ where
 /// #![feature(io_input_prompt)]
 /// use std::io;
 ///
-/// fn main() -> io::Result<()> {
-///     let name = io::prompt_line("Enter name: ")?;
+/// fn main() {
+///     let name = io::prompt_line("Enter name: ").unwrap();
 ///
 ///     println!("Your name is {}!", name);
-///
-///     Ok(())
 /// }
 /// ```
 #[unstable(
