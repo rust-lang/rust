@@ -161,12 +161,21 @@ git worktree add -b my-feature ../rust2 master
 You can then use that rust2 folder as a separate workspace for modifying
 and building `rustc`!
 
-## Building with system LLVM
+## Skipping LLVM Build
 
-By default, LLVM is built from source, and that can take significant amount of
-time.  An alternative is to use LLVM already installed on your computer.
+By default, LLVM is built from source, and that takes significant amount of
+time. One way to avoid that is to add this to `config.toml`:
 
-This is specified in the `target` section of `config.toml`:
+```toml
+[llvm]
+download-ci-llvm = true
+```
+
+Downloading LLVM from CI is still experimental though, and might not be
+available on all platforms. Otherwise, we'd make it a default!
+
+Another alternative is to use LLVM already installed on your computer. This is
+specified in the `target` section of `config.toml`:
 
 ```toml
 [target.x86_64-unknown-linux-gnu]
