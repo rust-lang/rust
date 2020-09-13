@@ -414,3 +414,11 @@ fn refcell_replace_borrows() {
     let _b = x.borrow();
     x.replace(1);
 }
+
+#[test]
+fn refcell_format() {
+    let name = RefCell::new("rust");
+    let what = RefCell::new("rocks");
+    let msg = format!("{name} {}", &*what.borrow(), name = &*name.borrow());
+    assert_eq!(msg, "rust rocks".to_string());
+}
