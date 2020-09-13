@@ -267,7 +267,9 @@ pub use self::cursor::Cursor;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::error::{Error, ErrorKind, Result};
 #[unstable(feature = "io_input", issue = "none")]
-pub use self::stdio::input;
+pub use self::stdio::read_line;
+#[unstable(feature = "io_input_prompt", issue = "none")]
+pub use self::stdio::prompt_line;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
