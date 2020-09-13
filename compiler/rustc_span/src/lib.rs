@@ -544,6 +544,12 @@ impl Span {
     }
 
     /// Returns a `Span` that would enclose both `self` and `end`.
+    ///
+    /// ```text
+    ///     ____             ___
+    ///     self lorem ipsum end
+    ///     ^^^^^^^^^^^^^^^^^^^^
+    /// ```
     pub fn to(self, end: Span) -> Span {
         let span_data = self.data();
         let end_data = end.data();
@@ -567,6 +573,12 @@ impl Span {
     }
 
     /// Returns a `Span` between the end of `self` to the beginning of `end`.
+    ///
+    /// ```text
+    ///     ____             ___
+    ///     self lorem ipsum end
+    ///         ^^^^^^^^^^^^^
+    /// ```
     pub fn between(self, end: Span) -> Span {
         let span = self.data();
         let end = end.data();
@@ -577,7 +589,13 @@ impl Span {
         )
     }
 
-    /// Returns a `Span` between the beginning of `self` to the beginning of `end`.
+    /// Returns a `Span` from the beginning of `self` until the beginning of `end`.
+    ///
+    /// ```text
+    ///     ____             ___
+    ///     self lorem ipsum end
+    ///     ^^^^^^^^^^^^^^^^^
+    /// ```
     pub fn until(self, end: Span) -> Span {
         let span = self.data();
         let end = end.data();

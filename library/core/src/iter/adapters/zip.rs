@@ -8,11 +8,8 @@ use super::super::{
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
-/// This `struct` is created by the [`zip`] method on [`Iterator`]. See its
-/// documentation for more.
-///
-/// [`zip`]: trait.Iterator.html#method.zip
-/// [`Iterator`]: trait.Iterator.html
+/// This `struct` is created by [`Iterator::zip`]. See its documentation
+/// for more.
 #[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
