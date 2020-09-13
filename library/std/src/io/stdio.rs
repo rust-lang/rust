@@ -922,7 +922,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// fn main() {
 ///     println!("Enter name: ");
 ///
-///     let name = io::read_line().unwrap();
+///     let name: String = io::read_line().unwrap();
 ///
 ///     println!("Your name is {}!", name);
 /// }
@@ -958,7 +958,7 @@ where
 /// use std::io;
 ///
 /// fn main() {
-///     let name = io::prompt_line("Enter name: ").unwrap();
+///     let name: String = io::prompt_line("Enter name: ").unwrap();
 ///
 ///     println!("Your name is {}!", name);
 /// }
