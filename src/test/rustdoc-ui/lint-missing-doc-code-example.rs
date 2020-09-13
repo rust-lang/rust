@@ -16,13 +16,13 @@ fn test() {
 }
 
 #[allow(missing_docs)]
-mod module1 { //~ ERROR
+mod module1 {
 }
 
-#[allow(missing_doc_code_examples)]
-/// doc
+/// doc (no code example and it's fine!)
 mod module2 {
 
+   #[allow(missing_doc_code_examples)]
   /// doc
   pub fn test() {}
 }
