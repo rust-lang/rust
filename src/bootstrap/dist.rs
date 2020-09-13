@@ -2382,26 +2382,32 @@ impl Step for HashSign {
 /// Note: This function does not yet support Windows, but we also don't support
 ///       linking LLVM tools dynamically on Windows yet.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) {
-    let src_libdir = builder.llvm_out(target).join("lib");
+    if !builder.config.llvm_link_shared {
+        // We do not need to copy LLVM files into the sysroot if it is not
+        // dynamically linked; it is already included into librustc_llvm
+        // statically.
+        return;
+    }
 
+    // On macOS for some reason the llvm-config binary behaves differently and
+    // and fails on missing .a files if run without --link-shared. If run with
+    // that option, it still fails, but because we only ship a libLLVM.dylib
+    // rather than libLLVM-11-rust-....dylib file.
+    //
+    // For now just don't use llvm-config here on macOS; that will fail to
+    // support CI-built LLVM, but until we work out the different behavior that
+    // is fine as it is off by default.
     if target.contains("apple-darwin") {
+        let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
-        return;
-    }
-
-    // Usually libLLVM.so is a symlink to something like libLLVM-6.0.so.
-    // Since tools link to the latter rather than the former, we have to
-    // follow the symlink to find out what to distribute.
-    let llvm_dylib_path = src_libdir.join("libLLVM.so");
-    if llvm_dylib_path.exists() {
-        let llvm_dylib_path = llvm_dylib_path.canonicalize().unwrap_or_else(|e| {
-            panic!("dist: Error calling canonicalize path `{}`: {}", llvm_dylib_path.display(), e);
-        });
-
-        builder.install(&llvm_dylib_path, dst_libdir, 0o644);
+    } else if let Ok(llvm_config) = crate::native::prebuilt_llvm_config(builder, target) {
+        let files = output(Command::new(llvm_config).arg("--libfiles"));
+        for file in files.lines() {
+            builder.install(Path::new(file), dst_libdir, 0o644);
+        }
     }
 }
 

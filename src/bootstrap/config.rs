@@ -15,8 +15,19 @@ use std::process;
 use crate::cache::{Interned, INTERNER};
 use crate::flags::Flags;
 pub use crate::flags::Subcommand;
+use crate::util::exe;
 use build_helper::t;
 use serde::Deserialize;
+
+macro_rules! check_ci_llvm {
+    ($name:expr) => {
+        assert!(
+            $name.is_none(),
+            "setting {} is incompatible with download-ci-llvm.",
+            stringify!($name)
+        );
+    };
+}
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -84,6 +95,7 @@ pub struct Config {
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: Option<bool>,
+    pub llvm_from_ci: bool,
 
     pub use_lld: bool,
     pub lld_enabled: bool,
@@ -344,6 +356,7 @@ struct Llvm {
     use_libcxx: Option<bool>,
     use_linker: Option<String>,
     allow_old_toolchain: Option<bool>,
+    download_ci_llvm: Option<bool>,
 }
 
 #[derive(Deserialize, Default, Clone)]
@@ -624,6 +637,43 @@ impl Config {
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain;
+            config.llvm_from_ci = llvm.download_ci_llvm.unwrap_or(false);
+
+            if config.llvm_from_ci {
+                // None of the LLVM options, except assertions, are supported
+                // when using downloaded LLVM. We could just ignore these but
+                // that's potentially confusing, so force them to not be
+                // explicitly set. The defaults and CI defaults don't
+                // necessarily match but forcing people to match (somewhat
+                // arbitrary) CI configuration locally seems bad/hard.
+                check_ci_llvm!(llvm.optimize);
+                check_ci_llvm!(llvm.thin_lto);
+                check_ci_llvm!(llvm.release_debuginfo);
+                check_ci_llvm!(llvm.link_shared);
+                check_ci_llvm!(llvm.static_libstdcpp);
+                check_ci_llvm!(llvm.targets);
+                check_ci_llvm!(llvm.experimental_targets);
+                check_ci_llvm!(llvm.link_jobs);
+                check_ci_llvm!(llvm.link_shared);
+                check_ci_llvm!(llvm.clang_cl);
+                check_ci_llvm!(llvm.version_suffix);
+                check_ci_llvm!(llvm.cflags);
+                check_ci_llvm!(llvm.cxxflags);
+                check_ci_llvm!(llvm.ldflags);
+                check_ci_llvm!(llvm.use_libcxx);
+                check_ci_llvm!(llvm.use_linker);
+                check_ci_llvm!(llvm.allow_old_toolchain);
+
+                // CI-built LLVM is shared
+                config.llvm_link_shared = true;
+            }
+
+            if config.llvm_thin_lto {
+                // If we're building with ThinLTO on, we want to link to LLVM
+                // shared, to avoid re-doing ThinLTO (which happens in the link
+                // step) with each stage.
+                config.llvm_link_shared = true;
+            }
         }
 
         if let Some(ref rust) = toml.rust {
@@ -704,6 +754,20 @@ impl Config {
 
                 config.target_config.insert(TargetSelection::from_user(triple), target);
             }
+        }
+
+        if config.llvm_from_ci {
+            let triple = &config.build.triple;
+            let mut build_target = config
+                .target_config
+                .entry(config.build)
+                .or_insert_with(|| Target::from_triple(&triple));
+
+            check_ci_llvm!(build_target.llvm_config);
+            check_ci_llvm!(build_target.llvm_filecheck);
+            let ci_llvm_bin = config.out.join(&*config.build.triple).join("ci-llvm/bin");
+            build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
+            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
         }
 
         if let Some(ref t) = toml.dist {

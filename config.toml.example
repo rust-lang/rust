@@ -14,6 +14,21 @@
 # =============================================================================
 [llvm]
 
+# Whether to use Rust CI built LLVM instead of locally building it.
+#
+# Unless you're developing for a target where Rust CI doesn't build a compiler
+# toolchain or changing LLVM locally, you probably want to set this to true.
+#
+# It's currently false by default due to being newly added; please file bugs if
+# enabling this did not work for you on Linux (macOS and Windows support is
+# coming soon).
+#
+# We also currently only support this when building LLVM for the build triple.
+#
+# Note that many of the LLVM options are not currently supported for
+# downloading. Currently only the "assertions" option can be toggled.
+#download-ci-llvm = false
+
 # Indicates whether LLVM rebuild should be skipped when running bootstrap. If
 # this is `false` then the compiler's LLVM will be rebuilt whenever the built
 # version doesn't have the correct hash. If it is `true` then LLVM will never
