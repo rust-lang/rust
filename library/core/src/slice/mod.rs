@@ -354,79 +354,6 @@ impl<T> [T] {
         unsafe { &mut *index.get_unchecked_mut(self) }
     }
 
-    /// Converts a range over this slice to [`Range`].
-    ///
-    /// The returned range is safe to pass to [`get_unchecked`] and [`get_unchecked_mut`].
-    ///
-    /// [`get_unchecked`]: #method.get_unchecked
-    /// [`get_unchecked_mut`]: #method.get_unchecked_mut
-    ///
-    /// # Panics
-    ///
-    /// Panics if the range is out of bounds.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(slice_check_range)]
-    ///
-    /// let v = [10, 40, 30];
-    /// assert_eq!(1..2, v.check_range(1..2));
-    /// assert_eq!(0..2, v.check_range(..2));
-    /// assert_eq!(1..3, v.check_range(1..));
-    /// ```
-    ///
-    /// Panics when [`Index::index`] would panic:
-    ///
-    /// ```should_panic
-    /// #![feature(slice_check_range)]
-    ///
-    /// [10, 40, 30].check_range(2..1);
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(slice_check_range)]
-    ///
-    /// [10, 40, 30].check_range(1..4);
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(slice_check_range)]
-    ///
-    /// [10, 40, 30].check_range(1..=usize::MAX);
-    /// ```
-    ///
-    /// [`Index::index`]: ops::Index::index
-    #[track_caller]
-    #[unstable(feature = "slice_check_range", issue = "76393")]
-    pub fn check_range<R: RangeBounds<usize>>(&self, range: R) -> Range<usize> {
-        let start = match range.start_bound() {
-            Bound::Included(&start) => start,
-            Bound::Excluded(start) => {
-                start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
-            }
-            Bound::Unbounded => 0,
-        };
-
-        let len = self.len();
-        let end = match range.end_bound() {
-            Bound::Included(end) => {
-                end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
-            }
-            Bound::Excluded(&end) => end,
-            Bound::Unbounded => len,
-        };
-
-        if start > end {
-            slice_index_order_fail(start, end);
-        }
-        if end > len {
-            slice_end_index_len_fail(end, len);
-        }
-
-        Range { start, end }
-    }
-
     /// Returns a raw pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
@@ -2770,7 +2697,7 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        let Range { start: src_start, end: src_end } = self.check_range(src);
+        let Range { start: src_start, end: src_end } = check_range(self.len(), src);
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
         // SAFETY: the conditions for `ptr::copy` have all been checked above,
@@ -6659,6 +6586,79 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 //
 // Free functions
 //
+
+/// Performs bounds-checking of the given range.
+/// The returned [`Range`] is safe to pass to [`get_unchecked`] and [`get_unchecked_mut`]
+/// for slices of the given length.
+///
+/// [`get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
+/// [`get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
+///
+/// # Panics
+///
+/// Panics if the range is out of bounds.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(slice_check_range)]
+/// use std::slice;
+///
+/// let v = [10, 40, 30];
+/// assert_eq!(1..2, slice::check_range(v.len(), 1..2));
+/// assert_eq!(0..2, slice::check_range(v.len(), ..2));
+/// assert_eq!(1..3, slice::check_range(v.len(), 1..));
+/// ```
+///
+/// Panics when [`Index::index`] would panic:
+///
+/// ```should_panic
+/// #![feature(slice_check_range)]
+///
+/// std::slice::check_range(3, 2..1);
+/// ```
+///
+/// ```should_panic
+/// #![feature(slice_check_range)]
+///
+/// std::slice::check_range(3, 1..4);
+/// ```
+///
+/// ```should_panic
+/// #![feature(slice_check_range)]
+///
+/// std::slice::check_range(3, 1..=usize::MAX);
+/// ```
+///
+/// [`Index::index`]: ops::Index::index
+#[track_caller]
+#[unstable(feature = "slice_check_range", issue = "76393")]
+pub fn check_range<R: RangeBounds<usize>>(len: usize, range: R) -> Range<usize> {
+    let start = match range.start_bound() {
+        Bound::Included(&start) => start,
+        Bound::Excluded(start) => {
+            start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
+        }
+        Bound::Unbounded => 0,
+    };
+
+    let end = match range.end_bound() {
+        Bound::Included(end) => {
+            end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
+        }
+        Bound::Excluded(&end) => end,
+        Bound::Unbounded => len,
+    };
+
+    if start > end {
+        slice_index_order_fail(start, end);
+    }
+    if end > len {
+        slice_end_index_len_fail(end, len);
+    }
+
+    Range { start, end }
+}
 
 /// Forms a slice from a pointer and a length.
 ///
