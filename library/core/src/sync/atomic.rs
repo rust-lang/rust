@@ -1150,6 +1150,7 @@ impl<T> From<*mut T> for AtomicPtr<T> {
     }
 }
 
+#[allow(unused_macros)] // This macro ends up being unused on some architectures.
 macro_rules! if_not_8_bit {
     (u8, $($tt:tt)*) => { "" };
     (i8, $($tt:tt)*) => { "" };
