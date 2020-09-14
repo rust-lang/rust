@@ -38,6 +38,6 @@ fn test_c_rwlock_initializer() {
         zero_stack();
         let mut init = MaybeUninit::<RWLock>::zeroed();
         rwlock_new(&mut init);
-        assert_eq!(mem::transmute::<_, [u8; 144]>(init.assume_init()).as_slice(), RWLOCK_INIT)
+        assert_eq!(&mem::transmute::<_, [u8; 144]>(init.assume_init())[..], RWLOCK_INIT)
     };
 }
