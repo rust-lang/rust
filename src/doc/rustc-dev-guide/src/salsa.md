@@ -2,7 +2,10 @@
 
 This chapter is based on the explanation given by Niko Matsakis in this
 [video](https://www.youtube.com/watch?v=_muY4HjSqVw) about
-[Salsa](https://github.com/salsa-rs/salsa).
+[Salsa](https://github.com/salsa-rs/salsa). To find out more you may
+want to watch [Salsa In More
+Depth](https://www.youtube.com/watch?v=i_IhACacPRY), also by Niko
+Matsakis.
 
 > Salsa is not used directly in rustc, but it is used extensively for
 > rust-analyzer and may be integrated into the compiler in the future.
