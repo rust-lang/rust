@@ -237,16 +237,16 @@ such that the function is well-typed: `∃ T:  (T: Debug) and well_typed(foo)`.
 
 ## What is a de Bruijn Index?
 
-[De Bruijn indices][wikideb] are a way of representing using only integers which
-variables are bound in which binders. They were originally invented for use in
-lambda calculus evaluation (see [this Wikipedia article][wikideb] for more). In
-`rustc`, we use a similar idea for the [representation of generic types][sub].
+[De Bruijn indices][wikideb] are a way of representing, using only integers,
+which variables are bound in which binders. They were originally invented for
+use in lambda calculus evaluation (see [this Wikipedia article][wikideb] for
+more). In `rustc`, we use de Bruijn indices to [represent generic types][sub].
 
 [wikideb]: https://en.wikipedia.org/wiki/De_Bruijn_index
 [sub]: ../generics.md
 
 Here is a basic example of how de Bruijn indices might be used for closures (we
-don't actually do this in `rustc` though):
+don't actually do this in `rustc` though!):
 
 ```rust,ignore
 |x| {
