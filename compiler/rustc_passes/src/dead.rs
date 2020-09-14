@@ -104,7 +104,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 if let Some(t) = t {
                     self.check_def_id(t);
                 }
-                if let Some(i) = i {
+                if let Some((i, _)) = i {
                     self.check_def_id(i);
                 }
             }

@@ -1,10 +1,14 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic `Self` types are currently not permitted in anonymous constants
   --> $DIR/issue-62504.rs:19:25
    |
 LL |         ArrayHolder([0; Self::SIZE])
-   |                         ^^^^^^^^^^ non-trivial anonymous constants must not depend on the parameter `Self`
+   |                         ^^^^^^^^^^
    |
-   = help: it is currently only allowed to use either `Self` or `{ Self }` as generic constants
+note: not a concrete type
+  --> $DIR/issue-62504.rs:17:22
+   |
+LL | impl<const X: usize> ArrayHolder<X> {
+   |                      ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

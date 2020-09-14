@@ -1,0 +1,22 @@
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/self-ty-in-const-1.rs:4:41
+   |
+LL |     fn t1() -> [u8; std::mem::size_of::<Self>()];
+   |                                         ^^^^ non-trivial anonymous constants must not depend on the parameter `Self`
+   |
+   = help: it is currently only allowed to use either `Self` or `{ Self }` as generic constants
+
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/self-ty-in-const-1.rs:14:41
+   |
+LL |     fn t3() -> [u8; std::mem::size_of::<Self>()] {}
+   |                                         ^^^^
+   |
+note: not a concrete type
+  --> $DIR/self-ty-in-const-1.rs:13:9
+   |
+LL | impl<T> Bar<T> {
+   |         ^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -601,7 +601,7 @@ pub fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
         },
         Res::Def(DefKind::TraitAlias, i) => (i, TypeKind::TraitAlias),
         Res::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
-        Res::SelfTy(_, Some(impl_def_id)) => return impl_def_id,
+        Res::SelfTy(_, Some((impl_def_id, _))) => return impl_def_id,
         _ => return res.def_id(),
     };
     if did.is_local() {

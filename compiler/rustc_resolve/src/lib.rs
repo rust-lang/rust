@@ -2539,7 +2539,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         rib_index: usize,
         rib_ident: Ident,
-        res: Res,
+        mut res: Res,
         record_used: bool,
         span: Span,
         all_ribs: &[Rib<'a>],
@@ -2629,13 +2629,22 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind(trivial) => {
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !trivial && self.session.features_untracked().min_const_generics {
-                                if record_used {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInNonTrivialAnonConst(rib_ident.name),
-                                    );
+                                // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
+                                // we can't easily tell if it's generic at this stage, so we instead remember
+                                // this and then enforce the self type to be concrete later on.
+                                if let Res::SelfTy(trait_def, Some((impl_def, _))) = res {
+                                    res = Res::SelfTy(trait_def, Some((impl_def, true)));
+                                } else {
+                                    if record_used {
+                                        self.report_error(
+                                            span,
+                                            ResolutionError::ParamInNonTrivialAnonConst(
+                                                rib_ident.name,
+                                            ),
+                                        );
+                                    }
+                                    return Res::Err;
                                 }
-                                return Res::Err;
                             }
 
                             if in_ty_param_default {
