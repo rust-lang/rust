@@ -1,0 +1,28 @@
+error: usage of `Arc<T>` when T is a buffer type
+  --> $DIR/rc_buffer_arc.rs:7:8
+   |
+LL |     a: Arc<String>,
+   |        ^^^^^^^^^^^ help: try: `Arc<str>`
+   |
+   = note: `-D clippy::rc-buffer` implied by `-D warnings`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> $DIR/rc_buffer_arc.rs:8:8
+   |
+LL |     b: Arc<PathBuf>,
+   |        ^^^^^^^^^^^^ help: try: `Arc<std::path::Path>`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> $DIR/rc_buffer_arc.rs:9:8
+   |
+LL |     c: Arc<Vec<u8>>,
+   |        ^^^^^^^^^^^^ help: try: `Arc<[u8]>`
+
+error: usage of `Arc<T>` when T is a buffer type
+  --> $DIR/rc_buffer_arc.rs:10:8
+   |
+LL |     d: Arc<OsString>,
+   |        ^^^^^^^^^^^^^ help: try: `Arc<std::ffi::OsStr>`
+
+error: aborting due to 4 previous errors
+

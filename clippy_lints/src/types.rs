@@ -480,6 +480,46 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
+                    } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
+                        if let Some(alternate) = match_buffer_type(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Arc<T>` when T is a buffer type",
+                                "try",
+                                format!("Arc<{}>", alternate),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
+                            let vec_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => match &ty.kind {
+                                    TyKind::Path(qpath) => qpath,
+                                    _ => return,
+                                },
+                                _ => return,
+                            };
+                            let inner_span = match &last_path_segment(&vec_ty).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => ty.span,
+                                _ => return,
+                            };
+                            let mut applicability = Applicability::MachineApplicable;
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Arc<T>` when T is a buffer type",
+                                "try",
+                                format!(
+                                    "Arc<[{}]>",
+                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
+                                ),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
                     } else if cx.tcx.is_diagnostic_item(sym!(vec_type), def_id) {
                         if_chain! {
                             // Get the _ part of Vec<_>
