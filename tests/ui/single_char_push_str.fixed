@@ -1,6 +1,12 @@
 // run-rustfix
 #![warn(clippy::single_char_push_str)]
 
+macro_rules! get_string {
+    () => {
+        String::from("Hello world!")
+    };
+}
+
 fn main() {
     let mut string = String::new();
     string.push('R');
@@ -12,4 +18,6 @@ fn main() {
     string.push('\x52');
     string.push('\u{0052}');
     string.push('a');
+
+    get_string!().push_str("ö");
 }

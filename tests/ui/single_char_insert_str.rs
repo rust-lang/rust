@@ -1,6 +1,12 @@
 // run-rustfix
 #![warn(clippy::single_char_push_str)]
 
+macro_rules! get_string {
+    () => {
+        String::from("Hello world!")
+    };
+}
+
 fn main() {
     let mut string = String::new();
     string.insert_str(0, "R");
@@ -15,4 +21,6 @@ fn main() {
     string.insert_str(x, r##"a"##);
     const Y: usize = 1;
     string.insert_str(Y, r##"a"##);
+
+    get_string!().insert_str(1, "?");
 }
