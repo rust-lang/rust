@@ -46,76 +46,76 @@ use crate::{
     display::function_declaration,
 };
 
+#[derive(Debug, PartialEq, Eq)]
+enum ImplCompletionKind {
+    All,
+    Fn,
+    TypeAlias,
+    Const,
+}
+
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    if let Some((trigger, impl_def)) = completion_match(ctx) {
-        match trigger.kind() {
-            SyntaxKind::NAME_REF => get_missing_assoc_items(&ctx.sema, &impl_def)
-                .into_iter()
-                .for_each(|item| match item {
-                    hir::AssocItem::Function(fn_item) => {
-                        add_function_impl(&trigger, acc, ctx, fn_item)
-                    }
-                    hir::AssocItem::TypeAlias(type_item) => {
-                        add_type_alias_impl(&trigger, acc, ctx, type_item)
-                    }
-                    hir::AssocItem::Const(const_item) => {
-                        add_const_impl(&trigger, acc, ctx, const_item)
-                    }
-                }),
-
-            SyntaxKind::FN => {
-                for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
-                    .into_iter()
-                    .filter_map(|item| match item {
-                        hir::AssocItem::Function(fn_item) => Some(fn_item),
-                        _ => None,
-                    })
-                {
-                    add_function_impl(&trigger, acc, ctx, missing_fn);
-                }
+    if let Some((kind, trigger, impl_def)) = completion_match(ctx) {
+        get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| match item {
+            hir::AssocItem::Function(fn_item)
+                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Fn =>
+            {
+                add_function_impl(&trigger, acc, ctx, fn_item)
             }
-
-            SyntaxKind::TYPE_ALIAS => {
-                for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
-                    .into_iter()
-                    .filter_map(|item| match item {
-                        hir::AssocItem::TypeAlias(type_item) => Some(type_item),
-                        _ => None,
-                    })
-                {
-                    add_type_alias_impl(&trigger, acc, ctx, missing_fn);
-                }
+            hir::AssocItem::TypeAlias(type_item)
+                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::TypeAlias =>
+            {
+                add_type_alias_impl(&trigger, acc, ctx, type_item)
             }
-
-            SyntaxKind::CONST => {
-                for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
-                    .into_iter()
-                    .filter_map(|item| match item {
-                        hir::AssocItem::Const(const_item) => Some(const_item),
-                        _ => None,
-                    })
-                {
-                    add_const_impl(&trigger, acc, ctx, missing_fn);
-                }
+            hir::AssocItem::Const(const_item)
+                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Const =>
+            {
+                add_const_impl(&trigger, acc, ctx, const_item)
             }
-
             _ => {}
-        }
+        });
     }
 }
 
-fn completion_match(ctx: &CompletionContext) -> Option<(SyntaxNode, Impl)> {
-    let (trigger, impl_def_offset) = ctx.token.ancestors().find_map(|p| match p.kind() {
-        SyntaxKind::FN | SyntaxKind::TYPE_ALIAS | SyntaxKind::CONST | SyntaxKind::BLOCK_EXPR => {
-            Some((p, 2))
+fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, SyntaxNode, Impl)> {
+    let mut token = ctx.token.clone();
+    // For keywork without name like `impl .. { fn <|> }`, the current position is inside
+    // the whitespace token, which is outside `FN` syntax node.
+    // We need to follow the previous token in this case.
+    if token.kind() == SyntaxKind::WHITESPACE {
+        token = token.prev_token()?;
+    }
+
+    let (kind, trigger, impl_def_offset) = token.ancestors().find_map(|p| match p.kind() {
+        // `const` can be a modifier of an item, so the `const` token may be inside another item syntax node.
+        // Eg. `impl .. { const <|> fn bar() .. }`
+        SyntaxKind::FN | SyntaxKind::TYPE_ALIAS | SyntaxKind::CONST
+            if token.kind() == SyntaxKind::CONST_KW =>
+        {
+            Some((ImplCompletionKind::Const, p, 2))
         }
-        SyntaxKind::NAME_REF => Some((p, 5)),
+        SyntaxKind::FN => Some((ImplCompletionKind::Fn, p, 2)),
+        SyntaxKind::TYPE_ALIAS => Some((ImplCompletionKind::TypeAlias, p, 2)),
+        SyntaxKind::CONST => Some((ImplCompletionKind::Const, p, 2)),
+        // `impl .. { const <|> }` is parsed as:
+        // IMPL
+        //   ASSOC_ITEM_LIST
+        //     ERROR
+        //       CONST_KW <- token
+        //     WHITESPACE <- ctx.token
+        SyntaxKind::ERROR
+            if p.first_token().map_or(false, |t| t.kind() == SyntaxKind::CONST_KW) =>
+        {
+            Some((ImplCompletionKind::Const, p, 2))
+        }
+        SyntaxKind::NAME_REF => Some((ImplCompletionKind::All, p, 5)),
         _ => None,
     })?;
+
     let impl_def = (0..impl_def_offset - 1)
         .try_fold(trigger.parent()?, |t, _| t.parent())
         .and_then(ast::Impl::cast)?;
-    Some((trigger, impl_def))
+    Some((kind, trigger, impl_def))
 }
 
 fn add_function_impl(
@@ -484,5 +484,68 @@ impl Test for () {
 }
 ",
         );
+    }
+
+    #[test]
+    fn complete_without_name() {
+        let test = |completion: &str, hint: &str, completed: &str, next_sibling: &str| {
+            println!(
+                "completion='{}', hint='{}', next_sibling='{}'",
+                completion, hint, next_sibling
+            );
+
+            check_edit(
+                completion,
+                &format!(
+                    r#"
+trait Test {{
+    type Foo;
+    const CONST: u16;
+    fn bar();
+}}
+struct T;
+
+impl Test for T {{
+    {}
+    {}
+}}
+"#,
+                    hint, next_sibling
+                ),
+                &format!(
+                    r#"
+trait Test {{
+    type Foo;
+    const CONST: u16;
+    fn bar();
+}}
+struct T;
+
+impl Test for T {{
+    {}
+    {}
+}}
+"#,
+                    completed, next_sibling
+                ),
+            )
+        };
+
+        // Enumerate some possible next siblings.
+        for next_sibling in &[
+            "",
+            "fn other_fn() {}", // `const <|> fn` -> `const fn`
+            "type OtherType = i32;",
+            "const OTHER_CONST: i32 = 0;",
+            "async fn other_fn() {}",
+            "unsafe fn other_fn() {}",
+            "default fn other_fn() {}",
+            "default type OtherType = i32;",
+            "default const OTHER_CONST: i32 = 0;",
+        ] {
+            test("bar", "fn <|>", "fn bar() {\n    $0\n}", next_sibling);
+            test("Foo", "type <|>", "type Foo = ", next_sibling);
+            test("CONST", "const <|>", "const CONST: u16 = ", next_sibling);
+        }
     }
 }
