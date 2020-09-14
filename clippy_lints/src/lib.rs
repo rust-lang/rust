@@ -230,6 +230,7 @@ mod macro_use;
 mod main_recursion;
 mod manual_async_fn;
 mod manual_non_exhaustive;
+mod manual_strip;
 mod map_clone;
 mod map_identity;
 mod map_unit_fn;
@@ -626,6 +627,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &main_recursion::MAIN_RECURSION,
         &manual_async_fn::MANUAL_ASYNC_FN,
         &manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
+        &manual_strip::MANUAL_STRIP,
         &map_clone::MAP_CLONE,
         &map_identity::MAP_IDENTITY,
         &map_unit_fn::OPTION_MAP_UNIT_FN,
@@ -1109,6 +1111,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box self_assignment::SelfAssignment);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
+    store.register_late_pass(|| box manual_strip::ManualStrip);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1335,6 +1338,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&main_recursion::MAIN_RECURSION),
         LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
         LintId::of(&manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
+        LintId::of(&manual_strip::MANUAL_STRIP),
         LintId::of(&map_clone::MAP_CLONE),
         LintId::of(&map_identity::MAP_IDENTITY),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
@@ -1626,6 +1630,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::EXPLICIT_COUNTER_LOOP),
         LintId::of(&loops::MUT_RANGE_BOUND),
         LintId::of(&loops::WHILE_LET_LOOP),
+        LintId::of(&manual_strip::MANUAL_STRIP),
         LintId::of(&map_identity::MAP_IDENTITY),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(&map_unit_fn::RESULT_MAP_UNIT_FN),

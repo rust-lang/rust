@@ -1672,6 +1672,7 @@ Released 2018-09-13
 [`manual_memcpy`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_memcpy
 [`manual_non_exhaustive`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive
 [`manual_saturating_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_saturating_arithmetic
+[`manual_strip`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_strip
 [`manual_swap`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_swap
 [`many_single_char_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#many_single_char_names
 [`map_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_clone
