@@ -701,19 +701,22 @@ fn trans_stmt<'tcx>(
                         fx.bcx.call_memset(fx.cx.module.target_config(), addr, val, times);
                     } else {
                         let loop_block = fx.bcx.create_block();
+                        let loop_block2 = fx.bcx.create_block();
                         let done_block = fx.bcx.create_block();
                         let index = fx.bcx.append_block_param(loop_block, fx.pointer_type);
                         let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
                         fx.bcx.ins().jump(loop_block, &[zero]);
 
                         fx.bcx.switch_to_block(loop_block);
+                        let done = fx.bcx.ins().icmp_imm(IntCC::Equal, index, times as i64);
+                        fx.bcx.ins().brnz(done, done_block, &[]);
+                        fx.bcx.ins().jump(loop_block2, &[]);
+
+                        fx.bcx.switch_to_block(loop_block2);
                         let to = lval.place_index(fx, index);
                         to.write_cvalue(fx, operand);
-
                         let index = fx.bcx.ins().iadd_imm(index, 1);
-                        let done = fx.bcx.ins().icmp_imm(IntCC::Equal, index, times as i64);
-                        fx.bcx.ins().brz(done, loop_block, &[index]);
-                        fx.bcx.ins().jump(done_block, &[]);
+                        fx.bcx.ins().jump(loop_block, &[index]);
 
                         fx.bcx.switch_to_block(done_block);
                     }
