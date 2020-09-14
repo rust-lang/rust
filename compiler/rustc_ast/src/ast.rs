@@ -1061,7 +1061,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr, 112);
+rustc_data_structures::static_assert_size!(Expr, 120);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;

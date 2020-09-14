@@ -1751,19 +1751,19 @@ impl<'a> State<'a> {
             |f| f.span,
         );
         match rest {
-            StructRest::Base(_) | StructRest::Rest(_) => {
+            ast::StructRest::Base(_) | ast::StructRest::Rest(_) => {
                 self.ibox(INDENT_UNIT);
                 if !fields.is_empty() {
                     self.s.word(",");
                     self.s.space();
                 }
                 self.s.word("..");
-                if let StructRest::Base(ref expr) = *rest {
+                if let ast::StructRest::Base(ref expr) = *rest {
                     self.print_expr(expr);
                 }
                 self.end();
             }
-            StructRest::None if !fields.is_empty() => self.s.word(","),
+            ast::StructRest::None if !fields.is_empty() => self.s.word(","),
             _ => {}
         }
         self.s.word("}");

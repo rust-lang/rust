@@ -816,7 +816,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         path: &'tcx hir::QPath<'tcx>,
         fields: &'tcx [hir::Field<'tcx>],
         variant: &'tcx ty::VariantDef,
-        rest: &'tcx StructRest,
+        rest: Option<&'tcx hir::Expr<'tcx>>,
     ) {
         if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
             if let hir::QPath::Resolved(_, path) = path {
@@ -836,8 +836,8 @@ impl<'tcx> DumpVisitor<'tcx> {
             }
         }
 
-        if let StructRest::Base(base) = rest {
-            self.visit_expr(base);
+        if let Some(base) = rest {
+            self.visit_expr(&base);
         }
     }
 
@@ -1411,7 +1411,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     }
                 };
                 let res = self.save_ctxt.get_path_res(hir_expr.hir_id);
-                self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), rest)
+                self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), *rest)
             }
             hir::ExprKind::MethodCall(ref seg, _, args, _) => {
                 self.process_method_call(ex, seg, args)

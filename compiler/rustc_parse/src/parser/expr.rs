@@ -2108,11 +2108,11 @@ impl<'a> Parser<'a> {
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.token == token::CloseDelim(token::Brace) {
                     self.sess.gated_spans.gate(sym::destructuring_assignment, self.prev_token.span);
-                    base = StructRest::Rest(self.prev_token.span.shrink_to_hi());
+                    base = ast::StructRest::Rest(self.prev_token.span.shrink_to_hi());
                     break;
                 }
                 match self.parse_expr() {
-                    Ok(e) => base = StructRest::Base(e),
+                    Ok(e) => base = ast::StructRest::Base(e),
                     Err(mut e) if recover => {
                         e.emit();
                         self.recover_stmt();
