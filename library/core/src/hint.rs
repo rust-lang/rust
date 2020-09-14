@@ -111,7 +111,7 @@ pub fn spin_loop() {
 #[inline]
 #[unstable(feature = "test", issue = "50297")]
 #[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
-pub fn black_box<T>(dummy: T) -> T {
+pub fn black_box<T>(mut dummy: T) -> T {
     // We need to "use" the argument in some way LLVM can't introspect, and on
     // targets that support it we can typically leverage inline assembly to do
     // this. LLVM's interpretation of inline assembly is that it's, well, a black
@@ -121,7 +121,31 @@ pub fn black_box<T>(dummy: T) -> T {
     #[cfg(not(miri))] // This is just a hint, so it is fine to skip in Miri.
     // SAFETY: the inline assembly is a no-op.
     unsafe {
-        llvm_asm!("" : : "r"(&dummy));
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            asm!(
+                "/* {0} */",
+                in(reg) &mut dummy,
+                // FIXME: We are using ATT syntax to support LLVM 8 and LLVM 9.
+                options(att_syntax, nostack, preserves_flags),
+            );
+        }
+        #[cfg(target_arch = "nvptx64")]
+        {
+            asm!(
+                "/* {0} */",
+                in(reg64) &mut dummy,
+                options(nostack, preserves_flags),
+            );
+        }
+        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "nvptx64")))]
+        {
+            asm!(
+                "/* {0} */",
+                in(reg) &mut dummy,
+                options(nostack, preserves_flags),
+            );
+        }
     }
 
     dummy
