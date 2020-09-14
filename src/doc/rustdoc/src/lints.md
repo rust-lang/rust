@@ -50,7 +50,7 @@ warning: `Foo` is both an enum and a function
 1 | /// [`Foo`]
   |      ^^^^^ ambiguous link
   |
-  = note: `#[warn(intra_doc_link_resolution_failure)]` on by default
+  = note: `#[warn(broken_intra_doc_links)]` on by default
 help: to link to the enum, prefix with the item type
   |
 1 | /// [`enum@Foo`]
