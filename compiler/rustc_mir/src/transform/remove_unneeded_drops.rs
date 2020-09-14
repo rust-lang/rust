@@ -18,7 +18,7 @@ impl RemoveUnneededDrops {
 
 impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        trace!("Running SimplifyComparisonIntegral on {:?}", source);
+        trace!("Running RemoveUnneededDrops on {:?}", source);
         let mut opt_finder = RemoveUnneededDropsOptimizationFinder {
             tcx,
             body,
