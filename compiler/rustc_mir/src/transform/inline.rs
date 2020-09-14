@@ -506,7 +506,7 @@ impl Inliner<'tcx> {
                 let return_block = destination.1;
 
                 // Copy the arguments if needed.
-                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body);
+                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, return_block);
 
                 let bb_len = caller_body.basic_blocks().len();
                 let mut integrator = Integrator {
@@ -553,6 +553,7 @@ impl Inliner<'tcx> {
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
+        return_block: BasicBlock,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -581,8 +582,18 @@ impl Inliner<'tcx> {
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if tcx.is_closure(callsite.callee) {
             let mut args = args.into_iter();
-            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
-            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
+            let self_ = self.create_temp_if_necessary(
+                args.next().unwrap(),
+                callsite,
+                caller_body,
+                return_block,
+            );
+            let tuple = self.create_temp_if_necessary(
+                args.next().unwrap(),
+                callsite,
+                caller_body,
+                return_block,
+            );
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);
@@ -602,13 +613,13 @@ impl Inliner<'tcx> {
                     Operand::Move(tcx.mk_place_field(tuple, Field::new(i), ty.expect_ty()));
 
                 // Spill to a local to make e.g., `tmp0`.
-                self.create_temp_if_necessary(tuple_field, callsite, caller_body)
+                self.create_temp_if_necessary(tuple_field, callsite, caller_body, return_block)
             });
 
             closure_ref_arg.chain(tuple_tmp_args).collect()
         } else {
             args.into_iter()
-                .map(|a| self.create_temp_if_necessary(a, callsite, caller_body))
+                .map(|a| self.create_temp_if_necessary(a, callsite, caller_body, return_block))
                 .collect()
         }
     }
@@ -620,6 +631,7 @@ impl Inliner<'tcx> {
         arg: Operand<'tcx>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
+        return_block: BasicBlock,
     ) -> Local {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
@@ -642,11 +654,19 @@ impl Inliner<'tcx> {
         let arg_tmp = LocalDecl::new(ty, callsite.location.span);
         let arg_tmp = caller_body.local_decls.push(arg_tmp);
 
-        let stmt = Statement {
+        caller_body[callsite.bb].statements.push(Statement {
+            source_info: callsite.location,
+            kind: StatementKind::StorageLive(arg_tmp),
+        });
+        caller_body[callsite.bb].statements.push(Statement {
             source_info: callsite.location,
             kind: StatementKind::Assign(box (Place::from(arg_tmp), arg)),
-        };
-        caller_body[callsite.bb].statements.push(stmt);
+        });
+        caller_body[return_block].statements.insert(
+            0,
+            Statement { source_info: callsite.location, kind: StatementKind::StorageDead(arg_tmp) },
+        );
+
         arg_tmp
     }
 }

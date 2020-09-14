@@ -30,9 +30,13 @@ fn foo(_1: T, _2: i32) -> i32 {
         _7 = _2;                         // scope 1 at $DIR/inline-closure.rs:12:10: 12:11
         (_5.0: i32) = move _6;           // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         (_5.1: i32) = move _7;           // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
+        StorageLive(_8);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         _8 = move (_5.0: i32);           // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
+        StorageLive(_9);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         _9 = move (_5.1: i32);           // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         _0 = _8;                         // scope 2 at $DIR/inline-closure.rs:11:22: 11:24
+        StorageDead(_9);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
+        StorageDead(_8);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         StorageDead(_7);                 // scope 1 at $DIR/inline-closure.rs:12:11: 12:12
         StorageDead(_6);                 // scope 1 at $DIR/inline-closure.rs:12:11: 12:12
         StorageDead(_5);                 // scope 1 at $DIR/inline-closure.rs:12:11: 12:12
