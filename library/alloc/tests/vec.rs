@@ -1912,3 +1912,20 @@ fn test_vec_cycle_wrapped() {
     c3.refs.v[0].set(Some(&c1));
     c3.refs.v[1].set(Some(&c2));
 }
+
+#[test]
+fn test_zero_sized_vec_push() {
+    const N: usize = 8;
+
+    for len in 0..N {
+        let mut tester = Vec::with_capacity(len);
+        assert_eq!(tester.len(), 0);
+        assert!(tester.capacity() >= len);
+        for _ in 0..len {
+            tester.push(());
+        }
+        assert_eq!(tester.len(), len);
+        assert_eq!(tester.iter().count(), len);
+        tester.clear();
+    }
+}
