@@ -1,8 +1,8 @@
 warning: `with#anchor#error` contains multiple anchors
-  --> $DIR/intra-link-double-anchor.rs:5:10
+  --> $DIR/intra-link-double-anchor.rs:5:18
    |
 LL | /// docs [label][with#anchor#error]
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ contains invalid anchor
+   |                  ^^^^^^^^^^^^^^^^^ contains invalid anchor
    |
    = note: `#[warn(broken_intra_doc_links)]` on by default
 

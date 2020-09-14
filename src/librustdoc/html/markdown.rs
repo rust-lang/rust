@@ -1088,7 +1088,9 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         };
 
         let mut push = |link: BrokenLink<'_>| {
-            shortcut_links.push((link.reference.to_owned(), Some(link.span)));
+            // FIXME: use `link.span` instead of `locate`
+            // (doing it now includes the `[]` as well as the text)
+            shortcut_links.push((link.reference.to_owned(), locate(link.reference)));
             None
         };
         let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push));
