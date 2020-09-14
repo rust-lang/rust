@@ -8,7 +8,7 @@ use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, DefIdTree, Ty};
+use rustc_middle::ty::{self, DefIdTree, InferConst, Ty};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
@@ -569,12 +569,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             local_visitor.visit_expr(expr);
         }
 
+        let span = if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val {
+            self.inner.borrow_mut().const_unification_table().probe_value(vid).origin.span
+        } else {
+            local_visitor.target_span
+        };
+
         let error_code = error_code.into();
-        let mut err = self.tcx.sess.struct_span_err_with_code(
-            local_visitor.target_span,
-            "type annotations needed",
-            error_code,
-        );
+        let mut err =
+            self.tcx.sess.struct_span_err_with_code(span, "type annotations needed", error_code);
 
         err.note("unable to infer the value of a const parameter");
 
