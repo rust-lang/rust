@@ -3703,6 +3703,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
+ "rustc_feature",
  "rustc_hir",
  "rustc_hir_pretty",
  "rustc_index",
