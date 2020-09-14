@@ -74,7 +74,9 @@ pub fn merge_codegen_units<'tcx>(
 
                 // Sort the names, so things are deterministic and easy to
                 // predict.
-                cgu_contents.sort();
+
+                // We are sorting primitive &strs here so we can use unstable sort
+                cgu_contents.sort_unstable();
 
                 (current_cgu_name, cgu_contents.join("--"))
             })

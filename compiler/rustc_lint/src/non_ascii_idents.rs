@@ -341,7 +341,8 @@ impl EarlyLintPass for NonAsciiIdents {
                         }
                     }
 
-                    ch_list.sort();
+                    // We sort primitive chars here and can use unstable sort
+                    ch_list.sort_unstable();
                     ch_list.dedup();
                     lint_reports.insert((sp, ch_list), augment_script_set);
                 }

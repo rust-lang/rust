@@ -1121,7 +1121,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // features. We check that at least one type is available for
                 // the current target.
                 let reg_class = reg.reg_class();
-                let mut required_features = vec![];
+                let mut required_features: Vec<&str> = vec![];
                 for &(_, feature) in reg_class.supported_types(asm_arch) {
                     if let Some(feature) = feature {
                         if self.sess.target_features.contains(&Symbol::intern(feature)) {
@@ -1135,7 +1135,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         break;
                     }
                 }
-                required_features.sort();
+                // We are sorting primitive strs here and can use unstable sort here
+                required_features.sort_unstable();
                 required_features.dedup();
                 match &required_features[..] {
                     [] => {}

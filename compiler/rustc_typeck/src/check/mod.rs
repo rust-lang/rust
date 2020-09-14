@@ -4285,11 +4285,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             None
                         }
                     })
-                    .collect::<Vec<_>>();
+                    .collect::<Vec<usize>>();
 
                 // Both checked and coerced types could have matched, thus we need to remove
                 // duplicates.
-                referenced_in.sort();
+
+                // We sort primitive type usize here and can use unstable sort
+                referenced_in.sort_unstable();
                 referenced_in.dedup();
 
                 if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
