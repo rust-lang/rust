@@ -2601,11 +2601,9 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                         span,
                         NEEDLESS_COLLECT_MSG,
                         |diag| {
-                            let (arg, pred) = if contains_arg.starts_with('&') {
-                                ("x", &contains_arg[1..])
-                            } else {
-                                ("&x", &*contains_arg)
-                            };
+                            let (arg, pred) = contains_arg
+                                    .strip_prefix('&')
+                                    .map_or(("&x", &*contains_arg), |s| ("x", s));
                             diag.span_suggestion(
                                 span,
                                 "replace with",
