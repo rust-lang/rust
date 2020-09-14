@@ -20,6 +20,29 @@ use rustc_span::{BytePos, Span, DUMMY_SP};
 use tracing::debug;
 
 declare_lint! {
+    /// The `unused_must_use` lint detects unused result of a type flagged as
+    /// `#[must_use]`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn returns_result() -> Result<(), ()> {
+    ///     Ok(())
+    /// }
+    ///
+    /// fn main() {
+    ///     returns_result();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The `#[must_use]` attribute is an indicator that it is a mistake to
+    /// ignore the value. See [the reference] for more details.
+    ///
+    /// [the reference]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
     pub UNUSED_MUST_USE,
     Warn,
     "unused result of a type flagged as `#[must_use]`",
@@ -27,6 +50,39 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `unused_results` lint checks for the unused result of an
+    /// expression in a statement.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unused_results)]
+    /// fn foo<T>() -> T { panic!() }
+    ///
+    /// fn main() {
+    ///     foo::<usize>();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Ignoring the return value of a function may indicate a mistake. In
+    /// cases were it is almost certain that the result should be used, it is
+    /// recommended to annotate the function with the [`must_use` attribute].
+    /// Failure to use such a return value will trigger the [`unused_must_use`
+    /// lint] which is warn-by-default. The `unused_results` lint is
+    /// essentially the same, but triggers for *all* return values.
+    ///
+    /// This lint is "allow" by default because it can be noisy, and may not be
+    /// an actual problem. For example, calling the `remove` method of a `Vec`
+    /// or `HashMap` returns the previous value, which you may not care about.
+    /// Using this lint would require explicitly ignoring or discarding such
+    /// values.
+    ///
+    /// [`must_use` attribute]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
+    /// [`unused_must_use` lint]: warn-by-default.html#unused-must-use
     pub UNUSED_RESULTS,
     Allow,
     "unused result of an expression in a statement"
@@ -265,6 +321,21 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 }
 
 declare_lint! {
+    /// The `path_statements` lint detects path statements with no effect.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let x = 42;
+    ///
+    /// x;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It is usually a mistake to have a statement that has no effect.
     pub PATH_STATEMENTS,
     Warn,
     "path statements with no effect"
@@ -635,6 +706,21 @@ trait UnusedDelimLint {
 }
 
 declare_lint! {
+    /// The `unused_parens` lint detects `if`, `match`, `while` and `return`
+    /// with parentheses; they do not need them.
+    ///
+    /// ### Examples
+    ///
+    /// ```rust
+    /// if(true) {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The parenthesis are not needed, and should be removed. This is the
+    /// preferred style for writing these expressions.
     pub(super) UNUSED_PARENS,
     Warn,
     "`if`, `match`, `while` and `return` do not need parentheses"
@@ -808,6 +894,23 @@ impl EarlyLintPass for UnusedParens {
 }
 
 declare_lint! {
+    /// The `unused_braces` lint detects unnecessary braces around an
+    /// expression.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// if { true } {
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The braces are not needed, and should be removed. This is the
+    /// preferred style for writing these expressions.
     pub(super) UNUSED_BRACES,
     Warn,
     "unnecessary braces around an expression"
@@ -929,6 +1032,30 @@ impl EarlyLintPass for UnusedBraces {
 }
 
 declare_lint! {
+    /// The `unused_import_braces` lint catches unnecessary braces around an
+    /// imported item.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unused_import_braces)]
+    /// use test::{A};
+    ///
+    /// pub mod test {
+    ///     pub struct A;
+    /// }
+    /// # fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// If there is only a single item, then remove the braces (`use test::A;`
+    /// for example).
+    ///
+    /// This lint is "allow" by default because it is only enforcing a
+    /// stylistic choice.
     UNUSED_IMPORT_BRACES,
     Allow,
     "unnecessary braces around an imported item"
@@ -978,6 +1105,25 @@ impl EarlyLintPass for UnusedImportBraces {
 }
 
 declare_lint! {
+    /// The `unused_allocation` lint detects unnecessary allocations that can
+    /// be eliminated.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(box_syntax)]
+    /// fn main() {
+    ///     let a = (box [1,2,3]).len();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// When a `box` expression is immediately coerced to a reference, then
+    /// the allocation is unnecessary, and a reference (using `&` or `&mut`)
+    /// should be used instead to avoid the allocation.
     pub(super) UNUSED_ALLOCATION,
     Warn,
     "detects unnecessary allocations that can be eliminated"

@@ -23,18 +23,82 @@ use std::cmp;
 use tracing::debug;
 
 declare_lint! {
+    /// The `unused_comparisons` lint detects comparisons made useless by
+    /// limits of the types involved.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn foo(x: u8) {
+    ///     x >= 0;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A useless comparison may indicate a mistake, and should be fixed or
+    /// removed.
     UNUSED_COMPARISONS,
     Warn,
     "comparisons made useless by limits of the types involved"
 }
 
 declare_lint! {
+    /// The `overflowing_literals` lint detects literal out of range for its
+    /// type.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// let x: u8 = 1000;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It is usually a mistake to use a literal that overflows the type where
+    /// it is used. Either use a literal that is within range, or change the
+    /// type to be within the range of the literal.
     OVERFLOWING_LITERALS,
     Deny,
     "literal out of range for its type"
 }
 
 declare_lint! {
+    /// The `variant_size_differences` lint detects enums with widely varying
+    /// variant sizes.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(variant_size_differences)]
+    /// enum En {
+    ///     V0(u8),
+    ///     VBig([u8; 1024]),
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It can be a mistake to add a variant to an enum that is much larger
+    /// than the other variants, bloating the overall size required for all
+    /// variants. This can impact performance and memory usage. This is
+    /// triggered if one variant is more than 3 times larger than the
+    /// second-largest variant.
+    ///
+    /// Consider placing the large variant's contents on the heap (for example
+    /// via [`Box`]) to keep the overall size of the enum itself down.
+    ///
+    /// This lint is "allow" by default because it can be noisy, and may not be
+    /// an actual problem. Decisions about this should be guided with
+    /// profiling and benchmarking.
+    ///
+    /// [`Box`]: https://doc.rust-lang.org/std/boxed/index.html
     VARIANT_SIZE_DIFFERENCES,
     Allow,
     "detects enums with widely varying variant sizes"
@@ -495,6 +559,27 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
 }
 
 declare_lint! {
+    /// The `improper_ctypes` lint detects incorrect use of types in foreign
+    /// modules.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// extern "C" {
+    ///     static STATIC: String;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler has several checks to verify that types used in `extern`
+    /// blocks are safe and follow certain rules to ensure proper
+    /// compatibility with the foreign interfaces. This lint is issued when it
+    /// detects a probable mistake in a definition. The lint usually should
+    /// provide a description of the issue, along with possibly a hint on how
+    /// to resolve it.
     IMPROPER_CTYPES,
     Warn,
     "proper use of libc types in foreign modules"
@@ -503,6 +588,27 @@ declare_lint! {
 declare_lint_pass!(ImproperCTypesDeclarations => [IMPROPER_CTYPES]);
 
 declare_lint! {
+    /// The `improper_ctypes_definitions` lint detects incorrect use of
+    /// [`extern` function] definitions.
+    ///
+    /// [`extern` function]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// pub extern "C" fn str_type(p: &str) { }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// There are many parameter and return types that may be specified in an
+    /// `extern` function that are not compatible with the given ABI. This
+    /// lint is an alert that these types should not be used. The lint usually
+    /// should provide a description of the issue, along with possibly a hint
+    /// on how to resolve it.
     IMPROPER_CTYPES_DEFINITIONS,
     Warn,
     "proper use of libc types in foreign item definitions"

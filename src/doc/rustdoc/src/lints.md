@@ -49,6 +49,30 @@ warning: missing documentation for a function
    | ^^^^^^^^^^^^^^^^^^^^^
 ```
 
+## missing_crate_level_docs
+
+This lint is **allowed by default**. It detects if there is no documentation
+at the crate root. For example:
+
+```rust
+#![warn(missing_crate_level_docs)]
+```
+
+This will generate the following warning:
+
+```text
+warning: no documentation found for this crate's top-level module
+  |
+  = help: The following guide may be of use:
+          https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html
+```
+
+This is currently "allow" by default, but it is intended to make this a
+warning in the future. This is intended as a means to introduce new users on
+*how* to document their crate by pointing them to some instructions on how to
+get started, without providing overwhelming warnings like `missing_docs`
+might.
+
 ## missing_doc_code_examples
 
 This lint is **allowed by default** and is **nightly-only**. It detects when a documentation block
@@ -117,3 +141,37 @@ warning: Documentation test in private item
  8 | |     /// ```
    | |___________^
 ```
+
+## invalid_codeblock_attributes
+
+This lint **warns by default**. It detects code block attributes in
+documentation examples that have potentially mis-typed values. For example:
+
+```rust
+/// Example.
+///
+/// ```should-panic
+/// assert_eq!(1, 2);
+/// ```
+pub fn foo() {}
+```
+
+Which will give:
+
+```text
+warning: unknown attribute `should-panic`. Did you mean `should_panic`?
+ --> src/lib.rs:1:1
+  |
+1 | / /// Example.
+2 | | ///
+3 | | /// ```should-panic
+4 | | /// assert_eq!(1, 2);
+5 | | /// ```
+  | |_______^
+  |
+  = note: `#[warn(invalid_codeblock_attributes)]` on by default
+  = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+```
+
+In the example above, the correct form is `should_panic`. This helps detect
+typo mistakes for some common attributes.

@@ -61,6 +61,23 @@ use tracing::{debug, trace};
 pub use rustc_session::lint::builtin::*;
 
 declare_lint! {
+    /// The `while_true` lint detects `while true { }`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// while true {
+    ///
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `while true` should be replaced with `loop`. A `loop` expression is
+    /// the preferred way to write an infinite loop because it more directly
+    /// expresses the intent of the loop.
     WHILE_TRUE,
     Warn,
     "suggest using `loop { }` instead of `while true { }`"
@@ -102,6 +119,24 @@ impl EarlyLintPass for WhileTrue {
 }
 
 declare_lint! {
+    /// The `box_pointers` lints use of the Box type.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(box_pointers)]
+    /// struct Foo {
+    ///     x: Box<isize>,
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is mostly historical, and not particularly useful. `Box<T>`
+    /// used to be built into the language, and the only way to do heap
+    /// allocation. Today's Rust can call into other allocators, etc.
     BOX_POINTERS,
     Allow,
     "use of owned (Box type) heap memory"
@@ -156,6 +191,36 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
 }
 
 declare_lint! {
+    /// The `non_shorthand_field_patterns` lint detects using `Struct { x: x }`
+    /// instead of `Struct { x }` in a pattern.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// struct Point {
+    ///     x: i32,
+    ///     y: i32,
+    /// }
+    ///
+    ///
+    /// fn main() {
+    ///     let p = Point {
+    ///         x: 5,
+    ///         y: 5,
+    ///     };
+    ///
+    ///     match p {
+    ///         Point { x: x, y: y } => (),
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The preferred style is to avoid the repetition of specifying both the
+    /// field name and the binding name if both identifiers are the same.
     NON_SHORTHAND_FIELD_PATTERNS,
     Warn,
     "using `Struct { x: x }` instead of `Struct { x }` in a pattern"
@@ -216,6 +281,25 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
 }
 
 declare_lint! {
+    /// The `unsafe_code` lint catches usage of `unsafe` code.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unsafe_code)]
+    /// fn main() {
+    ///     unsafe {
+    ///
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is intended to restrict the usage of `unsafe`, which can be
+    /// difficult to use correctly.
     UNSAFE_CODE,
     Allow,
     "usage of `unsafe` code"
@@ -303,6 +387,25 @@ impl EarlyLintPass for UnsafeCode {
 }
 
 declare_lint! {
+    /// The `missing_docs` lint detects missing documentation for public items.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(missing_docs)]
+    /// pub fn foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is intended to ensure that a library is well-documented.
+    /// Items without documentation can be difficult for users to understand
+    /// how to use properly.
+    ///
+    /// This lint is "allow" by default because it can be noisy, and not all
+    /// projects may want to enforce everything to be documented.
     pub MISSING_DOCS,
     Allow,
     "detects missing documentation for public members",
@@ -528,6 +631,34 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 }
 
 declare_lint! {
+    /// The `missing_copy_implementations` lint detects potentially-forgotten
+    /// implementations of [`Copy`].
+    ///
+    /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(missing_copy_implementations)]
+    /// pub struct Foo {
+    ///     pub field: i32
+    /// }
+    /// # fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Historically (before 1.0), types were automatically marked as `Copy`
+    /// if possible. This was changed so that it required an explicit opt-in
+    /// by implementing the `Copy` trait. As part of this change, a lint was
+    /// added to alert if a copyable type was not marked `Copy`.
+    ///
+    /// This lint is "allow" by default because this code isn't bad; it is
+    /// common to write newtypes like this specifically so that a `Copy` type
+    /// is no longer `Copy`. `Copy` types can result in unintended copies of
+    /// large data which can impact performance.
     pub MISSING_COPY_IMPLEMENTATIONS,
     Allow,
     "detects potentially-forgotten implementations of `Copy`"
@@ -584,6 +715,32 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
 }
 
 declare_lint! {
+    /// The `missing_debug_implementations` lint detects missing
+    /// implementations of [`fmt::Debug`].
+    ///
+    /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(missing_debug_implementations)]
+    /// pub struct Foo;
+    /// # fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Having a `Debug` implementation on all types can assist with
+    /// debugging, as it provides a convenient way to format and display a
+    /// value. Using the `#[derive(Debug)]` attribute will automatically
+    /// generate a typical implementation, or a custom implementation can be
+    /// added by manually implementing the `Debug` trait.
+    ///
+    /// This lint is "allow" by default because adding `Debug` to all types can
+    /// have a negative impact on compile time and code size. It also requires
+    /// boilerplate to be added to every type, which can be an impediment.
     MISSING_DEBUG_IMPLEMENTATIONS,
     Allow,
     "detects missing implementations of Debug"
@@ -640,6 +797,45 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
 }
 
 declare_lint! {
+    /// The `anonymous_parameters` lint detects anonymous parameters in trait
+    /// definitions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2015,compile_fail
+    /// #![deny(anonymous_parameters)]
+    /// // edition 2015
+    /// pub trait Foo {
+    ///     fn foo(usize);
+    /// }
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This syntax is mostly a historical accident, and can be worked around
+    /// quite easily by adding an `_` pattern or a descriptive identifier:
+    ///
+    /// ```rust
+    /// trait Foo {
+    ///     fn foo(_: usize);
+    /// }
+    /// ```
+    ///
+    /// This syntax is now a hard error in the 2018 edition. In the 2015
+    /// edition, this lint is "allow" by default, because the old code is
+    /// still valid, and warning for all old code can be noisy. This lint
+    /// enables the [`cargo fix`] tool with the `--edition` flag to
+    /// automatically transition old code from the 2015 edition to 2018. The
+    /// tool will switch this lint to "warn" and will automatically apply the
+    /// suggested fix from the compiler (which is to add `_` to each
+    /// parameter). This provides a completely automated way to update old
+    /// code for a new edition. See [issue #41686] for more details.
+    ///
+    /// [issue #41686]: https://github.com/rust-lang/rust/issues/41686
+    /// [`cargo fix`]: https://doc.rust-lang.org/cargo/commands/cargo-fix.html
     pub ANONYMOUS_PARAMETERS,
     Allow,
     "detects anonymous parameters",
@@ -806,12 +1002,54 @@ impl EarlyLintPass for UnusedDocComment {
 }
 
 declare_lint! {
+    /// The `no_mangle_const_items` lint detects any `const` items with the
+    /// [`no_mangle` attribute].
+    ///
+    /// [`no_mangle` attribute]: https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[no_mangle]
+    /// const FOO: i32 = 5;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Constants do not have their symbols exported, and therefore, this
+    /// probably means you meant to use a [`static`], not a [`const`].
+    ///
+    /// [`static`]: https://doc.rust-lang.org/reference/items/static-items.html
+    /// [`const`]: https://doc.rust-lang.org/reference/items/constant-items.html
     NO_MANGLE_CONST_ITEMS,
     Deny,
     "const items will not have their symbols exported"
 }
 
 declare_lint! {
+    /// The `no_mangle_generic_items` lint detects generic items that must be
+    /// mangled.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[no_mangle]
+    /// fn foo<T>(t: T) {
+    ///
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// An function with generics must have its symbol mangled to accommodate
+    /// the generic parameter. The [`no_mangle` attribute] has no effect in
+    /// this situation, and should be removed.
+    ///
+    /// [`no_mangle` attribute]: https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute
     NO_MANGLE_GENERIC_ITEMS,
     Warn,
     "generic items must be mangled"
@@ -882,6 +1120,27 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
 }
 
 declare_lint! {
+    /// The `mutable_transmutes` lint catches transmuting from `&T` to `&mut
+    /// T` because it is [undefined behavior].
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// unsafe {
+    ///     let y = std::mem::transmute::<&i32, &mut i32>(&5);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Certain assumptions are made about aliasing of data, and this transmute
+    /// violates those assumptions. Consider using [`UnsafeCell`] instead.
+    ///
+    /// [`UnsafeCell`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html
     MUTABLE_TRANSMUTES,
     Deny,
     "mutating transmuted &mut T from &T may cause undefined behavior"
@@ -931,6 +1190,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
 }
 
 declare_lint! {
+    /// The `unstable_features` is deprecated and should no longer be used.
     UNSTABLE_FEATURES,
     Allow,
     "enabling unstable features (deprecated. do not use)"
@@ -956,6 +1216,32 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
 }
 
 declare_lint! {
+    /// The `unreachable_pub` lint triggers for `pub` items not reachable from
+    /// the crate root.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unreachable_pub)]
+    /// mod foo {
+    ///     pub mod bar {
+    ///
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A bare `pub` visibility may be misleading if the item is not actually
+    /// publicly exported from the crate. The `pub(crate)` visibility is
+    /// recommended to be used instead, which more clearly expresses the intent
+    /// that the item is only visible within its own crate.
+    ///
+    /// This lint is "allow" by default because it will trigger for a large
+    /// amount existing Rust code, and has some false-positives. Eventually it
+    /// is desired for this to become warn-by-default.
     pub UNREACHABLE_PUB,
     Allow,
     "`pub` items not reachable from crate root"
@@ -1035,6 +1321,21 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
 }
 
 declare_lint! {
+    /// The `type_alias_bounds` lint detects bounds in type aliases.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// type SendVec<T: Send> = Vec<T>;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The trait bounds in a type alias are currently ignored, and should not
+    /// be included to avoid confusion. This was previously allowed
+    /// unintentionally; this may become a hard error in the future.
     TYPE_ALIAS_BOUNDS,
     Warn,
     "bounds in type aliases are not enforced"
@@ -1194,6 +1495,35 @@ impl<'tcx> LateLintPass<'tcx> for UnusedBrokenConst {
 }
 
 declare_lint! {
+    /// The `trivial_bounds` lint detects trait bounds that don't depend on
+    /// any type parameters.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(trivial_bounds)]
+    /// pub struct A where i32: Copy;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Usually you would not write a trait bound that you know is always
+    /// true, or never true. However, when using macros, the macro may not
+    /// know whether or not the constraint would hold or not at the time when
+    /// generating the code. Currently, the compiler does not alert you if the
+    /// constraint is always true, and generates an error if it is never true.
+    /// The `trivial_bounds` feature changes this to be a warning in both
+    /// cases, giving macros more freedom and flexibility to generate code,
+    /// while still providing a signal when writing non-macro code that
+    /// something is amiss.
+    ///
+    /// See [RFC 2056] for more details. This feature is currently only
+    /// available on the nightly channel, see [tracking issue #48214].
+    ///
+    /// [RFC 2056]: https://github.com/rust-lang/rfcs/blob/master/text/2056-allow-trivial-where-clause-constraints.md
+    /// [tracking issue #48214]: https://github.com/rust-lang/rust/issues/48214
     TRIVIAL_BOUNDS,
     Warn,
     "these bounds don't depend on an type parameters"
@@ -1270,6 +1600,29 @@ declare_lint_pass!(
 );
 
 declare_lint! {
+    /// The `ellipsis_inclusive_range_patterns` lint detects the [`...` range
+    /// pattern], which is deprecated.
+    ///
+    /// [`...` range pattern]: https://doc.rust-lang.org/reference/patterns.html#range-patterns
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let x = 123;
+    /// match x {
+    ///     0...100 => {}
+    ///     _ => {}
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The `...` range pattern syntax was changed to `..=` to avoid potential
+    /// confusion with the [`..` range expression]. Use the new form instead.
+    ///
+    /// [`..` range expression]: https://doc.rust-lang.org/reference/expressions/range-expr.html
     pub ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
     Warn,
     "`...` range patterns are deprecated"
@@ -1356,6 +1709,38 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
 }
 
 declare_lint! {
+    /// The `unnameable_test_items` lint detects [`#[test]`][test] functions
+    /// that are not able to be run by the test harness because they are in a
+    /// position where they are not nameable.
+    ///
+    /// [test]: https://doc.rust-lang.org/reference/attributes/testing.html#the-test-attribute
+    ///
+    /// ### Example
+    ///
+    /// ```rust,test
+    /// fn main() {
+    ///     #[test]
+    ///     fn foo() {
+    ///         // This test will not fail because it does not run.
+    ///         assert_eq!(1, 2);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In order for the test harness to run a test, the test function must be
+    /// located in a position where it can be accessed from the crate root.
+    /// This generally means it must be defined in a module, and not anywhere
+    /// else such as inside another function. The compiler previously allowed
+    /// this without an error, so a lint was added as an alert that a test is
+    /// not being used. Whether or not this should be allowed has not yet been
+    /// decided, see [RFC 2471] and [issue #36629].
+    ///
+    /// [RFC 2471]: https://github.com/rust-lang/rfcs/pull/2471#issuecomment-397414443
+    /// [issue #36629]: https://github.com/rust-lang/rust/issues/36629
     UNNAMEABLE_TEST_ITEMS,
     Warn,
     "detects an item that cannot be named being marked as `#[test_case]`",
@@ -1401,6 +1786,41 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
 }
 
 declare_lint! {
+    /// The `keyword_idents` lint detects edition keywords being used as an
+    /// identifier.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2015,compile_fail
+    /// #![deny(keyword_idents)]
+    /// // edition 2015
+    /// fn dyn() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust [editions] allow the language to evolve without breaking
+    /// backwards compatibility. This lint catches code that uses new keywords
+    /// that are added to the language that are used as identifiers (such as a
+    /// variable name, function name, etc.). If you switch the compiler to a
+    /// new edition without updating the code, then it will fail to compile if
+    /// you are using a new keyword as an identifier.
+    ///
+    /// You can manually change the identifiers to a non-keyword, or use a
+    /// [raw identifier], for example `r#dyn`, to transition to a new edition.
+    ///
+    /// This lint solves the problem automatically. It is "allow" by default
+    /// because the code is perfectly valid in older editions. The [`cargo
+    /// fix`] tool with the `--edition` flag will switch this lint to "warn"
+    /// and automatically apply the suggested fix from the compiler (which is
+    /// to use a raw identifier). This provides a completely automated way to
+    /// update old code for a new edition.
+    ///
+    /// [editions]: https://doc.rust-lang.org/edition-guide/
+    /// [raw identifier]: https://doc.rust-lang.org/reference/identifiers.html
+    /// [`cargo fix`]: https://doc.rust-lang.org/cargo/commands/cargo-fix.html
     pub KEYWORD_IDENTS,
     Allow,
     "detects edition keywords being used as an identifier",
@@ -1802,6 +2222,26 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 }
 
 declare_lint! {
+    /// The `incomplete_features` lint detects unstable features enabled with
+    /// the [`feature` attribute] that may function improperly in some or all
+    /// cases.
+    ///
+    /// [`feature` attribute]: https://doc.rust-lang.org/nightly/unstable-book/
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(generic_associated_types)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Although it is encouraged for people to experiment with unstable
+    /// features, some of them are known to be incomplete or faulty. This lint
+    /// is a signal that the feature has not yet been finished, and you may
+    /// experience problems with it.
     pub INCOMPLETE_FEATURES,
     Warn,
     "incomplete features that may function improperly in some or all cases"
@@ -1842,6 +2282,36 @@ impl EarlyLintPass for IncompleteFeatures {
 }
 
 declare_lint! {
+    /// The `invalid_value` lint detects creating a value that is not valid,
+    /// such as a NULL reference.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// # #![allow(unused)]
+    /// unsafe {
+    ///     let x: &'static i32 = std::mem::zeroed();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In some situations the compiler can detect that the code is creating
+    /// an invalid value, which should be avoided.
+    ///
+    /// In particular, this lint will check for improper use of
+    /// [`mem::zeroed`], [`mem::uninitialized`], [`mem::transmute`], and
+    /// [`MaybeUninit::assume_init`] that can cause [undefined behavior]. The
+    /// lint should provide extra information to indicate what the problem is
+    /// and a possible solution.
+    ///
+    /// [`mem::zeroed`]: https://doc.rust-lang.org/std/mem/fn.zeroed.html
+    /// [`mem::uninitialized`]: https://doc.rust-lang.org/std/mem/fn.uninitialized.html
+    /// [`mem::transmute`]: https://doc.rust-lang.org/std/mem/fn.transmute.html
+    /// [`MaybeUninit::assume_init`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub INVALID_VALUE,
     Warn,
     "an invalid value is being created (such as a NULL reference)"
@@ -2073,6 +2543,40 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 }
 
 declare_lint! {
+    /// The `clashing_extern_declarations` lint detects when an `extern fn`
+    /// has been declared with the same name but different types.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// mod m {
+    ///     extern "C" {
+    ///         fn foo();
+    ///     }
+    /// }
+    ///
+    /// extern "C" {
+    ///     fn foo(_: u32);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Because two symbols of the same name cannot be resolved to two
+    /// different functions at link time, and one function cannot possibly
+    /// have two types, a clashing extern declaration is almost certainly a
+    /// mistake. Check to make sure that the `extern` definitions are correct
+    /// and equivalent, and possibly consider unifying them in one location.
+    ///
+    /// This lint does not run between crates because a project may have
+    /// dependencies which both rely on the same extern function, but declare
+    /// it in a different (but valid) way. For example, they may both declare
+    /// an opaque type for one or more of the arguments (which would end up
+    /// distinct types), or use types that are valid conversions in the
+    /// language the `extern fn` is defined in. In these cases, the compiler
+    /// can't say that the clashing declaration is incorrect.
     pub CLASHING_EXTERN_DECLARATIONS,
     Warn,
     "detects when an extern fn has been declared with the same name but different types"

@@ -4,6 +4,21 @@ use rustc_errors::Applicability;
 use rustc_span::Span;
 
 declare_lint! {
+    /// The `redundant_semicolons` lint detects unnecessary trailing
+    /// semicolons.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let _ = 123;;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Extra semicolons are not needed, and may be removed to avoid confusion
+    /// and visual clutter.
     pub REDUNDANT_SEMICOLONS,
     Warn,
     "detects unnecessary trailing semicolons"
