@@ -1,0 +1,28 @@
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:7:8
+   |
+LL |     a: Rc<String>,
+   |        ^^^^^^^^^^ help: try: `Rc<str>`
+   |
+   = note: `-D clippy::rc-buffer` implied by `-D warnings`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:8:8
+   |
+LL |     b: Rc<PathBuf>,
+   |        ^^^^^^^^^^^ help: try: `Rc<std::path::Path>`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:9:8
+   |
+LL |     c: Rc<Vec<u8>>,
+   |        ^^^^^^^^^^^ help: try: `Rc<[u8]>`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:10:8
+   |
+LL |     d: Rc<OsString>,
+   |        ^^^^^^^^^^^^ help: try: `Rc<std::ffi::OsStr>`
+
+error: aborting due to 4 previous errors
+

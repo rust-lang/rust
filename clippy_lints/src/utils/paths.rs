@@ -113,6 +113,7 @@ pub const STD_CONVERT_IDENTITY: [&str; 3] = ["std", "convert", "identity"];
 pub const STD_FS_CREATE_DIR: [&str; 3] = ["std", "fs", "create_dir"];
 pub const STD_MEM_TRANSMUTE: [&str; 3] = ["std", "mem", "transmute"];
 pub const STD_PTR_NULL: [&str; 3] = ["std", "ptr", "null"];
+pub const STRING: [&str; 3] = ["alloc", "string", "String"];
 pub const STRING_AS_MUT_STR: [&str; 4] = ["alloc", "string", "String", "as_mut_str"];
 pub const STRING_AS_STR: [&str; 4] = ["alloc", "string", "String", "as_str"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
