@@ -285,6 +285,10 @@ fn main() {
     let slice_ptr = &[] as *const [u8];
     slice_ptr as *const u8;
 
+    let repeat = [Some(42); 2];
+    assert_eq!(repeat[0], Some(42));
+    assert_eq!(repeat[1], Some(42));
+
     #[cfg(not(jit))]
     test_tls();
 

@@ -693,10 +693,29 @@ fn trans_stmt<'tcx>(
                         .val
                         .try_to_bits(fx.tcx.data_layout.pointer_size)
                         .unwrap();
-                    for i in 0..times {
-                        let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
+                    if fx.clif_type(operand.layout().ty) == Some(types::I8) {
+                        let times = fx.bcx.ins().iconst(fx.pointer_type, times as i64);
+                        // FIXME use emit_small_memset where possible
+                        let addr = lval.to_ptr().get_addr(fx);
+                        let val = operand.load_scalar(fx);
+                        fx.bcx.call_memset(fx.cx.module.target_config(), addr, val, times);
+                    } else {
+                        let loop_block = fx.bcx.create_block();
+                        let done_block = fx.bcx.create_block();
+                        let index = fx.bcx.append_block_param(loop_block, fx.pointer_type);
+                        let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
+                        fx.bcx.ins().jump(loop_block, &[zero]);
+
+                        fx.bcx.switch_to_block(loop_block);
                         let to = lval.place_index(fx, index);
                         to.write_cvalue(fx, operand);
+
+                        let index = fx.bcx.ins().iadd_imm(index, 1);
+                        let done = fx.bcx.ins().icmp_imm(IntCC::Equal, index, times as i64);
+                        fx.bcx.ins().brz(done, loop_block, &[index]);
+                        fx.bcx.ins().jump(done_block, &[]);
+
+                        fx.bcx.switch_to_block(done_block);
                     }
                 }
                 Rvalue::Len(place) => {

@@ -58,6 +58,7 @@ unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
 unsafe impl<T: ?Sized> Copy for *mut T {}
+unsafe impl<T: Copy> Copy for Option<T> {}
 
 #[lang = "sync"]
 pub unsafe trait Sync {}
@@ -333,6 +334,24 @@ impl<T: ?Sized> PartialEq for *const T {
     }
     fn ne(&self, other: &*const T) -> bool {
         *self != *other
+    }
+}
+
+impl <T: PartialEq> PartialEq for Option<T> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Some(lhs), Some(rhs)) => *lhs == *rhs,
+            (None, None) => true,
+            _ => false,
+        }
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Some(lhs), Some(rhs)) => *lhs != *rhs,
+            (None, None) => false,
+            _ => true,
+        }
     }
 }
 
