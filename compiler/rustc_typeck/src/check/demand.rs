@@ -117,11 +117,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    // Checks that the type of `expr` can be coerced to `expected`.
-    //
-    // N.B., this code relies on `self.diverges` to be accurate. In
-    // particular, assignments to `!` will be permitted if the
-    // diverges flag is currently "always".
+    /// Checks that the type of `expr` can be coerced to `expected`.
+    ///
+    /// N.B., this code relies on `self.diverges` to be accurate. In particular, assignments to `!`
+    /// will be permitted if the diverges flag is currently "always".
     pub fn demand_coerce_diag(
         &self,
         expr: &hir::Expr<'_>,
