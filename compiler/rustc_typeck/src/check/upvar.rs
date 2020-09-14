@@ -44,7 +44,6 @@ use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId};
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::{Span, Symbol};
-use std::collections::hash_map::Entry;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {
@@ -115,23 +114,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let local_def_id = closure_def_id.expect_local();
 
-        let mut capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::new();
+        let mut capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::default();
         if !new_capture_analysis() {
             debug!("Using old-style capture analysis");
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 for (&var_hir_id, _) in upvars.iter() {
-                    let place_with_id =
-                        self.place_for_root_variable(closure_hir_id, local_def_id, var_hir_id);
+                    let place = self.place_for_root_variable(local_def_id, var_hir_id);
 
-                    debug!("seed place_with_id {:?}", place_with_id);
+                    debug!("seed place {:?}", place);
 
                     let upvar_id = ty::UpvarId::new(var_hir_id, local_def_id);
-
-                    let capture_kind =
-                        self.init_capture_kind_for_place(capture_clause, upvar_id, span);
-
+                    let capture_kind = self.init_capture_kind(capture_clause, upvar_id, span);
                     let info = ty::CaptureInfo { expr_id: None, capture_kind };
-                    capture_information.insert(place_with_id.place, info);
+
+                    capture_information.insert(place, info);
                 }
             }
         }
@@ -172,7 +168,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        self.typeck_results.borrow_mut().upvar_capture_map.extend(delegate.adjust_upvar_captures);
+        self.typeck_results
+            .borrow_mut()
+            .closure_capture_information
+            .insert(closure_def_id, delegate.capture_information);
 
         // Now that we've analyzed the closure, we know how each
         // variable is borrowed, and we know what traits the closure
@@ -237,11 +236,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn init_capture_kind(
-        &mut self,
+        &self,
         capture_clause: hir::CaptureBy,
         upvar_id: ty::UpvarId,
         closure_span: Span,
-    ) -> ty::UpvarCapture {
+    ) -> ty::UpvarCapture<'tcx> {
         match capture_clause {
             hir::CaptureBy::Value => ty::UpvarCapture::ByValue(None),
             hir::CaptureBy::Ref => {
@@ -250,22 +249,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow, region: upvar_region };
                 ty::UpvarCapture::ByRef(upvar_borrow)
             }
-        };
+        }
     }
 
-    fn place_for_root_variable<'tcx>(
+    fn place_for_root_variable(
         &self,
-        closure_expr_hir_id: hir::HirId,
         closure_def_id: LocalDefId,
         var_hir_id: hir::HirId,
-    ) -> PlaceWithHirId<'tcx> {
+    ) -> Place<'tcx> {
         let upvar_id = ty::UpvarId::new(var_hir_id, closure_def_id);
-        PlaceWithHirId::new(
-            closure_expr_hir_id,
-            self.node_ty(var_hir_id),
-            PlaceBase::Upvar(upvar_id),
-            Default::default(),
-        )
+
+        Place {
+            base_ty: self.node_ty(var_hir_id),
+            base: PlaceBase::Upvar(upvar_id),
+            projections: Default::default(),
+        }
     }
 }
 
@@ -338,32 +336,24 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         // of the pattern, as this just looks confusing.
         let (by_value_span, by_value_expr) = match tcx.hir().get(place_with_id.hir_id) {
             hir::Node::Pat(_) => (None, None),
-            _ => Some(usage_span, Some(place_with_id.hir_id)),
+            _ => (Some(usage_span), Some(place_with_id.hir_id)),
         };
 
         let capture_info = ty::CaptureInfo {
             expr_id: by_value_expr,
             capture_kind: ty::UpvarCapture::ByValue(by_value_span),
         };
-        match self.capture_information.entry(place_with_id.place) {
-            Entry::Occupied(mut e) => {
-                match e.get().capture_kind {
-                    // We always overwrite `ByRef`, since we require
-                    // that the upvar be available by value.
-                    //
-                    // If we had a previous by-value usage without a specific
-                    // span, use ours instead. Otherwise, keep the first span
-                    // we encountered, since there isn't an obviously better one.
-                    ty::UpvarCapture::ByRef(_) | ty::UpvarCapture::ByValue(None) => {
-                        e.insert(new_capture);
-                    }
-                    _ => {}
-                }
-            }
-            Entry::Vacant(e) => {
-                e.insert(capture_info);
-            }
-        }
+
+        let curr_info = self.capture_information.get(&place_with_id.place);
+        let updated_info = match curr_info {
+            Some(info) => match info.capture_kind {
+                ty::UpvarCapture::ByRef(_) | ty::UpvarCapture::ByValue(None) => capture_info,
+                _ => *info,
+            },
+            None => capture_info,
+        };
+
+        self.capture_information.insert(place_with_id.place.clone(), updated_info);
     }
 
     /// Indicates that `place_with_id` is being directly mutated (e.g., assigned
@@ -456,7 +446,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         );
 
         match capture_info.capture_kind {
-            ty::UpvarCapture::ByValue => {
+            ty::UpvarCapture::ByValue(_) => {
                 // Upvar is already by-value, the strongest criteria.
             }
             ty::UpvarCapture::ByRef(upvar_borrow) => {
@@ -467,7 +457,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
                         if let Some(ty::CaptureInfo { expr_id, capture_kind }) =
                             self.capture_information.get_mut(&place_with_id.place)
                         {
-                            *expr_id = place_with_id.hir_id;
+                            *expr_id = Some(place_with_id.hir_id);
                             if let ty::UpvarCapture::ByRef(borrow_kind) = capture_kind {
                                 borrow_kind.kind = kind;
                             }
@@ -527,24 +517,25 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     fn init_capture_info_for_place(&mut self, place_with_id: &PlaceWithHirId<'tcx>) {
         if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
             assert_eq!(self.closure_def_id.expect_local(), upvar_id.closure_expr_id);
-            debug!("Initializing place {:?}", place_with_id);
-            let capture_kind = self.fcx.init_capture_kind_for_place(
-                self.capture_clause,
-                upvar_id,
-                self.closure_span
-            );
 
-            debug!("capture_kind: {:?}", capture_kind);
-            
-            // If capture by ref then remember the 
-            let expr_id = if !matches!(tcx.hir().get(place_with_id.hir_id), hir::Node::Pat(_)) { 
+            debug!("Capturing new place {:?}", place_with_id);
+
+            let tcx = self.fcx.tcx;
+            let capture_kind =
+                self.fcx.init_capture_kind(self.capture_clause, upvar_id, self.closure_span);
+
+            let expr_id = if !matches!(tcx.hir().get(place_with_id.hir_id), hir::Node::Pat(_)) {
                 Some(place_with_id.hir_id)
             } else {
                 None
+            };
+
+            let capture_info = ty::CaptureInfo { expr_id: expr_id, capture_kind: capture_kind };
+
+            if log_capture_analysis() {
+                debug!("capture_info: {:?}", capture_info);
             }
-            let capture_info =
-                ty::CaptureInfo { expr_id: expr_id, capture_kind: capture_kind };
-            debug!("capture_info: {:?}", capture_info);
+
             self.capture_information.insert(place_with_id.place.clone(), capture_info);
         } else {
             debug!("Not upvar: {:?}", place_with_id);
@@ -556,8 +547,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, mode: euv::ConsumeMode) {
         debug!("consume(place_with_id={:?},mode={:?})", place_with_id, mode);
 
-        if !self.capture_information.contains_key(place_with_id.place) {
-            self.init_capture_place_for_place(place_with_id);
+        if !self.capture_information.contains_key(&place_with_id.place) {
+            self.init_capture_info_for_place(place_with_id);
         }
 
         self.adjust_upvar_borrow_kind_for_consume(place_with_id, mode);
@@ -566,7 +557,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     fn borrow(&mut self, place_with_id: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
         debug!("borrow(place_with_id={:?}, bk={:?})", place_with_id, bk);
 
-        if !self.capture_information.contains_key(place_with_id.place) {
+        if !self.capture_information.contains_key(&place_with_id.place) {
             self.init_capture_info_for_place(place_with_id);
         }
 
@@ -584,7 +575,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>) {
         debug!("mutate(assignee_place={:?})", assignee_place);
 
-        if !self.capture_information.contains_key(assignee_place.place) {
+        if !self.capture_information.contains_key(&assignee_place.place) {
             self.init_capture_info_for_place(assignee_place);
         }
 

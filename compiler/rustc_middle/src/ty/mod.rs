@@ -6,6 +6,7 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
 use crate::hir::exports::ExportMap;
+use crate::hir::place::Place as HirPlace;
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::Canonical;
 use crate::middle::cstore::CrateStoreDyn;
@@ -673,11 +674,8 @@ pub struct UpvarId {
 }
 
 impl UpvarId {
-    pub new(var_hir_id: hir::HirId, closure_def_id: LocalDefId) {
-        UpvarId {
-            var_path: UpvarPath { hir_id: var_hir_id },
-            closure_def_id,
-        }
+    pub fn new(var_hir_id: hir::HirId, closure_def_id: LocalDefId) -> UpvarId {
+        UpvarId { var_path: UpvarPath { hir_id: var_hir_id }, closure_expr_id: closure_def_id }
     }
 }
 

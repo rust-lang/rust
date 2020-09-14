@@ -4077,6 +4077,7 @@ dependencies = [
 name = "rustc_typeck"
 version = "0.0.0"
 dependencies = [
+ "indexmap",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",

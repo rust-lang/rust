@@ -373,7 +373,6 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 }
             };
             let upvars = cx
-                .tcx
                 .typeck_results()
                 .closure_captures
                 .get(&def_id)
