@@ -38,7 +38,7 @@ pub struct ReadDir {
 
 pub struct DirEntry {
     path: PathBuf,
-    file_type: FileType
+    file_attr: FileAttr,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -147,8 +147,13 @@ impl Iterator for ReadDir {
             _ => panic!("Invalid entry type in directory")
         };
 
+        let file_attr = FileAttr {
+            size: AtomicU64::new(val.fileSize as u64),
+            file_type
+        };
+
         Some(Ok(DirEntry {
-            path, file_type
+            path, file_attr
         }))
     }
 }
@@ -166,11 +171,11 @@ impl DirEntry {
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        stat(&self.path)
+        Ok(self.file_attr.clone())
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(self.file_type)
+        Ok(self.file_attr.file_type)
     }
 }
 
