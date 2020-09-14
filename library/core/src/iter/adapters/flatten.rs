@@ -7,8 +7,8 @@ use super::Map;
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
 ///
-/// This `struct` is created by the [`flat_map`] method on [`Iterator`]. See its
-/// documentation for more.
+/// This `struct` is created by [`Iterator::flat_map`]. See its documentation
+/// for more.
 ///
 /// [`flat_map`]: trait.Iterator.html#method.flat_map
 /// [`Iterator`]: trait.Iterator.html
