@@ -404,9 +404,6 @@ declare_features! (
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
 
-    /// Allows `#[doc(alias = "...")]`.
-    (active, doc_alias, "1.27.0", Some(50146), None),
-
     /// Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
 

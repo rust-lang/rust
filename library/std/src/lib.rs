@@ -245,7 +245,7 @@
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
 #![feature(decl_macro)]
-#![feature(doc_alias)]
+#![cfg_attr(bootstrap, feature(doc_alias))]
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]

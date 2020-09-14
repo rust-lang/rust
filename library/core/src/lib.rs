@@ -131,7 +131,7 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(variant_count)]
-#![feature(doc_alias)]
+#![cfg_attr(bootstrap, feature(doc_alias))]
 #![feature(mmx_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(sse4a_target_feature)]
