@@ -168,6 +168,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        self.set_closure_captures(closure_def_id, &delegate);
+
         self.typeck_results
             .borrow_mut()
             .closure_capture_information
@@ -233,6 +235,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             })
             .collect()
+    }
+
+    fn set_closure_captures(
+        &self,
+        closure_def_id: DefId,
+        inferred_info: &InferBorrowKind<'_, 'tcx>,
+    ) {
+        let mut closure_captures: FxIndexMap<hir::HirId, ty::UpvarId> = Default::default();
+
+        for (place, capture_info) in inferred_info.capture_information.iter() {
+            let upvar_id = match place.base {
+                PlaceBase::Upvar(upvar_id) => upvar_id,
+                base => bug!("Expected upvar, found={:?}", base),
+            };
+
+            assert_eq!(upvar_id.closure_expr_id, closure_def_id.expect_local());
+
+            let var_hir_id = upvar_id.var_path.hir_id;
+            closure_captures.insert(var_hir_id, upvar_id);
+
+            let mut new_capture_kind = capture_info.capture_kind;
+            if let Some(existing_capture_kind) =
+                self.typeck_results.borrow_mut().upvar_capture_map.get(&upvar_id)
+            {
+                // FIXME(@azhng): refactor this later
+                new_capture_kind = match (existing_capture_kind, new_capture_kind) {
+                    (ty::UpvarCapture::ByValue(Some(_)), _) => *existing_capture_kind,
+                    (_, ty::UpvarCapture::ByValue(Some(_))) => new_capture_kind,
+                    (ty::UpvarCapture::ByValue(_), _) | (_, ty::UpvarCapture::ByValue(_)) => {
+                        ty::UpvarCapture::ByValue(None)
+                    }
+                    (ty::UpvarCapture::ByRef(existing_ref), ty::UpvarCapture::ByRef(new_ref)) => {
+                        match (existing_ref.kind, new_ref.kind) {
+                            // Take RHS:
+                            (ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
+                            | (ty::UniqueImmBorrow, ty::MutBorrow) => new_capture_kind,
+                            // Take LHS:
+                            (ty::ImmBorrow, ty::ImmBorrow)
+                            | (ty::UniqueImmBorrow, ty::ImmBorrow | ty::UniqueImmBorrow)
+                            | (ty::MutBorrow, _) => *existing_capture_kind,
+                        }
+                    }
+                };
+            }
+            self.typeck_results.borrow_mut().upvar_capture_map.insert(upvar_id, new_capture_kind);
+        }
+
+        if !closure_captures.is_empty() {
+            self.typeck_results
+                .borrow_mut()
+                .closure_captures
+                .insert(closure_def_id, closure_captures);
+        }
     }
 
     fn init_capture_kind(
