@@ -231,6 +231,7 @@ mod main_recursion;
 mod manual_async_fn;
 mod manual_non_exhaustive;
 mod map_clone;
+mod map_err_ignore;
 mod map_identity;
 mod map_unit_fn;
 mod match_on_vec_items;
@@ -627,6 +628,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &manual_async_fn::MANUAL_ASYNC_FN,
         &manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
         &map_clone::MAP_CLONE,
+        &map_err_ignore::MAP_ERR_IGNORE,
         &map_identity::MAP_IDENTITY,
         &map_unit_fn::OPTION_MAP_UNIT_FN,
         &map_unit_fn::RESULT_MAP_UNIT_FN,
@@ -920,6 +922,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
     store.register_late_pass(|| box methods::Methods);
     store.register_late_pass(|| box map_clone::MapClone);
+    store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
     store.register_late_pass(|| box shadow::Shadow);
     store.register_late_pass(|| box types::LetUnitValue);
     store.register_late_pass(|| box types::UnitCmp);
@@ -1186,6 +1189,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::EXPLICIT_INTO_ITER_LOOP),
         LintId::of(&loops::EXPLICIT_ITER_LOOP),
         LintId::of(&macro_use::MACRO_USE_IMPORTS),
+        LintId::of(&map_err_ignore::MAP_ERR_IGNORE),
         LintId::of(&match_on_vec_items::MATCH_ON_VEC_ITEMS),
         LintId::of(&matches::MATCH_BOOL),
         LintId::of(&matches::MATCH_WILDCARD_FOR_SINGLE_VARIANTS),
