@@ -4,7 +4,7 @@ error: generic parameters must not be used inside of non trivial constant values
 LL |     fn t1() -> [u8; std::mem::size_of::<Self>()];
    |                                         ^^^^ non-trivial anonymous constants must not depend on the parameter `Self`
    |
-   = help: it is currently only allowed to use either `Self` or `{ Self }` as generic constants
+   = note: type parameters are currently not permitted in anonymous constants
 
 error: generic `Self` types are currently not permitted in anonymous constants
   --> $DIR/self-ty-in-const-1.rs:14:41

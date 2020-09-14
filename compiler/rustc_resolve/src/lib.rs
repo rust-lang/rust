@@ -221,7 +221,7 @@ enum ResolutionError<'a> {
     /// generic parameters must not be used inside of non trivial constant values.
     ///
     /// This error is only emitted when using `min_const_generics`.
-    ParamInNonTrivialAnonConst(Symbol),
+    ParamInNonTrivialAnonConst { name: Symbol, is_type: bool },
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
@@ -2638,9 +2638,10 @@ impl<'a> Resolver<'a> {
                                     if record_used {
                                         self.report_error(
                                             span,
-                                            ResolutionError::ParamInNonTrivialAnonConst(
-                                                rib_ident.name,
-                                            ),
+                                            ResolutionError::ParamInNonTrivialAnonConst {
+                                                name: rib_ident.name,
+                                                is_type: true,
+                                            },
                                         );
                                     }
                                     return Res::Err;
@@ -2718,7 +2719,10 @@ impl<'a> Resolver<'a> {
                                 if record_used {
                                     self.report_error(
                                         span,
-                                        ResolutionError::ParamInNonTrivialAnonConst(rib_ident.name),
+                                        ResolutionError::ParamInNonTrivialAnonConst {
+                                            name: rib_ident.name,
+                                            is_type: false,
+                                        },
                                     );
                                 }
                                 return Res::Err;
