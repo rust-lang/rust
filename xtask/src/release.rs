@@ -37,7 +37,8 @@ Release: release:{}[]
 
 == Sponsors
 
-**Become a sponsor:** https://opencollective.com/rust-analyzer/[opencollective.com/rust-analyzer]
+**Become a sponsor:** On https://opencollective.com/rust-analyzer/[OpenCollective] or
+https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
 
 == New Features
 
