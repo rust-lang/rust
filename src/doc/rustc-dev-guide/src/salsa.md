@@ -107,8 +107,8 @@ potentially invalidated.
 ### Query Groups
 
 A query group is a set of queries which have been defined together as a unit.
-The database is formed by combining query groups.  Query groups are akin to
-"Salsa modules" [^EN1].
+The database is formed by combining query groups. Query groups are akin to
+"Salsa modules".
 
 A set of queries in a query group are just a set of methods in a trait.
 
@@ -212,5 +212,3 @@ fn main() {
     }
 }
 ```
-
-[^EN1]: What is a Salsa module?
