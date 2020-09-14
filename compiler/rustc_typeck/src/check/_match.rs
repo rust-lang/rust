@@ -1,12 +1,15 @@
 use crate::check::coercion::CoerceMany;
 use crate::check::{Diverges, Expectation, FnCtxt, Needs};
-use rustc_hir as hir;
-use rustc_hir::ExprKind;
+use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::ty::Ty;
+use rustc_infer::traits::Obligation;
+use rustc_middle::ty::{self, ToPredicate, Ty};
 use rustc_span::Span;
-use rustc_trait_selection::traits::ObligationCauseCode;
-use rustc_trait_selection::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
+use rustc_trait_selection::opaque_types::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{
+    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_match(
@@ -14,7 +17,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         scrut: &'tcx hir::Expr<'tcx>,
         arms: &'tcx [hir::Arm<'tcx>],
-        expected: Expectation<'tcx>,
+        orig_expected: Expectation<'tcx>,
         match_src: hir::MatchSource,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
@@ -22,7 +25,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         use hir::MatchSource::*;
         let (source_if, if_no_else, force_scrutinee_bool) = match match_src {
             IfDesugar { contains_else_clause } => (true, !contains_else_clause, true),
-            IfLetDesugar { contains_else_clause } => (true, !contains_else_clause, false),
+            IfLetDesugar { contains_else_clause, .. } => (true, !contains_else_clause, false),
             WhileDesugar => (false, false, true),
             _ => (false, false, false),
         };
@@ -69,7 +72,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // type in that case)
         let mut all_arms_diverge = Diverges::WarnedAlways;
 
-        let expected = expected.adjust_for_branches(self);
+        let expected = orig_expected.adjust_for_branches(self);
 
         let mut coercion = {
             let coerce_first = match expected {
@@ -112,6 +115,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_with_expectation(&arm.body, expected)
             };
             all_arms_diverge &= self.diverges.get();
+
+            // When we have a `match` as a tail expression in a `fn` with a returned `impl Trait`
+            // we check if the different arms would work with boxed trait objects instead and
+            // provide a structured suggestion in that case.
+            let opt_suggest_box_span = match (
+                orig_expected,
+                self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty)),
+            ) {
+                (Expectation::ExpectHasType(expected), Some((id, ty)))
+                    if self.in_tail_expr && self.can_coerce(arm_ty, expected) =>
+                {
+                    let impl_trait_ret_ty = self.infcx.instantiate_opaque_types(
+                        id,
+                        self.body_id,
+                        self.param_env,
+                        &ty,
+                        arm.body.span,
+                    );
+                    let mut suggest_box = !impl_trait_ret_ty.obligations.is_empty();
+                    for o in impl_trait_ret_ty.obligations {
+                        match o.predicate.skip_binders_unchecked() {
+                            ty::PredicateAtom::Trait(t, constness) => {
+                                let pred = ty::PredicateAtom::Trait(
+                                    ty::TraitPredicate {
+                                        trait_ref: ty::TraitRef {
+                                            def_id: t.def_id(),
+                                            substs: self.infcx.tcx.mk_substs_trait(arm_ty, &[]),
+                                        },
+                                    },
+                                    constness,
+                                );
+                                let obl = Obligation::new(
+                                    o.cause.clone(),
+                                    self.param_env,
+                                    pred.to_predicate(self.infcx.tcx),
+                                );
+                                suggest_box &= self.infcx.predicate_must_hold_modulo_regions(&obl);
+                                if !suggest_box {
+                                    // We've encountered some obligation that didn't hold, so the
+                                    // return expression can't just be boxed. We don't need to
+                                    // evaluate the rest of the obligations.
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    // If all the obligations hold (or there are no obligations) the tail expression
+                    // we can suggest to return a boxed trait object instead of an opaque type.
+                    if suggest_box { self.ret_type_span.clone() } else { None }
+                }
+                _ => None,
+            };
+
             if source_if {
                 let then_expr = &arms[0].body;
                 match (i, if_no_else) {
@@ -119,7 +176,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (_, true) => {} // Handled above to avoid duplicated type errors (#60254).
                     (_, _) => {
                         let then_ty = prior_arm_ty.unwrap();
-                        let cause = self.if_cause(expr.span, then_expr, &arm.body, then_ty, arm_ty);
+                        let cause = self.if_cause(
+                            expr.span,
+                            then_expr,
+                            &arm.body,
+                            then_ty,
+                            arm_ty,
+                            opt_suggest_box_span,
+                        );
                         coercion.coerce(self, &cause, &arm.body, arm_ty);
                     }
                 }
@@ -142,6 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             prior_arms: other_arms.clone(),
                             last_ty: prior_arm_ty.unwrap(),
                             scrut_hir_id: scrut.hir_id,
+                            opt_suggest_box_span,
                         }),
                     ),
                 };
@@ -266,6 +331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else_expr: &'tcx hir::Expr<'tcx>,
         then_ty: Ty<'tcx>,
         else_ty: Ty<'tcx>,
+        opt_suggest_box_span: Option<Span>,
     ) -> ObligationCause<'tcx> {
         let mut outer_sp = if self.tcx.sess.source_map().is_multiline(span) {
             // The `if`/`else` isn't in one line in the output, include some context to make it
@@ -353,8 +419,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             error_sp,
             ObligationCauseCode::IfExpression(box IfExpressionCause {
                 then: then_sp,
+                else_sp: error_sp,
                 outer: outer_sp,
                 semicolon: remove_semicolon,
+                opt_suggest_box_span,
             }),
         )
     }

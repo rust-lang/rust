@@ -37,7 +37,7 @@
 
 use crate::astconv::AstConv;
 use crate::check::FnCtxt;
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
@@ -51,7 +51,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
-use rustc_span::{self, Span};
+use rustc_span::{self, BytePos, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
@@ -1459,7 +1459,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
         if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.borrow().as_ref(), fn_output) {
-            self.add_impl_trait_explanation(&mut err, fcx, expected, *sp, fn_output);
+            self.add_impl_trait_explanation(&mut err, cause, fcx, expected, *sp, fn_output);
         }
         err
     }
@@ -1467,6 +1467,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     fn add_impl_trait_explanation<'a>(
         &self,
         err: &mut DiagnosticBuilder<'a>,
+        cause: &ObligationCause<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
         expected: Ty<'tcx>,
         sp: Span,
@@ -1523,10 +1524,30 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         };
         if has_impl {
             if is_object_safe {
-                err.help(&format!(
-                    "you can instead return a boxed trait object using `Box<dyn {}>`",
-                    &snippet[5..]
-                ));
+                err.multipart_suggestion(
+                    "you could change the return type to be a boxed trait object",
+                    vec![
+                        (return_sp.with_hi(return_sp.lo() + BytePos(4)), "Box<dyn".to_string()),
+                        (return_sp.shrink_to_hi(), ">".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+                let sugg = vec![sp, cause.span]
+                    .into_iter()
+                    .flat_map(|sp| {
+                        vec![
+                            (sp.shrink_to_lo(), "Box::new(".to_string()),
+                            (sp.shrink_to_hi(), ")".to_string()),
+                        ]
+                        .into_iter()
+                    })
+                    .collect::<Vec<_>>();
+                err.multipart_suggestion(
+                    "if you change the return type to expect trait objects, box the returned \
+                     expressions",
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                );
             } else {
                 err.help(&format!(
                     "if the trait `{}` were object safe, you could return a boxed trait object",
@@ -1535,7 +1556,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
             err.note(trait_obj_msg);
         }
-        err.help("alternatively, create a new `enum` with a variant for each returned type");
+        err.help("you could instead create a new `enum` with a variant for each returned type");
     }
 
     fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
