@@ -204,7 +204,7 @@ pub fn suggest_constraining_type_param(
         //                                          - insert: `, T: Zar`
         //
         // Additionally, there may be no `where` clause whatsoever in the case that this was
-        // reached becauase the generic parameter has a default:
+        // reached because the generic parameter has a default:
         //
         //    Message:
         //      trait Foo<T=()> {... }
@@ -217,8 +217,8 @@ pub fn suggest_constraining_type_param(
         if matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. })
             && generics.where_clause.predicates.len() == 0
         {
-            // Suggest a bound, but there are no existing where clauses for this `<T=Foo>`, so
-            // suggest adding one.
+            // Suggest a bound, but there is no existing `where` clause *and* the type param has a
+            // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
             err.span_suggestion_verbose(
                 generics.where_clause.tail_span_for_suggestion(),
                 &msg_restrict_type_further,
