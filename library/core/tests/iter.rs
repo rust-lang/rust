@@ -3222,3 +3222,15 @@ fn test_flatten_non_fused_inner() {
     assert_eq!(iter.next(), Some(1));
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn test_fold_mut() {
+    let nums = [1, 2, 3, 4, 5];
+    let result = nums.iter().fold_mut(Vec::new(), |v, i| {
+        if i % 2 == 0 {
+            v.push(i * 3);
+        }
+    });
+
+    assert_eq!(result, vec![6, 12]);
+}

@@ -345,3 +345,63 @@ fn bench_partial_cmp(b: &mut Bencher) {
 fn bench_lt(b: &mut Bencher) {
     b.iter(|| (0..100000).map(black_box).lt((0..100000).map(black_box)))
 }
+
+#[bench]
+fn bench_fold_vec(b: &mut Bencher) {
+    b.iter(|| {
+        (0..100000).map(black_box).fold(Vec::new(), |mut v, n| {
+            if n % 2 == 0 {
+                v.push(n * 3);
+            }
+            v
+        })
+    });
+}
+
+#[bench]
+fn bench_fold_mut_vec(b: &mut Bencher) {
+    b.iter(|| {
+        (0..100000).map(black_box).fold_mut(Vec::new(), |v, n| {
+            if n % 2 == 0 {
+                v.push(n * 3);
+            }
+        })
+    });
+}
+
+#[bench]
+fn bench_fold_map(b: &mut Bencher) {
+    use std::collections::HashMap;
+
+    b.iter(|| {
+        (0..100000).map(black_box).fold(HashMap::new(), |mut hm, n| {
+            *hm.entry(n % 3).or_insert(0) += 1;
+            hm
+        })
+    });
+}
+
+#[bench]
+fn bench_fold_mut_map(b: &mut Bencher) {
+    use std::collections::HashMap;
+
+    b.iter(|| {
+        (0..100000).map(black_box).fold_mut(HashMap::new(), |hm, n| {
+            *hm.entry(n % 3).or_insert(0) += 1;
+        })
+    });
+}
+
+#[bench]
+fn bench_fold_num(b: &mut Bencher) {
+    b.iter(|| (0..100000).map(black_box).fold(0, |sum, n| sum + n));
+}
+
+#[bench]
+fn bench_fold_mut_num(b: &mut Bencher) {
+    b.iter(|| {
+        (0..100000).map(black_box).fold_mut(0, |sum, n| {
+            *sum += n;
+        })
+    });
+}

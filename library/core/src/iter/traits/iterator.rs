@@ -1990,6 +1990,44 @@ pub trait Iterator {
         accum
     }
 
+    /// An iterator method that applies a function, producing a single, final value.
+    ///
+    /// `fold_mut()` is very similar to [`fold()`] except that the closure
+    /// takes a `&mut` to the 'accumulator' and does not need to return a new value.
+    ///
+    /// [`fold()`]: Iterator::fold
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_fold_mut)]
+    /// use std::collections::HashMap;
+    ///
+    /// let word = "abracadabra";
+    ///
+    /// // the count of each letter in a HashMap
+    /// let counts = word.chars().fold_mut(HashMap::new(), |map, c| {
+    ///   *map.entry(c).or_insert(0) += 1;
+    /// });
+    ///
+    /// assert_eq!(counts[&'a'], 5);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_fold_mut", issue = "76725")]
+    fn fold_mut<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(&mut B, Self::Item),
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            f(&mut accum, x);
+        }
+        accum
+    }
+
     /// The same as [`fold()`], but uses the first element in the
     /// iterator as the initial value, folding every subsequent element into it.
     /// If the iterator is empty, return [`None`]; otherwise, return the result
