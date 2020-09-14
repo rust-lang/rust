@@ -6,6 +6,7 @@ use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
 use rustc_middle::hir::map::Map;
+use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, DefIdTree, InferConst, Ty};
@@ -569,8 +570,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             local_visitor.visit_expr(expr);
         }
 
+        let mut param_name = None;
         let span = if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val {
-            self.inner.borrow_mut().const_unification_table().probe_value(vid).origin.span
+            let origin = self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
+            if let ConstVariableOriginKind::ConstParameterDefinition(param) = origin.kind {
+                param_name = Some(param);
+            }
+            origin.span
         } else {
             local_visitor.target_span
         };
@@ -579,7 +585,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let mut err =
             self.tcx.sess.struct_span_err_with_code(span, "type annotations needed", error_code);
 
-        err.note("unable to infer the value of a const parameter");
+        if let Some(param_name) = param_name {
+            err.note(&format!("cannot infer the value of the const parameter `{}`", param_name));
+        } else {
+            err.note("unable to infer the value of a const parameter");
+        }
 
         err
     }
