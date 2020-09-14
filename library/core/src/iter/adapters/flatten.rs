@@ -9,9 +9,6 @@ use super::Map;
 ///
 /// This `struct` is created by [`Iterator::flat_map`]. See its documentation
 /// for more.
-///
-/// [`flat_map`]: trait.Iterator.html#method.flat_map
-/// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct FlatMap<I, U: IntoIterator, F> {
