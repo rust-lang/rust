@@ -8,10 +8,10 @@ Rust-specific context.
 
 ## What is a control-flow graph?
 
-A control-flow graph is a common term from compilers. If you've ever
+A control-flow graph (CFG) is a common term from compilers. If you've ever
 used a flow-chart, then the concept of a control-flow graph will be
 pretty familiar to you. It's a representation of your program that
-exposes the underlying control flow in a very clear way.
+clearly exposes the underlying control flow.
 
 A control-flow graph is structured as a set of **basic blocks**
 connected by edges. The key idea of a basic block is that it is a set
@@ -44,12 +44,17 @@ if some_variable {
 d = 1;
 ```
 
-This would compile into four basic blocks:
+This would compile into four basic blocks in MIR. In textual form, it looks like
+this:
 
 ```mir
 BB0: {
     a = 1;
-    if some_variable { goto BB1 } else { goto BB2 }
+    if some_variable {
+        goto BB1;
+    } else {
+        goto BB2;
+    }
 }
 
 BB1: {
@@ -64,8 +69,31 @@ BB2: {
 
 BB3: {
     d = 1;
-    ...;
+    ...
 }
+```
+
+In graphical form, it looks like this:
+
+```
+                BB0
+       +--------------------+
+       | a = 1;             |
+       +--------------------+
+             /       \
+  if some_variable   else
+           /           \
+     BB1  /             \  BB2
+    +-----------+   +-----------+
+    | b = 1;    |   | c = 1;    |
+    +-----------+   +-----------+
+            \          /
+             \        /
+              \ BB3  /
+            +----------+
+            | d = 1;   |
+            | ...      |
+            +----------+
 ```
 
 When using a control-flow graph, a loop simply appears as a cycle in
@@ -82,10 +110,10 @@ and Michael I. Schwartzbach is an incredible resource!
 _Dataflow analysis_ is a type of static analysis that is common in many
 compilers. It describes a general technique, rather than a particular analysis.
 
-The basic idea is that we can walk over a [CFG](#cfg) and keep track of what
-some value could be. At the end of the walk, we might have shown that some
-claim is true or not necessarily true (e.g. "this variable must be
-initialized"). `rustc` tends to do dataflow analyses over the MIR, since that
+The basic idea is that we can walk over a [control-flow graph (CFG)](#cfg) and
+keep track of what some value could be. At the end of the walk, we might have
+shown that some claim is true or not necessarily true (e.g. "this variable must
+be initialized"). `rustc` tends to do dataflow analyses over the MIR, since MIR
 is already a CFG.
 
 For example, suppose we want to check that `x` is initialized before it is used
@@ -207,17 +235,17 @@ such that the function is well-typed: `∃ T:  (T: Debug) and well_typed(foo)`.
 
 <a name="variance"></a>
 
-## What is a DeBruijn Index?
+## What is a de Bruijn Index?
 
-DeBruijn indices are a way of representing which variables are bound in
-which binders using only integers. They were [originally invented][wikideb] for
-use in lambda calculus evaluation. In `rustc`, we use a similar idea for the
-[representation of generic types][sub].
+[De Bruijn indices][wikideb] are a way of representing using only integers which
+variables are bound in which binders. They were originally invented for use in
+lambda calculus evaluation (see [this Wikipedia article][wikideb] for more). In
+`rustc`, we use a similar idea for the [representation of generic types][sub].
 
 [wikideb]: https://en.wikipedia.org/wiki/De_Bruijn_index
 [sub]: ../generics.md
 
-Here is a basic example of how DeBruijn indices might be used for closures (we
+Here is a basic example of how de Bruijn indices might be used for closures (we
 don't actually do this in `rustc` though):
 
 ```rust,ignore
@@ -231,7 +259,7 @@ don't actually do this in `rustc` though):
 }
 ```
 
-## What is co- and contra-variance?
+## What are co- and contra-variance?
 
 Check out the subtyping chapter from the
 [Rust Nomicon](https://doc.rust-lang.org/nomicon/subtyping.html).
@@ -246,17 +274,16 @@ the type checker handles variance.
 Let's describe the concepts of free vs bound in terms of program
 variables, since that's the thing we're most familiar with.
 
-- Consider this expression, which creates a closure: `|a,
-  b| a + b`. Here, the `a` and `b` in `a + b` refer to the arguments
-  that the closure will be given when it is called. We say that the
-  `a` and `b` there are **bound** to the closure, and that the closure
-  signature `|a, b|` is a **binder** for the names `a` and `b`
-  (because any references to `a` or `b` within refer to the variables
-  that it introduces).
-- Consider this expression: `a + b`. In this expression, `a` and `b`
-  refer to local variables that are defined *outside* of the
-  expression. We say that those variables **appear free** in the
-  expression (i.e., they are **free**, not **bound** (tied up)).
+- Consider this expression, which creates a closure: `|a, b| a + b`.
+  Here, the `a` and `b` in `a + b` refer to the arguments that the closure will
+  be given when it is called. We say that the `a` and `b` there are **bound** to
+  the closure, and that the closure signature `|a, b|` is a **binder** for the
+  names `a` and `b` (because any references to `a` or `b` within refer to the
+  variables that it introduces).
+- Consider this expression: `a + b`. In this expression, `a` and `b` refer to
+  local variables that are defined *outside* of the expression. We say that
+  those variables **appear free** in the expression (i.e., they are **free**,
+  not **bound** (tied up)).
 
 So there you have it: a variable "appears free" in some
 expression/statement/whatever if it refers to something defined
