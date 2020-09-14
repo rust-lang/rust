@@ -129,6 +129,10 @@ impl Step for Llvm {
                 Err(m) => m,
             };
 
+        if builder.config.llvm_link_shared && target.contains("windows") {
+            panic!("shared linking to LLVM is not currently supported on Windows");
+        }
+
         builder.info(&format!("Building LLVM for {}", target));
         t!(stamp.remove());
         let _time = util::timeit(&builder);
