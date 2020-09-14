@@ -2285,8 +2285,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// Constants
 ///
 /// Two constants are equal if they are the same constant. Note that
-/// this does not necessarily mean that they are "==" in Rust -- in
-/// particular one must be wary of `NaN`!
+/// this does not necessarily mean that they are `==` in Rust -- in
+/// particular, one must be wary of `NaN`!
 
 #[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, HashStable)]
 pub struct Constant<'tcx> {
