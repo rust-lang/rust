@@ -934,7 +934,7 @@ impl Markdown<'_> {
             if let Some(link) =
                 links.iter().find(|link| &*link.original_text == broken_link.reference)
             {
-                Some((CowStr::Borrowed(&link.href), CowStr::Borrowed(&link.new_text)))
+                Some((link.href.as_str().into(), link.new_text.as_str().into()))
             } else {
                 None
             }
@@ -1014,7 +1014,7 @@ impl MarkdownSummaryLine<'_> {
             if let Some(link) =
                 links.iter().find(|link| &*link.original_text == broken_link.reference)
             {
-                Some((CowStr::Borrowed(&link.href), CowStr::Borrowed(&link.new_text)))
+                Some((link.href.as_str().into(), link.new_text.as_str().into()))
             } else {
                 None
             }
