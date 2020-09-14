@@ -945,7 +945,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match &lhs.kind {
             // Underscore pattern.
             ExprKind::Underscore => {
-                return self.pat(lhs.span, hir::PatKind::Wild);
+                return self.pat_without_dbm(lhs.span, hir::PatKind::Wild);
             }
             // Slice patterns.
             ExprKind::Array(elements) => {
@@ -953,11 +953,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.destructure_sequence(elements, "slice", eq_sign_span, assignments);
                 let slice_pat = if let Some((i, span)) = rest {
                     let (before, after) = pats.split_at(i);
-                    hir::PatKind::Slice(before, Some(self.pat(span, hir::PatKind::Wild)), after)
+                    hir::PatKind::Slice(
+                        before,
+                        Some(self.pat_without_dbm(span, hir::PatKind::Wild)),
+                        after,
+                    )
                 } else {
                     hir::PatKind::Slice(pats, None, &[])
                 };
-                return self.pat(lhs.span, slice_pat);
+                return self.pat_without_dbm(lhs.span, slice_pat);
             }
             // Tuple structs.
             ExprKind::Call(callee, args) => {
@@ -979,7 +983,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             // Destructure like a tuple struct since the path is in fact a constructor.
                             let tuple_struct_pat =
                                 hir::PatKind::TupleStruct(qpath, pats, rest.map(|r| r.0));
-                            return self.pat(lhs.span, tuple_struct_pat);
+                            return self.pat_without_dbm(lhs.span, tuple_struct_pat);
                         }
                         _ => {
                             // If the path is not a constructor, lower as an ordinary LHS.
@@ -1028,20 +1032,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     StructRest::None => false,
                 };
                 let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
-                return self.pat(lhs.span, struct_pat);
+                return self.pat_without_dbm(lhs.span, struct_pat);
             }
             // Tuples.
             ExprKind::Tup(elements) => {
                 let (pats, rest) =
                     self.destructure_sequence(elements, "tuple", eq_sign_span, assignments);
                 let tuple_pat = hir::PatKind::Tuple(pats, rest.map(|r| r.0));
-                return self.pat(lhs.span, tuple_pat);
+                return self.pat_without_dbm(lhs.span, tuple_pat);
             }
             // `(..)`. We special-case this for consistency with declarations.
             ExprKind::Paren(e) => {
                 if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
                     let tuple_pat = hir::PatKind::Tuple(&[], Some(0));
-                    return self.pat(lhs.span, tuple_pat);
+                    return self.pat_without_dbm(lhs.span, tuple_pat);
                 }
             }
             _ => {}

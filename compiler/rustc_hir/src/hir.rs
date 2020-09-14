@@ -732,6 +732,9 @@ pub struct Pat<'hir> {
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
     pub span: Span,
+    // Whether to use default binding modes.
+    // At present, this is false only for destructuring assignment.
+    pub default_binding_modes: bool,
 }
 
 impl Pat<'_> {
