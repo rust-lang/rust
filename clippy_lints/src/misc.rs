@@ -411,16 +411,16 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                         if !is_comparing_arrays {
                             diag.span_suggestion(
                                 expr.span,
-                                "consider comparing them within some error",
+                                "consider comparing them within some margin of error",
                                 format!(
-                                    "({}).abs() {} error",
+                                    "({}).abs() {} error_margin",
                                     lhs - rhs,
                                     if op == BinOpKind::Eq { '<' } else { '>' }
                                 ),
                                 Applicability::HasPlaceholders, // snippet
                             );
                         }
-                        diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error`");
+                        diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`");
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
