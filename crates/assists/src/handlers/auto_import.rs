@@ -14,10 +14,7 @@ use syntax::{
     SyntaxNode,
 };
 
-use crate::{
-    utils::{insert_use, MergeBehaviour},
-    AssistContext, AssistId, AssistKind, Assists, GroupLabel,
-};
+use crate::{utils::insert_use, AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 
 // Assist: auto_import
 //
@@ -60,7 +57,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
                 let new_syntax = insert_use(
                     &scope,
                     make::path_from_text(&import.to_string()),
-                    Some(MergeBehaviour::Full),
+                    ctx.config.insert_use.merge,
                 );
                 builder.replace(syntax.text_range(), new_syntax.to_string())
             },

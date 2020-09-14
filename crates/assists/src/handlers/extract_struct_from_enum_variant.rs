@@ -10,9 +10,7 @@ use syntax::{
 };
 
 use crate::{
-    assist_context::AssistBuilder,
-    utils::{insert_use, MergeBehaviour},
-    AssistContext, AssistId, AssistKind, Assists,
+    assist_context::AssistBuilder, utils::insert_use, AssistContext, AssistId, AssistKind, Assists,
 };
 use ast::make;
 use insert_use::ImportScope;
@@ -117,7 +115,7 @@ fn insert_import(
         let new_syntax = insert_use(
             &scope,
             make::path_from_text(&mod_path.to_string()),
-            Some(MergeBehaviour::Full),
+            ctx.config.insert_use.merge,
         );
         // FIXME: this will currently panic as multiple imports will have overlapping text ranges
         builder.replace(syntax.text_range(), new_syntax.to_string())

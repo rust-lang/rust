@@ -236,7 +236,7 @@ fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast::Pa
 }
 
 /// What type of merges are allowed.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MergeBehaviour {
     /// Merge everything together creating deeply nested imports.
     Full,

@@ -81,7 +81,9 @@ pub use crate::{
     },
 };
 
-pub use assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
+pub use assists::{
+    utils::MergeBehaviour, Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist,
+};
 pub use base_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
     SourceRootId,
