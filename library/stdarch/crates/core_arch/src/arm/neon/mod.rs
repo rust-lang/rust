@@ -188,6 +188,13 @@ extern "C" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v16i8")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.addp.v16i8")]
     fn vpaddq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4f32")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v4f32")]
+    fn vmaxq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4f32")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v4f32")]
+    fn vminq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
 }
 
 #[cfg(target_arch = "arm")]
@@ -1834,6 +1841,26 @@ pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
 pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
     use crate::core_arch::simd::{f32x4, u32x4};
     transmute(simd_cast::<_, u32x4>(transmute::<_, f32x4>(a)))
+}
+
+/// Floating-point minimum (vector).
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmin.f32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmin))]
+pub unsafe fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    vminq_f32_(a, b)
+}
+
+/// Floating-point maxmimum (vector).
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmax.f32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmax))]
+pub unsafe fn vmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    vmaxq_f32_(a, b)
 }
 
 #[cfg(test)]
@@ -4312,6 +4339,22 @@ mod tests {
         let b = u8x8::new(30, 31, 32, 33, 34, 35, 36, 37);
         let r: u8x8 = transmute(vpadd_u8(transmute(a), transmute(b)));
         let e = u8x8::new(3, 7, 11, 15, 61, 65, 69, 73);
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vminq_f32() {
+        let a = f32x4::new(1., -2., 3., -4.);
+        let b = f32x4::new(0., 3., 2., 8.);
+        let e = f32x4::new(0., -2., 2., -4.);
+        let r: f32x4 = transmute(vminq_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmaxq_f32() {
+        let a = f32x4::new(1., -2., 3., -4.);
+        let b = f32x4::new(0., 3., 2., 8.);
+        let e = f32x4::new(1., 3., 3., 8.);
+        let r: f32x4 = transmute(vmaxq_f32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 }
