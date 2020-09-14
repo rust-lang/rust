@@ -105,7 +105,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
         );
     });
 
-    // If the return block is not reachable, then the SSA builder may have inserted a `iconst.i128`
+    // If the return block is not reachable, then the SSA builder may have inserted an `iconst.i128`
     // instruction, which doesn't have an encoding.
     context.compute_cfg();
     context.compute_domtree();
