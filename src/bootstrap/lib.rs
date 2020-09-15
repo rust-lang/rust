@@ -549,6 +549,8 @@ impl Build {
         // as well as tracing *ignoring* this feature when debug_assertions is on
         if !self.config.rust_debug_logging {
             features.push_str(" max_level_info");
+        } else if !self.config.rust_trace_logging {
+            features.push_str(" max_level_debug");
         }
 
         features
