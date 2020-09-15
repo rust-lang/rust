@@ -6,7 +6,7 @@
 
     bb0: {
         _1 = CheckedAdd(const 1_usize, const 1_usize); // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
-        assert(!move (_1.1: bool), "attempt to compute `{} + {}` which would overflow", const 1_usize, const 1_usize) -> [success: bb2, unwind: bb1]; // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_usize, const 1_usize) -> [success: bb2, unwind: bb1]; // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     }
 
     bb1 (cleanup): {
