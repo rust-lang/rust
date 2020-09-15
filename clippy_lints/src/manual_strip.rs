@@ -124,8 +124,7 @@ fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx E
         if match_def_path(cx, method_def_id, &paths::STR_LEN);
         then {
             Some(arg)
-        }
-        else {
+        } else {
             None
         }
     }
