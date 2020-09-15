@@ -95,6 +95,7 @@
 //! [`Read`]: io::Read
 
 #![stable(feature = "process", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
 mod tests;
@@ -321,7 +322,8 @@ impl Read for ChildStdout {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 
@@ -381,7 +383,8 @@ impl Read for ChildStderr {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 
