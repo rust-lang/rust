@@ -56,4 +56,11 @@ fn main() {
         s2.push('d');
         s2[2..].to_uppercase();
     }
+
+    // Target not stripped. (Don't lint.)
+    let s3 = String::from("abcd");
+    let s4 = String::from("efgh");
+    if s3.starts_with("ab") {
+        s4[2..].to_string();
+    }
 }
