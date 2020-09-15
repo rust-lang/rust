@@ -1226,6 +1226,7 @@ pub struct FmtPrinterData<'a, 'tcx, F> {
     used_region_names: FxHashSet<Symbol>,
     region_index: usize,
     binder_depth: usize,
+    printed_type_count: usize,
 
     pub region_highlight_mode: RegionHighlightMode,
 
@@ -1256,6 +1257,7 @@ impl<F> FmtPrinter<'a, 'tcx, F> {
             used_region_names: Default::default(),
             region_index: 0,
             binder_depth: 0,
+            printed_type_count: 0,
             region_highlight_mode: RegionHighlightMode::default(),
             name_resolver: None,
         }))
@@ -1368,8 +1370,14 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         self.pretty_print_region(region)
     }
 
-    fn print_type(self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        self.pretty_print_type(ty)
+    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
+        if self.tcx.sess.type_length_limit().value_within_limit(self.printed_type_count) {
+            self.printed_type_count += 1;
+            self.pretty_print_type(ty)
+        } else {
+            write!(self, "...")?;
+            Ok(self)
+        }
     }
 
     fn print_dyn_existential(
