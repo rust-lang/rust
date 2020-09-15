@@ -1,2 +1,2 @@
-#[path =] //~ ERROR unexpected token: `]`
+#[path =] //~ ERROR expected a literal or ::-separated path
 mod m {}

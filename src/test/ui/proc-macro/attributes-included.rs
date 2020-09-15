@@ -13,6 +13,7 @@ use attributes_included::*;
 #[foo]
 #[inline]
 /// doc
+#[namespace = std::experimental]
 fn foo() {
     let a: i32 = "foo"; //~ WARN: unused variable
 }

@@ -934,16 +934,22 @@ impl<'a> Parser<'a> {
                             is_interpolated_expr = true;
                         }
                     }
-                    let token_tree = if is_interpolated_expr {
+                    let token_stream: TokenStream = if is_interpolated_expr {
                         // We need to accept arbitrary interpolated expressions to continue
                         // supporting things like `doc = $expr` that work on stable.
                         // Non-literal interpolated expressions are rejected after expansion.
-                        self.parse_token_tree()
+                        self.parse_token_tree().into()
+                    } else if let Some(lit) = self.parse_opt_lit() {
+                        self.require_unsuffixed(&lit);
+                        lit.token_tree().into()
+                    } else if self.check(&token::ModSep) || self.token.ident().is_some() {
+                        self.collect_tokens_only(|this| this.parse_path(PathStyle::Mod))?
                     } else {
-                        self.parse_unsuffixed_lit()?.token_tree()
+                        let msg = "expected a literal or ::-separated path";
+                        return Err(self.struct_span_err(self.token.span, msg));
                     };
 
-                    MacArgs::Eq(eq_span, token_tree.into())
+                    MacArgs::Eq(eq_span, token_stream)
                 } else {
                     MacArgs::Empty
                 }
@@ -1252,6 +1258,14 @@ impl<'a> Parser<'a> {
             desugar_doc_comments: self.desugar_doc_comments,
         };
         Ok((ret, Some(LazyTokenStream::new(lazy_impl))))
+    }
+
+    fn collect_tokens_only<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> PResult<'a, R>,
+    ) -> PResult<'a, TokenStream> {
+        let (_ignored, tokens) = self.collect_tokens(f)?;
+        Ok(tokens)
     }
 
     /// `::{` or `::*`

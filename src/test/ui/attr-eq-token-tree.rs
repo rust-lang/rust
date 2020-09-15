@@ -1,2 +1,2 @@
-#[my_attr = !] //~ ERROR unexpected token: `!`
+#[my_attr = !] //~ ERROR expected a literal or ::-separated path
 fn main() {}

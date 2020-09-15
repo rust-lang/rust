@@ -1,4 +1,4 @@
-error: unexpected token: `]`
+error: expected a literal or ::-separated path
   --> $DIR/attr-bad-meta-2.rs:1:9
    |
 LL | #[path =]

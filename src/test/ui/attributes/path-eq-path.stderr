@@ -1,0 +1,14 @@
+error: expected one of `::` or `]`, found `<`
+  --> $DIR/path-eq-path.rs:6:33
+   |
+LL | extern "C++" {
+   |              - while parsing this item list starting here
+...
+LL |     #[rust = std::option::Option<T>]
+   |                                 ^ expected one of `::` or `]`
+...
+LL | }
+   | - the item list ends here
+
+error: aborting due to previous error
+

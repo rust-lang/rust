@@ -159,6 +159,7 @@ impl<'a> Parser<'a> {
     ///     PATH `{` TOKEN_STREAM `}`
     ///     PATH
     ///     PATH `=` UNSUFFIXED_LIT
+    ///     PATH `=` PATH
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, capture_tokens: bool) -> PResult<'a, ast::AttrItem> {
         let item = match self.token.kind {
@@ -230,6 +231,11 @@ impl<'a> Parser<'a> {
 
     crate fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
+        self.require_unsuffixed(&lit);
+        Ok(lit)
+    }
+
+    crate fn require_unsuffixed(&self, lit: &ast::Lit) {
         debug!("checking if {:?} is unusuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
@@ -240,8 +246,6 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
         }
-
-        Ok(lit)
     }
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.

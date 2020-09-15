@@ -1,4 +1,4 @@
-error: unexpected token: `!`
+error: expected a literal or ::-separated path
   --> $DIR/attr-eq-token-tree.rs:1:13
    |
 LL | #[my_attr = !]
