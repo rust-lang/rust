@@ -105,7 +105,7 @@ pub(super) fn slice_end_index_overflow_fail() -> ! {
 /// std::slice::check_range(3, 1..=usize::MAX);
 /// ```
 ///
-/// [`Index::index`]: crate::ops::Index::index
+/// [`Index::index`]: ops::Index::index
 #[track_caller]
 #[unstable(feature = "slice_check_range", issue = "76393")]
 pub fn check_range<R: RangeBounds<usize>>(len: usize, range: R) -> Range<usize> {
