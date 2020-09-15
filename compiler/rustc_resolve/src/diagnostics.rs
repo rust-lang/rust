@@ -480,9 +480,7 @@ impl<'a> Resolver<'a> {
                 );
 
                 if is_type {
-                    err.note(&format!(
-                        "type parameters are currently not permitted in anonymous constants"
-                    ));
+                    err.note("type parameters are currently not permitted in anonymous constants");
                 } else {
                     err.help(
                         &format!("it is currently only allowed to use either `{0}` or `{{ {0} }}` as generic constants",
