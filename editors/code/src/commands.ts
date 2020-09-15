@@ -195,7 +195,7 @@ export function ssr(ctx: Ctx): Cmd {
 
         const options: vscode.InputBoxOptions = {
             value: "() ==>> ()",
-            prompt: "Enter request, for example 'Foo($a) ==> Foo::new($a)' ",
+            prompt: "Enter request, for example 'Foo($a) ==>> Foo::new($a)' ",
             validateInput: async (x: string) => {
                 try {
                     await client.sendRequest(ra.ssr, {
