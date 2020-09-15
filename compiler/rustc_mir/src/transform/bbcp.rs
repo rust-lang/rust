@@ -1,8 +1,9 @@
-use rustc_index::vec::IndexVec;
+use rustc_index::{bit_set::BitSet, vec::IndexVec};
 use rustc_middle::{
-    mir::traversal, mir::visit::MutVisitor, mir::visit::PlaceContext, mir::Body, mir::Local,
-    mir::Location, mir::Operand, mir::Place, mir::ProjectionElem, mir::Rvalue, mir::Statement,
-    mir::StatementKind, ty::TyCtxt,
+    mir::traversal, mir::visit::MutVisitor, mir::visit::PlaceContext, mir::visit::Visitor,
+    mir::Body, mir::Local, mir::Location, mir::Operand, mir::Place, mir::ProjectionElem,
+    mir::Rvalue, mir::Statement, mir::StatementKind, mir::Terminator, mir::TerminatorKind,
+    ty::TyCtxt,
 };
 use smallvec::SmallVec;
 
@@ -14,42 +15,121 @@ impl<'tcx> MirPass<'tcx> for Bbcp {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("processing {:?}", source.def_id());
 
+        let mut borrows = BorrowCollector { locals: BitSet::new_empty(body.local_decls.len()) };
+        borrows.visit_body(body);
+
         let mut visitor = BbcpVisitor {
             tcx,
-            local_values: IndexVec::from_elem_n(None, body.local_decls.len()),
-            invalidation_map: IndexVec::from_elem_n(SmallVec::new(), body.local_decls.len()),
-            can_replace: true,
+            referenced_locals: borrows.locals,
+            local_values: LocalValues::new(body),
         };
 
         let reachable = traversal::reachable_as_bitset(body);
 
         for bb in reachable.iter() {
             visitor.visit_basic_block_data(bb, &mut body.basic_blocks_mut()[bb]);
-
-            for opt in visitor.local_values.iter_mut() {
-                *opt = None;
-            }
-
-            for inv in visitor.invalidation_map.iter_mut() {
-                inv.clear();
-            }
+            visitor.local_values.clear();
         }
+    }
+}
+
+/// Symbolic value of a local variable.
+#[derive(Copy, Clone)]
+enum LocalValue<'tcx> {
+    Unknown,
+
+    /// The local is definitely assigned to `place`.
+    Place {
+        place: Place<'tcx>,
+        generation: u32,
+    },
+}
+
+/// Stores the locals that need to be invalidated when this local is modified or deallocated.
+#[derive(Default, Clone)]
+struct Invalidation {
+    locals: SmallVec<[Local; 4]>,
+    generation: u32,
+}
+
+struct LocalValues<'tcx> {
+    /// Tracks the values that were assigned to local variables in the current basic block.
+    map: IndexVec<Local, LocalValue<'tcx>>,
+
+    /// Maps source locals to a list of destination locals to invalidate when the source is
+    /// deallocated or modified.
+    invalidation_map: IndexVec<Local, Invalidation>,
+
+    /// Data generation in this map.
+    ///
+    /// This is bumped when entering a new block. When looking data up, we ensure it was stored in
+    /// the same generation. This allows clearing the map by simply incrementing the generation
+    /// instead of having to clear the data (which can perform poorly).
+    generation: u32,
+}
+
+impl<'tcx> LocalValues<'tcx> {
+    fn new(body: &Body<'_>) -> Self {
+        Self {
+            map: IndexVec::from_elem_n(LocalValue::Unknown, body.local_decls.len()),
+            invalidation_map: IndexVec::from_elem_n(
+                Invalidation::default(),
+                body.local_decls.len(),
+            ),
+            generation: 0,
+        }
+    }
+
+    fn get(&self, local: Local) -> Option<Place<'tcx>> {
+        match self.map[local] {
+            LocalValue::Place { place, generation } if generation == self.generation => Some(place),
+            _ => None,
+        }
+    }
+
+    /// Records an assignment of `place` to `local`.
+    fn insert(&mut self, local: Local, place: Place<'tcx>) {
+        self.map[local] = LocalValue::Place { place, generation: self.generation };
+
+        let inval = &mut self.invalidation_map[place.local];
+        if inval.generation != self.generation {
+            inval.locals.clear();
+            inval.generation = self.generation;
+        }
+
+        inval.locals.push(local);
+    }
+
+    /// Resets `local`'s state to `Unknown` and invalidates all locals that have been assigned to
+    /// `local` in the past.
+    fn invalidate(&mut self, local: Local) {
+        self.map[local] = LocalValue::Unknown;
+
+        let inval = &mut self.invalidation_map[local];
+        if inval.generation == self.generation {
+            for local in &inval.locals {
+                self.map[*local] = LocalValue::Unknown;
+            }
+
+            inval.locals.clear();
+        }
+    }
+
+    /// Marks the data in the map as dirty, effectively clearing it.
+    fn clear(&mut self) {
+        self.generation += 1;
     }
 }
 
 struct BbcpVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
+    /// Locals that have their address taken. We will not replace those, since that may change their
+    /// observed address.
+    referenced_locals: BitSet<Local>,
+
     /// Tracks the (symbolic) values of local variables in the visited block.
-    local_values: IndexVec<Local, Option<Place<'tcx>>>,
-
-    /// Maps source locals to a list of destination locals to invalidate when the source is
-    /// deallocated or modified.
-    invalidation_map: IndexVec<Local, SmallVec<[Local; 4]>>,
-
-    /// Whether we're allowed to apply replacements. This is temporarily set to `false` to avoid
-    /// replacing locals whose address is taken.
-    can_replace: bool,
+    local_values: LocalValues<'tcx>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for BbcpVisitor<'tcx> {
@@ -62,10 +142,12 @@ impl<'tcx> MutVisitor<'tcx> for BbcpVisitor<'tcx> {
             &statement.kind
         {
             if let Some(dest) = dest.as_local() {
-                if place_eligible(place) {
+                if place_eligible(place)
+                    && !self.referenced_locals.contains(dest)
+                    && !self.referenced_locals.contains(place.local)
+                {
                     debug!("recording value at {:?}: {:?} = {:?}", location, dest, place);
-                    self.local_values[dest] = Some(*place);
-                    self.invalidation_map[place.local].push(dest);
+                    self.local_values.insert(dest, *place);
                     return;
                 }
             }
@@ -77,50 +159,12 @@ impl<'tcx> MutVisitor<'tcx> for BbcpVisitor<'tcx> {
     fn visit_local(&mut self, local: &mut Local, context: PlaceContext, location: Location) {
         // We invalidate a local `l`, and any other locals whose assigned values contain `l`, if:
         // - `l` is mutated (via assignment or other stores, by taking a mutable ref/ptr, etc.)
-        // - `l` is reallocated by storage statements (which deinitialized its storage)
+        // - `l` is reallocated by storage statements (which deinitializes its storage)
         // - `l` is moved from (to avoid use-after-moves)
 
         if context.is_mutating_use() || context.is_storage_marker() || context.is_move() {
             debug!("invalidation of {:?} at {:?}: {:?} -> clearing", local, location, context);
-            self.local_values[*local] = None;
-            for inv in &self.invalidation_map[*local] {
-                self.local_values[*inv] = None;
-            }
-            self.invalidation_map[*local].clear();
-        }
-    }
-
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        // Prevent replacing anything an address is taken from.
-        // Doing that would cause code like:
-        //     _1 = ...;
-        //     _2 = _1;
-        //     _3 = &_1;
-        //     _4 = &_2;
-        // to assign the same address to _3 and _4, which we don't want to do.
-
-        let takes_ref = match rvalue {
-            Rvalue::Use(..)
-            | Rvalue::Repeat(..)
-            | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Len(..)
-            | Rvalue::Cast(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
-            | Rvalue::NullaryOp(..)
-            | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Aggregate(..) => false,
-            Rvalue::AddressOf(..) | Rvalue::Ref(..) => true,
-        };
-
-        if takes_ref {
-            let old_can_replace = self.can_replace;
-            self.can_replace = false;
-            self.super_rvalue(rvalue, location);
-            self.can_replace = old_can_replace;
-        } else {
-            self.super_rvalue(rvalue, location);
+            self.local_values.invalidate(*local);
         }
     }
 
@@ -128,25 +172,20 @@ impl<'tcx> MutVisitor<'tcx> for BbcpVisitor<'tcx> {
         // We can *not* do:
         //   _1 = ...;
         //   _2 = move _1;
-        //   use(move _2);      <- can not replace with `use(_1)`
+        //   use(move _2);   <- can not replace with `use(move _1)` or `use(_1)`
         // Because `_1` was already moved out of. This is handled when recording values of locals
         // though, so we won't end up here in that situation. When we see a `move` *here*, it must
         // be fine to instead make a *copy* of the original:
         //   _1 = ...;
         //   _2 = _1;
-        //   use(move _2);   <- can replace with `use(_2)`
+        //   use(move _2);   <- can replace with `use(_1)`
 
         // NB: All `operand`s are non-mutating uses of the contained place.
         if let Operand::Copy(place) | Operand::Move(place) = operand {
-            if self.can_replace {
-                if let Some(local) = place.as_local() {
-                    if let Some(known_place) = self.local_values[local] {
-                        debug!(
-                            "{:?}: replacing use of {:?} with {:?}",
-                            location, place, known_place
-                        );
-                        *operand = Operand::Copy(known_place);
-                    }
+            if let Some(local) = place.as_local() {
+                if let Some(known_place) = self.local_values.get(local) {
+                    debug!("{:?}: replacing use of {:?} with {:?}", location, place, known_place);
+                    *operand = Operand::Copy(known_place);
                 }
             }
         }
@@ -162,4 +201,59 @@ fn place_eligible(place: &Place<'_>) -> bool {
         | ProjectionElem::Subslice { .. }
         | ProjectionElem::Downcast(..) => true,
     })
+}
+
+struct BorrowCollector {
+    locals: BitSet<Local>,
+}
+
+impl<'tcx> Visitor<'tcx> for BorrowCollector {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        self.super_rvalue(rvalue, location);
+
+        match rvalue {
+            Rvalue::AddressOf(_, borrowed_place) | Rvalue::Ref(_, _, borrowed_place) => {
+                if !borrowed_place.is_indirect() {
+                    self.locals.insert(borrowed_place.local);
+                }
+            }
+
+            Rvalue::Cast(..)
+            | Rvalue::Use(..)
+            | Rvalue::Repeat(..)
+            | Rvalue::Len(..)
+            | Rvalue::BinaryOp(..)
+            | Rvalue::CheckedBinaryOp(..)
+            | Rvalue::NullaryOp(..)
+            | Rvalue::UnaryOp(..)
+            | Rvalue::Discriminant(..)
+            | Rvalue::Aggregate(..)
+            | Rvalue::ThreadLocalRef(..) => {}
+        }
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        self.super_terminator(terminator, location);
+
+        match terminator.kind {
+            TerminatorKind::Drop { place: dropped_place, .. }
+            | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+                self.locals.insert(dropped_place.local);
+            }
+
+            TerminatorKind::Abort
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::Call { .. }
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Return
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::InlineAsm { .. } => {}
+        }
+    }
 }
