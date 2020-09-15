@@ -1,6 +1,6 @@
 use crate::utils;
 use crate::utils::sugg::Sugg;
-use crate::utils::{match_type, paths, span_lint_and_sugg};
+use crate::utils::{is_type_diagnostic_item, paths, span_lint_and_sugg};
 use if_chain::if_chain;
 
 use rustc_errors::Applicability;
@@ -73,7 +73,7 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
         path.ident.name.to_ident_string() == "ok"
-            && match_type(cx, &cx.typeck_results().expr_ty(&receiver), &paths::RESULT)
+            && is_type_diagnostic_item(cx, &cx.typeck_results().expr_ty(&receiver), sym!(result_type))
     } else {
         false
     }

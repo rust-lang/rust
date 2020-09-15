@@ -867,6 +867,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
         &utils::internal_lints::DEFAULT_LINT,
         &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
+        &utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
         &utils::internal_lints::OUTER_EXPN_EXPN_DATA,
         &utils::internal_lints::PRODUCE_ICE,
         &vec::USELESS_VEC,
@@ -1112,6 +1113,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box self_assignment::SelfAssignment);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
+    store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1240,6 +1242,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
         LintId::of(&utils::internal_lints::DEFAULT_LINT),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
+        LintId::of(&utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM),
         LintId::of(&utils::internal_lints::OUTER_EXPN_EXPN_DATA),
         LintId::of(&utils::internal_lints::PRODUCE_ICE),
     ]);
