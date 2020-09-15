@@ -3738,6 +3738,7 @@ dependencies = [
 name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "bitflags",
  "byteorder",
  "chalk-ir",

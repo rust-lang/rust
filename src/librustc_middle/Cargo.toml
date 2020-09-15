@@ -31,5 +31,6 @@ rustc_span = { path = "../librustc_span" }
 byteorder = { version = "1.3" }
 chalk-ir = "0.14.0"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+arrayvec = { version = "0.5.1", default-features = false }
 measureme = "0.7.1"
 rustc_session = { path = "../librustc_session" }

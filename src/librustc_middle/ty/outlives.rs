@@ -3,6 +3,7 @@
 // RFC for reference.
 
 use crate::ty::subst::{GenericArg, GenericArgKind};
+use crate::ty::walk::MiniSet;
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use smallvec::SmallVec;
 
@@ -50,12 +51,18 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Push onto `out` all the things that must outlive `'a` for the condition
     /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
     pub fn push_outlives_components(self, ty0: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
-        compute_components(self, ty0, out);
+        let mut visited = MiniSet::new();
+        compute_components(self, ty0, out, &mut visited);
         debug!("components({:?}) = {:?}", ty0, out);
     }
 }
 
-fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
+fn compute_components(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    out: &mut SmallVec<[Component<'tcx>; 4]>,
+    visited: &mut MiniSet<GenericArg<'tcx>>,
+) {
     // Descend through the types, looking for the various "base"
     // components and collecting them into `out`. This is not written
     // with `collect()` because of the need to sometimes skip subtrees
@@ -73,11 +80,11 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                 for child in substs {
                     match child.unpack() {
                         GenericArgKind::Type(ty) => {
-                            compute_components(tcx, ty, out);
+                            compute_components(tcx, ty, out, visited);
                         }
                         GenericArgKind::Lifetime(_) => {}
                         GenericArgKind::Const(_) => {
-                            compute_components_recursive(tcx, child, out);
+                            compute_components_recursive(tcx, child, out, visited);
                         }
                     }
                 }
@@ -85,19 +92,19 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
 
             ty::Array(element, _) => {
                 // Don't look into the len const as it doesn't affect regions
-                compute_components(tcx, element, out);
+                compute_components(tcx, element, out, visited);
             }
 
             ty::Closure(_, ref substs) => {
                 for upvar_ty in substs.as_closure().upvar_tys() {
-                    compute_components(tcx, upvar_ty, out);
+                    compute_components(tcx, upvar_ty, out, visited);
                 }
             }
 
             ty::Generator(_, ref substs, _) => {
                 // Same as the closure case
                 for upvar_ty in substs.as_generator().upvar_tys() {
-                    compute_components(tcx, upvar_ty, out);
+                    compute_components(tcx, upvar_ty, out, visited);
                 }
 
                 // We ignore regions in the generator interior as we don't
@@ -135,7 +142,8 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                     // OutlivesProjectionComponents.  Continue walking
                     // through and constrain Pi.
                     let mut subcomponents = smallvec![];
-                    compute_components_recursive(tcx, ty.into(), &mut subcomponents);
+                    let mut subvisited = MiniSet::new();
+                    compute_components_recursive(tcx, ty.into(), &mut subcomponents, &mut subvisited);
                     out.push(Component::EscapingProjection(subcomponents.into_iter().collect()));
                 }
             }
@@ -177,7 +185,7 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                 // the "bound regions list".  In our representation, no such
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
-                compute_components_recursive(tcx, ty.into(), out);
+                compute_components_recursive(tcx, ty.into(), out, visited);
             }
         }
 }
@@ -186,11 +194,12 @@ fn compute_components_recursive(
     tcx: TyCtxt<'tcx>,
     parent: GenericArg<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,
+    visited: &mut MiniSet<GenericArg<'tcx>>,
 ) {
-    for child in parent.walk_shallow() {
+    for child in parent.walk_shallow(visited) {
         match child.unpack() {
             GenericArgKind::Type(ty) => {
-                compute_components(tcx, ty, out);
+                compute_components(tcx, ty, out, visited);
             }
             GenericArgKind::Lifetime(lt) => {
                 // Ignore late-bound regions.
@@ -199,7 +208,7 @@ fn compute_components_recursive(
                 }
             }
             GenericArgKind::Const(_) => {
-                compute_components_recursive(tcx, child, out);
+                compute_components_recursive(tcx, child, out, visited);
             }
         }
     }
