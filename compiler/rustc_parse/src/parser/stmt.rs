@@ -364,7 +364,7 @@ impl<'a> Parser<'a> {
         let mut eat_semi = true;
         match stmt.kind {
             // Expression without semicolon.
-            StmtKind::Expr(ref expr)
+            StmtKind::Expr(ref mut expr)
                 if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
             {
                 // Just check for errors and recover; do not eat semicolon yet.
@@ -388,15 +388,29 @@ impl<'a> Parser<'a> {
                             );
                         }
                     }
-                    e.emit();
-                    self.recover_stmt();
+                    if let Err(mut e) =
+                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
+                    {
+                        e.emit();
+                        self.recover_stmt();
+                    }
                     // Don't complain about type errors in body tail after parse error (#57383).
                     let sp = expr.span.to(self.prev_token.span);
-                    stmt.kind = StmtKind::Expr(self.mk_expr_err(sp));
+                    *expr = self.mk_expr_err(sp);
                 }
             }
-            StmtKind::Local(..) => {
-                self.expect_semi()?;
+            StmtKind::Local(ref mut local) => {
+                if let Err(e) = self.expect_semi() {
+                    // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
+                    match &mut local.init {
+                        Some(ref mut expr) => {
+                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
+                            // We found `foo<bar, baz>`, have we fully recovered?
+                            self.expect_semi()?;
+                        }
+                        None => return Err(e),
+                    }
+                }
                 eat_semi = false;
             }
             StmtKind::Empty => eat_semi = false,

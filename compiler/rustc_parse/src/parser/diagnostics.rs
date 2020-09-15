@@ -553,6 +553,52 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// When writing a turbofish with multiple type parameters missing the leading `::`, we will
+    /// encounter a parse error when encountering the first `,`.
+    pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
+        &mut self,
+        mut e: DiagnosticBuilder<'a>,
+        expr: &mut P<Expr>,
+    ) -> PResult<'a, ()> {
+        if let ExprKind::Binary(binop, _, _) = &expr.kind {
+            if let ast::BinOpKind::Lt = binop.node {
+                if self.eat(&token::Comma) {
+                    let x = self.parse_seq_to_before_end(
+                        &token::Gt,
+                        SeqSep::trailing_allowed(token::Comma),
+                        |p| p.parse_ty(),
+                    );
+                    match x {
+                        Ok((_, _, false)) => {
+                            self.bump(); // `>`
+                            match self.parse_expr() {
+                                Ok(_) => {
+                                    e.span_suggestion_verbose(
+                                        binop.span.shrink_to_lo(),
+                                        "use `::<...>` instead of `<...>` to specify type arguments",
+                                        "::".to_string(),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    e.emit();
+                                    *expr = self.mk_expr_err(expr.span.to(self.prev_token.span));
+                                    return Ok(());
+                                }
+                                Err(mut err) => {
+                                    err.cancel();
+                                }
+                            }
+                        }
+                        Err(mut err) => {
+                            err.cancel();
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Err(e)
+    }
+
     /// Check to see if a pair of chained operators looks like an attempt at chained comparison,
     /// e.g. `1 < x <= 3`. If so, suggest either splitting the comparison into two, or
     /// parenthesising the leftmost comparison.
