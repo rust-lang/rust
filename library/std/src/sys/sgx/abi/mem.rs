@@ -21,8 +21,15 @@ extern "C" {
 #[inline(always)]
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn image_base() -> u64 {
-    let base;
-    unsafe { llvm_asm!("lea IMAGE_BASE(%rip),$0":"=r"(base)) };
+    let base: u64;
+    unsafe {
+        asm!(
+            "lea IMAGE_BASE(%rip), {}",
+            lateout(reg) base,
+            // NOTE(#76738): ATT syntax is used to support LLVM 8 and 9.
+            options(att_syntax, nostack, preserves_flags, nomem, pure),
+        )
+    };
     base
 }
 
