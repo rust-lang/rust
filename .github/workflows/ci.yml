@@ -76,7 +76,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -180,7 +180,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -375,6 +375,64 @@ jobs:
             env:
               DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
             os: ubuntu-latest-xl
+          - name: dist-x86_64-apple
+            env:
+              SCRIPT: "./x.py dist"
+              RUST_CONFIGURE_ARGS: "--host=x86_64-apple-darwin --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: macos-latest
+          - name: dist-x86_64-apple-alt
+            env:
+              SCRIPT: "./x.py dist"
+              RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            os: macos-latest
+          - name: x86_64-apple
+            env:
+              SCRIPT: "./x.py --stage 2 test"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.8
+              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            os: macos-latest
+          - name: dist-x86_64-apple
+            env:
+              SCRIPT: "./x.py dist"
+              RUST_CONFIGURE_ARGS: "--host=x86_64-apple-darwin --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: macos-latest
+          - name: dist-x86_64-apple-alt
+            env:
+              SCRIPT: "./x.py dist"
+              RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            os: macos-latest
+          - name: x86_64-apple
+            env:
+              SCRIPT: "./x.py --stage 2 test"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.8
+              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            os: macos-latest
           - name: x86_64-msvc-1
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
@@ -499,7 +557,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -580,38 +638,6 @@ jobs:
               - self-hosted
               - ARM64
               - linux
-          - name: dist-x86_64-apple
-            env:
-              SCRIPT: "./x.py dist"
-              RUST_CONFIGURE_ARGS: "--host=x86_64-apple-darwin --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.7
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              DIST_REQUIRE_ALL_TOOLS: 1
-              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
-            os: macos-latest
-          - name: dist-x86_64-apple-alt
-            env:
-              SCRIPT: "./x.py dist"
-              RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.7
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
-            os: macos-latest
-          - name: x86_64-apple
-            env:
-              SCRIPT: "./x.py --stage 2 test"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.8
-              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
-            os: macos-latest
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -638,7 +664,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
