@@ -1076,6 +1076,19 @@ pub struct VarDebugInfo<'tcx> {
 // BasicBlock
 
 rustc_index::newtype_index! {
+    /// The unit of the MIR [control-flow graph][CFG].
+    ///
+    /// There is no branching (e.g., `if`s, function calls, etc.) within a basic block, which makes
+    /// it easier to do [data-flow analyses] and optimizations. Basic blocks consist of a series of
+    /// [statements][`Statement`], ending with a [terminator][`Terminator`]. Basic blocks can have
+    /// multiple predecessors and successors.
+    ///
+    /// Read more about basic blocks in the [rustc-dev-guide][guide-mir].
+    ///
+    /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
+    /// [data-flow analyses]:
+    ///     https://rustc-dev-guide.rust-lang.org/appendix/background.html#what-is-a-dataflow-analysis
+    /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
     pub struct BasicBlock {
         derive [HashStable]
         DEBUG_FORMAT = "bb{}",
@@ -1092,6 +1105,7 @@ impl BasicBlock {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
 
+/// See [`BasicBlock`] for documentation on what basic blocks are at a high level.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
