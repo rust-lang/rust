@@ -145,7 +145,7 @@
     - [Implicit Caller Location](./backend/implicit-caller-location.md)
 - [Profile-guided Optimization](./profile-guided-optimization.md)
 - [Sanitizers Support](./sanitizers.md)
-- [Debugging Support in Rust Compiler](./debugging-support-in-rustc.md)
+- [Debugging Support in the Rust Compiler](./debugging-support-in-rustc.md)
 
 ---
 
