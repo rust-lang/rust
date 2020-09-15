@@ -730,4 +730,26 @@ fn f() {}
             expect![[""]],
         );
     }
+
+    #[test]
+    fn completes_function() {
+        check(
+            r#"
+fn foo(
+    a: i32,
+    b: i32
+) {
+
+}
+
+fn main() {
+    fo<|>
+}
+"#,
+            expect![[r#"
+                fn foo(…) fn foo(a: i32, b: i32)
+                fn main() fn main()
+            "#]],
+        );
+    }
 }
