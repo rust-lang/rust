@@ -99,11 +99,11 @@ declare_clippy_lint! {
     /// if y != x {} // where both are floats
     ///
     /// // Good
-    /// let error = f64::EPSILON; // Use an epsilon for comparison
+    /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
     /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
-    /// // let error = std::f64::EPSILON;
-    /// if (y - 1.23f64).abs() < error { }
-    /// if (y - x).abs() > error { }
+    /// // let error_margin = std::f64::EPSILON;
+    /// if (y - 1.23f64).abs() < error_margin { }
+    /// if (y - x).abs() > error_margin { }
     /// ```
     pub FLOAT_CMP,
     correctness,
@@ -242,10 +242,10 @@ declare_clippy_lint! {
     /// if x == ONE { } // where both are floats
     ///
     /// // Good
-    /// let error = f64::EPSILON; // Use an epsilon for comparison
+    /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
     /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
-    /// // let error = std::f64::EPSILON;
-    /// if (x - ONE).abs() < error { }
+    /// // let error_margin = std::f64::EPSILON;
+    /// if (x - ONE).abs() < error_margin { }
     /// ```
     pub FLOAT_CMP_CONST,
     restriction,
