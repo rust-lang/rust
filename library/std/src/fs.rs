@@ -368,16 +368,16 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(with_options)]
+    /// #![feature(file_builder)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let _ = File::with_options().read(true).open("foo.txt")?;
+    ///     let _ = File::builder().read(true).open("foo.txt")?;
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "with_options", issue = "65439")]
-    pub fn with_options() -> OpenOptions {
+    #[unstable(feature = "file_builder", issue = "65439")]
+    pub fn builder() -> OpenOptions {
         OpenOptions::new()
     }
 
