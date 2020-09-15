@@ -772,9 +772,23 @@ fn test_append() {
 #[test]
 fn test_split_off() {
     let mut vec = vec![1, 2, 3, 4, 5, 6];
+    let orig_capacity = vec.capacity();
     let vec2 = vec.split_off(4);
     assert_eq!(vec, [1, 2, 3, 4]);
     assert_eq!(vec2, [5, 6]);
+    assert_eq!(vec.capacity(), orig_capacity);
+}
+
+#[test]
+fn test_split_off_take_all() {
+    let mut vec = vec![1, 2, 3, 4, 5, 6];
+    let orig_ptr = vec.as_ptr();
+    let orig_capacity = vec.capacity();
+    let vec2 = vec.split_off(0);
+    assert_eq!(vec, []);
+    assert_eq!(vec2, [1, 2, 3, 4, 5, 6]);
+    assert_eq!(vec.capacity(), orig_capacity);
+    assert_eq!(vec2.as_ptr(), orig_ptr);
 }
 
 #[test]

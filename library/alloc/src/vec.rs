@@ -1410,6 +1410,11 @@ impl<T> Vec<T> {
             assert_failed(at, self.len());
         }
 
+        if at == 0 {
+            // the new vector can take over the original buffer and avoid the copy
+            return mem::replace(self, Vec::with_capacity(self.capacity()));
+        }
+
         let other_len = self.len - at;
         let mut other = Vec::with_capacity(other_len);
 
