@@ -166,6 +166,16 @@ from_str_float_impl!(f64);
 ///
 /// This error is used as the error type for the [`FromStr`] implementation
 /// for [`f32`] and [`f64`].
+///
+/// # Example
+///
+/// ```
+/// use std::str::FromStr;
+///
+/// if let Err(e) = f64::from_str("a.12") {
+///     println!("Failed conversion to f64: {}", e);
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseFloatError {
