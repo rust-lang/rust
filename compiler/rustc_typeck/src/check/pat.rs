@@ -1150,7 +1150,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if no_accessible_unmentioned_fields {
                 unmentioned_err = Some(self.error_no_accessible_fields(pat, &fields));
             } else {
-                unmentioned_err = Some(self.error_unmentioned_fields(pat, &unmentioned_fields));
+                unmentioned_err =
+                    Some(self.error_unmentioned_fields(pat, &unmentioned_fields, &fields));
             }
         }
         match (inexistent_fields_err, unmentioned_err) {
@@ -1405,6 +1406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
+        fields: &'tcx [hir::FieldPat<'tcx>],
     ) -> DiagnosticBuilder<'tcx> {
         let field_names = if unmentioned_fields.len() == 1 {
             format!("field `{}`", unmentioned_fields[0].1)
@@ -1424,14 +1426,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field_names
         );
         err.span_label(pat.span, format!("missing {}", field_names));
-        if self.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note(
-                "This error indicates that a pattern for a struct fails to specify a \
-                 sub-pattern for every one of the struct's fields. Ensure that each field \
-                 from the struct's definition is mentioned in the pattern, or use `..` to \
-                 ignore unwanted fields.",
-            );
-        }
+        let len = unmentioned_fields.len();
+        let (prefix, postfix, sp) = match fields {
+            [] => match &pat.kind {
+                PatKind::Struct(path, [], false) => {
+                    (" { ", " }", path.span().shrink_to_hi().until(pat.span.shrink_to_hi()))
+                }
+                _ => return err,
+            },
+            [.., field] => (
+                match pat.kind {
+                    PatKind::Struct(_, [_, ..], _) => ", ",
+                    _ => "",
+                },
+                "",
+                field.span.shrink_to_hi(),
+            ),
+        };
+        err.span_suggestion(
+            sp,
+            &format!(
+                "include the missing field{} in the pattern",
+                if len == 1 { "" } else { "s" },
+            ),
+            format!(
+                "{}{}{}",
+                prefix,
+                unmentioned_fields
+                    .iter()
+                    .map(|(_, name)| name.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                postfix,
+            ),
+            Applicability::MachineApplicable,
+        );
+        err.span_suggestion(
+            sp,
+            &format!(
+                "if you don't care about {} missing field{}, you can explicitely ignore {}",
+                if len == 1 { "this" } else { "these" },
+                if len == 1 { "" } else { "s" },
+                if len == 1 { "it" } else { "them" },
+            ),
+            format!("{}..{}", prefix, postfix),
+            Applicability::MachineApplicable,
+        );
         err
     }
 
