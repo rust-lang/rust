@@ -1196,6 +1196,14 @@ impl PlaceContext {
         matches!(self, PlaceContext::NonMutatingUse(..))
     }
 
+    /// Returns `true` if `self` describes a move out of the place.
+    pub fn is_move(&self) -> bool {
+        match *self {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => true,
+            _ => false,
+        }
+    }
+
     /// Returns `true` if this place context represents a use.
     pub fn is_use(&self) -> bool {
         !matches!(self, PlaceContext::NonUse(..))
