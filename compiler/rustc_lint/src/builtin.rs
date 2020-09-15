@@ -961,7 +961,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
             continue;
         }
 
-        let span = sugared_span.take().unwrap_or_else(|| attr.span);
+        let span = sugared_span.take().unwrap_or(attr.span);
 
         if attr.is_doc_comment() || cx.sess().check_name(attr, sym::doc) {
             cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
