@@ -465,6 +465,22 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         unsafe { &mut (*self.node.as_ptr()) }
     }
 
+    /// Borrows a mutable reference to one of the keys stored in the node.
+    ///
+    /// # Safety
+    /// The node has more than `idx` initialized elements.
+    pub unsafe fn key_mut_at(&mut self, idx: usize) -> &mut K {
+        unsafe { self.reborrow_mut().into_key_mut_at(idx) }
+    }
+
+    /// Borrows a mutable reference to one of the values stored in the node.
+    ///
+    /// # Safety
+    /// The node has more than `idx` initialized elements.
+    pub unsafe fn val_mut_at(&mut self, idx: usize) -> &mut V {
+        unsafe { self.reborrow_mut().into_val_mut_at(idx) }
+    }
+
     fn keys_mut(&mut self) -> &mut [K] {
         // SAFETY: the caller will not be able to call further methods on self
         // until the key slice reference is dropped, as we have unique access
@@ -555,15 +571,14 @@ impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key/value pair to the end of the node.
     pub fn push(&mut self, key: K, val: V) {
-        assert!(self.len() < CAPACITY);
-
-        let idx = self.len();
-
+        let len = &mut self.as_leaf_mut().len;
+        let idx = *len as usize;
+        assert!(idx < CAPACITY);
+        *len += 1;
         unsafe {
-            ptr::write(self.keys_mut().get_unchecked_mut(idx), key);
-            ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
+            ptr::write(self.key_mut_at(idx), key);
+            ptr::write(self.val_mut_at(idx), val);
         }
-        self.as_leaf_mut().len += 1;
     }
 
     /// Adds a key/value pair to the beginning of the node.
@@ -600,17 +615,15 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// the end of the node.
     pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
-        assert!(self.len() < CAPACITY);
 
-        let idx = self.len();
-
+        let len = &mut self.as_leaf_mut().len;
+        let idx = *len as usize;
+        assert!(idx < CAPACITY);
+        *len += 1;
         unsafe {
-            ptr::write(self.keys_mut().get_unchecked_mut(idx), key);
-            ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
+            ptr::write(self.key_mut_at(idx), key);
+            ptr::write(self.val_mut_at(idx), val);
             self.as_internal_mut().edges.get_unchecked_mut(idx + 1).write(edge.node);
-
-            self.as_leaf_mut().len += 1;
-
             Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
         }
     }
@@ -903,7 +916,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// The returned pointer points to the inserted value.
     fn insert_fit(&mut self, key: K, val: V) -> *mut V {
         self.leafy_insert_fit(key, val);
-        unsafe { self.node.vals_mut().get_unchecked_mut(self.idx) }
+        unsafe { self.node.val_mut_at(self.idx) }
     }
 }
 
