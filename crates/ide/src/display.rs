@@ -41,7 +41,13 @@ pub(crate) fn function_declaration(node: &ast::Fn) -> String {
         format_to!(buf, "{}", type_params);
     }
     if let Some(param_list) = node.param_list() {
-        format_to!(buf, "{}", param_list);
+        let mut params = match param_list.self_param() {
+            Some(self_param) => vec![self_param.to_string()],
+            None => vec![],
+        };
+        params.extend(param_list.params().map(|param| param.to_string()));
+        // Useful to inline parameters
+        format_to!(buf, "({})", params.join(", "));
     }
     if let Some(ret_type) = node.ret_type() {
         if ret_type.ty().is_some() {
