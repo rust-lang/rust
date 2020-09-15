@@ -2193,7 +2193,7 @@ pub unsafe fn _mm512_maskz_getmant_pd(
 
 /// Add packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2217,7 +2217,7 @@ pub unsafe fn _mm512_add_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 
 /// Add packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2247,7 +2247,7 @@ pub unsafe fn _mm512_mask_add_round_ps(
 
 /// Add packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2277,7 +2277,7 @@ pub unsafe fn _mm512_maskz_add_round_ps(
 
 /// Add packed double-precision (64-bit) floating-point elements in a and b, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2301,7 +2301,7 @@ pub unsafe fn _mm512_add_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 
 /// Add packed double-precision (64-bit) floating-point elements in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2331,7 +2331,7 @@ pub unsafe fn _mm512_mask_add_round_pd(
 
 /// Add packed double-precision (64-bit) floating-point elements in a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2361,7 +2361,7 @@ pub unsafe fn _mm512_maskz_add_round_pd(
 
 /// Subtract packed single-precision (32-bit) floating-point elements in b from packed single-precision (32-bit) floating-point elements in a, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2385,7 +2385,7 @@ pub unsafe fn _mm512_sub_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 
 /// Subtract packed single-precision (32-bit) floating-point elements in b from packed single-precision (32-bit) floating-point elements in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2415,7 +2415,7 @@ pub unsafe fn _mm512_mask_sub_round_ps(
 
 /// Subtract packed single-precision (32-bit) floating-point elements in b from packed single-precision (32-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2445,7 +2445,7 @@ pub unsafe fn _mm512_maskz_sub_round_ps(
 
 /// Subtract packed double-precision (64-bit) floating-point elements in b from packed double-precision (64-bit) floating-point elements in a, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2469,7 +2469,7 @@ pub unsafe fn _mm512_sub_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 
 /// Subtract packed double-precision (64-bit) floating-point elements in b from packed double-precision (64-bit) floating-point elements in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2499,7 +2499,7 @@ pub unsafe fn _mm512_mask_sub_round_pd(
 
 /// Subtract packed double-precision (64-bit) floating-point elements in b from packed double-precision (64-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2529,7 +2529,7 @@ pub unsafe fn _mm512_maskz_sub_round_pd(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2553,7 +2553,7 @@ pub unsafe fn _mm512_mul_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2583,7 +2583,7 @@ pub unsafe fn _mm512_mask_mul_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2613,7 +2613,7 @@ pub unsafe fn _mm512_maskz_mul_round_ps(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2637,7 +2637,7 @@ pub unsafe fn _mm512_mul_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2667,7 +2667,7 @@ pub unsafe fn _mm512_mask_mul_round_pd(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2697,7 +2697,7 @@ pub unsafe fn _mm512_maskz_mul_round_pd(
 
 /// Divide packed single-precision (32-bit) floating-point elements in a by packed elements in b, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2721,7 +2721,7 @@ pub unsafe fn _mm512_div_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 
 /// Divide packed single-precision (32-bit) floating-point elements in a by packed elements in b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2751,7 +2751,7 @@ pub unsafe fn _mm512_mask_div_round_ps(
 
 /// Divide packed single-precision (32-bit) floating-point elements in a by packed elements in b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2781,7 +2781,7 @@ pub unsafe fn _mm512_maskz_div_round_ps(
 
 /// Divide packed double-precision (64-bit) floating-point elements in a by packed elements in b, =and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2805,7 +2805,7 @@ pub unsafe fn _mm512_div_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 
 /// Divide packed double-precision (64-bit) floating-point elements in a by packed elements in b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2835,7 +2835,7 @@ pub unsafe fn _mm512_mask_div_round_pd(
 
 /// Divide packed double-precision (64-bit) floating-point elements in a by packed elements in b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2865,7 +2865,7 @@ pub unsafe fn _mm512_maskz_div_round_pd(
 
 /// Compute the square root of packed single-precision (32-bit) floating-point elements in a, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2889,7 +2889,7 @@ pub unsafe fn _mm512_sqrt_round_ps(a: __m512, rounding: i32) -> __m512 {
 
 /// Compute the square root of packed single-precision (32-bit) floating-point elements in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2918,7 +2918,7 @@ pub unsafe fn _mm512_mask_sqrt_round_ps(
 
 /// Compute the square root of packed single-precision (32-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2943,7 +2943,7 @@ pub unsafe fn _mm512_maskz_sqrt_round_ps(k: __mmask16, a: __m512, rounding: i32)
 
 /// Compute the square root of packed double-precision (64-bit) floating-point elements in a, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2967,7 +2967,7 @@ pub unsafe fn _mm512_sqrt_round_pd(a: __m512d, rounding: i32) -> __m512d {
 
 /// Compute the square root of packed double-precision (64-bit) floating-point elements in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -2996,7 +2996,7 @@ pub unsafe fn _mm512_mask_sqrt_round_pd(
 
 /// Compute the square root of packed double-precision (64-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3021,7 +3021,7 @@ pub unsafe fn _mm512_maskz_sqrt_round_pd(k: __mmask8, a: __m512d, rounding: i32)
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3045,7 +3045,7 @@ pub unsafe fn _mm512_fmadd_round_ps(a: __m512, b: __m512, c: __m512, rounding: i
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3075,7 +3075,7 @@ pub unsafe fn _mm512_mask_fmadd_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in a using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3106,7 +3106,7 @@ pub unsafe fn _mm512_maskz_fmadd_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3136,7 +3136,7 @@ pub unsafe fn _mm512_mask3_fmadd_round_ps(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3160,7 +3160,7 @@ pub unsafe fn _mm512_fmadd_round_pd(a: __m512d, b: __m512d, c: __m512d, rounding
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3190,7 +3190,7 @@ pub unsafe fn _mm512_mask_fmadd_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3221,7 +3221,7 @@ pub unsafe fn _mm512_maskz_fmadd_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3251,7 +3251,7 @@ pub unsafe fn _mm512_mask3_fmadd_round_pd(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3277,7 +3277,7 @@ pub unsafe fn _mm512_fmsub_round_ps(a: __m512, b: __m512, c: __m512, rounding: i
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3309,7 +3309,7 @@ pub unsafe fn _mm512_mask_fmsub_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3341,7 +3341,7 @@ pub unsafe fn _mm512_maskz_fmsub_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3373,7 +3373,7 @@ pub unsafe fn _mm512_mask3_fmsub_round_ps(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3399,7 +3399,7 @@ pub unsafe fn _mm512_fmsub_round_pd(a: __m512d, b: __m512d, c: __m512d, rounding
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3431,7 +3431,7 @@ pub unsafe fn _mm512_mask_fmsub_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3463,7 +3463,7 @@ pub unsafe fn _mm512_maskz_fmsub_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3495,7 +3495,7 @@ pub unsafe fn _mm512_mask3_fmsub_round_pd(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3519,7 +3519,7 @@ pub unsafe fn _mm512_fmaddsub_round_ps(a: __m512, b: __m512, c: __m512, rounding
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3549,7 +3549,7 @@ pub unsafe fn _mm512_mask_fmaddsub_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3580,7 +3580,7 @@ pub unsafe fn _mm512_maskz_fmaddsub_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3610,7 +3610,7 @@ pub unsafe fn _mm512_mask3_fmaddsub_round_ps(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3639,7 +3639,7 @@ pub unsafe fn _mm512_fmaddsub_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3669,7 +3669,7 @@ pub unsafe fn _mm512_mask_fmaddsub_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3700,7 +3700,7 @@ pub unsafe fn _mm512_maskz_fmaddsub_round_pd(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3730,7 +3730,7 @@ pub unsafe fn _mm512_mask3_fmaddsub_round_pd(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3756,7 +3756,7 @@ pub unsafe fn _mm512_fmsubadd_round_ps(a: __m512, b: __m512, c: __m512, rounding
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3788,7 +3788,7 @@ pub unsafe fn _mm512_mask_fmsubadd_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3820,7 +3820,7 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3852,7 +3852,7 @@ pub unsafe fn _mm512_mask3_fmsubadd_round_ps(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3883,7 +3883,7 @@ pub unsafe fn _mm512_fmsubadd_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3915,7 +3915,7 @@ pub unsafe fn _mm512_mask_fmsubadd_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3947,7 +3947,7 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -3979,7 +3979,7 @@ pub unsafe fn _mm512_mask3_fmsubadd_round_pd(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4005,7 +4005,7 @@ pub unsafe fn _mm512_fnmadd_round_ps(a: __m512, b: __m512, c: __m512, rounding: 
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4037,7 +4037,7 @@ pub unsafe fn _mm512_mask_fnmadd_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4069,7 +4069,7 @@ pub unsafe fn _mm512_maskz_fnmadd_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4101,7 +4101,7 @@ pub unsafe fn _mm512_mask3_fnmadd_round_ps(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4127,7 +4127,7 @@ pub unsafe fn _mm512_fnmadd_round_pd(a: __m512d, b: __m512d, c: __m512d, roundin
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4159,7 +4159,7 @@ pub unsafe fn _mm512_mask_fnmadd_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4191,7 +4191,7 @@ pub unsafe fn _mm512_maskz_fnmadd_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4223,7 +4223,7 @@ pub unsafe fn _mm512_mask3_fnmadd_round_pd(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4250,7 +4250,7 @@ pub unsafe fn _mm512_fnmsub_round_ps(a: __m512, b: __m512, c: __m512, rounding: 
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4283,7 +4283,7 @@ pub unsafe fn _mm512_mask_fnmsub_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4316,7 +4316,7 @@ pub unsafe fn _mm512_maskz_fnmsub_round_ps(
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4349,7 +4349,7 @@ pub unsafe fn _mm512_mask3_fnmsub_round_ps(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4376,7 +4376,7 @@ pub unsafe fn _mm512_fnmsub_round_pd(a: __m512d, b: __m512d, c: __m512d, roundin
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4409,7 +4409,7 @@ pub unsafe fn _mm512_mask_fnmsub_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -4442,7 +4442,7 @@ pub unsafe fn _mm512_maskz_fnmsub_round_pd(
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -5216,7 +5216,7 @@ pub unsafe fn _mm512_maskz_cvtps_pd(k: __mmask8, a: __m256) -> __m512d {
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed 32-bit integers, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -5245,7 +5245,7 @@ pub unsafe fn _mm512_cvt_roundps_epi32(a: __m512, rounding: i32) -> __m512i {
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed 32-bit integers, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -5274,7 +5274,7 @@ pub unsafe fn _mm512_mask_cvt_roundps_epi32(
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed 32-bit integers, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -5298,7 +5298,7 @@ pub unsafe fn _mm512_maskz_cvt_roundps_epi32(k: __mmask16, a: __m512, rounding: 
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed unsigned 32-bit integers, and store the results in dst.
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -5327,7 +5327,7 @@ pub unsafe fn _mm512_cvt_roundps_epu32(a: __m512, rounding: i32) -> __m512i {
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed unsigned 32-bit integers, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
@@ -5356,7 +5356,7 @@ pub unsafe fn _mm512_mask_cvt_roundps_epu32(
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed unsigned 32-bit integers, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding[3:0] parameter, which can be one of:
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
 ///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
 ///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
