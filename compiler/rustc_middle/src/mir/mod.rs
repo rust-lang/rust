@@ -1079,9 +1079,11 @@ rustc_index::newtype_index! {
     /// The unit of the MIR [control-flow graph][CFG].
     ///
     /// There is no branching (e.g., `if`s, function calls, etc.) within a basic block, which makes
-    /// it easier to do [data-flow analyses] and optimizations. Basic blocks consist of a series of
-    /// [statements][`Statement`], ending with a [terminator][`Terminator`]. Basic blocks can have
-    /// multiple predecessors and successors.
+    /// it easier to do [data-flow analyses] and optimizations. Instead, branches are represented
+    /// as an edge in a graph between basic blocks.
+    ///
+    /// Basic blocks consist of a series of [statements][`Statement`], ending with a
+    /// [terminator][`Terminator`]. Basic blocks can have multiple predecessors and successors.
     ///
     /// Read more about basic blocks in the [rustc-dev-guide][guide-mir].
     ///
