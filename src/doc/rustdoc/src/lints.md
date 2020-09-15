@@ -25,11 +25,11 @@ pub fn foo() {}
 You'll get a warning saying:
 
 ```text
-warning: `[Nonexistent]` cannot be resolved, ignoring it.
+warning: unresolved link to `Nonexistent`
  --> test.rs:1:24
   |
 1 | /// I want to link to [`Nonexistent`] but it doesn't exist!
-  |                        ^^^^^^^^^^^^^ cannot be resolved, ignoring
+  |                        ^^^^^^^^^^^^^ no item named `Nonexistent` in `test`
 ```
 
 It will also warn when there is an ambiguity and suggest how to disambiguate:
