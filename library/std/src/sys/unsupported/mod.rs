@@ -8,6 +8,7 @@ pub mod io;
 pub mod mutex;
 pub mod net;
 pub mod os;
+#[path = "../unix/path.rs"]
 pub mod path;
 pub mod pipe;
 pub mod process;
