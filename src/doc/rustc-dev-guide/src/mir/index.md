@@ -44,7 +44,8 @@ This section introduces the key concepts of MIR, summarized here:
   leading underscore, like `_1`. There is also a special "local"
   (`_0`) allocated to store the return value.
 - **Places:** expressions that identify a location in memory, like `_1` or
-  `_1.f`.
+  `_1.f`. (Some people call these "lvalues"; the "l" meaning that they occur on
+  the left-hand side of an assignment.)
 - **Rvalues:** expressions that produce a value. The "R" stands for
   the fact that these are the "right-hand side" of an assignment.
   - **Operands:** the arguments to an rvalue, which can either be a
