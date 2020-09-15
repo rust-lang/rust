@@ -86,36 +86,46 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Synt
         token = token.prev_token()?;
     }
 
-    let (kind, trigger, impl_def_offset) = token.ancestors().find_map(|p| match p.kind() {
-        // `const` can be a modifier of an item, so the `const` token may be inside another item syntax node.
-        // Eg. `impl .. { const <|> fn bar() .. }`
-        SyntaxKind::FN | SyntaxKind::TYPE_ALIAS | SyntaxKind::CONST
-            if token.kind() == SyntaxKind::CONST_KW =>
-        {
-            Some((ImplCompletionKind::Const, p, 2))
-        }
-        SyntaxKind::FN => Some((ImplCompletionKind::Fn, p, 2)),
-        SyntaxKind::TYPE_ALIAS => Some((ImplCompletionKind::TypeAlias, p, 2)),
-        SyntaxKind::CONST => Some((ImplCompletionKind::Const, p, 2)),
-        // `impl .. { const <|> }` is parsed as:
-        // IMPL
-        //   ASSOC_ITEM_LIST
-        //     ERROR
-        //       CONST_KW <- token
-        //     WHITESPACE <- ctx.token
-        SyntaxKind::ERROR
-            if p.first_token().map_or(false, |t| t.kind() == SyntaxKind::CONST_KW) =>
-        {
-            Some((ImplCompletionKind::Const, p, 2))
-        }
-        SyntaxKind::NAME_REF => Some((ImplCompletionKind::All, p, 5)),
-        _ => None,
-    })?;
+    let impl_item_offset = match token.kind() {
+        // `impl .. { const <|> }`
+        // ERROR      0
+        //   CONST_KW <- *
+        SyntaxKind::CONST_KW => 0,
+        // `impl .. { fn/type <|> }`
+        // FN/TYPE_ALIAS  0
+        //   FN_KW        <- *
+        SyntaxKind::FN_KW | SyntaxKind::TYPE_KW => 0,
+        // `impl .. { fn/type/const foo<|> }`
+        // FN/TYPE_ALIAS/CONST  1
+        //  NAME                0
+        //    IDENT             <- *
+        SyntaxKind::IDENT if token.parent().kind() == SyntaxKind::NAME => 1,
+        // `impl .. { foo<|> }`
+        // MACRO_CALL       3
+        //  PATH            2
+        //    PATH_SEGMENT  1
+        //      NAME_REF    0
+        //        IDENT     <- *
+        SyntaxKind::IDENT if token.parent().kind() == SyntaxKind::NAME_REF => 3,
+        _ => return None,
+    };
 
-    let impl_def = (0..impl_def_offset - 1)
-        .try_fold(trigger.parent()?, |t, _| t.parent())
-        .and_then(ast::Impl::cast)?;
-    Some((kind, trigger, impl_def))
+    let impl_item = token.ancestors().nth(impl_item_offset)?;
+    // Must directly belong to an impl block.
+    // IMPL
+    //   ASSOC_ITEM_LIST
+    //     <item>
+    let impl_def = ast::Impl::cast(impl_item.parent()?.parent()?)?;
+    let kind = match impl_item.kind() {
+        // `impl ... { const <|> fn/type/const }`
+        _ if token.kind() == SyntaxKind::CONST_KW => ImplCompletionKind::Const,
+        SyntaxKind::CONST | SyntaxKind::ERROR => ImplCompletionKind::Const,
+        SyntaxKind::TYPE_ALIAS => ImplCompletionKind::TypeAlias,
+        SyntaxKind::FN => ImplCompletionKind::Fn,
+        SyntaxKind::MACRO_CALL => ImplCompletionKind::All,
+        _ => return None,
+    };
+    Some((kind, impl_item, impl_def))
 }
 
 fn add_function_impl(
@@ -261,19 +271,191 @@ ta type TestType = \n\
     }
 
     #[test]
-    fn no_nested_fn_completions() {
+    fn no_completion_inside_fn() {
         check(
             r"
-trait Test {
-    fn test();
-    fn test2();
-}
+trait Test { fn test(); fn test2(); }
 struct T;
 
 impl Test for T {
     fn test() {
         t<|>
     }
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { fn test(); fn test2(); }
+struct T;
+
+impl Test for T {
+    fn test() {
+        fn t<|>
+    }
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { fn test(); fn test2(); }
+struct T;
+
+impl Test for T {
+    fn test() {
+        fn <|>
+    }
+}
+",
+            expect![[""]],
+        );
+
+        // https://github.com/rust-analyzer/rust-analyzer/pull/5976#issuecomment-692332191
+        check(
+            r"
+trait Test { fn test(); fn test2(); }
+struct T;
+
+impl Test for T {
+    fn test() {
+        foo.<|>
+    }
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { fn test(_: i32); fn test2(); }
+struct T;
+
+impl Test for T {
+    fn test(t<|>)
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { fn test(_: fn()); fn test2(); }
+struct T;
+
+impl Test for T {
+    fn test(f: fn <|>)
+}
+",
+            expect![[""]],
+        );
+    }
+
+    #[test]
+    fn no_completion_inside_const() {
+        check(
+            r"
+trait Test { const TEST: fn(); const TEST2: u32; type Test; fn test(); }
+struct T;
+
+impl Test for T {
+    const TEST: fn <|>
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
+struct T;
+
+impl Test for T {
+    const TEST: T<|>
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
+struct T;
+
+impl Test for T {
+    const TEST: u32 = f<|>
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
+struct T;
+
+impl Test for T {
+    const TEST: u32 = {
+        t<|>
+    };
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
+struct T;
+
+impl Test for T {
+    const TEST: u32 = {
+        fn <|>
+    };
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
+struct T;
+
+impl Test for T {
+    const TEST: u32 = {
+        fn t<|>
+    };
+}
+",
+            expect![[""]],
+        );
+    }
+
+    #[test]
+    fn no_completion_inside_type() {
+        check(
+            r"
+trait Test { type Test; type Test2; fn test(); }
+struct T;
+
+impl Test for T {
+    type Test = T<|>;
+}
+",
+            expect![[""]],
+        );
+
+        check(
+            r"
+trait Test { type Test; type Test2; fn test(); }
+struct T;
+
+impl Test for T {
+    type Test = fn <|>;
 }
 ",
             expect![[""]],
