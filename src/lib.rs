@@ -4,7 +4,8 @@
     type_alias_impl_trait,
     associated_type_bounds,
     never_type,
-    try_blocks
+    try_blocks,
+    hash_drain_filter,
 )]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]

@@ -13,14 +13,11 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::Not;
 
-use rustc_data_structures::fx::{FxHashSet, FxHasher};
+use rustc_data_structures::fx::FxHashSet;
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
 use cranelift_codegen::ir::immediates::Offset32;
 use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
-
-use hashbrown::HashSet;
-use std::hash::BuildHasherDefault;
 
 use crate::prelude::*;
 
@@ -48,9 +45,9 @@ impl Ord for OrdStackSlot {
 
 #[derive(Debug, Default)]
 struct StackSlotUsage {
-    stack_addr: HashSet<Inst, BuildHasherDefault<FxHasher>>,
-    stack_load: HashSet<Inst, BuildHasherDefault<FxHasher>>,
-    stack_store: HashSet<Inst, BuildHasherDefault<FxHasher>>,
+    stack_addr: FxHashSet<Inst>,
+    stack_load: FxHashSet<Inst>,
+    stack_store: FxHashSet<Inst>,
 }
 
 impl StackSlotUsage {
