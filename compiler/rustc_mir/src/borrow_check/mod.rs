@@ -205,6 +205,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, &body, &mdpe)
         .into_engine(tcx, &body, def.did.to_def_id())
+        .pass_name("borrowck")
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
 
@@ -264,12 +265,15 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), &borrow_set)
         .into_engine(tcx, &body, def.did.to_def_id())
+        .pass_name("borrowck")
         .iterate_to_fixpoint();
     let flow_uninits = MaybeUninitializedPlaces::new(tcx, &body, &mdpe)
         .into_engine(tcx, &body, def.did.to_def_id())
+        .pass_name("borrowck")
         .iterate_to_fixpoint();
     let flow_ever_inits = EverInitializedPlaces::new(tcx, &body, &mdpe)
         .into_engine(tcx, &body, def.did.to_def_id())
+        .pass_name("borrowck")
         .iterate_to_fixpoint();
 
     let movable_generator = match tcx.hir().get(id) {
