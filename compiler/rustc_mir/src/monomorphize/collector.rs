@@ -191,12 +191,11 @@ use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use smallvec::SmallVec;
-use std::iter;
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
@@ -375,7 +374,6 @@ fn collect_items_rec<'tcx>(
             // Keep track of the monomorphization recursion depth
             recursion_depth_reset =
                 Some(check_recursion_limit(tcx, instance, starting_point.span, recursion_depths));
-            check_type_length_limit(tcx, instance);
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
                 collect_neighbours(tcx, instance, &mut neighbors);
@@ -453,56 +451,6 @@ fn check_recursion_limit<'tcx>(
     recursion_depths.insert(def_id, recursion_depth + 1);
 
     (def_id, recursion_depth)
-}
-
-fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
-    let type_length = instance
-        .substs
-        .iter()
-        .flat_map(|arg| arg.walk())
-        .filter(|arg| match arg.unpack() {
-            GenericArgKind::Type(_) | GenericArgKind::Const(_) => true,
-            GenericArgKind::Lifetime(_) => false,
-        })
-        .count();
-    debug!(" => type length={}", type_length);
-
-    // Rust code can easily create exponentially-long types using only a
-    // polynomial recursion depth. Even with the default recursion
-    // depth, you can easily get cases that take >2^60 steps to run,
-    // which means that rustc basically hangs.
-    //
-    // Bail out in these cases to avoid that bad user experience.
-    if !tcx.sess.type_length_limit().value_within_limit(type_length) {
-        // The instance name is already known to be too long for rustc.
-        // Show only the first and last 32 characters to avoid blasting
-        // the user's terminal with thousands of lines of type-name.
-        let shrink = |s: String, before: usize, after: usize| {
-            // An iterator of all byte positions including the end of the string.
-            let positions = || s.char_indices().map(|(i, _)| i).chain(iter::once(s.len()));
-
-            let shrunk = format!(
-                "{before}...{after}",
-                before = &s[..positions().nth(before).unwrap_or(s.len())],
-                after = &s[positions().rev().nth(after).unwrap_or(0)..],
-            );
-
-            // Only use the shrunk version if it's really shorter.
-            // This also avoids the case where before and after slices overlap.
-            if shrunk.len() < s.len() { shrunk } else { s }
-        };
-        let msg = format!(
-            "reached the type-length limit while instantiating `{}`",
-            shrink(instance.to_string(), 32, 32)
-        );
-        let mut diag = tcx.sess.struct_span_fatal(tcx.def_span(instance.def_id()), &msg);
-        diag.note(&format!(
-            "consider adding a `#![type_length_limit=\"{}\"]` attribute to your crate",
-            type_length
-        ));
-        diag.emit();
-        tcx.sess.abort_if_errors();
-    }
 }
 
 struct MirNeighborCollector<'a, 'tcx> {
