@@ -11,7 +11,7 @@ use rustc_middle::mir::{
     PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
 use rustc_span::{
     hygiene::{DesugaringKind, ForLoopLoc},
     symbol::sym,
@@ -538,7 +538,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
 /// The span(s) associated to a use of a place.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(super) enum UseSpans {
+pub(super) enum UseSpans<'tcx> {
     /// The access is caused by capturing a variable for a closure.
     ClosureUse {
         /// This is true if the captured variable was from a generator.
@@ -558,7 +558,7 @@ pub(super) enum UseSpans {
         fn_call_span: Span,
         /// The definition span of the method being called
         fn_span: Span,
-        kind: FnSelfUseKind,
+        kind: FnSelfUseKind<'tcx>,
     },
     /// This access is caused by a `match` or `if let` pattern.
     PatUse(Span),
@@ -567,22 +567,32 @@ pub(super) enum UseSpans {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(super) enum FnSelfUseKind {
+pub(super) enum FnSelfUseKind<'tcx> {
     /// A normal method call of the form `receiver.foo(a, b, c)`
     Normal { self_arg: Ident, implicit_into_iter: bool },
     /// A call to `FnOnce::call_once`, desugared from `my_closure(a, b, c)`
     FnOnceCall,
     /// A call to an operator trait, desuraged from operator syntax (e.g. `a << b`)
     Operator { self_arg: Ident },
+    DerefCoercion {
+        /// The `Span` of the `Target` associated type
+        /// in the `Deref` impl we are using.
+        deref_target: Span,
+        /// The type `T::Deref` we are dereferencing to
+        deref_target_ty: Ty<'tcx>,
+    },
 }
 
-impl UseSpans {
+impl UseSpans<'_> {
     pub(super) fn args_or_use(self) -> Span {
         match self {
             UseSpans::ClosureUse { args_span: span, .. }
             | UseSpans::PatUse(span)
-            | UseSpans::FnSelfUse { var_span: span, .. }
             | UseSpans::OtherUse(span) => span,
+            UseSpans::FnSelfUse {
+                fn_call_span, kind: FnSelfUseKind::DerefCoercion { .. }, ..
+            } => fn_call_span,
+            UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
 
@@ -590,8 +600,11 @@ impl UseSpans {
         match self {
             UseSpans::ClosureUse { var_span: span, .. }
             | UseSpans::PatUse(span)
-            | UseSpans::FnSelfUse { var_span: span, .. }
             | UseSpans::OtherUse(span) => span,
+            UseSpans::FnSelfUse {
+                fn_call_span, kind: FnSelfUseKind::DerefCoercion { .. }, ..
+            } => fn_call_span,
+            UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
 
@@ -754,7 +767,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         moved_place: PlaceRef<'tcx>, // Could also be an upvar.
         location: Location,
-    ) -> UseSpans {
+    ) -> UseSpans<'tcx> {
         use self::UseSpans::*;
 
         let stmt = match self.body[location.block].statements.get(location.statement_index) {
@@ -809,36 +822,64 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             kind: TerminatorKind::Call { fn_span, from_hir_call, .. }, ..
         }) = &self.body[location.block].terminator
         {
-            let method_did = if let Some(method_did) =
+            let (method_did, method_substs) = if let Some(info) =
                 crate::util::find_self_call(self.infcx.tcx, &self.body, target_temp, location.block)
             {
-                method_did
+                info
             } else {
                 return normal_ret;
             };
 
             let tcx = self.infcx.tcx;
-
             let parent = tcx.parent(method_did);
             let is_fn_once = parent == tcx.lang_items().fn_once_trait();
             let is_operator = !from_hir_call
                 && parent.map_or(false, |p| tcx.lang_items().group(LangItemGroup::Op).contains(&p));
+            let is_deref = !from_hir_call && tcx.is_diagnostic_item(sym::deref_method, method_did);
             let fn_call_span = *fn_span;
 
             let self_arg = tcx.fn_arg_names(method_did)[0];
 
+            debug!(
+                "terminator = {:?} from_hir_call={:?}",
+                self.body[location.block].terminator, from_hir_call
+            );
+
+            // Check for a 'special' use of 'self' -
+            // an FnOnce call, an operator (e.g. `<<`), or a
+            // deref coercion.
             let kind = if is_fn_once {
-                FnSelfUseKind::FnOnceCall
+                Some(FnSelfUseKind::FnOnceCall)
             } else if is_operator {
-                FnSelfUseKind::Operator { self_arg }
+                Some(FnSelfUseKind::Operator { self_arg })
+            } else if is_deref {
+                let deref_target =
+                    tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
+                        Instance::resolve(tcx, self.param_env, deref_target, method_substs)
+                            .transpose()
+                    });
+                if let Some(Ok(instance)) = deref_target {
+                    let deref_target_ty = instance.ty(tcx, self.param_env);
+                    Some(FnSelfUseKind::DerefCoercion {
+                        deref_target: tcx.def_span(instance.def_id()),
+                        deref_target_ty,
+                    })
+                } else {
+                    None
+                }
             } else {
+                None
+            };
+
+            let kind = kind.unwrap_or_else(|| {
+                // This isn't a 'special' use of `self`
                 debug!("move_spans: method_did={:?}, fn_call_span={:?}", method_did, fn_call_span);
                 let implicit_into_iter = matches!(
                     fn_call_span.desugaring_kind(),
                     Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
                 );
                 FnSelfUseKind::Normal { self_arg, implicit_into_iter }
-            };
+            });
 
             return FnSelfUse {
                 var_span: stmt.source_info.span,
@@ -859,7 +900,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// and its usage of the local assigned at `location`.
     /// This is done by searching in statements succeeding `location`
     /// and originating from `maybe_closure_span`.
-    pub(super) fn borrow_spans(&self, use_span: Span, location: Location) -> UseSpans {
+    pub(super) fn borrow_spans(&self, use_span: Span, location: Location) -> UseSpans<'tcx> {
         use self::UseSpans::*;
         debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
@@ -963,7 +1004,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Helper to retrieve span(s) of given borrow from the current MIR
     /// representation
-    pub(super) fn retrieve_borrow_spans(&self, borrow: &BorrowData<'_>) -> UseSpans {
+    pub(super) fn retrieve_borrow_spans(&self, borrow: &BorrowData<'_>) -> UseSpans<'tcx> {
         let span = self.body.source_info(borrow.reserve_location).span;
         self.borrow_spans(span, borrow.reserve_location)
     }

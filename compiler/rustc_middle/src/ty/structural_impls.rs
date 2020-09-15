@@ -612,8 +612,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjust<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::OverloadedDeref<'a> {
     type Lifted = ty::adjustment::OverloadedDeref<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.region)
-            .map(|region| ty::adjustment::OverloadedDeref { region, mutbl: self.mutbl })
+        tcx.lift(&self.region).map(|region| ty::adjustment::OverloadedDeref {
+            region,
+            mutbl: self.mutbl,
+            span: self.span,
+        })
     }
 }
 

@@ -101,7 +101,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
                         .note("each usage of a `const` item creates a new temporary")
                         .note("the mutable reference will refer to this temporary, not the original `const` item");
 
-                    if let Some(method_did) = method_did {
+                    if let Some((method_did, _substs)) = method_did {
                         lint.span_note(self.tcx.def_span(method_did), "mutable reference created due to call to this method");
                     }
 
