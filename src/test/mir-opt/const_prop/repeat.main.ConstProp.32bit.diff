@@ -22,9 +22,9 @@
           _4 = const 2_usize;              // scope 0 at $DIR/repeat.rs:6:26: 6:27
           _5 = const 8_usize;              // scope 0 at $DIR/repeat.rs:6:18: 6:28
 -         _6 = Lt(_4, _5);                 // scope 0 at $DIR/repeat.rs:6:18: 6:28
--         assert(move _6, "index out of bounds: the len is {} but the index is {}", move _5, _4) -> bb1; // scope 0 at $DIR/repeat.rs:6:18: 6:28
+-         assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> bb1; // scope 0 at $DIR/repeat.rs:6:18: 6:28
 +         _6 = const true;                 // scope 0 at $DIR/repeat.rs:6:18: 6:28
-+         assert(const true, "index out of bounds: the len is {} but the index is {}", const 8_usize, const 2_usize) -> bb1; // scope 0 at $DIR/repeat.rs:6:18: 6:28
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 8_usize, const 2_usize) -> bb1; // scope 0 at $DIR/repeat.rs:6:18: 6:28
       }
   
       bb1: {
