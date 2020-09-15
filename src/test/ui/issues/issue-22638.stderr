@@ -1,10 +1,14 @@
-error: reached the type-length limit while instantiating `D::matches::$CLOSURE`
-  --> $DIR/issue-22638.rs:53:5
+error: reached the recursion limit while instantiating `A::matches::$CLOSURE`
+  --> $DIR/issue-22638.rs:55:9
+   |
+LL |         a.matches(f)
+   |         ^^^^^^^^^^^^
+   |
+note: `A::matches` defined here
+  --> $DIR/issue-22638.rs:14:5
    |
 LL |     pub fn matches<F: Fn()>(&self, f: &F) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: consider adding a `#![type_length_limit="30408681"]` attribute to your crate
 
 error: aborting due to previous error
 
