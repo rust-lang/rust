@@ -101,6 +101,7 @@ target | std | host | notes
 `powerpc-unknown-linux-gnu` | ✓ | ✓ | PowerPC Linux (kernel 2.6.32, glibc 2.11)
 `powerpc64-unknown-linux-gnu` | ✓ | ✓ | PPC64 Linux (kernel 2.6.32, glibc 2.11)
 `powerpc64le-unknown-linux-gnu` | ✓ | ✓ | PPC64LE Linux (kernel 3.10, glibc 2.17)
+`riscv32gc-unknown-linux-gnu` | ✓ | ✓ | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32i-unknown-none-elf` | * |  | Bare RISC-V (RV32I ISA)
 `riscv32imac-unknown-none-elf` | * |  | Bare RISC-V (RV32IMAC ISA)
 `riscv32imc-unknown-none-elf` | * |  | Bare RISC-V (RV32IMC ISA)
