@@ -25,7 +25,6 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let x = 1;
-    ///
     /// // Bad
     /// let x = &x;
     ///
