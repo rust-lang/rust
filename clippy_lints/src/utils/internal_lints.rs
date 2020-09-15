@@ -704,7 +704,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
                     cx,
                     MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
                     expr.span,
-                    "usage of `utils::match_type() on a type diagnostic item`",
+                    "usage of `utils::match_type()` on a type diagnostic item",
                     "try",
                     format!("utils::is_type_diagnostic_item({}, {}, sym!({}))", cx_snippet, ty_snippet, item_name),
                     Applicability::MaybeIncorrect,
