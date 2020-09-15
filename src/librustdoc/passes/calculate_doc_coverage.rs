@@ -19,7 +19,7 @@ pub const CALCULATE_DOC_COVERAGE: Pass = Pass {
 };
 
 fn calculate_doc_coverage(krate: clean::Crate, ctx: &DocContext<'_>) -> clean::Crate {
-    let mut calc = CoverageCalculator::new();
+    let mut calc = CoverageCalculator::new(ctx);
     let krate = calc.fold_crate(krate);
 
     calc.print_results(ctx.renderinfo.borrow().output_format);
@@ -94,8 +94,9 @@ impl ops::AddAssign for ItemCount {
     }
 }
 
-struct CoverageCalculator {
+struct CoverageCalculator<'a, 'tcx> {
     items: BTreeMap<FileName, ItemCount>,
+    cx: &'a DocContext<'tcx>,
 }
 
 fn limit_filename_len(filename: String) -> String {
@@ -108,9 +109,9 @@ fn limit_filename_len(filename: String) -> String {
     }
 }
 
-impl CoverageCalculator {
-    fn new() -> CoverageCalculator {
-        CoverageCalculator { items: Default::default() }
+impl<'a, 'tcx> CoverageCalculator<'a, 'tcx> {
+    fn new(cx: &'a DocContext<'tcx>) -> CoverageCalculator<'a, 'tcx> {
+        CoverageCalculator { cx, items: Default::default() }
     }
 
     fn to_json(&self) -> String {
@@ -178,7 +179,7 @@ impl CoverageCalculator {
     }
 }
 
-impl fold::DocFolder for CoverageCalculator {
+impl<'a, 'tcx> fold::DocFolder for CoverageCalculator<'a, 'tcx> {
     fn fold_item(&mut self, i: clean::Item) -> Option<clean::Item> {
         match i.inner {
             _ if !i.def_id.is_local() => {
@@ -244,7 +245,7 @@ impl fold::DocFolder for CoverageCalculator {
                 self.items.entry(i.source.filename.clone()).or_default().count_item(
                     has_docs,
                     has_doc_example,
-                    should_have_doc_example(&i.inner),
+                    should_have_doc_example(self.cx, &i),
                 );
             }
         }

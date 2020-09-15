@@ -60,8 +60,8 @@ impl crate::doctest::Tester for Tests {
     }
 }
 
-pub fn should_have_doc_example(item_kind: &clean::ItemEnum) -> bool {
-    !matches!(item_kind,
+pub fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
+    !matches!(item.inner,
         clean::StructFieldItem(_)
         | clean::VariantItem(_)
         | clean::AssocConstItem(_, _)
@@ -73,7 +73,8 @@ pub fn should_have_doc_example(item_kind: &clean::ItemEnum) -> bool {
         | clean::ImportItem(_)
         | clean::PrimitiveItem(_)
         | clean::KeywordItem(_)
-    )
+    ) && (cx.renderinfo.borrow().access_levels.is_public(item.def_id)
+        || cx.render_options.document_private)
 }
 
 pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
@@ -89,10 +90,22 @@ pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
 
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
 
+    if cx.render_options.document_private
+        && dox.is_empty()
+        && !matches!(item.inner, clean::ImportItem(..))
+    {
+        let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
+        if !sp.is_dummy() {
+            cx.tcx.struct_span_lint_hir(rustc_lint::builtin::MISSING_DOCS, hir_id, sp, |lint| {
+                lint.build("missing documentation").emit()
+            });
+        }
+    }
+
     if tests.found_tests == 0
         && rustc_feature::UnstableFeatures::from_environment().is_nightly_build()
     {
-        if should_have_doc_example(&item.inner) {
+        if should_have_doc_example(cx, &item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
             cx.tcx.struct_span_lint_hir(
@@ -102,7 +115,9 @@ pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
                 |lint| lint.build("missing code example in this documentation").emit(),
             );
         }
-    } else if tests.found_tests > 0 && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
+    } else if tests.found_tests > 0
+        && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
+        && !cx.render_options.document_private
     {
         cx.tcx.struct_span_lint_hir(
             lint::builtin::PRIVATE_DOC_TESTS,

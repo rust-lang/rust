@@ -18,6 +18,7 @@ pub fn strip_private(mut krate: clean::Crate, cx: &DocContext<'_>) -> clean::Cra
     // This stripper collects all *retained* nodes.
     let mut retained = DefIdSet::default();
     let access_levels = cx.renderinfo.borrow().access_levels.clone();
+    let document_private = cx.render_options.document_private;
 
     // strip all private items
     {
@@ -25,6 +26,7 @@ pub fn strip_private(mut krate: clean::Crate, cx: &DocContext<'_>) -> clean::Cra
             retained: &mut retained,
             access_levels: &access_levels,
             update_retained: true,
+            document_private,
         };
         krate = ImportStripper.fold_crate(stripper.fold_crate(krate));
     }
