@@ -27,7 +27,6 @@ use rustc_session::lint;
 use rustc_span::edition::Edition;
 use rustc_span::Span;
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Write;
@@ -39,7 +38,7 @@ use crate::doctest;
 use crate::html::highlight;
 use crate::html::toc::TocBuilder;
 
-use pulldown_cmark::{html, CodeBlockKind, CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::{html, BrokenLink, CodeBlockKind, CowStr, Event, Options, Parser, Tag};
 
 #[cfg(test)]
 mod tests;
@@ -931,15 +930,17 @@ impl Markdown<'_> {
         if md.is_empty() {
             return String::new();
         }
-        let replacer = |_: &str, s: &str| {
-            if let Some(link) = links.iter().find(|link| &*link.original_text == s) {
-                Some((link.href.clone(), link.new_text.clone()))
+        let mut replacer = |broken_link: BrokenLink<'_>| {
+            if let Some(link) =
+                links.iter().find(|link| &*link.original_text == broken_link.reference)
+            {
+                Some((link.href.as_str().into(), link.new_text.as_str().into()))
             } else {
                 None
             }
         };
 
-        let p = Parser::new_with_broken_link_callback(md, opts(), Some(&replacer));
+        let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut replacer));
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
@@ -1009,9 +1010,11 @@ impl MarkdownSummaryLine<'_> {
             return String::new();
         }
 
-        let replacer = |_: &str, s: &str| {
-            if let Some(link) = links.iter().find(|link| &*link.original_text == s) {
-                Some((link.href.clone(), link.new_text.clone()))
+        let mut replacer = |broken_link: BrokenLink<'_>| {
+            if let Some(link) =
+                links.iter().find(|link| &*link.original_text == broken_link.reference)
+            {
+                Some((link.href.as_str().into(), link.new_text.as_str().into()))
             } else {
                 None
             }
@@ -1020,7 +1023,7 @@ impl MarkdownSummaryLine<'_> {
         let p = Parser::new_with_broken_link_callback(
             md,
             Options::ENABLE_STRIKETHROUGH,
-            Some(&replacer),
+            Some(&mut replacer),
         );
 
         let mut s = String::new();
@@ -1067,7 +1070,7 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     }
 
     let mut links = vec![];
-    let shortcut_links = RefCell::new(vec![]);
+    let mut shortcut_links = vec![];
 
     {
         let locate = |s: &str| unsafe {
@@ -1084,11 +1087,13 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
             }
         };
 
-        let push = |_: &str, s: &str| {
-            shortcut_links.borrow_mut().push((s.to_owned(), locate(s)));
+        let mut push = |link: BrokenLink<'_>| {
+            // FIXME: use `link.span` instead of `locate`
+            // (doing it now includes the `[]` as well as the text)
+            shortcut_links.push((link.reference.to_owned(), locate(link.reference)));
             None
         };
-        let p = Parser::new_with_broken_link_callback(md, opts(), Some(&push));
+        let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push));
 
         // There's no need to thread an IdMap through to here because
         // the IDs generated aren't going to be emitted anywhere.
@@ -1106,8 +1111,7 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         }
     }
 
-    let mut shortcut_links = shortcut_links.into_inner();
-    links.extend(shortcut_links.drain(..));
+    links.append(&mut shortcut_links);
 
     links
 }
