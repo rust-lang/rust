@@ -273,10 +273,10 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         match self.tcx().trimmed_def_paths(LOCAL_CRATE).get(&def_id) {
-            None => return Ok((self, false)),
+            None => Ok((self, false)),
             Some(symbol) => {
                 self.write_str(&symbol.as_str())?;
-                return Ok((self, true));
+                Ok((self, true))
             }
         }
     }

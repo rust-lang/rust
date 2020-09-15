@@ -1534,7 +1534,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             }
         };
 
-        let lifetime_names: Vec<_> = lifetime_names.into_iter().collect();
+        let lifetime_names: Vec<_> = lifetime_names.iter().collect();
         match (&lifetime_names[..], snippet.as_deref()) {
             ([name], Some("&")) => {
                 suggest_existing(err, &name.as_str()[..], &|name| format!("&{} ", name));
