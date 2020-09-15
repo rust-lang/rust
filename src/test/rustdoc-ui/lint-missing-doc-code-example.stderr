@@ -25,7 +25,7 @@ LL | /// Doc
 error: missing code example in this documentation
   --> $DIR/lint-missing-doc-code-example.rs:19:1
    |
-LL | / mod module1 {
+LL | / pub mod module1 {
 LL | | }
    | |_^
 

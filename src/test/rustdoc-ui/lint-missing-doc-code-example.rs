@@ -16,7 +16,7 @@ fn test() {
 }
 
 #[allow(missing_docs)]
-mod module1 { //~ ERROR
+pub mod module1 { //~ ERROR
 }
 
 #[allow(missing_doc_code_examples)]
@@ -63,9 +63,13 @@ pub enum Enum {
 /// Doc
 //~^ ERROR
 #[repr(C)]
-union Union {
+pub union Union {
     /// Doc, but no code example and it's fine!
     a: i32,
     /// Doc, but no code example and it's fine!
     b: f32,
+}
+
+mod private {
+    fn private_fn() {}
 }

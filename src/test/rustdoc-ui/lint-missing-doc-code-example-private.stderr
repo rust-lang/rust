@@ -1,0 +1,26 @@
+error: missing documentation
+  --> $DIR/lint-missing-doc-code-example-private.rs:12:1
+   |
+LL | fn private_fn() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-missing-doc-code-example-private.rs:3:9
+   |
+LL | #![deny(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+error: missing code example in this documentation
+  --> $DIR/lint-missing-doc-code-example-private.rs:12:1
+   |
+LL | fn private_fn() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-missing-doc-code-example-private.rs:4:9
+   |
+LL | #![deny(missing_doc_code_examples)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
