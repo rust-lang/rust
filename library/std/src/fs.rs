@@ -358,18 +358,12 @@ impl File {
         OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
     }
 
-    /// Returns a new OpenOptions object.
+    /// Returns a builder struct to configure how a file is opened.
     ///
-    /// This function returns a new OpenOptions object that you can use to
-    /// open or create a file with specific options if `open()` or `create()`
-    /// are not appropriate.
+    /// This function returns an empty [`OpenOptions`] object
+    /// to avoid the need of importing [`OpenOptions`].
     ///
-    /// It is equivalent to `OpenOptions::new()` but allows you to write more
-    /// readable code. Instead of `OpenOptions::new().read(true).open("foo.txt")`
-    /// you can write `File::with_options().read(true).open("foo.txt")`. This
-    /// also avoids the need to import `OpenOptions`.
-    ///
-    /// See the [`OpenOptions::new`] function for more details.
+    /// See [`OpenOptions::new`] function for more details.
     ///
     /// # Examples
     ///
@@ -378,7 +372,7 @@ impl File {
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut f = File::with_options().read(true).open("foo.txt")?;
+    ///     let _ = File::with_options().read(true).open("foo.txt")?;
     ///     Ok(())
     /// }
     /// ```
