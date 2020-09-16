@@ -1072,7 +1072,6 @@ fn method_resolution_foreign_opaque_type() {
             s.foo();
         }
         "#,
-        // FIXME: 's.foo()' should be `bool`.
         expect![[r#"
             75..79 'self': &S
             89..109 '{     ...     }': bool
@@ -1084,8 +1083,7 @@ fn method_resolution_foreign_opaque_type() {
             146..147 'f': fn f() -> &S
             146..149 'f()': &S
             157..158 's': &S
-            157..164 's.foo()': {unknown}
+            157..164 's.foo()': bool
         "#]],
     );
 }
-

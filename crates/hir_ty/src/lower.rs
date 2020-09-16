@@ -1102,13 +1102,13 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    let inner = if db.type_alias_data(t).is_extern {
-        Ty::simple(TypeCtor::ForeignType(t))
+    if db.type_alias_data(t).is_extern {
+        Binders::new(substs.len(), Ty::apply(TypeCtor::ForeignType(t), substs))
     } else {
         let type_ref = &db.type_alias_data(t).type_ref;
-        Ty::from_hir(&ctx, type_ref.as_ref().unwrap_or(&TypeRef::Error))
-    };
-    Binders::new(substs.len(), inner)
+        let inner = Ty::from_hir(&ctx, type_ref.as_ref().unwrap_or(&TypeRef::Error));
+        Binders::new(substs.len(), inner)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
