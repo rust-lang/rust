@@ -486,6 +486,7 @@ mod block;
 pub mod constant;
 pub mod coverageinfo;
 pub mod debuginfo;
+mod intrinsic;
 pub mod operand;
 pub mod place;
 mod rvalue;

@@ -687,7 +687,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 })
                 .collect();
 
-            bx.codegen_intrinsic_call(
+            Self::codegen_intrinsic_call(
+                &mut bx,
                 *instance.as_ref().unwrap(),
                 &fn_abi,
                 &args,
