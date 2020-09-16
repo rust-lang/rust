@@ -2015,7 +2015,7 @@ pub trait Iterator {
     /// assert_eq!(counts[&'a'], 5);
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_fold_mut", issue = "76725")]
+    #[unstable(feature = "iterator_fold_mut", issue = "76751")]
     fn fold_mut<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
