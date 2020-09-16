@@ -64,7 +64,7 @@ impl Mutex {
         match kind() {
             Kind::SRWLock => c::AcquireSRWLockExclusive(raw(self)),
             Kind::CriticalSection => {
-                let inner = &mut *self.inner();
+                let inner = &*self.inner();
                 inner.remutex.lock();
                 if inner.held.replace(true) {
                     // It was already locked, so we got a recursive lock which we do not want.
@@ -78,7 +78,7 @@ impl Mutex {
         match kind() {
             Kind::SRWLock => c::TryAcquireSRWLockExclusive(raw(self)) != 0,
             Kind::CriticalSection => {
-                let inner = &mut *self.inner();
+                let inner = &*self.inner();
                 if !inner.remutex.try_lock() {
                     false
                 } else if inner.held.replace(true) {
@@ -95,7 +95,7 @@ impl Mutex {
         match kind() {
             Kind::SRWLock => c::ReleaseSRWLockExclusive(raw(self)),
             Kind::CriticalSection => {
-                let inner = &mut *(self.lock.load(Ordering::SeqCst) as *mut Inner);
+                let inner = &*(self.lock.load(Ordering::SeqCst) as *const Inner);
                 inner.held.set(false);
                 inner.remutex.unlock();
             }
@@ -106,17 +106,15 @@ impl Mutex {
             Kind::SRWLock => {}
             Kind::CriticalSection => match self.lock.load(Ordering::SeqCst) {
                 0 => {}
-                n => {
-                    Box::from_raw(n as *mut Inner).remutex.destroy();
-                }
+                n => Box::from_raw(n as *mut Inner).remutex.destroy(),
             },
         }
     }
 
-    unsafe fn inner(&self) -> *mut Inner {
+    unsafe fn inner(&self) -> *const Inner {
         match self.lock.load(Ordering::SeqCst) {
             0 => {}
-            n => return n as *mut _,
+            n => return n as *const _,
         }
         let inner = box Inner { remutex: ReentrantMutex::uninitialized(), held: Cell::new(false) };
         inner.remutex.init();
@@ -125,7 +123,7 @@ impl Mutex {
             0 => inner,
             n => {
                 Box::from_raw(inner).remutex.destroy();
-                n as *mut _
+                n as *const _
             }
         }
     }
