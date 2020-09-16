@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use ast::make;
 use either::Either;
 use hir::{
     AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
@@ -54,11 +53,8 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             format!("Import `{}`", &import),
             range,
             |builder| {
-                let new_syntax = insert_use(
-                    &scope,
-                    make::path_from_text(&import.to_string()),
-                    ctx.config.insert_use.merge,
-                );
+                let new_syntax =
+                    insert_use(&scope, import.to_ast_path(), ctx.config.insert_use.merge);
                 builder.replace(syntax.text_range(), new_syntax.to_string())
             },
         );

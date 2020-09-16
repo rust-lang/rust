@@ -264,12 +264,8 @@ fn replace_ast(
     match use_trees.as_slice() {
         [name] => {
             if let Some(end_path) = name.path() {
-                let replacement = make::use_tree(
-                    make::path_from_text(&format!("{}::{}", path, end_path)),
-                    None,
-                    None,
-                    false,
-                );
+                let replacement =
+                    make::use_tree(make::path_concat(path, end_path), None, None, false);
 
                 algo::diff(
                     &parent.either(|n| n.syntax().clone(), |n| n.syntax().clone()),
