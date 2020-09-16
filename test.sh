@@ -11,8 +11,9 @@ else
 fi
 
 # Config
-source config.sh
+source scripts/config.sh
 export CG_CLIF_INCR_CACHE_DISABLED=1
+RUSTC="rustc $RUSTFLAGS -L crate=target/out --out-dir target/out"
 
 # Cleanup
 rm -r target/out || true

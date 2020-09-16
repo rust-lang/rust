@@ -2,8 +2,10 @@
 #![forbid(unsafe_code)]/* This line is ignored by bash
 # This block is ignored by rustc
 CHANNEL="release"
-source ./config.sh
-CG_CLIF_JIT=1 PROFILE=$1 OUTPUT=$2 exec $RUSTC $0 --crate-type bin -Cprefer-dynamic
+pushd $(dirname "$0")/../
+source scripts/config.sh
+popd
+CG_CLIF_JIT=1 PROFILE=$1 OUTPUT=$2 exec rustc $RUSTFLAGS $0 --crate-type bin -Cprefer-dynamic
 #*/
 
 //! This program filters away uninteresting samples and trims uninteresting frames for stackcollapse

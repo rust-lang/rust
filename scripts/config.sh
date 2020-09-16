@@ -38,7 +38,6 @@ if [[ `uname` == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 
-RUSTC="rustc $RUSTFLAGS -L crate=target/out --out-dir target/out"
 export RUSTC_LOG=warn # display metadata load errors
 
 export LD_LIBRARY_PATH="$(pwd)/target/out:$(pwd)/build_sysroot/sysroot/lib/rustlib/$TARGET_TRIPLE/lib"

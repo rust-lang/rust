@@ -6,7 +6,7 @@ set -e
 cd $(dirname "$0")
 
 pushd ../ >/dev/null
-source ./config.sh
+source ./scripts/config.sh
 popd >/dev/null
 
 # Cleanup for previous run

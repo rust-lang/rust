@@ -5,7 +5,7 @@ export CHANNEL='release'
 fi
 
 pushd $(dirname "$0") >/dev/null
-source config.sh
+source scripts/config.sh
 
 # read nightly compiler from rust-toolchain file
 TOOLCHAIN=$(cat rust-toolchain)
