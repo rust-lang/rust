@@ -698,7 +698,8 @@ fn trans_stmt<'tcx>(
                         // FIXME use emit_small_memset where possible
                         let addr = lval.to_ptr().get_addr(fx);
                         let val = operand.load_scalar(fx);
-                        fx.bcx.call_memset(fx.cx.module.target_config(), addr, val, times);
+                        fx.bcx
+                            .call_memset(fx.cx.module.target_config(), addr, val, times);
                     } else {
                         let loop_block = fx.bcx.create_block();
                         let loop_block2 = fx.bcx.create_block();
