@@ -15,6 +15,7 @@
 #![feature(slice_ptr_get)]
 #![feature(split_inclusive)]
 #![feature(binary_heap_retain)]
+#![feature(deque_range)]
 #![feature(inplace_iteration)]
 #![feature(iter_map_while)]
 

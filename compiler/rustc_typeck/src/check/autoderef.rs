@@ -12,7 +12,18 @@ use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'tcx> {
-        Autoderef::new(self, self.param_env, self.body_id, span, base_ty)
+        Autoderef::new(self, self.param_env, self.body_id, span, base_ty, span)
+    }
+
+    /// Like `autoderef`, but provides a custom `Span` to use for calls to
+    /// an overloaded `Deref` operator
+    pub fn autoderef_overloaded_span(
+        &'a self,
+        span: Span,
+        base_ty: Ty<'tcx>,
+        overloaded_span: Span,
+    ) -> Autoderef<'a, 'tcx> {
+        Autoderef::new(self, self.param_env, self.body_id, span, base_ty, overloaded_span)
     }
 
     pub fn try_overloaded_deref(
@@ -44,7 +55,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         |InferOk { value: method, obligations: o }| {
                             obligations.extend(o);
                             if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
-                                Some(OverloadedDeref { region, mutbl })
+                                Some(OverloadedDeref {
+                                    region,
+                                    mutbl,
+                                    span: autoderef.overloaded_span(),
+                                })
                             } else {
                                 None
                             }

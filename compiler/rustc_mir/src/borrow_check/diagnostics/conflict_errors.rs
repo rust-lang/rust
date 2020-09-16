@@ -66,7 +66,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let span = use_spans.args_or_use();
 
         let move_site_vec = self.get_moved_indexes(location, mpi);
-        debug!("report_use_of_moved_or_uninitialized: move_site_vec={:?}", move_site_vec);
+        debug!(
+            "report_use_of_moved_or_uninitialized: move_site_vec={:?} use_spans={:?}",
+            move_site_vec, use_spans
+        );
         let move_out_indices: Vec<_> =
             move_site_vec.iter().map(|move_site| move_site.moi).collect();
 
@@ -229,6 +232,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     );
                                 }
                             }
+                            // Deref::deref takes &self, which cannot cause a move
+                            FnSelfUseKind::DerefCoercion { .. } => unreachable!(),
                         }
                     } else {
                         err.span_label(
@@ -353,6 +358,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     None
                 };
                 self.note_type_does_not_implement_copy(&mut err, &note_msg, ty, span, partial_str);
+            }
+
+            if let UseSpans::FnSelfUse {
+                kind: FnSelfUseKind::DerefCoercion { deref_target, deref_target_ty },
+                ..
+            } = use_spans
+            {
+                err.note(&format!(
+                    "{} occurs due to deref coercion to `{}`",
+                    desired_action.as_noun(),
+                    deref_target_ty
+                ));
+
+                err.span_note(deref_target, "deref defined here");
             }
 
             if let Some((_, mut old_err)) =
@@ -945,7 +964,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         name: &str,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
-        borrow_spans: UseSpans,
+        borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
@@ -1146,7 +1165,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
-        borrow_spans: UseSpans,
+        borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
         explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx> {
@@ -1274,7 +1293,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn report_escaping_closure_capture(
         &mut self,
-        use_span: UseSpans,
+        use_span: UseSpans<'tcx>,
         var_span: Span,
         fr_name: &RegionName,
         category: ConstraintCategory,
