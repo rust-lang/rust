@@ -233,15 +233,7 @@ fn recursive_merge(
                             None,
                             false,
                         );
-                        use_trees.insert(
-                            idx,
-                            make::use_tree(
-                                make::path_unqualified(make::path_segment_self()),
-                                None,
-                                None,
-                                true,
-                            ),
-                        );
+                        use_trees.insert(idx, make::glob_use_tree());
                         continue;
                     }
                 }
@@ -806,14 +798,14 @@ use std::io;",
         check_full(
             "token::TokenKind",
             r"use token::TokenKind::*;",
-            r"use token::TokenKind::{self::*, self};",
+            r"use token::TokenKind::{*, self};",
         )
         // FIXME: have it emit `use token::TokenKind::{self, *}`?
     }
 
     #[test]
     fn merge_self_glob() {
-        check_full("self", r"use self::*;", r"use self::{self::*, self};")
+        check_full("self", r"use self::*;", r"use self::{*, self};")
         // FIXME: have it emit `use {self, *}`?
     }
 

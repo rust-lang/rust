@@ -38,6 +38,10 @@ pub fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(text)
 }
 
+pub fn glob_use_tree() -> ast::UseTree {
+    ast_from_text("use *;")
+}
+
 pub fn use_tree(
     path: ast::Path,
     use_tree_list: Option<ast::UseTreeList>,
