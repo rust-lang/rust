@@ -879,6 +879,10 @@
             {
                 "id": "unsafe",
                 "description": "Style for unsafe operations"
+            },
+            {
+                "id": "consuming",
+                "description": "Style for non-Copy lvalues consumed by method/function call"
             }
         ],
         "semanticTokenScopes": [
