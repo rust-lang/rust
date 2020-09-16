@@ -7,6 +7,7 @@ use cargo_metadata;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
+use std::ffi::OsStr;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
@@ -129,6 +130,15 @@ fn execute() -> i32 {
     }
 }
 
+fn rustfmt_command() -> Command {
+    let rustfmt_var = env::var_os("RUSTFMT");
+    let rustfmt = match &rustfmt_var {
+        Some(rustfmt) => rustfmt,
+        None => OsStr::new("rustfmt"),
+    };
+    Command::new(rustfmt)
+}
+
 fn convert_message_format_to_rustfmt_args(
     message_format: &str,
     rustfmt_args: &mut Vec<String>,
@@ -205,7 +215,7 @@ fn handle_command_status(status: Result<i32, io::Error>) -> i32 {
 }
 
 fn get_rustfmt_info(args: &[String]) -> Result<i32, io::Error> {
-    let mut command = Command::new("rustfmt")
+    let mut command = rustfmt_command()
         .stdout(std::process::Stdio::inherit())
         .args(args)
         .spawn()
@@ -484,7 +494,7 @@ fn run_rustfmt(
             println!();
         }
 
-        let mut command = Command::new("rustfmt")
+        let mut command = rustfmt_command()
             .stdout(stdout)
             .args(files)
             .args(&["--edition", edition])

@@ -13,6 +13,8 @@ use serde_json as json;
 use thiserror::Error;
 
 use std::collections::HashSet;
+use std::env;
+use std::ffi::OsStr;
 use std::io::{self, BufRead};
 use std::process;
 
@@ -94,7 +96,12 @@ fn run_rustfmt(files: &HashSet<String>, ranges: &[Range]) -> Result<(), FormatDi
     debug!("Files: {:?}", files);
     debug!("Ranges: {:?}", ranges);
 
-    let exit_status = process::Command::new("rustfmt")
+    let rustfmt_var = env::var_os("RUSTFMT");
+    let rustfmt = match &rustfmt_var {
+        Some(rustfmt) => rustfmt,
+        None => OsStr::new("rustfmt"),
+    };
+    let exit_status = process::Command::new(rustfmt)
         .args(files)
         .arg("--file-lines")
         .arg(ranges_as_json)

@@ -1,5 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
+use std::env;
+use std::ffi::OsStr;
 
 pub fn fold_quote<F, I, T>(input: impl Iterator<Item = I>, f: F) -> TokenStream
 where
@@ -25,7 +27,12 @@ pub fn debug_with_rustfmt(input: &TokenStream) {
     use std::io::Write;
     use std::process::{Command, Stdio};
 
-    let mut child = Command::new("rustfmt")
+    let rustfmt_var = env::var_os("RUSTFMT");
+    let rustfmt = match &rustfmt_var {
+        Some(rustfmt) => rustfmt,
+        None => OsStr::new("rustfmt"),
+    };
+    let mut child = Command::new(rustfmt)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
