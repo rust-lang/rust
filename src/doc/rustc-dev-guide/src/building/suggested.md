@@ -67,6 +67,22 @@ the problem. A nice side-effect of this style is that you are left
 with a fairly fine-grained set of commits at the end, all of which
 build and pass tests. This often helps reviewing.
 
+## Configuring `rustup` to use nightly
+
+Some parts of the bootstrap process uses pinned, nightly versions of tools like
+rustfmt. To make things like `cargo fmt` work correctly in your repo, run
+
+```console
+cd <path to rustc repo>
+rustup override set nightly
+```
+
+after [installing a nightly toolchain] with `rustup`. Don't forget to do this for all
+directories you have [setup a worktree for].
+
+[installing a nightly toolchain]: https://rust-lang.github.io/rustup/concepts/channels.html?highlight=nightl#working-with-nightly-rust
+[setup a worktree for]: ./suggested.html#working-on-multiple-branches-at-the-same-time
+
 ## Incremental builds with `--keep-stage`.
 
 Sometimes just checking
