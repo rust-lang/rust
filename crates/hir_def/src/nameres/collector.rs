@@ -5,6 +5,7 @@
 
 use base_db::{CrateId, FileId, ProcMacroId};
 use cfg::CfgOptions;
+use hir_expand::InFile;
 use hir_expand::{
     ast_id_map::FileAstId,
     builtin_derive::find_builtin_derive,
@@ -21,9 +22,7 @@ use crate::{
     attr::Attrs,
     db::DefDatabase,
     item_scope::{ImportType, PerNsGlobImports},
-    item_tree::{
-        self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, Mod, ModItem, ModKind, StructDefKind,
-    },
+    item_tree::{self, ItemTree, ItemTreeId, MacroCall, Mod, ModItem, ModKind, StructDefKind},
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
@@ -112,6 +111,12 @@ impl PartialResolvedImport {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+enum ImportSource {
+    Import(ItemTreeId<item_tree::Import>),
+    ExternCrate(ItemTreeId<item_tree::ExternCrate>),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Import {
     pub path: ModPath,
     pub alias: Option<ImportAlias>,
@@ -120,11 +125,12 @@ struct Import {
     pub is_prelude: bool,
     pub is_extern_crate: bool,
     pub is_macro_use: bool,
+    source: ImportSource,
 }
 
 impl Import {
-    fn from_use(tree: &ItemTree, id: FileItemTreeId<item_tree::Import>) -> Self {
-        let it = &tree[id];
+    fn from_use(tree: &ItemTree, id: ItemTreeId<item_tree::Import>) -> Self {
+        let it = &tree[id.value];
         let visibility = &tree[it.visibility];
         Self {
             path: it.path.clone(),
@@ -134,11 +140,12 @@ impl Import {
             is_prelude: it.is_prelude,
             is_extern_crate: false,
             is_macro_use: false,
+            source: ImportSource::Import(id),
         }
     }
 
-    fn from_extern_crate(tree: &ItemTree, id: FileItemTreeId<item_tree::ExternCrate>) -> Self {
-        let it = &tree[id];
+    fn from_extern_crate(tree: &ItemTree, id: ItemTreeId<item_tree::ExternCrate>) -> Self {
+        let it = &tree[id.value];
         let visibility = &tree[it.visibility];
         Self {
             path: it.path.clone(),
@@ -148,6 +155,7 @@ impl Import {
             is_prelude: false,
             is_extern_crate: true,
             is_macro_use: it.is_macro_use,
+            source: ImportSource::ExternCrate(id),
         }
     }
 }
@@ -245,9 +253,10 @@ impl DefCollector<'_> {
 
         let unresolved_imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
         // show unresolved imports in completion, etc
-        for directive in unresolved_imports {
-            self.record_resolved_import(&directive)
+        for directive in &unresolved_imports {
+            self.record_resolved_import(directive)
         }
+        self.unresolved_imports = unresolved_imports;
 
         // Record proc-macros
         self.collect_proc_macro();
@@ -778,7 +787,29 @@ impl DefCollector<'_> {
         .collect(item_tree.top_level_items());
     }
 
-    fn finish(self) -> CrateDefMap {
+    fn finish(mut self) -> CrateDefMap {
+        for directive in &self.unresolved_imports {
+            match directive.import.source {
+                ImportSource::Import(import) => {
+                    let item_tree = self.db.item_tree(import.file_id);
+                    let import_data = &item_tree[import.value];
+                    self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
+                        directive.module_id,
+                        InFile::new(import.file_id, import_data.ast_id),
+                        import_data.index,
+                    ));
+                }
+                ImportSource::ExternCrate(krate) => {
+                    let item_tree = self.db.item_tree(krate.file_id);
+                    let extern_crate = &item_tree[krate.value];
+                    self.def_map.diagnostics.push(DefDiagnostic::unresolved_extern_crate(
+                        directive.module_id,
+                        InFile::new(krate.file_id, extern_crate.ast_id),
+                    ));
+                }
+            }
+        }
+
         self.def_map
     }
 }
@@ -834,14 +865,20 @@ impl ModCollector<'_, '_> {
                     ModItem::Import(import_id) => {
                         self.def_collector.unresolved_imports.push(ImportDirective {
                             module_id: self.module_id,
-                            import: Import::from_use(&self.item_tree, import_id),
+                            import: Import::from_use(
+                                &self.item_tree,
+                                InFile::new(self.file_id, import_id),
+                            ),
                             status: PartialResolvedImport::Unresolved,
                         })
                     }
                     ModItem::ExternCrate(import_id) => {
                         self.def_collector.unresolved_imports.push(ImportDirective {
                             module_id: self.module_id,
-                            import: Import::from_extern_crate(&self.item_tree, import_id),
+                            import: Import::from_extern_crate(
+                                &self.item_tree,
+                                InFile::new(self.file_id, import_id),
+                            ),
                             status: PartialResolvedImport::Unresolved,
                         })
                     }

@@ -688,19 +688,21 @@ fn unresolved_module_diagnostics() {
 
     expect![[r#"
         [
-            UnresolvedModule {
-                module: Idx::<ModuleData>(0),
-                declaration: InFile {
-                    file_id: HirFileId(
-                        FileId(
+            DefDiagnostic {
+                in_module: Idx::<ModuleData>(0),
+                kind: UnresolvedModule {
+                    declaration: InFile {
+                        file_id: HirFileId(
                             FileId(
-                                0,
+                                FileId(
+                                    0,
+                                ),
                             ),
                         ),
-                    ),
-                    value: FileAstId::<syntax::ast::generated::nodes::Module>(1),
+                        value: FileAstId::<syntax::ast::generated::nodes::Module>(1),
+                    },
+                    candidate: "bar.rs",
                 },
-                candidate: "bar.rs",
             },
         ]
     "#]]
