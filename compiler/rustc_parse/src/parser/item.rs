@@ -1402,7 +1402,7 @@ impl<'a> Parser<'a> {
         vis: Visibility,
         attrs: Vec<Attribute>,
     ) -> PResult<'a, FieldDef> {
-        let name = self.parse_ident_common(false)?;
+        let name = self.parse_field_ident(lo)?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
         Ok(FieldDef {
@@ -1414,6 +1414,29 @@ impl<'a> Parser<'a> {
             attrs,
             is_placeholder: false,
         })
+    }
+
+    /// Parses a field identifier. Specialized version of `parse_ident_common`
+    /// for better diagnostics and suggestions.
+    fn parse_field_ident(&mut self, lo: Span) -> PResult<'a, Ident> {
+        let (ident, is_raw) = self.ident_or_err()?;
+        if !is_raw && ident.is_reserved() {
+            let err = if self.check_fn_front_matter(false) {
+                let _ = self.parse_fn(&mut Vec::new(), |_| true, lo);
+                let mut err = self.struct_span_err(
+                    lo.to(self.prev_token.span),
+                    "functions are not allowed in struct definitions",
+                );
+                err.help("unlike in C++, Java, and C#, functions are declared in `impl` blocks");
+                err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
+                err
+            } else {
+                self.expected_ident_found()
+            };
+            return Err(err);
+        }
+        self.bump();
+        Ok(ident)
     }
 
     /// Parses a declarative macro 2.0 definition.
