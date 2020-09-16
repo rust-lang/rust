@@ -56,6 +56,9 @@ pub use iter::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use iter::{ArrayChunks, ArrayChunksMut};
 
+#[unstable(feature = "array_windows", issue = "75027")]
+pub use iter::ArrayWindows;
+
 #[unstable(feature = "split_inclusive", issue = "72360")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
 
@@ -1024,6 +1027,40 @@ impl<T> [T] {
             let array_slice: &mut [[T; N]] = from_raw_parts_mut(fst.as_mut_ptr().cast(), len);
             ArrayChunksMut { iter: array_slice.iter_mut(), rem: snd }
         }
+    }
+
+    /// Returns an iterator over overlapping windows of `N` elements of  a slice,
+    /// starting at the beginning of the slice.
+    ///
+    /// This is the const generic equivalent of [`windows`].
+    ///
+    /// If `N` is smaller than the size of the array, it will return no windows.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// error before this method gets stabilized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_windows)]
+    /// let slice = [0, 1, 2, 3];
+    /// let mut iter = slice.array_windows();
+    /// assert_eq!(iter.next().unwrap(), &[0, 1]);
+    /// assert_eq!(iter.next().unwrap(), &[1, 2]);
+    /// assert_eq!(iter.next().unwrap(), &[2, 3]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// [`windows`]: #method.windows
+    #[unstable(feature = "array_windows", issue = "75027")]
+    #[inline]
+    pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
+        assert_ne!(N, 0);
+
+        let num_windows = self.len().saturating_sub(N - 1);
+        ArrayWindows { slice_head: self.as_ptr(), num: num_windows, marker: marker::PhantomData }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end

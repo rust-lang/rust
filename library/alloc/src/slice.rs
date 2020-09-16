@@ -97,6 +97,8 @@ pub use core::slice::check_range;
 pub use core::slice::ArrayChunks;
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use core::slice::ArrayChunksMut;
+#[unstable(feature = "array_windows", issue = "75027")]
+pub use core::slice::ArrayWindows;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
 #[stable(feature = "from_ref", since = "1.28.0")]
