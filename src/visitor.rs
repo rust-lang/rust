@@ -146,16 +146,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.push_rewrite(stmt.span(), rewrite)
                 }
             }
-            ast::StmtKind::MacCall(ref mac) => {
-                let (ref mac, _macro_style, ref attrs) = **mac;
-                if self.visit_attrs(attrs, ast::AttrStyle::Outer) {
+            ast::StmtKind::MacCall(ref mac_stmt) => {
+                if self.visit_attrs(&mac_stmt.attrs, ast::AttrStyle::Outer) {
                     self.push_skipped_with_span(
-                        attrs,
+                        &mac_stmt.attrs,
                         stmt.span(),
                         get_span_without_attrs(stmt.as_ast_node()),
                     );
                 } else {
-                    self.visit_mac(mac, None, MacroPosition::Statement);
+                    self.visit_mac(&mac_stmt.mac, None, MacroPosition::Statement);
                 }
                 self.format_missing(stmt.span().hi());
             }

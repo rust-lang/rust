@@ -66,12 +66,11 @@ impl Spanned for ast::Stmt {
             ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
                 mk_sp(expr.span().lo(), self.span.hi())
             }
-            ast::StmtKind::MacCall(ref mac) => {
-                let (_, _, ref attrs) = **mac;
-                if attrs.is_empty() {
+            ast::StmtKind::MacCall(ref mac_stmt) => {
+                if mac_stmt.attrs.is_empty() {
                     self.span
                 } else {
-                    mk_sp(attrs[0].span.lo(), self.span.hi())
+                    mk_sp(mac_stmt.attrs[0].span.lo(), self.span.hi())
                 }
             }
             ast::StmtKind::Empty => self.span,

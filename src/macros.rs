@@ -1178,8 +1178,7 @@ fn next_space(tok: &TokenKind) -> SpaceState {
         | TokenKind::Pound
         | TokenKind::Dollar
         | TokenKind::OpenDelim(_)
-        | TokenKind::CloseDelim(_)
-        | TokenKind::Whitespace => SpaceState::Never,
+        | TokenKind::CloseDelim(_) => SpaceState::Never,
 
         TokenKind::Literal(..) | TokenKind::Ident(..) | TokenKind::Lifetime(_) => SpaceState::Ident,
 
@@ -1275,8 +1274,8 @@ impl MacroParser {
             span,
         })) = self.toks.look_ahead(0)
         {
-            self.toks.next();
             hi = span.hi();
+            self.toks.next();
         }
         Some(MacroBranch {
             span: mk_sp(lo, hi),
