@@ -9,6 +9,7 @@ fn main() {
     print!("Hello {}\n", "world");
     print!("Hello {} {}\n", "world", "#2");
     print!("{}\n", 1265);
+    print!("\n");
 
     // these are all fine
     print!("");
