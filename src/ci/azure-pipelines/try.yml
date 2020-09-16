@@ -31,7 +31,7 @@ jobs:
     matrix:
       # This target only needs to support 11.0 and up as nothing else supports the hardware
       dist-aarch64-apple:
-        SCRIPT: ./x.py dist -vvvvvvvvvv
+        SCRIPT: ./x.py dist --stage 2 -vvvvvvvvvv
         INITIAL_RUST_CONFIGURE_ARGS: >-
           --build=x86_64-apple-darwin
           --host=aarch64-apple-darwin
