@@ -693,7 +693,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn from_secs_f64(secs: f64) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn from_secs_f64(secs: f64) -> Duration {
         const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f64;
         let nanos = secs * (NANOS_PER_SEC as f64);
         if !nanos.is_finite() {
@@ -727,7 +728,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn from_secs_f32(secs: f32) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn from_secs_f32(secs: f32) -> Duration {
         const MAX_NANOS_F32: f32 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f32;
         let nanos = secs * (NANOS_PER_SEC as f32);
         if !nanos.is_finite() {
@@ -761,7 +763,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn mul_f64(self, rhs: f64) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn mul_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(rhs * self.as_secs_f64())
     }
 
@@ -782,7 +785,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn mul_f32(self, rhs: f32) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn mul_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(rhs * self.as_secs_f32())
     }
 
@@ -802,7 +806,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn div_f64(self, rhs: f64) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn div_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(self.as_secs_f64() / rhs)
     }
 
@@ -824,7 +829,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn div_f32(self, rhs: f32) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn div_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(self.as_secs_f32() / rhs)
     }
 
