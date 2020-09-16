@@ -54,6 +54,7 @@ pub struct TypeAliasData {
     pub name: Name,
     pub type_ref: Option<TypeRef>,
     pub visibility: RawVisibility,
+    pub is_extern: bool,
     /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
     pub bounds: Vec<TypeBound>,
 }
@@ -71,6 +72,7 @@ impl TypeAliasData {
             name: typ.name.clone(),
             type_ref: typ.type_ref.clone(),
             visibility: item_tree[typ.visibility].clone(),
+            is_extern: typ.is_extern,
             bounds: typ.bounds.to_vec(),
         })
     }
