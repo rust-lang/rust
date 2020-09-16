@@ -1051,3 +1051,41 @@ fn dyn_trait_super_trait_not_in_scope() {
         "#]],
     );
 }
+
+#[test]
+fn method_resolution_foreign_opaque_type() {
+    check_infer(
+        r#"
+        extern "C" {
+            type S;
+            fn f() -> &'static S;
+        }
+
+        impl S {
+            fn foo(&self) -> bool {
+                true
+            }
+        }
+
+        fn test() {
+            let s = unsafe { f() };
+            s.foo();
+        }
+        "#,
+        // FIXME: 's.foo()' should be `bool`.
+        expect![[r#"
+            75..79 'self': &S
+            89..109 '{     ...     }': bool
+            99..103 'true': bool
+            123..167 '{     ...o(); }': ()
+            133..134 's': &S
+            137..151 'unsafe { f() }': &S
+            144..151 '{ f() }': &S
+            146..147 'f': fn f() -> &S
+            146..149 'f()': &S
+            157..158 's': &S
+            157..164 's.foo()': {unknown}
+        "#]],
+    );
+}
+
