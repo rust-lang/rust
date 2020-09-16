@@ -1051,13 +1051,11 @@ impl ModCollector<'_, '_> {
                             self.import_all_legacy_macros(module_id);
                         }
                     }
-                    Err(candidate) => self.def_collector.def_map.diagnostics.push(
-                        DefDiagnostic::UnresolvedModule {
-                            module: self.module_id,
-                            declaration: ast_id,
-                            candidate,
-                        },
-                    ),
+                    Err(candidate) => {
+                        self.def_collector.def_map.diagnostics.push(
+                            DefDiagnostic::unresolved_module(self.module_id, ast_id, candidate),
+                        );
+                    }
                 };
             }
         }

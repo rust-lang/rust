@@ -288,37 +288,106 @@ pub enum ModuleSource {
 
 mod diagnostics {
     use hir_expand::diagnostics::DiagnosticSink;
+    use hir_expand::hygiene::Hygiene;
+    use hir_expand::InFile;
     use syntax::{ast, AstPtr};
 
-    use crate::{db::DefDatabase, diagnostics::UnresolvedModule, nameres::LocalModuleId, AstId};
+    use crate::path::ModPath;
+    use crate::{db::DefDatabase, diagnostics::*, nameres::LocalModuleId, AstId};
 
     #[derive(Debug, PartialEq, Eq)]
-    pub(super) enum DefDiagnostic {
-        UnresolvedModule {
-            module: LocalModuleId,
-            declaration: AstId<ast::Module>,
-            candidate: String,
-        },
+    enum DiagnosticKind {
+        UnresolvedModule { declaration: AstId<ast::Module>, candidate: String },
+
+        UnresolvedExternCrate { ast: AstId<ast::ExternCrate> },
+
+        UnresolvedImport { ast: AstId<ast::Use>, index: usize },
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub(super) struct DefDiagnostic {
+        in_module: LocalModuleId,
+        kind: DiagnosticKind,
     }
 
     impl DefDiagnostic {
+        pub(super) fn unresolved_module(
+            container: LocalModuleId,
+            declaration: AstId<ast::Module>,
+            candidate: String,
+        ) -> Self {
+            Self {
+                in_module: container,
+                kind: DiagnosticKind::UnresolvedModule { declaration, candidate },
+            }
+        }
+
+        pub(super) fn unresolved_extern_crate(
+            container: LocalModuleId,
+            declaration: AstId<ast::ExternCrate>,
+        ) -> Self {
+            Self {
+                in_module: container,
+                kind: DiagnosticKind::UnresolvedExternCrate { ast: declaration },
+            }
+        }
+
+        pub(super) fn unresolved_import(
+            container: LocalModuleId,
+            ast: AstId<ast::Use>,
+            index: usize,
+        ) -> Self {
+            Self { in_module: container, kind: DiagnosticKind::UnresolvedImport { ast, index } }
+        }
+
         pub(super) fn add_to(
             &self,
             db: &dyn DefDatabase,
             target_module: LocalModuleId,
             sink: &mut DiagnosticSink,
         ) {
-            match self {
-                DefDiagnostic::UnresolvedModule { module, declaration, candidate } => {
-                    if *module != target_module {
-                        return;
-                    }
+            if self.in_module != target_module {
+                return;
+            }
+
+            match &self.kind {
+                DiagnosticKind::UnresolvedModule { declaration, candidate } => {
                     let decl = declaration.to_node(db.upcast());
                     sink.push(UnresolvedModule {
                         file: declaration.file_id,
                         decl: AstPtr::new(&decl),
                         candidate: candidate.clone(),
                     })
+                }
+
+                DiagnosticKind::UnresolvedExternCrate { ast } => {
+                    let item = ast.to_node(db.upcast());
+                    sink.push(UnresolvedExternCrate {
+                        file: ast.file_id,
+                        item: AstPtr::new(&item),
+                    });
+                }
+
+                DiagnosticKind::UnresolvedImport { ast, index } => {
+                    let use_item = ast.to_node(db.upcast());
+                    let hygiene = Hygiene::new(db.upcast(), ast.file_id);
+                    let mut cur = 0;
+                    let mut tree = None;
+                    ModPath::expand_use_item(
+                        InFile::new(ast.file_id, use_item),
+                        &hygiene,
+                        |_mod_path, use_tree, _is_glob, _alias| {
+                            if cur == *index {
+                                tree = Some(use_tree.clone());
+                            }
+
+                            cur += 1;
+                        },
+                    );
+
+                    if let Some(tree) = tree {
+                        sink.push(UnresolvedImport { file: ast.file_id, node: AstPtr::new(&tree) });
+                    }
                 }
             }
         }
