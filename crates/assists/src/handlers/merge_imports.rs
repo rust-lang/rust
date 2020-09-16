@@ -95,7 +95,7 @@ use std::fmt::Debug;
 use std::fmt<|>::Display;
 ",
             r"
-use std::fmt::{Display, Debug};
+use std::fmt::{Debug, Display};
 ",
         );
     }
@@ -122,7 +122,7 @@ use std::fmt::{self, Display};
 use std::{fmt, <|>fmt::Display};
 ",
             r"
-use std::{fmt::{Display, self}};
+use std::{fmt::{self, Display}};
 ",
         );
     }
@@ -210,13 +210,17 @@ use std::{fmt<|>::Debug, fmt::Display};
 use std::{fmt::{Debug, Display}};
 ",
         );
+    }
+
+    #[test]
+    fn test_merge_nested2() {
         check_assist(
             merge_imports,
             r"
 use std::{fmt::Debug, fmt<|>::Display};
 ",
             r"
-use std::{fmt::{Display, Debug}};
+use std::{fmt::{Debug, Display}};
 ",
         );
     }
@@ -310,9 +314,7 @@ use foo::<|>{
 };
 ",
             r"
-use foo::{
-    FooBar,
-bar::baz};
+use foo::{FooBar, bar::baz};
 ",
         )
     }

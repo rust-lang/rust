@@ -347,6 +347,7 @@ impl ast::UseTree {
         self.clone()
     }
 
+    /// Splits off the given prefix, making it the path component of the use tree, appending the rest of the path to all UseTreeList items.
     #[must_use]
     pub fn split_prefix(&self, prefix: &ast::Path) -> ast::UseTree {
         let suffix = if self.path().as_ref() == Some(prefix) && self.use_tree_list().is_none() {
