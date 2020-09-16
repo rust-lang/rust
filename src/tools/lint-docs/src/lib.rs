@@ -402,9 +402,12 @@ fn generate_lint_output(
                 None => {
                     let rendered: Vec<&str> =
                         msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
+                    let non_json: Vec<&str> =
+                        stderr.lines().filter(|line| !line.starts_with('{')).collect();
                     Err(format!(
-                        "did not find lint `{}` in output of example, got:\n{}",
+                        "did not find lint `{}` in output of example, got:\n{}\n{}",
                         name,
+                        non_json.join("\n"),
                         rendered.join("\n")
                     )
                     .into())
