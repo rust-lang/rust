@@ -33,10 +33,10 @@
           _6 = const 1_usize;              // scope 0 at $DIR/slice_len.rs:5:31: 5:32
 -         _7 = Len((*_2));                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 -         _8 = Lt(_6, _7);                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
--         assert(move _8, "index out of bounds: the len is {} but the index is {}", move _7, _6) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
+-         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +         _7 = const 3_usize;              // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +         _8 = const true;                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
-+         assert(const true, "index out of bounds: the len is {} but the index is {}", const 3_usize, const 1_usize) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
       }
   
       bb1: {
