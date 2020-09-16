@@ -152,6 +152,7 @@ macro_rules! types {
 mod aarch64;
 mod arm;
 mod hexagon;
+mod mips;
 mod nvptx;
 mod riscv;
 mod x86;
@@ -159,6 +160,7 @@ mod x86;
 pub use aarch64::{AArch64InlineAsmReg, AArch64InlineAsmRegClass};
 pub use arm::{ArmInlineAsmReg, ArmInlineAsmRegClass};
 pub use hexagon::{HexagonInlineAsmReg, HexagonInlineAsmRegClass};
+pub use mips::{MipsInlineAsmReg, MipsInlineAsmRegClass};
 pub use nvptx::{NvptxInlineAsmReg, NvptxInlineAsmRegClass};
 pub use riscv::{RiscVInlineAsmReg, RiscVInlineAsmRegClass};
 pub use x86::{X86InlineAsmReg, X86InlineAsmRegClass};
@@ -173,6 +175,7 @@ pub enum InlineAsmArch {
     RiscV64,
     Nvptx64,
     Hexagon,
+    Mips,
 }
 
 impl FromStr for InlineAsmArch {
@@ -188,6 +191,7 @@ impl FromStr for InlineAsmArch {
             "riscv64" => Ok(Self::RiscV64),
             "nvptx64" => Ok(Self::Nvptx64),
             "hexagon" => Ok(Self::Hexagon),
+            "mips" => Ok(Self::Mips),
             _ => Err(()),
         }
     }
@@ -201,6 +205,7 @@ pub enum InlineAsmReg {
     RiscV(RiscVInlineAsmReg),
     Nvptx(NvptxInlineAsmReg),
     Hexagon(HexagonInlineAsmReg),
+    Mips(MipsInlineAsmReg),
 }
 
 impl InlineAsmReg {
@@ -211,6 +216,7 @@ impl InlineAsmReg {
             Self::AArch64(r) => r.name(),
             Self::RiscV(r) => r.name(),
             Self::Hexagon(r) => r.name(),
+            Self::Mips(r) => r.name(),
         }
     }
 
@@ -221,6 +227,7 @@ impl InlineAsmReg {
             Self::AArch64(r) => InlineAsmRegClass::AArch64(r.reg_class()),
             Self::RiscV(r) => InlineAsmRegClass::RiscV(r.reg_class()),
             Self::Hexagon(r) => InlineAsmRegClass::Hexagon(r.reg_class()),
+            Self::Mips(r) => InlineAsmRegClass::Mips(r.reg_class()),
         }
     }
 
@@ -252,6 +259,9 @@ impl InlineAsmReg {
             InlineAsmArch::Hexagon => {
                 Self::Hexagon(HexagonInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
+            InlineAsmArch::Mips => {
+                Self::Mips(MipsInlineAsmReg::parse(arch, has_feature, target, &name)?)
+            }
         })
     }
 
@@ -269,6 +279,7 @@ impl InlineAsmReg {
             Self::AArch64(r) => r.emit(out, arch, modifier),
             Self::RiscV(r) => r.emit(out, arch, modifier),
             Self::Hexagon(r) => r.emit(out, arch, modifier),
+            Self::Mips(r) => r.emit(out, arch, modifier),
         }
     }
 
@@ -279,6 +290,7 @@ impl InlineAsmReg {
             Self::AArch64(_) => cb(self),
             Self::RiscV(_) => cb(self),
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
+            Self::Mips(_) => cb(self),
         }
     }
 }
@@ -291,6 +303,7 @@ pub enum InlineAsmRegClass {
     RiscV(RiscVInlineAsmRegClass),
     Nvptx(NvptxInlineAsmRegClass),
     Hexagon(HexagonInlineAsmRegClass),
+    Mips(MipsInlineAsmRegClass),
 }
 
 impl InlineAsmRegClass {
@@ -302,6 +315,7 @@ impl InlineAsmRegClass {
             Self::RiscV(r) => r.name(),
             Self::Nvptx(r) => r.name(),
             Self::Hexagon(r) => r.name(),
+            Self::Mips(r) => r.name(),
         }
     }
 
@@ -316,6 +330,7 @@ impl InlineAsmRegClass {
             Self::RiscV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::RiscV),
             Self::Nvptx(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Nvptx),
             Self::Hexagon(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Hexagon),
+            Self::Mips(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Mips),
         }
     }
 
@@ -337,6 +352,7 @@ impl InlineAsmRegClass {
             Self::RiscV(r) => r.suggest_modifier(arch, ty),
             Self::Nvptx(r) => r.suggest_modifier(arch, ty),
             Self::Hexagon(r) => r.suggest_modifier(arch, ty),
+            Self::Mips(r) => r.suggest_modifier(arch, ty),
         }
     }
 
@@ -354,6 +370,7 @@ impl InlineAsmRegClass {
             Self::RiscV(r) => r.default_modifier(arch),
             Self::Nvptx(r) => r.default_modifier(arch),
             Self::Hexagon(r) => r.default_modifier(arch),
+            Self::Mips(r) => r.default_modifier(arch),
         }
     }
 
@@ -370,6 +387,7 @@ impl InlineAsmRegClass {
             Self::RiscV(r) => r.supported_types(arch),
             Self::Nvptx(r) => r.supported_types(arch),
             Self::Hexagon(r) => r.supported_types(arch),
+            Self::Mips(r) => r.supported_types(arch),
         }
     }
 
@@ -391,6 +409,7 @@ impl InlineAsmRegClass {
                 InlineAsmArch::Hexagon => {
                     Self::Hexagon(HexagonInlineAsmRegClass::parse(arch, name)?)
                 }
+                InlineAsmArch::Mips => Self::Mips(MipsInlineAsmRegClass::parse(arch, name)?),
             })
         })
     }
@@ -405,6 +424,7 @@ impl InlineAsmRegClass {
             Self::RiscV(r) => r.valid_modifiers(arch),
             Self::Nvptx(r) => r.valid_modifiers(arch),
             Self::Hexagon(r) => r.valid_modifiers(arch),
+            Self::Mips(r) => r.valid_modifiers(arch),
         }
     }
 }
@@ -543,6 +563,11 @@ pub fn allocatable_registers(
         InlineAsmArch::Hexagon => {
             let mut map = hexagon::regclass_map();
             hexagon::fill_reg_map(arch, has_feature, target, &mut map);
+            map
+        }
+        InlineAsmArch::Mips => {
+            let mut map = mips::regclass_map();
+            mips::fill_reg_map(arch, has_feature, target, &mut map);
             map
         }
     }
