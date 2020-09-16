@@ -1,8 +1,8 @@
 //! Performs various peephole optimizations.
 
 use crate::transform::{MirPass, MirSource};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::Mutability;
+use rustc_ast::Mutability;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
@@ -40,8 +40,9 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     }
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        if self.optimizations.and_stars.remove(&location) {
-            debug!("replacing `&*`: {:?}", rvalue);
+        if let Some(mutability) = self.optimizations.and_stars.remove(&location) {
+            let type_to_print = if mutability == Mutability::Not { "&" } else { "&mut" };
+            debug!("replacing `{}*`: {:?}", type_to_print, rvalue);
             let new_place = match rvalue {
                 Rvalue::Ref(_, _, place) => {
                     if let &[ref proj_l @ .., proj_r] = place.projection.as_ref() {
@@ -56,7 +57,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
                         unreachable!();
                     }
                 }
-                _ => bug!("Detected `&*` but didn't find `&*`!"),
+                _ => bug!("Detected `{}*` but didn't find `{}*`!", type_to_print, type_to_print),
             };
             *rvalue = Rvalue::Use(Operand::Copy(new_place))
         }
@@ -132,14 +133,16 @@ impl OptimizationFinder<'b, 'tcx> {
 
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        if let Rvalue::Ref(_, _, place) = rvalue {
+        if let Rvalue::Ref(_, borrowkind, place) = rvalue {
             if let PlaceRef { local, projection: &[ref proj_base @ .., ProjectionElem::Deref] } =
                 place.as_ref()
             {
-                // The dereferenced place must have type `&_`.
+                // The dereferenced place must have a reference type with the same mutability
                 let ty = Place::ty_from(local, proj_base, self.body, self.tcx).ty;
-                if let ty::Ref(_, _, Mutability::Not) = ty.kind() {
-                    self.optimizations.and_stars.insert(location);
+                let mutability = borrowkind.mutability();
+                if matches!(ty.kind(), ty::Ref(_, _, derefed_place_mutability) if *derefed_place_mutability == mutability)
+                {
+                    self.optimizations.and_stars.insert(location, mutability);
                 }
             }
         }
@@ -161,7 +164,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
 #[derive(Default)]
 struct OptimizationList<'tcx> {
-    and_stars: FxHashSet<Location>,
+    and_stars: FxHashMap<Location, Mutability>,
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
     unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
 }

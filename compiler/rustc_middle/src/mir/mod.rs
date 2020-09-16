@@ -649,6 +649,14 @@ impl BorrowKind {
             BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
         }
     }
+
+    /// Returns the mutability of the borrow
+    pub fn mutability(&self) -> Mutability {
+        match self {
+            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => Mutability::Not,
+            BorrowKind::Mut { .. } => Mutability::Mut,
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
