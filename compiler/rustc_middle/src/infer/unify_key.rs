@@ -124,6 +124,7 @@ pub struct ConstVariableOrigin {
 pub enum ConstVariableOriginKind {
     MiscVariable,
     ConstInference,
+    // FIXME(const_generics): Consider storing the `DefId` of the param here.
     ConstParameterDefinition(Symbol),
     SubstitutionPlaceholder,
 }
