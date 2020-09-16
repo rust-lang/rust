@@ -180,7 +180,7 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
 ))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 #[derive(Clone)]
-pub struct UCred(libc::ucred);
+pub struct SocketCred(libc::ucred);
 
 #[cfg(any(
     doc,
@@ -196,13 +196,13 @@ pub struct UCred(libc::ucred);
     target_os = "openbsd",
     target_env = "uclibc",
 ))]
-impl UCred {
+impl SocketCred {
     /// Create a Unix credential struct.
     ///
     /// PID, UID and GID is set to 0.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn new() -> UCred {
-        UCred(libc::ucred { pid: 0, uid: 0, gid: 0 })
+    pub fn new() -> SocketCred {
+        SocketCred(libc::ucred { pid: 0, uid: 0, gid: 0 })
     }
 
     /// Set the PID.
@@ -293,10 +293,10 @@ pub struct ScmCredentials<'a>(AncillaryDataIter<'a, libc::ucred>);
 ))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 impl<'a> Iterator for ScmCredentials<'a> {
-    type Item = UCred;
+    type Item = SocketCred;
 
-    fn next(&mut self) -> Option<UCred> {
-        Some(UCred(self.0.next()?))
+    fn next(&mut self) -> Option<SocketCred> {
+        Some(SocketCred(self.0.next()?))
     }
 }
 
@@ -606,7 +606,7 @@ impl<'a> SocketAncillary<'a> {
         target_env = "uclibc",
     ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn add_creds(&mut self, creds: &[UCred]) -> bool {
+    pub fn add_creds(&mut self, creds: &[SocketCred]) -> bool {
         self.truncated = false;
         add_to_ancillary_data(
             &mut self.buffer,
