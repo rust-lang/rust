@@ -519,7 +519,7 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
-    let mut cred1 = UCred::new();
+    let mut cred1 = SocketCred::new();
     cred1.set_pid(getpid());
     cred1.set_uid(getuid());
     cred1.set_gid(getgid());
