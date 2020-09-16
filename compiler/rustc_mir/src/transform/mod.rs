@@ -16,7 +16,7 @@ use std::borrow::Cow;
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
 pub mod add_retag;
-pub mod bbcp;
+pub mod basic_block_copy_prop;
 pub mod check_const_item_mutation;
 pub mod check_consts;
 pub mod check_packed_ref;
@@ -400,7 +400,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &simplify_comparison_integral::SimplifyComparisonIntegral,
         &simplify_try::SimplifyArmIdentity,
         &simplify_try::SimplifyBranchSame,
-        &bbcp::Bbcp,
+        &basic_block_copy_prop::BasicBlockCopyProp,
         &dest_prop::DestinationPropagation,
         &simplify_branches::SimplifyBranches::new("final"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,

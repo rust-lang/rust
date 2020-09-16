@@ -1,33 +1,61 @@
+//! A simple intra-block copy propagation pass.
+//!
+//! This pass performs simple forwards-propagation of locals that were assigned within the same MIR
+//! block. This is a common pattern introduced by MIR building.
+//!
+//! The pass is fairly simple: It walks every MIR block from top to bottom and looks for assignments
+//! we can track. At the same time, it looks for uses of locals whose value we have previously
+//! recorded, and replaces them with their value.
+//!
+//! "Value" in this case means `LocalValue`, not an actual concrete value (that would be constant
+//! propagation). `LocalValue` is either `Unknown`, which means that a local has no value we can
+//! substitute it for, or `Place`, which means that the local was previously assigned to a copy of
+//! some `Place` and can be replaced by it.
+//!
+//! Removal of the left-over assignments and locals (if possible) is performed by the
+//! `SimplifyLocals` pass that runs later.
+//!
+//! The pass has one interesting optimization to ensure that it runs in linear time: Recorded values
+//! are tagged by a "generation", which indicates in which basic block the value was recorded.
+//! `LocalValues` will only return values that were recorded in the current generation (so in the
+//! current block). Once we move on to a different block, we bump the generation counter, which will
+//! result in all old values becoming inaccessible. This is logically equivalent to simply
+//! overwriting all of them with `Unknown`, but is much cheaper: Just an increment instead of an
+//! `O(n)` clear (where `n` is the number of locals declared in the body). This `O(n)` runtime would
+//! otherwise make the total runtime of this pass `O(n * m)`, where `n` is the number of locals and
+//! `m` is the number of basic blocks, which is prohibitively expensive.
+
 use rustc_index::{bit_set::BitSet, vec::IndexVec};
 use rustc_middle::{
-    mir::traversal, mir::visit::MutVisitor, mir::visit::PlaceContext, mir::visit::Visitor,
-    mir::Body, mir::Local, mir::Location, mir::Operand, mir::Place, mir::ProjectionElem,
-    mir::Rvalue, mir::Statement, mir::StatementKind, mir::Terminator, mir::TerminatorKind,
-    ty::TyCtxt,
+    mir::visit::MutVisitor, mir::visit::PlaceContext, mir::visit::Visitor, mir::Body, mir::Local,
+    mir::Location, mir::Operand, mir::Place, mir::ProjectionElem, mir::Rvalue, mir::Statement,
+    mir::StatementKind, mir::Terminator, mir::TerminatorKind, ty::TyCtxt,
 };
 use smallvec::SmallVec;
 
 use super::{MirPass, MirSource};
 
-pub struct Bbcp;
+pub struct BasicBlockCopyProp;
 
-impl<'tcx> MirPass<'tcx> for Bbcp {
+impl<'tcx> MirPass<'tcx> for BasicBlockCopyProp {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
+            return;
+        }
+
         debug!("processing {:?}", source.def_id());
 
         let mut borrows = BorrowCollector { locals: BitSet::new_empty(body.local_decls.len()) };
         borrows.visit_body(body);
 
-        let mut visitor = BbcpVisitor {
+        let mut visitor = CopyPropVisitor {
             tcx,
             referenced_locals: borrows.locals,
             local_values: LocalValues::new(body),
         };
 
-        let reachable = traversal::reachable_as_bitset(body);
-
-        for bb in reachable.iter() {
-            visitor.visit_basic_block_data(bb, &mut body.basic_blocks_mut()[bb]);
+        for (bb, data) in body.basic_blocks_mut().iter_enumerated_mut() {
+            visitor.visit_basic_block_data(bb, data);
             visitor.local_values.clear();
         }
     }
@@ -36,13 +64,15 @@ impl<'tcx> MirPass<'tcx> for Bbcp {
 /// Symbolic value of a local variable.
 #[derive(Copy, Clone)]
 enum LocalValue<'tcx> {
+    /// Locals start out with unknown values, and are assigned an unknown value when they are
+    /// mutated in an incompatible way.
     Unknown,
 
-    /// The local is definitely assigned to `place`.
-    Place {
-        place: Place<'tcx>,
-        generation: u32,
-    },
+    /// The local was last assigned to a copy of `place`.
+    ///
+    /// If a local is in this state, and we see a use of that local, we can substitute `place`
+    /// instead, potentially eliminating the local and its assignment.
+    Place { place: Place<'tcx>, generation: u32 },
 }
 
 /// Stores the locals that need to be invalidated when this local is modified or deallocated.
@@ -121,23 +151,27 @@ impl<'tcx> LocalValues<'tcx> {
     }
 }
 
-struct BbcpVisitor<'tcx> {
+struct CopyPropVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
-    /// Locals that have their address taken. We will not replace those, since that may change their
-    /// observed address.
+    /// Locals that have their address taken.
     referenced_locals: BitSet<Local>,
 
     /// Tracks the (symbolic) values of local variables in the visited block.
     local_values: LocalValues<'tcx>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for BbcpVisitor<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for CopyPropVisitor<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
+        // We are only looking for *copies* of a place, not moves, since moving out of the place
+        // *again* later on would be a use-after-move. For example:
+        //   _1 = ...;
+        //   _2 = move _1;
+        //   use(move _2);   <- can *not* replace with `use(move _1)` or `use(_1)`
         if let StatementKind::Assign(box (dest, Rvalue::Use(Operand::Copy(place)))) =
             &statement.kind
         {
@@ -153,6 +187,8 @@ impl<'tcx> MutVisitor<'tcx> for BbcpVisitor<'tcx> {
             }
         }
 
+        // If this is not an eligible assignment to be recorded, visit it. This will keep track of
+        // any mutations of locals via `visit_local` and assign an `Unknown` value to them.
         self.super_statement(statement, location);
     }
 
@@ -169,18 +205,15 @@ impl<'tcx> MutVisitor<'tcx> for BbcpVisitor<'tcx> {
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
-        // We can *not* do:
-        //   _1 = ...;
-        //   _2 = move _1;
-        //   use(move _2);   <- can not replace with `use(move _1)` or `use(_1)`
-        // Because `_1` was already moved out of. This is handled when recording values of locals
-        // though, so we won't end up here in that situation. When we see a `move` *here*, it must
-        // be fine to instead make a *copy* of the original:
+        // NB: All `operand`s are non-mutating uses of the contained place, so we don't have to call
+        // `super_operand` here.
+
+        // We *can* replace a `move` by a copy from the recorded place, because we only record
+        // places that are *copied* from in the first place (so the place type must be `Copy` by
+        // virtue of the input MIR). For example, this is a common pattern:
         //   _1 = ...;
         //   _2 = _1;
         //   use(move _2);   <- can replace with `use(_1)`
-
-        // NB: All `operand`s are non-mutating uses of the contained place.
         if let Operand::Copy(place) | Operand::Move(place) = operand {
             if let Some(local) = place.as_local() {
                 if let Some(known_place) = self.local_values.get(local) {
@@ -192,6 +225,12 @@ impl<'tcx> MutVisitor<'tcx> for BbcpVisitor<'tcx> {
     }
 }
 
+/// Determines whether `place` is an assignment source that may later be used instead of the local
+/// it is assigned to.
+///
+/// This is the case only for places that don't dereference pointers (since the dereference
+/// operation may not be valid anymore after this point), and don't index a slice (since that uses
+/// another local besides the base local, which would need additional tracking).
 fn place_eligible(place: &Place<'_>) -> bool {
     place.projection.iter().all(|elem| match elem {
         ProjectionElem::Deref | ProjectionElem::Index(_) => false,
@@ -203,6 +242,10 @@ fn place_eligible(place: &Place<'_>) -> bool {
     })
 }
 
+/// Collects locals that have their address taken.
+///
+/// We do not optimize such locals since they can be modified through operations that do not mention
+/// the local. Doing so might also change the local's address, which is observable.
 struct BorrowCollector {
     locals: BitSet<Local>,
 }
