@@ -13,6 +13,7 @@ use crate::cfg_flag::CfgFlag;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectJson {
     pub(crate) sysroot_src: Option<AbsPathBuf>,
+    project_root: Option<AbsPathBuf>,
     crates: Vec<Crate>,
 }
 
@@ -36,6 +37,7 @@ impl ProjectJson {
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
         ProjectJson {
             sysroot_src: data.sysroot_src.map(|it| base.join(it)),
+            project_root: base.parent().map(AbsPath::to_path_buf),
             crates: data
                 .crates
                 .into_iter()
@@ -88,6 +90,12 @@ impl ProjectJson {
     }
     pub fn crates(&self) -> impl Iterator<Item = (CrateId, &Crate)> + '_ {
         self.crates.iter().enumerate().map(|(idx, krate)| (CrateId(idx as u32), krate))
+    }
+    pub fn path(&self) -> Option<&AbsPath> {
+        match &self.project_root {
+            Some(p) => Some(p.as_path()),
+            None => None,
+        }
     }
 }
 

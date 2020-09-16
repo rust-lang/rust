@@ -2,7 +2,7 @@
 use std::{mem, sync::Arc};
 
 use base_db::{CrateGraph, SourceRoot, VfsPath};
-use flycheck::FlycheckHandle;
+use flycheck::{FlycheckConfig, FlycheckHandle};
 use ide::AnalysisChange;
 use project_model::{ProcMacroClient, ProjectWorkspace};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
@@ -244,13 +244,17 @@ impl GlobalState {
             .iter()
             // FIXME: Figure out the multi-workspace situation
             .find_map(|w| match w {
-                ProjectWorkspace::Cargo { cargo, sysroot: _ } => Some(cargo),
-                ProjectWorkspace::Json { .. } => None,
+                ProjectWorkspace::Cargo { cargo, sysroot: _ } => Some(cargo.workspace_root()),
+                ProjectWorkspace::Json { project, .. } => {
+                    // Enable flychecks for json projects if a custom flycheck command was supplied
+                    // in the workspace configuration.
+                    match config {
+                        FlycheckConfig::CustomCommand { .. } => project.path(),
+                        _ => None,
+                    }
+                }
             })
-            .map(move |cargo| {
-                let cargo_project_root = cargo.workspace_root().to_path_buf();
-                FlycheckHandle::spawn(sender, config, cargo_project_root.into())
-            })
+            .map(move |root| FlycheckHandle::spawn(sender, config, root.to_path_buf().into()))
     }
 }
 
