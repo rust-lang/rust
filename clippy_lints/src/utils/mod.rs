@@ -10,6 +10,7 @@ pub mod comparisons;
 pub mod conf;
 pub mod constants;
 mod diagnostics;
+pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
 pub mod inspector;
