@@ -168,18 +168,23 @@ fn build_vtable<'tcx>(
 }
 
 fn write_usize(tcx: TyCtxt<'_>, buf: &mut [u8], idx: usize, num: u64) {
-    use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
-
-    let usize_size = tcx
+    let pointer_size = tcx
         .layout_of(ParamEnv::reveal_all().and(tcx.types.usize))
         .unwrap()
         .size
         .bytes() as usize;
-    let mut target = &mut buf[idx * usize_size..(idx + 1) * usize_size];
+    let target = &mut buf[idx * pointer_size..(idx + 1) * pointer_size];
 
     match tcx.data_layout.endian {
-        rustc_target::abi::Endian::Little => target.write_uint::<LittleEndian>(num, usize_size),
-        rustc_target::abi::Endian::Big => target.write_uint::<BigEndian>(num, usize_size),
+        rustc_target::abi::Endian::Little => match pointer_size {
+            4 => target.copy_from_slice(&(num as u32).to_le_bytes()),
+            8 => target.copy_from_slice(&(num as u64).to_le_bytes()),
+            _ => todo!("pointer size {} is not yet supported", pointer_size),
+        },
+        rustc_target::abi::Endian::Big => match pointer_size {
+            4 => target.copy_from_slice(&(num as u32).to_be_bytes()),
+            8 => target.copy_from_slice(&(num as u64).to_be_bytes()),
+            _ => todo!("pointer size {} is not yet supported", pointer_size),
+        },
     }
-    .unwrap()
 }

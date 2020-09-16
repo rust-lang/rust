@@ -317,7 +317,6 @@ name = "rustc_codegen_cranelift"
 version = "0.1.0"
 dependencies = [
  "ar",
- "byteorder",
  "cfg-if",
  "cranelift-codegen",
  "cranelift-frontend",
