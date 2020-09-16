@@ -80,8 +80,13 @@ rustup override set nightly
 after [installing a nightly toolchain] with `rustup`. Don't forget to do this for all
 directories you have [setup a worktree for].
 
+**note** see [the section on vscode] for how to configure it with this real rustfmt `x.py` uses, 
+and [the section on rustup] for how to setup `rustup` toolchain for your bootstrapped compiler
+
 [installing a nightly toolchain]: https://rust-lang.github.io/rustup/concepts/channels.html?highlight=nightl#working-with-nightly-rust
 [setup a worktree for]: ./suggested.html#working-on-multiple-branches-at-the-same-time
+[the section on vscode]: suggested.html#configuring-rust-analyzer-for-rustc
+[the section on rustup]: how-to-build-and-run.html?highlight=rustup#creating-a-rustup-toolchain
 
 ## Incremental builds with `--keep-stage`.
 
