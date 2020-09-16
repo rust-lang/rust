@@ -30,8 +30,8 @@ impl Finder {
         Self { cache: HashMap::new(), path: env::var_os("PATH").unwrap_or_default() }
     }
 
-    pub fn maybe_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> Option<PathBuf> {
-        let cmd: OsString = cmd.as_ref().into();
+    pub fn maybe_have<S: Into<OsString>>(&mut self, cmd: S) -> Option<PathBuf> {
+        let cmd: OsString = cmd.into();
         let path = &self.path;
         self.cache
             .entry(cmd.clone())
