@@ -1141,10 +1141,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if !etc && !unmentioned_fields.is_empty() {
             let no_accessible_unmentioned_fields = unmentioned_fields
                 .iter()
-                .filter(|(field, _)| {
+                .find(|(field, _)| {
                     field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
                 })
-                .next()
                 .is_none();
 
             if no_accessible_unmentioned_fields {
