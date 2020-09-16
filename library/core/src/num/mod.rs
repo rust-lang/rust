@@ -5286,6 +5286,14 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 ///
 /// [`str.trim()`]: ../../std/primitive.str.html#method.trim
 /// [`i8::from_str_radix`]: ../../std/primitive.i8.html#method.from_str_radix
+///
+/// # Example
+///
+/// ```
+/// if let Err(e) = i32::from_str_radix("a12", 10) {
+///     println!("Failed conversion to i32: {}", e);
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseIntError {
@@ -5293,6 +5301,18 @@ pub struct ParseIntError {
 }
 
 /// Enum to store the various types of errors that can cause parsing an integer to fail.
+///
+/// # Example
+///
+/// ```
+/// #![feature(int_error_matching)]
+///
+/// # fn main() {
+/// if let Err(e) = i32::from_str_radix("a12", 10) {
+///     println!("Failed conversion to i32: {:?}", e.kind());
+/// }
+/// # }
+/// ```
 #[unstable(
     feature = "int_error_matching",
     reason = "it can be useful to match errors when making error messages \
