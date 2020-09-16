@@ -367,7 +367,7 @@ pub trait OpenOptionsExt {
     /// let file_name = CString::new("foo.txt").unwrap();
     /// let file = unsafe { libc::open(file_name.as_c_str().as_ptr(), options.as_flags().unwrap()) };
     /// ```
-    #[stable(feature = "open_options_ext_as_flags", since = "1.47.0")]
+    #[unstable(feature = "open_options_ext_as_flags", issue = "76801")]
     fn as_flags(&self) -> io::Result<libc::c_int>;
 }
 
