@@ -766,6 +766,10 @@ impl Step for RustcBook {
         if builder.config.verbose() {
             cmd.arg("--verbose");
         }
+        // If the lib directories are in an unusual location (changed in
+        // config.toml), then this needs to explicitly update the dylib search
+        // path.
+        builder.add_rustc_lib_path(self.compiler, &mut cmd);
         builder.run(&mut cmd);
         // Run rustbook/mdbook to generate the HTML pages.
         builder.ensure(RustbookSrc {

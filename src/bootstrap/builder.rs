@@ -683,7 +683,7 @@ impl<'a> Builder<'a> {
 
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
     /// library lookup path.
-    pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Cargo) {
+    pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Command) {
         // Windows doesn't need dylib path munging because the dlls for the
         // compiler live next to the compiler and the system will find them
         // automatically.
@@ -691,7 +691,7 @@ impl<'a> Builder<'a> {
             return;
         }
 
-        add_dylib_path(vec![self.rustc_libdir(compiler)], &mut cmd.command);
+        add_dylib_path(vec![self.rustc_libdir(compiler)], cmd);
     }
 
     /// Gets a path to the compiler specified.
@@ -1487,6 +1487,10 @@ impl Cargo {
         assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
         self.command.env(key.as_ref(), value.as_ref());
         self
+    }
+
+    pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>, compiler: Compiler) {
+        builder.add_rustc_lib_path(compiler, &mut self.command);
     }
 }
 
