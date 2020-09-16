@@ -578,7 +578,7 @@ where
         return String::new();
     }
 
-    let re = Regex::new("\u{001f}([+-])").unwrap();
+    let re = Regex::new("\t?\u{001f}([+-])").unwrap();
 
     let raw_diff = format!("{:#?}", DebugDiffWithAdapter { new, old, ctxt });
 
