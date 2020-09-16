@@ -345,6 +345,25 @@ The `h` modifier will emit the register name for the high byte of that register 
 
 If you use a smaller data type (e.g. `u16`) with an operand and forget the use template modifiers, the compiler will emit a warning and suggest the correct modifier to use.
 
+## Memory address operands
+
+Sometimes assembly instructions require operands passed via memory addresses/memory locations.
+You have to manually use the memory address syntax specified by the respectively architectures.
+For example, in x86/x86_64 and intel assembly syntax, you should wrap inputs/outputs in `[]`
+to indicate they are memory operands:
+
+```rust,allow_fail
+# #![feature(asm, llvm_asm)]
+# fn load_fpu_control_word(control: u16) {
+unsafe {
+    asm!("fldcw [{}]", in(reg) &control, options(nostack));
+
+    // Previously this would have been written with the deprecated `llvm_asm!` like this
+    llvm_asm!("fldcw $0" :: "m" (control) :: "volatile");
+}
+# }
+```
+
 ## Options
 
 By default, an inline assembly block is treated the same way as an external FFI function call with a custom calling convention: it may read/write memory, have observable side effects, etc. However in many cases, it is desirable to give the compiler more information about what the assembly code is actually doing so that it can optimize better.
