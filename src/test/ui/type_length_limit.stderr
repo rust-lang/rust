@@ -4,7 +4,8 @@ error: reached the type-length limit while instantiating `std::mem::drop::<Optio
 LL | pub fn drop<T>(_x: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: consider adding a `#![type_length_limit="8"]` attribute to your crate
+   = note: the full type name has been written to '$TEST_BUILD_DIR/type_length_limit/type_length_limit.long-type.txt'
+   = help: consider adding a `#![type_length_limit="8"]` attribute to your crate
 
 error: aborting due to previous error
 
