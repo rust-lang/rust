@@ -408,9 +408,8 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.58"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9a06fb2e53271d7c279ec1efea6ab691c35a2ae67ec0d91d7acec0caf13b518"
+version = "1.0.59"
+source = "git+https://github.com/alexcrichton/cc-rs?rev=192a84d9313210e09f2af1d7a8c27f70bd6a0f6e#192a84d9313210e09f2af1d7a8c27f70bd6a0f6e"
 dependencies = [
  "jobserver",
 ]

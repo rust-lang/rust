@@ -95,6 +95,8 @@ rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
 
+cc = { git = 'https://github.com/alexcrichton/cc-rs', rev = '192a84d9313210e09f2af1d7a8c27f70bd6a0f6e' }
+
 # This crate's integration with libstd is a bit wonky, so we use a submodule
 # instead of a crates.io dependency. Make sure everything else in the repo is
 # also using the submodule, however, so we can avoid duplicate copies of the
