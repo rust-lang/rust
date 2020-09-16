@@ -591,14 +591,14 @@ pub trait GraphWalk<'a> {
     fn target(&'a self, edge: &Self::Edge) -> Self::Node;
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum RenderOption {
     NoEdgeLabels,
     NoNodeLabels,
     NoEdgeStyles,
     NoNodeStyles,
 
-    Monospace,
+    Fontname(String),
     DarkTheme,
 }
 
@@ -633,11 +633,14 @@ where
     // Global graph properties
     let mut graph_attrs = Vec::new();
     let mut content_attrs = Vec::new();
-    if options.contains(&RenderOption::Monospace) {
-        let font = r#"fontname="Courier, monospace""#;
-        graph_attrs.push(font);
-        content_attrs.push(font);
-    };
+    let font;
+    if let Some(fontname) = options.iter().find_map(|option| {
+        if let RenderOption::Fontname(fontname) = option { Some(fontname) } else { None }
+    }) {
+        font = format!(r#"fontname="{}""#, fontname);
+        graph_attrs.push(&font[..]);
+        content_attrs.push(&font[..]);
+    }
     if options.contains(&RenderOption::DarkTheme) {
         graph_attrs.push(r#"bgcolor="black""#);
         content_attrs.push(r#"color="white""#);

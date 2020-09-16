@@ -126,7 +126,7 @@ impl OptimizationFinder<'b, 'tcx> {
             }
         }
 
-        return None;
+        None
     }
 }
 

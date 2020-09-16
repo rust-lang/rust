@@ -8,15 +8,15 @@ use crate::task::{Context, Poll};
 /// documentation for more.
 ///
 /// [`ready`]: fn.ready.html
-#[stable(feature = "future_readiness_fns", since = "1.47.0")]
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
 #[derive(Debug, Clone)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct Ready<T>(Option<T>);
 
-#[stable(feature = "future_readiness_fns", since = "1.47.0")]
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
 impl<T> Unpin for Ready<T> {}
 
-#[stable(feature = "future_readiness_fns", since = "1.47.0")]
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
 impl<T> Future for Ready<T> {
     type Output = T;
 
@@ -42,7 +42,7 @@ impl<T> Future for Ready<T> {
 /// assert_eq!(a.await, 1);
 /// # }
 /// ```
-#[stable(feature = "future_readiness_fns", since = "1.47.0")]
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub fn ready<T>(t: T) -> Ready<T> {
     Ready(Some(t))
 }

@@ -1243,10 +1243,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if check_completeness && !error_happened && !remaining_fields.is_empty() {
             let no_accessible_remaining_fields = remaining_fields
                 .iter()
-                .filter(|(_, (_, field))| {
+                .find(|(_, (_, field))| {
                     field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
                 })
-                .next()
                 .is_none();
 
             if no_accessible_remaining_fields {

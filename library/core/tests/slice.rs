@@ -658,6 +658,55 @@ fn test_array_chunks_mut_zip() {
 }
 
 #[test]
+fn test_array_windows_infer() {
+    let v: &[i32] = &[0, 1, 0, 1];
+    assert_eq!(v.array_windows::<2>().count(), 3);
+    let c = v.array_windows();
+    for &[a, b] in c {
+        assert_eq!(a + b, 1);
+    }
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let total = v2.array_windows().map(|&[a, b, c]| a + b + c).sum::<i32>();
+    assert_eq!(total, 3 + 6 + 9 + 12 + 15);
+}
+
+#[test]
+fn test_array_windows_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.array_windows::<3>();
+    assert_eq!(c.count(), 4);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.array_windows::<6>();
+    assert_eq!(c2.count(), 0);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.array_windows::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_windows_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let snd = v.array_windows::<4>().nth(1);
+    assert_eq!(snd, Some(&[1, 2, 3, 4]));
+    let mut arr_windows = v.array_windows::<2>();
+    assert_ne!(arr_windows.nth(0), arr_windows.nth(0));
+    let last = v.array_windows::<3>().last();
+    assert_eq!(last, Some(&[3, 4, 5]));
+}
+
+#[test]
+fn test_array_windows_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let snd = v.array_windows::<4>().nth_back(1);
+    assert_eq!(snd, Some(&[1, 2, 3, 4]));
+    let mut arr_windows = v.array_windows::<2>();
+    assert_ne!(arr_windows.nth_back(0), arr_windows.nth_back(0));
+}
+
+#[test]
 fn test_rchunks_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.rchunks(3);
