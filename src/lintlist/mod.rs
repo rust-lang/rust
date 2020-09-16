@@ -1145,6 +1145,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "manual_strip",
+        group: "complexity",
+        desc: "suggests using `strip_{prefix,suffix}` over `str::{starts,ends}_with` and slicing",
+        deprecation: None,
+        module: "manual_strip",
+    },
+    Lint {
         name: "manual_swap",
         group: "complexity",
         desc: "manual swap of two variables",
