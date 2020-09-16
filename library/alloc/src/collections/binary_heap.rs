@@ -1343,6 +1343,10 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T> From<BinaryHeap<T>> for Vec<T> {
+    /// Converts a `BinaryHeap<T>` into a `Vec<T>`.
+    ///
+    /// This conversion requires no data movement or allocation, and has
+    /// constant time complexity.
     fn from(heap: BinaryHeap<T>) -> Vec<T> {
         heap.data
     }
