@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     foo();
    |     ^^^
    |
-   = note: unable to infer the value of a const parameter
+   = note: cannot infer the value of the const parameter `X`
 
 error: aborting due to previous error
 
