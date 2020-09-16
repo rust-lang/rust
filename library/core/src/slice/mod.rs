@@ -12,7 +12,7 @@ use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::assume;
 use crate::marker::{self, Copy};
 use crate::mem;
-use crate::ops::{Bound, FnMut, Range, RangeBounds};
+use crate::ops::{FnMut, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::ptr::{self, NonNull};
@@ -72,8 +72,8 @@ pub use sort::heapsort;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 
-use index::{slice_end_index_len_fail, slice_index_order_fail};
-use index::{slice_end_index_overflow_fail, slice_start_index_overflow_fail};
+#[unstable(feature = "slice_check_range", issue = "76393")]
+pub use index::check_range;
 
 #[lang = "slice"]
 #[cfg(not(test))]
@@ -376,79 +376,6 @@ impl<T> [T] {
         // the slice is dereferencable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
         unsafe { &mut *index.get_unchecked_mut(self) }
-    }
-
-    /// Converts a range over this slice to [`Range`].
-    ///
-    /// The returned range is safe to pass to [`get_unchecked`] and [`get_unchecked_mut`].
-    ///
-    /// [`get_unchecked`]: #method.get_unchecked
-    /// [`get_unchecked_mut`]: #method.get_unchecked_mut
-    ///
-    /// # Panics
-    ///
-    /// Panics if the range is out of bounds.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(slice_check_range)]
-    ///
-    /// let v = [10, 40, 30];
-    /// assert_eq!(1..2, v.check_range(1..2));
-    /// assert_eq!(0..2, v.check_range(..2));
-    /// assert_eq!(1..3, v.check_range(1..));
-    /// ```
-    ///
-    /// Panics when [`Index::index`] would panic:
-    ///
-    /// ```should_panic
-    /// #![feature(slice_check_range)]
-    ///
-    /// [10, 40, 30].check_range(2..1);
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(slice_check_range)]
-    ///
-    /// [10, 40, 30].check_range(1..4);
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(slice_check_range)]
-    ///
-    /// [10, 40, 30].check_range(1..=usize::MAX);
-    /// ```
-    ///
-    /// [`Index::index`]: crate::ops::Index::index
-    #[track_caller]
-    #[unstable(feature = "slice_check_range", issue = "76393")]
-    pub fn check_range<R: RangeBounds<usize>>(&self, range: R) -> Range<usize> {
-        let start = match range.start_bound() {
-            Bound::Included(&start) => start,
-            Bound::Excluded(start) => {
-                start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
-            }
-            Bound::Unbounded => 0,
-        };
-
-        let len = self.len();
-        let end = match range.end_bound() {
-            Bound::Included(end) => {
-                end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
-            }
-            Bound::Excluded(&end) => end,
-            Bound::Unbounded => len,
-        };
-
-        if start > end {
-            slice_index_order_fail(start, end);
-        }
-        if end > len {
-            slice_end_index_len_fail(end, len);
-        }
-
-        Range { start, end }
     }
 
     /// Returns a raw pointer to the slice's buffer.
@@ -2794,7 +2721,7 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        let Range { start: src_start, end: src_end } = self.check_range(src);
+        let Range { start: src_start, end: src_end } = check_range(self.len(), src);
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
         // SAFETY: the conditions for `ptr::copy` have all been checked above,

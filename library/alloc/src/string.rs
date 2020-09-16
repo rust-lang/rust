@@ -49,6 +49,7 @@ use core::iter::{FromIterator, FusedIterator};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Add, AddAssign, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
+use core::slice;
 use core::str::{lossy, pattern::Pattern};
 
 use crate::borrow::{Cow, ToOwned};
@@ -1506,7 +1507,7 @@ impl String {
         // of the vector version. The data is just plain bytes.
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
-        let Range { start, end } = self.as_bytes().check_range(range);
+        let Range { start, end } = slice::check_range(self.len(), range);
         assert!(self.is_char_boundary(start));
         assert!(self.is_char_boundary(end));
 

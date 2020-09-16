@@ -174,7 +174,9 @@ use crate::raw_vec::RawVec;
 ///
 /// // ... and that's all!
 /// // you can also do it like this:
-/// let x : &[usize] = &v;
+/// let u: &[usize] = &v;
+/// // or like this:
+/// let u: &[_] = &v;
 /// ```
 ///
 /// In Rust, it's more common to pass slices as arguments rather than vectors
@@ -1310,7 +1312,7 @@ impl<T> Vec<T> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let Range { start, end } = self.check_range(range);
+        let Range { start, end } = slice::check_range(len, range);
 
         unsafe {
             // set self.vec length's to start, to be safe in case Drain is leaked
@@ -3037,6 +3039,7 @@ impl<T> AsIntoIter for IntoIter<T> {
 /// A draining iterator for `Vec<T>`.
 ///
 /// This `struct` is created by [`Vec::drain`].
+/// See its documentation for more.
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
