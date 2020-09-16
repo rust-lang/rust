@@ -23,7 +23,8 @@ use crate::{
     ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
 use mapping::{
-    convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
+    convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsAssocType,
+    TypeAliasAsValue,
 };
 
 pub use self::interner::*;
@@ -340,7 +341,7 @@ pub(crate) fn associated_ty_data_query(
     id: AssocTypeId,
 ) -> Arc<AssociatedTyDatum> {
     debug!("associated_ty_data {:?}", id);
-    let type_alias: TypeAliasId = from_chalk(db, id);
+    let type_alias: TypeAliasId = from_chalk::<TypeAliasAsAssocType, _>(db, id).0;
     let trait_ = match type_alias.lookup(db.upcast()).container {
         AssocContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
@@ -394,8 +395,10 @@ pub(crate) fn trait_datum_query(
         fundamental: false,
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
-    let associated_ty_ids =
-        trait_data.associated_types().map(|type_alias| type_alias.to_chalk(db)).collect();
+    let associated_ty_ids = trait_data
+        .associated_types()
+        .map(|type_alias| TypeAliasAsAssocType(type_alias).to_chalk(db))
+        .collect();
     let trait_datum_bound = rust_ir::TraitDatumBound { where_clauses };
     let well_known =
         lang_attr(db.upcast(), trait_).and_then(|name| well_known_trait_from_lang_attr(&name));
@@ -433,6 +436,7 @@ fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
         WellKnownTrait::FnMut => "fn_mut",
         WellKnownTrait::Fn => "fn",
         WellKnownTrait::Unsize => "unsize",
+        WellKnownTrait::Unpin => "unpin",
     }
 }
 
@@ -576,7 +580,7 @@ fn type_alias_associated_ty_value(
     let value_bound = rust_ir::AssociatedTyValueBound { ty: ty.value.to_chalk(db) };
     let value = rust_ir::AssociatedTyValue {
         impl_id: impl_id.to_chalk(db),
-        associated_ty_id: assoc_ty.to_chalk(db),
+        associated_ty_id: TypeAliasAsAssocType(assoc_ty).to_chalk(db),
         value: make_binders(value_bound, ty.num_binders),
     };
     Arc::new(value)
@@ -611,9 +615,11 @@ pub(crate) fn fn_def_datum_query(
     };
     let datum = FnDefDatum {
         id: fn_def_id,
-        abi: (),
-        safety: chalk_ir::Safety::Safe,
-        variadic: sig.value.is_varargs,
+        sig: chalk_ir::FnSig {
+            abi: (),
+            safety: chalk_ir::Safety::Safe,
+            variadic: sig.value.is_varargs,
+        },
         binders: make_binders(bound, sig.num_binders),
     };
     Arc::new(datum)

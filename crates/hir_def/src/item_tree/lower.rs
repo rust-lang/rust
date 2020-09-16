@@ -364,6 +364,7 @@ impl Ctx {
             generic_params,
             type_ref,
             ast_id,
+            is_extern: false,
         };
         Some(id(self.data().type_aliases.alloc(res)))
     }
@@ -558,8 +559,9 @@ impl Ctx {
                             statik.into()
                         }
                         ast::ExternItem::TypeAlias(ty) => {
-                            let id = self.lower_type_alias(&ty)?;
-                            id.into()
+                            let foreign_ty = self.lower_type_alias(&ty)?;
+                            self.data().type_aliases[foreign_ty.index].is_extern = true;
+                            foreign_ty.into()
                         }
                         ast::ExternItem::MacroCall(_) => return None,
                     };

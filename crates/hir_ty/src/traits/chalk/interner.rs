@@ -12,6 +12,7 @@ pub struct Interner;
 
 pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
 pub type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
+pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub type TraitId = chalk_ir::TraitId<Interner>;
 pub type TraitDatum = chalk_solve::rust_ir::TraitDatum<Interner>;
 pub type AdtId = chalk_ir::AdtId<Interner>;

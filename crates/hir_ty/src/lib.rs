@@ -134,6 +134,9 @@ pub enum TypeCtor {
     /// representing the Future::Output type.
     OpaqueType(OpaqueTyId),
 
+    /// Represents a foreign type declared in external blocks.
+    ForeignType(TypeAliasId),
+
     /// The type of a specific closure.
     ///
     /// The closure signature is stored in a `FnPtr` type in the first type
@@ -165,6 +168,10 @@ impl TypeCtor {
                 generic_params.len()
             }
             TypeCtor::AssociatedType(type_alias) => {
+                let generic_params = generics(db.upcast(), type_alias.into());
+                generic_params.len()
+            }
+            TypeCtor::ForeignType(type_alias) => {
                 let generic_params = generics(db.upcast(), type_alias.into());
                 generic_params.len()
             }
@@ -204,6 +211,9 @@ impl TypeCtor {
             TypeCtor::AssociatedType(type_alias) => {
                 Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate)
             }
+            TypeCtor::ForeignType(type_alias) => {
+                Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate)
+            }
             TypeCtor::OpaqueType(opaque_ty_id) => match opaque_ty_id {
                 OpaqueTyId::ReturnTypeImplTrait(func, _) => {
                     Some(func.lookup(db.upcast()).module(db.upcast()).krate)
@@ -231,6 +241,7 @@ impl TypeCtor {
             TypeCtor::Adt(adt) => Some(adt.into()),
             TypeCtor::FnDef(callable) => Some(callable.into()),
             TypeCtor::AssociatedType(type_alias) => Some(type_alias.into()),
+            TypeCtor::ForeignType(type_alias) => Some(type_alias.into()),
             TypeCtor::OpaqueType(_impl_trait_id) => None,
         }
     }

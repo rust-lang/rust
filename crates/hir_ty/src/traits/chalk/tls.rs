@@ -4,7 +4,7 @@ use std::fmt;
 use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplication, TypeName};
 use itertools::Itertools;
 
-use super::{from_chalk, Interner};
+use super::{from_chalk, Interner, TypeAliasAsAssocType};
 use crate::{db::HirDatabase, CallableDefId, TypeCtor};
 use hir_def::{AdtId, AssocContainerId, DefWithBodyId, Lookup, TypeAliasId};
 
@@ -77,6 +77,10 @@ impl DebugContext<'_> {
                     write!(f, "{{impl trait of async block {} of {:?}}}", idx.into_raw(), def)?;
                 }
             },
+            TypeCtor::ForeignType(type_alias) => {
+                let name = self.0.type_alias_data(type_alias).name.clone();
+                write!(f, "{}", name)?;
+            }
             TypeCtor::Closure { def, expr } => {
                 write!(f, "{{closure {:?} in ", expr.into_raw())?;
                 match def {
@@ -119,7 +123,7 @@ impl DebugContext<'_> {
         id: super::AssocTypeId,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let type_alias: TypeAliasId = from_chalk(self.0, id);
+        let type_alias: TypeAliasId = from_chalk::<TypeAliasAsAssocType, _>(self.0, id).0;
         let type_alias_data = self.0.type_alias_data(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
             AssocContainerId::TraitId(t) => t,
@@ -153,7 +157,8 @@ impl DebugContext<'_> {
         projection_ty: &chalk_ir::ProjectionTy<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let type_alias: TypeAliasId = from_chalk(self.0, projection_ty.associated_ty_id);
+        let type_alias: TypeAliasId =
+            from_chalk::<TypeAliasAsAssocType, _>(self.0, projection_ty.associated_ty_id).0;
         let type_alias_data = self.0.type_alias_data(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
             AssocContainerId::TraitId(t) => t,

@@ -250,6 +250,14 @@ impl Ty {
                 TypeCtor::Adt(def_id) => {
                     return Some(std::iter::once(def_id.module(db.upcast()).krate).collect())
                 }
+                TypeCtor::ForeignType(type_alias_id) => {
+                    return Some(
+                        std::iter::once(
+                            type_alias_id.lookup(db.upcast()).module(db.upcast()).krate,
+                        )
+                        .collect(),
+                    )
+                }
                 TypeCtor::Bool => lang_item_crate!("bool"),
                 TypeCtor::Char => lang_item_crate!("char"),
                 TypeCtor::Float(f) => match f.bitness {
