@@ -162,7 +162,7 @@ to visualize them. This can be done with the `-Zdump-mir` flags described in
 either "all" or the name of the MIR body you are interested in.
 
 These `.dot` files will be saved in your `mir_dump` directory and will have the
-`NAME` of the analysis (e.g. `maybe_inits`) as part of their filename. Each
+[`NAME`] of the analysis (e.g. `maybe_inits`) as part of their filename. Each
 visualization will display the full dataflow state at entry and exit of each
 block, as well as any changes that occur in each statement and terminator.  See
 the example below:
@@ -177,6 +177,7 @@ the example below:
 [`Engine`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/struct.Engine.html
 [`GenKillAnalysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.GenKillAnalysis.html
 [`JoinSemiLattice`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/lattice/trait.JoinSemiLattice.html
+[`NAME`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.AnalysisDomain.html#associatedconstant.NAME
 [`ResultsCursor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/struct.ResultsCursor.html
 [`ResultsVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.ResultsVisitor.html
 [`apply_call_return_effect`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.Analysis.html#tymethod.apply_call_return_effect
