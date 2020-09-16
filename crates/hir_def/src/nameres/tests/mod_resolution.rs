@@ -672,44 +672,6 @@ pub struct Baz;
 }
 
 #[test]
-fn unresolved_module_diagnostics() {
-    let db = TestDB::with_files(
-        r"
-        //- /lib.rs
-        mod foo;
-        mod bar;
-        mod baz {}
-        //- /foo.rs
-        ",
-    );
-    let krate = db.test_crate();
-
-    let crate_def_map = db.crate_def_map(krate);
-
-    expect![[r#"
-        [
-            DefDiagnostic {
-                in_module: Idx::<ModuleData>(0),
-                kind: UnresolvedModule {
-                    declaration: InFile {
-                        file_id: HirFileId(
-                            FileId(
-                                FileId(
-                                    0,
-                                ),
-                            ),
-                        ),
-                        value: FileAstId::<syntax::ast::generated::nodes::Module>(1),
-                    },
-                    candidate: "bar.rs",
-                },
-            },
-        ]
-    "#]]
-    .assert_debug_eq(&crate_def_map.diagnostics);
-}
-
-#[test]
 fn module_resolution_decl_inside_module_in_non_crate_root_2() {
     check(
         r#"
