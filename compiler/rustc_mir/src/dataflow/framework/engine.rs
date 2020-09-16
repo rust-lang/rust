@@ -306,7 +306,8 @@ where
     let mut buf = Vec::new();
 
     let graphviz = graphviz::Formatter::new(body, def_id, results, style);
-    let mut render_opts = vec![dot::RenderOption::Monospace];
+    let mut render_opts =
+        vec![dot::RenderOption::Fontname(tcx.sess.opts.debugging_opts.graphviz_font.clone())];
     if tcx.sess.opts.debugging_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }

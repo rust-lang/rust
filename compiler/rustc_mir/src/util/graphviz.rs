@@ -55,9 +55,9 @@ where
     writeln!(w, "{} {}Mir_{} {{", kind, cluster, def_name)?;
 
     // Global graph properties
-    let font = r#"fontname="Courier, monospace""#;
-    let mut graph_attrs = vec![font];
-    let mut content_attrs = vec![font];
+    let font = format!(r#"fontname="{}""#, tcx.sess.opts.debugging_opts.graphviz_font);
+    let mut graph_attrs = vec![&font[..]];
+    let mut content_attrs = vec![&font[..]];
 
     let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
     if dark_mode {
