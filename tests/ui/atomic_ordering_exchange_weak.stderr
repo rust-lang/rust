@@ -1,0 +1,131 @@
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:23:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Relaxed, Ordering::AcqRel);
+   |                                                                   ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::invalid-atomic-ordering` implied by `-D warnings`
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:24:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Acquire, Ordering::AcqRel);
+   |                                                                   ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:25:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::AcqRel);
+   |                                                                   ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:26:66
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::AcqRel, Ordering::AcqRel);
+   |                                                                  ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:27:66
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::SeqCst, Ordering::AcqRel);
+   |                                                                  ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:30:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::Release);
+   |                                                                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:31:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Acquire, Ordering::Release);
+   |                                                                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:32:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Release, Ordering::Release);
+   |                                                                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:33:66
+   |
+LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::AcqRel, Ordering::Release);
+   |                                                                  ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:34:66
+   |
+LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::SeqCst, Ordering::Release);
+   |                                                                  ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Release`
+  --> $DIR/atomic_ordering_exchange_weak.rs:37:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::Acquire);
+   |                                                                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Release`
+  --> $DIR/atomic_ordering_exchange_weak.rs:38:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::SeqCst);
+   |                                                                   ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Relaxed`
+  --> $DIR/atomic_ordering_exchange_weak.rs:41:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::SeqCst);
+   |                                                                   ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Relaxed`
+  --> $DIR/atomic_ordering_exchange_weak.rs:42:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::Acquire);
+   |                                                                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Acquire`
+  --> $DIR/atomic_ordering_exchange_weak.rs:45:67
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Acquire, Ordering::SeqCst);
+   |                                                                   ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange_weak's failure ordering may not be stronger than the success ordering of `AcqRel`
+  --> $DIR/atomic_ordering_exchange_weak.rs:46:66
+   |
+LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::AcqRel, Ordering::SeqCst);
+   |                                                                  ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: aborting due to 16 previous errors
+
