@@ -9,6 +9,8 @@ use crate::slice::from_raw_parts;
 use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
 use crate::sys::unix::net::Socket;
 
+use libc::{gid_t, pid_t, uid_t};
+
 pub(super) fn recv_vectored_with_ancillary_from(
     socket: &Socket,
     bufs: &mut [IoSliceMut<'_>],
@@ -207,37 +209,37 @@ impl SocketCred {
 
     /// Set the PID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn set_pid(&mut self, pid: i32) {
+    pub fn set_pid(&mut self, pid: pid_t) {
         self.0.pid = pid;
     }
 
     /// Get the current PID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn get_pid(&self) -> i32 {
+    pub fn get_pid(&self) -> pid_t {
         self.0.pid
     }
 
     /// Set the UID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn set_uid(&mut self, uid: u32) {
+    pub fn set_uid(&mut self, uid: uid_t) {
         self.0.uid = uid;
     }
 
     /// Get the current UID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn get_uid(&self) -> u32 {
+    pub fn get_uid(&self) -> uid_t {
         self.0.uid
     }
 
     /// Set the GID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn set_gid(&mut self, gid: u32) {
+    pub fn set_gid(&mut self, gid: gid_t) {
         self.0.gid = gid;
     }
 
     /// Get the current GID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn get_gid(&self) -> u32 {
+    pub fn get_gid(&self) -> gid_t {
         self.0.gid
     }
 }
