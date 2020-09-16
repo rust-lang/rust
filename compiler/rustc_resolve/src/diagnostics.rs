@@ -466,7 +466,7 @@ impl<'a> Resolver<'a> {
                 );
                 err
             }
-            ResolutionError::ParamInNonTrivialAnonConst(name) => {
+            ResolutionError::ParamInNonTrivialAnonConst { name, is_type } => {
                 let mut err = self.session.struct_span_err(
                     span,
                     "generic parameters must not be used inside of non trivial constant values",
@@ -478,9 +478,17 @@ impl<'a> Resolver<'a> {
                         name
                     ),
                 );
-                err.help(
-                    &format!("it is currently only allowed to use either `{0}` or `{{ {0} }}` as generic constants", name)
-                );
+
+                if is_type {
+                    err.note("type parameters are currently not permitted in anonymous constants");
+                } else {
+                    err.help(
+                        &format!("it is currently only allowed to use either `{0}` or `{{ {0} }}` as generic constants",
+                                 name
+                        )
+                    );
+                }
+
                 err
             }
             ResolutionError::SelfInTyParamDefault => {
