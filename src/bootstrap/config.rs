@@ -10,7 +10,6 @@ use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process;
 
 use crate::cache::{Interned, INTERNER};
 use crate::flags::Flags;
@@ -68,7 +67,7 @@ pub struct Config {
     pub skip_only_host_steps: bool,
 
     pub on_fail: Option<String>,
-    pub stage: Option<u32>,
+    pub stage: u32,
     pub keep_stage: Vec<u32>,
     pub src: PathBuf,
     pub jobs: Option<u32>,
@@ -313,6 +312,12 @@ struct Build {
     configure_args: Option<Vec<String>>,
     local_rebuild: Option<bool>,
     print_step_timings: Option<bool>,
+    doc_stage: Option<u32>,
+    build_stage: Option<u32>,
+    test_stage: Option<u32>,
+    install_stage: Option<u32>,
+    dist_stage: Option<u32>,
+    bench_stage: Option<u32>,
 }
 
 /// TOML representation of various global install decisions.
@@ -495,13 +500,11 @@ impl Config {
 
     pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
-        let file = flags.config.clone();
         let mut config = Config::default_opts();
         config.exclude = flags.exclude;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
         config.on_fail = flags.on_fail;
-        config.stage = flags.stage;
         config.jobs = flags.jobs.map(threads_from_config);
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
@@ -518,8 +521,14 @@ impl Config {
             config.out = dir;
         }
 
-        let toml = file
+        #[cfg(test)]
+        let toml = TomlConfig::default();
+        #[cfg(not(test))]
+        let toml = flags
+            .config
             .map(|file| {
+                use std::process;
+
                 let contents = t!(fs::read_to_string(&file));
                 match toml::from_str(&contents) {
                     Ok(table) => table,
@@ -535,7 +544,7 @@ impl Config {
             })
             .unwrap_or_else(TomlConfig::default);
 
-        let build = toml.build.clone().unwrap_or_default();
+        let build = toml.build.unwrap_or_default();
 
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
         let has_hosts = build.host.is_some() || flags.host.is_some();
@@ -579,6 +588,44 @@ impl Config {
         set(&mut config.configure_args, build.configure_args);
         set(&mut config.local_rebuild, build.local_rebuild);
         set(&mut config.print_step_timings, build.print_step_timings);
+
+        // See https://github.com/rust-lang/compiler-team/issues/326
+        config.stage = match config.cmd {
+            Subcommand::Doc { .. } => flags.stage.or(build.doc_stage).unwrap_or(0),
+            Subcommand::Build { .. } => flags.stage.or(build.build_stage).unwrap_or(1),
+            Subcommand::Test { .. } => flags.stage.or(build.test_stage).unwrap_or(1),
+            Subcommand::Bench { .. } => flags.stage.or(build.bench_stage).unwrap_or(2),
+            Subcommand::Dist { .. } => flags.stage.or(build.dist_stage).unwrap_or(2),
+            Subcommand::Install { .. } => flags.stage.or(build.install_stage).unwrap_or(2),
+            // These are all bootstrap tools, which don't depend on the compiler.
+            // The stage we pass shouldn't matter, but use 0 just in case.
+            Subcommand::Clean { .. }
+            | Subcommand::Check { .. }
+            | Subcommand::Clippy { .. }
+            | Subcommand::Fix { .. }
+            | Subcommand::Run { .. }
+            | Subcommand::Format { .. } => flags.stage.unwrap_or(0),
+        };
+
+        // CI should always run stage 2 builds, unless it specifically states otherwise
+        #[cfg(not(test))]
+        if flags.stage.is_none() && crate::CiEnv::current() != crate::CiEnv::None {
+            match config.cmd {
+                Subcommand::Test { .. }
+                | Subcommand::Doc { .. }
+                | Subcommand::Build { .. }
+                | Subcommand::Bench { .. }
+                | Subcommand::Dist { .. }
+                | Subcommand::Install { .. } => assert_eq!(config.stage, 2),
+                Subcommand::Clean { .. }
+                | Subcommand::Check { .. }
+                | Subcommand::Clippy { .. }
+                | Subcommand::Fix { .. }
+                | Subcommand::Run { .. }
+                | Subcommand::Format { .. } => {}
+            }
+        }
+
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
         if let Some(ref install) = toml.install {

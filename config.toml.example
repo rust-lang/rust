@@ -126,6 +126,23 @@
 # General build configuration options
 # =============================================================================
 [build]
+# The default stage to use for the `doc` subcommand
+#doc-stage = 0
+
+# The default stage to use for the `build` subcommand
+#build-stage = 1
+
+# The default stage to use for the `test` subcommand
+#test-stage = 1
+
+# The default stage to use for the `dist` subcommand
+#dist-stage = 2
+
+# The default stage to use for the `install` subcommand
+#install-stage = 2
+
+# The default stage to use for the `bench` subcommand
+#bench-stage = 2
 
 # Build triple for the original snapshot compiler. This must be a compiler that
 # nightlies are already produced for. The current platform must be able to run
