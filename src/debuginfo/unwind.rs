@@ -94,32 +94,33 @@ impl<'tcx> UnwindContext<'tcx> {
         // =======================================================================
         // Everything after this line up to the end of the file is loosly based on
         // https://github.com/bytecodealliance/wasmtime/blob/4471a82b0c540ff48960eca6757ccce5b1b5c3e4/crates/jit/src/unwind/systemv.rs
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "macos")] {
-                // On macOS, `__register_frame` takes a pointer to a single FDE
-                let start = eh_frame.as_ptr();
-                let end = start.add(eh_frame.len());
-                let mut current = start;
+        #[cfg(target_os = "macos")]
+        {
+            // On macOS, `__register_frame` takes a pointer to a single FDE
+            let start = eh_frame.as_ptr();
+            let end = start.add(eh_frame.len());
+            let mut current = start;
 
-                // Walk all of the entries in the frame table and register them
-                while current < end {
-                    let len = std::ptr::read::<u32>(current as *const u32) as usize;
+            // Walk all of the entries in the frame table and register them
+            while current < end {
+                let len = std::ptr::read::<u32>(current as *const u32) as usize;
 
-                    // Skip over the CIE
-                    if current != start {
-                        __register_frame(current);
-                        registrations.push(current as usize);
-                    }
-
-                    // Move to the next table entry (+4 because the length itself is not inclusive)
-                    current = current.add(len + 4);
+                // Skip over the CIE
+                if current != start {
+                    __register_frame(current);
+                    registrations.push(current as usize);
                 }
-            } else {
-                // On other platforms, `__register_frame` will walk the FDEs until an entry of length 0
-                let ptr = eh_frame.as_ptr();
-                __register_frame(ptr);
-                registrations.push(ptr as usize);
+
+                // Move to the next table entry (+4 because the length itself is not inclusive)
+                current = current.add(len + 4);
             }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            // On other platforms, `__register_frame` will walk the FDEs until an entry of length 0
+            let ptr = eh_frame.as_ptr();
+            __register_frame(ptr);
+            registrations.push(ptr as usize);
         }
 
         Some(UnwindRegistry {
