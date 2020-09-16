@@ -74,7 +74,9 @@ declare_clippy_lint! {
     /// names to bindings or introducing more scopes to contain the bindings.
     ///
     /// **Known problems:** This lint, as the other shadowing related lints,
-    /// currently only catches very simple patterns.
+    /// currently only catches very simple patterns. Note that
+    /// `allow`/`warn`/`deny`/`forbid` attributes only work on the function level
+    /// for this lint.
     ///
     /// **Example:**
     /// ```rust
