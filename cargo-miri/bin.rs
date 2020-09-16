@@ -397,6 +397,11 @@ fn phase_cargo_miri(mut args: env::Args) {
     setup(subcommand);
 
     // Invoke actual cargo for the job, but with different flags.
+    // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
+    // requires some extra work to make the build check-only (see all the `--emit` hacks below).
+    // <https://github.com/rust-lang/miri/pull/1540#issuecomment-693553191> describes an alternative
+    // approach that uses `cargo check`, making that part easier but target and binary handling
+    // harder.
     let miri_path = std::env::current_exe().expect("current executable path invalid");
     let cargo_cmd = match subcommand {
         MiriCommand::Test => "test",
