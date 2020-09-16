@@ -118,7 +118,8 @@ impl Command {
             FDIO_SPAWN_CLONE_JOB
                 | FDIO_SPAWN_CLONE_LDSVC
                 | FDIO_SPAWN_CLONE_NAMESPACE
-                | FDIO_SPAWN_CLONE_ENVIRON, // this is ignored when envp is non-null
+                | FDIO_SPAWN_CLONE_ENVIRON // this is ignored when envp is non-null
+                | FDIO_SPAWN_CLONE_UTC_CLOCK,
             self.get_program().as_ptr(),
             self.get_argv().as_ptr(),
             envp,
