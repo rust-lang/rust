@@ -10,7 +10,7 @@
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::assume;
-use crate::marker::{self, Copy};
+use crate::marker::Copy;
 use crate::mem;
 use crate::ops::{FnMut, Range, RangeBounds};
 use crate::option::Option;
@@ -34,8 +34,6 @@ mod iter;
 mod raw;
 mod rotate;
 mod sort;
-
-use iter::GenericSplitN;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Chunks, ChunksMut, Windows};
@@ -707,7 +705,7 @@ impl<T> [T] {
                 ptr.add(self.len())
             };
 
-            Iter { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: marker::PhantomData }
+            Iter::new(NonNull::new_unchecked(ptr as *mut T), end)
         }
     }
 
@@ -751,7 +749,7 @@ impl<T> [T] {
                 ptr.add(self.len())
             };
 
-            IterMut { ptr: NonNull::new_unchecked(ptr), end, _marker: marker::PhantomData }
+            IterMut::new(NonNull::new_unchecked(ptr), end)
         }
     }
 
@@ -785,7 +783,7 @@ impl<T> [T] {
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
         assert_ne!(size, 0);
-        Windows { v: self, size }
+        Windows::new(self, size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
@@ -819,7 +817,7 @@ impl<T> [T] {
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
         assert_ne!(chunk_size, 0);
-        Chunks { v: self, chunk_size }
+        Chunks::new(self, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
@@ -857,7 +855,7 @@ impl<T> [T] {
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
         assert_ne!(chunk_size, 0);
-        ChunksMut { v: self, chunk_size }
+        ChunksMut::new(self, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
@@ -898,7 +896,7 @@ impl<T> [T] {
         let fst_len = self.len() - rem;
         // SAFETY: 0 <= fst_len <= self.len() by construction above
         let (fst, snd) = unsafe { self.split_at_unchecked(fst_len) };
-        ChunksExact { v: fst, rem: snd, chunk_size }
+        ChunksExact::new(fst, snd, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
@@ -944,7 +942,7 @@ impl<T> [T] {
         let fst_len = self.len() - rem;
         // SAFETY: 0 <= fst_len <= self.len() by construction above
         let (fst, snd) = unsafe { self.split_at_mut_unchecked(fst_len) };
-        ChunksExactMut { v: fst, rem: snd, chunk_size }
+        ChunksExactMut::new(fst, snd, chunk_size)
     }
 
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
@@ -983,7 +981,7 @@ impl<T> [T] {
         // SAFETY: We cast a slice of `len * N` elements into
         // a slice of `len` many `N` elements chunks.
         let array_slice: &[[T; N]] = unsafe { from_raw_parts(fst.as_ptr().cast(), len) };
-        ArrayChunks { iter: array_slice.iter(), rem: snd }
+        ArrayChunks::new(array_slice.iter(), snd)
     }
 
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
@@ -1025,7 +1023,7 @@ impl<T> [T] {
         // a slice of `len` many `N` elements chunks.
         unsafe {
             let array_slice: &mut [[T; N]] = from_raw_parts_mut(fst.as_mut_ptr().cast(), len);
-            ArrayChunksMut { iter: array_slice.iter_mut(), rem: snd }
+            ArrayChunksMut::new(array_slice.iter_mut(), snd)
         }
     }
 
@@ -1060,7 +1058,7 @@ impl<T> [T] {
         assert_ne!(N, 0);
 
         let num_windows = self.len().saturating_sub(N - 1);
-        ArrayWindows { slice_head: self.as_ptr(), num: num_windows, marker: marker::PhantomData }
+        ArrayWindows::new(self.as_ptr(), num_windows)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
@@ -1094,7 +1092,7 @@ impl<T> [T] {
     #[inline]
     pub fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
         assert!(chunk_size != 0);
-        RChunks { v: self, chunk_size }
+        RChunks::new(self, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
@@ -1132,7 +1130,7 @@ impl<T> [T] {
     #[inline]
     pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
         assert!(chunk_size != 0);
-        RChunksMut { v: self, chunk_size }
+        RChunksMut::new(self, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
@@ -1174,7 +1172,7 @@ impl<T> [T] {
         let rem = self.len() % chunk_size;
         // SAFETY: 0 <= rem <= self.len() by construction above
         let (fst, snd) = unsafe { self.split_at_unchecked(rem) };
-        RChunksExact { v: snd, rem: fst, chunk_size }
+        RChunksExact::new(snd, fst, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
@@ -1220,7 +1218,7 @@ impl<T> [T] {
         let rem = self.len() % chunk_size;
         // SAFETY: 0 <= rem <= self.len() by construction above
         let (fst, snd) = unsafe { self.split_at_mut_unchecked(rem) };
-        RChunksExactMut { v: snd, rem: fst, chunk_size }
+        RChunksExactMut::new(snd, fst, chunk_size)
     }
 
     /// Divides one slice into two at an index.
@@ -1439,7 +1437,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        Split { v: self, pred, finished: false }
+        Split::new(self, pred, false)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -1461,7 +1459,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitMut { v: self, pred, finished: false }
+        SplitMut::new(self, pred, false)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1499,7 +1497,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitInclusive { v: self, pred, finished: false }
+        SplitInclusive::new(self, pred, false)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -1524,7 +1522,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitInclusiveMut { v: self, pred, finished: false }
+        SplitInclusiveMut::new(self, pred, false)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1560,7 +1558,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplit { inner: self.split(pred) }
+        RSplit::new(self, pred, false)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -1586,7 +1584,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitMut { inner: self.split_mut(pred) }
+        RSplitMut::new(self, pred, false)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1614,7 +1612,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitN { inner: GenericSplitN { iter: self.split(pred), count: n } }
+        SplitN::new(self.split(pred), n)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1640,7 +1638,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitNMut { inner: GenericSplitN { iter: self.split_mut(pred), count: n } }
+        SplitNMut::new(self.split_mut(pred), n)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1669,7 +1667,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitN { inner: GenericSplitN { iter: self.rsplit(pred), count: n } }
+        RSplitN::new(self.rsplit(pred), n)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1696,7 +1694,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitNMut { inner: GenericSplitN { iter: self.rsplit_mut(pred), count: n } }
+        RSplitNMut::new(self.rsplit_mut(pred), n)
     }
 
     /// Returns `true` if the slice contains an element with the given value.
