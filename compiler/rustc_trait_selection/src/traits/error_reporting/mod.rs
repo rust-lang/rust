@@ -1512,12 +1512,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self
-                    .tcx
-                    .lang_items()
-                    .sized_trait()
-                    .map_or(false, |sized_id| sized_id == trait_ref.def_id())
-                {
+                if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
                     self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0282).emit();
                     return;
                 }

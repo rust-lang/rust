@@ -840,7 +840,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
         let mut where_predicates =
             where_predicates.into_iter().flat_map(|p| p.clean(cx)).collect::<Vec<_>>();
 
-        // Type parameters and have a Sized bound by default unless removed with
+        // Type parameters have a Sized bound by default unless removed with
         // ?Sized. Scan through the predicates and mark any type parameter with
         // a Sized bound, removing the bounds as we find them.
         //
