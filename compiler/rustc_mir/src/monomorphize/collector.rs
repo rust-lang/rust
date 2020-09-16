@@ -493,7 +493,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         };
         let msg = format!(
             "reached the type-length limit while instantiating `{}`",
-            shrink(instance.to_string(), 32, 32)
+            shrink(instance.to_string(), 256, 256)
         );
         let mut diag = tcx.sess.struct_span_fatal(tcx.def_span(instance.def_id()), &msg);
         diag.note(&format!(
