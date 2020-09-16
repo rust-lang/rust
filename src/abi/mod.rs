@@ -325,7 +325,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 }
 
-fn local_place<'tcx>(
+fn make_local_place<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     local: Local,
     layout: TyAndLayout<'tcx>,
@@ -344,9 +344,7 @@ fn local_place<'tcx>(
     #[cfg(debug_assertions)]
     self::comments::add_local_place_comments(fx, place, local);
 
-    let prev_place = fx.local_map.insert(local, place);
-    debug_assert!(prev_place.is_none());
-    fx.local_map[&local]
+    place
 }
 
 pub(crate) fn codegen_fn_prelude<'tcx>(
@@ -358,7 +356,8 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
     #[cfg(debug_assertions)]
     self::comments::add_args_header_comment(fx);
 
-    self::returning::codegen_return_param(fx, &ssa_analyzed, start_block);
+    let ret_place = self::returning::codegen_return_param(fx, &ssa_analyzed, start_block);
+    assert_eq!(fx.local_map.push(ret_place), RETURN_PLACE);
 
     // None means pass_mode == NoPass
     enum ArgKind<'tcx> {
@@ -441,8 +440,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
                         #[cfg(debug_assertions)]
                         self::comments::add_local_place_comments(fx, place, local);
 
-                        let prev_place = fx.local_map.insert(local, place);
-                        debug_assert!(prev_place.is_none());
+                        assert_eq!(fx.local_map.push(place), local);
                         continue;
                     }
                 }
@@ -450,7 +448,8 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
             _ => {}
         }
 
-        let place = local_place(fx, local, layout, is_ssa);
+        let place = make_local_place(fx, local, layout, is_ssa);
+        assert_eq!(fx.local_map.push(place), local);
 
         match arg_kind {
             ArgKind::Normal(param) => {
@@ -476,7 +475,8 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
 
         let is_ssa = ssa_analyzed[local] == crate::analyze::SsaKind::Ssa;
 
-        local_place(fx, local, layout, is_ssa);
+        let place = make_local_place(fx, local, layout, is_ssa);
+        assert_eq!(fx.local_map.push(place), local);
     }
 
     fx.bcx

@@ -47,7 +47,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
         bcx,
         block_map,
-        local_map: FxHashMap::with_capacity_and_hasher(mir.local_decls.len(), Default::default()),
+        local_map: IndexVec::with_capacity(mir.local_decls.len()),
         caller_location: None, // set by `codegen_fn_prelude`
         cold_blocks: EntitySet::new(),
 

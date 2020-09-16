@@ -297,7 +297,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
 
     pub(crate) bcx: FunctionBuilder<'clif>,
     pub(crate) block_map: IndexVec<BasicBlock, Block>,
-    pub(crate) local_map: FxHashMap<Local, CPlace<'tcx>>,
+    pub(crate) local_map: IndexVec<Local, CPlace<'tcx>>,
 
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
     pub(crate) caller_location: Option<CValue<'tcx>>,
@@ -383,7 +383,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     pub(crate) fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {
-        *self.local_map.get(&local).unwrap_or_else(|| {
+        *self.local_map.get(local).unwrap_or_else(|| {
             panic!("Local {:?} doesn't exist", local);
         })
     }

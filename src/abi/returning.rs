@@ -16,34 +16,28 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(
     }
 }
 
-pub(super) fn codegen_return_param(
-    fx: &mut FunctionCx<'_, '_, impl Backend>,
+pub(super) fn codegen_return_param<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     start_block: Block,
-) {
+) -> CPlace<'tcx> {
     let ret_layout = return_layout(fx);
     let ret_pass_mode = get_pass_mode(fx.tcx, ret_layout);
-    let ret_param = match ret_pass_mode {
-        PassMode::NoPass => {
-            fx.local_map
-                .insert(RETURN_PLACE, CPlace::no_place(ret_layout));
-            Empty
-        }
+    let (ret_place, ret_param) = match ret_pass_mode {
+        PassMode::NoPass => (CPlace::no_place(ret_layout), Empty),
         PassMode::ByVal(_) | PassMode::ByValPair(_, _) => {
             let is_ssa = ssa_analyzed[RETURN_PLACE] == crate::analyze::SsaKind::Ssa;
-
-            super::local_place(fx, RETURN_PLACE, ret_layout, is_ssa);
-
-            Empty
+            (
+                super::make_local_place(fx, RETURN_PLACE, ret_layout, is_ssa),
+                Empty,
+            )
         }
         PassMode::ByRef { size: Some(_) } => {
             let ret_param = fx.bcx.append_block_param(start_block, fx.pointer_type);
-            fx.local_map.insert(
-                RETURN_PLACE,
+            (
                 CPlace::for_ptr(Pointer::new(ret_param), ret_layout),
-            );
-
-            Single(ret_param)
+                Single(ret_param),
+            )
         }
         PassMode::ByRef { size: None } => todo!(),
     };
@@ -61,6 +55,8 @@ pub(super) fn codegen_return_param(
         ret_pass_mode,
         ret_layout.ty,
     );
+
+    ret_place
 }
 
 pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(

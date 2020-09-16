@@ -4,6 +4,8 @@ mod unwind;
 
 use crate::prelude::*;
 
+use rustc_index::vec::IndexVec;
+
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
 use cranelift_codegen::isa::TargetIsa;
@@ -269,7 +271,7 @@ impl<'tcx> DebugContext<'tcx> {
         isa: &dyn TargetIsa,
         context: &Context,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
-        local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
+        local_map: IndexVec<mir::Local, CPlace<'tcx>>,
     ) {
         let symbol = func_id.as_u32() as usize;
         let mir = self.tcx.instance_mir(instance.def);
@@ -390,7 +392,7 @@ fn place_location<'tcx>(
     isa: &dyn TargetIsa,
     symbol: usize,
     context: &Context,
-    local_map: &FxHashMap<mir::Local, CPlace<'tcx>>,
+    local_map: &IndexVec<mir::Local, CPlace<'tcx>>,
     #[allow(rustc::default_hash_types)] value_labels_ranges: &std::collections::HashMap<
         ValueLabel,
         Vec<ValueLocRange>,
@@ -399,7 +401,7 @@ fn place_location<'tcx>(
 ) -> AttributeValue {
     assert!(place.projection.is_empty()); // FIXME implement them
 
-    match local_map[&place.local].inner() {
+    match local_map[place.local].inner() {
         CPlaceInner::Var(_local, var) => {
             let value_label = cranelift_codegen::ir::ValueLabel::new(var.index());
             if let Some(value_loc_ranges) = value_labels_ranges.get(&value_label) {
