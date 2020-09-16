@@ -111,7 +111,7 @@ pub fn spin_loop() {
 #[inline]
 #[unstable(feature = "test", issue = "50297")]
 #[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
-pub fn black_box<T>(dummy: T) -> T {
+pub fn black_box<T>(mut dummy: T) -> T {
     // We need to "use" the argument in some way LLVM can't introspect, and on
     // targets that support it we can typically leverage inline assembly to do
     // this. LLVM's interpretation of inline assembly is that it's, well, a black
@@ -121,7 +121,8 @@ pub fn black_box<T>(dummy: T) -> T {
     #[cfg(not(miri))] // This is just a hint, so it is fine to skip in Miri.
     // SAFETY: the inline assembly is a no-op.
     unsafe {
-        llvm_asm!("" : : "r"(&dummy));
+        // FIXME: Cannot use `asm!` because it doesn't support MIPS and other architectures.
+        llvm_asm!("" : : "r"(&mut dummy) : "memory" : "volatile");
     }
 
     dummy

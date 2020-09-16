@@ -3,17 +3,16 @@ use std::cmp;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder};
-use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{Symbol, SymbolStr};
 
+use super::PartitioningCx;
 use crate::monomorphize::partitioning::PreInliningPartitioning;
 
 pub fn merge_codegen_units<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    cx: &PartitioningCx<'_, 'tcx>,
     initial_partitioning: &mut PreInliningPartitioning<'tcx>,
-    target_cgu_count: usize,
 ) {
-    assert!(target_cgu_count >= 1);
+    assert!(cx.target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
 
     // Note that at this point in time the `codegen_units` here may not be in a
@@ -32,7 +31,7 @@ pub fn merge_codegen_units<'tcx>(
         codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name().as_str()])).collect();
 
     // Merge the two smallest codegen units until the target size is reached.
-    while codegen_units.len() > target_cgu_count {
+    while codegen_units.len() > cx.target_cgu_count {
         // Sort small cgus to the back
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         let mut smallest = codegen_units.pop().unwrap();
@@ -56,9 +55,9 @@ pub fn merge_codegen_units<'tcx>(
         );
     }
 
-    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
 
-    if tcx.sess.opts.incremental.is_some() {
+    if cx.tcx.sess.opts.incremental.is_some() {
         // If we are doing incremental compilation, we want CGU names to
         // reflect the path of the source level module they correspond to.
         // For CGUs that contain the code of multiple modules because of the
@@ -84,7 +83,7 @@ pub fn merge_codegen_units<'tcx>(
 
         for cgu in codegen_units.iter_mut() {
             if let Some(new_cgu_name) = new_cgu_names.get(&cgu.name()) {
-                if tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+                if cx.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
                     cgu.set_name(Symbol::intern(&new_cgu_name));
                 } else {
                     // If we don't require CGU names to be human-readable, we

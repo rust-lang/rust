@@ -1,10 +1,10 @@
 error[E0282]: type annotations needed
-  --> $DIR/uninferred-consts.rs:14:5
+  --> $DIR/uninferred-consts.rs:14:9
    |
 LL |     Foo.foo();
-   |     ^^^^^^^^^
+   |         ^^^
    |
-   = note: unable to infer the value of a const parameter
+   = note: cannot infer the value of the const parameter `N`
 
 error: aborting due to previous error
 

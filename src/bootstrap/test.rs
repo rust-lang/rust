@@ -270,7 +270,7 @@ impl Step for Rls {
             &[],
         );
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+        cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").args(builder.config.cmd.test_args());
 
         if try_run(builder, &mut cargo.into()) {
@@ -328,7 +328,7 @@ impl Step for Rustfmt {
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+        cargo.add_rustc_lib_path(builder, compiler);
 
         if try_run(builder, &mut cargo.into()) {
             builder.save_toolstate("rustfmt", ToolState::TestPass);
@@ -449,7 +449,7 @@ impl Step for Miri {
 
             cargo.arg("--").args(builder.config.cmd.test_args());
 
-            builder.add_rustc_lib_path(compiler, &mut cargo);
+            cargo.add_rustc_lib_path(builder, compiler);
 
             if !try_run(builder, &mut cargo.into()) {
                 return;
@@ -554,7 +554,7 @@ impl Step for Clippy {
 
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+        cargo.add_rustc_lib_path(builder, compiler);
 
         builder.run(&mut cargo.into());
     }
