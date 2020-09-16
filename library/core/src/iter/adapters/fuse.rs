@@ -9,11 +9,8 @@ use crate::ops::Try;
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 ///
-/// This `struct` is created by the [`fuse`] method on [`Iterator`]. See its
-/// documentation for more.
-///
-/// [`fuse`]: trait.Iterator.html#method.fuse
-/// [`Iterator`]: trait.Iterator.html
+/// This `struct` is created by [`Iterator::fuse`]. See its documentation
+/// for more.
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
