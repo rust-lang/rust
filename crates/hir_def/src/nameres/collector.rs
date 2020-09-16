@@ -420,7 +420,11 @@ impl DefCollector<'_> {
                     .as_ident()
                     .expect("extern crate should have been desugared to one-element path"),
             );
-            PartialResolvedImport::Resolved(res)
+            if res.is_none() {
+                PartialResolvedImport::Unresolved
+            } else {
+                PartialResolvedImport::Resolved(res)
+            }
         } else {
             let res = self.def_map.resolve_path_fp_with_macro(
                 self.db,
