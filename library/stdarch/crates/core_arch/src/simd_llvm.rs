@@ -1,6 +1,4 @@
-//! LLVM's simd platform intrinsics
-//!
-//! TODO: should use `link_llvm_intrinsic` instead: issue #112
+//! LLVM's SIMD platform intrinsics
 
 extern "platform-intrinsic" {
     //pub fn simd_select_bitmask
