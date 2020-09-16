@@ -40,6 +40,7 @@ pub struct Flags {
     pub llvm_skip_rebuild: Option<bool>,
 }
 
+#[derive(Debug)]
 pub enum Subcommand {
     Build {
         paths: Vec<PathBuf>,
@@ -98,6 +99,7 @@ impl Default for Subcommand {
 
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
+        dbg!(args);
         let mut extra_help = String::new();
         let mut subcommand_help = String::from(
             "\

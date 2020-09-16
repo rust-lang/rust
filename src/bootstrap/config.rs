@@ -590,12 +590,12 @@ impl Config {
         set(&mut config.print_step_timings, build.print_step_timings);
 
         // See https://github.com/rust-lang/compiler-team/issues/326
-        config.stage = match config.cmd {
+        config.stage = match dbg!(&config.cmd) {
             Subcommand::Doc { .. } => flags.stage.or(build.doc_stage).unwrap_or(0),
             Subcommand::Build { .. } => flags.stage.or(build.build_stage).unwrap_or(1),
             Subcommand::Test { .. } => flags.stage.or(build.test_stage).unwrap_or(1),
             Subcommand::Bench { .. } => flags.stage.or(build.bench_stage).unwrap_or(2),
-            Subcommand::Dist { .. } => flags.stage.or(build.dist_stage).unwrap_or(2),
+            Subcommand::Dist { .. } => dbg!(dbg!(flags.stage).or(build.dist_stage).unwrap_or(2)),
             Subcommand::Install { .. } => flags.stage.or(build.install_stage).unwrap_or(2),
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
