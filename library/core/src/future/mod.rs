@@ -9,10 +9,10 @@ use crate::{
     task::{Context, Poll},
 };
 
+mod from_fn;
 mod future;
 mod into_future;
 mod pending;
-mod poll_fn;
 mod ready;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -26,8 +26,8 @@ pub use pending::{pending, Pending};
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub use ready::{ready, Ready};
 
-#[unstable(feature = "future_poll_fn", issue = "72302")]
-pub use poll_fn::{poll_fn, PollFn};
+#[unstable(feature = "future_from_fn", issue = "72302")]
+pub use from_fn::{from_fn, FromFn};
 
 /// This type is needed because:
 ///

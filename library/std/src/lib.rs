@@ -258,6 +258,7 @@
 #![feature(external_doc)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
+#![feature(future_from_fn)]
 #![feature(gen_future)]
 #![feature(generator_trait)]
 #![feature(global_asm)]

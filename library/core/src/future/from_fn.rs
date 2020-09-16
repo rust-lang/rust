@@ -10,49 +10,48 @@ use crate::task::{Context, Poll};
 /// # Examples
 ///
 /// ```
-/// #![feature(future_poll_fn)]
+/// #![feature(future_from_fn)]
 /// # async fn run() {
-/// use core::future::poll_fn;
+/// use core::future;
 /// use core::task::{Context, Poll};
 ///
-/// fn read_line(_cx: &mut Context<'_>) -> Poll<String> {
+/// let fut = future::from_fn(|_cx: &mut Context<'_>| -> Poll<String> {
 ///     Poll::Ready("Hello, World!".into())
-/// }
+/// });
 ///
-/// let read_future = poll_fn(read_line);
-/// assert_eq!(read_future.await, "Hello, World!".to_owned());
+/// assert_eq!(fut.await, "Hello, World!".to_owned());
 /// # };
 /// ```
-#[unstable(feature = "future_poll_fn", issue = "72302")]
-pub fn poll_fn<T, F>(f: F) -> PollFn<F>
+#[unstable(feature = "future_from_fn", issue = "72302")]
+pub fn from_fn<T, F>(f: F) -> FromFn<F>
 where
     F: FnMut(&mut Context<'_>) -> Poll<T>,
 {
-    PollFn { f }
+    FromFn { f }
 }
 
 /// A Future that wraps a function returning `Poll`.
 ///
-/// This `struct` is created by [`poll_fn()`]. See its
+/// This `struct` is created by [`from_fn()`]. See its
 /// documentation for more.
 #[must_use = "futures do nothing unless you `.await` or poll them"]
-#[unstable(feature = "future_poll_fn", issue = "72302")]
-pub struct PollFn<F> {
+#[unstable(feature = "future_from_fn", issue = "72302")]
+pub struct FromFn<F> {
     f: F,
 }
 
-#[unstable(feature = "future_poll_fn", issue = "72302")]
-impl<F> Unpin for PollFn<F> {}
+#[unstable(feature = "future_from_fn", issue = "72302")]
+impl<F> Unpin for FromFn<F> {}
 
-#[unstable(feature = "future_poll_fn", issue = "72302")]
-impl<F> fmt::Debug for PollFn<F> {
+#[unstable(feature = "future_from_fn", issue = "72302")]
+impl<F> fmt::Debug for FromFn<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PollFn").finish()
+        f.debug_struct("FromFn").finish()
     }
 }
 
-#[unstable(feature = "future_poll_fn", issue = "72302")]
-impl<T, F> Future for PollFn<F>
+#[unstable(feature = "future_from_fn", issue = "72302")]
+impl<T, F> Future for FromFn<F>
 where
     F: FnMut(&mut Context<'_>) -> Poll<T>,
 {

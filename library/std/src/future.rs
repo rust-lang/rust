@@ -13,5 +13,9 @@ pub use core::future::{from_generator, get_context, ResumeTy};
 pub use core::future::{pending, ready, Pending, Ready};
 
 #[doc(inline)]
+#[unstable(feature = "future_from_fn", issue = "72302")]
+pub use core::future::{from_fn, FromFn};
+
+#[doc(inline)]
 #[unstable(feature = "into_future", issue = "67644")]
 pub use core::future::IntoFuture;
