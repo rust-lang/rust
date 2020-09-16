@@ -154,8 +154,24 @@ for (bb, block) in body.basic_blocks().iter_enumerated() {
 }
 ```
 
+### Graphviz Diagrams
+
+When the results of a dataflow analysis are not what you expect, it often helps
+to visualize them. This can be done with the `-Zdump-mir` flags described in
+[Debugging MIR]. Start with `-Zdump-mir=F -Zdump-mir-dataflow`, where `F` is
+either "all" or the name of the MIR body you are interested in.
+
+These `.dot` files will be saved in your `mir_dump` directory and will have the
+`NAME` of the analysis (e.g. `maybe_inits`) as part of their filename. Each
+visualization will display the full dataflow state at entry and exit of each
+block, as well as any changes that occur in each statement and terminator.  See
+the example below:
+
+![A graphviz diagram for a dataflow analysis](../img/dataflow-graphviz-example.png)
+
 ["gen-kill" problems]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 [*Static Program Analysis*]: https://cs.au.dk/~amoeller/spa/
+[Debugging MIR]: ./debugging.html
 [`AnalysisDomain`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.AnalysisDomain.html
 [`Analysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.Analysis.html
 [`Engine`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/struct.Engine.html

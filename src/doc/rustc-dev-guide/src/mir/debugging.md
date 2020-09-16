@@ -6,6 +6,8 @@ additional output formats, including:
 
 * `-Zdump-mir-graphviz` - dumps a `.dot` file that represents MIR as a
 control-flow graph
+* `-Zdump-mir-dataflow` - dumps a `.dot` file showing the [dataflow state] at
+  each point in the control-flow graph
 * `-Zdump-mir-spanview` - dumps an `.html` file that highlights the source
 spans associated with MIR elements (including mouse-over actions to reveal
 elements obscured by overlaps, and tooltips to view the MIR statements).
@@ -87,3 +89,5 @@ rustc.main.002-006.NoLandingPads.before.mir
 that appeared within the `main` function.)
 
 TODO: anything else?
+
+[dataflow state]: ./dataflow.html#graphviz-diagrams
