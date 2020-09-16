@@ -1,0 +1,44 @@
+- // MIR for `opt_immutable` before InstCombine
++ // MIR for `opt_immutable` after InstCombine
+  
+  fn opt_immutable(_1: &[u8]) -> () {
+      debug dst => _1;                     // in scope 0 at $DIR/and_star.rs:7:18: 7:21
+      let mut _0: ();                      // return place in scope 0 at $DIR/and_star.rs:7:30: 7:30
+      let _2: std::option::Option<&u8>;    // in scope 0 at $DIR/and_star.rs:8:5: 8:15
+      let mut _3: &[u8];                   // in scope 0 at $DIR/and_star.rs:8:5: 8:8
+      let mut _6: usize;                   // in scope 0 at $DIR/and_star.rs:8:5: 8:15
+      scope 1 {
+          debug self => _3;                // in scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+          debug index => _6;               // in scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+          let mut _4: usize;               // in scope 1 at $DIR/and_star.rs:8:5: 8:15
+          let mut _5: &[u8];               // in scope 1 at $DIR/and_star.rs:8:5: 8:15
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/and_star.rs:8:5: 8:15
+          StorageLive(_3);                 // scope 0 at $DIR/and_star.rs:8:5: 8:8
+-         _3 = &(*_1);                     // scope 0 at $DIR/and_star.rs:8:5: 8:8
++         _3 = _1;                         // scope 0 at $DIR/and_star.rs:8:5: 8:8
+          StorageLive(_6);                 // scope 0 at $DIR/and_star.rs:8:5: 8:15
+          _6 = const 0_usize;              // scope 0 at $DIR/and_star.rs:8:5: 8:15
+          StorageLive(_4);                 // scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+          _4 = move _6;                    // scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+          StorageLive(_5);                 // scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+          _5 = _3;                         // scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+          _2 = <usize as SliceIndex<[u8]>>::get(move _4, move _5) -> bb1; // scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/slice/mod.rs:LL:COL
+                                           // + literal: Const { ty: for<'r> fn(usize, &'r [u8]) -> std::option::Option<&'r <usize as std::slice::SliceIndex<[u8]>>::Output> {<usize as std::slice::SliceIndex<[u8]>>::get}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageDead(_5);                 // scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+          StorageDead(_4);                 // scope 1 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+          StorageDead(_6);                 // scope 0 at $DIR/and_star.rs:8:5: 8:15
+          StorageDead(_3);                 // scope 0 at $DIR/and_star.rs:8:14: 8:15
+          StorageDead(_2);                 // scope 0 at $DIR/and_star.rs:8:15: 8:16
+          _0 = const ();                   // scope 0 at $DIR/and_star.rs:7:30: 9:2
+          return;                          // scope 0 at $DIR/and_star.rs:9:2: 9:2
+      }
+  }
+  
