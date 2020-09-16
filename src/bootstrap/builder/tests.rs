@@ -2,8 +2,8 @@ use super::*;
 use crate::config::{Config, TargetSelection};
 use std::thread;
 
-fn configure(host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::default_opts();
+fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
+    let mut config = Config::parse(&[cmd.to_owned()]);
     // don't save toolstates
     config.save_toolstates = None;
     config.skip_only_host_steps = false;
@@ -42,7 +42,7 @@ mod defaults {
 
     #[test]
     fn build_default() {
-        let build = Build::new(configure(&[], &[]));
+        let build = Build::new(configure("build", &[], &[]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
@@ -70,7 +70,7 @@ mod defaults {
 
     #[test]
     fn build_stage_0() {
-        let config = Config { stage: Some(0), ..configure(&[], &[]) };
+        let config = Config { stage: 0, ..configure("build", &[], &[]) };
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
@@ -92,7 +92,7 @@ mod defaults {
 
     #[test]
     fn doc_default() {
-        let mut config = configure(&[], &[]);
+        let mut config = configure("doc", &[], &[]);
         config.compiler_docs = true;
         config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
         let build = Build::new(config);
@@ -126,7 +126,7 @@ mod dist {
     use pretty_assertions::assert_eq;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
-        Config { stage: Some(2), ..super::configure(host, target) }
+        Config { stage: 2, ..super::configure("dist", host, target) }
     }
 
     #[test]
@@ -455,7 +455,7 @@ mod dist {
     #[test]
     fn test_with_no_doc_stage0() {
         let mut config = configure(&[], &[]);
-        config.stage = Some(0);
+        config.stage = 0;
         config.cmd = Subcommand::Test {
             paths: vec!["library/std".into()],
             test_args: vec![],
