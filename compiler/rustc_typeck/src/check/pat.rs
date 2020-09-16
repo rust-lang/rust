@@ -1,5 +1,6 @@
 use crate::check::FnCtxt;
 use rustc_ast as ast;
+
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
@@ -740,6 +741,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_ty
     }
 
+    fn maybe_suggest_range_literal(
+        &self,
+        e: &mut DiagnosticBuilder<'_>,
+        opt_def_id: Option<hir::def_id::DefId>,
+        ident: Ident,
+    ) -> bool {
+        match opt_def_id {
+            Some(def_id) => match self.tcx.hir().get_if_local(def_id) {
+                Some(hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Const(_, body_id), ..
+                })) => match self.tcx.hir().get(body_id.hir_id) {
+                    hir::Node::Expr(expr) => {
+                        if hir::is_range_literal(expr) {
+                            let span = self.tcx.hir().span(body_id.hir_id);
+                            if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
+                                e.span_suggestion_verbose(
+                                    ident.span,
+                                    "you may want to move the range into the match block",
+                                    snip,
+                                    Applicability::MachineApplicable,
+                                );
+                                return true;
+                            }
+                        }
+                    }
+                    _ => (),
+                },
+                _ => (),
+            },
+            _ => (),
+        }
+        false
+    }
+
     fn emit_bad_pat_path(
         &self,
         mut e: DiagnosticBuilder<'_>,
@@ -789,40 +824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.lang_items().range_to_inclusive_struct(),
                         ];
                         if type_def_id != None && ranges.contains(&type_def_id) {
-                            let generic_message = match item_def_id {
-                                Some(def_id) => match self.tcx.hir().get_if_local(def_id) {
-                                    Some(hir::Node::Item(hir::Item {
-                                        kind: hir::ItemKind::Const(_, body_id),
-                                        ..
-                                    })) => match self.tcx.hir().get(body_id.hir_id) {
-                                        hir::Node::Expr(expr) => {
-                                            if hir::is_range_literal(expr) {
-                                                let span = self.tcx.hir().span(body_id.hir_id);
-                                                if let Ok(snip) =
-                                                    self.tcx.sess.source_map().span_to_snippet(span)
-                                                {
-                                                    e.span_suggestion_verbose(
-                                                    span,
-                                                    "you may want to move the range into the match block", 
-                                                    snip,
-                                                    Applicability::MachineApplicable
-                                                );
-                                                    false
-                                                } else {
-                                                    true
-                                                }
-                                            } else {
-                                                true
-                                            }
-                                        }
-                                        _ => true,
-                                    },
-                                    _ => true,
-                                },
-                                _ => true,
-                            };
-
-                            if generic_message {
+                            if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
                                 let msg = "constants only support matching by type, \
                                     if you meant to match against a range of values, \
                                     consider using a range pattern like `min ..= max` in the match block";
