@@ -754,14 +754,6 @@ pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
     }
 }
 
-/// Returns the base type for references and raw pointers.
-pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
-    match ty.kind() {
-        ty::Ref(_, ty, _) => walk_ptrs_ty(ty),
-        _ => ty,
-    }
-}
-
 /// Returns the base type for references and raw pointers, and count reference
 /// depth.
 pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {

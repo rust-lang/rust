@@ -1,7 +1,5 @@
 use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT};
-use crate::utils::{
-    is_expn_of, is_type_diagnostic_item, match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty,
-};
+use crate::utils::{is_expn_of, is_type_diagnostic_item, match_def_path, method_chain_args, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -96,7 +94,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
 
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-                let reciever_ty = walk_ptrs_ty(self.typeck_results.expr_ty(&arglists[0][0]));
+                let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
                 if is_type_diagnostic_item(self.lcx, reciever_ty, sym!(option_type))
                     || is_type_diagnostic_item(self.lcx, reciever_ty, sym!(result_type))
                 {

@@ -17,7 +17,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_integer_const, iter_input_pats,
     last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_lint_hir_and_then, walk_ptrs_ty, SpanlessEq,
+    span_lint_and_then, span_lint_hir_and_then, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -561,7 +561,7 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let value = &walk_ptrs_ty(cx.typeck_results().expr_ty(expr)).kind();
+    let value = &cx.typeck_results().expr_ty(expr).peel_refs().kind();
 
     if let ty::Array(arr_ty, _) = value {
         return matches!(arr_ty.kind(), ty::Float(_));
@@ -571,7 +571,7 @@ fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_array(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(&walk_ptrs_ty(cx.typeck_results().expr_ty(expr)).kind(), ty::Array(_, _))
+    matches!(&cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
 }
 
 fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {

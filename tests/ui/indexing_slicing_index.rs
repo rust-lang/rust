@@ -15,7 +15,8 @@ fn main() {
     x[3]; // Ok, should not produce stderr.
 
     let y = &x;
-    y[0];
+    y[0]; // Ok, referencing shouldn't affect this lint. See the issue 6021
+    y[4]; // Ok, rustc will handle references too.
 
     let v = vec![0; 5];
     v[0];
