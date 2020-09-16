@@ -1233,13 +1233,13 @@ rustc_index::newtype_index! {
     /// particular, imagine a type like this:
     ///
     ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
-    ///     ^          ^            |        |         |
-    ///     |          |            |        |         |
-    ///     |          +------------+ 0      |         |
-    ///     |                                |         |
-    ///     +--------------------------------+ 1       |
-    ///     |                                          |
-    ///     +------------------------------------------+ 0
+    ///     ^          ^            |          |           |
+    ///     |          |            |          |           |
+    ///     |          +------------+ 0        |           |
+    ///     |                                  |           |
+    ///     +----------------------------------+ 1         |
+    ///     |                                              |
+    ///     +----------------------------------------------+ 0
     ///
     /// In this type, there are two binders (the outer fn and the inner
     /// fn). We need to be able to determine, for any given region, which

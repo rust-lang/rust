@@ -66,8 +66,8 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
-/// A type that is not publicly constructable. This prevents people from making `TyKind::Error`
-/// except through `tcx.err*()`, which are in this module.
+/// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
+/// except through the error-reporting functions on a [`tcx`][TyCtxt].
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub struct DelaySpanBugEmitted(());
