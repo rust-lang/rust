@@ -88,6 +88,7 @@ pub struct Command {
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
+    pub(crate) make_pidfd: bool,
 }
 
 // Create a new type for argv, so that we can make it `Send` and `Sync`
@@ -149,6 +150,7 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
+            make_pidfd: false,
         }
     }
 
@@ -180,6 +182,9 @@ impl Command {
     }
     pub fn gid(&mut self, id: gid_t) {
         self.gid = Some(id);
+    }
+    pub fn create_pidfd(&mut self, val: bool) {
+        self.make_pidfd = val;
     }
 
     pub fn saw_nul(&self) -> bool {
