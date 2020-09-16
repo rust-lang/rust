@@ -157,37 +157,37 @@ LL |     let _ = res2.unwrap_or_else(|_| ext_str.some_field);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `unwrap_or` instead: `res2.unwrap_or(ext_str.some_field)`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:114:35
+  --> $DIR/unnecessary_lazy_eval.rs:111:35
    |
 LL |     let _: Result<usize, usize> = res.and_then(|_| Err(2));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `and` instead: `res.and(Err(2))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:115:35
+  --> $DIR/unnecessary_lazy_eval.rs:112:35
    |
 LL |     let _: Result<usize, usize> = res.and_then(|_| Err(astronomers_pi));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `and` instead: `res.and(Err(astronomers_pi))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:116:35
+  --> $DIR/unnecessary_lazy_eval.rs:113:35
    |
 LL |     let _: Result<usize, usize> = res.and_then(|_| Err(ext_str.some_field));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `and` instead: `res.and(Err(ext_str.some_field))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:118:35
+  --> $DIR/unnecessary_lazy_eval.rs:115:35
    |
 LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(2));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^ help: Use `or` instead: `res.or(Ok(2))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:119:35
+  --> $DIR/unnecessary_lazy_eval.rs:116:35
    |
 LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(astronomers_pi));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `or` instead: `res.or(Ok(astronomers_pi))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:120:35
+  --> $DIR/unnecessary_lazy_eval.rs:117:35
    |
 LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(ext_str.some_field));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `or` instead: `res.or(Ok(ext_str.some_field))`

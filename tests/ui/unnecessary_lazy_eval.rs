@@ -108,9 +108,6 @@ fn main() {
     let _: Result<usize, usize> = res.or_else(|_| Err(ext_str.some_field));
 
     // should lint, bind_instead_of_map doesn't apply
-    let _: Result<usize, usize> = res.and_then(|x| Err(x));
-    let _: Result<usize, usize> = res.or_else(|err| Ok(err));
-
     let _: Result<usize, usize> = res.and_then(|_| Err(2));
     let _: Result<usize, usize> = res.and_then(|_| Err(astronomers_pi));
     let _: Result<usize, usize> = res.and_then(|_| Err(ext_str.some_field));
@@ -118,4 +115,8 @@ fn main() {
     let _: Result<usize, usize> = res.or_else(|_| Ok(2));
     let _: Result<usize, usize> = res.or_else(|_| Ok(astronomers_pi));
     let _: Result<usize, usize> = res.or_else(|_| Ok(ext_str.some_field));
+
+    // neither bind_instead_of_map nor unnecessary_lazy_eval applies here
+    let _: Result<usize, usize> = res.and_then(|x| Err(x));
+    let _: Result<usize, usize> = res.or_else(|err| Ok(err));
 }
