@@ -8,7 +8,7 @@ something. We appreciate any sort of contributions, and don't want a wall of rul
 
 Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document
 explains how you can contribute and how to get started.  If you have any questions about contributing or need help with
-anything, feel free to ask questions on issues or visit the `#clippy` on [Discord].
+anything, feel free to ask questions on issues or visit the `#clippy` on [Zulip].
 
 All contributors are expected to follow the [Rust Code of Conduct].
 
@@ -23,7 +23,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [Bors and Homu](#bors-and-homu)
   - [Contributions](#contributions)
 
-[Discord]: https://discord.gg/rust-lang
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
 ## Getting started
@@ -242,7 +242,7 @@ to be run inside the `rust` directory):
     ```
 3. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
    accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
-   ~~annoy~~ ask them in the [Discord] channel.)
+   ~~annoy~~ ask them in the [Zulip] stream.)
    
 ### Syncing back changes in Clippy to [`rust-lang/rust`]
 
