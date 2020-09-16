@@ -1762,6 +1762,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
     }
 
+    if let Ok(graphviz_font) = std::env::var("RUSTC_GRAPHVIZ_FONT") {
+        debugging_opts.graphviz_font = graphviz_font;
+    }
+
     if !cg.embed_bitcode {
         match cg.lto {
             LtoCli::No | LtoCli::Unspecified => {}
