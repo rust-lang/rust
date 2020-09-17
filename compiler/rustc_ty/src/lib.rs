@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(bool_to_option)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 

@@ -11,7 +11,6 @@
 #![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
 #![feature(unboxed_closures)]
-#![feature(generators)]
 #![feature(generator_trait)]
 #![feature(fn_traits)]
 #![feature(min_specialization)]
