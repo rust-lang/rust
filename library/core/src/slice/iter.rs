@@ -82,8 +82,20 @@ unsafe impl<T: Sync> Sync for Iter<'_, T> {}
 unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 impl<'a, T> Iter<'a, T> {
-    pub(super) fn new(ptr: NonNull<T>, end: *const T) -> Self {
-        Self { ptr, end, _marker: PhantomData }
+    pub(super) fn new(slice: &'a [T]) -> Self {
+        let ptr = slice.as_ptr();
+        // SAFETY: Similar to `IterMut::new`.
+        unsafe {
+            assume(!ptr.is_null());
+
+            let end = if mem::size_of::<T>() == 0 {
+                (ptr as *const u8).wrapping_add(slice.len()) as *const T
+            } else {
+                ptr.add(slice.len())
+            };
+
+            Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
+        }
     }
 
     /// Views the underlying data as a subslice of the original data.
@@ -188,8 +200,35 @@ unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 impl<'a, T> IterMut<'a, T> {
-    pub(super) fn new(ptr: NonNull<T>, end: *mut T) -> Self {
-        Self { ptr, end, _marker: PhantomData }
+    pub(super) fn new(slice: &'a mut [T]) -> Self {
+        let ptr = slice.as_mut_ptr();
+        // SAFETY: There are several things here:
+        //
+        // `ptr` has been obtained by `slice.as_ptr()` where `slice` is a valid
+        // reference thus it is non-NUL and safe to use and pass to
+        // `NonNull::new_unchecked` .
+        //
+        // Adding `slice.len()` to the starting pointer gives a pointer
+        // at the end of `slice`. `end` will never be dereferenced, only checked
+        // for direct pointer equality with `ptr` to check if the iterator is
+        // done.
+        //
+        // In the case of a ZST, the end pointer is just the start pointer plus
+        // the length, to also allows for the fast `ptr == end` check.
+        //
+        // See the `next_unchecked!` and `is_empty!` macros as well as the
+        // `post_inc_start` method for more informations.
+        unsafe {
+            assume(!ptr.is_null());
+
+            let end = if mem::size_of::<T>() == 0 {
+                (ptr as *mut u8).wrapping_add(slice.len()) as *mut T
+            } else {
+                ptr.add(slice.len())
+            };
+
+            Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }
+        }
     }
 
     /// Views the underlying data as a subslice of the original data.
@@ -291,8 +330,8 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {
-    pub(super) fn new(slice: &'a [T], pred: P, finished: bool) -> Self {
-        Self { v: slice, pred, finished }
+    pub(super) fn new(slice: &'a [T], pred: P) -> Self {
+        Self { v: slice, pred, finished: false }
     }
 }
 
@@ -405,8 +444,9 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitInclusive<'a, T, P> {
-    pub(super) fn new(slice: &'a [T], pred: P, finished: bool) -> Self {
-        Self { v: slice, pred, finished }
+    #[inline]
+    pub(super) fn new(slice: &'a [T], pred: P) -> Self {
+        Self { v: slice, pred, finished: false }
     }
 }
 
@@ -509,8 +549,9 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitMut<'a, T, P> {
-    pub(super) fn new(slice: &'a mut [T], pred: P, finished: bool) -> Self {
-        Self { v: slice, pred, finished }
+    #[inline]
+    pub(super) fn new(slice: &'a mut [T], pred: P) -> Self {
+        Self { v: slice, pred, finished: false }
     }
 }
 
@@ -630,8 +671,9 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitInclusiveMut<'a, T, P> {
-    pub(super) fn new(slice: &'a mut [T], pred: P, finished: bool) -> Self {
-        Self { v: slice, pred, finished }
+    #[inline]
+    pub(super) fn new(slice: &'a mut [T], pred: P) -> Self {
+        Self { v: slice, pred, finished: false }
     }
 }
 
@@ -742,8 +784,9 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplit<'a, T, P> {
-    pub(super) fn new(slice: &'a [T], pred: P, finished: bool) -> Self {
-        Self { inner: Split::new(slice, pred, finished) }
+    #[inline]
+    pub(super) fn new(slice: &'a [T], pred: P) -> Self {
+        Self { inner: Split::new(slice, pred) }
     }
 }
 
@@ -819,8 +862,9 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitMut<'a, T, P> {
-    pub(super) fn new(slice: &'a mut [T], pred: P, finished: bool) -> Self {
-        Self { inner: SplitMut::new(slice, pred, finished) }
+    #[inline]
+    pub(super) fn new(slice: &'a mut [T], pred: P) -> Self {
+        Self { inner: SplitMut::new(slice, pred) }
     }
 }
 
@@ -1516,13 +1560,15 @@ pub struct ChunksExact<'a, T: 'a> {
     chunk_size: usize,
 }
 
-impl<'a, T: 'a> ChunksExact<'a, T> {
-    pub(super) fn new(slice: &'a [T], rem: &'a [T], size: usize) -> Self {
-        Self { v: slice, rem, chunk_size: size }
-    }
-}
-
 impl<'a, T> ChunksExact<'a, T> {
+    pub(super) fn new(slice: &'a [T], chunk_size: usize) -> Self {
+        let rem = slice.len() % chunk_size;
+        let fst_len = slice.len() - rem;
+        // SAFETY: 0 <= fst_len <= slice.len() by construction above
+        let (fst, snd) = unsafe { slice.split_at_unchecked(fst_len) };
+        Self { v: fst, rem: snd, chunk_size }
+    }
+
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
@@ -1662,13 +1708,15 @@ pub struct ChunksExactMut<'a, T: 'a> {
     chunk_size: usize,
 }
 
-impl<'a, T: 'a> ChunksExactMut<'a, T> {
-    pub(super) fn new(slice: &'a mut [T], rem: &'a mut [T], size: usize) -> Self {
-        Self { v: slice, rem, chunk_size: size }
-    }
-}
-
 impl<'a, T> ChunksExactMut<'a, T> {
+    pub(super) fn new(slice: &'a mut [T], chunk_size: usize) -> Self {
+        let rem = slice.len() % chunk_size;
+        let fst_len = slice.len() - rem;
+        // SAFETY: 0 <= fst_len <= slice.len() by construction above
+        let (fst, snd) = unsafe { slice.split_at_mut_unchecked(fst_len) };
+        Self { v: fst, rem: snd, chunk_size }
+    }
+
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
@@ -1801,8 +1849,9 @@ pub struct ArrayWindows<'a, T: 'a, const N: usize> {
 }
 
 impl<'a, T: 'a, const N: usize> ArrayWindows<'a, T, N> {
-    pub(super) fn new(head: *const T, num: usize) -> Self {
-        Self { slice_head: head, num, marker: PhantomData }
+    pub(super) fn new(slice: &'a [T]) -> Self {
+        let num_windows = slice.len().saturating_sub(N - 1);
+        Self { slice_head: slice.as_ptr(), num: num_windows, marker: PhantomData }
     }
 }
 
@@ -1910,13 +1959,17 @@ pub struct ArrayChunks<'a, T: 'a, const N: usize> {
     rem: &'a [T],
 }
 
-impl<'a, T: 'a, const N: usize> ArrayChunks<'a, T, N> {
-    pub(super) fn new(iter: Iter<'a, [T; N]>, rem: &'a [T]) -> Self {
-        Self { iter, rem }
-    }
-}
-
 impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
+    pub(super) fn new(slice: &'a [T]) -> Self {
+        let len = slice.len() / N;
+        let (fst, snd) = slice.split_at(len * N);
+        // SAFETY: We cast a slice of `len * N` elements into
+        // a slice of `len` many `N` elements chunks.
+        let array_slice: &[[T; N]] = unsafe { from_raw_parts(fst.as_ptr().cast(), len) };
+
+        Self { iter: array_slice.iter(), rem: snd }
+    }
+
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `N-1`
     /// elements.
@@ -2023,13 +2076,18 @@ pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
     rem: &'a mut [T],
 }
 
-impl<'a, T: 'a, const N: usize> ArrayChunksMut<'a, T, N> {
-    pub(super) fn new(iter: IterMut<'a, [T; N]>, rem: &'a mut [T]) -> Self {
-        Self { iter, rem }
-    }
-}
-
 impl<'a, T, const N: usize> ArrayChunksMut<'a, T, N> {
+    pub(super) fn new(slice: &'a mut [T]) -> Self {
+        let len = slice.len() / N;
+        let (fst, snd) = slice.split_at_mut(len * N);
+        // SAFETY: We cast a slice of `len * N` elements into
+        // a slice of `len` many `N` elements chunks.
+        unsafe {
+            let array_slice: &mut [[T; N]] = from_raw_parts_mut(fst.as_mut_ptr().cast(), len);
+            Self { iter: array_slice.iter_mut(), rem: snd }
+        }
+    }
+
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `N-1`
     /// elements.
@@ -2440,8 +2498,11 @@ pub struct RChunksExact<'a, T: 'a> {
 }
 
 impl<'a, T> RChunksExact<'a, T> {
-    pub(super) fn new(slice: &'a [T], rem: &'a [T], size: usize) -> Self {
-        Self { v: slice, rem, chunk_size: size }
+    pub(super) fn new(slice: &'a [T], chunk_size: usize) -> Self {
+        let rem = slice.len() % chunk_size;
+        // SAFETY: 0 <= rem <= slice.len() by construction above
+        let (fst, snd) = unsafe { slice.split_at_unchecked(rem) };
+        Self { v: snd, rem: fst, chunk_size }
     }
 
     /// Returns the remainder of the original slice that is not going to be
@@ -2589,8 +2650,11 @@ pub struct RChunksExactMut<'a, T: 'a> {
 }
 
 impl<'a, T> RChunksExactMut<'a, T> {
-    pub(super) fn new(slice: &'a mut [T], rem: &'a mut [T], size: usize) -> Self {
-        Self { v: slice, rem, chunk_size: size }
+    pub(super) fn new(slice: &'a mut [T], chunk_size: usize) -> Self {
+        let rem = slice.len() % chunk_size;
+        // SAFETY: 0 <= rem <= slice.len() by construction above
+        let (fst, snd) = unsafe { slice.split_at_mut_unchecked(rem) };
+        Self { v: snd, rem: fst, chunk_size }
     }
 
     /// Returns the remainder of the original slice that is not going to be

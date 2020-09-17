@@ -9,13 +9,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::intrinsics::assume;
 use crate::marker::Copy;
 use crate::mem;
 use crate::ops::{FnMut, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
-use crate::ptr::{self, NonNull};
+use crate::ptr;
 use crate::result::Result;
 use crate::result::Result::{Err, Ok};
 
@@ -679,34 +678,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn iter(&self) -> Iter<'_, T> {
-        let ptr = self.as_ptr();
-        // SAFETY: There are several things here:
-        //
-        // `ptr` has been obtained by `self.as_ptr()` where `self` is a valid
-        // reference thus it is non-NUL and safe to use and pass to
-        // `NonNull::new_unchecked` .
-        //
-        // Adding `self.len()` to the starting pointer gives a pointer
-        // at the end of `self`. `end` will never be dereferenced, only checked
-        // for direct pointer equality with `ptr` to check if the iterator is
-        // done.
-        //
-        // In the case of a ZST, the end pointer is just the start pointer plus
-        // the length, to also allows for the fast `ptr == end` check.
-        //
-        // See the `next_unchecked!` and `is_empty!` macros as well as the
-        // `post_inc_start` method for more informations.
-        unsafe {
-            assume(!ptr.is_null());
-
-            let end = if mem::size_of::<T>() == 0 {
-                (ptr as *const u8).wrapping_add(self.len()) as *const T
-            } else {
-                ptr.add(self.len())
-            };
-
-            Iter::new(NonNull::new_unchecked(ptr as *mut T), end)
-        }
+        Iter::new(self)
     }
 
     /// Returns an iterator that allows modifying each value.
@@ -723,34 +695,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        let ptr = self.as_mut_ptr();
-        // SAFETY: There are several things here:
-        //
-        // `ptr` has been obtained by `self.as_ptr()` where `self` is a valid
-        // reference thus it is non-NUL and safe to use and pass to
-        // `NonNull::new_unchecked` .
-        //
-        // Adding `self.len()` to the starting pointer gives a pointer
-        // at the end of `self`. `end` will never be dereferenced, only checked
-        // for direct pointer equality with `ptr` to check if the iterator is
-        // done.
-        //
-        // In the case of a ZST, the end pointer is just the start pointer plus
-        // the length, to also allows for the fast `ptr == end` check.
-        //
-        // See the `next_unchecked!` and `is_empty!` macros as well as the
-        // `post_inc_start` method for more informations.
-        unsafe {
-            assume(!ptr.is_null());
-
-            let end = if mem::size_of::<T>() == 0 {
-                (ptr as *mut u8).wrapping_add(self.len()) as *mut T
-            } else {
-                ptr.add(self.len())
-            };
-
-            IterMut::new(NonNull::new_unchecked(ptr), end)
-        }
+        IterMut::new(self)
     }
 
     /// Returns an iterator over all contiguous windows of length
@@ -892,11 +837,7 @@ impl<T> [T] {
     #[inline]
     pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
         assert_ne!(chunk_size, 0);
-        let rem = self.len() % chunk_size;
-        let fst_len = self.len() - rem;
-        // SAFETY: 0 <= fst_len <= self.len() by construction above
-        let (fst, snd) = unsafe { self.split_at_unchecked(fst_len) };
-        ChunksExact::new(fst, snd, chunk_size)
+        ChunksExact::new(self, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
@@ -938,11 +879,7 @@ impl<T> [T] {
     #[inline]
     pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
         assert_ne!(chunk_size, 0);
-        let rem = self.len() % chunk_size;
-        let fst_len = self.len() - rem;
-        // SAFETY: 0 <= fst_len <= self.len() by construction above
-        let (fst, snd) = unsafe { self.split_at_mut_unchecked(fst_len) };
-        ChunksExactMut::new(fst, snd, chunk_size)
+        ChunksExactMut::new(self, chunk_size)
     }
 
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
@@ -976,12 +913,7 @@ impl<T> [T] {
     #[inline]
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
         assert_ne!(N, 0);
-        let len = self.len() / N;
-        let (fst, snd) = self.split_at(len * N);
-        // SAFETY: We cast a slice of `len * N` elements into
-        // a slice of `len` many `N` elements chunks.
-        let array_slice: &[[T; N]] = unsafe { from_raw_parts(fst.as_ptr().cast(), len) };
-        ArrayChunks::new(array_slice.iter(), snd)
+        ArrayChunks::new(self)
     }
 
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
@@ -1017,14 +949,7 @@ impl<T> [T] {
     #[inline]
     pub fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
         assert_ne!(N, 0);
-        let len = self.len() / N;
-        let (fst, snd) = self.split_at_mut(len * N);
-        // SAFETY: We cast a slice of `len * N` elements into
-        // a slice of `len` many `N` elements chunks.
-        unsafe {
-            let array_slice: &mut [[T; N]] = from_raw_parts_mut(fst.as_mut_ptr().cast(), len);
-            ArrayChunksMut::new(array_slice.iter_mut(), snd)
-        }
+        ArrayChunksMut::new(self)
     }
 
     /// Returns an iterator over overlapping windows of `N` elements of  a slice,
@@ -1056,9 +981,7 @@ impl<T> [T] {
     #[inline]
     pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
         assert_ne!(N, 0);
-
-        let num_windows = self.len().saturating_sub(N - 1);
-        ArrayWindows::new(self.as_ptr(), num_windows)
+        ArrayWindows::new(self)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
@@ -1169,10 +1092,7 @@ impl<T> [T] {
     #[inline]
     pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
         assert!(chunk_size != 0);
-        let rem = self.len() % chunk_size;
-        // SAFETY: 0 <= rem <= self.len() by construction above
-        let (fst, snd) = unsafe { self.split_at_unchecked(rem) };
-        RChunksExact::new(snd, fst, chunk_size)
+        RChunksExact::new(self, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
@@ -1215,10 +1135,7 @@ impl<T> [T] {
     #[inline]
     pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
         assert!(chunk_size != 0);
-        let rem = self.len() % chunk_size;
-        // SAFETY: 0 <= rem <= self.len() by construction above
-        let (fst, snd) = unsafe { self.split_at_mut_unchecked(rem) };
-        RChunksExactMut::new(snd, fst, chunk_size)
+        RChunksExactMut::new(self, chunk_size)
     }
 
     /// Divides one slice into two at an index.
@@ -1437,7 +1354,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        Split::new(self, pred, false)
+        Split::new(self, pred)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -1459,7 +1376,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitMut::new(self, pred, false)
+        SplitMut::new(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1497,7 +1414,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitInclusive::new(self, pred, false)
+        SplitInclusive::new(self, pred)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -1522,7 +1439,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitInclusiveMut::new(self, pred, false)
+        SplitInclusiveMut::new(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1558,7 +1475,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplit::new(self, pred, false)
+        RSplit::new(self, pred)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -1584,7 +1501,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitMut::new(self, pred, false)
+        RSplitMut::new(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
