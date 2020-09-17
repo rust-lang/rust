@@ -88,6 +88,8 @@ crate fn eval_nullary_intrinsic<'tcx>(
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
+    /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
+    /// intrinsic handling.
     pub fn emulate_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -328,16 +330,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let offset_ptr = ptr.ptr_wrapping_signed_offset(offset_bytes, self);
                 self.write_scalar(offset_ptr, dest)?;
             }
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
-                let a = self.read_immediate(args[0])?.to_scalar()?;
-                let b = self.read_immediate(args[1])?.to_scalar()?;
-                let cmp = if intrinsic_name == sym::ptr_guaranteed_eq {
-                    self.guaranteed_eq(a, b)
-                } else {
-                    self.guaranteed_ne(a, b)
-                };
-                self.write_scalar(Scalar::from_bool(cmp), dest)?;
-            }
             sym::ptr_offset_from => {
                 let a = self.read_immediate(args[0])?.to_scalar()?;
                 let b = self.read_immediate(args[1])?.to_scalar()?;
@@ -446,37 +438,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("{:?}", self.dump_place(*dest));
         self.go_to_block(ret);
         Ok(true)
-    }
-
-    fn guaranteed_eq(&mut self, a: Scalar<M::PointerTag>, b: Scalar<M::PointerTag>) -> bool {
-        match (a, b) {
-            // Comparisons between integers are always known.
-            (Scalar::Raw { .. }, Scalar::Raw { .. }) => a == b,
-            // Equality with integers can never be known for sure.
-            (Scalar::Raw { .. }, Scalar::Ptr(_)) | (Scalar::Ptr(_), Scalar::Raw { .. }) => false,
-            // FIXME: return `true` for when both sides are the same pointer, *except* that
-            // some things (like functions and vtables) do not have stable addresses
-            // so we need to be careful around them.
-            (Scalar::Ptr(_), Scalar::Ptr(_)) => false,
-        }
-    }
-
-    fn guaranteed_ne(&mut self, a: Scalar<M::PointerTag>, b: Scalar<M::PointerTag>) -> bool {
-        match (a, b) {
-            // Comparisons between integers are always known.
-            (Scalar::Raw { .. }, Scalar::Raw { .. }) => a != b,
-            // Comparisons of abstract pointers with null pointers are known if the pointer
-            // is in bounds, because if they are in bounds, the pointer can't be null.
-            (Scalar::Raw { data: 0, .. }, Scalar::Ptr(ptr))
-            | (Scalar::Ptr(ptr), Scalar::Raw { data: 0, .. }) => !self.memory.ptr_may_be_null(ptr),
-            // Inequality with integers other than null can never be known for sure.
-            (Scalar::Raw { .. }, Scalar::Ptr(_)) | (Scalar::Ptr(_), Scalar::Raw { .. }) => false,
-            // FIXME: return `true` for at least some comparisons where we can reliably
-            // determine the result of runtime inequality tests at compile-time.
-            // Examples include comparison of addresses in static items, for these we can
-            // give reliable results.
-            (Scalar::Ptr(_), Scalar::Ptr(_)) => false,
-        }
     }
 
     pub fn exact_div(

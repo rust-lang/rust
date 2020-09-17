@@ -11,7 +11,7 @@ use rustc_ast::Mutability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
 use rustc_session::Limit;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, Frame, GlobalId, ImmTy, InterpCx,
@@ -176,6 +176,38 @@ impl interpret::MayLeak for ! {
     }
 }
 
+impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
+    fn guaranteed_eq(&mut self, a: Scalar, b: Scalar) -> bool {
+        match (a, b) {
+            // Comparisons between integers are always known.
+            (Scalar::Raw { .. }, Scalar::Raw { .. }) => a == b,
+            // Equality with integers can never be known for sure.
+            (Scalar::Raw { .. }, Scalar::Ptr(_)) | (Scalar::Ptr(_), Scalar::Raw { .. }) => false,
+            // FIXME: return `true` for when both sides are the same pointer, *except* that
+            // some things (like functions and vtables) do not have stable addresses
+            // so we need to be careful around them (see e.g. #73722).
+            (Scalar::Ptr(_), Scalar::Ptr(_)) => false,
+        }
+    }
+
+    fn guaranteed_ne(&mut self, a: Scalar, b: Scalar) -> bool {
+        match (a, b) {
+            // Comparisons between integers are always known.
+            (Scalar::Raw { .. }, Scalar::Raw { .. }) => a != b,
+            // Comparisons of abstract pointers with null pointers are known if the pointer
+            // is in bounds, because if they are in bounds, the pointer can't be null.
+            (Scalar::Raw { data: 0, .. }, Scalar::Ptr(ptr))
+            | (Scalar::Ptr(ptr), Scalar::Raw { data: 0, .. }) => !self.memory.ptr_may_be_null(ptr),
+            // Inequality with integers other than null can never be known for sure.
+            (Scalar::Raw { .. }, Scalar::Ptr(_)) | (Scalar::Ptr(_), Scalar::Raw { .. }) => false,
+            // FIXME: return `true` for at least some comparisons where we can reliably
+            // determine the result of runtime inequality tests at compile-time.
+            // Examples include comparison of addresses in different static items.
+            (Scalar::Ptr(_), Scalar::Ptr(_)) => false,
+        }
+    }
+}
+
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
 
@@ -234,12 +266,45 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
+        // Shared intrinsics.
         if ecx.emulate_intrinsic(instance, args, ret)? {
             return Ok(());
         }
-        // An intrinsic that we do not support
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
-        Err(ConstEvalErrKind::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into())
+
+        // CTFE-specific intrinsics.
+        let (dest, ret) = match ret {
+            None => {
+                return Err(ConstEvalErrKind::NeedsRfc(format!(
+                    "calling intrinsic `{}`",
+                    intrinsic_name
+                ))
+                .into());
+            }
+            Some(p) => p,
+        };
+        match intrinsic_name {
+            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+                let a = ecx.read_immediate(args[0])?.to_scalar()?;
+                let b = ecx.read_immediate(args[1])?.to_scalar()?;
+                let cmp = if intrinsic_name == sym::ptr_guaranteed_eq {
+                    ecx.guaranteed_eq(a, b)
+                } else {
+                    ecx.guaranteed_ne(a, b)
+                };
+                ecx.write_scalar(Scalar::from_bool(cmp), dest)?;
+            }
+            _ => {
+                return Err(ConstEvalErrKind::NeedsRfc(format!(
+                    "calling intrinsic `{}`",
+                    intrinsic_name
+                ))
+                .into());
+            }
+        }
+
+        ecx.go_to_block(ret);
+        Ok(())
     }
 
     fn assert_panic(
