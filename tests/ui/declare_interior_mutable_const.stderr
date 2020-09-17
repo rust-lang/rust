@@ -36,16 +36,10 @@ LL | declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:44:5
+  --> $DIR/declare_interior_mutable_const.rs:39:5
    |
 LL |     const ATOMIC: AtomicUsize; //~ ERROR interior mutable
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:50:5
-   |
-LL |     const INPUT_ASSOC_2: T::AssocType5; //~ ERROR interior mutable
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
   --> $DIR/declare_interior_mutable_const.rs:16:9
@@ -59,28 +53,52 @@ LL |     declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC); //~ ERROR i
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:82:5
+  --> $DIR/declare_interior_mutable_const.rs:67:5
    |
-LL |     const ASSOC_2: Self::AssocType2 = AtomicUsize::new(15); //~ ERROR interior mutable
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:83:5
+  --> $DIR/declare_interior_mutable_const.rs:92:5
    |
-LL |     const WRAPPED_ASSOC_2: Wrapper<Self::AssocType2> = Wrapper(AtomicUsize::new(16)); //~ ERROR interior mutable
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:90:5
+  --> $DIR/declare_interior_mutable_const.rs:93:5
    |
-LL |     const ASSOC_5: AtomicUsize = AtomicUsize::new(14); //~ ERROR interior mutable
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14)); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:94:5
+  --> $DIR/declare_interior_mutable_const.rs:112:5
    |
-LL |     const U_ASSOC: U::AssocType5 = AtomicUsize::new(17); //~ ERROR interior mutable
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const BOUNDED: T::ToBeBounded; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:135:5
+   |
+LL |     const SELF: Self = AtomicUsize::new(17); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:143:5
+   |
+LL |     const INDIRECT: Cell<*const T>; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:159:5
+   |
+LL |     const ATOMIC: AtomicUsize = AtomicUsize::new(18); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:165:5
+   |
+LL |     const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
 

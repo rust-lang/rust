@@ -9,8 +9,7 @@ use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, Tr
 use rustc_infer::traits::specialization_graph;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::fold::TypeFoldable as _;
-use rustc_middle::ty::{AssocKind, Ty, TypeFlags};
+use rustc_middle::ty::{AssocKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
@@ -178,15 +177,18 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                         if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
                         if let Some(of_assoc_item) = specialization_graph::Node::Trait(of_trait_def_id)
                             .item(cx.tcx, impl_item.ident, AssocKind::Const, of_trait_def_id);
-                        if cx.tcx
-                            // Normalize assoc types because ones originated from generic params
-                            // bounded other traits could have their bound at the trait defs;
-                            // and, in that case, the definition is *not* generic.
-                            .normalize_erasing_regions(
-                                cx.tcx.param_env(of_trait_def_id),
-                                cx.tcx.type_of(of_assoc_item.def_id),
-                            )
-                            .has_type_flags(TypeFlags::HAS_PROJECTION | TypeFlags::HAS_TY_PARAM);
+                        if cx
+                            .tcx
+                            .layout_of(cx.tcx.param_env(of_trait_def_id).and(
+                                // Normalize assoc types because ones originated from generic params
+                                // bounded other traits could have their bound at the trait defs;
+                                // and, in that case, the definition is *not* generic.
+                                cx.tcx.normalize_erasing_regions(
+                                    cx.tcx.param_env(of_trait_def_id),
+                                    cx.tcx.type_of(of_assoc_item.def_id),
+                                ),
+                            ))
+                            .is_err();
                         then {
                             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
                             let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
