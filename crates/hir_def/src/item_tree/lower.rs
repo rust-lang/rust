@@ -503,7 +503,7 @@ impl Ctx {
         &mut self,
         extern_crate: &ast::ExternCrate,
     ) -> Option<FileItemTreeId<ExternCrate>> {
-        let path = ModPath::from_name_ref(&extern_crate.name_ref()?);
+        let name = extern_crate.name_ref()?.as_name();
         let alias = extern_crate.rename().map(|a| {
             a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
         });
@@ -512,7 +512,7 @@ impl Ctx {
         // FIXME: cfg_attr
         let is_macro_use = extern_crate.has_atom_attr("macro_use");
 
-        let res = ExternCrate { path, alias, visibility, is_macro_use, ast_id };
+        let res = ExternCrate { name, alias, visibility, is_macro_use, ast_id };
         Some(id(self.data().extern_crates.alloc(res)))
     }
 

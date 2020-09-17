@@ -491,7 +491,7 @@ pub struct Import {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExternCrate {
-    pub path: ModPath,
+    pub name: Name,
     pub alias: Option<ImportAlias>,
     pub visibility: RawVisibilityId,
     /// Whether this is a `#[macro_use] extern crate ...`.

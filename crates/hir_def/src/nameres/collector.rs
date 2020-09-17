@@ -3,6 +3,8 @@
 //! `DefCollector::collect` contains the fixed-point iteration loop which
 //! resolves imports and expands macros.
 
+use std::iter;
+
 use base_db::{CrateId, FileId, ProcMacroId};
 use cfg::CfgOptions;
 use hir_expand::InFile;
@@ -149,7 +151,7 @@ impl Import {
         let it = &tree[id.value];
         let visibility = &tree[it.visibility];
         Self {
-            path: it.path.clone(),
+            path: ModPath::from_segments(PathKind::Plain, iter::once(it.name.clone())),
             alias: it.alias.clone(),
             visibility: visibility.clone(),
             is_glob: false,
@@ -356,20 +358,15 @@ impl DefCollector<'_> {
     fn import_macros_from_extern_crate(
         &mut self,
         current_module_id: LocalModuleId,
-        import: &item_tree::ExternCrate,
+        extern_crate: &item_tree::ExternCrate,
     ) {
         log::debug!(
             "importing macros from extern crate: {:?} ({:?})",
-            import,
+            extern_crate,
             self.def_map.edition,
         );
 
-        let res = self.def_map.resolve_name_in_extern_prelude(
-            &import
-                .path
-                .as_ident()
-                .expect("extern crate should have been desugared to one-element path"),
-        );
+        let res = self.def_map.resolve_name_in_extern_prelude(&extern_crate.name);
 
         if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
             mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
@@ -802,7 +799,7 @@ impl DefCollector<'_> {
                 let item_tree = self.db.item_tree(krate.file_id);
                 let extern_crate = &item_tree[krate.value];
 
-                diagnosed_extern_crates.insert(extern_crate.path.segments[0].clone());
+                diagnosed_extern_crates.insert(extern_crate.name.clone());
 
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_extern_crate(
                     directive.module_id,
