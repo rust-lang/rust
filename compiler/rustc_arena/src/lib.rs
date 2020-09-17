@@ -11,7 +11,6 @@
     html_root_url = "https://doc.rust-lang.org/nightly/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
-#![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(raw_vec_internals)]
 #![cfg_attr(test, feature(test))]
@@ -25,7 +24,6 @@ use smallvec::SmallVec;
 use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
 use std::cmp;
-use std::intrinsics;
 use std::marker::{PhantomData, Send};
 use std::mem;
 use std::ptr;
@@ -130,7 +128,7 @@ impl<T> TypedArena<T> {
 
         unsafe {
             if mem::size_of::<T>() == 0 {
-                self.ptr.set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1) as *mut T);
+                self.ptr.set((self.ptr.get() as *mut u8).wrapping_offset(1) as *mut T);
                 let ptr = mem::align_of::<T>() as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
