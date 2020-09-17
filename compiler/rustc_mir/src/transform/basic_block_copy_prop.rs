@@ -25,12 +25,14 @@
 //! otherwise make the total runtime of this pass `O(n * m)`, where `n` is the number of locals and
 //! `m` is the number of basic blocks, which is prohibitively expensive.
 
-use rustc_index::{bit_set::BitSet, vec::IndexVec};
-use rustc_middle::{
-    mir::visit::MutVisitor, mir::visit::PlaceContext, mir::visit::Visitor, mir::Body, mir::Local,
-    mir::Location, mir::Operand, mir::Place, mir::ProjectionElem, mir::Rvalue, mir::Statement,
-    mir::StatementKind, mir::Terminator, mir::TerminatorKind, ty::TyCtxt,
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::{
+    Body, Local, Location, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
+    Terminator, TerminatorKind,
 };
+use rustc_middle::ty::TyCtxt;
 use smallvec::SmallVec;
 
 use super::{MirPass, MirSource};
