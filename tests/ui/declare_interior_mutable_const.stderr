@@ -77,28 +77,34 @@ LL |     const BOUNDED: T::ToBeBounded; //~ ERROR interior mutable
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:135:5
+  --> $DIR/declare_interior_mutable_const.rs:140:5
    |
 LL |     const SELF: Self = AtomicUsize::new(17); //~ ERROR interior mutable
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:143:5
+  --> $DIR/declare_interior_mutable_const.rs:141:5
+   |
+LL |     const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21)); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:149:5
    |
 LL |     const INDIRECT: Cell<*const T>; //~ ERROR interior mutable
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:159:5
+  --> $DIR/declare_interior_mutable_const.rs:165:5
    |
 LL |     const ATOMIC: AtomicUsize = AtomicUsize::new(18); //~ ERROR interior mutable
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:165:5
+  --> $DIR/declare_interior_mutable_const.rs:171:5
    |
 LL |     const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19); //~ ERROR interior mutable
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 

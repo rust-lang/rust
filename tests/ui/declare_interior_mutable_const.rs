@@ -121,18 +121,24 @@ where
     const BOUNDED: T::ToBeBounded = AtomicUsize::new(15);
 }
 
-trait SelfType {
+// a constant whose type is `Self` should be linted at the implementation site as well.
+// (`Option` requires `Sized` bound.)
+trait SelfType: Sized {
     const SELF: Self;
+    // this was the one in the original issue (#5050).
+    const WRAPPED_SELF: Option<Self>;
 }
 
 impl SelfType for u64 {
     const SELF: Self = 16;
+    const WRAPPED_SELF: Option<Self> = Some(20);
 }
 
 impl SelfType for AtomicUsize {
     // this (interior mutable `Self` const) exists in `parking_lot`.
     // `const_trait_impl` will replace it in the future, hopefully.
     const SELF: Self = AtomicUsize::new(17); //~ ERROR interior mutable
+    const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21)); //~ ERROR interior mutable
 }
 
 // Even though a constant contains a generic type, if it also have a interior mutable type,
