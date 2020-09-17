@@ -51,6 +51,7 @@ pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) {
     op.emit_error(ccx, span);
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     Allowed,
     Unstable(Symbol),
