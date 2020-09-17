@@ -32,6 +32,7 @@ use rustc_serialize::json;
 use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
+use rustc_target::spec::Target;
 
 use std::any::Any;
 use std::ffi::CStr;
@@ -242,6 +243,10 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn target_features(&self, sess: &Session) -> Vec<Symbol> {
         target_features(sess)
+    }
+
+    fn target_override(&self, _opts: &config::Options) -> Option<Target> {
+        None
     }
 
     fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {

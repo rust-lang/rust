@@ -15,6 +15,7 @@ use rustc_session::{
 };
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::LayoutOf;
+use rustc_target::spec::Target;
 
 pub use rustc_data_structures::sync::MetadataRef;
 
@@ -53,6 +54,10 @@ pub trait CodegenBackend {
     }
     fn print_passes(&self) {}
     fn print_version(&self) {}
+
+    /// If this plugin provides additional builtin targets, provide them here.
+    /// Be careful: this is called *before* init() is called.
+    fn target_override(&self, opts: &config::Options) -> Option<Target>;
 
     fn metadata_loader(&self) -> Box<MetadataLoaderDyn>;
     fn provide(&self, _providers: &mut Providers);
