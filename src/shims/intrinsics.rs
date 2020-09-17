@@ -8,7 +8,6 @@ use rustc_middle::{mir, ty};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_apfloat::{Float, Round};
 use rustc_target::abi::{Align, Integer, LayoutOf};
-use rustc_span::symbol::sym;
 
 use crate::*;
 use helpers::check_arg_count;
@@ -23,19 +22,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let intrinsic_name = this.tcx.item_name(instance.def_id());
-        // We want to overwrite some of the intrinsic implementations that CTFE uses.
-        let prefer_miri_intrinsic = match intrinsic_name {
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => true,
-            _ => false,
-        };
 
-        if !prefer_miri_intrinsic && this.emulate_intrinsic(instance, args, ret)? {
+        if this.emulate_intrinsic(instance, args, ret)? {
             return Ok(());
         }
 
         // All supported intrinsics have a return place.
-        let intrinsic_name = &*intrinsic_name.as_str();
+        let intrinsic_name = &*this.tcx.item_name(instance.def_id()).as_str();
         let (dest, ret) = match ret {
             None => throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name),
             Some(p) => p,
