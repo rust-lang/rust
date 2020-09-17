@@ -44,8 +44,9 @@
 //!   and performing the optimization would simply delete the assignment, leaving `dest`
 //!   uninitialized.
 //!
-//! * `src` must be a bare `Local` without any indirections or field projections (FIXME: Why?).
-//!   It can be copied or moved by the assignment.
+//! * `src` must be a bare `Local` without any indirections or field projections (FIXME: Is this a
+//!   fundamental restriction or just current impl state?). It can be copied or moved by the
+//!   assignment.
 //!
 //! * The `dest` and `src` locals must never be [*live*][liveness] at the same time. If they are, it
 //!   means that they both hold a (potentially different) value that is needed by a future use of
