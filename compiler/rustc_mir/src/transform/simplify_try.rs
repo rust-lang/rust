@@ -612,7 +612,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     && bb_l.terminator().kind == bb_r.terminator().kind;
                     let statement_check = || {
                         bb_l.statements.iter().zip(&bb_r.statements).try_fold(StatementEquality::TrivialEqual, |acc,(l,r)| {
-                            let stmt_equality = self.statement_equality(*adt_matched_on, &l, bb_l_idx, &r, bb_r_idx);
+                            let stmt_equality = self.statement_equality(*adt_matched_on, &l, bb_l_idx, &r, bb_r_idx, self.tcx.sess.opts.debugging_opts.mir_opt_level);
                             if matches!(stmt_equality, StatementEquality::NotEqual) {
                                 // short circuit
                                 None
@@ -672,6 +672,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
         x_bb_idx: BasicBlock,
         y: &Statement<'tcx>,
         y_bb_idx: BasicBlock,
+        mir_opt_level: usize,
     ) -> StatementEquality {
         let helper = |rhs: &Rvalue<'tcx>,
                       place: &Place<'tcx>,
@@ -690,7 +691,13 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
 
             match rhs {
                 Rvalue::Use(operand) if operand.place() == Some(adt_matched_on) => {
-                    StatementEquality::ConsideredEqual(side_to_choose)
+                    // FIXME(76803): This logic is currently broken because it does not take into
+                    // account the current discriminant value.
+                    if mir_opt_level > 2 {
+                        StatementEquality::ConsideredEqual(side_to_choose)
+                    } else {
+                        StatementEquality::NotEqual
+                    }
                 }
                 _ => {
                     trace!(
