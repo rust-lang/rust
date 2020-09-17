@@ -10,12 +10,12 @@ use rustc_span::{Span, Symbol};
 
 use super::ConstCx;
 
-/// Emits an error if `op` is not allowed in the given const context.
-pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) {
+/// Emits an error and returns `true` if `op` is not allowed in the given const context.
+pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) -> bool {
     debug!("illegal_op: op={:?}", op);
 
     let gate = match op.status_in_item(ccx) {
-        Status::Allowed => return,
+        Status::Allowed => return false,
 
         Status::Unstable(gate) if ccx.tcx.features().enabled(gate) => {
             let unstable_in_stable = ccx.is_const_stable_const_fn()
@@ -23,18 +23,21 @@ pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) {
 
             if unstable_in_stable {
                 ccx.tcx.sess
-                    .struct_span_err(span, &format!("`#[feature({})]` cannot be depended on in a const-stable function", gate.as_str()))
+                    .struct_span_err(
+                        span,
+                        &format!("const-stable function cannot use `#[feature({})]`", gate.as_str()),
+                    )
                     .span_suggestion(
                         ccx.body.span,
                         "if it is not part of the public API, make this function unstably const",
                         concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
                         Applicability::HasPlaceholders,
                     )
-                    .help("otherwise `#[allow_internal_unstable]` can be used to bypass stability checks")
+                    .note("otherwise `#[allow_internal_unstable]` can be used to bypass stability checks")
                     .emit();
             }
 
-            return;
+            return unstable_in_stable;
         }
 
         Status::Unstable(gate) => Some(gate),
@@ -43,10 +46,11 @@ pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) {
 
     if ccx.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
         ccx.tcx.sess.miri_unleashed_feature(span, gate);
-        return;
+        return false;
     }
 
     op.emit_error(ccx, span);
+    true
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
