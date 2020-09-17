@@ -1,0 +1,11 @@
+error: functions are not allowed in struct definitions
+  --> $DIR/struct-fn-in-definition.rs:5:5
+   |
+LL |     fn do_something() {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: unlike in C++, Java, and C#, functions are declared in `impl` blocks
+   = help: see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+
+error: aborting due to previous error
+
