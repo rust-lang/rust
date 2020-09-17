@@ -56,10 +56,6 @@ impl ModPath {
         ModPath { kind, segments }
     }
 
-    pub(crate) fn from_name_ref(name_ref: &ast::NameRef) -> ModPath {
-        name_ref.as_name().into()
-    }
-
     /// Converts an `tt::Ident` into a single-identifier `Path`.
     pub(crate) fn from_tt_ident(ident: &tt::Ident) -> ModPath {
         ident.as_name().into()
