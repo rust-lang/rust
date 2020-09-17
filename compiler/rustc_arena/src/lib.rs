@@ -66,12 +66,7 @@ impl<T> TypedArenaChunk<T> {
         // The branch on needs_drop() is an -O1 performance optimization.
         // Without the branch, dropping TypedArena<u8> takes linear time.
         if mem::needs_drop::<T>() {
-            let mut start = self.start();
-            // Destroy all allocated objects.
-            for _ in 0..len {
-                ptr::drop_in_place(start);
-                start = start.offset(1);
-            }
+            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut self.storage[..len]));
         }
     }
 
