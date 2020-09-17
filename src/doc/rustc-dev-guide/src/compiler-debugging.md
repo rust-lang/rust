@@ -207,10 +207,10 @@ $ RUSTDOC_LOG=rustdoc rustdoc +local my-file.rs
 
 While calls to `error!`, `warn!` and `info!` are included in every build of the compiler,
 calls to `debug!` and `trace!` are only included in the program if
-`debug-assertions=yes` is turned on in config.toml (it is
+`debug-logging=true` is turned on in config.toml (it is
 turned off by default), so if you don't see `DEBUG` logs, especially
 if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see
-`INFO` logs, make sure that `debug-assertions=yes` is turned on in your
+`INFO` logs, make sure that `debug-logging=true` is turned on in your
 config.toml.
 
 In some cases, just setting it will not trigger a rebuild,
