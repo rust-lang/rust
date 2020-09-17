@@ -2,7 +2,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 use super::ops;
 use super::qualifs::{NeedsDrop, Qualif};
