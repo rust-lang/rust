@@ -43,7 +43,6 @@ impl Default for Initializer {
 // the one fitting our cache.
 impl Initializer {
     /// Tests the `bit` of the cache.
-    #[allow(dead_code)]
     #[inline]
     pub(crate) fn test(self, bit: u32) -> bool {
         debug_assert!(
@@ -80,60 +79,65 @@ impl Initializer {
 // Note: on x64, we only use the first slot
 static CACHE: [Cache; 2] = [Cache::uninitialized(), Cache::uninitialized()];
 
-/// Feature cache with capacity for `usize::MAX - 1` features.
+/// Feature cache with capacity for `size_of::<usize::MAX>() * 8 - 1` features.
 ///
-/// Note: the last feature bit is used to represent an
-/// uninitialized cache.
+/// Note: 0 is used to represent an uninitialized cache, and (at least) the most
+/// significant bit is set on any cache which has been initialized.
 ///
-/// Note: we can use `Relaxed` atomic operations, because we are only interested
-/// in the effects of operations on a single memory location. That is, we only
-/// need "modification order", and not the full-blown "happens before". However,
-/// we use `SeqCst` just to be on the safe side.
+/// Note: we use `Relaxed` atomic operations, because we are only interested in
+/// the effects of operations on a single memory location. That is, we only need
+/// "modification order", and not the full-blown "happens before".
 struct Cache(AtomicUsize);
 
 impl Cache {
     const CAPACITY: u32 = (core::mem::size_of::<usize>() * 8 - 1) as u32;
     const MASK: usize = (1 << Cache::CAPACITY) - 1;
+    const INITIALIZED_BIT: usize = 1usize << Cache::CAPACITY;
 
     /// Creates an uninitialized cache.
     #[allow(clippy::declare_interior_mutable_const)]
     const fn uninitialized() -> Self {
-        Cache(AtomicUsize::new(usize::MAX))
-    }
-    /// Is the cache uninitialized?
-    #[inline]
-    pub(crate) fn is_uninitialized(&self) -> bool {
-        self.0.load(Ordering::SeqCst) == usize::MAX
+        Cache(AtomicUsize::new(0))
     }
 
-    /// Is the `bit` in the cache set?
+    /// Is the `bit` in the cache set? Returns `None` if the cache has not been initialized.
     #[inline]
-    pub(crate) fn test(&self, bit: u32) -> bool {
-        test_bit(self.0.load(Ordering::SeqCst) as u64, bit)
+    pub(crate) fn test(&self, bit: u32) -> Option<bool> {
+        let cached = self.0.load(Ordering::Relaxed);
+        if cached == 0 {
+            None
+        } else {
+            Some(test_bit(cached as u64, bit))
+        }
     }
 
     /// Initializes the cache.
     #[inline]
-    fn initialize(&self, value: usize) {
-        self.0.store(value, Ordering::SeqCst);
+    fn initialize(&self, value: usize) -> usize {
+        debug_assert_eq!((value & !Cache::MASK), 0);
+        self.0
+            .store(value | Cache::INITIALIZED_BIT, Ordering::Relaxed);
+        value
     }
 }
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "std_detect_env_override")] {
-        #[inline(never)]
-        fn initialize(mut value: Initializer) {
+        #[inline]
+        fn initialize(mut value: Initializer) -> Initializer {
             if let Ok(disable) = crate::env::var("RUST_STD_DETECT_UNSTABLE") {
                 for v in disable.split(" ") {
                     let _ = super::Feature::from_str(v).map(|v| value.unset(v as u32));
                 }
             }
             do_initialize(value);
+            value
         }
     } else {
         #[inline]
-        fn initialize(value: Initializer) {
+        fn initialize(value: Initializer) -> Initializer {
             do_initialize(value);
+            value
         }
     }
 }
@@ -144,8 +148,22 @@ fn do_initialize(value: Initializer) {
     CACHE[1].initialize((value.0 >> Cache::CAPACITY) as usize & Cache::MASK);
 }
 
+// We only have to detect features once, and it's fairly costly, so hint to LLVM
+// that it should assume that cache hits are more common than misses (which is
+// the point of caching). It's possibly unfortunate that this function needs to
+// reach across modules like this to call `os::detect_features`, but it produces
+// the best code out of several attempted variants.
+//
+// The `Initializer` that the cache was initialized with is returned, so that
+// the caller can call `test()` on it without having to load the value from the
+// cache again.
+#[cold]
+fn detect_and_initialize() -> Initializer {
+    initialize(super::os::detect_features())
+}
+
 /// Tests the `bit` of the storage. If the storage has not been initialized,
-/// initializes it with the result of `f()`.
+/// initializes it with the result of `os::detect_features()`.
 ///
 /// On its first invocation, it detects the CPU features and caches them in the
 /// `CACHE` global variable as an `AtomicU64`.
@@ -157,18 +175,13 @@ fn do_initialize(value: Initializer) {
 /// variable `RUST_STD_DETECT_UNSTABLE` and uses its its content to disable
 /// Features that would had been otherwise detected.
 #[inline]
-pub(crate) fn test<F>(bit: u32, f: F) -> bool
-where
-    F: FnOnce() -> Initializer,
-{
-    let (bit, idx) = if bit < Cache::CAPACITY {
+pub(crate) fn test(bit: u32) -> bool {
+    let (relative_bit, idx) = if bit < Cache::CAPACITY {
         (bit, 0)
     } else {
         (bit - Cache::CAPACITY, 1)
     };
-
-    if CACHE[idx].is_uninitialized() {
-        initialize(f())
-    }
-    CACHE[idx].test(bit)
+    CACHE[idx]
+        .test(relative_bit)
+        .unwrap_or_else(|| detect_and_initialize().test(bit))
 }
