@@ -1,6 +1,6 @@
 //! List of the active feature gates.
 
-use super::{Feature, State};
+use super::{to_nonzero, Feature, State};
 
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
@@ -29,7 +29,7 @@ macro_rules! declare_features {
                     state: State::Active { set: set!($feature) },
                     name: sym::$feature,
                     since: $ver,
-                    issue: $issue,
+                    issue: to_nonzero($issue),
                     edition: $edition,
                     description: concat!($($doc,)*),
                 }

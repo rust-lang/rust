@@ -1,6 +1,6 @@
 //! List of the accepted feature gates.
 
-use super::{Feature, State};
+use super::{to_nonzero, Feature, State};
 use rustc_span::symbol::sym;
 
 macro_rules! declare_features {
@@ -14,7 +14,7 @@ macro_rules! declare_features {
                     state: State::Accepted,
                     name: sym::$feature,
                     since: $ver,
-                    issue: $issue,
+                    issue: to_nonzero($issue),
                     edition: None,
                     description: concat!($($doc,)*),
                 }

@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use super::{Feature, State};
+use super::{to_nonzero, Feature, State};
 use rustc_span::symbol::sym;
 
 macro_rules! declare_features {
@@ -14,7 +14,7 @@ macro_rules! declare_features {
                     state: State::Removed { reason: $reason },
                     name: sym::$feature,
                     since: $ver,
-                    issue: $issue,
+                    issue: to_nonzero($issue),
                     edition: None,
                     description: concat!($($doc,)*),
                 }
@@ -32,7 +32,7 @@ macro_rules! declare_features {
                     state: State::Stabilized { reason: None },
                     name: sym::$feature,
                     since: $ver,
-                    issue: $issue,
+                    issue: to_nonzero($issue),
                     edition: None,
                     description: concat!($($doc,)*),
                 }
