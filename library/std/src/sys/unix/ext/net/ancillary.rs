@@ -166,38 +166,12 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
 }
 
 /// Unix credential.
-#[cfg(any(
-    doc,
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "ios",
-    target_os = "linux",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_env = "uclibc",
-))]
+#[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 #[derive(Clone)]
 pub struct SocketCred(libc::ucred);
 
-#[cfg(any(
-    doc,
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "ios",
-    target_os = "linux",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_env = "uclibc",
-))]
+#[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
 impl SocketCred {
     /// Create a Unix credential struct.
     ///
@@ -262,37 +236,11 @@ impl<'a> Iterator for ScmRights<'a> {
 /// This control message contains unix credentials.
 ///
 /// The level is equal to `SOL_SOCKET` and the type is equal to `SCM_CREDENTIALS` or `SCM_CREDS`.
-#[cfg(any(
-    doc,
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "ios",
-    target_os = "linux",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_env = "uclibc",
-))]
+#[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub struct ScmCredentials<'a>(AncillaryDataIter<'a, libc::ucred>);
 
-#[cfg(any(
-    doc,
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "ios",
-    target_os = "linux",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_env = "uclibc",
-))]
+#[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 impl<'a> Iterator for ScmCredentials<'a> {
     type Item = SocketCred;
@@ -314,20 +262,7 @@ pub enum AncillaryError {
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub enum AncillaryData<'a> {
     ScmRights(ScmRights<'a>),
-    #[cfg(any(
-        doc,
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "ios",
-        target_os = "linux",
-        target_os = "macos",
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_env = "uclibc",
-    ))]
+    #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
     ScmCredentials(ScmCredentials<'a>),
 }
 
@@ -350,20 +285,7 @@ impl<'a> AncillaryData<'a> {
     ///
     /// `data` must contain a valid control message and the control message must be type of
     /// `SOL_SOCKET` and level of `SCM_CREDENTIALS` or `SCM_CREDENTIALS`.
-    #[cfg(any(
-        doc,
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "ios",
-        target_os = "linux",
-        target_os = "macos",
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_env = "uclibc",
-    ))]
+    #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
     unsafe fn as_credentials(data: &'a [u8]) -> Self {
         let ancillary_data_iter = AncillaryDataIter::new(data);
         let scm_credentials = ScmCredentials(ancillary_data_iter);
@@ -383,20 +305,9 @@ impl<'a> AncillaryData<'a> {
                     #[cfg(any(
                         target_os = "android",
                         target_os = "emscripten",
-                        target_os = "fuchsia",
                         target_os = "linux",
-                        target_env = "uclibc",
                     ))]
                     libc::SCM_CREDENTIALS => Ok(AncillaryData::as_credentials(data)),
-                    #[cfg(any(
-                        target_os = "dragonfly",
-                        target_os = "freebsd",
-                        target_os = "ios",
-                        target_os = "macos",
-                        target_os = "netbsd",
-                        target_os = "openbsd",
-                    ))]
-                    libc::SCM_CREDS => Ok(AncillaryData::as_credentials(data)),
                     cmsg_type => {
                         Err(AncillaryError::Unknown { cmsg_level: libc::SOL_SOCKET, cmsg_type })
                     }
@@ -593,20 +504,7 @@ impl<'a> SocketAncillary<'a> {
     /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
     /// and type `SCM_CREDENTIALS` or `SCM_CREDS`.
     ///
-    #[cfg(any(
-        doc,
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "ios",
-        target_os = "linux",
-        target_os = "macos",
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_env = "uclibc",
-    ))]
+    #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn add_creds(&mut self, creds: &[SocketCred]) -> bool {
         self.truncated = false;
@@ -615,23 +513,7 @@ impl<'a> SocketAncillary<'a> {
             &mut self.length,
             creds,
             libc::SOL_SOCKET,
-            #[cfg(any(
-                target_os = "android",
-                target_os = "emscripten",
-                target_os = "fuchsia",
-                target_os = "linux",
-                target_env = "uclibc",
-            ))]
             libc::SCM_CREDENTIALS,
-            #[cfg(any(
-                target_os = "dragonfly",
-                target_os = "freebsd",
-                target_os = "ios",
-                target_os = "macos",
-                target_os = "netbsd",
-                target_os = "openbsd",
-            ))]
-            libc::SCM_CREDS,
         )
     }
 
