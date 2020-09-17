@@ -8,22 +8,20 @@
   
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/76803_regression.rs:12:9: 12:16
--         switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/76803_regression.rs:12:9: 12:16
-+         goto -> bb1;                     // scope 0 at $DIR/76803_regression.rs:12:9: 12:16
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/76803_regression.rs:12:9: 12:16
       }
   
       bb1: {
           _0 = move _1;                    // scope 0 at $DIR/76803_regression.rs:13:14: 13:15
--         goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
-+         goto -> bb2;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
+          goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
       }
   
       bb2: {
--         discriminant(_0) = 1;            // scope 0 at $DIR/76803_regression.rs:12:20: 12:27
--         goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
--     }
-- 
--     bb3: {
+          discriminant(_0) = 1;            // scope 0 at $DIR/76803_regression.rs:12:20: 12:27
+          goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
+      }
+  
+      bb3: {
           return;                          // scope 0 at $DIR/76803_regression.rs:15:2: 15:2
       }
   }
