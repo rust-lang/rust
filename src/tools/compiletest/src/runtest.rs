@@ -3181,7 +3181,7 @@ impl<'test> TestCx<'test> {
                     let trimmed = test_name.trim_end_matches(".diff");
                     let test_against = format!("{}.after.mir", trimmed);
                     from_file = format!("{}.before.mir", trimmed);
-                    expected_file = format!("{}{}", test_name, bit_width);
+                    expected_file = format!("{}{}.diff", trimmed, bit_width);
                     assert!(
                         test_names.next().is_none(),
                         "two mir pass names specified for MIR diff"
@@ -3199,7 +3199,7 @@ impl<'test> TestCx<'test> {
                     from_file = format!("{}.{}.mir", test_name, first_pass);
                     to_file = Some(second_file);
                 } else {
-                    expected_file = format!("{}{}", test_name, bit_width);
+                    expected_file = format!("{}{}.mir", test_name.trim_end_matches(".mir"), bit_width);
                     from_file = test_name.to_string();
                     assert!(
                         test_names.next().is_none(),
