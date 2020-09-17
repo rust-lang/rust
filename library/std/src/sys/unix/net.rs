@@ -324,8 +324,7 @@ impl Socket {
     }
 
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
-        let boolean: libc::c_int = if passcred { 1 } else { 0 };
-        setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, boolean)
+        setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int)
     }
 
     pub fn passcred(&self) -> io::Result<bool> {
