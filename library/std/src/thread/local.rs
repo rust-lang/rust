@@ -225,6 +225,7 @@ impl<T: 'static> LocalKey<T> {
         reason = "recently added to create a key",
         issue = "none"
     )]
+    #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
     pub const unsafe fn new(inner: unsafe fn() -> Option<&'static T>) -> LocalKey<T> {
         LocalKey { inner }
     }
@@ -497,6 +498,7 @@ pub mod os {
     }
 
     impl<T: 'static> Key<T> {
+        #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
         pub const fn new() -> Key<T> {
             Key { os: OsStaticKey::new(Some(destroy_value::<T>)), marker: marker::PhantomData }
         }

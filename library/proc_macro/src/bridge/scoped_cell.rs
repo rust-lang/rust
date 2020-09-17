@@ -35,6 +35,7 @@ impl<'a, 'b, T: LambdaL> DerefMut for RefMutL<'a, 'b, T> {
 pub struct ScopedCell<T: LambdaL>(Cell<<T as ApplyL<'static>>::Out>);
 
 impl<T: LambdaL> ScopedCell<T> {
+    #[allow_internal_unstable(const_fn)]
     pub const fn new(value: <T as ApplyL<'static>>::Out) -> Self {
         ScopedCell(Cell::new(value))
     }

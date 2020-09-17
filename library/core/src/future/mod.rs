@@ -56,6 +56,7 @@ unsafe impl Sync for ResumeTy {}
 #[lang = "from_generator"]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
+#[rustc_const_unstable(feature = "gen_future", issue = "50547")]
 #[inline]
 pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
 where
