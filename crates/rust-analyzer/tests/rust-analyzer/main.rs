@@ -260,6 +260,42 @@ pub use std::collections::HashMap;
 }
 
 #[test]
+fn test_format_document_unchanged() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = project(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+fn main() {}
+"#,
+    )
+    .wait_until_workspace_is_loaded();
+
+    server.request::<Formatting>(
+        DocumentFormattingParams {
+            text_document: server.doc_id("src/lib.rs"),
+            options: FormattingOptions {
+                tab_size: 4,
+                insert_spaces: false,
+                insert_final_newline: None,
+                trim_final_newlines: None,
+                trim_trailing_whitespace: None,
+                properties: HashMap::new(),
+            },
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        },
+        json!(null),
+    );
+}
+
+#[test]
 fn test_missing_module_code_action() {
     if skip_slow_tests() {
         return;

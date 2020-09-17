@@ -748,10 +748,15 @@ pub(crate) fn handle_formatting(
         }
     }
 
-    Ok(Some(vec![lsp_types::TextEdit {
-        range: Range::new(Position::new(0, 0), end_position),
-        new_text: captured_stdout,
-    }]))
+    if *file == captured_stdout {
+        // The document is already formatted correctly -- no edits needed.
+        Ok(None)
+    } else {
+        Ok(Some(vec![lsp_types::TextEdit {
+            range: Range::new(Position::new(0, 0), end_position),
+            new_text: captured_stdout,
+        }]))
+    }
 }
 
 fn handle_fixes(
