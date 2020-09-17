@@ -3156,12 +3156,12 @@ impl<'test> TestCx<'test> {
 
         if self.config.bless {
             for e in
-                glob(&format!("{}/{}.*.mir{}", test_dir.display(), test_crate, bit_width)).unwrap()
+                glob(&format!("{}/{}.*{}.mir", test_dir.display(), test_crate, bit_width)).unwrap()
             {
                 std::fs::remove_file(e.unwrap()).unwrap();
             }
             for e in
-                glob(&format!("{}/{}.*.diff{}", test_dir.display(), test_crate, bit_width)).unwrap()
+                glob(&format!("{}/{}.*{}.diff", test_dir.display(), test_crate, bit_width)).unwrap()
             {
                 std::fs::remove_file(e.unwrap()).unwrap();
             }
@@ -3199,7 +3199,8 @@ impl<'test> TestCx<'test> {
                     from_file = format!("{}.{}.mir", test_name, first_pass);
                     to_file = Some(second_file);
                 } else {
-                    expected_file = format!("{}{}.mir", test_name.trim_end_matches(".mir"), bit_width);
+                    expected_file =
+                        format!("{}{}.mir", test_name.trim_end_matches(".mir"), bit_width);
                     from_file = test_name.to_string();
                     assert!(
                         test_names.next().is_none(),
