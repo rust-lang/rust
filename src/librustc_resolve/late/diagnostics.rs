@@ -1222,6 +1222,9 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                                 ..
                             } => false,
+                            hir::GenericParamKind::Lifetime {
+                                kind: hir::LifetimeParamKind::Elided,
+                            } => false,
                             _ => true,
                         }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))

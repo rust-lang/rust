@@ -41,7 +41,7 @@
           <If Condition="(base.table.ctrl.pointer[i] &amp; 0x80) == 0">
             <!-- Bucket is populated -->
             <Exec>n--</Exec>
-            <Item Name="{static_cast&lt;tuple&lt;$T1, $T2&gt;*&gt;(base.table.ctrl.pointer)[-(i + 1)].__0}">static_cast&lt;tuple&lt;$T1, $T2&gt;*&gt;(base.table.ctrl.pointer)[-(i + 1)].__1</Item>
+            <Item Name="{((tuple&lt;$T1, $T2&gt;*)base.table.ctrl.pointer)[-(i + 1)].__0}">((tuple&lt;$T1, $T2&gt;*)base.table.ctrl.pointer)[-(i + 1)].__1</Item>
           </If>
           <Exec>i++</Exec>
         </Loop>
@@ -65,7 +65,7 @@
           <If Condition="(map.base.table.ctrl.pointer[i] &amp; 0x80) == 0">
             <!-- Bucket is populated -->
             <Exec>n--</Exec>
-            <Item>static_cast&lt;$T1*&gt;(map.base.table.ctrl.pointer)[-(i + 1)]</Item>
+            <Item>(($T1*)map.base.table.ctrl.pointer)[-(i + 1)]</Item>
           </If>
           <Exec>i++</Exec>
         </Loop>
