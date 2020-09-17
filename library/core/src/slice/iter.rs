@@ -82,6 +82,7 @@ unsafe impl<T: Sync> Sync for Iter<'_, T> {}
 unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 impl<'a, T> Iter<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a [T]) -> Self {
         let ptr = slice.as_ptr();
         // SAFETY: Similar to `IterMut::new`.
@@ -200,6 +201,7 @@ unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 impl<'a, T> IterMut<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a mut [T]) -> Self {
         let ptr = slice.as_mut_ptr();
         // SAFETY: There are several things here:
@@ -330,6 +332,7 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {
+    #[inline]
     pub(super) fn new(slice: &'a [T], pred: P) -> Self {
         Self { v: slice, pred, finished: false }
     }
@@ -974,6 +977,7 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitN<'a, T, P> {
+    #[inline]
     pub(super) fn new(s: Split<'a, T, P>, n: usize) -> Self {
         Self { inner: GenericSplitN { iter: s, count: n } }
     }
@@ -1006,6 +1010,7 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitN<'a, T, P> {
+    #[inline]
     pub(super) fn new(s: RSplit<'a, T, P>, n: usize) -> Self {
         Self { inner: GenericSplitN { iter: s, count: n } }
     }
@@ -1037,6 +1042,7 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitNMut<'a, T, P> {
+    #[inline]
     pub(super) fn new(s: SplitMut<'a, T, P>, n: usize) -> Self {
         Self { inner: GenericSplitN { iter: s, count: n } }
     }
@@ -1069,6 +1075,7 @@ where
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitNMut<'a, T, P> {
+    #[inline]
     pub(super) fn new(s: RSplitMut<'a, T, P>, n: usize) -> Self {
         Self { inner: GenericSplitN { iter: s, count: n } }
     }
@@ -1103,6 +1110,7 @@ pub struct Windows<'a, T: 'a> {
 }
 
 impl<'a, T: 'a> Windows<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a [T], size: usize) -> Self {
         Self { v: slice, size }
     }
@@ -1241,6 +1249,7 @@ pub struct Chunks<'a, T: 'a> {
 }
 
 impl<'a, T: 'a> Chunks<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a [T], size: usize) -> Self {
         Self { v: slice, chunk_size: size }
     }
@@ -1401,6 +1410,7 @@ pub struct ChunksMut<'a, T: 'a> {
 }
 
 impl<'a, T: 'a> ChunksMut<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a mut [T], size: usize) -> Self {
         Self { v: slice, chunk_size: size }
     }
@@ -1561,6 +1571,7 @@ pub struct ChunksExact<'a, T: 'a> {
 }
 
 impl<'a, T> ChunksExact<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a [T], chunk_size: usize) -> Self {
         let rem = slice.len() % chunk_size;
         let fst_len = slice.len() - rem;
@@ -1709,6 +1720,7 @@ pub struct ChunksExactMut<'a, T: 'a> {
 }
 
 impl<'a, T> ChunksExactMut<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a mut [T], chunk_size: usize) -> Self {
         let rem = slice.len() % chunk_size;
         let fst_len = slice.len() - rem;
@@ -1849,6 +1861,7 @@ pub struct ArrayWindows<'a, T: 'a, const N: usize> {
 }
 
 impl<'a, T: 'a, const N: usize> ArrayWindows<'a, T, N> {
+    #[inline]
     pub(super) fn new(slice: &'a [T]) -> Self {
         let num_windows = slice.len().saturating_sub(N - 1);
         Self { slice_head: slice.as_ptr(), num: num_windows, marker: PhantomData }
@@ -1960,6 +1973,7 @@ pub struct ArrayChunks<'a, T: 'a, const N: usize> {
 }
 
 impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
+    #[inline]
     pub(super) fn new(slice: &'a [T]) -> Self {
         let len = slice.len() / N;
         let (fst, snd) = slice.split_at(len * N);
@@ -2077,6 +2091,7 @@ pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
 }
 
 impl<'a, T, const N: usize> ArrayChunksMut<'a, T, N> {
+    #[inline]
     pub(super) fn new(slice: &'a mut [T]) -> Self {
         let len = slice.len() / N;
         let (fst, snd) = slice.split_at_mut(len * N);
@@ -2185,6 +2200,7 @@ pub struct RChunks<'a, T: 'a> {
 }
 
 impl<'a, T: 'a> RChunks<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a [T], size: usize) -> Self {
         Self { v: slice, chunk_size: size }
     }
@@ -2341,6 +2357,7 @@ pub struct RChunksMut<'a, T: 'a> {
 }
 
 impl<'a, T: 'a> RChunksMut<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a mut [T], size: usize) -> Self {
         Self { v: slice, chunk_size: size }
     }
@@ -2498,6 +2515,7 @@ pub struct RChunksExact<'a, T: 'a> {
 }
 
 impl<'a, T> RChunksExact<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a [T], chunk_size: usize) -> Self {
         let rem = slice.len() % chunk_size;
         // SAFETY: 0 <= rem <= slice.len() by construction above
@@ -2650,6 +2668,7 @@ pub struct RChunksExactMut<'a, T: 'a> {
 }
 
 impl<'a, T> RChunksExactMut<'a, T> {
+    #[inline]
     pub(super) fn new(slice: &'a mut [T], chunk_size: usize) -> Self {
         let rem = slice.len() % chunk_size;
         // SAFETY: 0 <= rem <= slice.len() by construction above
