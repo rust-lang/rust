@@ -21,7 +21,7 @@ export function analyzerStatus(ctx: Ctx): Cmd {
         provideTextDocumentContent(_uri: vscode.Uri): vscode.ProviderResult<string> {
             if (!vscode.window.activeTextEditor) return '';
 
-            return ctx.client.sendRequest(ra.analyzerStatus, null);
+            return ctx.client.sendRequest(ra.analyzerStatus);
         }
 
         get onDidChange(): vscode.Event<vscode.Uri> {
@@ -63,7 +63,7 @@ export function memoryUsage(ctx: Ctx): Cmd {
         provideTextDocumentContent(_uri: vscode.Uri): vscode.ProviderResult<string> {
             if (!vscode.window.activeTextEditor) return '';
 
-            return ctx.client.sendRequest(ra.memoryUsage, null).then((mem: any) => {
+            return ctx.client.sendRequest(ra.memoryUsage).then((mem: any) => {
                 return 'Per-query memory usage:\n' + mem + '\n(note: database has been cleared)';
             });
         }
@@ -372,7 +372,7 @@ export function expandMacro(ctx: Ctx): Cmd {
 }
 
 export function reloadWorkspace(ctx: Ctx): Cmd {
-    return async () => ctx.client.sendRequest(ra.reloadWorkspace, null);
+    return async () => ctx.client.sendRequest(ra.reloadWorkspace);
 }
 
 export function showReferences(ctx: Ctx): Cmd {
