@@ -793,6 +793,18 @@ impl Step for RustcDev {
         let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
         copy_target_libs(builder, target, &image, &stamp);
 
+        // Copy compiler sources.
+        let dst_src = image.join("lib/rustlib/rustc-src/rust");
+        t!(fs::create_dir_all(&dst_src));
+
+        let src_files = ["Cargo.lock"];
+        // This is the reduced set of paths which will become the rustc-dev component
+        // (essentially the compiler crates and all of their path dependencies).
+        copy_src_dirs(builder, &builder.src, &["compiler"], &[], &dst_src);
+        for file in src_files.iter() {
+            builder.copy(&builder.src.join(file), &dst_src.join(file));
+        }
+
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
             .arg("--product-name=Rust")
