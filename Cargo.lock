@@ -342,7 +342,6 @@ dependencies = [
 name = "cargo-miri"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.11.1",
  "directories",
  "rustc-workspace-hack",
  "rustc_version",
