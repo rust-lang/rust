@@ -15,6 +15,7 @@ use hir_expand::{
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
 use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 use syntax::ast;
 use test_utils::mark;
 
@@ -788,25 +789,47 @@ impl DefCollector<'_> {
     }
 
     fn finish(mut self) -> CrateDefMap {
+        // Emit diagnostics for all remaining unresolved imports.
+
+        // We'd like to avoid emitting a diagnostics avalanche when some `extern crate` doesn't
+        // resolve. We first emit diagnostics for unresolved extern crates and collect the missing
+        // crate names. Then we emit diagnostics for unresolved imports, but only if the import
+        // doesn't start with an unresolved crate's name. Due to renaming and reexports, this is a
+        // heuristic, but it works in practice.
+        let mut diagnosed_extern_crates = FxHashSet::default();
         for directive in &self.unresolved_imports {
-            match directive.import.source {
-                ImportSource::Import(import) => {
-                    let item_tree = self.db.item_tree(import.file_id);
-                    let import_data = &item_tree[import.value];
-                    self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
-                        directive.module_id,
-                        InFile::new(import.file_id, import_data.ast_id),
-                        import_data.index,
-                    ));
+            if let ImportSource::ExternCrate(krate) = directive.import.source {
+                let item_tree = self.db.item_tree(krate.file_id);
+                let extern_crate = &item_tree[krate.value];
+
+                diagnosed_extern_crates.insert(extern_crate.path.segments[0].clone());
+
+                self.def_map.diagnostics.push(DefDiagnostic::unresolved_extern_crate(
+                    directive.module_id,
+                    InFile::new(krate.file_id, extern_crate.ast_id),
+                ));
+            }
+        }
+
+        for directive in &self.unresolved_imports {
+            if let ImportSource::Import(import) = &directive.import.source {
+                let item_tree = self.db.item_tree(import.file_id);
+                let import_data = &item_tree[import.value];
+
+                match (import_data.path.segments.first(), &import_data.path.kind) {
+                    (Some(krate), PathKind::Plain) | (Some(krate), PathKind::Abs) => {
+                        if diagnosed_extern_crates.contains(krate) {
+                            continue;
+                        }
+                    }
+                    _ => {}
                 }
-                ImportSource::ExternCrate(krate) => {
-                    let item_tree = self.db.item_tree(krate.file_id);
-                    let extern_crate = &item_tree[krate.value];
-                    self.def_map.diagnostics.push(DefDiagnostic::unresolved_extern_crate(
-                        directive.module_id,
-                        InFile::new(krate.file_id, extern_crate.ast_id),
-                    ));
-                }
+
+                self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
+                    directive.module_id,
+                    InFile::new(import.file_id, import_data.ast_id),
+                    import_data.index,
+                ));
             }
         }
 

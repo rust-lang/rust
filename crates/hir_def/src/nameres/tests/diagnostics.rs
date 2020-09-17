@@ -93,6 +93,30 @@ fn unresolved_extern_crate() {
 }
 
 #[test]
+fn dedup_unresolved_import_from_unresolved_crate() {
+    check_diagnostics(
+        r"
+        //- /main.rs crate:main
+        mod a {
+            extern crate doesnotexist;
+          //^^^^^^^^^^^^^^^^^^^^^^^^^^ unresolved extern crate
+
+            // Should not error, since we already errored for the missing crate.
+            use doesnotexist::{self, bla, *};
+
+            use crate::doesnotexist;
+              //^^^^^^^^^^^^^^^^^^^ unresolved import
+        }
+
+        mod m {
+            use super::doesnotexist;
+              //^^^^^^^^^^^^^^^^^^^ unresolved import
+        }
+        ",
+    );
+}
+
+#[test]
 fn unresolved_module() {
     check_diagnostics(
         r"
