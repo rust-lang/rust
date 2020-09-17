@@ -134,6 +134,10 @@ fn run_server() -> Result<()> {
 
             let discovered = ProjectManifest::discover_all(&workspace_roots);
             log::info!("discovered projects: {:?}", discovered);
+            if discovered.is_empty() {
+                log::error!("failed to find any projects in {:?}", workspace_roots);
+            }
+
             config.linked_projects = discovered.into_iter().map(LinkedProject::from).collect();
         }
 

@@ -288,7 +288,10 @@ impl Config {
                         let path = self.root_path.join(it);
                         match ProjectManifest::from_manifest_file(path) {
                             Ok(it) => it.into(),
-                            Err(_) => continue,
+                            Err(e) => {
+                                log::error!("failed to load linked project: {}", e);
+                                continue;
+                            }
                         }
                     }
                     ManifestOrProjectJson::ProjectJson(it) => {
