@@ -65,7 +65,7 @@ pub fn create_session(
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
     descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
-    let codegen_backend = get_codegen_backend(sopts.debugging_opts.codegen_backend.as_deref());
+    let codegen_backend = get_codegen_backend(&sopts);
     // target_override is documented to be called before init(), so this is okay
     let target_override = codegen_backend.target_override(&sopts);
 
@@ -224,13 +224,13 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
     }
 }
 
-pub fn get_codegen_backend(codegen_name: Option<&str>) -> Box<dyn CodegenBackend> {
+pub fn get_codegen_backend(sopts: &config::Options) -> Box<dyn CodegenBackend> {
     static INIT: Once = Once::new();
 
     static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
 
     INIT.call_once(|| {
-        let codegen_name = codegen_name.unwrap_or("llvm");
+        let codegen_name = sopts.debugging_opts.codegen_backend.as_deref().unwrap_or("llvm");
         let backend = match codegen_name {
             filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
             codegen_name => get_builtin_codegen_backend(codegen_name),

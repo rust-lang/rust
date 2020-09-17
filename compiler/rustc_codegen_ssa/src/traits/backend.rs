@@ -55,9 +55,11 @@ pub trait CodegenBackend {
     fn print_passes(&self) {}
     fn print_version(&self) {}
 
-    /// If this plugin provides additional builtin targets, provide them here.
+    /// If this plugin provides additional builtin targets, provide the one enabled by the options here.
     /// Be careful: this is called *before* init() is called.
-    fn target_override(&self, opts: &config::Options) -> Option<Target>;
+    fn target_override(&self, _opts: &config::Options) -> Option<Target> {
+        None
+    }
 
     fn metadata_loader(&self) -> Box<MetadataLoaderDyn>;
     fn provide(&self, _providers: &mut Providers);
