@@ -2300,18 +2300,18 @@ fn split_grouped_constructors<'p, 'tcx>(
                 split_ctors.extend(
                     borders
                         .array_windows()
-                        .filter_map(|&[fst, snd]| match (fst, snd) {
-                            (Border::JustBefore(n), Border::JustBefore(m)) => {
+                        .filter_map(|&pair| match pair {
+                            [Border::JustBefore(n), Border::JustBefore(m)] => {
                                 if n < m {
                                     Some(IntRange { range: n..=(m - 1), ty, span })
                                 } else {
                                     None
                                 }
                             }
-                            (Border::JustBefore(n), Border::AfterMax) => {
+                            [Border::JustBefore(n), Border::AfterMax] => {
                                 Some(IntRange { range: n..=u128::MAX, ty, span })
                             }
-                            (Border::AfterMax, _) => None,
+                            [Border::AfterMax, _] => None,
                         })
                         .map(IntRange),
                 );
