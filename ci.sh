@@ -26,7 +26,7 @@ function run_tests {
   if ! [ -n "${MIRI_TEST_TARGET+exists}" ]; then
     # Only for host architecture: tests with MIR optimizations
     # FIXME: only testing level 2 because of <https://github.com/rust-lang/rust/issues/76432>.
-    MIRI_TEST_FLAGS="-Z mir-opt-level=2" ./miri test --locked
+    MIRIFLAGS="-Z mir-opt-level=2" ./miri test --locked
   fi
   # "miri test" has built the sysroot for us, now this should pass without
   # any interactive questions.

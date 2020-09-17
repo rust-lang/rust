@@ -83,11 +83,10 @@ Now you can run your project in Miri:
 The first time you run Miri, it will perform some extra setup and install some
 dependencies.  It will ask you for confirmation before installing anything.
 
-You can pass arguments to Miri after the first `--`, and pass arguments to the
-interpreted program or test suite after the second `--`.  For example, `cargo
-miri run -- -Zmiri-disable-stacked-borrows` runs the program without checking
-the aliasing of references.  To filter the tests being run, use `cargo miri test
--- -- filter`.
+`cargo miri run/test` supports the exact same flags as `cargo run/test`.  You
+can pass arguments to Miri via `MIRIFLAGS`. For example,
+`MIRIFLAGS="-Zmiri-disable-stacked-borrows" cargo miri run` runs the program
+without checking the aliasing of references.
 
 Miri supports cross-execution: if you want to run the program as if it was a
 Linux program, you can do `cargo miri run --target x86_64-unknown-linux-gnu`.
@@ -163,7 +162,8 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
 ## Miri `-Z` flags and environment variables
 [miri-flags]: #miri--z-flags-and-environment-variables
 
-Miri adds its own set of `-Z` flags:
+Miri adds its own set of `-Z` flags, which are usually set via the `MIRIFLAGS`
+environment variable:
 
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
   can focus on other failures, but it means Miri can miss bugs in your program.
@@ -229,14 +229,14 @@ Moreover, Miri recognizes some environment variables:
 
 * `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
   Miri executions, also [see above][testing-miri].
+* `MIRIFLAGS` (recognized by `cargo miri` and the test suite) defines extra
+  flags to be passed to Miri.
 * `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite)
   indicates the sysroot to use.  To do the same thing with `miri`
   directly, use the `--sysroot` flag.
 * `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target`
   flag for the same purpose.
-* `MIRI_TEST_FLAGS` (recognized by the test suite) defines extra flags to be
-  passed to Miri.
 
 The following environment variables are internal, but used to communicate between
 different Miri binaries, and as such worth documenting:
@@ -244,6 +244,10 @@ different Miri binaries, and as such worth documenting:
 * `MIRI_BE_RUSTC` when set to any value tells the Miri driver to actually not
   interpret the code but compile it like rustc would. This is useful to be sure
   that the compiled `rlib`s are compatible with Miri.
+* `MIRI_CWD` when set to any value tells the Miri driver to change to the given
+  directory after loading all the source files, but before commencing
+  interpretation. This is useful if the interpreted program wants a different
+  working directory at run-time than at build-time.
 
 ## Miri `extern` functions
 

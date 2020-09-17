@@ -1,12 +1,6 @@
 
-running 7 tests
-test do_panic ... ok
-test does_not_work_on_miri ... ignored
-test entropy_rng ... ok
-test fail_index_check ... ok
-test num_cpus ... ok
-test simple1 ... ok
-test simple2 ... ok
+running 1 test
+test test::rng ... ok
 
-test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 

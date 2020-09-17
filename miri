@@ -39,6 +39,11 @@ EOF
 TARGET=$(rustc --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc --print sysroot)
 LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
+MIRIDIR=$(dirname "$0")
+if readlink -e . >/dev/null; then
+    # This platform supports `readlink -e`.
+    MIRIDIR=$(readlink -e "$MIRIDIR")
+fi
 if ! test -d "$LIBDIR"; then
     echo "Something went wrong determining the library dir."
     echo "I got $LIBDIR but that does not exist."
@@ -51,7 +56,7 @@ if [ -z "$CARGO_INCREMENTAL" ]; then
 fi
 if [ -z "$CARGO_TARGET_DIR" ]; then
     # Share target dir between `miri` and `cargo-miri`.
-    export CARGO_TARGET_DIR="$(dirname "$0")"/target
+    export CARGO_TARGET_DIR="$MIRIDIR/target"
 fi
 # We set the rpath so that Miri finds the private rustc libraries it needs.
 # We enable debug-assertions to get tracing.
@@ -63,9 +68,9 @@ export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debugin
 # Build a sysroot and set MIRI_SYSROOT to use it.  Arguments are passed to `cargo miri setup`.
 build_sysroot() {
     # Build once, for the user to see.
-    cargo run $CARGO_BUILD_FLAGS --manifest-path "$(dirname "$0")"/cargo-miri/Cargo.toml -- miri setup "$@"
+    cargo run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -- miri setup "$@"
     # Call again, to just set env var.
-    export MIRI_SYSROOT="$(cargo run $CARGO_BUILD_FLAGS --manifest-path "$(dirname "$0")"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"
+    export MIRI_SYSROOT="$(cargo run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"
 }
 
 # Prepare and set MIRI_SYSROOT.  Respects `MIRI_TEST_TARGET` and takes into account
@@ -108,18 +113,18 @@ case "$COMMAND" in
 install|install-debug)
     # "--locked" to respect the Cargo.lock file if it exists,
     # "--offline" to avoid querying the registry (for yanked packages).
-    cargo install $CARGO_INSTALL_FLAGS --path "$(dirname "$0")" --force --locked --offline "$@"
-    cargo install $CARGO_INSTALL_FLAGS --path "$(dirname "$0")"/cargo-miri --force --locked --offline "$@"
+    cargo install $CARGO_INSTALL_FLAGS --path "$MIRIDIR" --force --locked --offline "$@"
+    cargo install $CARGO_INSTALL_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked --offline "$@"
     ;;
 check|check-debug)
     # Check, and let caller control flags.
-    cargo check $CARGO_BUILD_FLAGS --manifest-path "$(dirname "$0")"/Cargo.toml "$@"
-    cargo check $CARGO_BUILD_FLAGS --manifest-path "$(dirname "$0")"/cargo-miri/Cargo.toml "$@"
+    cargo check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
+    cargo check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
 build|build-debug)
     # Build, and let caller control flags.
-    cargo build $CARGO_BUILD_FLAGS --manifest-path "$(dirname "$0")"/Cargo.toml "$@"
-    cargo build $CARGO_BUILD_FLAGS --manifest-path "$(dirname "$0")"/cargo-miri/Cargo.toml "$@"
+    cargo build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
+    cargo build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
 test|test-debug)
     # First build and get a sysroot.

@@ -1,7 +1,10 @@
+[workspace]
+members = ["subcrate"]
+
 [package]
 name = "cargo-miri-test"
 version = "0.1.0"
-authors = ["Oliver Schneider <git-spam-no-reply9815368754983@oli-obk.de>"]
+authors = ["Miri Team"]
 edition = "2018"
 
 [dependencies]
@@ -10,3 +13,6 @@ byteorder = "1.0"
 [dev-dependencies]
 rand = { version = "0.7", features = ["small_rng"] }
 num_cpus = "1.10.1"
+
+[lib]
+test = false # test that this is respected (will show in the output)

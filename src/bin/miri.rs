@@ -45,6 +45,11 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             // Add filename to `miri` arguments.
             config.args.insert(0, compiler.input().filestem().to_string());
 
+            // Adjust working directory for interpretation.
+            if let Some(cwd) = env::var_os("MIRI_CWD") {
+                env::set_current_dir(cwd).unwrap();
+            }
+
             if let Some(return_code) = miri::eval_main(tcx, entry_def_id.to_def_id(), config) {
                 std::process::exit(
                     i32::try_from(return_code).expect("Return value was too large!"),

@@ -1,37 +1,32 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use serde::{Deserialize, Serialize};
 
 use rustc_version::VersionMeta;
 
 const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 22);
 
-const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
+const CARGO_MIRI_HELP: &str = r#"Runs binary crates and tests in Miri
 
 Usage:
-    cargo miri [subcommand] [<cargo options>...] [--] [<miri options>...] [--] [<program/test suite options>...]
+    cargo miri [subcommand] [<cargo options>...] [--] [<program/test suite options>...]
 
 Subcommands:
-    run                      Run binaries (default)
+    run                      Run binaries
     test                     Run tests
     setup                    Only perform automatic setup, but without asking questions (for getting a proper libstd)
 
-Common options:
-    -h, --help               Print this message
-    --features               Features to compile for the package
-    -V, --version            Print version info and exit
-
-Other [options] are the same as `cargo check`.  Everything after the first "--" is
-passed verbatim to Miri, which will pass everything after the second "--" verbatim
-to the interpreted program.
+The cargo options are exactly the same as for `cargo run` and `cargo test`, respectively.
 
 Examples:
-    cargo miri run -- -Zmiri-disable-stacked-borrows
-    cargo miri test -- -- test-suite-filter
+    cargo miri run
+    cargo miri test -- test-suite-filter
 "#;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -39,6 +34,35 @@ enum MiriCommand {
     Run,
     Test,
     Setup,
+}
+
+/// The inforamtion Miri needs to run a crate. Stored as JSON when the crate is "compiled".
+#[derive(Serialize, Deserialize)]
+struct CrateRunInfo {
+    /// The command-line arguments.
+    args: Vec<String>,
+    /// The environment.
+    env: Vec<(OsString, OsString)>,
+    /// The current working directory.
+    current_dir: OsString,
+}
+
+impl CrateRunInfo {
+    /// Gather all the information we need.
+    fn collect(args: env::Args) -> Self {
+        let args = args.collect();
+        let env = env::vars_os().collect();
+        let current_dir = env::current_dir().unwrap().into_os_string();
+        CrateRunInfo { args, env, current_dir }
+    }
+
+    fn store(&self, filename: &Path) {
+        let file = File::create(filename)
+            .unwrap_or_else(|_| show_error(format!("cannot create `{}`", filename.display())));
+        let file = BufWriter::new(file);
+        serde_json::ser::to_writer(file, self)
+            .unwrap_or_else(|_| show_error(format!("cannot write to `{}`", filename.display())));
+    }
 }
 
 fn show_help() {
@@ -116,48 +140,13 @@ fn xargo_check() -> Command {
     Command::new(env::var_os("XARGO_CHECK").unwrap_or_else(|| OsString::from("xargo-check")))
 }
 
-fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
-    // We need to get the manifest, and then the metadata, to enumerate targets.
-    let manifest_path =
-        get_arg_flag_value("--manifest-path").map(|m| Path::new(&m).canonicalize().unwrap());
-
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    if let Some(manifest_path) = &manifest_path {
-        cmd.manifest_path(manifest_path);
+/// Execute the command. If it fails, fail this process with the same exit code.
+/// Otherwise, continue.
+fn exec(mut cmd: Command) {
+    let exit_status = cmd.status().expect("failed to run command");
+    if exit_status.success().not() {
+        std::process::exit(exit_status.code().unwrap_or(-1))
     }
-    let mut metadata = if let Ok(metadata) = cmd.exec() {
-        metadata
-    } else {
-        show_error(format!("Could not obtain Cargo metadata; likely an ill-formed manifest"));
-    };
-
-    let current_dir = std::env::current_dir();
-
-    let package_index = metadata
-        .packages
-        .iter()
-        .position(|package| {
-            let package_manifest_path = Path::new(&package.manifest_path);
-            if let Some(manifest_path) = &manifest_path {
-                package_manifest_path == manifest_path
-            } else {
-                let current_dir = current_dir.as_ref().expect("could not read current directory");
-                let package_manifest_directory = package_manifest_path
-                    .parent()
-                    .expect("could not find parent directory of package manifest");
-                package_manifest_directory == current_dir
-            }
-        })
-        .unwrap_or_else(|| {
-            show_error(format!(
-                "this seems to be a workspace, which is not supported by `cargo miri`.\n\
-                 Try to `cd` into the crate you want to test, and re-run `cargo miri` there."
-            ))
-        });
-    let package = metadata.packages.remove(package_index);
-
-    // Finally we got the list of targets to build
-    package.targets.into_iter()
 }
 
 fn xargo_version() -> Option<(u32, u32, u32)> {
@@ -218,15 +207,15 @@ fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
         match buf.trim().to_lowercase().as_ref() {
             // Proceed.
             "" | "y" | "yes" => {}
-            "n" | "no" => show_error(format!("Aborting as per your request")),
-            a => show_error(format!("I do not understand `{}`", a)),
+            "n" | "no" => show_error(format!("aborting as per your request")),
+            a => show_error(format!("invalid answer `{}`", a)),
         };
     } else {
         println!("Running `{:?}` to {}.", cmd, text);
     }
 
     if cmd.status().expect(&format!("failed to execute {:?}", cmd)).success().not() {
-        show_error(format!("Failed to {}", text));
+        show_error(format!("failed to {}", text));
     }
 }
 
@@ -249,7 +238,7 @@ fn setup(subcommand: MiriCommand) {
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
         if std::env::var_os("XARGO_CHECK").is_some() {
             // The user manually gave us a xargo binary; don't do anything automatically.
-            show_error(format!("Your xargo is too old; please upgrade to the latest version"))
+            show_error(format!("xargo is too old; please upgrade to the latest version"))
         }
         let mut cmd = cargo();
         cmd.args(&["install", "xargo", "-f"]);
@@ -289,7 +278,7 @@ fn setup(subcommand: MiriCommand) {
         }
     };
     if !rust_src.exists() {
-        show_error(format!("Given Rust source directory `{}` does not exist.", rust_src.display()));
+        show_error(format!("given Rust source directory `{}` does not exist.", rust_src.display()));
     }
 
     // Next, we need our own libstd. Prepare a xargo project for that purpose.
@@ -363,7 +352,7 @@ path = "lib.rs"
     command.env_remove("RUSTFLAGS");
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
-        show_error(format!("Failed to run xargo"));
+        show_error(format!("failed to run xargo"));
     }
 
     // That should be it! But we need to figure out where xargo built stuff.
@@ -381,173 +370,127 @@ path = "lib.rs"
     }
 }
 
-enum CargoTargets {
-    All,
-    Filtered { lib: bool, bin: Vec<String>, test: Vec<String> },
-}
-
-impl CargoTargets {
-    fn matches(&self, kind: &str, name: &str) -> bool {
-        match self {
-            CargoTargets::All => true,
-            CargoTargets::Filtered { lib, bin, test } => match kind {
-                "lib" => *lib,
-                "bin" => bin.iter().any(|n| n == name),
-                "test" => test.iter().any(|n| n == name),
-                _ => false,
-            },
-        }
+fn phase_cargo_miri(mut args: env::Args) {
+    // Check for version and help flags even when invoked as `cargo-miri`.
+    if has_arg_flag("--help") || has_arg_flag("-h") {
+        show_help();
+        return;
     }
-}
-
-fn parse_cargo_miri_args(
-    mut args: impl Iterator<Item = String>,
-) -> (CargoTargets, Vec<String>, Vec<String>) {
-    let mut lib_present = false;
-    let mut bin_targets = Vec::new();
-    let mut test_targets = Vec::new();
-    let mut additional_args = Vec::new();
-    while let Some(arg) = args.next() {
-        match arg {
-            arg if arg == "--" => {
-                // Miri arguments begin after the first "--".
-                break;
-            }
-            arg if arg == "--lib" => lib_present = true,
-            arg if arg == "--bin" => {
-                if let Some(binary) = args.next() {
-                    if binary == "--" {
-                        show_error(format!("\"--bin\" takes one argument."));
-                    } else {
-                        bin_targets.push(binary)
-                    }
-                } else {
-                    show_error(format!("\"--bin\" takes one argument."));
-                }
-            }
-            arg if arg.starts_with("--bin=") => bin_targets.push((&arg["--bin=".len()..]).to_string()),
-            arg if arg == "--test" => {
-                if let Some(test) = args.next() {
-                    if test == "--" {
-                        show_error(format!("\"--test\" takes one argument."));
-                    } else {
-                        test_targets.push(test)
-                    }
-                } else {
-                    show_error(format!("\"--test\" takes one argument."));
-                }
-            }
-            arg if arg.starts_with("--test=") => test_targets.push((&arg["--test=".len()..]).to_string()),
-            other => additional_args.push(other),
-        }
+    if has_arg_flag("--version") || has_arg_flag("-V") {
+        show_version();
+        return;
     }
-    let targets = if !lib_present && bin_targets.len() == 0 && test_targets.len() == 0 {
-        CargoTargets::All
-    } else {
-        CargoTargets::Filtered { lib: lib_present, bin: bin_targets, test: test_targets }
-    };
-    (targets, additional_args, args.collect())
-}
 
-fn in_cargo_miri() {
-    let (subcommand, skip) = match std::env::args().nth(2).as_deref() {
-        Some("test") => (MiriCommand::Test, 3),
-        Some("run") => (MiriCommand::Run, 3),
-        Some("setup") => (MiriCommand::Setup, 3),
-        // Default command, if there is an option or nothing.
-        Some(s) if s.starts_with("-") => (MiriCommand::Run, 2),
-        None => (MiriCommand::Run, 2),
+    // Require a subcommand before any flags.
+    // We cannot know which of those flags take arguments and which do not,
+    // so we cannot detect subcommands later.
+    let subcommand = match args.next().as_deref() {
+        Some("test") => MiriCommand::Test,
+        Some("run") => MiriCommand::Run,
+        Some("setup") => MiriCommand::Setup,
         // Invalid command.
-        Some(s) => show_error(format!("Unknown command `{}`", s)),
+        _ => show_error(format!("`cargo miri` supports the following subcommands: `run`, `test`, and `setup`.")),
     };
     let verbose = has_arg_flag("-v");
 
     // We always setup.
     setup(subcommand);
-    if subcommand == MiriCommand::Setup {
-        // Stop here.
-        return;
+
+    // Invoke actual cargo for the job, but with different flags.
+    // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
+    // requires some extra work to make the build check-only (see all the `--emit` hacks below).
+    // <https://github.com/rust-lang/miri/pull/1540#issuecomment-693553191> describes an alternative
+    // approach that uses `cargo check`, making that part easier but target and binary handling
+    // harder.
+    let miri_path = std::env::current_exe().expect("current executable path invalid");
+    let cargo_cmd = match subcommand {
+        MiriCommand::Test => "test",
+        MiriCommand::Run => "run",
+        MiriCommand::Setup => return, // `cargo miri setup` stops here.
+    };
+    let mut cmd = cargo();
+    cmd.arg(cargo_cmd);
+
+    // Make sure we know the build target, and cargo does, too.
+    // This is needed to make the `CARGO_TARGET_*_RUNNER` env var do something,
+    // and it later helps us detect which crates are proc-macro/build-script
+    // (host crates) and which crates are needed for the program itself.
+    let target = if let Some(target) = get_arg_flag_value("--target") {
+        target
+    } else {
+        // No target given. Pick default and tell cargo about it.
+        let host = version_info().host;
+        cmd.arg("--target");
+        cmd.arg(&host);
+        host
+    };
+
+    // Forward all further arguments. We do some processing here because we want to
+    // detect people still using the old way of passing flags to Miri
+    // (`cargo miri -- -Zmiri-foo`).
+    while let Some(arg) = args.next() {
+        cmd.arg(&arg);
+        if arg == "--" {
+            // Check if the next argument starts with `-Zmiri`. If yes, we assume
+            // this is an old-style invocation.
+            if let Some(next_arg) = args.next() {
+                if next_arg.starts_with("-Zmiri") {
+                    eprintln!(
+                        "WARNING: it seems like you are setting Miri's flags in `cargo miri` the old way,\n\
+                        i.e., by passing them after the first `--`. This style is deprecated; please set\n\
+                        the MIRIFLAGS environment variable instead. `cargo miri run/test` now interprets\n\
+                        arguments the exact same way as `cargo run/test`."
+                    );
+                    // Old-style invocation. Turn these into MIRIFLAGS.
+                    let mut miriflags = env::var("MIRIFLAGS").unwrap_or_default();
+                    miriflags.push(' ');
+                    miriflags.push_str(&next_arg);
+                    while let Some(further_arg) = args.next() {
+                        if further_arg == "--" {
+                            // End of the Miri flags!
+                            break;
+                        }
+                        miriflags.push(' ');
+                        miriflags.push_str(&further_arg);
+                    }
+                    env::set_var("MIRIFLAGS", miriflags);
+                    // Pass the remaining flags to cargo.
+                    cmd.args(args);
+                    break;
+                }
+                // Not a Miri argument after all, make sure we pass it to cargo.
+                cmd.arg(next_arg);
+            }
+        }
     }
 
-    // FIXME: this accepts --test, --lib, and multiple --bin for `cargo miri run`.
-    let (target_filters, cargo_args, miri_args) =
-        parse_cargo_miri_args(std::env::args().skip(skip));
-
-    // Now run the command.
-    for target in list_targets() {
-        let kind = target
-            .kind
-            .get(0)
-            .expect("badly formatted cargo metadata: target::kind is an empty array");
-        if !target_filters.matches(kind, &target.name) {
-            continue;
-        }
-        // Now we run `cargo check $FLAGS $ARGS`, giving the user the
-        // change to add additional arguments. `FLAGS` is set to identify
-        // this target.  The user gets to control what gets actually passed to Miri.
-        let mut cmd = cargo();
-        cmd.arg("check");
-        match (subcommand, kind.as_str()) {
-            (MiriCommand::Run, "bin") => {
-                // FIXME: we default to running all binaries here.
-                cmd.arg("--bin").arg(target.name);
-            }
-            (MiriCommand::Test, "test") => {
-                cmd.arg("--test").arg(target.name);
-            }
-            (MiriCommand::Test, "lib") => {
-                // There can be only one lib.
-                cmd.arg("--lib").arg("--profile").arg("test");
-            }
-            (MiriCommand::Test, "bin") => {
-                cmd.arg("--bin").arg(target.name).arg("--profile").arg("test");
-            }
-            // The remaining targets we do not even want to build.
-            _ => continue,
-        }
-        // Forward further `cargo` args.
-        for arg in cargo_args.iter() {
-            cmd.arg(arg);
-        }
-        // We want to always run `cargo` with `--target`. This later helps us detect
-        // which crates are proc-macro/build-script (host crates) and which crates are
-        // needed for the program itself.
-        if get_arg_flag_value("--target").is_none() {
-            // When no `--target` is given, default to the host.
-            cmd.arg("--target");
-            cmd.arg(version_info().host);
-        }
-
-        // Serialize the remaining args into a special environemt variable.
-        // This will be read by `inside_cargo_rustc` when we go to invoke
-        // our actual target crate (the binary or the test we are running).
-        // Since we're using "cargo check", we have no other way of passing
-        // these arguments.
-        cmd.env("MIRI_ARGS", serde_json::to_string(&miri_args).expect("failed to serialize args"));
-
-        // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
-        // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
-        // the two codepaths. (That extra argument is why we prefer this over setting `RUSTC`.)
-        if env::var_os("RUSTC_WRAPPER").is_some() {
-            println!("WARNING: Ignoring existing `RUSTC_WRAPPER` environment variable, Miri does not support wrapping.");
-        }
-        let path = std::env::current_exe().expect("current executable path invalid");
-        cmd.env("RUSTC_WRAPPER", path);
-        if verbose {
-            cmd.env("MIRI_VERBOSE", ""); // this makes `inside_cargo_rustc` verbose.
-            eprintln!("+ {:?}", cmd);
-        }
-
-        let exit_status =
-            cmd.spawn().expect("could not run cargo").wait().expect("failed to wait for cargo?");
-
-        if !exit_status.success() {
-            std::process::exit(exit_status.code().unwrap_or(-1))
-        }
+    // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
+    // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
+    // the two codepaths. (That extra argument is why we prefer this over setting `RUSTC`.)
+    if env::var_os("RUSTC_WRAPPER").is_some() {
+        println!("WARNING: Ignoring `RUSTC_WRAPPER` environment variable, Miri does not support wrapping.");
     }
+    cmd.env("RUSTC_WRAPPER", &miri_path);
+    if verbose {
+        eprintln!("+ RUSTC_WRAPPER={:?}", miri_path);
+    }
+
+    // Set the runner for the current target to us as well, so we can interpret the binaries.
+    let runner_env_name = format!("CARGO_TARGET_{}_RUNNER", target.to_uppercase().replace('-', "_"));
+    cmd.env(runner_env_name, &miri_path);
+
+    // Set rustdoc to us as well, so we can make it do nothing (see issue #584).
+    cmd.env("RUSTDOC", &miri_path);
+
+    // Run cargo.
+    if verbose {
+        cmd.env("MIRI_VERBOSE", ""); // This makes the other phases verbose.
+        eprintln!("[cargo-miri miri] {:?}", cmd);
+    }
+    exec(cmd)
 }
 
-fn inside_cargo_rustc() {
+fn phase_cargo_rustc(args: env::Args) {
     /// Determines if we are being invoked (as rustc) to build a crate for
     /// the "target" architecture, in contrast to the "host" architecture.
     /// Host crates are for build scripts and proc macros and still need to
@@ -567,82 +510,221 @@ fn inside_cargo_rustc() {
     /// Cargo does not give us this information directly, so we need to check
     /// various command-line flags.
     fn is_runnable_crate() -> bool {
-        let is_bin = get_arg_flag_value("--crate-type").as_deref() == Some("bin");
+        let is_bin = get_arg_flag_value("--crate-type").as_deref().unwrap_or("bin") == "bin";
         let is_test = has_arg_flag("--test");
-        is_bin || is_test
+        let print = get_arg_flag_value("--print").is_some();
+        (is_bin || is_test) && !print
+    }
+
+    fn out_filename(prefix: &str, suffix: &str) -> PathBuf {
+        let mut path = PathBuf::from(get_arg_flag_value("--out-dir").unwrap());
+        path.push(format!(
+            "{}{}{}{}",
+            prefix,
+            get_arg_flag_value("--crate-name").unwrap(),
+            // This is technically a `-C` flag but the prefix seems unique enough...
+            // (and cargo passes this before the filename so it should be unique)
+            get_arg_flag_value("extra-filename").unwrap_or(String::new()),
+            suffix,
+        ));
+        path
     }
 
     let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
     let target_crate = is_target_crate();
 
-    let mut cmd = miri();
-    // Forward arguments.
-    cmd.args(std::env::args().skip(2)); // skip `cargo-miri rustc`
-
-    // We make sure to only specify our custom Xargo sysroot for target crates - that is,
-    // crates which are needed for interpretation by Miri. proc-macros and build scripts
-    // should use the default sysroot.
-    if target_crate {
-        let sysroot =
-            env::var_os("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
-        cmd.arg("--sysroot");
-        cmd.arg(sysroot);
-    }
-
-    // If this is a runnable target crate, we want Miri to start interpretation;
-    // otherwise we want Miri to behave like rustc and build the crate as usual.
     if target_crate && is_runnable_crate() {
         // This is the binary or test crate that we want to interpret under Miri.
-        // (Testing `target_crate` is needed to exclude build scripts.)
-        // We deserialize the arguments that are meant for Miri from the special environment
-        // variable "MIRI_ARGS", and feed them to the 'miri' binary.
-        //
-        // `env::var` is okay here, well-formed JSON is always UTF-8.
-        let magic = std::env::var("MIRI_ARGS").expect("missing MIRI_ARGS");
-        let miri_args: Vec<String> =
-            serde_json::from_str(&magic).expect("failed to deserialize MIRI_ARGS");
-        cmd.args(miri_args);
+        // But we cannot run it here, as cargo invoked us as a compiler -- our stdin and stdout are not
+        // like we want them.
+        // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
+        // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
+        let info = CrateRunInfo::collect(args);
+        let filename = out_filename("", "");
+        if verbose {
+            eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
+        }
+
+        info.store(&filename);
+        // For Windows, do the same thing again with `.exe` appended to the filename.
+        // (Need to do this here as cargo moves that "binary" to a different place before running it.)
+        info.store(&out_filename("", ".exe"));
+
+        return;
+    }
+
+    let mut cmd = miri();
+    let mut emit_link_hack = false;
+    // Arguments are treated very differently depending on whether this crate is
+    // for interpretation by Miri, or for use by a build script / proc macro.
+    if target_crate {
+        // Forward arguments, but remove "link" from "--emit" to make this a check-only build.
+        let emit_flag = "--emit";
+        for arg in args {
+            if arg.starts_with(emit_flag) {
+                // Patch this argument. First, extract its value.
+                let val = &arg[emit_flag.len()..];
+                assert!(val.starts_with("="), "`cargo` should pass `--emit=X` as one argument");
+                let val = &val[1..];
+                let mut val: Vec<_> = val.split(',').collect();
+                // Now make sure "link" is not in there, but "metadata" is.
+                if let Some(i) = val.iter().position(|&s| s == "link") {
+                    emit_link_hack = true;
+                    val.remove(i);
+                    if !val.iter().any(|&s| s == "metadata") {
+                        val.push("metadata");
+                    }
+                }
+                cmd.arg(format!("{}={}", emit_flag, val.join(",")));
+            } else {
+                cmd.arg(arg);
+            }
+        }
+
+        // Use our custom sysroot.
+        let sysroot =
+            env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
+        cmd.arg("--sysroot");
+        cmd.arg(sysroot);
     } else {
-        // We want to compile, not interpret.
-        cmd.env("MIRI_BE_RUSTC", "1");
-    };
+        // For host crates, just forward everything.
+        cmd.args(args);
+    }
+
+    // We want to compile, not interpret. We still use Miri to make sure the compiler version etc
+    // are the exact same as what is used for interpretation.
+    cmd.env("MIRI_BE_RUSTC", "1");
 
     // Run it.
     if verbose {
-        eprintln!("+ {:?}", cmd);
+        eprintln!("[cargo-miri rustc] {:?}", cmd);
     }
-    match cmd.status() {
-        Ok(exit) =>
-            if !exit.success() {
-                std::process::exit(exit.code().unwrap_or(42));
-            },
-        Err(e) => panic!("error running {:?}:\n{:?}", cmd, e),
+    exec(cmd);
+
+    // Create a stub .rlib file if "link" was requested by cargo.
+    if emit_link_hack {
+        // Some platforms prepend "lib", some do not... let's just create both files.
+        let filename = out_filename("lib", ".rlib");
+        File::create(filename).expect("failed to create rlib file");
+        let filename = out_filename("", ".rlib");
+        File::create(filename).expect("failed to create rlib file");
     }
 }
 
-fn main() {
-    // Check for version and help flags even when invoked as `cargo-miri`.
-    if has_arg_flag("--help") || has_arg_flag("-h") {
-        show_help();
-        return;
-    }
-    if has_arg_flag("--version") || has_arg_flag("-V") {
-        show_version();
-        return;
+fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
+    let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
+
+    let file = File::open(&binary)
+        .unwrap_or_else(|_| show_error(format!("file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
+    let file = BufReader::new(file);
+    let info: CrateRunInfo = serde_json::from_reader(file)
+        .unwrap_or_else(|_| show_error(format!("file {:?} contains outdated or invalid JSON; try `cargo clean`", binary)));
+
+    // Set missing env vars. Looks like `build.rs` vars are still set at run-time, but
+    // `CARGO_BIN_EXE_*` are not. This means we can give the run-time environment precedence,
+    // to rather do too little than too much.
+    for (name, val) in info.env {
+        if env::var_os(&name).is_none() {
+            env::set_var(name, val);
+        }
     }
 
-    if let Some("miri") = std::env::args().nth(1).as_deref() {
-        // This arm is for when `cargo miri` is called. We call `cargo check` for each applicable target,
-        // but with the `RUSTC` env var set to the `cargo-miri` binary so that we come back in the other branch,
-        // and dispatch the invocations to `rustc` and `miri`, respectively.
-        in_cargo_miri();
-    } else if let Some("rustc") = std::env::args().nth(1).as_deref() {
-        // This arm is executed when `cargo-miri` runs `cargo check` with the `RUSTC_WRAPPER` env var set to itself:
-        // dependencies get dispatched to `rustc`, the final test/binary to `miri`.
-        inside_cargo_rustc();
-    } else {
-        show_error(format!(
-            "`cargo-miri` must be called with either `miri` or `rustc` as first argument."
-        ))
+    let mut cmd = miri();
+    // Forward rustc arguments.
+    // We need to patch "--extern" filenames because we forced a check-only
+    // build without cargo knowing about that: replace `.rlib` suffix by
+    // `.rmeta`.
+    // We also need to remove `--error-format` as cargo specifies that to be JSON,
+    // but when we run here, cargo does not interpret the JSON any more. `--json`
+    // then also nees to be dropped.
+    let mut args = info.args.into_iter();
+    let extern_flag = "--extern";
+    let error_format_flag = "--error-format";
+    let json_flag = "--json";
+    while let Some(arg) = args.next() {
+        if arg == extern_flag {
+            // `--extern` is always passed as a separate argument by cargo.
+            let next_arg = args.next().expect("`--extern` should be followed by a filename");
+            let next_arg = next_arg.strip_suffix(".rlib").expect("all extern filenames should end in `.rlib`");
+            cmd.arg(extern_flag);
+            cmd.arg(format!("{}.rmeta", next_arg));
+        } else if arg.starts_with(error_format_flag) {
+            let suffix = &arg[error_format_flag.len()..];
+            assert!(suffix.starts_with('='));
+            // Drop this argument.
+        } else if arg.starts_with(json_flag) {
+            let suffix = &arg[json_flag.len()..];
+            assert!(suffix.starts_with('='));
+            // Drop this argument.
+        } else {
+            cmd.arg(arg);
+        }
+    }
+    // Set sysroot.
+    let sysroot =
+        env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
+    cmd.arg("--sysroot");
+    cmd.arg(sysroot);
+    // Respect `MIRIFLAGS`.
+    if let Ok(a) = env::var("MIRIFLAGS") {
+        // This code is taken from `RUSTFLAGS` handling in cargo.
+        let args = a
+            .split(' ')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
+        cmd.args(args);
+    }
+
+    // Then pass binary arguments.
+    cmd.arg("--");
+    cmd.args(binary_args);
+
+    // Make sure we use the build-time working directory for interpreting Miri/rustc arguments.
+    // But then we need to switch to the run-time one, which we instruct Miri do do by setting `MIRI_CWD`.
+    cmd.current_dir(info.current_dir);
+    cmd.env("MIRI_CWD", env::current_dir().unwrap());
+
+    // Run it.
+    if verbose {
+        eprintln!("[cargo-miri runner] {:?}", cmd);
+    }
+    exec(cmd)
+}
+
+fn main() {
+    // Rustc does not support non-UTF-8 arguments so we make no attempt either.
+    // (We do support non-UTF-8 environment variables though.)
+    let mut args = std::env::args();
+    // Skip binary name.
+    args.next().unwrap();
+
+    // Dispatch to `cargo-miri` phase. There are three phases:
+    // - When we are called via `cargo miri`, we run as the frontend and invoke the underlying
+    //   cargo. We set RUSTC_WRAPPER and CARGO_TARGET_RUNNER to ourselves.
+    // - When we are executed due to RUSTC_WRAPPER, we build crates or store the flags of
+    //   binary crates for later interpretation.
+    // - When we are executed due to CARGO_TARGET_RUNNER, we start interpretation based on the
+    //   flags that were stored earlier.
+    // On top of that, we are also called as RUSTDOC, but that is just a stub currently.
+    match args.next().as_deref() {
+        Some("miri") => phase_cargo_miri(args),
+        Some("rustc") => phase_cargo_rustc(args),
+        Some(arg) => {
+            // We have to distinguish the "runner" and "rustfmt" cases.
+            // As runner, the first argument is the binary (a file that should exist, with an absolute path);
+            // as rustfmt, the first argument is a flag (`--something`).
+            let binary = Path::new(arg);
+            if binary.exists() {
+                assert!(!arg.starts_with("--")); // not a flag
+                phase_cargo_runner(binary, args);
+            } else if arg.starts_with("--") {
+                // We are rustdoc.
+                eprintln!("Running doctests is not currently supported by Miri.")
+            } else {
+                show_error(format!("`cargo-miri` called with unexpected first argument `{}`; please only invoke this binary through `cargo miri`", arg));
+            }
+        }
+        _ => show_error(format!("`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`")),
     }
 }

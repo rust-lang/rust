@@ -14,7 +14,6 @@ test = false # we have no unit tests
 doctest = false # and no doc tests
 
 [dependencies]
-cargo_metadata = "0.11"
 directories = "2.0"
 rustc_version = "0.2.3"
 serde_json = "1.0.40"

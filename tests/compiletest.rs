@@ -27,7 +27,7 @@ fn run_tests(mode: &str, path: &str, target: &str) {
     if let Ok(sysroot) = std::env::var("MIRI_SYSROOT") {
         flags.push(format!("--sysroot {}", sysroot));
     }
-    if let Ok(extra_flags) = std::env::var("MIRI_TEST_FLAGS") {
+    if let Ok(extra_flags) = std::env::var("MIRIFLAGS") {
         flags.push(extra_flags);
     }
 
