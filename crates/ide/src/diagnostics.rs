@@ -622,13 +622,65 @@ pub struct Foo { pub a: i32, pub b: i32 }
             r#"
 use a;
 use a::{c, d::e};
+
+mod a {
+    mod c {}
+    mod d {
+        mod e {}
+    }
+}
 "#,
         );
-        check_fix(r#"use {<|>b};"#, r#"use b;"#);
-        check_fix(r#"use {b<|>};"#, r#"use b;"#);
-        check_fix(r#"use a::{c<|>};"#, r#"use a::c;"#);
-        check_fix(r#"use a::{self<|>};"#, r#"use a;"#);
-        check_fix(r#"use a::{c, d::{e<|>}};"#, r#"use a::{c, d::e};"#);
+        check_fix(
+            r"
+            mod b {}
+            use {<|>b};
+            ",
+            r"
+            mod b {}
+            use b;
+            ",
+        );
+        check_fix(
+            r"
+            mod b {}
+            use {b<|>};
+            ",
+            r"
+            mod b {}
+            use b;
+            ",
+        );
+        check_fix(
+            r"
+            mod a { mod c {} }
+            use a::{c<|>};
+            ",
+            r"
+            mod a { mod c {} }
+            use a::c;
+            ",
+        );
+        check_fix(
+            r"
+            mod a {}
+            use a::{self<|>};
+            ",
+            r"
+            mod a {}
+            use a;
+            ",
+        );
+        check_fix(
+            r"
+            mod a { mod c {} mod d { mod e {} } }
+            use a::{c, d::{e<|>}};
+            ",
+            r"
+            mod a { mod c {} mod d { mod e {} } }
+            use a::{c, d::e};
+            ",
+        );
     }
 
     #[test]

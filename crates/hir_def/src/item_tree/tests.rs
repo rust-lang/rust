@@ -228,9 +228,9 @@ fn smoke() {
 
             top-level items:
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_on_use"))] }, input: None }]) }]
-            Import { path: ModPath { kind: Plain, segments: [Name(Text("a"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_glob: false, is_prelude: false, ast_id: FileAstId::<syntax::ast::generated::nodes::Use>(0) }
+            Import { path: ModPath { kind: Plain, segments: [Name(Text("a"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_glob: false, is_prelude: false, ast_id: FileAstId::<syntax::ast::generated::nodes::Use>(0), index: 0 }
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_on_use"))] }, input: None }]) }]
-            Import { path: ModPath { kind: Plain, segments: [Name(Text("b"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_glob: true, is_prelude: false, ast_id: FileAstId::<syntax::ast::generated::nodes::Use>(0) }
+            Import { path: ModPath { kind: Plain, segments: [Name(Text("b"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_glob: true, is_prelude: false, ast_id: FileAstId::<syntax::ast::generated::nodes::Use>(0), index: 1 }
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("ext_crate"))] }, input: None }]) }]
             ExternCrate { path: ModPath { kind: Plain, segments: [Name(Text("krate"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_macro_use: false, ast_id: FileAstId::<syntax::ast::generated::nodes::ExternCrate>(1) }
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("on_trait"))] }, input: None }]) }]

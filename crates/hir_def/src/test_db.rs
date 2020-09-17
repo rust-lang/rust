@@ -5,9 +5,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use base_db::SourceDatabase;
 use base_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, Upcast};
 use hir_expand::db::AstDatabase;
+use hir_expand::diagnostics::Diagnostic;
+use hir_expand::diagnostics::DiagnosticSinkBuilder;
+use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
+use syntax::TextRange;
+use test_utils::extract_annotations;
 
 use crate::db::DefDatabase;
 
@@ -97,5 +103,41 @@ impl TestDB {
                 _ => None,
             })
             .collect()
+    }
+
+    pub fn extract_annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
+        let mut files = Vec::new();
+        let crate_graph = self.crate_graph();
+        for krate in crate_graph.iter() {
+            let crate_def_map = self.crate_def_map(krate);
+            for (module_id, _) in crate_def_map.modules.iter() {
+                let file_id = crate_def_map[module_id].origin.file_id();
+                files.extend(file_id)
+            }
+        }
+        assert!(!files.is_empty());
+        files
+            .into_iter()
+            .filter_map(|file_id| {
+                let text = self.file_text(file_id);
+                let annotations = extract_annotations(&text);
+                if annotations.is_empty() {
+                    return None;
+                }
+                Some((file_id, annotations))
+            })
+            .collect()
+    }
+
+    pub fn diagnostics<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
+        let crate_graph = self.crate_graph();
+        for krate in crate_graph.iter() {
+            let crate_def_map = self.crate_def_map(krate);
+
+            let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
+            for (module_id, _) in crate_def_map.modules.iter() {
+                crate_def_map.add_diagnostics(self, module_id, &mut sink);
+            }
+        }
     }
 }

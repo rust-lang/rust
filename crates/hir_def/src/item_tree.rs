@@ -291,7 +291,6 @@ pub enum AttrOwner {
 
     Variant(Idx<Variant>),
     Field(Idx<Field>),
-    // FIXME: Store variant and field attrs, and stop reparsing them in `attrs_query`.
 }
 
 macro_rules! from_attrs {
@@ -483,6 +482,11 @@ pub struct Import {
     /// AST ID of the `use` or `extern crate` item this import was derived from. Note that many
     /// `Import`s can map to the same `use` item.
     pub ast_id: FileAstId<ast::Use>,
+    /// Index of this `Import` when the containing `Use` is visited via `ModPath::expand_use_item`.
+    ///
+    /// This can be used to get the `UseTree` this `Import` corresponds to and allows emitting
+    /// precise diagnostics.
+    pub index: usize,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

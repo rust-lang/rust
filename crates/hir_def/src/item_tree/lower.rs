@@ -483,7 +483,7 @@ impl Ctx {
         ModPath::expand_use_item(
             InFile::new(self.file, use_item.clone()),
             &self.hygiene,
-            |path, _tree, is_glob, alias| {
+            |path, _use_tree, is_glob, alias| {
                 imports.push(id(tree.imports.alloc(Import {
                     path,
                     alias,
@@ -491,6 +491,7 @@ impl Ctx {
                     is_glob,
                     is_prelude,
                     ast_id,
+                    index: imports.len(),
                 })));
             },
         );
