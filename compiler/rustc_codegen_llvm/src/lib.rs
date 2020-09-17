@@ -116,6 +116,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
         llvm_util::target_cpu(sess)
     }
+    fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str> {
+        llvm_util::tune_cpu(sess)
+    }
 }
 
 impl WriteBackendMethods for LlvmCodegenBackend {
