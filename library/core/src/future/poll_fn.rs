@@ -35,8 +35,6 @@ where
 ///
 /// This `struct` is created by the [`poll_fn`] function. See its
 /// documentation for more.
-///
-/// [`poll_fn`]: fn.poll_fn.html
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[unstable(feature = "future_poll_fn", issue = "72302")]
 pub struct PollFn<F> {
