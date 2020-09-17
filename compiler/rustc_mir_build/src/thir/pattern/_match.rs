@@ -2299,8 +2299,8 @@ fn split_grouped_constructors<'p, 'tcx>(
                 // interval into a constructor.
                 split_ctors.extend(
                     borders
-                        .windows(2)
-                        .filter_map(|window| match (window[0], window[1]) {
+                        .array_windows()
+                        .filter_map(|&[fst, snd]| match (fst, snd) {
                             (Border::JustBefore(n), Border::JustBefore(m)) => {
                                 if n < m {
                                     Some(IntRange { range: n..=(m - 1), ty, span })
