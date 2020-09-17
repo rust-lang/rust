@@ -42,22 +42,15 @@ fn num_cpus() {
     assert_eq!(num_cpus::get(), 1);
 }
 
-
-// FIXME: Remove this `cfg` once we fix https://github.com/rust-lang/miri/issues/1059.
-// We cfg-gate the `should_panic` attribute and the `panic!` itself, so that the test
-// stdout does not depend on the target.
 #[test]
-#[cfg_attr(not(windows), should_panic(expected="Explicit panic"))]
+#[should_panic(expected="Explicit panic")]
 fn do_panic() { // In large, friendly letters :)
-    #[cfg(not(windows))]
     panic!("Explicit panic from test!");
 }
 
-// FIXME: see above
 #[test]
 #[allow(unconditional_panic)]
-#[cfg_attr(not(windows), should_panic(expected="the len is 0 but the index is 42"))]
+#[should_panic(expected="the len is 0 but the index is 42")]
 fn fail_index_check() {
-    #[cfg(not(windows))]
     [][42]
 }
