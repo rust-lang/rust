@@ -62,6 +62,8 @@ pub enum Status {
 
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
+    const STOPS_CONST_CHECKING: bool = false;
+
     /// Returns an enum indicating whether this operation is allowed within the given item.
     fn status_in_item(&self, _ccx: &ConstCx<'_, '_>) -> Status {
         Status::Forbidden

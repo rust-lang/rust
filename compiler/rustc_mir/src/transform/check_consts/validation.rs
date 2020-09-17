@@ -176,6 +176,8 @@ pub struct Validator<'mir, 'tcx> {
 
     /// The span of the current statement.
     span: Span,
+
+    const_checking_stopped: bool,
 }
 
 impl Deref for Validator<'mir, 'tcx> {
@@ -188,7 +190,12 @@ impl Deref for Validator<'mir, 'tcx> {
 
 impl Validator<'mir, 'tcx> {
     pub fn new(ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
-        Validator { span: ccx.body.span, ccx, qualifs: Default::default() }
+        Validator {
+            span: ccx.body.span,
+            ccx,
+            qualifs: Default::default(),
+            const_checking_stopped: false,
+        }
     }
 
     pub fn check_body(&mut self) {
@@ -226,13 +233,22 @@ impl Validator<'mir, 'tcx> {
 
     /// Emits an error if an expression cannot be evaluated in the current context.
     pub fn check_op(&mut self, op: impl NonConstOp) {
-        ops::non_const(self.ccx, op, self.span);
+        self.check_op_spanned(op, self.span);
     }
 
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context.
-    pub fn check_op_spanned(&mut self, op: impl NonConstOp, span: Span) {
-        ops::non_const(self.ccx, op, span);
+    pub fn check_op_spanned<O: NonConstOp>(&mut self, op: O, span: Span) {
+        // HACK: This is for strict equivalence with the old `qualify_min_const_fn` pass, which
+        // only emitted one error per function. It should be removed and the test output updated.
+        if self.const_checking_stopped {
+            return;
+        }
+
+        let err_emitted = ops::non_const(self.ccx, op, span);
+        if err_emitted && O::STOPS_CONST_CHECKING {
+            self.const_checking_stopped = true;
+        }
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
