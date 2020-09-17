@@ -551,7 +551,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
                 // If we are checking live drops after drop-elaboration, don't emit duplicate
                 // errors here.
-                if super::post_drop_elaboration::checking_enabled(self.tcx, self.def_id) {
+                if super::post_drop_elaboration::checking_enabled(self.ccx) {
                     return;
                 }
 

@@ -18,9 +18,7 @@ pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) {
         Status::Allowed => return,
 
         Status::Unstable(gate) if ccx.tcx.features().enabled(gate) => {
-            let unstable_in_stable = ccx.const_kind() == hir::ConstContext::ConstFn
-                && ccx.tcx.features().enabled(sym::staged_api)
-                && !ccx.tcx.has_attr(ccx.def_id.to_def_id(), sym::rustc_const_unstable)
+            let unstable_in_stable = ccx.is_const_stable_const_fn()
                 && !super::allow_internal_unstable(ccx.tcx, ccx.def_id.to_def_id(), gate);
 
             if unstable_in_stable {
