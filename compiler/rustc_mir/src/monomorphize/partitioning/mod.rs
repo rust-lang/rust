@@ -277,14 +277,8 @@ where
 
     symbols.sort_by_key(|sym| sym.1);
 
-    for pair in symbols.windows(2) {
-        let sym1 = &pair[0].1;
-        let sym2 = &pair[1].1;
-
+    for &[(mono_item1, ref sym1), (mono_item2, ref sym2)] in symbols.array_windows() {
         if sym1 == sym2 {
-            let mono_item1 = pair[0].0;
-            let mono_item2 = pair[1].0;
-
             let span1 = mono_item1.local_span(tcx);
             let span2 = mono_item2.local_span(tcx);
 
