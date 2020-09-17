@@ -59,11 +59,12 @@ pub struct FlycheckHandle {
 
 impl FlycheckHandle {
     pub fn spawn(
+        id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
         workspace_root: PathBuf,
     ) -> FlycheckHandle {
-        let actor = FlycheckActor::new(sender, config, workspace_root);
+        let actor = FlycheckActor::new(id, sender, config, workspace_root);
         let (sender, receiver) = unbounded::<Restart>();
         let thread = jod_thread::spawn(move || actor.run(receiver));
         FlycheckHandle { sender, thread }
@@ -81,7 +82,11 @@ pub enum Message {
     AddDiagnostic { workspace_root: PathBuf, diagnostic: Diagnostic },
 
     /// Request check progress notification to client
-    Progress(Progress),
+    Progress {
+        /// Flycheck instance ID
+        id: usize,
+        progress: Progress,
+    },
 }
 
 #[derive(Debug)]
@@ -95,6 +100,7 @@ pub enum Progress {
 struct Restart;
 
 struct FlycheckActor {
+    id: usize,
     sender: Box<dyn Fn(Message) + Send>,
     config: FlycheckConfig,
     workspace_root: PathBuf,
@@ -113,11 +119,15 @@ enum Event {
 
 impl FlycheckActor {
     fn new(
+        id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
         workspace_root: PathBuf,
     ) -> FlycheckActor {
-        FlycheckActor { sender, config, workspace_root, cargo_handle: None }
+        FlycheckActor { id, sender, config, workspace_root, cargo_handle: None }
+    }
+    fn progress(&self, progress: Progress) {
+        self.send(Message::Progress { id: self.id, progress });
     }
     fn next_event(&self, inbox: &Receiver<Restart>) -> Option<Event> {
         let check_chan = self.cargo_handle.as_ref().map(|cargo| &cargo.receiver);
@@ -139,7 +149,7 @@ impl FlycheckActor {
                     command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null());
                     if let Ok(child) = command.spawn().map(JodChild) {
                         self.cargo_handle = Some(CargoHandle::spawn(child));
-                        self.send(Message::Progress(Progress::DidStart));
+                        self.progress(Progress::DidStart);
                     }
                 }
                 Event::CheckEvent(None) => {
@@ -153,11 +163,11 @@ impl FlycheckActor {
                             self.check_command()
                         )
                     }
-                    self.send(Message::Progress(Progress::DidFinish(res)));
+                    self.progress(Progress::DidFinish(res));
                 }
                 Event::CheckEvent(Some(message)) => match message {
                     cargo_metadata::Message::CompilerArtifact(msg) => {
-                        self.send(Message::Progress(Progress::DidCheckCrate(msg.target.name)));
+                        self.progress(Progress::DidCheckCrate(msg.target.name));
                     }
 
                     cargo_metadata::Message::CompilerMessage(msg) => {
@@ -179,7 +189,7 @@ impl FlycheckActor {
     }
     fn cancel_check_process(&mut self) {
         if self.cargo_handle.take().is_some() {
-            self.send(Message::Progress(Progress::DidCancel));
+            self.progress(Progress::DidCancel);
         }
     }
     fn check_command(&self) -> Command {

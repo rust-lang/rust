@@ -266,8 +266,8 @@ impl GlobalState {
                     }
                 }
 
-                flycheck::Message::Progress(status) => {
-                    let (state, message) = match status {
+                flycheck::Message::Progress { id, progress } => {
+                    let (state, message) = match progress {
                         flycheck::Progress::DidStart => {
                             self.diagnostics.clear_check();
                             (Progress::Begin, None)
@@ -284,14 +284,21 @@ impl GlobalState {
                         }
                     };
 
-                    self.report_progress("cargo check", state, message, None);
+                    // When we're running multiple flychecks, we have to include a disambiguator in
+                    // the title, or the editor complains. Note that this is a user-facing string.
+                    let title = if self.flycheck.len() == 1 {
+                        "cargo check".to_string()
+                    } else {
+                        format!("cargo check (#{})", id + 1)
+                    };
+                    self.report_progress(&title, state, message, None);
                 }
             },
         }
 
         let state_changed = self.process_changes();
         if prev_status == Status::Loading && self.status == Status::Ready {
-            if let Some(flycheck) = &self.flycheck {
+            for flycheck in &self.flycheck {
                 flycheck.update();
             }
         }
@@ -490,7 +497,7 @@ impl GlobalState {
                 Ok(())
             })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
-                if let Some(flycheck) = &this.flycheck {
+                for flycheck in &this.flycheck {
                     flycheck.update();
                 }
                 if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
