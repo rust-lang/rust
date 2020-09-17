@@ -285,8 +285,8 @@ impl Replacements<'tcx> {
         }
     }
 
-    fn for_src(&self, src: Local) -> Option<&Place<'tcx>> {
-        self.map[src].as_ref()
+    fn for_src(&self, src: Local) -> Option<Place<'tcx>> {
+        self.map[src]
     }
 }
 
