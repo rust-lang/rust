@@ -5,9 +5,8 @@ use super::{FusedIterator, TrustedLen};
 
 /// An iterator that repeats an element endlessly.
 ///
-/// This `struct` is created by the [`repeat`] function. See its documentation for more.
-///
-/// [`repeat`]: fn.repeat.html
+/// This `struct` is created by [`repeat`].
+/// See its documentation for more.
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat<A> {
@@ -102,10 +101,8 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 /// An iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure `F: FnMut() -> A`.
 ///
-/// This `struct` is created by the [`repeat_with`] function.
+/// This `struct` is created by [`repeat_with`].
 /// See its documentation for more.
-///
-/// [`repeat_with`]: fn.repeat_with.html
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub struct RepeatWith<F> {
@@ -201,9 +198,8 @@ pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
 
 /// An iterator that yields nothing.
 ///
-/// This `struct` is created by the [`empty`] function. See its documentation for more.
-///
-/// [`empty`]: fn.empty.html
+/// This `struct` is created by [`empty`].
+/// See its documentation for more.
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
 
@@ -292,9 +288,8 @@ pub const fn empty<T>() -> Empty<T> {
 
 /// An iterator that yields an element exactly once.
 ///
-/// This `struct` is created by the [`once`] function. See its documentation for more.
-///
-/// [`once`]: fn.once.html
+/// This `struct` is created by [`once`].
+/// See its documentation for more.
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
@@ -393,10 +388,8 @@ pub fn once<T>(value: T) -> Once<T> {
 /// An iterator that yields a single element of type `A` by
 /// applying the provided closure `F: FnOnce() -> A`.
 ///
-/// This `struct` is created by the [`once_with`] function.
+/// This `struct` is created by [`once_with`].
 /// See its documentation for more.
-///
-/// [`once_with`]: fn.once_with.html
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once_with", since = "1.43.0")]
 pub struct OnceWith<F> {
@@ -549,10 +542,8 @@ where
 
 /// An iterator where each iteration calls the provided closure `F: FnMut() -> Option<T>`.
 ///
-/// This `struct` is created by the [`iter::from_fn`] function.
+/// This `struct` is created by [`iter::from_fn`].
 /// See its documentation for more.
-///
-/// [`iter::from_fn`]: fn.from_fn.html
 #[derive(Clone)]
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub struct FromFn<F>(F);
@@ -601,10 +592,8 @@ where
 
 /// An new iterator where each successive item is computed based on the preceding one.
 ///
-/// This `struct` is created by the [`successors`] function.
+/// This `struct` is created by [`successors`].
 /// See its documentation for more.
-///
-/// [`successors`]: fn.successors.html
 #[derive(Clone)]
 #[stable(feature = "iter_successors", since = "1.34.0")]
 pub struct Successors<T, F> {
