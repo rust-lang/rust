@@ -273,7 +273,7 @@ impl DefCollector<'_> {
             let macro_id = MacroDefId {
                 ast_id: None,
                 krate: Some(krate),
-                kind: MacroDefKind::CustomDerive(expander),
+                kind: MacroDefKind::ProcMacro(expander),
                 local_inner: false,
             };
 

@@ -33,7 +33,7 @@ impl Hygiene {
                         MacroDefKind::BuiltIn(_) => (None, false),
                         MacroDefKind::BuiltInDerive(_) => (None, false),
                         MacroDefKind::BuiltInEager(_) => (None, false),
-                        MacroDefKind::CustomDerive(_) => (None, false),
+                        MacroDefKind::ProcMacro(_) => (None, false),
                     }
                 }
                 MacroCallId::EagerMacro(_id) => (None, false),
