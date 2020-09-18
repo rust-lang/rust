@@ -4,7 +4,7 @@ use crate::task::{Context, Poll};
 
 /// Creates a future that is immediately ready with a value.
 ///
-/// This `struct` is created by the [`ready`] function. See its
+/// This `struct` is created by [`ready()`]. See its
 /// documentation for more.
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 #[derive(Debug, Clone)]

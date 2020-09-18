@@ -33,7 +33,7 @@ where
 
 /// A Future that wraps a function returning `Poll`.
 ///
-/// This `struct` is created by the [`poll_fn`] function. See its
+/// This `struct` is created by [`poll_fn()`]. See its
 /// documentation for more.
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[unstable(feature = "future_poll_fn", issue = "72302")]
