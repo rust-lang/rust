@@ -751,6 +751,8 @@ pub trait RangeBounds<T: ?Sized> {
     /// ```
     /// #![feature(range_bounds_for_length)]
     ///
+    /// use std::ops::RangeBounds;
+    ///
     /// let v = [10, 40, 30];
     /// assert_eq!(1..2, (1..2).for_length(v.len()));
     /// assert_eq!(0..2, (..2).for_length(v.len()));
@@ -762,17 +764,23 @@ pub trait RangeBounds<T: ?Sized> {
     /// ```should_panic
     /// #![feature(range_bounds_for_length)]
     ///
+    /// use std::ops::RangeBounds;
+    ///
     /// (2..1).for_length(3);
     /// ```
     ///
     /// ```should_panic
     /// #![feature(range_bounds_for_length)]
     ///
+    /// use std::ops::RangeBounds;
+    ///
     /// (1..4).for_length(3);
     /// ```
     ///
     /// ```should_panic
     /// #![feature(range_bounds_for_length)]
+    ///
+    /// use std::ops::RangeBounds;
     ///
     /// (1..=usize::MAX).for_length(3);
     /// ```
