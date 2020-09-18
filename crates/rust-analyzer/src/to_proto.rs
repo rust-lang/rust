@@ -285,12 +285,18 @@ pub(crate) fn signature_help(
         })
     };
 
-    let signature =
-        lsp_types::SignatureInformation { label, documentation, parameters: Some(parameters) };
+    let active_parameter = call_info.active_parameter.map(|it| it as i64);
+
+    let signature = lsp_types::SignatureInformation {
+        label,
+        documentation,
+        parameters: Some(parameters),
+        active_parameter,
+    };
     lsp_types::SignatureHelp {
         signatures: vec![signature],
         active_signature: None,
-        active_parameter: call_info.active_parameter.map(|it| it as i64),
+        active_parameter,
     }
 }
 
