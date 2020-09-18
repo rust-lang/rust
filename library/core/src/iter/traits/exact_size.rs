@@ -6,17 +6,14 @@
 /// backwards, a good start is to know where the end is.
 ///
 /// When implementing an `ExactSizeIterator`, you must also implement
-/// [`Iterator`]. When doing so, the implementation of [`size_hint`] *must*
-/// return the exact size of the iterator.
-///
-/// [`Iterator`]: trait.Iterator.html
-/// [`size_hint`]: trait.Iterator.html#method.size_hint
+/// [`Iterator`]. When doing so, the implementation of [`Iterator::size_hint`]
+/// *must* return the exact size of the iterator.
 ///
 /// The [`len`] method has a default implementation, so you usually shouldn't
 /// implement it. However, you may be able to provide a more performant
 /// implementation than the default, so overriding it in this case makes sense.
 ///
-/// [`len`]: #method.len
+/// [`len`]: ExactSizeIterator::len
 ///
 /// # Examples
 ///
@@ -72,17 +69,17 @@ pub trait ExactSizeIterator: Iterator {
     /// Returns the exact length of the iterator.
     ///
     /// The implementation ensures that the iterator will return exactly `len()`
-    /// more times a `Some(T)` value, before returning `None`.
+    /// more times a [`Some(T)`] value, before returning [`None`].
     /// This method has a default implementation, so you usually should not
     /// implement it directly. However, if you can provide a more efficient
     /// implementation, you can do so. See the [trait-level] docs for an
     /// example.
     ///
-    /// This function has the same safety guarantees as the [`size_hint`]
-    /// function.
+    /// This function has the same safety guarantees as the
+    /// [`Iterator::size_hint`] function.
     ///
-    /// [trait-level]: trait.ExactSizeIterator.html
-    /// [`size_hint`]: trait.Iterator.html#method.size_hint
+    /// [trait-level]: ExactSizeIterator
+    /// [`Some(T)`]: Some
     ///
     /// # Examples
     ///
@@ -108,8 +105,8 @@ pub trait ExactSizeIterator: Iterator {
 
     /// Returns `true` if the iterator is empty.
     ///
-    /// This method has a default implementation using `self.len()`, so you
-    /// don't need to implement it yourself.
+    /// This method has a default implementation using
+    /// [`ExactSizeIterator::len()`], so you don't need to implement it yourself.
     ///
     /// # Examples
     ///
