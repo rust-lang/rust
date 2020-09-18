@@ -487,7 +487,7 @@ fn test_send_vectored_fds_unix_stream() {
             libc::close(fd_vec[0]);
         }
     } else {
-        assert!(false);
+        unreachable!("must be ScmRights");
     }
 }
 
@@ -553,7 +553,7 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
         assert_eq!(cred1.get_uid(), cred_vec[0].get_uid());
         assert_eq!(cred1.get_gid(), cred_vec[0].get_gid());
     } else {
-        assert!(false);
+        unreachable!("must be ScmCredentials");
     }
 }
 
@@ -598,6 +598,6 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
             libc::close(fd_vec[0]);
         }
     } else {
-        assert!(false);
+        unreachable!("must be ScmRights");
     }
 }
