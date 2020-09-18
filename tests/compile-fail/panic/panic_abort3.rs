@@ -1,6 +1,6 @@
-// ignore-test: Abort panics are not yet supported
-//error-pattern: the evaluated program panicked
+// error-pattern: the evaluated program aborted execution
 // compile-flags: -C panic=abort
+// ignore-windows: windows panics via inline assembly (FIXME)
 
 fn main() {
     core::panic!("panicking from libcore");
