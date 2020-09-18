@@ -135,7 +135,8 @@ impl Mutex {
             n => return n as *const _,
         }
         unsafe {
-            let inner = box Inner { remutex: ReentrantMutex::uninitialized(), held: Cell::new(false) };
+            let inner =
+                box Inner { remutex: ReentrantMutex::uninitialized(), held: Cell::new(false) };
             inner.remutex.init();
             let inner = Box::into_raw(inner);
             match self.lock.compare_and_swap(0, inner as usize, Ordering::SeqCst) {
@@ -182,9 +183,7 @@ impl ReentrantMutex {
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
         // SAFETY: The caller must ensure that the mutex is not moved or copied
-        unsafe {
-            c::TryEnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr())) != 0
-        }
+        unsafe { c::TryEnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr())) != 0 }
     }
 
     pub unsafe fn unlock(&self) {
