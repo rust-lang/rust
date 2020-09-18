@@ -55,7 +55,7 @@ impl ConstCx<'mir, 'tcx> {
     pub fn is_const_stable_const_fn(&self) -> bool {
         self.const_kind == Some(hir::ConstContext::ConstFn)
             && self.tcx.features().staged_api
-            && is_const_stable(self.tcx, self.def_id.to_def_id())
+            && is_const_stable_const_fn(self.tcx, self.def_id.to_def_id())
     }
 }
 
@@ -72,11 +72,13 @@ pub fn allow_internal_unstable(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: S
 
 // Returns `true` if the given `const fn` is "const-stable".
 //
+// Panics if the given `DefId` does not refer to a `const fn`.
+//
 // Const-stability is only relevant for `const fn` within a `staged_api` crate. Only "const-stable"
 // functions can be called in a const-context by users of the stable compiler. "const-stable"
 // functions are subject to more stringent restrictions than "const-unstable" functions: They
 // cannot use unstable features and can only call other "const-stable" functions.
-pub fn is_const_stable(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+pub fn is_const_stable_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     use attr::{ConstStability, Stability, StabilityLevel};
 
     // Const-stability is only relevant for `const fn`.
