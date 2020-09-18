@@ -1,0 +1,36 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/cross_crate_predicate.rs:7:13
+   |
+LL |     let _ = const_evaluatable_lib::test1::<T>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | 
+  ::: $DIR/auxiliary/const_evaluatable_lib.rs:6:41
+   |
+LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
+   |                                         ----- required by this bound in `test1`
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/cross_crate_predicate.rs:7:13
+   |
+LL |     let _ = const_evaluatable_lib::test1::<T>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | 
+  ::: $DIR/auxiliary/const_evaluatable_lib.rs:6:41
+   |
+LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
+   |                                         ----- required by this bound in `test1::{{constant}}#1`
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/cross_crate_predicate.rs:7:13
+   |
+LL |     let _ = const_evaluatable_lib::test1::<T>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 3 previous errors
+

@@ -552,6 +552,21 @@ pub fn provide(providers: &mut ty::query::Providers) {
         vtable_methods,
         type_implements_trait,
         subst_and_check_impossible_predicates,
+        mir_abstract_const: |tcx, def_id| {
+            let def_id = def_id.expect_local();
+            if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
+                tcx.mir_abstract_const_of_const_arg(def)
+            } else {
+                const_evaluatable::mir_abstract_const(tcx, ty::WithOptConstParam::unknown(def_id))
+            }
+        },
+        mir_abstract_const_of_const_arg: |tcx, (did, param_did)| {
+            const_evaluatable::mir_abstract_const(
+                tcx,
+                ty::WithOptConstParam { did, const_param_did: Some(param_did) },
+            )
+        },
+        try_unify_abstract_consts: const_evaluatable::try_unify_abstract_consts,
         ..*providers
     };
 }

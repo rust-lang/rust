@@ -329,7 +329,11 @@ fn mir_promoted(
     // this point, before we steal the mir-const result.
     // Also this means promotion can rely on all const checks having been done.
     let _ = tcx.mir_const_qualif_opt_const_arg(def);
-
+    let _ = if let Some(param_did) = def.const_param_did {
+        tcx.mir_abstract_const_of_const_arg((def.did, param_did))
+    } else {
+        tcx.mir_abstract_const(def.did.to_def_id())
+    };
     let mut body = tcx.mir_const(def).steal();
 
     let mut required_consts = Vec::new();
