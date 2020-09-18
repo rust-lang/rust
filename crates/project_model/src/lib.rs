@@ -308,7 +308,13 @@ impl ProjectWorkspace {
                     .crates()
                     .filter_map(|(crate_id, krate)| {
                         let file_path = &krate.root_module;
-                        let file_id = load(&file_path)?;
+                        let file_id = match load(&file_path) {
+                            Some(id) => id,
+                            None => {
+                                log::error!("failed to load crate root {}", file_path.display());
+                                return None;
+                            }
+                        };
 
                         let env = krate.env.clone().into_iter().collect();
                         let proc_macro = krate
