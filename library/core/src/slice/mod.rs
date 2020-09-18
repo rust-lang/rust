@@ -29,7 +29,7 @@ pub mod memchr;
 
 mod ascii;
 mod cmp;
-mod index;
+pub(crate) mod index;
 mod iter;
 mod raw;
 mod rotate;
@@ -74,9 +74,6 @@ pub use sort::heapsort;
 
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
-
-#[unstable(feature = "slice_check_range", issue = "76393")]
-pub use index::check_range;
 
 #[lang = "slice"]
 #[cfg(not(test))]
@@ -2758,7 +2755,7 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        let Range { start: src_start, end: src_end } = check_range(self.len(), src);
+        let Range { start: src_start, end: src_end } = src.for_length(self.len());
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
         // SAFETY: the conditions for `ptr::copy` have all been checked above,

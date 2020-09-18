@@ -1,5 +1,9 @@
 use crate::fmt;
 use crate::hash::Hash;
+use crate::slice::index::{
+    slice_end_index_len_fail, slice_end_index_overflow_fail, slice_index_order_fail,
+    slice_start_index_overflow_fail,
+};
 
 /// An unbounded range (`..`).
 ///
@@ -728,6 +732,84 @@ pub trait RangeBounds<T: ?Sized> {
             Excluded(ref end) => item < *end,
             Unbounded => true,
         })
+    }
+
+    /// Performs bounds-checking of this range.
+    ///
+    /// The returned [`Range`] is safe to pass to [`slice::get_unchecked`] and
+    /// [`slice::get_unchecked_mut`] for slices of the given length.
+    ///
+    /// [`slice::get_unchecked`]: crate::slice::get_unchecked
+    /// [`slice::get_unchecked_mut`]: crate::slice::get_unchecked_mut
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range would be out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_bounds_for_length)]
+    ///
+    /// let v = [10, 40, 30];
+    /// assert_eq!(1..2, (1..2).for_length(v.len()));
+    /// assert_eq!(0..2, (..2).for_length(v.len()));
+    /// assert_eq!(1..3, (1..).for_length(v.len()));
+    /// ```
+    ///
+    /// Panics when [`Index::index`] would panic:
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_for_length)]
+    ///
+    /// (2..1).for_length(3);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_for_length)]
+    ///
+    /// (1..4).for_length(3);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_for_length)]
+    ///
+    /// (1..=usize::MAX).for_length(3);
+    /// ```
+    ///
+    /// [`Index::index`]: crate::ops::Index::index
+    #[track_caller]
+    #[unstable(feature = "range_bounds_for_length", issue = "76393")]
+    fn for_length(self, len: usize) -> Range<usize>
+    where
+        Self: RangeBounds<usize>,
+    {
+        let start: Bound<&usize> = self.start_bound();
+        let start = match start {
+            Bound::Included(&start) => start,
+            Bound::Excluded(start) => {
+                start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
+            }
+            Bound::Unbounded => 0,
+        };
+
+        let end: Bound<&usize> = self.end_bound();
+        let end = match end {
+            Bound::Included(end) => {
+                end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
+            }
+            Bound::Excluded(&end) => end,
+            Bound::Unbounded => len,
+        };
+
+        if start > end {
+            slice_index_order_fail(start, end);
+        }
+        if end > len {
+            slice_end_index_len_fail(end, len);
+        }
+
+        Range { start, end }
     }
 }
 

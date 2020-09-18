@@ -1,6 +1,6 @@
 //! Indexing implementations for `[T]`.
 
-use crate::ops::{self, Bound, Range, RangeBounds};
+use crate::ops;
 use crate::ptr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -37,102 +37,29 @@ fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
 #[inline(never)]
 #[cold]
 #[track_caller]
-pub(super) fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
+pub(crate) fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
     panic!("range end index {} out of range for slice of length {}", index, len);
 }
 
 #[inline(never)]
 #[cold]
 #[track_caller]
-pub(super) fn slice_index_order_fail(index: usize, end: usize) -> ! {
+pub(crate) fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
 #[inline(never)]
 #[cold]
 #[track_caller]
-pub(super) fn slice_start_index_overflow_fail() -> ! {
+pub(crate) fn slice_start_index_overflow_fail() -> ! {
     panic!("attempted to index slice from after maximum usize");
 }
 
 #[inline(never)]
 #[cold]
 #[track_caller]
-pub(super) fn slice_end_index_overflow_fail() -> ! {
+pub(crate) fn slice_end_index_overflow_fail() -> ! {
     panic!("attempted to index slice up to maximum usize");
-}
-
-/// Performs bounds-checking of the given range.
-/// The returned [`Range`] is safe to pass to [`get_unchecked`] and [`get_unchecked_mut`]
-/// for slices of the given length.
-///
-/// [`get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
-/// [`get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
-///
-/// # Panics
-///
-/// Panics if the range is out of bounds.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(slice_check_range)]
-/// use std::slice;
-///
-/// let v = [10, 40, 30];
-/// assert_eq!(1..2, slice::check_range(v.len(), 1..2));
-/// assert_eq!(0..2, slice::check_range(v.len(), ..2));
-/// assert_eq!(1..3, slice::check_range(v.len(), 1..));
-/// ```
-///
-/// Panics when [`Index::index`] would panic:
-///
-/// ```should_panic
-/// #![feature(slice_check_range)]
-///
-/// std::slice::check_range(3, 2..1);
-/// ```
-///
-/// ```should_panic
-/// #![feature(slice_check_range)]
-///
-/// std::slice::check_range(3, 1..4);
-/// ```
-///
-/// ```should_panic
-/// #![feature(slice_check_range)]
-///
-/// std::slice::check_range(3, 1..=usize::MAX);
-/// ```
-///
-/// [`Index::index`]: ops::Index::index
-#[track_caller]
-#[unstable(feature = "slice_check_range", issue = "76393")]
-pub fn check_range<R: RangeBounds<usize>>(len: usize, range: R) -> Range<usize> {
-    let start = match range.start_bound() {
-        Bound::Included(&start) => start,
-        Bound::Excluded(start) => {
-            start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
-        }
-        Bound::Unbounded => 0,
-    };
-
-    let end = match range.end_bound() {
-        Bound::Included(end) => {
-            end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
-        }
-        Bound::Excluded(&end) => end,
-        Bound::Unbounded => len,
-    };
-
-    if start > end {
-        slice_index_order_fail(start, end);
-    }
-    if end > len {
-        slice_end_index_len_fail(end, len);
-    }
-
-    Range { start, end }
 }
 
 mod private_slice_index {
