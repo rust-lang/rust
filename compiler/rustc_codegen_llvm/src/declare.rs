@@ -51,17 +51,32 @@ fn declare_raw_fn(
     llfn
 }
 
-impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
+impl CodegenCx<'ll, 'tcx> {
+    /// Declare a global value.
+    ///
+    /// If there’s a value with the same name already declared, the function will
+    /// return its Value instead.
+    pub fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
         unsafe { llvm::LLVMRustGetOrInsertGlobal(self.llmod, name.as_ptr().cast(), name.len(), ty) }
     }
 
-    fn declare_cfn(&self, name: &str, fn_type: &'ll Type) -> &'ll Value {
+    /// Declare a C ABI function.
+    ///
+    /// Only use this for foreign function ABIs and glue. For Rust functions use
+    /// `declare_fn` instead.
+    ///
+    /// If there’s a value with the same name already declared, the function will
+    /// update the declaration and return existing Value instead.
+    pub fn declare_cfn(&self, name: &str, fn_type: &'ll Type) -> &'ll Value {
         declare_raw_fn(self, name, llvm::CCallConv, fn_type)
     }
 
-    fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Value {
+    /// Declare a Rust function.
+    ///
+    /// If there’s a value with the same name already declared, the function will
+    /// update the declaration and return existing Value instead.
+    pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
         let llfn = declare_raw_fn(self, name, fn_abi.llvm_cconv(), fn_abi.llvm_type(self));
@@ -69,7 +84,13 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         llfn
     }
 
-    fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
+    /// Declare a global with an intention to define it.
+    ///
+    /// Use this function when you intend to define a global. This function will
+    /// return `None` if the name already has a definition associated with it. In that
+    /// case an error should be reported to the user, because it usually happens due
+    /// to user’s fault (e.g., misuse of `#[no_mangle]` or `#[export_name]` attributes).
+    pub fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
         if self.get_defined_value(name).is_some() {
             None
         } else {
@@ -77,16 +98,22 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
+    /// Declare a private global
+    ///
+    /// Use this function when you intend to define a global without a name.
+    pub fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty) }
     }
 
-    fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
+    /// Gets declared value by name.
+    pub fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
         debug!("get_declared_value(name={:?})", name);
         unsafe { llvm::LLVMRustGetNamedValue(self.llmod, name.as_ptr().cast(), name.len()) }
     }
 
-    fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
+    /// Gets defined or externally defined (AvailableExternally linkage) value by
+    /// name.
+    pub fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
         self.get_declared_value(name).and_then(|val| {
             let declaration = unsafe { llvm::LLVMIsDeclaration(val) != 0 };
             if !declaration { Some(val) } else { None }
