@@ -6,7 +6,7 @@
 
 mod versions;
 
-use crate::versions::PkgType;
+use crate::versions::{PkgType, Versions};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -227,14 +227,7 @@ macro_rules! t {
 }
 
 struct Builder {
-    rust_release: String,
-    cargo_release: String,
-    rls_release: String,
-    rust_analyzer_release: String,
-    clippy_release: String,
-    rustfmt_release: String,
-    llvm_tools_release: String,
-    miri_release: String,
+    versions: Versions,
 
     input: PathBuf,
     output: PathBuf,
@@ -281,15 +274,9 @@ fn main() {
     let input = PathBuf::from(args.next().unwrap());
     let output = PathBuf::from(args.next().unwrap());
     let date = args.next().unwrap();
-    let rust_release = args.next().unwrap();
     let s3_address = args.next().unwrap();
-    let cargo_release = args.next().unwrap();
-    let rls_release = args.next().unwrap();
-    let rust_analyzer_release = args.next().unwrap();
-    let clippy_release = args.next().unwrap();
-    let miri_release = args.next().unwrap();
-    let rustfmt_release = args.next().unwrap();
-    let llvm_tools_release = args.next().unwrap();
+    let channel = args.next().unwrap();
+    let monorepo_path = args.next().unwrap();
 
     // Do not ask for a passphrase while manually testing
     let mut passphrase = String::new();
@@ -299,14 +286,7 @@ fn main() {
     }
 
     Builder {
-        rust_release,
-        cargo_release,
-        rls_release,
-        rust_analyzer_release,
-        clippy_release,
-        rustfmt_release,
-        llvm_tools_release,
-        miri_release,
+        versions: Versions::new(&channel, Path::new(&monorepo_path)).unwrap(),
 
         input,
         output,
@@ -363,10 +343,11 @@ impl Builder {
         self.check_toolstate();
         self.digest_and_sign();
         let manifest = self.build_manifest();
-        self.write_channel_files(&self.rust_release, &manifest);
 
-        if self.rust_release != "beta" && self.rust_release != "nightly" {
-            self.write_channel_files("stable", &manifest);
+        let rust_version = self.versions.package_version(&PkgType::Rust).unwrap();
+        self.write_channel_files(self.versions.channel(), &manifest);
+        if self.versions.channel() != rust_version {
+            self.write_channel_files(&rust_version, &manifest);
         }
     }
 
@@ -473,7 +454,7 @@ impl Builder {
         // The compiler libraries are not stable for end users, and they're also huge, so we only
         // `rustc-dev` for nightly users, and only in the "complete" profile. It's still possible
         // for users to install the additional component manually, if needed.
-        if self.rust_release == "nightly" {
+        if self.versions.channel() == "nightly" {
             self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
             self.extend_profile("complete", &mut manifest.profiles, &["rustc-docs"]);
         }
@@ -511,7 +492,7 @@ impl Builder {
     }
 
     fn target_host_combination(&mut self, host: &str, manifest: &Manifest) -> Option<Target> {
-        let filename = self.filename("rust", host);
+        let filename = self.versions.tarball_name(&PkgType::Rust, host).unwrap();
         let digest = self.digests.remove(&filename)?;
         let xz_filename = filename.replace(".tar.gz", ".tar.xz");
         let xz_digest = self.digests.remove(&xz_filename);
@@ -610,7 +591,7 @@ impl Builder {
             .unwrap_or_default(); // `is_present` defaults to `false` here.
 
         // Never ship nightly-only components for other trains.
-        if self.rust_release != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkgname) {
+        if self.versions.channel() != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkgname) {
             is_present = false; // Pretend the component is entirely missing.
         }
 
@@ -619,7 +600,10 @@ impl Builder {
             .map(|name| {
                 if is_present {
                     // The component generally exists, but it might still be missing for this target.
-                    let filename = self.filename(pkgname, name);
+                    let filename = self
+                        .versions
+                        .tarball_name(&PkgType::from_component(pkgname), name)
+                        .unwrap();
                     let digest = match self.digests.remove(&filename) {
                         Some(digest) => digest,
                         // This component does not exist for this target -- skip it.
@@ -662,23 +646,6 @@ impl Builder {
         format!("{}/{}/{}", self.s3_address, self.date, filename)
     }
 
-    fn filename(&self, component: &str, target: &str) -> String {
-        use PkgType::*;
-        match PkgType::from_component(component) {
-            RustSrc => format!("rust-src-{}.tar.gz", self.rust_release),
-            Cargo => format!("cargo-{}-{}.tar.gz", self.cargo_release, target),
-            Rls => format!("rls-{}-{}.tar.gz", self.rls_release, target),
-            RustAnalyzer => {
-                format!("rust-analyzer-{}-{}.tar.gz", self.rust_analyzer_release, target)
-            }
-            Clippy => format!("clippy-{}-{}.tar.gz", self.clippy_release, target),
-            Rustfmt => format!("rustfmt-{}-{}.tar.gz", self.rustfmt_release, target),
-            LlvmTools => format!("llvm-tools-{}-{}.tar.gz", self.llvm_tools_release, target),
-            Miri => format!("miri-{}-{}.tar.gz", self.miri_release, target),
-            Other(_) => format!("{}-{}-{}.tar.gz", component, self.rust_release, target),
-        }
-    }
-
     fn cached_version(&self, component: &str) -> &Option<String> {
         use PkgType::*;
         match PkgType::from_component(component) {
@@ -707,20 +674,24 @@ impl Builder {
         }
     }
 
-    fn version(&self, component: &str, target: &str) -> Option<String> {
+    fn version(&mut self, component: &str, target: &str) -> Option<String> {
         self.untar(component, target, |filename| format!("{}/version", filename))
     }
 
-    fn git_commit_hash(&self, component: &str, target: &str) -> Option<String> {
+    fn git_commit_hash(&mut self, component: &str, target: &str) -> Option<String> {
         self.untar(component, target, |filename| format!("{}/git-commit-hash", filename))
     }
 
-    fn untar<F>(&self, component: &str, target: &str, dir: F) -> Option<String>
+    fn untar<F>(&mut self, component: &str, target: &str, dir: F) -> Option<String>
     where
         F: FnOnce(String) -> String,
     {
+        let filename = self
+            .versions
+            .tarball_name(&PkgType::from_component(component), target)
+            .expect("failed to retrieve the tarball path");
+
         let mut cmd = Command::new("tar");
-        let filename = self.filename(component, target);
         cmd.arg("xf")
             .arg(self.input.join(&filename))
             .arg(dir(filename.replace(".tar.gz", "")))
