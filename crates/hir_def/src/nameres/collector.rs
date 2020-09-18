@@ -87,6 +87,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
         mod_dirs: FxHashMap::default(),
         cfg_options,
         proc_macros,
+        exports_proc_macros: false,
         from_glob_import: Default::default(),
     };
     collector.collect();
@@ -203,6 +204,7 @@ struct DefCollector<'a> {
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
     proc_macros: Vec<(Name, ProcMacroExpander)>,
+    exports_proc_macros: bool,
     from_glob_import: PerNsGlobImports,
 }
 
@@ -260,9 +262,25 @@ impl DefCollector<'_> {
             self.record_resolved_import(directive)
         }
         self.unresolved_imports = unresolved_imports;
+
+        // FIXME: This condition should instead check if this is a `proc-macro` type crate.
+        if self.exports_proc_macros {
+            // A crate exporting procedural macros is not allowed to export anything else.
+            //
+            // Additionally, while the proc macro entry points must be `pub`, they are not publicly
+            // exported in type/value namespace. This function reduces the visibility of all items
+            // in the crate root that aren't proc macros.
+            let root = self.def_map.root;
+            let root = &mut self.def_map.modules[root];
+            root.scope.censor_non_proc_macros(ModuleId {
+                krate: self.def_map.krate,
+                local_id: self.def_map.root,
+            });
+        }
     }
 
     fn resolve_proc_macro(&mut self, name: &Name) {
+        self.exports_proc_macros = true;
         let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
             Some((_, expander)) => MacroDefId {
                 ast_id: None,
@@ -1310,6 +1328,7 @@ mod tests {
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
             proc_macros: Default::default(),
+            exports_proc_macros: false,
             from_glob_import: Default::default(),
         };
         collector.collect();
