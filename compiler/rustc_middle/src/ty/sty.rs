@@ -19,6 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -672,22 +673,34 @@ pub enum ExistentialPredicate<'tcx> {
 impl<'tcx> ExistentialPredicate<'tcx> {
     /// Compares via an ordering that will not change if modules are reordered or other changes are
     /// made to the tree. In particular, this ordering is preserved across incremental compilations.
-    pub fn stable_cmp(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Ordering {
+    pub fn stable_cmp(self, tcx: TyCtxt<'tcx>, other: Self) -> Ordering {
         use self::ExistentialPredicate::*;
         // Note that we only call this method after checking that the
         // given predicates represent a valid trait object.
         //
         // This means that we have at most one `ExistentialPredicate::Trait`
         // and at most one `ExistentialPredicate::Projection` for each associated item.
-        // We therefore do not have to worry about the ordering for cases which
-        // are not well formed.
-        match (*self, *other) {
-            (Trait(_), Trait(_)) => Ordering::Equal,
-            (Projection(ref a), Projection(ref b)) => {
+        match (self, other) {
+            (Trait(a), Trait(b)) => {
+                if a != b {
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        &format!("unexpected existential predicates: {:?}, {:?}", a, b),
+                    );
+                }
+                Ordering::Equal
+            }
+            (Projection(a), Projection(b)) => {
+                if a.item_def_id == b.item_def_id && a != b {
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        &format!("unexpected existential predicates: {:?}, {:?}", a, b),
+                    );
+                }
                 tcx.def_path_hash(a.item_def_id).cmp(&tcx.def_path_hash(b.item_def_id))
             }
-            (AutoTrait(ref a), AutoTrait(ref b)) => {
-                tcx.trait_def(*a).def_path_hash.cmp(&tcx.trait_def(*b).def_path_hash)
+            (AutoTrait(a), AutoTrait(b)) => {
+                tcx.trait_def(a).def_path_hash.cmp(&tcx.trait_def(b).def_path_hash)
             }
             (Trait(_), _) => Ordering::Less,
             (Projection(_), Trait(_)) => Ordering::Greater,

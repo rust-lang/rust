@@ -1192,8 +1192,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .map(|x| ty::ExistentialPredicate::Projection(x.skip_binder())),
             )
             .collect::<SmallVec<[_; 8]>>();
-        v.sort_by(|a, b| a.stable_cmp(tcx, b));
-        v.dedup_by(|a, b| a.stable_cmp(tcx, b) == Ordering::Equal);
+        v.sort_by(|&a, &b| a.stable_cmp(tcx, b));
+        v.dedup_by(|&mut a, &mut b| a.stable_cmp(tcx, b) == Ordering::Equal);
         let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
 
         // Use explicitly-specified region bound.

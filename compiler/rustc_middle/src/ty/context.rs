@@ -2420,7 +2420,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> &'tcx List<ExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
         // Do not allow duplicate existential predicates.
-        assert!(eps.windows(2).all(|w| w[0].stable_cmp(self, &w[1]) == Ordering::Less));
+        assert!(eps.windows(2).all(|w| w[0].stable_cmp(self, w[1]) == Ordering::Less));
         self._intern_existential_predicates(eps)
     }
 
