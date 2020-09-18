@@ -874,184 +874,183 @@ impl ModCollector<'_, '_> {
 
         for &item in items {
             let attrs = self.item_tree.attrs(item.into());
-            if self.is_cfg_enabled(attrs) {
-                let module =
-                    ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
-                let container = ContainerId::ModuleId(module);
+            if !self.is_cfg_enabled(attrs) {
+                continue;
+            }
+            let module =
+                ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
+            let container = ContainerId::ModuleId(module);
 
-                let mut def = None;
-                match item {
-                    ModItem::Mod(m) => self.collect_module(&self.item_tree[m], attrs),
-                    ModItem::Import(import_id) => {
-                        self.def_collector.unresolved_imports.push(ImportDirective {
-                            module_id: self.module_id,
-                            import: Import::from_use(
-                                &self.item_tree,
-                                InFile::new(self.file_id, import_id),
-                            ),
-                            status: PartialResolvedImport::Unresolved,
-                        })
-                    }
-                    ModItem::ExternCrate(import_id) => {
-                        self.def_collector.unresolved_imports.push(ImportDirective {
-                            module_id: self.module_id,
-                            import: Import::from_extern_crate(
-                                &self.item_tree,
-                                InFile::new(self.file_id, import_id),
-                            ),
-                            status: PartialResolvedImport::Unresolved,
-                        })
-                    }
-                    ModItem::MacroCall(mac) => self.collect_macro(&self.item_tree[mac]),
-                    ModItem::Impl(imp) => {
-                        let module = ModuleId {
-                            krate: self.def_collector.def_map.krate,
-                            local_id: self.module_id,
-                        };
-                        let container = ContainerId::ModuleId(module);
-                        let impl_id = ImplLoc { container, id: ItemTreeId::new(self.file_id, imp) }
-                            .intern(self.def_collector.db);
-                        self.def_collector.def_map.modules[self.module_id]
-                            .scope
-                            .define_impl(impl_id)
-                    }
-                    ModItem::Function(id) => {
-                        let func = &self.item_tree[id];
-                        def = Some(DefData {
-                            id: FunctionLoc {
-                                container: container.into(),
-                                id: ItemTreeId::new(self.file_id, id),
-                            }
-                            .intern(self.def_collector.db)
-                            .into(),
-                            name: &func.name,
-                            visibility: &self.item_tree[func.visibility],
-                            has_constructor: false,
-                        });
-                    }
-                    ModItem::Struct(id) => {
-                        let it = &self.item_tree[id];
-
-                        // FIXME: check attrs to see if this is an attribute macro invocation;
-                        // in which case we don't add the invocation, just a single attribute
-                        // macro invocation
-                        self.collect_derives(attrs, it.ast_id.upcast());
-
-                        def = Some(DefData {
-                            id: StructLoc { container, id: ItemTreeId::new(self.file_id, id) }
-                                .intern(self.def_collector.db)
-                                .into(),
-                            name: &it.name,
-                            visibility: &self.item_tree[it.visibility],
-                            has_constructor: it.kind != StructDefKind::Record,
-                        });
-                    }
-                    ModItem::Union(id) => {
-                        let it = &self.item_tree[id];
-
-                        // FIXME: check attrs to see if this is an attribute macro invocation;
-                        // in which case we don't add the invocation, just a single attribute
-                        // macro invocation
-                        self.collect_derives(attrs, it.ast_id.upcast());
-
-                        def = Some(DefData {
-                            id: UnionLoc { container, id: ItemTreeId::new(self.file_id, id) }
-                                .intern(self.def_collector.db)
-                                .into(),
-                            name: &it.name,
-                            visibility: &self.item_tree[it.visibility],
-                            has_constructor: false,
-                        });
-                    }
-                    ModItem::Enum(id) => {
-                        let it = &self.item_tree[id];
-
-                        // FIXME: check attrs to see if this is an attribute macro invocation;
-                        // in which case we don't add the invocation, just a single attribute
-                        // macro invocation
-                        self.collect_derives(attrs, it.ast_id.upcast());
-
-                        def = Some(DefData {
-                            id: EnumLoc { container, id: ItemTreeId::new(self.file_id, id) }
-                                .intern(self.def_collector.db)
-                                .into(),
-                            name: &it.name,
-                            visibility: &self.item_tree[it.visibility],
-                            has_constructor: false,
-                        });
-                    }
-                    ModItem::Const(id) => {
-                        let it = &self.item_tree[id];
-
-                        if let Some(name) = &it.name {
-                            def = Some(DefData {
-                                id: ConstLoc {
-                                    container: container.into(),
-                                    id: ItemTreeId::new(self.file_id, id),
-                                }
-                                .intern(self.def_collector.db)
-                                .into(),
-                                name,
-                                visibility: &self.item_tree[it.visibility],
-                                has_constructor: false,
-                            });
+            let mut def = None;
+            match item {
+                ModItem::Mod(m) => self.collect_module(&self.item_tree[m], attrs),
+                ModItem::Import(import_id) => {
+                    self.def_collector.unresolved_imports.push(ImportDirective {
+                        module_id: self.module_id,
+                        import: Import::from_use(
+                            &self.item_tree,
+                            InFile::new(self.file_id, import_id),
+                        ),
+                        status: PartialResolvedImport::Unresolved,
+                    })
+                }
+                ModItem::ExternCrate(import_id) => {
+                    self.def_collector.unresolved_imports.push(ImportDirective {
+                        module_id: self.module_id,
+                        import: Import::from_extern_crate(
+                            &self.item_tree,
+                            InFile::new(self.file_id, import_id),
+                        ),
+                        status: PartialResolvedImport::Unresolved,
+                    })
+                }
+                ModItem::MacroCall(mac) => self.collect_macro(&self.item_tree[mac]),
+                ModItem::Impl(imp) => {
+                    let module = ModuleId {
+                        krate: self.def_collector.def_map.krate,
+                        local_id: self.module_id,
+                    };
+                    let container = ContainerId::ModuleId(module);
+                    let impl_id = ImplLoc { container, id: ItemTreeId::new(self.file_id, imp) }
+                        .intern(self.def_collector.db);
+                    self.def_collector.def_map.modules[self.module_id].scope.define_impl(impl_id)
+                }
+                ModItem::Function(id) => {
+                    let func = &self.item_tree[id];
+                    def = Some(DefData {
+                        id: FunctionLoc {
+                            container: container.into(),
+                            id: ItemTreeId::new(self.file_id, id),
                         }
-                    }
-                    ModItem::Static(id) => {
-                        let it = &self.item_tree[id];
+                        .intern(self.def_collector.db)
+                        .into(),
+                        name: &func.name,
+                        visibility: &self.item_tree[func.visibility],
+                        has_constructor: false,
+                    });
+                }
+                ModItem::Struct(id) => {
+                    let it = &self.item_tree[id];
 
-                        def = Some(DefData {
-                            id: StaticLoc { container, id: ItemTreeId::new(self.file_id, id) }
-                                .intern(self.def_collector.db)
-                                .into(),
-                            name: &it.name,
-                            visibility: &self.item_tree[it.visibility],
-                            has_constructor: false,
-                        });
-                    }
-                    ModItem::Trait(id) => {
-                        let it = &self.item_tree[id];
+                    // FIXME: check attrs to see if this is an attribute macro invocation;
+                    // in which case we don't add the invocation, just a single attribute
+                    // macro invocation
+                    self.collect_derives(attrs, it.ast_id.upcast());
 
-                        def = Some(DefData {
-                            id: TraitLoc { container, id: ItemTreeId::new(self.file_id, id) }
-                                .intern(self.def_collector.db)
-                                .into(),
-                            name: &it.name,
-                            visibility: &self.item_tree[it.visibility],
-                            has_constructor: false,
-                        });
-                    }
-                    ModItem::TypeAlias(id) => {
-                        let it = &self.item_tree[id];
+                    def = Some(DefData {
+                        id: StructLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                            .intern(self.def_collector.db)
+                            .into(),
+                        name: &it.name,
+                        visibility: &self.item_tree[it.visibility],
+                        has_constructor: it.kind != StructDefKind::Record,
+                    });
+                }
+                ModItem::Union(id) => {
+                    let it = &self.item_tree[id];
 
+                    // FIXME: check attrs to see if this is an attribute macro invocation;
+                    // in which case we don't add the invocation, just a single attribute
+                    // macro invocation
+                    self.collect_derives(attrs, it.ast_id.upcast());
+
+                    def = Some(DefData {
+                        id: UnionLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                            .intern(self.def_collector.db)
+                            .into(),
+                        name: &it.name,
+                        visibility: &self.item_tree[it.visibility],
+                        has_constructor: false,
+                    });
+                }
+                ModItem::Enum(id) => {
+                    let it = &self.item_tree[id];
+
+                    // FIXME: check attrs to see if this is an attribute macro invocation;
+                    // in which case we don't add the invocation, just a single attribute
+                    // macro invocation
+                    self.collect_derives(attrs, it.ast_id.upcast());
+
+                    def = Some(DefData {
+                        id: EnumLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                            .intern(self.def_collector.db)
+                            .into(),
+                        name: &it.name,
+                        visibility: &self.item_tree[it.visibility],
+                        has_constructor: false,
+                    });
+                }
+                ModItem::Const(id) => {
+                    let it = &self.item_tree[id];
+
+                    if let Some(name) = &it.name {
                         def = Some(DefData {
-                            id: TypeAliasLoc {
+                            id: ConstLoc {
                                 container: container.into(),
                                 id: ItemTreeId::new(self.file_id, id),
                             }
                             .intern(self.def_collector.db)
                             .into(),
-                            name: &it.name,
+                            name,
                             visibility: &self.item_tree[it.visibility],
                             has_constructor: false,
                         });
                     }
                 }
+                ModItem::Static(id) => {
+                    let it = &self.item_tree[id];
 
-                if let Some(DefData { id, name, visibility, has_constructor }) = def {
-                    self.def_collector.def_map.modules[self.module_id].scope.define_def(id);
-                    let vis = self
-                        .def_collector
-                        .def_map
-                        .resolve_visibility(self.def_collector.db, self.module_id, visibility)
-                        .unwrap_or(Visibility::Public);
-                    self.def_collector.update(
-                        self.module_id,
-                        &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor))],
-                        vis,
-                        ImportType::Named,
-                    )
+                    def = Some(DefData {
+                        id: StaticLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                            .intern(self.def_collector.db)
+                            .into(),
+                        name: &it.name,
+                        visibility: &self.item_tree[it.visibility],
+                        has_constructor: false,
+                    });
                 }
+                ModItem::Trait(id) => {
+                    let it = &self.item_tree[id];
+
+                    def = Some(DefData {
+                        id: TraitLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                            .intern(self.def_collector.db)
+                            .into(),
+                        name: &it.name,
+                        visibility: &self.item_tree[it.visibility],
+                        has_constructor: false,
+                    });
+                }
+                ModItem::TypeAlias(id) => {
+                    let it = &self.item_tree[id];
+
+                    def = Some(DefData {
+                        id: TypeAliasLoc {
+                            container: container.into(),
+                            id: ItemTreeId::new(self.file_id, id),
+                        }
+                        .intern(self.def_collector.db)
+                        .into(),
+                        name: &it.name,
+                        visibility: &self.item_tree[it.visibility],
+                        has_constructor: false,
+                    });
+                }
+            }
+
+            if let Some(DefData { id, name, visibility, has_constructor }) = def {
+                self.def_collector.def_map.modules[self.module_id].scope.define_def(id);
+                let vis = self
+                    .def_collector
+                    .def_map
+                    .resolve_visibility(self.def_collector.db, self.module_id, visibility)
+                    .unwrap_or(Visibility::Public);
+                self.def_collector.update(
+                    self.module_id,
+                    &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor))],
+                    vis,
+                    ImportType::Named,
+                )
             }
         }
     }
