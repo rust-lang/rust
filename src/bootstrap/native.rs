@@ -19,7 +19,6 @@ use std::process::Command;
 use build_helper::{output, t};
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::channel;
 use crate::config::TargetSelection;
 use crate::util::{self, exe};
 use crate::GitRepo;
@@ -296,7 +295,7 @@ impl Step for Llvm {
             // release number on the dev channel.
             cfg.define("LLVM_VERSION_SUFFIX", "-rust-dev");
         } else {
-            let suffix = format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel);
+            let suffix = format!("-rust-{}-{}", builder.version, builder.config.channel);
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
