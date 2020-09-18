@@ -3594,6 +3594,7 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",

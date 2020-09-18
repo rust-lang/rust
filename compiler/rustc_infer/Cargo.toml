@@ -21,4 +21,5 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+arrayvec = { version = "0.5.1", default-features = false }
 rustc_ast = { path = "../rustc_ast" }
