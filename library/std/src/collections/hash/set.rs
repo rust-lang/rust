@@ -1173,6 +1173,16 @@ where
 /// See its documentation for more.
 ///
 /// [`iter`]: HashSet::iter
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// let a: HashSet<u32> = vec![1, 2, 3].into_iter().collect();
+///
+/// let mut iter = a.iter();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a> {
     base: base::Iter<'a, K>,
@@ -1184,6 +1194,16 @@ pub struct Iter<'a, K: 'a> {
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// let a: HashSet<u32> = vec![1, 2, 3].into_iter().collect();
+///
+/// let mut iter = a.into_iter();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
     base: base::IntoIter<K>,
@@ -1195,6 +1215,16 @@ pub struct IntoIter<K> {
 /// See its documentation for more.
 ///
 /// [`drain`]: HashSet::drain
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// let mut a: HashSet<u32> = vec![1, 2, 3].into_iter().collect();
+///
+/// let mut drain = a.drain();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
     base: base::Drain<'a, K>,
@@ -1205,6 +1235,18 @@ pub struct Drain<'a, K: 'a> {
 /// This `struct` is created by the [`drain_filter`] method on [`HashSet`].
 ///
 /// [`drain_filter`]: HashSet::drain_filter
+///
+/// # Examples
+///
+/// ```
+/// #![feature(hash_drain_filter)]
+///
+/// use std::collections::HashSet;
+///
+/// let mut a: HashSet<u32> = vec![1, 2, 3].into_iter().collect();
+///
+/// let mut drain_filtered = a.drain_filter(|v| v % 2 == 0);
+/// ```
 #[unstable(feature = "hash_drain_filter", issue = "59618")]
 pub struct DrainFilter<'a, K, F>
 where
@@ -1219,6 +1261,17 @@ where
 /// See its documentation for more.
 ///
 /// [`intersection`]: HashSet::intersection
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// let a: HashSet<u32> = vec![1, 2, 3].into_iter().collect();
+/// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
+///
+/// let mut intersection = a.intersection(&b);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -1233,6 +1286,17 @@ pub struct Intersection<'a, T: 'a, S: 'a> {
 /// See its documentation for more.
 ///
 /// [`difference`]: HashSet::difference
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// let a: HashSet<u32> = vec![1, 2, 3].into_iter().collect();
+/// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
+///
+/// let mut difference = a.difference(&b);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -1247,6 +1311,17 @@ pub struct Difference<'a, T: 'a, S: 'a> {
 /// [`HashSet`]. See its documentation for more.
 ///
 /// [`symmetric_difference`]: HashSet::symmetric_difference
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// let a: HashSet<u32> = vec![1, 2, 3].into_iter().collect();
+/// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
+///
+/// let mut intersection = a.symmetric_difference(&b);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
     iter: Chain<Difference<'a, T, S>, Difference<'a, T, S>>,
@@ -1258,6 +1333,17 @@ pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
 /// See its documentation for more.
 ///
 /// [`union`]: HashSet::union
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// let a: HashSet<u32> = vec![1, 2, 3].into_iter().collect();
+/// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
+///
+/// let mut union_iter = a.union(&b);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>,
