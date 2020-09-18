@@ -4,6 +4,7 @@ use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::ty::walk::MiniSet;
 
 // `pretty` is a separate module only for organization.
 mod pretty;
@@ -263,21 +264,33 @@ pub trait Printer<'tcx>: Sized {
 /// function tries to find a "characteristic `DefId`" for a
 /// type. It's just a heuristic so it makes some questionable
 /// decisions and we may want to adjust it later.
-pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
+///
+/// Visited set is needed to avoid full iteration over
+/// deeply nested tuples that have no DefId.
+fn characteristic_def_id_of_type_cached<'a>(
+    ty: Ty<'a>,
+    visited: &mut MiniSet<Ty<'a>>,
+) -> Option<DefId> {
     match *ty.kind() {
         ty::Adt(adt_def, _) => Some(adt_def.did),
 
         ty::Dynamic(data, ..) => data.principal_def_id(),
 
-        ty::Array(subty, _) | ty::Slice(subty) => characteristic_def_id_of_type(subty),
-
-        ty::RawPtr(mt) => characteristic_def_id_of_type(mt.ty),
-
-        ty::Ref(_, ty, _) => characteristic_def_id_of_type(ty),
-
-        ty::Tuple(ref tys) => {
-            tys.iter().find_map(|ty| characteristic_def_id_of_type(ty.expect_ty()))
+        ty::Array(subty, _) | ty::Slice(subty) => {
+            characteristic_def_id_of_type_cached(subty, visited)
         }
+
+        ty::RawPtr(mt) => characteristic_def_id_of_type_cached(mt.ty, visited),
+
+        ty::Ref(_, ty, _) => characteristic_def_id_of_type_cached(ty, visited),
+
+        ty::Tuple(ref tys) => tys.iter().find_map(|ty| {
+            let ty = ty.expect_ty();
+            if visited.insert(ty) {
+                return characteristic_def_id_of_type_cached(ty, visited);
+            }
+            return None;
+        }),
 
         ty::FnDef(def_id, _)
         | ty::Closure(def_id, _)
@@ -301,6 +314,9 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
         | ty::Never
         | ty::Float(_) => None,
     }
+}
+pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
+    characteristic_def_id_of_type_cached(ty, &mut MiniSet::new())
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::RegionKind {

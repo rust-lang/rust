@@ -31,6 +31,9 @@ use super::unify_key::replace_if_possible;
 use super::unify_key::{ConstVarValue, ConstVariableValue};
 use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use super::{InferCtxt, MiscVariable, TypeTrace};
+use arrayvec::ArrayVec;
+use rustc_data_structures::fx::FxHashMap;
+use std::hash::Hash;
 
 use crate::traits::{Obligation, PredicateObligations};
 
@@ -43,6 +46,63 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::DUMMY_SP;
+
+/// Small-storage-optimized implementation of a map
+/// made specifically for caching results.
+///
+/// Stores elements in a small array up to a certain length
+/// and switches to `HashMap` when that length is exceeded.
+enum MiniMap<K, V> {
+    Array(ArrayVec<[(K, V); 8]>),
+    Map(FxHashMap<K, V>),
+}
+
+impl<K: Eq + Hash, V> MiniMap<K, V> {
+    /// Creates an empty `MiniMap`.
+    pub fn new() -> Self {
+        MiniMap::Array(ArrayVec::new())
+    }
+
+    /// Inserts or updates value in the map.
+    pub fn insert(&mut self, key: K, value: V) {
+        match self {
+            MiniMap::Array(array) => {
+                for pair in array.iter_mut() {
+                    if pair.0 == key {
+                        pair.1 = value;
+                        return;
+                    }
+                }
+                if let Err(error) = array.try_push((key, value)) {
+                    let mut map: FxHashMap<K, V> = array.drain(..).collect();
+                    let (key, value) = error.element();
+                    map.insert(key, value);
+                    *self = MiniMap::Map(map);
+                }
+            }
+            MiniMap::Map(map) => {
+                map.insert(key, value);
+            }
+        }
+    }
+
+    /// Return value by key if any.
+    pub fn get(&self, key: &K) -> Option<&V> {
+        match self {
+            MiniMap::Array(array) => {
+                for pair in array {
+                    if pair.0 == *key {
+                        return Some(&pair.1);
+                    }
+                }
+                return None;
+            }
+            MiniMap::Map(map) => {
+                return map.get(key);
+            }
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {
@@ -379,6 +439,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             needs_wf: false,
             root_ty: ty,
             param_env: self.param_env,
+            cache: MiniMap::new(),
         };
 
         let ty = match generalize.relate(ty, ty) {
@@ -438,6 +499,8 @@ struct Generalizer<'cx, 'tcx> {
     root_ty: Ty<'tcx>,
 
     param_env: ty::ParamEnv<'tcx>,
+
+    cache: MiniMap<Ty<'tcx>, RelateResult<'tcx, Ty<'tcx>>>,
 }
 
 /// Result from a generalization operation. This includes
@@ -535,13 +598,16 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
+        if let Some(result) = self.cache.get(&t) {
+            return result.clone();
+        }
         debug!("generalize: t={:?}", t);
 
         // Check to see whether the type we are generalizing references
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
-        match *t.kind() {
+        let result = match *t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
                 let vid = self.infcx.inner.borrow_mut().type_variables().root_var(vid);
                 let sub_vid = self.infcx.inner.borrow_mut().type_variables().sub_root_var(vid);
@@ -598,7 +664,10 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 Ok(t)
             }
             _ => relate::super_relate_tys(self, t, t),
-        }
+        };
+
+        self.cache.insert(t, result.clone());
+        return result;
     }
 
     fn regions(
