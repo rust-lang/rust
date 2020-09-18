@@ -260,25 +260,6 @@ impl DefCollector<'_> {
             self.record_resolved_import(directive)
         }
         self.unresolved_imports = unresolved_imports;
-
-        // Record proc-macros
-        self.collect_proc_macro();
-    }
-
-    fn collect_proc_macro(&mut self) {
-        let proc_macros = std::mem::take(&mut self.proc_macros);
-        for (name, expander) in proc_macros {
-            let krate = self.def_map.krate;
-
-            let macro_id = MacroDefId {
-                ast_id: None,
-                krate: Some(krate),
-                kind: MacroDefKind::ProcMacro(expander),
-                local_inner: false,
-            };
-
-            self.define_proc_macro(name.clone(), macro_id);
-        }
     }
 
     fn resolve_proc_macro(&mut self, name: &Name) {
