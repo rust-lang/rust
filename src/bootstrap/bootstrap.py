@@ -881,8 +881,9 @@ class RustBuild(object):
         submodules_names = []
         for module in submodules:
             if module.endswith("llvm-project"):
-                if self.get_toml('llvm-config') and self.get_toml('lld') != 'true':
-                    continue
+                if self.get_toml('llvm-config') or self.get_toml('download-ci-llvm') == 'true':
+                    if self.get_toml('lld') != 'true':
+                        continue
             check = self.check_submodule(module, slow_submodules)
             filtered_submodules.append((module, check))
             submodules_names.append(module)
