@@ -265,7 +265,7 @@ pub trait Printer<'tcx>: Sized {
 /// type. It's just a heuristic so it makes some questionable
 /// decisions and we may want to adjust it later.
 ///
-/// Visited set is needed in to avoid full iteration over
+/// Visited set is needed to avoid full iteration over
 /// deeply nested tuples that have no DefId.
 fn characteristic_def_id_of_type_cached<'a>(
     ty: Ty<'a>,
