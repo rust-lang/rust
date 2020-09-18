@@ -24,7 +24,7 @@ types! {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdimd_internal", issue = "none")]
+#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait v128Ext: Sized {
     unsafe fn as_v128(self) -> v128;
 
