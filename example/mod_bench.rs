@@ -20,7 +20,7 @@ unsafe extern "C" fn _Unwind_Resume() {
 
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    for i in 2..100_000_000 {
+    for i in 2..10_000_000 {
         black_box((i + 1) % i);
     }
 
