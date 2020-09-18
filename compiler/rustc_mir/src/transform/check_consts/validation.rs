@@ -693,6 +693,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     }
                 };
 
+                // Resolve a trait method call to its concrete implementation, which may be in a
+                // `const` trait impl.
                 if self.tcx.features().const_trait_impl {
                     let instance = Instance::resolve(tcx, param_env, callee, substs);
                     debug!("Resolving ({:?}) -> {:?}", callee, instance);
