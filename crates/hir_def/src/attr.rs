@@ -171,9 +171,6 @@ pub struct AttrQuery<'a> {
 }
 
 impl<'a> AttrQuery<'a> {
-    /// For an attribute like `#[attr(value)]`, returns the `(value)` subtree.
-    ///
-    /// If the attribute does not have a token tree argument, returns `None`.
     pub fn tt_values(self) -> impl Iterator<Item = &'a Subtree> {
         self.attrs().filter_map(|attr| match attr.input.as_ref()? {
             AttrInput::TokenTree(it) => Some(it),
@@ -181,9 +178,6 @@ impl<'a> AttrQuery<'a> {
         })
     }
 
-    /// For an attribute like `#[key = "value"]`, returns `"value"`.
-    ///
-    /// Returns `None` if the attribute does not have `key = "value"` form.
     pub fn string_value(self) -> Option<&'a SmolStr> {
         self.attrs().find_map(|attr| match attr.input.as_ref()? {
             AttrInput::Literal(it) => Some(it),
