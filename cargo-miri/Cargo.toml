@@ -14,7 +14,7 @@ test = false # we have no unit tests
 doctest = false # and no doc tests
 
 [dependencies]
-directories = "2.0"
+directories = "3"
 rustc_version = "0.2.3"
 serde_json = "1.0.40"
 
