@@ -19,6 +19,7 @@ fn main() {
     }
 
     // If there were no arguments, access stdin and test working dir.
+    // (We rely on the test runner to always disable isolation when passing no arguments.)
     if std::env::args().len() <= 1 {
         // CWD should be crate root.
         // We have to normalize slashes, as the env var might be set for a different target's conventions.
@@ -33,7 +34,7 @@ fn main() {
             let num: i32 = line.unwrap().parse().unwrap();
             println!("{}", 2*num);
         }
-        // On non-Unix, reading from stdin is not support. So we hard-code the right answer.
+        // On non-Unix, reading from stdin is not supported. So we hard-code the right answer.
         #[cfg(not(unix))]
         {
             println!("24");
