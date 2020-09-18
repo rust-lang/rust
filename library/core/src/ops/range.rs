@@ -705,35 +705,6 @@ pub trait RangeBounds<T: ?Sized> {
     #[stable(feature = "collections_range", since = "1.28.0")]
     fn end_bound(&self) -> Bound<&T>;
 
-    /// Returns `true` if `item` is contained in the range.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert!( (3..5).contains(&4));
-    /// assert!(!(3..5).contains(&2));
-    ///
-    /// assert!( (0.0..1.0).contains(&0.5));
-    /// assert!(!(0.0..1.0).contains(&f32::NAN));
-    /// assert!(!(0.0..f32::NAN).contains(&0.5));
-    /// assert!(!(f32::NAN..1.0).contains(&0.5));
-    #[stable(feature = "range_contains", since = "1.35.0")]
-    fn contains<U>(&self, item: &U) -> bool
-    where
-        T: PartialOrd<U>,
-        U: ?Sized + PartialOrd<T>,
-    {
-        (match self.start_bound() {
-            Included(ref start) => *start <= item,
-            Excluded(ref start) => *start < item,
-            Unbounded => true,
-        }) && (match self.end_bound() {
-            Included(ref end) => item <= *end,
-            Excluded(ref end) => item < *end,
-            Unbounded => true,
-        })
-    }
-
     /// Performs bounds-checking of this range.
     ///
     /// The returned [`Range`] is safe to pass to [`slice::get_unchecked`] and
@@ -749,46 +720,46 @@ pub trait RangeBounds<T: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_bounds_for_length)]
+    /// #![feature(range_bounds_assert_len)]
     ///
     /// use std::ops::RangeBounds;
     ///
     /// let v = [10, 40, 30];
-    /// assert_eq!(1..2, (1..2).for_length(v.len()));
-    /// assert_eq!(0..2, (..2).for_length(v.len()));
-    /// assert_eq!(1..3, (1..).for_length(v.len()));
+    /// assert_eq!(1..2, (1..2).assert_len(v.len()));
+    /// assert_eq!(0..2, (..2).assert_len(v.len()));
+    /// assert_eq!(1..3, (1..).assert_len(v.len()));
     /// ```
     ///
     /// Panics when [`Index::index`] would panic:
     ///
     /// ```should_panic
-    /// #![feature(range_bounds_for_length)]
+    /// #![feature(range_bounds_assert_len)]
     ///
     /// use std::ops::RangeBounds;
     ///
-    /// (2..1).for_length(3);
+    /// (2..1).assert_len(3);
     /// ```
     ///
     /// ```should_panic
-    /// #![feature(range_bounds_for_length)]
+    /// #![feature(range_bounds_assert_len)]
     ///
     /// use std::ops::RangeBounds;
     ///
-    /// (1..4).for_length(3);
+    /// (1..4).assert_len(3);
     /// ```
     ///
     /// ```should_panic
-    /// #![feature(range_bounds_for_length)]
+    /// #![feature(range_bounds_assert_len)]
     ///
     /// use std::ops::RangeBounds;
     ///
-    /// (1..=usize::MAX).for_length(3);
+    /// (1..=usize::MAX).assert_len(3);
     /// ```
     ///
     /// [`Index::index`]: crate::ops::Index::index
     #[track_caller]
-    #[unstable(feature = "range_bounds_for_length", issue = "76393")]
-    fn for_length(self, len: usize) -> Range<usize>
+    #[unstable(feature = "range_bounds_assert_len", issue = "76393")]
+    fn assert_len(self, len: usize) -> Range<usize>
     where
         Self: RangeBounds<usize>,
     {
@@ -818,6 +789,35 @@ pub trait RangeBounds<T: ?Sized> {
         }
 
         Range { start, end }
+    }
+
+    /// Returns `true` if `item` is contained in the range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!( (3..5).contains(&4));
+    /// assert!(!(3..5).contains(&2));
+    ///
+    /// assert!( (0.0..1.0).contains(&0.5));
+    /// assert!(!(0.0..1.0).contains(&f32::NAN));
+    /// assert!(!(0.0..f32::NAN).contains(&0.5));
+    /// assert!(!(f32::NAN..1.0).contains(&0.5));
+    #[stable(feature = "range_contains", since = "1.35.0")]
+    fn contains<U>(&self, item: &U) -> bool
+    where
+        T: PartialOrd<U>,
+        U: ?Sized + PartialOrd<T>,
+    {
+        (match self.start_bound() {
+            Included(ref start) => *start <= item,
+            Excluded(ref start) => *start < item,
+            Unbounded => true,
+        }) && (match self.end_bound() {
+            Included(ref end) => item <= *end,
+            Excluded(ref end) => item < *end,
+            Unbounded => true,
+        })
     }
 }
 
