@@ -100,7 +100,7 @@ Note: Because of how `macro_rules` macros are scoped in Rust, the intra-doc link
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
 and enabled with a `#![feature(...)]` attribute in your crate.
 
-### Documenting platform/feature specific information
+### Documenting platform-specific or feature-specific information
 
 Because of the way Rustdoc documents a crate, the documentation it creates is specific to the target
 rustc compiles for. Anything that's specific to any other target is dropped via `#[cfg]` attribute
