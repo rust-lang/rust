@@ -1268,7 +1268,7 @@ impl<T> FusedIterator for Drain<'_, T> {}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
-/// This `struct` is created by the [`drain_sorted`] method on [`BinaryHeap`]. See its
+/// This `struct` is created by [`BinaryHeap::drain_sorted()`]. See its
 /// documentation for more.
 ///
 /// [`drain_sorted`]: BinaryHeap::drain_sorted
