@@ -542,7 +542,7 @@ where
 
 /// An iterator where each iteration calls the provided closure `F: FnMut() -> Option<T>`.
 ///
-/// This `struct` is created by [`iter::from_fn`].
+/// This `struct` is created by [`from_fn`].
 /// See its documentation for more.
 #[derive(Clone)]
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
