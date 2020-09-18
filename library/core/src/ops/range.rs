@@ -739,8 +739,8 @@ pub trait RangeBounds<T: ?Sized> {
     /// The returned [`Range`] is safe to pass to [`slice::get_unchecked`] and
     /// [`slice::get_unchecked_mut`] for slices of the given length.
     ///
-    /// [`slice::get_unchecked`]: crate::slice::get_unchecked
-    /// [`slice::get_unchecked_mut`]: crate::slice::get_unchecked_mut
+    /// [`slice::get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
+    /// [`slice::get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
     ///
     /// # Panics
     ///
