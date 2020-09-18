@@ -30,24 +30,24 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     span: Span,
 ) -> Result<(), ErrorHandled> {
     debug!("is_const_evaluatable({:?}, {:?})", def, substs);
-    // `AbstractConst::new` already returns `None` if `const_evaluatable_checked`
-    // is not active, so we don't have to explicitly check for this here.
-    if let Some(ct) = AbstractConst::new(infcx.tcx, def, substs) {
-        for pred in param_env.caller_bounds() {
-            match pred.skip_binders() {
-                ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
-                    debug!("is_const_evaluatable: caller_bound={:?}, {:?}", b_def, b_substs);
-                    if b_def == def && b_substs == substs {
-                        debug!("is_const_evaluatable: caller_bound ~~> ok");
-                        return Ok(());
-                    } else if AbstractConst::new(infcx.tcx, b_def, b_substs)
-                        .map_or(false, |b_ct| try_unify(infcx.tcx, ct, b_ct))
-                    {
-                        debug!("is_const_evaluatable: abstract_const ~~> ok");
-                        return Ok(());
+    if infcx.tcx.features().const_evaluatable_checked {
+        if let Some(ct) = AbstractConst::new(infcx.tcx, def, substs) {
+            for pred in param_env.caller_bounds() {
+                match pred.skip_binders() {
+                    ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
+                        debug!("is_const_evaluatable: caller_bound={:?}, {:?}", b_def, b_substs);
+                        if b_def == def && b_substs == substs {
+                            debug!("is_const_evaluatable: caller_bound ~~> ok");
+                            return Ok(());
+                        } else if AbstractConst::new(infcx.tcx, b_def, b_substs)
+                            .map_or(false, |b_ct| try_unify(infcx.tcx, ct, b_ct))
+                        {
+                            debug!("is_const_evaluatable: abstract_const ~~> ok");
+                            return Ok(());
+                        }
                     }
+                    _ => {} // don't care
                 }
-                _ => {} // don't care
             }
         }
     }
