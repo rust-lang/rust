@@ -44,6 +44,11 @@ https://github.com/rust-analyzer/rust-analyzer/tree/master/editors/code[in tree]
 
 You can install the latest release of the plugin from
 https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[the marketplace].
+
+Note that the plugin may cause conflicts with the
+https://marketplace.visualstudio.com/items?itemName=rust-lang.rust[official Rust plugin]. It is
+recommended to disable the Rust plugin when using the rust-analyzer extension.
+
 By default, the plugin will prompt you to download the matching version of the server as well:
 
 image::https://user-images.githubusercontent.com/9021944/75067008-17502500-54ba-11ea-835a-f92aac50e866.png[]
