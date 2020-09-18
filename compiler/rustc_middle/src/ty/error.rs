@@ -546,7 +546,7 @@ impl<T> Trait<T> for X {
     }
 
     fn suggest_constraint(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         msg: &str,
         body_owner_def_id: DefId,
@@ -554,14 +554,14 @@ impl<T> Trait<T> for X {
         ty: Ty<'tcx>,
     ) -> bool {
         let assoc = self.associated_item(proj_ty.item_def_id);
-        let trait_ref = proj_ty.trait_ref(*self);
+        let trait_ref = proj_ty.trait_ref(self);
         if let Some(item) = self.hir().get_if_local(body_owner_def_id) {
             if let Some(hir_generics) = item.generics() {
                 // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
                 // This will also work for `impl Trait`.
                 let def_id = if let ty::Param(param_ty) = proj_ty.self_ty().kind() {
                     let generics = self.generics_of(body_owner_def_id);
-                    generics.type_param(&param_ty, *self).def_id
+                    generics.type_param(param_ty, self).def_id
                 } else {
                     return false;
                 };
@@ -629,7 +629,7 @@ impl<T> Trait<T> for X {
     ///    and the `impl`, we provide a generic `help` to constrain the assoc type or call an assoc
     ///    fn that returns the type.
     fn expected_projection(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         proj_ty: &ty::ProjectionTy<'tcx>,
         values: &ExpectedFound<Ty<'tcx>>,
@@ -734,7 +734,7 @@ fn foo(&self) -> Self::T { String::new() }
     }
 
     fn point_at_methods_that_satisfy_associated_type(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         assoc_container_id: DefId,
         current_method_ident: Option<Symbol>,
@@ -789,7 +789,7 @@ fn foo(&self) -> Self::T { String::new() }
     }
 
     fn point_at_associated_type(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         body_owner_def_id: DefId,
         found: Ty<'tcx>,

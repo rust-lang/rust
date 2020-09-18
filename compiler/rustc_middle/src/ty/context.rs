@@ -1403,7 +1403,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     // Returns the `DefId` and the `BoundRegion` corresponding to the given region.
-    pub fn is_suitable_region(&self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
+    pub fn is_suitable_region(self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
         let (suitable_region_binding_scope, bound_region) = match *region {
             ty::ReFree(ref free_region) => {
                 (free_region.scope.expect_local(), free_region.bound_region)
@@ -1433,7 +1433,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type.
     pub fn return_type_impl_or_dyn_traits(
-        &self,
+        self,
         scope_def_id: LocalDefId,
     ) -> Vec<&'tcx hir::Ty<'tcx>> {
         let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
@@ -1479,7 +1479,7 @@ impl<'tcx> TyCtxt<'tcx> {
         v.0
     }
 
-    pub fn return_type_impl_trait(&self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
+    pub fn return_type_impl_trait(self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
         let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
         match self.hir().get(hir_id) {
@@ -1497,7 +1497,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let ret_ty = self.type_of(scope_def_id);
         match ret_ty.kind() {
             ty::FnDef(_, _) => {
-                let sig = ret_ty.fn_sig(*self);
+                let sig = ret_ty.fn_sig(self);
                 let output = self.erase_late_bound_regions(&sig.output());
                 if output.is_impl_trait() {
                     let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
@@ -1511,7 +1511,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     // Checks if the bound region is in Impl Item.
-    pub fn is_bound_region_in_impl_item(&self, suitable_region_binding_scope: LocalDefId) -> bool {
+    pub fn is_bound_region_in_impl_item(self, suitable_region_binding_scope: LocalDefId) -> bool {
         let container_id =
             self.associated_item(suitable_region_binding_scope.to_def_id()).container.id();
         if self.impl_trait_ref(container_id).is_some() {
@@ -1528,21 +1528,21 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Determines whether identifiers in the assembly have strict naming rules.
     /// Currently, only NVPTX* targets need it.
-    pub fn has_strict_asm_symbol_naming(&self) -> bool {
+    pub fn has_strict_asm_symbol_naming(self) -> bool {
         self.sess.target.target.arch.contains("nvptx")
     }
 
     /// Returns `&'static core::panic::Location<'static>`.
-    pub fn caller_location_ty(&self) -> Ty<'tcx> {
+    pub fn caller_location_ty(self) -> Ty<'tcx> {
         self.mk_imm_ref(
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
-                .subst(*self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
+                .subst(self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
         )
     }
 
     /// Returns a displayable description and article for the given `def_id` (e.g. `("a", "struct")`).
-    pub fn article_and_description(&self, def_id: DefId) -> (&'static str, &'static str) {
+    pub fn article_and_description(self, def_id: DefId) -> (&'static str, &'static str) {
         match self.def_kind(def_id) {
             DefKind::Generator => match self.generator_kind(def_id).unwrap() {
                 rustc_hir::GeneratorKind::Async(..) => ("an", "async closure"),
