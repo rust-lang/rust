@@ -162,7 +162,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // We forward this to the underlying *implementation* in the panic runtime crate.
             // Normally, this will be either `libpanic_unwind` or `libpanic_abort`, but it could
             // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
-            "__rust_start_panic" | "__rust_panic_cleanup"=> {
+            "__rust_start_panic" | "__rust_panic_cleanup" => {
                 // This replicates some of the logic in `inject_panic_runtime`.
                 // FIXME: is there a way to reuse that logic?
                 let panic_runtime = match this.tcx.sess.panic_strategy() {
