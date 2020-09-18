@@ -1,12 +1,12 @@
 //! This module contains an import search funcionality that is provided to the assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the assists module.
 
-use hir::{Crate, MacroDef, ModuleDef, Semantics};
+use hir::{Crate, MacroDef, ModuleDef, Query as ImportMapQuery, Semantics};
 use syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
     defs::{Definition, NameClass},
-    symbol_index::{self, FileSymbol, Query},
+    symbol_index::{self, FileSymbol, Query as SymbolQuery},
     RootDatabase,
 };
 use either::Either;
@@ -21,12 +21,16 @@ pub fn find_imports<'a>(
     let db = sema.db;
 
     // Query dependencies first.
-    let mut candidates: FxHashSet<_> =
-        krate.query_external_importables(db, name_to_import).collect();
+    let mut candidates: FxHashSet<_> = krate
+        .query_external_importables(
+            db,
+            ImportMapQuery::new(name_to_import).anchor_end().case_sensitive().limit(40),
+        )
+        .collect();
 
     // Query the local crate using the symbol index.
     let local_results = {
-        let mut query = Query::new(name_to_import.to_string());
+        let mut query = SymbolQuery::new(name_to_import.to_string());
         query.exact();
         query.limit(40);
         symbol_index::crate_symbols(db, krate.into(), query)

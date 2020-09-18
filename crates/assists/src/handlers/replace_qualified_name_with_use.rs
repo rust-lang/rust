@@ -34,7 +34,7 @@ pub(crate) fn replace_qualified_name_with_use(
     }
 
     let target = path.syntax().text_range();
-    let scope = ImportScope::find_insert_use_container(path.syntax(), ctx)?;
+    let scope = ImportScope::find_insert_use_container(path.syntax(), &ctx.sema)?;
     let syntax = scope.as_syntax_node();
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),

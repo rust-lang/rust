@@ -1,6 +1,8 @@
 //! Handle syntactic aspects of inserting a new `use`.
 use std::{cmp::Ordering, iter::successors};
 
+use hir::Semantics;
+use ide_db::RootDatabase;
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
     algo::SyntaxRewriter,
@@ -14,7 +16,7 @@ use syntax::{
 use test_utils::mark;
 
 #[derive(Debug)]
-pub(crate) enum ImportScope {
+pub enum ImportScope {
     File(ast::SourceFile),
     Module(ast::ItemList),
 }
@@ -31,14 +33,14 @@ impl ImportScope {
     }
 
     /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
-    pub(crate) fn find_insert_use_container(
+    pub fn find_insert_use_container(
         position: &SyntaxNode,
-        ctx: &crate::assist_context::AssistContext,
+        sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
-        ctx.sema.ancestors_with_macros(position.clone()).find_map(Self::from)
+        sema.ancestors_with_macros(position.clone()).find_map(Self::from)
     }
 
-    pub(crate) fn as_syntax_node(&self) -> &SyntaxNode {
+    pub fn as_syntax_node(&self) -> &SyntaxNode {
         match self {
             ImportScope::File(file) => file.syntax(),
             ImportScope::Module(item_list) => item_list.syntax(),
@@ -88,7 +90,7 @@ fn is_inner_comment(token: SyntaxToken) -> bool {
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
-pub(crate) fn insert_use<'a>(
+pub fn insert_use<'a>(
     scope: &ImportScope,
     path: ast::Path,
     merge: Option<MergeBehaviour>,

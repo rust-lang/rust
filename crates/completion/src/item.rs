@@ -31,6 +31,7 @@ pub struct CompletionItem {
     ///
     /// Typically, replaces `source_range` with new identifier.
     text_edit: TextEdit,
+
     insert_text_format: InsertTextFormat,
 
     /// What item (struct, function, etc) are we completing.
