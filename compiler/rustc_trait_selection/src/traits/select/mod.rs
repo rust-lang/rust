@@ -450,153 +450,167 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => self.check_recursion_limit(&obligation, &obligation)?,
         }
 
-        match obligation.predicate.skip_binders() {
-            ty::PredicateAtom::Trait(t, _) => {
-                let t = ty::Binder::bind(t);
-                debug_assert!(!t.has_escaping_bound_vars());
-                let obligation = obligation.with(t);
-                self.evaluate_trait_predicate_recursively(previous_stack, obligation)
-            }
+        ensure_sufficient_stack(|| {
+            match obligation.predicate.skip_binders() {
+                ty::PredicateAtom::Trait(t, _) => {
+                    let t = ty::Binder::bind(t);
+                    debug_assert!(!t.has_escaping_bound_vars());
+                    let obligation = obligation.with(t);
+                    self.evaluate_trait_predicate_recursively(previous_stack, obligation)
+                }
 
-            ty::PredicateAtom::Subtype(p) => {
-                let p = ty::Binder::bind(p);
-                // Does this code ever run?
-                match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
-                    Some(Ok(InferOk { mut obligations, .. })) => {
+                ty::PredicateAtom::Subtype(p) => {
+                    let p = ty::Binder::bind(p);
+                    // Does this code ever run?
+                    match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
+                        Some(Ok(InferOk { mut obligations, .. })) => {
+                            self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+                            self.evaluate_predicates_recursively(
+                                previous_stack,
+                                obligations.into_iter(),
+                            )
+                        }
+                        Some(Err(_)) => Ok(EvaluatedToErr),
+                        None => Ok(EvaluatedToAmbig),
+                    }
+                }
+
+                ty::PredicateAtom::WellFormed(arg) => match wf::obligations(
+                    self.infcx,
+                    obligation.param_env,
+                    obligation.cause.body_id,
+                    arg,
+                    obligation.cause.span,
+                ) {
+                    Some(mut obligations) => {
                         self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
                         self.evaluate_predicates_recursively(
                             previous_stack,
                             obligations.into_iter(),
                         )
                     }
-                    Some(Err(_)) => Ok(EvaluatedToErr),
                     None => Ok(EvaluatedToAmbig),
+                },
+
+                ty::PredicateAtom::TypeOutlives(..) | ty::PredicateAtom::RegionOutlives(..) => {
+                    // We do not consider region relationships when evaluating trait matches.
+                    Ok(EvaluatedToOkModuloRegions)
                 }
-            }
 
-            ty::PredicateAtom::WellFormed(arg) => match wf::obligations(
-                self.infcx,
-                obligation.param_env,
-                obligation.cause.body_id,
-                arg,
-                obligation.cause.span,
-            ) {
-                Some(mut obligations) => {
-                    self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-                    self.evaluate_predicates_recursively(previous_stack, obligations.into_iter())
-                }
-                None => Ok(EvaluatedToAmbig),
-            },
-
-            ty::PredicateAtom::TypeOutlives(..) | ty::PredicateAtom::RegionOutlives(..) => {
-                // We do not consider region relationships when evaluating trait matches.
-                Ok(EvaluatedToOkModuloRegions)
-            }
-
-            ty::PredicateAtom::ObjectSafe(trait_def_id) => {
-                if self.tcx().is_object_safe(trait_def_id) {
-                    Ok(EvaluatedToOk)
-                } else {
-                    Ok(EvaluatedToErr)
-                }
-            }
-
-            ty::PredicateAtom::Projection(data) => {
-                let data = ty::Binder::bind(data);
-                let project_obligation = obligation.with(data);
-                match project::poly_project_and_unify_type(self, &project_obligation) {
-                    Ok(Ok(Some(mut subobligations))) => {
-                        self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
-                        let result = self.evaluate_predicates_recursively(
-                            previous_stack,
-                            subobligations.into_iter(),
-                        );
-                        if let Some(key) =
-                            ProjectionCacheKey::from_poly_projection_predicate(self, data)
-                        {
-                            self.infcx.inner.borrow_mut().projection_cache().complete(key);
-                        }
-                        result
-                    }
-                    Ok(Ok(None)) => Ok(EvaluatedToAmbig),
-                    // EvaluatedToRecur might also be acceptable here, but use
-                    // Unknown for now because it means that we won't dismiss a
-                    // selection candidate solely because it has a projection
-                    // cycle. This is closest to the previous behavior of
-                    // immediately erroring.
-                    Ok(Err(project::InProgress)) => Ok(EvaluatedToUnknown),
-                    Err(_) => Ok(EvaluatedToErr),
-                }
-            }
-
-            ty::PredicateAtom::ClosureKind(_, closure_substs, kind) => {
-                match self.infcx.closure_kind(closure_substs) {
-                    Some(closure_kind) => {
-                        if closure_kind.extends(kind) {
-                            Ok(EvaluatedToOk)
-                        } else {
-                            Ok(EvaluatedToErr)
-                        }
-                    }
-                    None => Ok(EvaluatedToAmbig),
-                }
-            }
-
-            ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
-                match const_evaluatable::is_const_evaluatable(
-                    self.infcx,
-                    def_id,
-                    substs,
-                    obligation.param_env,
-                    obligation.cause.span,
-                ) {
-                    Ok(()) => Ok(EvaluatedToOk),
-                    Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
-                    Err(_) => Ok(EvaluatedToErr),
-                }
-            }
-
-            ty::PredicateAtom::ConstEquate(c1, c2) => {
-                debug!("evaluate_predicate_recursively: equating consts c1={:?} c2={:?}", c1, c2);
-
-                let evaluate = |c: &'tcx ty::Const<'tcx>| {
-                    if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
-                        self.infcx
-                            .const_eval_resolve(
-                                obligation.param_env,
-                                def,
-                                substs,
-                                promoted,
-                                Some(obligation.cause.span),
-                            )
-                            .map(|val| ty::Const::from_value(self.tcx(), val, c.ty))
+                ty::PredicateAtom::ObjectSafe(trait_def_id) => {
+                    if self.tcx().is_object_safe(trait_def_id) {
+                        Ok(EvaluatedToOk)
                     } else {
-                        Ok(c)
-                    }
-                };
-
-                match (evaluate(c1), evaluate(c2)) {
-                    (Ok(c1), Ok(c2)) => {
-                        match self.infcx().at(&obligation.cause, obligation.param_env).eq(c1, c2) {
-                            Ok(_) => Ok(EvaluatedToOk),
-                            Err(_) => Ok(EvaluatedToErr),
-                        }
-                    }
-                    (Err(ErrorHandled::Reported(ErrorReported)), _)
-                    | (_, Err(ErrorHandled::Reported(ErrorReported))) => Ok(EvaluatedToErr),
-                    (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => span_bug!(
-                        obligation.cause.span(self.tcx()),
-                        "ConstEquate: const_eval_resolve returned an unexpected error"
-                    ),
-                    (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
-                        Ok(EvaluatedToAmbig)
+                        Ok(EvaluatedToErr)
                     }
                 }
+
+                ty::PredicateAtom::Projection(data) => {
+                    let data = ty::Binder::bind(data);
+                    let project_obligation = obligation.with(data);
+                    match project::poly_project_and_unify_type(self, &project_obligation) {
+                        Ok(Ok(Some(mut subobligations))) => {
+                            self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
+                            let result = self.evaluate_predicates_recursively(
+                                previous_stack,
+                                subobligations.into_iter(),
+                            );
+                            if let Some(key) =
+                                ProjectionCacheKey::from_poly_projection_predicate(self, data)
+                            {
+                                self.infcx.inner.borrow_mut().projection_cache().complete(key);
+                            }
+                            result
+                        }
+                        Ok(Ok(None)) => Ok(EvaluatedToAmbig),
+                        // EvaluatedToRecur might also be acceptable here, but use
+                        // Unknown for now because it means that we won't dismiss a
+                        // selection candidate solely because it has a projection
+                        // cycle. This is closest to the previous behavior of
+                        // immediately erroring.
+                        Ok(Err(project::InProgress)) => Ok(EvaluatedToUnknown),
+                        Err(_) => Ok(EvaluatedToErr),
+                    }
+                }
+
+                ty::PredicateAtom::ClosureKind(_, closure_substs, kind) => {
+                    match self.infcx.closure_kind(closure_substs) {
+                        Some(closure_kind) => {
+                            if closure_kind.extends(kind) {
+                                Ok(EvaluatedToOk)
+                            } else {
+                                Ok(EvaluatedToErr)
+                            }
+                        }
+                        None => Ok(EvaluatedToAmbig),
+                    }
+                }
+
+                ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
+                    match const_evaluatable::is_const_evaluatable(
+                        self.infcx,
+                        def_id,
+                        substs,
+                        obligation.param_env,
+                        obligation.cause.span,
+                    ) {
+                        Ok(()) => Ok(EvaluatedToOk),
+                        Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
+                        Err(_) => Ok(EvaluatedToErr),
+                    }
+                }
+
+                ty::PredicateAtom::ConstEquate(c1, c2) => {
+                    debug!(
+                        "evaluate_predicate_recursively: equating consts c1={:?} c2={:?}",
+                        c1, c2
+                    );
+
+                    let evaluate = |c: &'tcx ty::Const<'tcx>| {
+                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                            self.infcx
+                                .const_eval_resolve(
+                                    obligation.param_env,
+                                    def,
+                                    substs,
+                                    promoted,
+                                    Some(obligation.cause.span),
+                                )
+                                .map(|val| ty::Const::from_value(self.tcx(), val, c.ty))
+                        } else {
+                            Ok(c)
+                        }
+                    };
+
+                    match (evaluate(c1), evaluate(c2)) {
+                        (Ok(c1), Ok(c2)) => {
+                            match self
+                                .infcx()
+                                .at(&obligation.cause, obligation.param_env)
+                                .eq(c1, c2)
+                            {
+                                Ok(_) => Ok(EvaluatedToOk),
+                                Err(_) => Ok(EvaluatedToErr),
+                            }
+                        }
+                        (Err(ErrorHandled::Reported(ErrorReported)), _)
+                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => Ok(EvaluatedToErr),
+                        (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
+                            span_bug!(
+                                obligation.cause.span(self.tcx()),
+                                "ConstEquate: const_eval_resolve returned an unexpected error"
+                            )
+                        }
+                        (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                            Ok(EvaluatedToAmbig)
+                        }
+                    }
+                }
+                ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for chalk")
+                }
             }
-            ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
-                bug!("TypeWellFormedFromEnv is only used for chalk")
-            }
-        }
+        })
     }
 
     fn evaluate_trait_predicate_recursively<'o>(
