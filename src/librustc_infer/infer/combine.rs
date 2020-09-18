@@ -500,7 +500,7 @@ struct Generalizer<'cx, 'tcx> {
 
     param_env: ty::ParamEnv<'tcx>,
 
-    cache: MiniMap<(Ty<'tcx>, Ty<'tcx>), RelateResult<'tcx, Ty<'tcx>>>,
+    cache: MiniMap<Ty<'tcx>, RelateResult<'tcx, Ty<'tcx>>>,
 }
 
 /// Result from a generalization operation. This includes
@@ -598,8 +598,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
-        let cache_key = (t, t2);
-        if let Some(result) = self.cache.get(&cache_key) {
+        if let Some(result) = self.cache.get(&t) {
             return result.clone();
         }
         debug!("generalize: t={:?}", t);
@@ -667,7 +666,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             _ => relate::super_relate_tys(self, t, t),
         };
 
-        self.cache.insert(cache_key, result.clone());
+        self.cache.insert(t, result.clone());
         return result;
     }
 
