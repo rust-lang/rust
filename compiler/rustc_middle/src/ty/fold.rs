@@ -623,7 +623,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Replaces any late-bound regions bound in `value` with
     /// free variants attached to `all_outlive_scope`.
     pub fn liberate_late_bound_regions<T>(
-        &self,
+        self,
         all_outlive_scope: DefId,
         value: &ty::Binder<T>,
     ) -> T
@@ -644,7 +644,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// variables and equate `value` with something else, those
     /// variables will also be equated.
     pub fn collect_constrained_late_bound_regions<T>(
-        &self,
+        self,
         value: &Binder<T>,
     ) -> FxHashSet<ty::BoundRegion>
     where
@@ -655,7 +655,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns a set of all late-bound regions that appear in `value` anywhere.
     pub fn collect_referenced_late_bound_regions<T>(
-        &self,
+        self,
         value: &Binder<T>,
     ) -> FxHashSet<ty::BoundRegion>
     where
@@ -665,7 +665,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn collect_late_bound_regions<T>(
-        &self,
+        self,
         value: &Binder<T>,
         just_constraint: bool,
     ) -> FxHashSet<ty::BoundRegion>
