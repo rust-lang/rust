@@ -306,15 +306,17 @@ fn merge_attrs(
     attrs: Attrs<'_>,
     other_attrs: Option<Attrs<'_>>,
 ) -> clean::Attributes {
-    let mut merged_attrs: Vec<ast::Attribute> = Vec::with_capacity(attrs.len());
-    // If we have additional attributes (from a re-export),
+    // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
     // doc comments show up before the original doc comments
     // when we render them.
-    if let Some(a) = other_attrs {
-        merged_attrs.extend(a.iter().cloned());
-    }
-    merged_attrs.extend(attrs.to_vec());
+    let merged_attrs = if let Some(inner) = other_attrs {
+        let mut both = inner.to_vec();
+        both.extend_from_slice(attrs);
+        both
+    } else {
+        attrs.to_vec()
+    };
     merged_attrs.clean(cx)
 }
 
