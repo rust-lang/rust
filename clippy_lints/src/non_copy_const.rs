@@ -6,14 +6,16 @@ use std::ptr;
 
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp};
+use rustc_infer::traits::specialization_graph;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::{Ty, TypeFlags};
+use rustc_middle::ty::{AssocKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
 
-use crate::utils::{in_constant, is_copy, qpath_res, span_lint_and_then};
+use crate::utils::{in_constant, qpath_res, span_lint_and_then};
+use if_chain::if_chain;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for declaration of `const` items which is interior
@@ -83,11 +85,10 @@ declare_clippy_lint! {
     "referencing `const` with interior mutability"
 }
 
-#[allow(dead_code)]
 #[derive(Copy, Clone)]
 enum Source {
     Item { item: Span },
-    Assoc { item: Span, ty: Span },
+    Assoc { item: Span },
     Expr { expr: Span },
 }
 
@@ -110,10 +111,15 @@ impl Source {
 }
 
 fn verify_ty_bound<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, source: Source) {
-    if ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env) || is_copy(cx, ty) {
-        // An `UnsafeCell` is `!Copy`, and an `UnsafeCell` is also the only type which
-        // is `!Freeze`, thus if our type is `Copy` we can be sure it must be `Freeze`
-        // as well.
+    // Ignore types whose layout is unknown since `is_freeze` reports every generic types as `!Freeze`,
+    // making it indistinguishable from `UnsafeCell`. i.e. it isn't a tool to prove a type is
+    // 'unfrozen'. However, this code causes a false negative in which
+    // a type contains a layout-unknown type, but also a unsafe cell like `const CELL: Cell<T>`.
+    // Yet, it's better than `ty.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_PROJECTION)`
+    // since it works when a pointer indirection involves (`Cell<*const T>`).
+    // Making up a `ParamEnv` where every generic params and assoc types are `Freeze`is another option;
+    // but I'm not sure whether it's a decent way, if possible.
+    if cx.tcx.layout_of(cx.param_env.and(ty)).is_err() || ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env) {
         return;
     }
 
@@ -127,11 +133,7 @@ fn verify_ty_bound<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, source: Source) {
                 let const_kw_span = span.from_inner(InnerSpan::new(0, 5));
                 diag.span_label(const_kw_span, "make this a static item (maybe with lazy_static)");
             },
-            Source::Assoc { ty: ty_span, .. } => {
-                if ty.flags().intersects(TypeFlags::HAS_FREE_LOCAL_NAMES) {
-                    diag.span_label(ty_span, &format!("consider requiring `{}` to be `Copy`", ty));
-                }
-            },
+            Source::Assoc { .. } => (),
             Source::Expr { .. } => {
                 diag.help("assign this const to a local or static variable, and use the variable here");
             },
@@ -152,14 +154,10 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Const(hir_ty, ..) = &trait_item.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            verify_ty_bound(
-                cx,
-                ty,
-                Source::Assoc {
-                    ty: hir_ty.span,
-                    item: trait_item.span,
-                },
-            );
+            // Normalize assoc types because ones originated from generic params
+            // bounded other traits could have their bound.
+            let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+            verify_ty_bound(cx, normalized, Source::Assoc { item: trait_item.span });
         }
     }
 
@@ -167,17 +165,50 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
         if let ImplItemKind::Const(hir_ty, ..) = &impl_item.kind {
             let item_hir_id = cx.tcx.hir().get_parent_node(impl_item.hir_id);
             let item = cx.tcx.hir().expect_item(item_hir_id);
-            // Ensure the impl is an inherent impl.
-            if let ItemKind::Impl { of_trait: None, .. } = item.kind {
-                let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-                verify_ty_bound(
-                    cx,
-                    ty,
-                    Source::Assoc {
-                        ty: hir_ty.span,
-                        item: impl_item.span,
-                    },
-                );
+
+            match &item.kind {
+                ItemKind::Impl {
+                    of_trait: Some(of_trait_ref),
+                    ..
+                } => {
+                    if_chain! {
+                        // Lint a trait impl item only when the definition is a generic type,
+                        // assuming a assoc const is not meant to be a interior mutable type.
+                        if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
+                        if let Some(of_assoc_item) = specialization_graph::Node::Trait(of_trait_def_id)
+                            .item(cx.tcx, impl_item.ident, AssocKind::Const, of_trait_def_id);
+                        if cx
+                            .tcx
+                            .layout_of(cx.tcx.param_env(of_trait_def_id).and(
+                                // Normalize assoc types because ones originated from generic params
+                                // bounded other traits could have their bound at the trait defs;
+                                // and, in that case, the definition is *not* generic.
+                                cx.tcx.normalize_erasing_regions(
+                                    cx.tcx.param_env(of_trait_def_id),
+                                    cx.tcx.type_of(of_assoc_item.def_id),
+                                ),
+                            ))
+                            .is_err();
+                        then {
+                            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+                            let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+                            verify_ty_bound(
+                                cx,
+                                normalized,
+                                Source::Assoc {
+                                    item: impl_item.span,
+                                },
+                            );
+                        }
+                    }
+                },
+                ItemKind::Impl { of_trait: None, .. } => {
+                    let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+                    // Normalize assoc types originated from generic params.
+                    let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+                    verify_ty_bound(cx, normalized, Source::Assoc { item: impl_item.span });
+                },
+                _ => (),
             }
         }
     }
