@@ -922,7 +922,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // that problem, but we never run validation to show an error. Can we ensure
         // this does not happen?
         let val = self.tcx.const_eval_raw(param_env.and(gid))?;
-        self.raw_const_to_mplace(val)
+        self.raw_const_to_mplace(&val)
     }
 
     #[must_use]

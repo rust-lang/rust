@@ -1122,7 +1122,7 @@ where
 
     pub fn raw_const_to_mplace(
         &self,
-        raw: RawConst<'tcx>,
+        raw: &RawConst<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // This must be an allocation in `tcx`
         let _ = self.tcx.global_alloc(raw.alloc_id);

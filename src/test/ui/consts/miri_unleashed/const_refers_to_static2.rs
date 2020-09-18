@@ -10,6 +10,7 @@ use std::sync::atomic::Ordering;
 const REF_INTERIOR_MUT: &usize = { //~ ERROR undefined behavior to use this value
 //~| NOTE encountered a reference pointing to a static variable
 //~| NOTE
+//~| NOTE the raw bytes of the constant
     static FOO: AtomicUsize = AtomicUsize::new(0);
     unsafe { &*(&FOO as *const _ as *const usize) }
 };
@@ -18,6 +19,7 @@ const REF_INTERIOR_MUT: &usize = { //~ ERROR undefined behavior to use this valu
 const READ_IMMUT: &usize = { //~ ERROR it is undefined behavior to use this value
 //~| NOTE encountered a reference pointing to a static variable
 //~| NOTE
+//~| NOTE the raw bytes of the constant
     static FOO: usize = 0;
     &FOO
 };
