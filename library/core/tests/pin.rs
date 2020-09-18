@@ -17,5 +17,15 @@ fn pin_const() {
     assert_eq!(INNER_UNCHECKED, POINTER);
 
     const REF: &'static usize = PINNED.get_ref();
-    assert_eq!(REF, POINTER)
+    assert_eq!(REF, POINTER);
+
+    // Note: `pin_mut_const` tests that the methods of `Pin<&mut T>` are usable in a const context.
+    // A const fn is used because `&mut` is not (yet) usable in constants.
+    const fn pin_mut_const() {
+        let _ = Pin::new(&mut 2).into_ref();
+        let _ = Pin::new(&mut 2).get_mut();
+        let _ = unsafe { Pin::new(&mut 2).get_unchecked_mut() };
+    }
+
+    pin_mut_const();
 }

@@ -708,8 +708,9 @@ impl<'a, T: ?Sized> Pin<&'a T> {
 impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[inline(always)]
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
-    pub fn into_ref(self) -> Pin<&'a T> {
+    pub const fn into_ref(self) -> Pin<&'a T> {
         Pin { pointer: self.pointer }
     }
 
@@ -722,9 +723,10 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// that lives for as long as the borrow of the `Pin`, not the lifetime of
     /// the `Pin` itself. This method allows turning the `Pin` into a reference
     /// with the same lifetime as the original `Pin`.
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn get_mut(self) -> &'a mut T
+    #[stable(feature = "pin", since = "1.33.0")]
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    pub const fn get_mut(self) -> &'a mut T
     where
         T: Unpin,
     {
@@ -741,9 +743,10 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     ///
     /// If the underlying data is `Unpin`, `Pin::get_mut` should be used
     /// instead.
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub unsafe fn get_unchecked_mut(self) -> &'a mut T {
+    #[stable(feature = "pin", since = "1.33.0")]
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    pub const unsafe fn get_unchecked_mut(self) -> &'a mut T {
         self.pointer
     }
 
