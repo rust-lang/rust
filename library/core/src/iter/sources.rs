@@ -497,7 +497,7 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 /// The closure can use captures and its environment to track state across iterations. Depending on
 /// how the iterator is used, this may require specifying the [`move`] keyword on the closure.
 ///
-/// [`move`]: ../../../std/keyword.move.html
+/// [`move`]: ../../std/keyword.move.html
 ///
 /// # Examples
 ///
