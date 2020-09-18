@@ -4,8 +4,10 @@
 //! via `x.py dist hash-and-sign`; the cmdline arguments are set up
 //! by rustbuild (in `src/bootstrap/dist.rs`).
 
-use serde::Serialize;
+mod versions;
 
+use crate::versions::PkgType;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::env;
@@ -334,35 +336,6 @@ fn main() {
         should_sign,
     }
     .build();
-}
-
-enum PkgType {
-    RustSrc,
-    Cargo,
-    Rls,
-    RustAnalyzer,
-    Clippy,
-    Rustfmt,
-    LlvmTools,
-    Miri,
-    Other,
-}
-
-impl PkgType {
-    fn from_component(component: &str) -> Self {
-        use PkgType::*;
-        match component {
-            "rust-src" => RustSrc,
-            "cargo" => Cargo,
-            "rls" | "rls-preview" => Rls,
-            "rust-analyzer" | "rust-analyzer-preview" => RustAnalyzer,
-            "clippy" | "clippy-preview" => Clippy,
-            "rustfmt" | "rustfmt-preview" => Rustfmt,
-            "llvm-tools" | "llvm-tools-preview" => LlvmTools,
-            "miri" | "miri-preview" => Miri,
-            _ => Other,
-        }
-    }
 }
 
 impl Builder {
@@ -702,7 +675,7 @@ impl Builder {
             Rustfmt => format!("rustfmt-{}-{}.tar.gz", self.rustfmt_release, target),
             LlvmTools => format!("llvm-tools-{}-{}.tar.gz", self.llvm_tools_release, target),
             Miri => format!("miri-{}-{}.tar.gz", self.miri_release, target),
-            Other => format!("{}-{}-{}.tar.gz", component, self.rust_release, target),
+            Other(_) => format!("{}-{}-{}.tar.gz", component, self.rust_release, target),
         }
     }
 
