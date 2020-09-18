@@ -246,7 +246,7 @@ pub enum MacroDefKind {
     // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
     BuiltInDerive(BuiltinDeriveExpander),
     BuiltInEager(EagerExpander),
-    CustomDerive(ProcMacroExpander),
+    ProcMacro(ProcMacroExpander),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -908,12 +908,12 @@ impl MacroDef {
 
     /// Indicate it is a proc-macro
     pub fn is_proc_macro(&self) -> bool {
-        matches!(self.id.kind, MacroDefKind::CustomDerive(_))
+        matches!(self.id.kind, MacroDefKind::ProcMacro(_))
     }
 
     /// Indicate it is a derive macro
     pub fn is_derive_macro(&self) -> bool {
-        matches!(self.id.kind, MacroDefKind::CustomDerive(_) | MacroDefKind::BuiltInDerive(_))
+        matches!(self.id.kind, MacroDefKind::ProcMacro(_) | MacroDefKind::BuiltInDerive(_))
     }
 }
 

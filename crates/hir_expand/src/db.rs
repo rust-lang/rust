@@ -143,7 +143,7 @@ pub(crate) fn macro_def(
             Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
         }
         MacroDefKind::BuiltInEager(_) => None,
-        MacroDefKind::CustomDerive(expander) => {
+        MacroDefKind::ProcMacro(expander) => {
             Some(Arc::new((TokenExpander::ProcMacro(expander), mbe::TokenMap::default())))
         }
     }
@@ -249,7 +249,7 @@ pub(crate) fn expand_proc_macro(
     };
 
     let expander = match loc.def.kind {
-        MacroDefKind::CustomDerive(expander) => expander,
+        MacroDefKind::ProcMacro(expander) => expander,
         _ => unreachable!(),
     };
 
