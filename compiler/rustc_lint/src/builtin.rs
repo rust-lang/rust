@@ -1985,9 +1985,9 @@ impl ExplicitOutlivesRequirements {
             .filter_map(|(i, bound)| {
                 if let hir::GenericBound::Outlives(lifetime) = bound {
                     let is_inferred = match tcx.named_region(lifetime.hir_id) {
-                        Some(Region::Static) if infer_static => inferred_outlives
-                            .iter()
-                            .any(|r| if let ty::ReStatic = r { true } else { false }),
+                        Some(Region::Static) if infer_static => {
+                            inferred_outlives.iter().any(|r| matches!(r, ty::ReStatic))
+                        }
                         Some(Region::EarlyBound(index, ..)) => inferred_outlives.iter().any(|r| {
                             if let ty::ReEarlyBound(ebr) = r { ebr.index == index } else { false }
                         }),
@@ -2079,9 +2079,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             let mut lint_spans = Vec::new();
 
             for param in hir_generics.params {
-                let has_lifetime_bounds = param.bounds.iter().any(|bound| {
-                    if let hir::GenericBound::Outlives(_) = bound { true } else { false }
-                });
+                let has_lifetime_bounds = param
+                    .bounds
+                    .iter()
+                    .any(|bound| matches!(bound, hir::GenericBound::Outlives(_)));
                 if !has_lifetime_bounds {
                     continue;
                 }

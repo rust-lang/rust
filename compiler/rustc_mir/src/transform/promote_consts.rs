@@ -92,7 +92,7 @@ pub enum TempState {
 impl TempState {
     pub fn is_promotable(&self) -> bool {
         debug!("is_promotable: self={:?}", self);
-        if let TempState::Defined { .. } = *self { true } else { false }
+        matches!(self, TempState::Defined { .. } )
     }
 }
 

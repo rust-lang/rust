@@ -96,8 +96,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                 }
                 StmtKind::Let { remainder_scope, init_scope, pattern, initializer, lint_level } => {
-                    let ignores_expr_result =
-                        if let PatKind::Wild = *pattern.kind { true } else { false };
+                    let ignores_expr_result = matches!(*pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
