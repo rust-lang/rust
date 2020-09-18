@@ -4,7 +4,7 @@ use log::trace;
 
 use rustc_hir::def_id::DefId;
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{Align, Size};
+use rustc_target::{abi::{Align, Size}, spec::PanicStrategy};
 use rustc_apfloat::Float;
 use rustc_span::symbol::sym;
 
@@ -146,6 +146,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let code = this.read_scalar(code)?.to_i32()?;
                     throw_machine_stop!(TerminationInfo::Exit(code.into()));
                 }
+                "abort" => {
+                    throw_machine_stop!(TerminationInfo::Abort(None))
+                }
                 _ => throw_unsup_format!("can't call (diverging) foreign function: {}", link_name),
             },
             Some(p) => p,
@@ -159,14 +162,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // We forward this to the underlying *implementation* in the panic runtime crate.
             // Normally, this will be either `libpanic_unwind` or `libpanic_abort`, but it could
             // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
-            "__rust_start_panic" | "__rust_panic_cleanup"=> {
-                // FIXME we might want to cache this... but it's not really performance-critical.
-                let panic_runtime = tcx
-                    .crates()
-                    .iter()
-                    .find(|cnum| tcx.is_panic_runtime(**cnum))
-                    .expect("No panic runtime found!");
-                let panic_runtime = tcx.crate_name(*panic_runtime);
+            "__rust_start_panic" | "__rust_panic_cleanup" => {
+                // This replicates some of the logic in `inject_panic_runtime`.
+                // FIXME: is there a way to reuse that logic?
+                let panic_runtime = match this.tcx.sess.panic_strategy() {
+                    PanicStrategy::Unwind => sym::panic_unwind,
+                    PanicStrategy::Abort => sym::panic_abort,
+                };
                 let start_panic_instance =
                     this.resolve_path(&[&*panic_runtime.as_str(), link_name]);
                 return Ok(Some(&*this.load_mir(start_panic_instance.def, None)?));

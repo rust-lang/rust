@@ -295,8 +295,7 @@ fn setup(subcommand: MiriCommand) {
             br#"
 [dependencies.std]
 default_features = false
-# We need the `panic_unwind` feature because we use the `unwind` panic strategy.
-# Using `abort` works for libstd, but then libtest will not compile.
+# We support unwinding, so enable that panic runtime.
 features = ["panic_unwind"]
 
 [dependencies.test]
@@ -338,10 +337,14 @@ path = "lib.rs"
     // because we still need bootstrap to distinguish between host and target crates.
     // In that case we overwrite `RUSTC_REAL` instead which determines the rustc used
     // for target crates.
+    // We set ourselves (`cargo-miri`) instead of Miri directly to be able to patch the flags
+    // for `libpanic_abort` (usually this is done by bootstrap but we have to do it ourselves).
+    // The `MIRI_BE_RUSTC` will mean we dispatch to `phase_setup_rustc`.
+    let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
     if env::var_os("RUSTC_STAGE").is_some() {
-        command.env("RUSTC_REAL", find_miri());
+        command.env("RUSTC_REAL", &cargo_miri_path);
     } else {
-        command.env("RUSTC", find_miri());
+        command.env("RUSTC", &cargo_miri_path);
     }
     command.env("MIRI_BE_RUSTC", "1");
     // Make sure there are no other wrappers or flags getting in our way
@@ -368,6 +371,21 @@ path = "lib.rs"
     } else if subcommand == MiriCommand::Setup {
         println!("A libstd for Miri is now available in `{}`.", sysroot.display());
     }
+}
+
+fn phase_setup_rustc(args: env::Args) {
+    // Mostly we just forward everything.
+    // `MIRI_BE_RUST` is already set.
+    let mut cmd = miri();
+    cmd.args(args);
+
+    // Patch the panic runtime for `libpanic_abort` (mirroring what bootstrap usually does).
+    if get_arg_flag_value("--crate-name").as_deref() == Some("panic_abort") {
+        cmd.arg("-C").arg("panic=abort");
+    }
+
+    // Run it!
+    exec(cmd);
 }
 
 fn phase_cargo_miri(mut args: env::Args) {
@@ -402,7 +420,7 @@ fn phase_cargo_miri(mut args: env::Args) {
     // <https://github.com/rust-lang/miri/pull/1540#issuecomment-693553191> describes an alternative
     // approach that uses `cargo check`, making that part easier but target and binary handling
     // harder.
-    let miri_path = std::env::current_exe().expect("current executable path invalid");
+    let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
     let cargo_cmd = match subcommand {
         MiriCommand::Test => "test",
         MiriCommand::Run => "run",
@@ -470,22 +488,22 @@ fn phase_cargo_miri(mut args: env::Args) {
     if env::var_os("RUSTC_WRAPPER").is_some() {
         println!("WARNING: Ignoring `RUSTC_WRAPPER` environment variable, Miri does not support wrapping.");
     }
-    cmd.env("RUSTC_WRAPPER", &miri_path);
-    if verbose {
-        eprintln!("+ RUSTC_WRAPPER={:?}", miri_path);
-    }
+    cmd.env("RUSTC_WRAPPER", &cargo_miri_path);
 
     // Set the runner for the current target to us as well, so we can interpret the binaries.
     let runner_env_name = format!("CARGO_TARGET_{}_RUNNER", target.to_uppercase().replace('-', "_"));
-    cmd.env(runner_env_name, &miri_path);
+    cmd.env(&runner_env_name, &cargo_miri_path);
 
     // Set rustdoc to us as well, so we can make it do nothing (see issue #584).
-    cmd.env("RUSTDOC", &miri_path);
+    cmd.env("RUSTDOC", &cargo_miri_path);
 
     // Run cargo.
     if verbose {
-        cmd.env("MIRI_VERBOSE", ""); // This makes the other phases verbose.
+        eprintln!("[cargo-miri miri] RUSTC_WRAPPER={:?}", cargo_miri_path);
+        eprintln!("[cargo-miri miri] {}={:?}", runner_env_name, cargo_miri_path);
+        eprintln!("[cargo-miri miri] RUSTDOC={:?}", cargo_miri_path);
         eprintln!("[cargo-miri miri] {:?}", cmd);
+        cmd.env("MIRI_VERBOSE", ""); // This makes the other phases verbose.
     }
     exec(cmd)
 }
@@ -698,6 +716,12 @@ fn main() {
     let mut args = std::env::args();
     // Skip binary name.
     args.next().unwrap();
+
+    // Dispatch running as part of sysroot compilation.
+    if env::var_os("MIRI_BE_RUSTC").is_some() {
+        phase_setup_rustc(args);
+        return;
+    }
 
     // Dispatch to `cargo-miri` phase. There are three phases:
     // - When we are called via `cargo miri`, we run as the frontend and invoke the underlying
