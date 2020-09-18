@@ -268,7 +268,6 @@
 #![feature(integer_atomics)]
 #![feature(into_future)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(llvm_asm)]

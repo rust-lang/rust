@@ -103,7 +103,6 @@
 #![feature(inplace_iteration)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
-#![feature(libc)]
 #![feature(map_first_last)]
 #![feature(map_into_keys_values)]
 #![feature(maybe_uninit_ref)]

@@ -19,7 +19,6 @@
 )]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(nll)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
