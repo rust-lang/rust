@@ -534,11 +534,8 @@ impl<'a> ModuleData<'a> {
                 if ns != TypeNS {
                     return;
                 }
-                match binding.res() {
-                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
-                        collected_traits.push((name, binding))
-                    }
-                    _ => (),
+                if let Res::Def(DefKind::Trait | DefKind::TraitAlias, _) = binding.res() {
+                    collected_traits.push((name, binding))
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
