@@ -134,15 +134,10 @@ impl Mutex {
             0 => {}
             n => return n as *const _,
         }
-        let inner = box Inner { remutex: ReentrantMutex::uninitialized(), held: Cell::new(false) };
         unsafe {
+            let inner = box Inner { remutex: ReentrantMutex::uninitialized(), held: Cell::new(false) };
             inner.remutex.init();
-        }
-    }
-
-    unsafe fn flag_locked(&self) -> bool {
-        // SAFETY: The caller must ensure that the mutex is not moved or copied
-        unsafe {
+            let inner = Box::into_raw(inner);
             match self.lock.compare_and_swap(0, inner as usize, Ordering::SeqCst) {
                 0 => inner,
                 n => {
