@@ -16,10 +16,10 @@ use hir_expand::{
     proc_macro::ProcMacroExpander,
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
-use rustc_hash::FxHashMap;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
 use test_utils::mark;
+use tt::{Leaf, TokenTree};
 
 use crate::{
     attr::Attrs,
@@ -279,6 +279,25 @@ impl DefCollector<'_> {
 
             self.define_proc_macro(name.clone(), macro_id);
         }
+    }
+
+    fn resolve_proc_macro(&mut self, name: &Name) {
+        let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
+            Some((_, expander)) => MacroDefId {
+                ast_id: None,
+                krate: Some(self.def_map.krate),
+                kind: MacroDefKind::ProcMacro(*expander),
+                local_inner: false,
+            },
+            None => MacroDefId {
+                ast_id: None,
+                krate: Some(self.def_map.krate),
+                kind: MacroDefKind::ProcMacro(ProcMacroExpander::dummy(self.def_map.krate)),
+                local_inner: false,
+            },
+        };
+
+        self.define_proc_macro(name.clone(), macro_def);
     }
 
     /// Define a macro with `macro_rules`.
@@ -917,6 +936,9 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::Function(id) => {
                     let func = &self.item_tree[id];
+
+                    self.collect_proc_macro_def(&func.name, attrs);
+
                     def = Some(DefData {
                         id: FunctionLoc {
                             container: container.into(),
@@ -1175,6 +1197,30 @@ impl ModCollector<'_, '_> {
                     .push(DeriveDirective { module_id: self.module_id, ast_id });
             }
         }
+    }
+
+    /// If `attrs` registers a procedural macro, collects its definition.
+    fn collect_proc_macro_def(&mut self, func_name: &Name, attrs: &Attrs) {
+        // FIXME: this should only be done in the root module of `proc-macro` crates, not everywhere
+        // FIXME: distinguish the type of macro
+        let macro_name = if attrs.by_key("proc_macro").exists()
+            || attrs.by_key("proc_macro_attribute").exists()
+        {
+            func_name.clone()
+        } else {
+            let derive = attrs.by_key("proc_macro_derive");
+            if let Some(arg) = derive.tt_values().next() {
+                if let [TokenTree::Leaf(Leaf::Ident(trait_name))] = &*arg.token_trees {
+                    trait_name.as_name()
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        };
+
+        self.def_collector.resolve_proc_macro(&macro_name);
     }
 
     fn collect_macro(&mut self, mac: &MacroCall) {
