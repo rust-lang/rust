@@ -94,9 +94,9 @@ impl Barrier {
     /// be used continuously.
     ///
     /// A single (arbitrary) thread will receive a [`BarrierWaitResult`] that
-    /// returns `true` from [`is_leader`] when returning from this function, and
-    /// all other threads will receive a result that will return `false` from
-    /// [`BarrierWaitResult::is_leader`].
+    /// returns `true` from [`BarrierWaitResult::is_leader()`] when returning
+    /// from this function, and all other threads will receive a result that
+    /// will return `false` from [`BarrierWaitResult::is_leader()`].
     ///
     /// # Examples
     ///
