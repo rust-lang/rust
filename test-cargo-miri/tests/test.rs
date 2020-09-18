@@ -38,11 +38,6 @@ fn entropy_rng() {
 }
 
 #[test]
-fn num_cpus() {
-    assert_eq!(num_cpus::get(), 1);
-}
-
-#[test]
 fn cargo_env() {
     assert_eq!(env!("CARGO_PKG_NAME"), "cargo-miri-test");
     env!("CARGO_BIN_EXE_cargo-miri-test"); // Asserts that this exists.

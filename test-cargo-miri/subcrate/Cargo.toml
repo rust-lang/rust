@@ -12,3 +12,6 @@ path = "main.rs"
 name = "subtest"
 path = "test.rs"
 harness = false
+
+[dev-dependencies]
+num_cpus = "1.10.1"

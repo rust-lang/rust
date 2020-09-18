@@ -24,7 +24,7 @@ doctest = false # and no doc tests
 required-features = ["rustc_tests"]
 
 [dependencies]
-getrandom = { version = "0.1.8", features = ["std"] }
+getrandom = { version = "0.2", features = ["std"] }
 env_logger = "0.7.1"
 log = "0.4"
 shell-escape = "0.1.4"
@@ -44,7 +44,7 @@ libc = "0.2"
 [dev-dependencies]
 compiletest_rs = { version = "0.5", features = ["tmp"] }
 rustc_version = "0.2.3"
-colored = "1.6"
+colored = "2"
 
 [features]
 rustc_tests = []
