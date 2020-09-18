@@ -160,9 +160,7 @@ impl FlagComputation {
                     match predicate {
                         ty::ExistentialPredicate::Trait(tr) => computation.add_substs(tr.substs),
                         ty::ExistentialPredicate::Projection(p) => {
-                            let mut proj_computation = FlagComputation::new();
-                            proj_computation.add_existential_projection(&p);
-                            self.add_bound_computation(proj_computation);
+                            computation.add_existential_projection(&p);
                         }
                         ty::ExistentialPredicate::AutoTrait(_) => {}
                     }
