@@ -13,6 +13,7 @@ fn doit() -> Result<(), Box<dyn Error>> {
     let mut src_path = None;
     let mut out_path = None;
     let mut rustc_path = None;
+    let mut rustc_target = None;
     let mut verbose = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -34,6 +35,12 @@ fn doit() -> Result<(), Box<dyn Error>> {
                     None => return Err("--rustc requires a value".into()),
                 };
             }
+            "--rustc-target" => {
+                rustc_target = match args.next() {
+                    Some(s) => Some(s),
+                    None => return Err("--rustc-target requires a value".into()),
+                };
+            }
             "-v" | "--verbose" => verbose = true,
             s => return Err(format!("unexpected argument `{}`", s).into()),
         }
@@ -47,10 +54,16 @@ fn doit() -> Result<(), Box<dyn Error>> {
     if rustc_path.is_none() {
         return Err("--rustc must be specified to the path of rustc".into());
     }
+    if rustc_target.is_none() {
+        return Err("--rustc-target must be specified to the rustc target".into());
+    }
     lint_docs::extract_lint_docs(
         &src_path.unwrap(),
         &out_path.unwrap(),
-        &rustc_path.unwrap(),
+        lint_docs::Rustc {
+            path: rustc_path.as_deref().unwrap(),
+            target: rustc_target.as_deref().unwrap(),
+        },
         verbose,
     )
 }
