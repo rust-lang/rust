@@ -720,7 +720,8 @@ impl<'tcx> LateContext<'tcx> {
     /// Anonymous scopes such as `extern` imports are matched with `kw::Invalid`;
     /// inherent `impl` blocks are matched with the name of the type.
     ///
-    /// If possible, consider using a `rustc_diagnostic_item` instead.
+    /// Instead of using this method, it is often preferable to instead use
+    /// `rustc_diagnostic_item` or a `lang_item`, which is less prone to errors.
     ///
     /// # Examples
     ///
