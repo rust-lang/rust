@@ -21,7 +21,8 @@
 //! `late_lint_methods!` invocation in `lib.rs`.
 
 use crate::{
-    types::CItemKind, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
+    types::{transparent_newtype_field, CItemKind},
+    EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
 };
 use rustc_ast::attr::{self, HasAttrs};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -2688,8 +2689,7 @@ impl ClashingExternDeclarations {
                         if is_transparent && !is_non_null {
                             debug_assert!(def.variants.len() == 1);
                             let v = &def.variants[VariantIdx::new(0)];
-                            ty = v
-                                .transparent_newtype_field(tcx)
+                            ty = transparent_newtype_field(tcx, v)
                                 .expect(
                                     "single-variant transparent structure with zero-sized field",
                                 )
