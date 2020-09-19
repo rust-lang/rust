@@ -1,8 +1,8 @@
-macro_rules! int_impl {
-    ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr, $Min:expr, $Max:expr, $Feature:expr,
-     $EndFeature:expr, $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
-     $reversed:expr, $le_bytes:expr, $be_bytes:expr,
-     $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
+macro_rules! uint_impl {
+    ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr, $Feature:expr, $EndFeature:expr,
+        $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
+        $reversed:expr, $le_bytes:expr, $be_bytes:expr,
+        $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
         doc_comment! {
             concat!("The smallest value that can be represented by this integer type.
 
@@ -11,11 +11,10 @@ macro_rules! int_impl {
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, ", stringify!($Min), ");",
-$EndFeature, "
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, 0);", $EndFeature, "
 ```"),
             #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-            pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
+            pub const MIN: Self = 0;
         }
 
         doc_comment! {
@@ -26,11 +25,11 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($Max), ");",
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($MaxV), ");",
 $EndFeature, "
 ```"),
             #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-            pub const MAX: Self = !Self::MIN;
+            pub const MAX: Self = !0;
         }
 
         doc_comment! {
@@ -50,13 +49,14 @@ $EndFeature, "
         doc_comment! {
             concat!("Converts a string slice in a given base to an integer.
 
-The string is expected to be an optional `+` or `-` sign followed by digits.
-Leading and trailing whitespace represent an error. Digits are a subset of these characters,
-depending on `radix`:
+The string is expected to be an optional `+` sign
+followed by digits.
+Leading and trailing whitespace represent an error.
+Digits are a subset of these characters, depending on `radix`:
 
- * `0-9`
- * `a-z`
- * `A-Z`
+* `0-9`
+* `a-z`
+* `A-Z`
 
 # Panics
 
@@ -84,16 +84,16 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "let n = 0b100_0000", stringify!($SelfT), ";
+", $Feature, "let n = 0b01001100", stringify!($SelfT), ";
 
-assert_eq!(n.count_ones(), 1);",
-$EndFeature, "
-```
-"),
+assert_eq!(n.count_ones(), 3);", $EndFeature, "
+```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
-            pub const fn count_ones(self) -> u32 { (self as $UnsignedT).count_ones() }
+            pub const fn count_ones(self) -> u32 {
+                intrinsics::ctpop(self as $ActualT) as u32
+            }
         }
 
         doc_comment! {
@@ -104,10 +104,10 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 1);", $EndFeature, "
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             pub const fn count_zeros(self) -> u32 {
                 (!self).count_ones()
@@ -122,37 +122,36 @@ Basic usage:
 Basic usage:
 
 ```
-", $Feature, "let n = -1", stringify!($SelfT), ";
+", $Feature, "let n = ", stringify!($SelfT), "::MAX >> 2;
 
-assert_eq!(n.leading_zeros(), 0);",
-$EndFeature, "
+assert_eq!(n.leading_zeros(), 2);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             pub const fn leading_zeros(self) -> u32 {
-                (self as $UnsignedT).leading_zeros()
+                intrinsics::ctlz(self as $ActualT) as u32
             }
         }
 
         doc_comment! {
-            concat!("Returns the number of trailing zeros in the binary representation of `self`.
+            concat!("Returns the number of trailing zeros in the binary representation
+of `self`.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "let n = -4", stringify!($SelfT), ";
+", $Feature, "let n = 0b0101000", stringify!($SelfT), ";
 
-assert_eq!(n.trailing_zeros(), 2);",
-$EndFeature, "
+assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
-                (self as $UnsignedT).trailing_zeros()
+                intrinsics::cttz(self) as u32
             }
         }
 
@@ -164,37 +163,36 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "let n = -1", stringify!($SelfT), ";
+", $Feature, "let n = !(", stringify!($SelfT), "::MAX >> 2);
 
-assert_eq!(n.leading_ones(), ", stringify!($BITS), ");",
-$EndFeature, "
+assert_eq!(n.leading_ones(), 2);", $EndFeature, "
 ```"),
             #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn leading_ones(self) -> u32 {
-                (self as $UnsignedT).leading_ones()
+                (!self).leading_zeros()
             }
         }
 
         doc_comment! {
-            concat!("Returns the number of trailing ones in the binary representation of `self`.
+            concat!("Returns the number of trailing ones in the binary representation
+of `self`.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "let n = 3", stringify!($SelfT), ";
+", $Feature, "let n = 0b1010111", stringify!($SelfT), ";
 
-assert_eq!(n.trailing_ones(), 2);",
-$EndFeature, "
+assert_eq!(n.trailing_ones(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn trailing_ones(self) -> u32 {
-                (self as $UnsignedT).trailing_ones()
+                (!self).trailing_zeros()
             }
         }
 
@@ -215,12 +213,12 @@ let m = ", $rot_result, ";
 assert_eq!(n.rotate_left(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             pub const fn rotate_left(self, n: u32) -> Self {
-                (self as $UnsignedT).rotate_left(n) as Self
+                intrinsics::rotate_left(self, n as $SelfT)
             }
         }
 
@@ -242,17 +240,18 @@ let m = ", $rot_op, ";
 assert_eq!(n.rotate_right(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             pub const fn rotate_right(self, n: u32) -> Self {
-                (self as $UnsignedT).rotate_right(n) as Self
+                intrinsics::rotate_right(self, n as $SelfT)
             }
         }
 
         doc_comment! {
-            concat!("Reverses the byte order of the integer.
+            concat!("
+Reverses the byte order of the integer.
 
 # Examples
 
@@ -260,16 +259,15 @@ Basic usage:
 
 ```
 let n = ", $swap_op, stringify!($SelfT), ";
-
 let m = n.swap_bytes();
 
 assert_eq!(m, ", $swapped, ");
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             pub const fn swap_bytes(self) -> Self {
-                (self as $UnsignedT).swap_bytes() as Self
+                intrinsics::bswap(self as $ActualT) as Self
             }
         }
 
@@ -287,18 +285,19 @@ let m = n.reverse_bits();
 assert_eq!(m, ", $reversed, ");
 ```"),
             #[stable(feature = "reverse_bits", since = "1.37.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             #[must_use]
             pub const fn reverse_bits(self) -> Self {
-                (self as $UnsignedT).reverse_bits() as Self
+                intrinsics::bitreverse(self as $ActualT) as Self
             }
         }
 
         doc_comment! {
             concat!("Converts an integer from big endian to the target's endianness.
 
-On big endian this is a no-op. On little endian the bytes are swapped.
+On big endian this is a no-op. On little endian the bytes are
+swapped.
 
 # Examples
 
@@ -311,11 +310,10 @@ if cfg!(target_endian = \"big\") {
     assert_eq!(", stringify!($SelfT), "::from_be(n), n)
 } else {
     assert_eq!(", stringify!($SelfT), "::from_be(n), n.swap_bytes())
-}",
-$EndFeature, "
+}", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             pub const fn from_be(x: Self) -> Self {
                 #[cfg(target_endian = "big")]
@@ -332,7 +330,8 @@ $EndFeature, "
         doc_comment! {
             concat!("Converts an integer from little endian to the target's endianness.
 
-On little endian this is a no-op. On big endian the bytes are swapped.
+On little endian this is a no-op. On big endian the bytes are
+swapped.
 
 # Examples
 
@@ -345,11 +344,10 @@ if cfg!(target_endian = \"little\") {
     assert_eq!(", stringify!($SelfT), "::from_le(n), n)
 } else {
     assert_eq!(", stringify!($SelfT), "::from_le(n), n.swap_bytes())
-}",
-$EndFeature, "
+}", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             pub const fn from_le(x: Self) -> Self {
                 #[cfg(target_endian = "little")]
@@ -366,7 +364,8 @@ $EndFeature, "
         doc_comment! {
             concat!("Converts `self` to big endian from the target's endianness.
 
-On big endian this is a no-op. On little endian the bytes are swapped.
+On big endian this is a no-op. On little endian the bytes are
+swapped.
 
 # Examples
 
@@ -379,11 +378,10 @@ if cfg!(target_endian = \"big\") {
     assert_eq!(n.to_be(), n)
 } else {
     assert_eq!(n.to_be(), n.swap_bytes())
-}",
-$EndFeature, "
+}", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             pub const fn to_be(self) -> Self { // or not to be?
                 #[cfg(target_endian = "big")]
@@ -400,7 +398,8 @@ $EndFeature, "
         doc_comment! {
             concat!("Converts `self` to little endian from the target's endianness.
 
-On little endian this is a no-op. On big endian the bytes are swapped.
+On little endian this is a no-op. On big endian the bytes are
+swapped.
 
 # Examples
 
@@ -413,11 +412,10 @@ if cfg!(target_endian = \"little\") {
     assert_eq!(n.to_le(), n)
 } else {
     assert_eq!(n.to_le(), n.swap_bytes())
-}",
-$EndFeature, "
+}", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_conversions", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
             #[inline]
             pub const fn to_le(self) -> Self {
                 #[cfg(target_endian = "little")]
@@ -440,10 +438,9 @@ if overflow occurred.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!((", stringify!($SelfT),
-"::MAX - 2).checked_add(1), Some(", stringify!($SelfT), "::MAX - 1));
-assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);",
-$EndFeature, "
+", $Feature, "assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(1), ",
+"Some(", stringify!($SelfT), "::MAX - 1));
+assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -476,18 +473,16 @@ cannot occur. This results in undefined behavior when `self + rhs > ", stringify
         }
 
         doc_comment! {
-            concat!("Checked integer subtraction. Computes `self - rhs`, returning `None` if
-overflow occurred.
+            concat!("Checked integer subtraction. Computes `self - rhs`, returning
+`None` if overflow occurred.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!((", stringify!($SelfT),
-"::MIN + 2).checked_sub(1), Some(", stringify!($SelfT), "::MIN + 1));
-assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub(3), None);",
-$EndFeature, "
+", $Feature, "assert_eq!(1", stringify!($SelfT), ".checked_sub(1), Some(0));
+assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -520,18 +515,16 @@ cannot occur. This results in undefined behavior when `self - rhs > ", stringify
         }
 
         doc_comment! {
-            concat!("Checked integer multiplication. Computes `self * rhs`, returning `None` if
-overflow occurred.
+            concat!("Checked integer multiplication. Computes `self * rhs`, returning
+`None` if overflow occurred.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT),
-"::MAX.checked_mul(1), Some(", stringify!($SelfT), "::MAX));
-assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);",
-$EndFeature, "
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".checked_mul(1), Some(5));
+assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -564,19 +557,16 @@ cannot occur. This results in undefined behavior when `self * rhs > ", stringify
         }
 
         doc_comment! {
-            concat!("Checked integer division. Computes `self / rhs`, returning `None` if `rhs == 0`
-or the division results in overflow.
+            concat!("Checked integer division. Computes `self / rhs`, returning `None`
+if `rhs == 0`.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!((", stringify!($SelfT),
-"::MIN + 1).checked_div(-1), Some(", stringify!($Max), "));
-assert_eq!(", stringify!($SelfT), "::MIN.checked_div(-1), None);
-assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);",
-$EndFeature, "
+", $Feature, "assert_eq!(128", stringify!($SelfT), ".checked_div(2), Some(64));
+assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
@@ -584,28 +574,27 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
-                    // SAFETY: div by zero and by INT_MIN have been checked above
+                    // SAFETY: div by zero has been checked above and unsigned types have no other
+                    // failure modes for division
                     Some(unsafe { intrinsics::unchecked_div(self, rhs) })
                 }
             }
         }
 
         doc_comment! {
-            concat!("Checked Euclidean division. Computes `self.div_euclid(rhs)`,
-returning `None` if `rhs == 0` or the division results in overflow.
+            concat!("Checked Euclidean division. Computes `self.div_euclid(rhs)`, returning `None`
+if `rhs == 0`.
 
 # Examples
 
 Basic usage:
 
 ```
-assert_eq!((", stringify!($SelfT),
-"::MIN + 1).checked_div_euclid(-1), Some(", stringify!($Max), "));
-assert_eq!(", stringify!($SelfT), "::MIN.checked_div_euclid(-1), None);
-assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
+assert_eq!(128", stringify!($SelfT), ".checked_div_euclid(2), Some(64));
+assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
@@ -613,7 +602,7 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
@@ -621,20 +610,18 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
             }
         }
 
+
         doc_comment! {
-            concat!("Checked integer remainder. Computes `self % rhs`, returning `None` if
-`rhs == 0` or the division results in overflow.
+            concat!("Checked integer remainder. Computes `self % rhs`, returning `None`
+if `rhs == 0`.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "
-assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));
-assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);
-assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);",
-$EndFeature, "
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));
+assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
@@ -642,18 +629,19 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
-                    // SAFETY: div by zero and by INT_MIN have been checked above
+                    // SAFETY: div by zero has been checked above and unsigned types have no other
+                    // failure modes for division
                     Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
                 }
             }
         }
 
         doc_comment! {
-            concat!("Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`, returning `None`
-if `rhs == 0` or the division results in overflow.
+            concat!("Checked Euclidean modulo. Computes `self.rem_euclid(rhs)`, returning `None`
+if `rhs == 0`.
 
 # Examples
 
@@ -662,7 +650,6 @@ Basic usage:
 ```
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
-assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
@@ -670,7 +657,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
@@ -679,17 +666,18 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
         }
 
         doc_comment! {
-            concat!("Checked negation. Computes `-self`, returning `None` if `self == MIN`.
+            concat!("Checked negation. Computes `-self`, returning `None` unless `self ==
+0`.
+
+Note that negating any positive integer will overflow.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "
-assert_eq!(5", stringify!($SelfT), ".checked_neg(), Some(-5));
-assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);",
-$EndFeature, "
+", $Feature, "assert_eq!(0", stringify!($SelfT), ".checked_neg(), Some(0));
+assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -701,8 +689,8 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Checked shift left. Computes `self << rhs`, returning `None` if `rhs` is larger
-than or equal to the number of bits in `self`.
+            concat!("Checked shift left. Computes `self << rhs`, returning `None`
+if `rhs` is larger than or equal to the number of bits in `self`.
 
 # Examples
 
@@ -710,8 +698,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(0x1", stringify!($SelfT), ".checked_shl(4), Some(0x10));
-assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);",
-$EndFeature, "
+assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -725,8 +712,8 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
-larger than or equal to the number of bits in `self`.
+            concat!("Checked shift right. Computes `self >> rhs`, returning `None`
+if `rhs` is larger than or equal to the number of bits in `self`.
 
 # Examples
 
@@ -734,8 +721,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(0x10", stringify!($SelfT), ".checked_shr(4), Some(0x1));
-assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);",
-$EndFeature, "
+assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -749,32 +735,6 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Checked absolute value. Computes `self.abs()`, returning `None` if
-`self == MIN`.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "
-assert_eq!((-5", stringify!($SelfT), ").checked_abs(), Some(5));
-assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);",
-$EndFeature, "
-```"),
-            #[stable(feature = "no_panic_abs", since = "1.13.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
-            #[inline]
-            pub const fn checked_abs(self) -> Option<Self> {
-                if self.is_negative() {
-                    self.checked_neg()
-                } else {
-                    Some(self)
-                }
-            }
-        }
-
-        doc_comment! {
             concat!("Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
 overflow occurred.
 
@@ -783,11 +743,9 @@ overflow occurred.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(8", stringify!($SelfT), ".checked_pow(2), Some(64));
-assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);",
-$EndFeature, "
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".checked_pow(5), Some(32));
+assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);", $EndFeature, "
 ```"),
-
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
@@ -807,17 +765,19 @@ $EndFeature, "
                     exp /= 2;
                     base = try_opt!(base.checked_mul(base));
                 }
+
                 // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
+
                 Some(try_opt!(acc.checked_mul(base)))
             }
         }
 
         doc_comment! {
-            concat!("Saturating integer addition. Computes `self + rhs`, saturating at the numeric
-bounds instead of overflowing.
+            concat!("Saturating integer addition. Computes `self + rhs`, saturating at
+the numeric bounds instead of overflowing.
 
 # Examples
 
@@ -825,17 +785,14 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
-assert_eq!(", stringify!($SelfT), "::MAX.saturating_add(100), ", stringify!($SelfT),
-"::MAX);
-assert_eq!(", stringify!($SelfT), "::MIN.saturating_add(-1), ", stringify!($SelfT),
-"::MIN);",
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_add(127), ", stringify!($SelfT), "::MAX);",
 $EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn saturating_add(self, rhs: Self) -> Self {
                 intrinsics::saturating_add(self, rhs)
@@ -843,25 +800,21 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Saturating integer subtraction. Computes `self - rhs`, saturating at the
-numeric bounds instead of overflowing.
+            concat!("Saturating integer subtraction. Computes `self - rhs`, saturating
+at the numeric bounds instead of overflowing.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
-assert_eq!(", stringify!($SelfT), "::MIN.saturating_sub(100), ", stringify!($SelfT),
-"::MIN);
-assert_eq!(", stringify!($SelfT), "::MAX.saturating_sub(-1), ", stringify!($SelfT),
-"::MAX);",
-$EndFeature, "
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(27), 73);
+assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn saturating_sub(self, rhs: Self) -> Self {
                 intrinsics::saturating_sub(self, rhs)
@@ -869,64 +822,8 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Saturating integer negation. Computes `-self`, returning `MAX` if `self == MIN`
-instead of overflowing.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
-assert_eq!((-100", stringify!($SelfT), ").saturating_neg(), 100);
-assert_eq!(", stringify!($SelfT), "::MIN.saturating_neg(), ", stringify!($SelfT),
-"::MAX);
-assert_eq!(", stringify!($SelfT), "::MAX.saturating_neg(), ", stringify!($SelfT),
-"::MIN + 1);",
-$EndFeature, "
-```"),
-
-            #[stable(feature = "saturating_neg", since = "1.45.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
-            #[inline]
-            pub const fn saturating_neg(self) -> Self {
-                intrinsics::saturating_sub(0, self)
-            }
-        }
-
-        doc_comment! {
-            concat!("Saturating absolute value. Computes `self.abs()`, returning `MAX` if `self ==
-MIN` instead of overflowing.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
-assert_eq!((-100", stringify!($SelfT), ").saturating_abs(), 100);
-assert_eq!(", stringify!($SelfT), "::MIN.saturating_abs(), ", stringify!($SelfT),
-"::MAX);
-assert_eq!((", stringify!($SelfT), "::MIN + 1).saturating_abs(), ", stringify!($SelfT),
-"::MAX);",
-$EndFeature, "
-```"),
-
-            #[stable(feature = "saturating_neg", since = "1.45.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
-            #[inline]
-            pub const fn saturating_abs(self) -> Self {
-                if self.is_negative() {
-                    self.saturating_neg()
-                } else {
-                    self
-                }
-            }
-        }
-
-        doc_comment! {
-            concat!("Saturating integer multiplication. Computes `self * rhs`, saturating at the
-numeric bounds instead of overflowing.
+            concat!("Saturating integer multiplication. Computes `self * rhs`,
+saturating at the numeric bounds instead of overflowing.
 
 # Examples
 
@@ -934,10 +831,9 @@ Basic usage:
 
 ```
 ", $Feature, "
-assert_eq!(10", stringify!($SelfT), ".saturating_mul(12), 120);
-assert_eq!(", stringify!($SelfT), "::MAX.saturating_mul(10), ", stringify!($SelfT), "::MAX);
-assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($SelfT), "::MIN);",
-$EndFeature, "
+assert_eq!(2", stringify!($SelfT), ".saturating_mul(10), 20);
+assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($SelfT),
+"::MAX);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
@@ -947,11 +843,7 @@ $EndFeature, "
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {
                     Some(x) => x,
-                    None => if (self < 0) == (rhs < 0) {
-                        Self::MAX
-                    } else {
-                        Self::MIN
-                    }
+                    None => Self::MAX,
                 }
             }
         }
@@ -966,9 +858,8 @@ Basic usage:
 
 ```
 ", $Feature, "
-assert_eq!((-4", stringify!($SelfT), ").saturating_pow(3), -64);
-assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(2), ", stringify!($SelfT), "::MAX);
-assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT), "::MIN);",
+assert_eq!(4", stringify!($SelfT), ".saturating_pow(3), 64);
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT), "::MAX);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
@@ -979,28 +870,26 @@ $EndFeature, "
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
-                    None if self < 0 && exp % 2 == 1 => Self::MIN,
                     None => Self::MAX,
                 }
             }
         }
 
         doc_comment! {
-            concat!("Wrapping (modular) addition. Computes `self + rhs`, wrapping around at the
-boundary of the type.
+            concat!("Wrapping (modular) addition. Computes `self + rhs`,
+wrapping around at the boundary of the type.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_add(27), 127);
-assert_eq!(", stringify!($SelfT), "::MAX.wrapping_add(2), ", stringify!($SelfT),
-"::MIN + 1);",
+", $Feature, "assert_eq!(200", stringify!($SelfT), ".wrapping_add(55), 255);
+assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::MAX), 199);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1010,21 +899,20 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Wrapping (modular) subtraction. Computes `self - rhs`, wrapping around at the
-boundary of the type.
+            concat!("Wrapping (modular) subtraction. Computes `self - rhs`,
+wrapping around at the boundary of the type.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(0", stringify!($SelfT), ".wrapping_sub(127), -127);
-assert_eq!((-2", stringify!($SelfT), ").wrapping_sub(", stringify!($SelfT), "::MAX), ",
-stringify!($SelfT), "::MAX);",
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_sub(100), 0);
+assert_eq!(100", stringify!($SelfT), ".wrapping_sub(", stringify!($SelfT), "::MAX), 101);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1033,49 +921,42 @@ $EndFeature, "
             }
         }
 
-        doc_comment! {
-            concat!("Wrapping (modular) multiplication. Computes `self * rhs`, wrapping around at
-the boundary of the type.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert_eq!(10", stringify!($SelfT), ".wrapping_mul(12), 120);
-assert_eq!(11i8.wrapping_mul(12), -124);",
-$EndFeature, "
-```"),
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[must_use = "this returns the result of the operation, \
+        /// Wrapping (modular) multiplication. Computes `self *
+        /// rhs`, wrapping around at the boundary of the type.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u8` is used here.
+        ///
+        /// ```
+        /// assert_eq!(10u8.wrapping_mul(12), 120);
+        /// assert_eq!(25u8.wrapping_mul(12), 44);
+        /// ```
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
+        #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
-            pub const fn wrapping_mul(self, rhs: Self) -> Self {
-                intrinsics::wrapping_mul(self, rhs)
-            }
+        #[inline]
+        pub const fn wrapping_mul(self, rhs: Self) -> Self {
+            intrinsics::wrapping_mul(self, rhs)
         }
 
         doc_comment! {
-            concat!("Wrapping (modular) division. Computes `self / rhs`, wrapping around at the
-boundary of the type.
-
-The only case where such wrapping can occur is when one divides `MIN / -1` on a signed type (where
-`MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
-that is too large to represent in the type. In such a case, this function returns `MIN` itself.
-
-# Panics
-
-This function will panic if `rhs` is 0.
+            concat!("Wrapping (modular) division. Computes `self / rhs`.
+Wrapped division on unsigned types is just normal division.
+There's no way wrapping could ever happen.
+This function exists, so that all operations
+are accounted for in the wrapping operations.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);
-assert_eq!((-128i8).wrapping_div(-1), -128);",
-$EndFeature, "
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
@@ -1083,21 +964,19 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_div(self, rhs: Self) -> Self {
-                self.overflowing_div(rhs).0
+                self / rhs
             }
         }
 
         doc_comment! {
-            concat!("Wrapping Euclidean division. Computes `self.div_euclid(rhs)`,
-wrapping around at the boundary of the type.
-
-Wrapping will only occur in `MIN / -1` on a signed type (where `MIN` is the negative minimal value
-for the type). This is equivalent to `-MIN`, a positive value that is too large to represent in the
-type. In this case, this method returns `MIN` itself.
-
-# Panics
-
-This function will panic if `rhs` is 0.
+            concat!("Wrapping Euclidean division. Computes `self.div_euclid(rhs)`.
+Wrapped division on unsigned types is just normal division.
+There's no way wrapping could ever happen.
+This function exists, so that all operations
+are accounted for in the wrapping operations.
+Since, for the positive integers, all common
+definitions of division are equal, this
+is exactly equal to `self.wrapping_div(rhs)`.
 
 # Examples
 
@@ -1105,7 +984,6 @@ Basic usage:
 
 ```
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
-assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
@@ -1113,30 +991,24 @@ assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
-                self.overflowing_div_euclid(rhs).0
+                self / rhs
             }
         }
 
         doc_comment! {
-            concat!("Wrapping (modular) remainder. Computes `self % rhs`, wrapping around at the
-boundary of the type.
-
-Such wrap-around never actually occurs mathematically; implementation artifacts make `x % y`
-invalid for `MIN / -1` on a signed type (where `MIN` is the negative minimal value). In such a case,
-this function returns `0`.
-
-# Panics
-
-This function will panic if `rhs` is 0.
+            concat!("Wrapping (modular) remainder. Computes `self % rhs`.
+Wrapped remainder calculation on unsigned types is
+just the regular remainder calculation.
+There's no way wrapping could ever happen.
+This function exists, so that all operations
+are accounted for in the wrapping operations.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);
-assert_eq!((-128i8).wrapping_rem(-1), 0);",
-$EndFeature, "
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
@@ -1144,20 +1016,20 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_rem(self, rhs: Self) -> Self {
-                self.overflowing_rem(rhs).0
+                self % rhs
             }
         }
 
         doc_comment! {
-            concat!("Wrapping Euclidean remainder. Computes `self.rem_euclid(rhs)`, wrapping around
-at the boundary of the type.
-
-Wrapping will only occur in `MIN % -1` on a signed type (where `MIN` is the negative minimal value
-for the type). In this case, this method returns 0.
-
-# Panics
-
-This function will panic if `rhs` is 0.
+            concat!("Wrapping Euclidean modulo. Computes `self.rem_euclid(rhs)`.
+Wrapped modulo calculation on unsigned types is
+just the regular remainder calculation.
+There's no way wrapping could ever happen.
+This function exists, so that all operations
+are accounted for in the wrapping operations.
+Since, for the positive integers, all common
+definitions of division are equal, this
+is exactly equal to `self.wrapping_rem(rhs)`.
 
 # Examples
 
@@ -1165,7 +1037,6 @@ Basic usage:
 
 ```
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
-assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
@@ -1173,43 +1044,48 @@ assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
-                self.overflowing_rem_euclid(rhs).0
+                self % rhs
             }
         }
 
-        doc_comment! {
-            concat!("Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary
-of the type.
-
-The only case where such wrapping can occur is when one negates `MIN` on a signed type (where `MIN`
-is the negative minimal value for the type); this is a positive value that is too large to represent
-in the type. In such a case, this function returns `MIN` itself.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), -100);
-assert_eq!(", stringify!($SelfT), "::MIN.wrapping_neg(), ", stringify!($SelfT),
-"::MIN);",
-$EndFeature, "
-```"),
-            #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[inline]
-            pub const fn wrapping_neg(self) -> Self {
-                self.overflowing_neg().0
-            }
+        /// Wrapping (modular) negation. Computes `-self`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// Since unsigned types do not have negative equivalents
+        /// all applications of this function will wrap (except for `-0`).
+        /// For values smaller than the corresponding signed type's maximum
+        /// the result is the same as casting the corresponding signed value.
+        /// Any larger values are equivalent to `MAX + 1 - (val - MAX - 1)` where
+        /// `MAX` is the corresponding signed type's maximum.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i8` is used here.
+        ///
+        /// ```
+        /// assert_eq!(100i8.wrapping_neg(), -100);
+        /// assert_eq!((-128i8).wrapping_neg(), -128);
+        /// ```
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
+        #[inline]
+        pub const fn wrapping_neg(self) -> Self {
+            self.overflowing_neg().0
         }
 
         doc_comment! {
-            concat!("Panic-free bitwise shift-left; yields `self << mask(rhs)`, where `mask` removes
-any high-order bits of `rhs` that would cause the shift to exceed the bitwidth of the type.
+            concat!("Panic-free bitwise shift-left; yields `self << mask(rhs)`,
+where `mask` removes any high-order bits of `rhs` that
+would cause the shift to exceed the bitwidth of the type.
 
-Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is restricted to
-the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
-The primitive integer types all implement a `[`rotate_left`](#method.rotate_left) function,
+Note that this is *not* the same as a rotate-left; the
+RHS of a wrapping shift-left is restricted to the range
+of the type, rather than the bits shifted out of the LHS
+being returned to the other end. The primitive integer
+types all implement a [`rotate_left`](#method.rotate_left) function,
 which may be what you want instead.
 
 # Examples
@@ -1217,12 +1093,11 @@ which may be what you want instead.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(7), -128);
-assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(128), -1);",
-$EndFeature, "
+", $Feature, "assert_eq!(1", stringify!($SelfT), ".wrapping_shl(7), 128);
+assert_eq!(1", stringify!($SelfT), ".wrapping_shl(128), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1236,12 +1111,15 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Panic-free bitwise shift-right; yields `self >> mask(rhs)`, where `mask`
-removes any high-order bits of `rhs` that would cause the shift to exceed the bitwidth of the type.
+            concat!("Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
+where `mask` removes any high-order bits of `rhs` that
+would cause the shift to exceed the bitwidth of the type.
 
-Note that this is *not* the same as a rotate-right; the RHS of a wrapping shift-right is restricted
-to the range of the type, rather than the bits shifted out of the LHS being returned to the other
-end. The primitive integer types all implement a [`rotate_right`](#method.rotate_right) function,
+Note that this is *not* the same as a rotate-right; the
+RHS of a wrapping shift-right is restricted to the range
+of the type, rather than the bits shifted out of the LHS
+being returned to the other end. The primitive integer
+types all implement a [`rotate_right`](#method.rotate_right) function,
 which may be what you want instead.
 
 # Examples
@@ -1249,12 +1127,11 @@ which may be what you want instead.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!((-128", stringify!($SelfT), ").wrapping_shr(7), -1);
-assert_eq!((-128i16).wrapping_shr(64), -128);",
-$EndFeature, "
+", $Feature, "assert_eq!(128", stringify!($SelfT), ".wrapping_shr(7), 1);
+assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1268,62 +1145,6 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Wrapping (modular) absolute value. Computes `self.abs()`, wrapping around at
-the boundary of the type.
-
-The only case where such wrapping can occur is when one takes the absolute value of the negative
-minimal value for the type; this is a positive value that is too large to represent in the type. In
-such a case, this function returns `MIN` itself.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_abs(), 100);
-assert_eq!((-100", stringify!($SelfT), ").wrapping_abs(), 100);
-assert_eq!(", stringify!($SelfT), "::MIN.wrapping_abs(), ", stringify!($SelfT),
-"::MIN);
-assert_eq!((-128i8).wrapping_abs() as u8, 128);",
-$EndFeature, "
-```"),
-            #[stable(feature = "no_panic_abs", since = "1.13.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[allow(unused_attributes)]
-            #[inline]
-            pub const fn wrapping_abs(self) -> Self {
-                 if self.is_negative() {
-                     self.wrapping_neg()
-                 } else {
-                     self
-                 }
-            }
-        }
-
-        doc_comment! {
-            concat!("Computes the absolute value of `self` without any wrapping
-or panicking.
-
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "#![feature(unsigned_abs)]
-assert_eq!(100", stringify!($SelfT), ".unsigned_abs(), 100", stringify!($UnsignedT), ");
-assert_eq!((-100", stringify!($SelfT), ").unsigned_abs(), 100", stringify!($UnsignedT), ");
-assert_eq!((-128i8).unsigned_abs(), 128u8);",
-$EndFeature, "
-```"),
-            #[unstable(feature = "unsigned_abs", issue = "74913")]
-            #[inline]
-            pub const fn unsigned_abs(self) -> $UnsignedT {
-                 self.wrapping_abs() as $UnsignedT
-            }
-        }
-
-        doc_comment! {
             concat!("Wrapping (modular) exponentiation. Computes `self.pow(exp)`,
 wrapping around at the boundary of the type.
 
@@ -1332,10 +1153,8 @@ wrapping around at the boundary of the type.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(3", stringify!($SelfT), ".wrapping_pow(4), 81);
-assert_eq!(3i8.wrapping_pow(5), -13);
-assert_eq!(3i8.wrapping_pow(6), -39);",
-$EndFeature, "
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".wrapping_pow(5), 243);
+assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
@@ -1368,21 +1187,21 @@ $EndFeature, "
         doc_comment! {
             concat!("Calculates `self` + `rhs`
 
-Returns a tuple of the addition along with a boolean indicating whether an arithmetic overflow would
-occur. If an overflow would have occurred then the wrapped value is returned.
+Returns a tuple of the addition along with a boolean indicating
+whether an arithmetic overflow would occur. If an overflow would
+have occurred then the wrapped value is returned.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
 ", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
-assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($SelfT),
-"::MIN, true));", $EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1395,21 +1214,22 @@ assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($Sel
         doc_comment! {
             concat!("Calculates `self` - `rhs`
 
-Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic overflow
-would occur. If an overflow would have occurred then the wrapped value is returned.
+Returns a tuple of the subtraction along with a boolean indicating
+whether an arithmetic overflow would occur. If an overflow would
+have occurred then the wrapped value is returned.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
 ", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($SelfT),
-"::MAX, true));", $EndFeature, "
+assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));",
+$EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1419,37 +1239,40 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($Sel
             }
         }
 
-        doc_comment! {
-            concat!("Calculates the multiplication of `self` and `rhs`.
-
-Returns a tuple of the multiplication along with a boolean indicating whether an arithmetic overflow
-would occur. If an overflow would have occurred then the wrapped value is returned.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_mul(2), (10, false));
-assert_eq!(1_000_000_000i32.overflowing_mul(10), (1410065408, true));",
-$EndFeature, "
-```"),
-            #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[must_use = "this returns the result of the operation, \
+        /// Calculates the multiplication of `self` and `rhs`.
+        ///
+        /// Returns a tuple of the multiplication along with a boolean
+        /// indicating whether an arithmetic overflow would occur. If an
+        /// overflow would have occurred then the wrapped value is returned.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u32` is used here.
+        ///
+        /// ```
+        /// assert_eq!(5u32.overflowing_mul(2), (10, false));
+        /// assert_eq!(1_000_000_000u32.overflowing_mul(10), (1410065408, true));
+        /// ```
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
+        #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
-            pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
-                let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
-                (a as Self, b)
-            }
+        #[inline]
+        pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
+            let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
+            (a as Self, b)
         }
 
         doc_comment! {
             concat!("Calculates the divisor when `self` is divided by `rhs`.
 
-Returns a tuple of the divisor along with a boolean indicating whether an arithmetic overflow would
-occur. If an overflow would occur then self is returned.
+Returns a tuple of the divisor along with a boolean indicating
+whether an arithmetic overflow would occur. Note that for unsigned
+integers overflow never occurs, so the second value is always
+`false`.
 
 # Panics
 
@@ -1457,14 +1280,10 @@ This function will panic if `rhs` is 0.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
-", $Feature, "
-assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div(-1), (", stringify!($SelfT),
-"::MIN, true));",
-$EndFeature, "
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -1472,19 +1291,20 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
-                if unlikely!(self == Self::MIN && rhs == -1) {
-                    (self, true)
-                } else {
-                    (self / rhs, false)
-                }
+                (self / rhs, false)
             }
         }
 
         doc_comment! {
             concat!("Calculates the quotient of Euclidean division `self.div_euclid(rhs)`.
 
-Returns a tuple of the divisor along with a boolean indicating whether an arithmetic overflow would
-occur. If an overflow would occur then `self` is returned.
+Returns a tuple of the divisor along with a boolean indicating
+whether an arithmetic overflow would occur. Note that for unsigned
+integers overflow never occurs, so the second value is always
+`false`.
+Since, for the positive integers, all common
+definitions of division are equal, this
+is exactly equal to `self.overflowing_div(rhs)`.
 
 # Panics
 
@@ -1492,12 +1312,10 @@ This function will panic if `rhs` is 0.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
 assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringify!($SelfT),
-"::MIN, true));
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
@@ -1505,19 +1323,17 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
-                if unlikely!(self == Self::MIN && rhs == -1) {
-                    (self, true)
-                } else {
-                    (self.div_euclid(rhs), false)
-                }
+                (self / rhs, false)
             }
         }
 
         doc_comment! {
             concat!("Calculates the remainder when `self` is divided by `rhs`.
 
-Returns a tuple of the remainder after dividing along with a boolean indicating whether an
-arithmetic overflow would occur. If an overflow would occur then 0 is returned.
+Returns a tuple of the remainder after dividing along with a boolean
+indicating whether an arithmetic overflow would occur. Note that for
+unsigned integers overflow never occurs, so the second value is
+always `false`.
 
 # Panics
 
@@ -1525,13 +1341,10 @@ This function will panic if `rhs` is 0.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
-", $Feature, "
-assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem(-1), (0, true));",
-$EndFeature, "
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -1539,20 +1352,20 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-                if unlikely!(self == Self::MIN && rhs == -1) {
-                    (0, true)
-                } else {
-                    (self % rhs, false)
-                }
+                (self % rhs, false)
             }
         }
 
-
         doc_comment! {
-            concat!("Overflowing Euclidean remainder. Calculates `self.rem_euclid(rhs)`.
+            concat!("Calculates the remainder `self.rem_euclid(rhs)` as if by Euclidean division.
 
-Returns a tuple of the remainder after dividing along with a boolean indicating whether an
-arithmetic overflow would occur. If an overflow would occur then 0 is returned.
+Returns a tuple of the modulo after dividing along with a boolean
+indicating whether an arithmetic overflow would occur. Note that for
+unsigned integers overflow never occurs, so the second value is
+always `false`.
+Since, for the positive integers, all common
+definitions of division are equal, this operation
+is exactly equal to `self.overflowing_rem(rhs)`.
 
 # Panics
 
@@ -1560,74 +1373,65 @@ This function will panic if `rhs` is 0.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
 ```"),
+            #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
             pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-                if unlikely!(self == Self::MIN && rhs == -1) {
-                    (0, true)
-                } else {
-                    (self.rem_euclid(rhs), false)
-                }
+                (self % rhs, false)
             }
         }
 
-
         doc_comment! {
-            concat!("Negates self, overflowing if this is equal to the minimum value.
+            concat!("Negates self in an overflowing fashion.
 
-Returns a tuple of the negated version of self along with a boolean indicating whether an overflow
-happened. If `self` is the minimum value (e.g., `i32::MIN` for values of type `i32`), then the
-minimum value will be returned again and `true` will be returned for an overflow happening.
+Returns `!self + 1` using wrapping operations to return the value
+that represents the negation of this unsigned value. Note that for
+positive unsigned values overflow always occurs, but negating 0 does
+not overflow.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
-assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($SelfT),
-"::MIN, true));", $EndFeature, "
+", $Feature, "assert_eq!(0", stringify!($SelfT), ".overflowing_neg(), (0, false));
+assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2i32 as ", stringify!($SelfT),
+", true));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[allow(unused_attributes)]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             pub const fn overflowing_neg(self) -> (Self, bool) {
-                if unlikely!(self == Self::MIN) {
-                    (Self::MIN, true)
-                } else {
-                    (-self, false)
-                }
+                ((!self).wrapping_add(1), self != 0)
             }
         }
 
         doc_comment! {
             concat!("Shifts self left by `rhs` bits.
 
-Returns a tuple of the shifted version of self along with a boolean indicating whether the shift
-value was larger than or equal to the number of bits. If the shift value is too large, then value is
-masked (N-1) where N is the number of bits, and this value is then used to perform the shift.
+Returns a tuple of the shifted version of self along with a boolean
+indicating whether the shift value was larger than or equal to the
+number of bits. If the shift value is too large, then value is
+masked (N-1) where N is the number of bits, and this value is then
+used to perform the shift.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
-", $Feature, "assert_eq!(0x1", stringify!($SelfT),".overflowing_shl(4), (0x10, false));
-assert_eq!(0x1i32.overflowing_shl(36), (0x10, true));",
-$EndFeature, "
+", $Feature, "assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(4), (0x10, false));
+assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(132), (0x10, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1639,53 +1443,27 @@ $EndFeature, "
         doc_comment! {
             concat!("Shifts self right by `rhs` bits.
 
-Returns a tuple of the shifted version of self along with a boolean indicating whether the shift
-value was larger than or equal to the number of bits. If the shift value is too large, then value is
-masked (N-1) where N is the number of bits, and this value is then used to perform the shift.
+Returns a tuple of the shifted version of self along with a boolean
+indicating whether the shift value was larger than or equal to the
+number of bits. If the shift value is too large, then value is
+masked (N-1) where N is the number of bits, and this value is then
+used to perform the shift.
 
 # Examples
 
-Basic usage:
+Basic usage
 
 ```
 ", $Feature, "assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(4), (0x1, false));
-assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));",
-$EndFeature, "
+assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
-            }
-        }
-
-        doc_comment! {
-            concat!("Computes the absolute value of `self`.
-
-Returns a tuple of the absolute version of self along with a boolean indicating whether an overflow
-happened. If self is the minimum value (e.g., ", stringify!($SelfT), "::MIN for values of type
- ", stringify!($SelfT), "), then the minimum value will be returned again and true will be returned
-for an overflow happening.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert_eq!(10", stringify!($SelfT), ".overflowing_abs(), (10, false));
-assert_eq!((-10", stringify!($SelfT), ").overflowing_abs(), (10, false));
-assert_eq!((", stringify!($SelfT), "::MIN).overflowing_abs(), (", stringify!($SelfT),
-"::MIN, true));",
-$EndFeature, "
-```"),
-            #[stable(feature = "no_panic_abs", since = "1.13.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[inline]
-            pub const fn overflowing_abs(self) -> (Self, bool) {
-                (self.wrapping_abs(), self == Self::MIN)
             }
         }
 
@@ -1700,9 +1478,8 @@ whether an overflow happened.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(3", stringify!($SelfT), ".overflowing_pow(4), (81, false));
-assert_eq!(3i8.overflowing_pow(5), (-13, true));",
-$EndFeature, "
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".overflowing_pow(5), (243, false));
+assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
@@ -1710,7 +1487,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
-                if exp == 0 {
+                if exp == 0{
                     return (1,false);
                 }
                 let mut base = self;
@@ -1737,6 +1514,7 @@ $EndFeature, "
                 // needless overflow.
                 r = acc.overflowing_mul(base);
                 r.1 |= overflown;
+
                 r
             }
         }
@@ -1749,67 +1527,54 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "let x: ", stringify!($SelfT), " = 2; // or any other integer type
-
-assert_eq!(x.pow(5), 32);",
-$EndFeature, "
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(5), 32);", $EndFeature, "
 ```"),
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
-            #[must_use = "this returns the result of the operation, \
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+        #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
-            #[rustc_inherit_overflow_checks]
-            pub const fn pow(self, mut exp: u32) -> Self {
-                if exp == 0 {
-                    return 1;
-                }
-                let mut base = self;
-                let mut acc = 1;
-
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-                acc * base
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn pow(self, mut exp: u32) -> Self {
+            if exp == 0 {
+                return 1;
             }
+            let mut base = self;
+            let mut acc = 1;
+
+            while exp > 1 {
+                if (exp & 1) == 1 {
+                    acc = acc * base;
+                }
+                exp /= 2;
+                base = base * base;
+            }
+
+            // since exp!=0, finally the exp must be 1.
+            // Deal with the final bit of the exponent separately, since
+            // squaring the base afterwards is not necessary and may cause a
+            // needless overflow.
+            acc * base
         }
+    }
 
         doc_comment! {
-            concat!("Calculates the quotient of Euclidean division of `self` by `rhs`.
+            concat!("Performs Euclidean division.
 
-This computes the integer `n` such that `self = n * rhs + self.rem_euclid(rhs)`,
-with `0 <= self.rem_euclid(rhs) < rhs`.
-
-In other words, the result is `self / rhs` rounded to the integer `n`
-such that `self >= n * rhs`.
-If `self > 0`, this is equal to round towards zero (the default in Rust);
-if `self < 0`, this is equal to round towards +/- infinity.
+Since, for the positive integers, all common
+definitions of division are equal, this
+is exactly equal to `self / rhs`.
 
 # Panics
 
-This function will panic if `rhs` is 0 or the division results in overflow.
+This function will panic if `rhs` is 0.
 
 # Examples
 
 Basic usage:
 
 ```
-let a: ", stringify!($SelfT), " = 7; // or any other integer type
-let b = 4;
-
-assert_eq!(a.div_euclid(b), 1); // 7 >= 4 * 1
-assert_eq!(a.div_euclid(-b), -1); // 7 >= -4 * -1
-assert_eq!((-a).div_euclid(b), -2); // -7 >= 4 * -2
-assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
+assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer type
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
@@ -1818,38 +1583,28 @@ assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub const fn div_euclid(self, rhs: Self) -> Self {
-                let q = self / rhs;
-                if self % rhs < 0 {
-                    return if rhs > 0 { q - 1 } else { q + 1 }
-                }
-                q
+                self / rhs
             }
         }
 
 
         doc_comment! {
-            concat!("Calculates the least nonnegative remainder of `self (mod rhs)`.
+            concat!("Calculates the least remainder of `self (mod rhs)`.
 
-This is done as if by the Euclidean division algorithm -- given
-`r = self.rem_euclid(rhs)`, `self = rhs * self.div_euclid(rhs) + r`, and
-`0 <= r < abs(rhs)`.
+Since, for the positive integers, all common
+definitions of division are equal, this
+is exactly equal to `self % rhs`.
 
 # Panics
 
-This function will panic if `rhs` is 0 or the division results in overflow.
+This function will panic if `rhs` is 0.
 
 # Examples
 
 Basic usage:
 
 ```
-let a: ", stringify!($SelfT), " = 7; // or any other integer type
-let b = 4;
-
-assert_eq!(a.rem_euclid(b), 3);
-assert_eq!((-a).rem_euclid(b), 1);
-assert_eq!(a.rem_euclid(-b), 3);
-assert_eq!((-a).rem_euclid(-b), 1);
+assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer type
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
@@ -1858,120 +1613,123 @@ assert_eq!((-a).rem_euclid(-b), 1);
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub const fn rem_euclid(self, rhs: Self) -> Self {
-                let r = self % rhs;
-                if r < 0 {
-                    if rhs < 0 {
-                        r - rhs
-                    } else {
-                        r + rhs
-                    }
-                } else {
-                    r
-                }
+                self % rhs
             }
         }
 
         doc_comment! {
-            concat!("Computes the absolute value of `self`.
-
-# Overflow behavior
-
-The absolute value of `", stringify!($SelfT), "::MIN` cannot be represented as an
-`", stringify!($SelfT), "`, and attempting to calculate it will cause an overflow. This means that
-code in debug mode will trigger a panic on this case and optimized code will return `",
-stringify!($SelfT), "::MIN` without a panic.
+            concat!("Returns `true` if and only if `self == 2^k` for some `k`.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(10", stringify!($SelfT), ".abs(), 10);
-assert_eq!((-10", stringify!($SelfT), ").abs(), 10);",
-$EndFeature, "
+", $Feature, "assert!(16", stringify!($SelfT), ".is_power_of_two());
+assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[allow(unused_attributes)]
+            #[rustc_const_stable(feature = "const_is_power_of_two", since = "1.32.0")]
+            #[inline]
+            pub const fn is_power_of_two(self) -> bool {
+                self.count_ones() == 1
+            }
+        }
+
+        // Returns one less than next power of two.
+        // (For 8u8 next power of two is 8u8 and for 6u8 it is 8u8)
+        //
+        // 8u8.one_less_than_next_power_of_two() == 7
+        // 6u8.one_less_than_next_power_of_two() == 7
+        //
+        // This method cannot overflow, as in the `next_power_of_two`
+        // overflow cases it instead ends up returning the maximum value
+        // of the type, and can return 0 for 0.
+        #[inline]
+        #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+        const fn one_less_than_next_power_of_two(self) -> Self {
+            if self <= 1 { return 0; }
+
+            let p = self - 1;
+            // SAFETY: Because `p > 0`, it cannot consist entirely of leading zeros.
+            // That means the shift is always in-bounds, and some processors
+            // (such as intel pre-haswell) have more efficient ctlz
+            // intrinsics when the argument is non-zero.
+            let z = unsafe { intrinsics::ctlz_nonzero(p) };
+            <$SelfT>::MAX >> z
+        }
+
+        doc_comment! {
+            concat!("Returns the smallest power of two greater than or equal to `self`.
+
+When return value overflows (i.e., `self > (1 << (N-1))` for type
+`uN`), it panics in debug mode and return value is wrapped to 0 in
+release mode (the only situation in which method can return 0).
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".next_power_of_two(), 2);
+assert_eq!(3", stringify!($SelfT), ".next_power_of_two(), 4);", $EndFeature, "
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub const fn abs(self) -> Self {
-                // Note that the #[inline] above means that the overflow
-                // semantics of the subtraction depend on the crate we're being
-                // inlined into.
-                if self.is_negative() {
-                    -self
-                } else {
-                    self
-                }
+            pub const fn next_power_of_two(self) -> Self {
+                self.one_less_than_next_power_of_two() + 1
             }
         }
 
         doc_comment! {
-            concat!("Returns a number representing sign of `self`.
-
- - `0` if the number is zero
- - `1` if the number is positive
- - `-1` if the number is negative
+            concat!("Returns the smallest power of two greater than or equal to `n`. If
+the next power of two is greater than the type's maximum value,
+`None` is returned, otherwise the power of two is wrapped in `Some`.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(10", stringify!($SelfT), ".signum(), 1);
-assert_eq!(0", stringify!($SelfT), ".signum(), 0);
-assert_eq!((-10", stringify!($SelfT), ").signum(), -1);",
+", $Feature, "assert_eq!(2", stringify!($SelfT),
+".checked_next_power_of_two(), Some(2));
+assert_eq!(3", stringify!($SelfT), ".checked_next_power_of_two(), Some(4));
+assert_eq!(", stringify!($SelfT), "::MAX.checked_next_power_of_two(), None);",
 $EndFeature, "
 ```"),
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_sign", since = "1.47.0")]
             #[inline]
-            pub const fn signum(self) -> Self {
-                match self {
-                    n if n > 0 =>  1,
-                    0          =>  0,
-                    _          => -1,
-                }
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            pub const fn checked_next_power_of_two(self) -> Option<Self> {
+                self.one_less_than_next_power_of_two().checked_add(1)
             }
         }
 
         doc_comment! {
-            concat!("Returns `true` if `self` is positive and `false` if the number is zero or
-negative.
+            concat!("Returns the smallest power of two greater than or equal to `n`. If
+the next power of two is greater than the type's maximum value,
+the return value is wrapped to `0`.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert!(10", stringify!($SelfT), ".is_positive());
-assert!(!(-10", stringify!($SelfT), ").is_positive());",
+#![feature(wrapping_next_power_of_two)]
+", $Feature, "
+assert_eq!(2", stringify!($SelfT), ".wrapping_next_power_of_two(), 2);
+assert_eq!(3", stringify!($SelfT), ".wrapping_next_power_of_two(), 4);
+assert_eq!(", stringify!($SelfT), "::MAX.wrapping_next_power_of_two(), 0);",
 $EndFeature, "
 ```"),
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[inline]
-            pub const fn is_positive(self) -> bool { self > 0 }
-        }
-
-        doc_comment! {
-            concat!("Returns `true` if `self` is negative and `false` if the number is zero or
-positive.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert!((-10", stringify!($SelfT), ").is_negative());
-assert!(!10", stringify!($SelfT), ".is_negative());",
-$EndFeature, "
-```"),
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[inline]
-            pub const fn is_negative(self) -> bool { self < 0 }
+            #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
+                       reason = "needs decision on wrapping behaviour")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            pub const fn wrapping_next_power_of_two(self) -> Self {
+                self.one_less_than_next_power_of_two().wrapping_add(1)
+            }
         }
 
         doc_comment! {
@@ -1994,7 +1752,7 @@ assert_eq!(bytes, ", $be_bytes, ");
             }
         }
 
-doc_comment! {
+        doc_comment! {
             concat!("Return the memory representation of this integer as a byte array in
 little-endian byte order.
 ",
@@ -2054,9 +1812,9 @@ assert_eq!(
             }
         }
 
-doc_comment! {
-            concat!("Create an integer value from its representation as a byte array in
-big endian.
+        doc_comment! {
+            concat!("Create a native endian integer value from its representation
+as a byte array in big endian.
 ",
 $from_xe_bytes_doc,
 "
@@ -2086,10 +1844,10 @@ fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
             }
         }
 
-doc_comment! {
+        doc_comment! {
             concat!("
-Create an integer value from its representation as a byte array in
-little endian.
+Create a native endian integer value from its representation
+as a byte array in little endian.
 ",
 $from_xe_bytes_doc,
 "
@@ -2120,8 +1878,8 @@ fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
         }
 
         doc_comment! {
-            concat!("Create an integer value from its memory representation as a byte
-array in native endianness.
+            concat!("Create a native endian integer value from its memory representation
+as a byte array in native endianness.
 
 As the target platform's native endianness is used, portable code
 likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
@@ -2169,33 +1927,29 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
         doc_comment! {
             concat!("**This method is soft-deprecated.**
 
-Although using it won’t cause a compilation warning,
+Although using it won’t cause compilation warning,
 new code should use [`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN) instead.
 
 Returns the smallest value that can be represented by this integer type."),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline(always)]
             #[rustc_promotable]
-            #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
-            pub const fn min_value() -> Self {
-                Self::MIN
-            }
+            #[inline(always)]
+            #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+            pub const fn min_value() -> Self { Self::MIN }
         }
 
         doc_comment! {
             concat!("**This method is soft-deprecated.**
 
-Although using it won’t cause a compilation warning,
+Although using it won’t cause compilation warning,
 new code should use [`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX) instead.
 
 Returns the largest value that can be represented by this integer type."),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline(always)]
             #[rustc_promotable]
+            #[inline(always)]
             #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-            pub const fn max_value() -> Self {
-                Self::MAX
-            }
+            pub const fn max_value() -> Self { Self::MAX }
         }
     }
 }

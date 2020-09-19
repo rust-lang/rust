@@ -169,34 +169,34 @@ mod macros;
 #[macro_use]
 mod internal_macros;
 
-#[path = "num/int_macros.rs"]
+#[path = "num/shells/int_macros.rs"]
 #[macro_use]
 mod int_macros;
 
-#[path = "num/i128.rs"]
+#[path = "num/shells/i128.rs"]
 pub mod i128;
-#[path = "num/i16.rs"]
+#[path = "num/shells/i16.rs"]
 pub mod i16;
-#[path = "num/i32.rs"]
+#[path = "num/shells/i32.rs"]
 pub mod i32;
-#[path = "num/i64.rs"]
+#[path = "num/shells/i64.rs"]
 pub mod i64;
-#[path = "num/i8.rs"]
+#[path = "num/shells/i8.rs"]
 pub mod i8;
-#[path = "num/isize.rs"]
+#[path = "num/shells/isize.rs"]
 pub mod isize;
 
-#[path = "num/u128.rs"]
+#[path = "num/shells/u128.rs"]
 pub mod u128;
-#[path = "num/u16.rs"]
+#[path = "num/shells/u16.rs"]
 pub mod u16;
-#[path = "num/u32.rs"]
+#[path = "num/shells/u32.rs"]
 pub mod u32;
-#[path = "num/u64.rs"]
+#[path = "num/shells/u64.rs"]
 pub mod u64;
-#[path = "num/u8.rs"]
+#[path = "num/shells/u8.rs"]
 pub mod u8;
-#[path = "num/usize.rs"]
+#[path = "num/shells/usize.rs"]
 pub mod usize;
 
 #[path = "num/f32.rs"]
