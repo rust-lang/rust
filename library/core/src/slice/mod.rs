@@ -3059,6 +3059,30 @@ impl<T> [T] {
 
         left
     }
+
+    /// Moves `value` into `self[index]`, returning the old value.
+    ///
+    /// Neither value is dropped.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_replace)]
+    ///
+    /// let mut v = [1, 2, 3];
+    /// let r = v.replace(1, 20);
+    ///
+    /// assert_eq!(v, [1, 20, 3]);
+    /// assert_eq!(r, 2);
+    /// ```
+    #[unstable(feature = "slice_replace", reason = "new API", issue = "none")]
+    pub fn replace(&mut self, index: usize, value: T) -> T {
+        mem::replace(&mut self[index], value)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
