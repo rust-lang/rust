@@ -164,7 +164,7 @@ struct CopyPropVisitor<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for CopyPropVisitor<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -192,18 +192,53 @@ impl<'tcx> MutVisitor<'tcx> for CopyPropVisitor<'tcx> {
         // If this is not an eligible assignment to be recorded, visit it. This will keep track of
         // any mutations of locals via `visit_local` and assign an `Unknown` value to them.
         self.super_statement(statement, location);
+
+        // Now that we've invalidated locals mutated by the statement, replace any known locals that
+        // *aren't* mutated with the place they were assigned to.
+        ReplaceUseVisitor { tcx: self.tcx, local_values: &self.local_values }
+            .visit_statement(statement, location);
+
+        InvalidateMovedLocals { tcx: self.tcx, local_values: &mut self.local_values }
+            .visit_statement(statement, location);
+    }
+
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
+        self.super_terminator(terminator, location);
+
+        // Now that we've invalidated locals mutated by the terminator, replace any known locals
+        // that *aren't* mutated with the place they were assigned to.
+        ReplaceUseVisitor { tcx: self.tcx, local_values: &mut self.local_values }
+            .visit_terminator(terminator, location);
+
+        InvalidateMovedLocals { tcx: self.tcx, local_values: &mut self.local_values }
+            .visit_terminator(terminator, location);
     }
 
     fn visit_local(&mut self, local: &mut Local, context: PlaceContext, location: Location) {
         // We invalidate a local `l`, and any other locals whose assigned values contain `l`, if:
         // - `l` is mutated (via assignment or other stores, by taking a mutable ref/ptr, etc.)
         // - `l` is reallocated by storage statements (which deinitializes its storage)
-        // - `l` is moved from (to avoid use-after-moves)
 
-        if context.is_mutating_use() || context.is_storage_marker() || context.is_move() {
+        if context.is_mutating_use() || context.is_storage_marker() {
             debug!("invalidation of {:?} at {:?}: {:?} -> clearing", local, location, context);
             self.local_values.invalidate(*local);
         }
+
+        // Note that we do not yet do anything when `l` is moved out of. The reason for that is that
+        // it is fine to replace that local (see reasoning below). We just have to make sure we
+        // invalidate the moved-out-of local *after* we finished processing the statement/terminator
+        // performing the move.
+    }
+}
+
+struct ReplaceUseVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    local_values: &'a LocalValues<'tcx>,
+}
+
+impl<'a, 'tcx> MutVisitor<'tcx> for ReplaceUseVisitor<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
@@ -216,6 +251,8 @@ impl<'tcx> MutVisitor<'tcx> for CopyPropVisitor<'tcx> {
         //   _1 = ...;
         //   _2 = _1;
         //   use(move _2);   <- can replace with `use(_1)`
+        // Or:
+        //   use(move _2, move _1); <- can replace with `use(_1, _1)`
         if let Operand::Copy(place) | Operand::Move(place) = operand {
             if let Some(local) = place.as_local() {
                 if let Some(known_place) = self.local_values.get(local) {
@@ -223,6 +260,26 @@ impl<'tcx> MutVisitor<'tcx> for CopyPropVisitor<'tcx> {
                     *operand = Operand::Copy(known_place);
                 }
             }
+        }
+    }
+}
+
+struct InvalidateMovedLocals<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    local_values: &'a mut LocalValues<'tcx>,
+}
+
+impl<'a, 'tcx> MutVisitor<'tcx> for InvalidateMovedLocals<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_local(&mut self, local: &mut Local, context: PlaceContext, location: Location) {
+        // If the statement/terminator moves out of a local, invalidate the local.
+
+        if context.is_move() {
+            debug!("move out of {:?} at {:?}: {:?} -> clearing", local, location, context);
+            self.local_values.invalidate(*local);
         }
     }
 }
