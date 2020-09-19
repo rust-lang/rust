@@ -175,6 +175,7 @@ where
     /// The starts and end indices of `range` must be valid indices for the
     /// haystack `self` with `range.start <= range.end`.
     unsafe fn slice_unchecked(self, range: Range<<Self::Target as Hay>::Index>) -> Self {
+        // SAFETY: the caller must guarantee that starts and end indices of `range` are valid indices.
         let [_, middle, _] = unsafe { self.split_around(range) };
         middle
     }
@@ -307,6 +308,7 @@ where
         self,
         subrange: Range<<Self::Target as Hay>::Index>,
     ) -> [Self; 3] {
+        // SAFETY: the caller must guarantee that starts and end indices of `subrange` are valid indices.
         unsafe { self.split_around(subrange) }
     }
 
@@ -315,6 +317,7 @@ where
         self,
         subrange: Range<<Self::Target as Hay>::Index>,
     ) -> Self {
+        // SAFETY: the caller must guarantee that starts and end indices of `subrange` are valid indices.
         unsafe { self.slice_unchecked(subrange) }
     }
 }
@@ -330,6 +333,7 @@ where
 
     #[inline]
     fn from_span(span: Span<Self>) -> Self {
+        // SAFETY: span's range is guaranteed to be valid for the haystack.
         unsafe { span.haystack.slice_unchecked(span.range) }
     }
 
@@ -469,6 +473,7 @@ where
     pub unsafe fn split_around(self, subrange: Range<<H::Target as Hay>::Index>) -> [Self; 3] {
         let self_range = self.haystack.borrow_range(self.range.clone());
         let [left, middle, right] =
+            // SAFETY: the caller must guarantee that starts and end indices of `subrange` are valid indices.
             unsafe { self.haystack.split_around_for_span(subrange.clone()) };
 
         let left_range =
@@ -490,6 +495,7 @@ where
     /// `subrange` must be a valid range relative to `self.borrow()`.
     #[inline]
     pub unsafe fn slice_unchecked(self, subrange: Range<<H::Target as Hay>::Index>) -> Self {
+        // SAFETY: the caller must guarantee that starts and end indices of `subrange` are valid indices.
         let haystack = unsafe { self.haystack.slice_unchecked_for_span(subrange.clone()) };
         let range = haystack.do_restore_range(self.range, subrange);
         Self { haystack, range }
@@ -504,6 +510,7 @@ unsafe impl<'a, A: Hay + ?Sized + 'a> Haystack for &'a A {
 
     #[inline]
     unsafe fn split_around(self, range: Range<A::Index>) -> [Self; 3] {
+        // SAFETY: the caller must guarantee that starts and end indices of `range` are valid indices.
         unsafe {
             [
                 self.slice_unchecked(self.start_index()..range.start),
@@ -515,6 +522,7 @@ unsafe impl<'a, A: Hay + ?Sized + 'a> Haystack for &'a A {
 
     #[inline]
     unsafe fn slice_unchecked(self, range: Range<A::Index>) -> Self {
+        // SAFETY: the caller must guarantee that starts and end indices of `range` are valid indices.
         unsafe { A::slice_unchecked(self, range) }
     }
 
@@ -546,16 +554,19 @@ unsafe impl Hay for str {
 
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self {
+        // SAFETY: the caller must guarantee that starts and end indices of `range` are valid indices.
         unsafe { self.get_unchecked(range) }
     }
 
     #[inline]
     unsafe fn next_index(&self, index: Self::Index) -> Self::Index {
+        // SAFETY: the caller must guarantee that `index` is a valid index.
         index + unsafe { self.get_unchecked(index..).chars().next().unwrap().len_utf8() }
     }
 
     #[inline]
     unsafe fn prev_index(&self, index: Self::Index) -> Self::Index {
+        // SAFETY: the caller must guarantee that `index` is a valid index.
         index - unsafe { self.get_unchecked(..index).chars().next_back().unwrap().len_utf8() }
     }
 }
@@ -568,6 +579,7 @@ unsafe impl<'h> Haystack for &'h mut str {
 
     #[inline]
     unsafe fn slice_unchecked(self, range: Range<usize>) -> Self {
+        // SAFETY: the caller must guarantee that starts and end indices of `range` are valid indices.
         unsafe { self.get_unchecked_mut(range) }
     }
 
@@ -604,6 +616,7 @@ unsafe impl<T> Hay for [T] {
 
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self {
+        // SAFETY: the caller must guarantee that starts and end indices of `range` are valid indices.
         unsafe { self.get_unchecked(range) }
     }
 
@@ -626,6 +639,7 @@ unsafe impl<'h, T: 'h> Haystack for &'h mut [T] {
 
     #[inline]
     unsafe fn slice_unchecked(self, range: Range<usize>) -> Self {
+        // SAFETY: the caller must guarantee that starts and end indices of `range` are valid indices.
         unsafe { self.get_unchecked_mut(range) }
     }
 

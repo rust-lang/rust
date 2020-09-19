@@ -167,6 +167,7 @@ pub unsafe trait Consumer<A: Hay + ?Sized> {
             if pos == range.start {
                 break;
             }
+            // SAFETY: span's range is guaranteed to be valid for the haystack.
             span = unsafe { Span::from_parts(hay, pos..range.end) };
         }
         offset
@@ -250,6 +251,7 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
             if pos == range.end {
                 break;
             }
+            // SAFETY: span's range is guaranteed to be valid for the haystack.
             span = unsafe { Span::from_parts(hay, range.start..pos) };
         }
         offset
@@ -342,6 +344,7 @@ unsafe impl<A: Hay + ?Sized> Searcher<A> for EmptySearcher {
         } else if range.start == range.end {
             return None;
         } else {
+            // SAFETY: span's range is guaranteed to be valid for the haystack.
             unsafe { hay.next_index(range.start) }
         };
         Some(start..start)
@@ -371,6 +374,7 @@ unsafe impl<A: Hay + ?Sized> ReverseSearcher<A> for EmptySearcher {
         } else if range.start == range.end {
             return None;
         } else {
+            // SAFETY: span's range is guaranteed to be valid for the haystack.
             unsafe { hay.prev_index(range.end) }
         };
         Some(end..end)

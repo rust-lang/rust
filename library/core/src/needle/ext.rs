@@ -215,6 +215,8 @@ where
         let end = hay.end_index();
         start..end
     };
+    // SAFETY: the start and end indices of `range` are returned from `trim_start` and `end_index`,
+    // and both are valid indices.
     unsafe { haystack.slice_unchecked(range) }
 }
 
@@ -232,6 +234,8 @@ where
         let end = needle.into_consumer().trim_end(hay);
         start..end
     };
+    // SAFETY: the start and end indices of `range` are returned from `start_index` and `trim_end`,
+    // and both are valid indices.
     unsafe { haystack.slice_unchecked(range) }
 }
 
@@ -248,10 +252,14 @@ where
     let range = {
         let hay = &*haystack;
         let end = checker.trim_end(hay);
+        // SAFETY: the start and end indices are returned from `start_index` and `trim_end`,
+        // and both are valid indices.
         let hay = unsafe { Hay::slice_unchecked(hay, hay.start_index()..end) };
         let start = checker.trim_start(hay);
         start..end
     };
+    // SAFETY: the start and end indices of `range` are returned from `trim_start` and `trim_end`,
+    // and both are valid indices.
     unsafe { haystack.slice_unchecked(range) }
 }
 
@@ -279,6 +287,8 @@ where
     fn next_spanned(&mut self) -> Option<Span<H>> {
         let rest = self.rest.take();
         let range = self.searcher.search(rest.borrow())?;
+        // SAFETY: the start and end indices of `range` are returned from `search`,
+        // and both are valid indices.
         let [_, middle, right] = unsafe { rest.split_around(range) };
         self.rest = right;
         Some(middle)
@@ -300,6 +310,8 @@ where
     fn next_back_spanned(&mut self) -> Option<Span<H>> {
         let rest = self.rest.take();
         let range = self.searcher.rsearch(rest.borrow())?;
+        // SAFETY: the start and end indices of `range` are returned from `rsearch`,
+        // and both are valid indices.
         let [left, middle, _] = unsafe { rest.split_around(range) };
         self.rest = left;
         Some(middle)
@@ -608,6 +620,8 @@ where
         let mut rest = self.rest.take();
         match self.searcher.search(rest.borrow()) {
             Some(subrange) => {
+                // SAFETY: the start and end indices of `subrange` are returned from `search`,
+                // and both are valid indices.
                 let [left, _, right] = unsafe { rest.split_around(subrange) };
                 self.rest = right;
                 rest = left;
@@ -638,6 +652,8 @@ where
         let rest = self.rest.take();
         let after = match self.searcher.rsearch(rest.borrow()) {
             Some(range) => {
+                // SAFETY: the start and end indices of `subrange` are returned from `rsearch`,
+                // and both are valid indices.
                 let [left, _, right] = unsafe { rest.split_around(range) };
                 self.rest = left;
                 right
@@ -792,6 +808,8 @@ where
             }
             n => match self.searcher.search(rest.borrow()) {
                 Some(range) => {
+                    // SAFETY: the start and end indices of `range` are returned from `search`,
+                    // and both are valid indices.
                     let [left, _, right] = unsafe { rest.split_around(range) };
                     self.n = n - 1;
                     self.rest = right;
@@ -824,6 +842,8 @@ where
             }
             n => match self.searcher.rsearch(rest.borrow()) {
                 Some(range) => {
+                    // SAFETY: the start and end indices of `range` are returned from `rsearch`,
+                    // and both are valid indices.
                     let [left, _, right] = unsafe { rest.split_around(range) };
                     self.n = n - 1;
                     self.rest = left;
@@ -896,6 +916,8 @@ where
     let mut searcher = from.into_searcher();
     let mut src = Span::from(src);
     while let Some(range) = searcher.search(src.borrow()) {
+        // SAFETY: the start and end indices of `range` are returned from `search`,
+        // and both are valid indices.
         let [left, middle, right] = unsafe { src.split_around(range) };
         writer(Span::into(left));
         writer(replacer(Span::into(middle)));
@@ -921,6 +943,8 @@ where
         }
         n -= 1;
         if let Some(range) = searcher.search(src.borrow()) {
+            // SAFETY: the start and end indices of `range` are returned from `search`,
+            // and both are valid indices.
             let [left, middle, right] = unsafe { src.split_around(range) };
             writer(Span::into(left));
             writer(replacer(Span::into(middle)));
