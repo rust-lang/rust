@@ -957,7 +957,7 @@ impl<T> [T] {
     ///
     /// This is the const generic equivalent of [`windows`].
     ///
-    /// If `N` is smaller than the size of the array, it will return no windows.
+    /// If `N` is greater than the size of the slice, it will return no windows.
     ///
     /// # Panics
     ///
