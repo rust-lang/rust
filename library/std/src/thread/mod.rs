@@ -1086,6 +1086,7 @@ impl Thread {
     /// parked_thread.join().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn unpark(&self) {
         self.inner.parker.unpark();
     }

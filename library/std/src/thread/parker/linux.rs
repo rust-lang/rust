@@ -57,6 +57,7 @@ impl Parker {
         }
     }
 
+    #[inline]
     pub fn unpark(&self) {
         // Change PARKED=>NOTIFIED, EMPTY=>NOTIFIED, or NOTIFIED=>NOTIFIED, and
         // wake the thread in the first case.
