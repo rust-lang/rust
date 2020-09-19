@@ -13,11 +13,10 @@
 )]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![feature(raw_vec_internals)]
+#![feature(new_uninit)]
+#![feature(maybe_uninit_slice)]
 #![cfg_attr(test, feature(test))]
 #![allow(deprecated)]
-
-extern crate alloc;
 
 use rustc_data_structures::cold_path;
 use smallvec::SmallVec;
@@ -27,11 +26,9 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics;
 use std::marker::{PhantomData, Send};
-use std::mem;
+use std::mem::{self, MaybeUninit};
 use std::ptr;
 use std::slice;
-
-use alloc::raw_vec::RawVec;
 
 /// An arena that can hold objects of only one type.
 pub struct TypedArena<T> {
@@ -52,7 +49,7 @@ pub struct TypedArena<T> {
 
 struct TypedArenaChunk<T> {
     /// The raw storage for the arena chunk.
-    storage: RawVec<T>,
+    storage: Box<[MaybeUninit<T>]>,
     /// The number of valid entries in the chunk.
     entries: usize,
 }
@@ -60,7 +57,7 @@ struct TypedArenaChunk<T> {
 impl<T> TypedArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> TypedArenaChunk<T> {
-        TypedArenaChunk { storage: RawVec::with_capacity(capacity), entries: 0 }
+        TypedArenaChunk { storage: Box::new_uninit_slice(capacity), entries: 0 }
     }
 
     /// Destroys this arena chunk.
@@ -69,30 +66,25 @@ impl<T> TypedArenaChunk<T> {
         // The branch on needs_drop() is an -O1 performance optimization.
         // Without the branch, dropping TypedArena<u8> takes linear time.
         if mem::needs_drop::<T>() {
-            let mut start = self.start();
-            // Destroy all allocated objects.
-            for _ in 0..len {
-                ptr::drop_in_place(start);
-                start = start.offset(1);
-            }
+            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut self.storage[..len]));
         }
     }
 
     // Returns a pointer to the first allocated object.
     #[inline]
-    fn start(&self) -> *mut T {
-        self.storage.ptr()
+    fn start(&mut self) -> *mut T {
+        MaybeUninit::slice_as_mut_ptr(&mut self.storage)
     }
 
     // Returns a pointer to the end of the allocated space.
     #[inline]
-    fn end(&self) -> *mut T {
+    fn end(&mut self) -> *mut T {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 // A pointer as large as possible for zero-sized elements.
                 !0 as *mut T
             } else {
-                self.start().add(self.storage.capacity())
+                self.start().add(self.storage.len())
             }
         }
     }
@@ -226,10 +218,10 @@ impl<T> TypedArena<T> {
                 let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
                 last_chunk.entries = used_bytes / mem::size_of::<T>();
 
-                // If the previous chunk's capacity is less than HUGE_PAGE
+                // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = last_chunk.storage.capacity();
+                new_cap = last_chunk.storage.len();
                 if new_cap < HUGE_PAGE / elem_size {
                     new_cap = new_cap.checked_mul(2).unwrap();
                 }
@@ -239,7 +231,7 @@ impl<T> TypedArena<T> {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let chunk = TypedArenaChunk::<T>::new(new_cap);
+            let mut chunk = TypedArenaChunk::<T>::new(new_cap);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
@@ -301,7 +293,7 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
                     chunk.destroy(chunk.entries);
                 }
             }
-            // RawVec handles deallocation of `last_chunk` and `self.chunks`.
+            // Box handles deallocation of `last_chunk` and `self.chunks`.
         }
     }
 }
@@ -344,10 +336,10 @@ impl DroplessArena {
                 // There is no need to update `last_chunk.entries` because that
                 // field isn't used by `DroplessArena`.
 
-                // If the previous chunk's capacity is less than HUGE_PAGE
+                // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = last_chunk.storage.capacity();
+                new_cap = last_chunk.storage.len();
                 if new_cap < HUGE_PAGE {
                     new_cap = new_cap.checked_mul(2).unwrap();
                 }
@@ -357,7 +349,7 @@ impl DroplessArena {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let chunk = TypedArenaChunk::<u8>::new(new_cap);
+            let mut chunk = TypedArenaChunk::<u8>::new(new_cap);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
