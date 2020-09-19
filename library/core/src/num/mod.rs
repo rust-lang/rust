@@ -358,7 +358,7 @@ $EndFeature, "
 assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "int_bits_const", issue = "none")]
+            #[unstable(feature = "int_bits_const", issue = "76904")]
             pub const BITS: u32 = $BITS;
         }
 
@@ -2625,7 +2625,7 @@ $EndFeature, "
 assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "int_bits_const", issue = "none")]
+            #[unstable(feature = "int_bits_const", issue = "76904")]
             pub const BITS: u32 = $BITS;
         }
 
