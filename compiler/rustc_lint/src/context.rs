@@ -721,7 +721,8 @@ impl<'tcx> LateContext<'tcx> {
     /// inherent `impl` blocks are matched with the name of the type.
     ///
     /// Instead of using this method, it is often preferable to instead use
-    /// `rustc_diagnostic_item` or a `lang_item`, which is less prone to errors.
+    /// `rustc_diagnostic_item` or a `lang_item`. This is less prone to errors
+    /// as paths get invalidated if the target definition moves.
     ///
     /// # Examples
     ///
