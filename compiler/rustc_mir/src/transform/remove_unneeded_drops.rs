@@ -6,6 +6,8 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
+use super::simplify::simplify_cfg;
+
 pub struct RemoveUnneededDrops;
 
 impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
@@ -18,10 +20,17 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
             def_id: source.def_id().expect_local(),
         };
         opt_finder.visit_body(body);
+        let should_simplify = !opt_finder.optimizations.is_empty();
         for (loc, target) in opt_finder.optimizations {
             let terminator = body.basic_blocks_mut()[loc.block].terminator_mut();
             debug!("SUCCESS: replacing `drop` with goto({:?})", target);
             terminator.kind = TerminatorKind::Goto { target };
+        }
+
+        // if we applied optimizations, we potentially have some cfg to cleanup to
+        // make it easier for further passes
+        if should_simplify {
+            simplify_cfg(body);
         }
     }
 }
