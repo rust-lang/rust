@@ -20,7 +20,6 @@
 #![feature(core_intrinsics)]
 #![feature(int_bits_const)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(nll)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]

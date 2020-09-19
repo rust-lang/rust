@@ -12,7 +12,6 @@
 #![panic_runtime]
 #![allow(unused_features)]
 #![feature(core_intrinsics)]
-#![feature(libc)]
 #![feature(nll)]
 #![feature(panic_runtime)]
 #![feature(staged_api)]
