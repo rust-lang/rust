@@ -58,6 +58,7 @@ static MMASK16: Type = Type::MMASK16;
 static MM_CMPINT_ENUM: Type = Type::MM_CMPINT_ENUM;
 static MM_MANTISSA_NORM_ENUM: Type = Type::MM_MANTISSA_NORM_ENUM;
 static MM_MANTISSA_SIGN_ENUM: Type = Type::MM_MANTISSA_SIGN_ENUM;
+static MM_PERM_ENUM: Type = Type::MM_PERM_ENUM;
 
 static TUPLE: Type = Type::Tuple;
 static CPUID: Type = Type::CpuidResult;
@@ -85,6 +86,7 @@ enum Type {
     MM_CMPINT_ENUM,
     MM_MANTISSA_NORM_ENUM,
     MM_MANTISSA_SIGN_ENUM,
+    MM_PERM_ENUM,
     Tuple,
     CpuidResult,
     Never,
@@ -680,6 +682,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::MM_CMPINT_ENUM, "_MM_CMPINT_ENUM") => {}
         (&Type::MM_MANTISSA_NORM_ENUM, "_MM_MANTISSA_NORM_ENUM") => {}
         (&Type::MM_MANTISSA_SIGN_ENUM, "_MM_MANTISSA_SIGN_ENUM") => {}
+        (&Type::MM_PERM_ENUM, "_MM_PERM_ENUM") => {}
 
         // This is a macro (?) in C which seems to mutate its arguments, but
         // that means that we're taking pointers to arguments in rust

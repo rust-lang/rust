@@ -318,6 +318,10 @@ pub type _MM_MANTISSA_NORM_ENUM = i32;
 #[allow(non_camel_case_types)]
 pub type _MM_MANTISSA_SIGN_ENUM = i32;
 
+/// The `MM_PERM_ENUM` type used to specify shuffle operations in AVX-512 intrinsics.
+#[allow(non_camel_case_types)]
+pub type _MM_PERM_ENUM = i32;
+
 #[cfg(test)]
 mod test;
 #[cfg(test)]
