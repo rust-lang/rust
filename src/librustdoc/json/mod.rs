@@ -6,6 +6,8 @@ use crate::formats::FormatRenderer;
 
 use rustc_span::edition::Edition;
 
+mod types;
+
 #[derive(Clone)]
 pub struct JsonRenderer {}
 
