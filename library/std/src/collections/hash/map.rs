@@ -1102,6 +1102,16 @@ where
 /// documentation for more.
 ///
 /// [`iter`]: HashMap::iter
+///
+/// # Example
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter = map.iter();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     base: base::Iter<'a, K, V>,
@@ -1129,6 +1139,16 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 /// documentation for more.
 ///
 /// [`iter_mut`]: HashMap::iter_mut
+///
+/// # Example
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter = map.iter_mut();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     base: base::IterMut<'a, K, V>,
@@ -1148,6 +1168,16 @@ impl<'a, K, V> IterMut<'a, K, V> {
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
+///
+/// # Example
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter = map.into_iter();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     base: base::IntoIter<K, V>,
@@ -1167,6 +1197,16 @@ impl<K, V> IntoIter<K, V> {
 /// documentation for more.
 ///
 /// [`keys`]: HashMap::keys
+///
+/// # Example
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter_keys = map.keys();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -1194,6 +1234,16 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
 /// documentation for more.
 ///
 /// [`values`]: HashMap::values
+///
+/// # Example
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter_values = map.values();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -1221,6 +1271,16 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// documentation for more.
 ///
 /// [`drain`]: HashMap::drain
+///
+/// # Example
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter = map.drain();
+/// ```
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     base: base::Drain<'a, K, V>,
@@ -1239,6 +1299,18 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// This `struct` is created by the [`drain_filter`] method on [`HashMap`].
 ///
 /// [`drain_filter`]: HashMap::drain_filter
+///
+/// # Example
+///
+/// ```
+/// #![feature(hash_drain_filter)]
+///
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter = map.drain_filter(|_k, v| *v % 2 == 0);
+/// ```
 #[unstable(feature = "hash_drain_filter", issue = "59618")]
 pub struct DrainFilter<'a, K, V, F>
 where
@@ -1253,6 +1325,16 @@ where
 /// documentation for more.
 ///
 /// [`values_mut`]: HashMap::values_mut
+///
+/// # Example
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter_values = map.values_mut();
+/// ```
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
@@ -1264,6 +1346,18 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 /// See its documentation for more.
 ///
 /// [`into_keys`]: HashMap::into_keys
+///
+/// # Example
+///
+/// ```
+/// #![feature(map_into_keys_values)]
+///
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter_keys = map.into_keys();
+/// ```
 #[unstable(feature = "map_into_keys_values", issue = "75294")]
 pub struct IntoKeys<K, V> {
     inner: IntoIter<K, V>,
@@ -1275,6 +1369,18 @@ pub struct IntoKeys<K, V> {
 /// See its documentation for more.
 ///
 /// [`into_values`]: HashMap::into_values
+///
+/// # Example
+///
+/// ```
+/// #![feature(map_into_keys_values)]
+///
+/// use std::collections::HashMap;
+///
+/// let mut map = HashMap::new();
+/// map.insert("a", 1);
+/// let iter_keys = map.into_values();
+/// ```
 #[unstable(feature = "map_into_keys_values", issue = "75294")]
 pub struct IntoValues<K, V> {
     inner: IntoIter<K, V>,
@@ -1285,7 +1391,6 @@ pub struct IntoValues<K, V> {
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
 ///
 /// [`HashMap::raw_entry_mut`]: HashMap::raw_entry_mut
-
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a mut HashMap<K, V, S>,
