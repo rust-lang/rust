@@ -72,6 +72,7 @@ mod compare_method;
 pub mod demand;
 pub mod dropck;
 mod expr;
+mod gather_locals;
 mod generator_interior;
 pub mod intrinsic;
 pub mod method;
@@ -87,6 +88,7 @@ pub mod writeback;
 use crate::astconv::{
     AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, PathSeg,
 };
+use crate::check::gather_locals::GatherLocalsVisitor;
 use crate::check::util::MaybeInProgressTables;
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
@@ -98,9 +100,9 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder,
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, GenericArg, HirIdMap, ItemKind, Node, PatKind, QPath};
+use rustc_hir::{ExprKind, GenericArg, HirIdMap, ItemKind, Node, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer;
@@ -997,7 +999,7 @@ fn typeck_with_fallback<'tcx>(
             };
 
             // Gather locals in statics (because of block expressions).
-            GatherLocalsVisitor { fcx: &fcx, parent_id: id }.visit_body(body);
+            GatherLocalsVisitor::new(&fcx, id).visit_body(body);
 
             fcx.check_expr_coercable_to_type(&body.value, revealed_ty, None);
 
@@ -1097,114 +1099,6 @@ fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
     }
 }
 
-struct GatherLocalsVisitor<'a, 'tcx> {
-    fcx: &'a FnCtxt<'a, 'tcx>,
-    parent_id: hir::HirId,
-}
-
-impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
-    fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
-        match ty_opt {
-            None => {
-                // Infer the variable's type.
-                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                });
-                self.fcx
-                    .locals
-                    .borrow_mut()
-                    .insert(nid, LocalTy { decl_ty: var_ty, revealed_ty: var_ty });
-                var_ty
-            }
-            Some(typ) => {
-                // Take type that the user specified.
-                self.fcx.locals.borrow_mut().insert(nid, typ);
-                typ.revealed_ty
-            }
-        }
-    }
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
-    // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
-        let local_ty = match local.ty {
-            Some(ref ty) => {
-                let o_ty = self.fcx.to_ty(&ty);
-
-                let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
-                    self.fcx.instantiate_opaque_types_from_value(self.parent_id, &o_ty, ty.span)
-                } else {
-                    o_ty
-                };
-
-                let c_ty = self
-                    .fcx
-                    .inh
-                    .infcx
-                    .canonicalize_user_type_annotation(&UserType::Ty(revealed_ty));
-                debug!(
-                    "visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
-                    ty.hir_id, o_ty, revealed_ty, c_ty
-                );
-                self.fcx
-                    .typeck_results
-                    .borrow_mut()
-                    .user_provided_types_mut()
-                    .insert(ty.hir_id, c_ty);
-
-                Some(LocalTy { decl_ty: o_ty, revealed_ty })
-            }
-            None => None,
-        };
-        self.assign(local.span, local.hir_id, local_ty);
-
-        debug!(
-            "local variable {:?} is assigned type {}",
-            local.pat,
-            self.fcx.ty_to_string(&*self.fcx.locals.borrow().get(&local.hir_id).unwrap().decl_ty)
-        );
-        intravisit::walk_local(self, local);
-    }
-
-    // Add pattern bindings.
-    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
-        if let PatKind::Binding(_, _, ident, _) = p.kind {
-            let var_ty = self.assign(p.span, p.hir_id, None);
-
-            if !self.fcx.tcx.features().unsized_locals {
-                self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
-            }
-
-            debug!(
-                "pattern binding {} is assigned to {} with type {:?}",
-                ident,
-                self.fcx.ty_to_string(&*self.fcx.locals.borrow().get(&p.hir_id).unwrap().decl_ty),
-                var_ty
-            );
-        }
-        intravisit::walk_pat(self, p);
-    }
-
-    // Don't descend into the bodies of nested closures.
-    fn visit_fn(
-        &mut self,
-        _: intravisit::FnKind<'tcx>,
-        _: &'tcx hir::FnDecl<'tcx>,
-        _: hir::BodyId,
-        _: Span,
-        _: hir::HirId,
-    ) {
-    }
-}
-
 /// When `check_fn` is invoked on a generator (i.e., a body that
 /// includes yield), it returns back some information about the yield
 /// points.
@@ -1285,7 +1179,7 @@ fn check_fn<'a, 'tcx>(
 
     let outer_def_id = tcx.closure_base_def_id(hir.local_def_id(fn_id).to_def_id()).expect_local();
     let outer_hir_id = hir.local_def_id_to_hir_id(outer_def_id);
-    GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id }.visit_body(body);
+    GatherLocalsVisitor::new(&fcx, outer_hir_id).visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
