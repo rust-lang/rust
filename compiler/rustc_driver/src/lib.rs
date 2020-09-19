@@ -1212,7 +1212,10 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         handler.note_without_error(&note);
     }
 
-    TyCtxt::try_print_query_stack(&handler, Some(2));
+    // If backtraces are enabled, also print the query stack
+    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+
+    TyCtxt::try_print_query_stack(&handler, Some(2), Some(backtrace));
 
     #[cfg(windows)]
     unsafe {
