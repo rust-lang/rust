@@ -551,7 +551,7 @@ where
                 let n = base.len(self)?;
                 if n < min_length {
                     // This can only be reached in ConstProp and non-rustc-MIR.
-                    throw_ub!(BoundsCheckFailed { len: min_length.into(), index: n });
+                    throw_ub!(BoundsCheckFailed { len: min_length, index: n });
                 }
 
                 let index = if from_end {
@@ -565,9 +565,7 @@ where
                 self.mplace_index(base, index)?
             }
 
-            Subslice { from, to, from_end } => {
-                self.mplace_subslice(base, u64::from(from), u64::from(to), from_end)?
-            }
+            Subslice { from, to, from_end } => self.mplace_subslice(base, from, to, from_end)?,
         })
     }
 
