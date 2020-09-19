@@ -378,6 +378,8 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
         } else if target.contains("windows") {
             cfg.define("CMAKE_SYSTEM_NAME", "Windows");
+        } else if target.contains("haiku") {
+            cfg.define("CMAKE_SYSTEM_NAME", "Haiku");
         }
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
         // that case like CMake we cannot easily determine system version either.
