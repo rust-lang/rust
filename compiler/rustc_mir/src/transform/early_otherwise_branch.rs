@@ -20,7 +20,7 @@ use std::{borrow::Cow, fmt::Debug};
 /// let x: Option<()>;
 /// let y: Option<()>;
 /// let discriminant_x = // get discriminant of x
-/// let discriminant_y = // get discriminant of x
+/// let discriminant_y = // get discriminant of y
 /// if discriminant_x != discriminant_y {1} else {0}
 /// ```
 pub struct EarlyOtherwiseBranch;
