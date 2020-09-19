@@ -1,11 +1,10 @@
 // compile-flags: -Z mir-opt-level=3
 
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR early_otherwise_branch_3_element_tuple.opt1.EarlyOtherwiseBranch.diff
-fn opt1(x: Option<usize>, y:Option<usize>, z:Option<usize>) -> usize {
-    match (x,y,z) {
+fn opt1(x: Option<u32>, y: Option<u32>, z: Option<u32>) -> u32 {
+    match (x, y, z) {
         (Some(a), Some(b), Some(c)) => 0,
-        _ => 1
+        _ => 1,
     }
 }
 
