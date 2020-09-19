@@ -1,0 +1,29 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-73260.rs:6:47
+   |
+LL | where Assert::<{N < usize::max_value() / 2}>: IsTrue,
+   |                                               ^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error[E0308]: mismatched types
+  --> $DIR/issue-73260.rs:17:12
+   |
+LL |     let x: Arr<{usize::max_value()}> = Arr {};
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `false`, found `true`
+   |
+   = note: expected type `false`
+              found type `true`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-73260.rs:17:40
+   |
+LL |     let x: Arr<{usize::max_value()}> = Arr {};
+   |                                        ^^^ expected `false`, found `true`
+   |
+   = note: expected type `false`
+              found type `true`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
