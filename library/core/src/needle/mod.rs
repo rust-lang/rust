@@ -28,9 +28,9 @@
 //! codeword. These indices are invalid. A *valid index* of a certain haystack
 //! would only point to the boundaries.
 
+pub mod ext;
 mod haystack;
 mod needle;
-pub mod ext;
 
 pub use self::haystack::*;
 pub use self::needle::*;

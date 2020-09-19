@@ -253,8 +253,8 @@ pub mod slice;
 pub mod str;
 pub mod time;
 
-pub mod unicode;
 pub mod needle;
+pub mod unicode;
 
 /* Async */
 pub mod future;

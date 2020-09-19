@@ -2,12 +2,12 @@
 
 use super::haystack::{Hay, Haystack, Span};
 use super::needle::{
-    Needle, Searcher, ReverseSearcher, DoubleEndedSearcher,
-    Consumer, ReverseConsumer, DoubleEndedConsumer,
+    Consumer, DoubleEndedConsumer, DoubleEndedSearcher, Needle, ReverseConsumer, ReverseSearcher,
+    Searcher,
 };
+use crate::fmt;
 use crate::iter::FusedIterator;
 use crate::ops::Range;
-use crate::fmt;
 
 macro_rules! generate_clone_and_debug {
     ($name:ident, $field:tt) => {
@@ -32,12 +32,10 @@ macro_rules! generate_clone_and_debug {
             H::Target: Hay, // FIXME: RFC 2089 or 2289
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_tuple(stringify!($name))
-                    .field(&self.$field)
-                    .finish()
+                f.debug_tuple(stringify!($name)).field(&self.$field).finish()
             }
         }
-    }
+    };
 }
 
 macro_rules! generate_pattern_iterators {
@@ -333,10 +331,7 @@ where
     P: Needle<H>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    Matches(MatchesInternal {
-        searcher: needle.into_searcher(),
-        rest: haystack.into(),
-    })
+    Matches(MatchesInternal { searcher: needle.into_searcher(), rest: haystack.into() })
 }
 
 /// An iterator over the disjoint matches of the needle within the haystack,
@@ -348,10 +343,7 @@ where
     P::Searcher: ReverseSearcher<H::Target>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    RMatches(MatchesInternal {
-        searcher: needle.into_searcher(),
-        rest: haystack.into(),
-    })
+    RMatches(MatchesInternal { searcher: needle.into_searcher(), rest: haystack.into() })
 }
 
 /// Returns `true` if the given needle matches a sub-slice of the haystack.
@@ -363,9 +355,7 @@ where
     P: Needle<H>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    needle.into_searcher()
-        .search((*haystack).into())
-        .is_some()
+    needle.into_searcher().search((*haystack).into()).is_some()
 }
 
 //------------------------------------------------------------------------------
@@ -434,9 +424,7 @@ where
     P: Needle<H>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    MatchIndices(MatchIndicesInternal {
-        inner: matches(haystack, needle).0,
-    })
+    MatchIndices(MatchIndicesInternal { inner: matches(haystack, needle).0 })
 }
 
 /// An iterator over the disjoint matches of a needle within the haystack,
@@ -451,9 +439,7 @@ where
     P::Searcher: ReverseSearcher<H::Target>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    RMatchIndices(MatchIndicesInternal {
-        inner: rmatches(haystack, needle).0,
-    })
+    RMatchIndices(MatchIndicesInternal { inner: rmatches(haystack, needle).0 })
 }
 
 /// Returns the start index of first slice of the haystack that matches the needle.
@@ -466,9 +452,7 @@ where
     P: Needle<H>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    needle.into_searcher()
-        .search((*haystack).into())
-        .map(|r| r.start)
+    needle.into_searcher().search((*haystack).into()).map(|r| r.start)
 }
 
 /// Returns the start index of last slice of the haystack that matches the needle.
@@ -481,9 +465,7 @@ where
     P::Searcher: ReverseSearcher<H::Target>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    needle.into_searcher()
-        .rsearch((*haystack).into())
-        .map(|r| r.start)
+    needle.into_searcher().rsearch((*haystack).into()).map(|r| r.start)
 }
 
 //------------------------------------------------------------------------------
@@ -552,9 +534,7 @@ where
     P: Needle<H>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    MatchRanges(MatchRangesInternal {
-        inner: matches(haystack, needle).0,
-    })
+    MatchRanges(MatchRangesInternal { inner: matches(haystack, needle).0 })
 }
 
 /// An iterator over the disjoint matches of a needle within the haystack,
@@ -569,9 +549,7 @@ where
     P::Searcher: ReverseSearcher<H::Target>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    RMatchRanges(MatchRangesInternal {
-        inner: rmatches(haystack, needle).0,
-    })
+    RMatchRanges(MatchRangesInternal { inner: rmatches(haystack, needle).0 })
 }
 
 /// Returns the index range of first slice of the haystack that matches the needle.
@@ -583,8 +561,7 @@ where
     P: Needle<H>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    needle.into_searcher()
-        .search((*haystack).into())
+    needle.into_searcher().search((*haystack).into())
 }
 
 /// Returns the start index of last slice of the haystack that matches the needle.
@@ -597,8 +574,7 @@ where
     P::Searcher: ReverseSearcher<H::Target>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    needle.into_searcher()
-        .rsearch((*haystack).into())
+    needle.into_searcher().rsearch((*haystack).into())
 }
 
 //------------------------------------------------------------------------------
@@ -814,19 +790,17 @@ where
             1 => {
                 self.n = 0;
             }
-            n => {
-                match self.searcher.search(rest.borrow()) {
-                    Some(range) => {
-                        let [left, _, right] = unsafe { rest.split_around(range) };
-                        self.n = n - 1;
-                        self.rest = right;
-                        rest = left;
-                    }
-                    None => {
-                        self.n = 0;
-                    }
+            n => match self.searcher.search(rest.borrow()) {
+                Some(range) => {
+                    let [left, _, right] = unsafe { rest.split_around(range) };
+                    self.n = n - 1;
+                    self.rest = right;
+                    rest = left;
                 }
-            }
+                None => {
+                    self.n = 0;
+                }
+            },
         }
         Some(Span::into(rest))
     }
@@ -848,19 +822,17 @@ where
             1 => {
                 self.n = 0;
             }
-            n => {
-                match self.searcher.rsearch(rest.borrow()) {
-                    Some(range) => {
-                        let [left, _, right] = unsafe { rest.split_around(range) };
-                        self.n = n - 1;
-                        self.rest = left;
-                        rest = right;
-                    }
-                    None => {
-                        self.n = 0;
-                    }
+            n => match self.searcher.rsearch(rest.borrow()) {
+                Some(range) => {
+                    let [left, _, right] = unsafe { rest.split_around(range) };
+                    self.n = n - 1;
+                    self.rest = left;
+                    rest = right;
                 }
-            }
+                None => {
+                    self.n = 0;
+                }
+            },
         }
         Some(Span::into(rest))
     }
@@ -890,11 +862,7 @@ where
     P: Needle<H>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    SplitN(SplitNInternal {
-        searcher: needle.into_searcher(),
-        rest: haystack.into(),
-        n,
-    })
+    SplitN(SplitNInternal { searcher: needle.into_searcher(), rest: haystack.into(), n })
 }
 
 /// An iterator over slices of the given haystack, separated by a needle,
@@ -909,11 +877,7 @@ where
     P::Searcher: ReverseSearcher<H::Target>,
     H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
-    RSplitN(SplitNInternal {
-        searcher: needle.into_searcher(),
-        rest: haystack.into(),
-        n,
-    })
+    RSplitN(SplitNInternal { searcher: needle.into_searcher(), rest: haystack.into(), n })
 }
 
 //------------------------------------------------------------------------------

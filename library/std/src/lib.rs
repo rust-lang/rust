@@ -424,6 +424,8 @@ pub use core::iter;
 pub use core::marker;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::mem;
+#[unstable(feature = "needle", issue = "56345")]
+pub use core::needle;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ops;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -448,8 +450,6 @@ pub use core::u64;
 pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
-#[unstable(feature = "needle", issue = "56345")]
-pub use core::needle;
 
 pub mod f32;
 pub mod f64;

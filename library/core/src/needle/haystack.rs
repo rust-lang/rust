@@ -126,7 +126,10 @@ pub unsafe trait Hay {
 /// implementor must uphold. Failing to meet these requirements would lead to
 /// out-of-bound access. The safety requirements are written in each member of
 /// this trait.
-pub unsafe trait Haystack: Deref + Sized where Self::Target: Hay {
+pub unsafe trait Haystack: Deref + Sized
+where
+    Self::Target: Hay,
+{
     /// Creates an empty haystack.
     fn empty() -> Self;
 
@@ -172,7 +175,7 @@ pub unsafe trait Haystack: Deref + Sized where Self::Target: Hay {
     /// The starts and end indices of `range` must be valid indices for the
     /// haystack `self` with `range.start <= range.end`.
     unsafe fn slice_unchecked(self, range: Range<<Self::Target as Hay>::Index>) -> Self {
-        let [_, middle, _] = self.split_around(range);
+        let [_, middle, _] = unsafe { self.split_around(range) };
         middle
     }
 
@@ -222,9 +225,12 @@ pub unsafe trait Haystack: Deref + Sized where Self::Target: Hay {
 /// original haystack will be retained in full and cloned, rather than being
 /// sliced and splitted. Being a shared haystack allows searcher to see the
 /// entire haystack, including the consumed portion.
-pub trait SharedHaystack: Haystack + Clone
-where Self::Target: Hay // FIXME: RFC 2089 or 2289
-{}
+#[rustc_unsafe_specialization_marker]
+pub unsafe trait SharedHaystack: Haystack + Clone
+where
+    Self::Target: Hay,
+{
+}
 
 /// The borrowing behavior differs between a (unique) haystack and shared
 /// haystack. We use *specialization* to distinguish between these behavior:
@@ -238,7 +244,8 @@ where Self::Target: Hay // FIXME: RFC 2089 or 2289
 ///
 /// This trait will never be public.
 trait SpanBehavior: Haystack
-where Self::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    Self::Target: Hay,
 {
     fn take(&mut self) -> Self;
 
@@ -249,10 +256,8 @@ where Self::Target: Hay // FIXME: RFC 2089 or 2289
         subrange: Range<<Self::Target as Hay>::Index>,
     ) -> [Self; 3];
 
-    unsafe fn slice_unchecked_for_span(
-        self,
-        subrange: Range<<Self::Target as Hay>::Index>,
-    ) -> Self;
+    unsafe fn slice_unchecked_for_span(self, subrange: Range<<Self::Target as Hay>::Index>)
+    -> Self;
 
     fn borrow_range(
         &self,
@@ -267,7 +272,8 @@ where Self::Target: Hay // FIXME: RFC 2089 or 2289
 }
 
 impl<H: Haystack> SpanBehavior for H
-where H::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
     #[inline]
     default fn take(&mut self) -> Self {
@@ -301,7 +307,7 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
         self,
         subrange: Range<<Self::Target as Hay>::Index>,
     ) -> [Self; 3] {
-        self.split_around(subrange)
+        unsafe { self.split_around(subrange) }
     }
 
     #[inline]
@@ -309,12 +315,13 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
         self,
         subrange: Range<<Self::Target as Hay>::Index>,
     ) -> Self {
-        self.slice_unchecked(subrange)
+        unsafe { self.slice_unchecked(subrange) }
     }
 }
 
 impl<H: SharedHaystack> SpanBehavior for H
-where H::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
     #[inline]
     fn take(&mut self) -> Self {
@@ -323,9 +330,7 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
 
     #[inline]
     fn from_span(span: Span<Self>) -> Self {
-        unsafe {
-            span.haystack.slice_unchecked(span.range)
-        }
+        unsafe { span.haystack.slice_unchecked(span.range) }
     }
 
     #[inline]
@@ -362,7 +367,8 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
 /// where the range is guaranteed to be valid for the haystack.
 #[derive(Debug, Clone)]
 pub struct Span<H: Haystack>
-where H::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
     haystack: H,
     range: Range<<<H as Deref>::Target as Hay>::Index>,
@@ -372,7 +378,8 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
 
 /// Creates a span which covers the entire haystack.
 impl<H: Haystack> From<H> for Span<H>
-where H::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
     #[inline]
     fn from(haystack: H) -> Self {
@@ -383,7 +390,8 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
 
 /// Slices the original haystack to the focused range.
 impl<H: Haystack> From<Span<H>> for H
-where H::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
     #[inline]
     fn from(span: Span<H>) -> Self {
@@ -392,7 +400,8 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
 }
 
 impl<H: SharedHaystack> Span<H>
-where H::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
     /// Decomposes this span into the original haystack, and the range it focuses on.
     #[inline]
@@ -415,15 +424,13 @@ impl<'h> Span<&'h str> {
     /// Reinterprets the string span as a byte-array span.
     #[inline]
     pub fn as_bytes(self) -> Span<&'h [u8]> {
-        Span {
-            haystack: self.haystack.as_bytes(),
-            range: self.range,
-        }
+        Span { haystack: self.haystack.as_bytes(), range: self.range }
     }
 }
 
 impl<H: Haystack> Span<H>
-where H::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    H::Target: Hay, // FIXME: RFC 2089 or 2289
 {
     /// The range of the span, relative to the ultimate original haystack it was sliced from.
     #[inline]
@@ -434,10 +441,7 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
     /// Borrows a shared span.
     #[inline]
     pub fn borrow(&self) -> Span<&H::Target> {
-        Span {
-            haystack: &*self.haystack,
-            range: self.haystack.borrow_range(self.range.clone()),
-        }
+        Span { haystack: &*self.haystack, range: self.haystack.borrow_range(self.range.clone()) }
     }
 
     /// Checks whether this span is empty.
@@ -464,9 +468,11 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
     #[inline]
     pub unsafe fn split_around(self, subrange: Range<<H::Target as Hay>::Index>) -> [Self; 3] {
         let self_range = self.haystack.borrow_range(self.range.clone());
-        let [left, middle, right] = self.haystack.split_around_for_span(subrange.clone());
+        let [left, middle, right] =
+            unsafe { self.haystack.split_around_for_span(subrange.clone()) };
 
-        let left_range = left.do_restore_range(self.range.clone(),self_range.start..subrange.start);
+        let left_range =
+            left.do_restore_range(self.range.clone(), self_range.start..subrange.start);
         let right_range = right.do_restore_range(self.range.clone(), subrange.end..self_range.end);
         let middle_range = middle.do_restore_range(self.range, subrange);
 
@@ -484,7 +490,7 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
     /// `subrange` must be a valid range relative to `self.borrow()`.
     #[inline]
     pub unsafe fn slice_unchecked(self, subrange: Range<<H::Target as Hay>::Index>) -> Self {
-        let haystack = self.haystack.slice_unchecked_for_span(subrange.clone());
+        let haystack = unsafe { self.haystack.slice_unchecked_for_span(subrange.clone()) };
         let range = haystack.do_restore_range(self.range, subrange);
         Self { haystack, range }
     }
@@ -498,16 +504,18 @@ unsafe impl<'a, A: Hay + ?Sized + 'a> Haystack for &'a A {
 
     #[inline]
     unsafe fn split_around(self, range: Range<A::Index>) -> [Self; 3] {
-        [
-            self.slice_unchecked(self.start_index()..range.start),
-            self.slice_unchecked(range.clone()),
-            self.slice_unchecked(range.end..self.end_index()),
-        ]
+        unsafe {
+            [
+                self.slice_unchecked(self.start_index()..range.start),
+                self.slice_unchecked(range.clone()),
+                self.slice_unchecked(range.end..self.end_index()),
+            ]
+        }
     }
 
     #[inline]
     unsafe fn slice_unchecked(self, range: Range<A::Index>) -> Self {
-        A::slice_unchecked(self, range)
+        unsafe { A::slice_unchecked(self, range) }
     }
 
     #[inline]
@@ -516,7 +524,7 @@ unsafe impl<'a, A: Hay + ?Sized + 'a> Haystack for &'a A {
     }
 }
 
-impl<'a, A: Hay + ?Sized + 'a> SharedHaystack for &'a A {}
+unsafe impl<'a, A: Hay + ?Sized + 'a> SharedHaystack for &'a A {}
 
 unsafe impl Hay for str {
     type Index = usize;
@@ -538,17 +546,17 @@ unsafe impl Hay for str {
 
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self {
-        self.get_unchecked(range)
+        unsafe { self.get_unchecked(range) }
     }
 
     #[inline]
     unsafe fn next_index(&self, index: Self::Index) -> Self::Index {
-        index + self.get_unchecked(index..).chars().next().unwrap().len_utf8()
+        index + unsafe { self.get_unchecked(index..).chars().next().unwrap().len_utf8() }
     }
 
     #[inline]
     unsafe fn prev_index(&self, index: Self::Index) -> Self::Index {
-        index - self.get_unchecked(..index).chars().next_back().unwrap().len_utf8()
+        index - unsafe { self.get_unchecked(..index).chars().next_back().unwrap().len_utf8() }
     }
 }
 
@@ -560,7 +568,7 @@ unsafe impl<'h> Haystack for &'h mut str {
 
     #[inline]
     unsafe fn slice_unchecked(self, range: Range<usize>) -> Self {
-        self.get_unchecked_mut(range)
+        unsafe { self.get_unchecked_mut(range) }
     }
 
     #[inline]
@@ -596,7 +604,7 @@ unsafe impl<T> Hay for [T] {
 
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self {
-        self.get_unchecked(range)
+        unsafe { self.get_unchecked(range) }
     }
 
     #[inline]
@@ -618,7 +626,7 @@ unsafe impl<'h, T: 'h> Haystack for &'h mut [T] {
 
     #[inline]
     unsafe fn slice_unchecked(self, range: Range<usize>) -> Self {
-        self.get_unchecked_mut(range)
+        unsafe { self.get_unchecked_mut(range) }
     }
 
     #[inline]
@@ -633,5 +641,3 @@ unsafe impl<'h, T: 'h> Haystack for &'h mut [T] {
         (subrange.start + range.start)..(subrange.end + range.start)
     }
 }
-
-

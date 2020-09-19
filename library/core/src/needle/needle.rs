@@ -1,4 +1,4 @@
-use super::haystack::{Haystack, Hay, Span};
+use super::haystack::{Hay, Haystack, Span};
 
 use crate::ops::Range;
 
@@ -297,7 +297,8 @@ pub unsafe trait DoubleEndedConsumer<A: Hay + ?Sized>: ReverseConsumer<A> {}
 /// The relationship between `Searcher` and `Needle` is similar to `Iterator`
 /// and `IntoIterator`.
 pub trait Needle<H: Haystack>: Sized
-where H::Target: Hay // FIXME: RFC 2089 or 2289
+where
+    H::Target: Hay,
 {
     /// The searcher associated with this needle.
     type Searcher: Searcher<H::Target>;
