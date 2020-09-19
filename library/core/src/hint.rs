@@ -108,7 +108,8 @@ pub fn spin_loop() {
 /// Note however, that `black_box` is only (and can only be) provided on a "best-effort" basis. The
 /// extent to which it can block optimisations may vary depending upon the platform and code-gen
 /// backend used. Programs cannot rely on `black_box` for *correctness* in any way.
-#[inline]
+#[cfg_attr(not(miri), inline)]
+#[cfg_attr(miri, inline(never))]
 #[unstable(feature = "test", issue = "50297")]
 #[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
 pub fn black_box<T>(mut dummy: T) -> T {
