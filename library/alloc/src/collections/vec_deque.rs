@@ -2694,6 +2694,13 @@ pub struct IterMut<'a, T: 'a> {
     phantom: PhantomData<&'a mut [T]>,
 }
 
+// SAFETY: we do nothing thread-local and there is no interior mutability,
+// so the usual structural `Send`/`Sync` apply.
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Send> Send for IterMut<'_, T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
+
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
