@@ -29,14 +29,24 @@ rough heuristics:
   - need to run gdb or lldb? use the `debuginfo` test suite
   - need to inspect LLVM IR or MIR IR? use the `codegen` or `mir-opt` test
     suites
-  - need to run rustdoc? Prefer a `rustdoc` test
+  - need to run rustdoc? Prefer a `rustdoc` or `rustdoc-ui` test.
+    Occasionally you'll need `rustdoc-js` as well.
   - need to inspect the resulting binary in some way? Then use `run-make`
-- For most other things, [a `ui` (or `ui-fulldeps`) test](#ui) is to be
-  preferred:
-  - `ui` tests subsume both run-pass, compile-fail, and parse-fail tests
+- Library tests should go in `library/${crate}/tests` (where `${crate}` is
+  usually `core`, `alloc`, or `std`). Library tests include:
+  - tests that an API behaves properly, including accepting various types or
+    having some runtime behavior
+  - tests where any compiler warnings are not relevant to the test
+  - tests that a use of an API gives a compile error, where the exact error
+    message is not relevant to the test. These should have an
+    [error number] (`E0XXX`) in the code block to make sure it's the correct error.
+- For most other things, [a `ui` (or `ui-fulldeps`) test](#ui) is to be preferred:
+  - [`ui`](#ui) tests subsume both `run-pass`, `compile-fail`, and `parse-fail` tests
   - in the case of warnings or errors, `ui` tests capture the full output,
     which makes it easier to review but also helps prevent "hidden" regressions
     in the output
+
+[error number]: https://doc.rust-lang.org/rustdoc/unstable-features.html#error-numbers-for-compile-fail-doctests
 
 ## Naming your test
 
