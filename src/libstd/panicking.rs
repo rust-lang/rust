@@ -167,7 +167,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
     }
 }
 
-fn show_error(code: u32, message: &str, details: &str) {
+fn show_error(code: u32, message: &core::primitive::str, details: &core::primitive::str) {
     use nnsdk::{err, settings};
 
     let mut message_bytes = String::from(message).into_bytes();
@@ -181,11 +181,22 @@ fn show_error(code: u32, message: &str, details: &str) {
         details_bytes.truncate(2044);
         details_bytes.append(&mut String::from("...\0").into_bytes());
     }
+
+    let message = match core::str::from_utf8(&message_bytes) {
+        Ok(s) => s,
+        Err(e) => "Unable to parse error message.\0"
+    };
+
+    let details = match core::str::from_utf8(&details_bytes) {
+        Ok(s) => s,
+        Err(e) => "Unable to parse error details.\0"
+    };
+    
     unsafe {
         let error = err::ApplicationErrorArg::new_with_messages(
             code,
-            core::str::from_utf8(&message_bytes).unwrap().as_bytes().as_ptr(),
-            core::str::from_utf8(&details_bytes).unwrap().as_bytes().as_ptr(),
+            message.as_bytes().as_ptr(),
+            details.as_bytes().as_ptr(),
             &settings::LanguageCode_Make(settings::Language_Language_English),
         );
 
@@ -216,7 +227,7 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let err_msg = format!("thread '{}' panicked at '{}', {}", name, msg, location);
+        let err_msg = format!("Thread '{}' panicked at '{}', {}", name, msg, location);
         let _ = writeln!(err, "{}", err_msg.as_str());
         show_error(
             69,
