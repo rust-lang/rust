@@ -6,6 +6,7 @@ use crate::interpret::{
     ScalarMaybeUninit, StackPopCleanup,
 };
 
+use crate::util::pretty::display_allocation;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -192,7 +193,7 @@ fn validate_and_turn_into_const<'tcx>(
     let is_static = tcx.is_static(def_id);
     let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
     let val = (|| {
-        let mplace = ecx.raw_const_to_mplace(constant)?;
+        let mplace = ecx.raw_const_to_mplace(&constant)?;
 
         // FIXME do not validate promoteds until a decision on
         // https://github.com/rust-lang/rust/issues/67465 is made
@@ -225,6 +226,13 @@ fn validate_and_turn_into_const<'tcx>(
         let err = ConstEvalErr::new(&ecx, error, None);
         err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
+            diag.note(&format!(
+                "the raw bytes of the constant ({}",
+                display_allocation(
+                    *ecx.tcx,
+                    ecx.tcx.global_alloc(constant.alloc_id).unwrap_memory()
+                )
+            ));
             diag.emit();
         })
     })

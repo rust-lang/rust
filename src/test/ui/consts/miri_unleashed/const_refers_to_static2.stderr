@@ -4,17 +4,22 @@ error[E0080]: it is undefined behavior to use this value
 LL | / const REF_INTERIOR_MUT: &usize = {
 LL | |
 LL | |
+LL | |
 LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
 LL | |     unsafe { &*(&FOO as *const _ as *const usize) }
 LL | | };
    | |__^ type validation failed: encountered a reference pointing to a static variable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc0────────╼                         │ ╾──────╼
+           }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static2.rs:18:1
+  --> $DIR/const_refers_to_static2.rs:19:1
    |
 LL | / const READ_IMMUT: &usize = {
+LL | |
 LL | |
 LL | |
 LL | |     static FOO: usize = 0;
@@ -23,21 +28,24 @@ LL | | };
    | |__^ type validation failed: encountered a reference pointing to a static variable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc1────────╼                         │ ╾──────╼
+           }
 
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static2.rs:14:18
+  --> $DIR/const_refers_to_static2.rs:15:18
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
    |                  ^^^
 help: skipping check for `const_raw_ptr_deref` feature
-  --> $DIR/const_refers_to_static2.rs:14:14
+  --> $DIR/const_refers_to_static2.rs:15:14
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static2.rs:22:6
+  --> $DIR/const_refers_to_static2.rs:24:6
    |
 LL |     &FOO
    |      ^^^
