@@ -578,6 +578,9 @@ pub enum ScalarMaybeUninit<Tag = ()> {
     Uninit,
 }
 
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(ScalarMaybeUninit, 24);
+
 impl<Tag> From<Scalar<Tag>> for ScalarMaybeUninit<Tag> {
     #[inline(always)]
     fn from(s: Scalar<Tag>) -> Self {
