@@ -8,6 +8,9 @@ LL | | )};
    | |___^ type validation failed: encountered 0x05 at .1.<deref>.<enum-tag>, but expected a valid enum tag
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾───────alloc4────────╼ ╾───────alloc4────────╼ │ ╾──────╼╾──────╼
+           }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/double_check2.rs:20:1
@@ -16,6 +19,9 @@ LL | static FOO2: (&Foo, &Bar) = unsafe {(std::mem::transmute(&BAR), std::mem::t
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x05 at .1.<deref>.<enum-tag>, but expected a valid enum tag
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾───────alloc4────────╼ ╾───────alloc4────────╼ │ ╾──────╼╾──────╼
+           }
 
 error: aborting due to 2 previous errors
 
