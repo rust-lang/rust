@@ -457,9 +457,7 @@ fn bench_clone_from_10_1000_0100(b: &mut Bencher) {
 }
 
 macro_rules! bench_in_place {
-    (
-        $($fname:ident, $type:ty , $count:expr, $init: expr);*
-    ) => {
+    ($($fname:ident, $type:ty, $count:expr, $init:expr);*) => {
         $(
             #[bench]
             fn $fname(b: &mut Bencher) {
@@ -467,7 +465,8 @@ macro_rules! bench_in_place {
                     let src: Vec<$type> = black_box(vec![$init; $count]);
                     let mut sink = src.into_iter()
                         .enumerate()
-                        .map(|(idx, e)| { (idx as $type) ^ e }).collect::<Vec<$type>>();
+                        .map(|(idx, e)| idx as $type ^ e)
+                        .collect::<Vec<$type>>();
                     black_box(sink.as_mut_ptr())
                 });
             }
@@ -476,24 +475,24 @@ macro_rules! bench_in_place {
 }
 
 bench_in_place![
-    bench_in_place_xxu8_i0_0010,     u8,     10, 0;
-    bench_in_place_xxu8_i0_0100,     u8,    100, 0;
-    bench_in_place_xxu8_i0_1000,     u8,   1000, 0;
-    bench_in_place_xxu8_i1_0010,     u8,     10, 1;
-    bench_in_place_xxu8_i1_0100,     u8,    100, 1;
-    bench_in_place_xxu8_i1_1000,     u8,   1000, 1;
-    bench_in_place_xu32_i0_0010,    u32,     10, 0;
-    bench_in_place_xu32_i0_0100,    u32,    100, 0;
-    bench_in_place_xu32_i0_1000,    u32,   1000, 0;
-    bench_in_place_xu32_i1_0010,    u32,     10, 1;
-    bench_in_place_xu32_i1_0100,    u32,    100, 1;
-    bench_in_place_xu32_i1_1000,    u32,   1000, 1;
-    bench_in_place_u128_i0_0010,   u128,     10, 0;
-    bench_in_place_u128_i0_0100,   u128,    100, 0;
-    bench_in_place_u128_i0_1000,   u128,   1000, 0;
-    bench_in_place_u128_i1_0010,   u128,     10, 1;
-    bench_in_place_u128_i1_0100,   u128,    100, 1;
-    bench_in_place_u128_i1_1000,   u128,   1000, 1
+    bench_in_place_xxu8_0010_i0,   u8,   10, 0;
+    bench_in_place_xxu8_0100_i0,   u8,  100, 0;
+    bench_in_place_xxu8_1000_i0,   u8, 1000, 0;
+    bench_in_place_xxu8_0010_i1,   u8,   10, 1;
+    bench_in_place_xxu8_0100_i1,   u8,  100, 1;
+    bench_in_place_xxu8_1000_i1,   u8, 1000, 1;
+    bench_in_place_xu32_0010_i0,  u32,   10, 0;
+    bench_in_place_xu32_0100_i0,  u32,  100, 0;
+    bench_in_place_xu32_1000_i0,  u32, 1000, 0;
+    bench_in_place_xu32_0010_i1,  u32,   10, 1;
+    bench_in_place_xu32_0100_i1,  u32,  100, 1;
+    bench_in_place_xu32_1000_i1,  u32, 1000, 1;
+    bench_in_place_u128_0010_i0, u128,   10, 0;
+    bench_in_place_u128_0100_i0, u128,  100, 0;
+    bench_in_place_u128_1000_i0, u128, 1000, 0;
+    bench_in_place_u128_0010_i1, u128,   10, 1;
+    bench_in_place_u128_0100_i1, u128,  100, 1;
+    bench_in_place_u128_1000_i1, u128, 1000, 1
 ];
 
 #[bench]
