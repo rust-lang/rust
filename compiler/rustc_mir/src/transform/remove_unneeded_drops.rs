@@ -6,15 +6,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-pub struct RemoveUnneededDrops {
-    def_id: LocalDefId,
-}
-
-impl RemoveUnneededDrops {
-    pub fn new(def_id: LocalDefId) -> Self {
-        Self { def_id }
-    }
-}
+pub struct RemoveUnneededDrops;
 
 impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
@@ -23,7 +15,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
             tcx,
             body,
             optimizations: vec![],
-            def_id: self.def_id,
+            def_id: source.def_id().expect_local(),
         };
         opt_finder.visit_body(body);
         for (loc, target) in opt_finder.optimizations {
