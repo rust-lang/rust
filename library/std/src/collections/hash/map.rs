@@ -1298,9 +1298,7 @@ pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
 /// This `enum` is constructed through the [`raw_entry_mut`] method on [`HashMap`],
 /// then calling one of the methods of that [`RawEntryBuilderMut`].
 ///
-/// [`Entry`]: enum.Entry.html
 /// [`raw_entry_mut`]: HashMap::raw_entry_mut
-/// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     /// An occupied entry.
@@ -1705,8 +1703,6 @@ impl<K: Debug, V: Debug> Debug for Entry<'_, K, V> {
 
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
-///
-/// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     base: base::RustcOccupiedEntry<'a, K, V>,
@@ -1721,8 +1717,6 @@ impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
 
 /// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
-///
-/// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     base: base::RustcVacantEntry<'a, K, V>,

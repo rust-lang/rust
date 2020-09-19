@@ -6,8 +6,6 @@
 //!
 //! The [`escape_default`] function provides an iterator over the bytes of an
 //! escaped version of the character given.
-//!
-//! [`escape_default`]: fn.escape_default.html
 
 #![stable(feature = "core_ascii", since = "1.26.0")]
 
@@ -20,8 +18,6 @@ use crate::str::from_utf8_unchecked;
 ///
 /// This `struct` is created by the [`escape_default`] function. See its
 /// documentation for more.
-///
-/// [`escape_default`]: fn.escape_default.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct EscapeDefault {
