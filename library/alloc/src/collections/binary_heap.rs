@@ -15,7 +15,6 @@
 //! [dijkstra]: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 //! [sssp]: https://en.wikipedia.org/wiki/Shortest_path_problem
 //! [dir_graph]: https://en.wikipedia.org/wiki/Directed_graph
-//! [`BinaryHeap`]: struct.BinaryHeap.html
 //!
 //! ```
 //! use std::cmp::Ordering;
@@ -240,10 +239,10 @@ use super::SpecExtend;
 /// The value for `push` is an expected cost; the method documentation gives a
 /// more detailed analysis.
 ///
-/// [push]: #method.push
-/// [pop]: #method.pop
-/// [peek]: #method.peek
-/// [peek\_mut]: #method.peek_mut
+/// [push]: BinaryHeap::push
+/// [pop]: BinaryHeap::pop
+/// [peek]: BinaryHeap::peek
+/// [peek\_mut]: BinaryHeap::peek_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BinaryHeap<T> {
     data: Vec<T>,
@@ -255,8 +254,7 @@ pub struct BinaryHeap<T> {
 /// This `struct` is created by the [`peek_mut`] method on [`BinaryHeap`]. See
 /// its documentation for more.
 ///
-/// [`peek_mut`]: struct.BinaryHeap.html#method.peek_mut
-/// [`BinaryHeap`]: struct.BinaryHeap.html
+/// [`peek_mut`]: BinaryHeap::peek_mut
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
     heap: &'a mut BinaryHeap<T>,
@@ -802,7 +800,7 @@ impl<T> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     ///
-    /// [`reserve`]: #method.reserve
+    /// [`reserve`]: BinaryHeap::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.data.reserve_exact(additional);
@@ -1057,11 +1055,10 @@ impl<T> Drop for Hole<'_, T> {
 
 /// An iterator over the elements of a `BinaryHeap`.
 ///
-/// This `struct` is created by the [`iter`] method on [`BinaryHeap`]. See its
+/// This `struct` is created by [`BinaryHeap::iter()`]. See its
 /// documentation for more.
 ///
-/// [`iter`]: struct.BinaryHeap.html#method.iter
-/// [`BinaryHeap`]: struct.BinaryHeap.html
+/// [`iter`]: BinaryHeap::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
@@ -1122,11 +1119,10 @@ impl<T> FusedIterator for Iter<'_, T> {}
 
 /// An owning iterator over the elements of a `BinaryHeap`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`BinaryHeap`]
+/// This `struct` is created by [`BinaryHeap::into_iter()`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`into_iter`]: struct.BinaryHeap.html#method.into_iter
-/// [`BinaryHeap`]: struct.BinaryHeap.html
+/// [`into_iter`]: BinaryHeap::into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct IntoIter<T> {
@@ -1227,11 +1223,10 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
-/// This `struct` is created by the [`drain`] method on [`BinaryHeap`]. See its
+/// This `struct` is created by [`BinaryHeap::drain()`]. See its
 /// documentation for more.
 ///
-/// [`drain`]: struct.BinaryHeap.html#method.drain
-/// [`BinaryHeap`]: struct.BinaryHeap.html
+/// [`drain`]: BinaryHeap::drain
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
 pub struct Drain<'a, T: 'a> {
@@ -1273,11 +1268,10 @@ impl<T> FusedIterator for Drain<'_, T> {}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
-/// This `struct` is created by the [`drain_sorted`] method on [`BinaryHeap`]. See its
+/// This `struct` is created by [`BinaryHeap::drain_sorted()`]. See its
 /// documentation for more.
 ///
-/// [`drain_sorted`]: struct.BinaryHeap.html#method.drain_sorted
-/// [`BinaryHeap`]: struct.BinaryHeap.html
+/// [`drain_sorted`]: BinaryHeap::drain_sorted
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 #[derive(Debug)]
 pub struct DrainSorted<'a, T: Ord> {
