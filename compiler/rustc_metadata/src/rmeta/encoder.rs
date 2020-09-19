@@ -1117,7 +1117,7 @@ impl EncodeContext<'a, 'tcx> {
             }
 
             let abstract_const = self.tcx.mir_abstract_const(def_id);
-            if let Some(abstract_const) = abstract_const {
+            if let Ok(Some(abstract_const)) = abstract_const {
                 record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
             }
         }
