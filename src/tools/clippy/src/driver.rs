@@ -274,7 +274,10 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         handler.note_without_error(&note);
     }
 
-    TyCtxt::try_print_query_stack(&handler, Some(2));
+    // If backtraces are enabled, also print the query stack
+    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
+
+    TyCtxt::try_print_query_stack(&handler, Some(2), Some(backtrace));
 }
 
 fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<PathBuf> {
