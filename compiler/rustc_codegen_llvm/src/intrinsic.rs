@@ -7,15 +7,12 @@ use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
-use rustc_ast as ast;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::glue;
-use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
+use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
@@ -71,8 +68,6 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: Symbol) -> Option<&'ll Va
         sym::nearbyintf64 => "llvm.nearbyint.f64",
         sym::roundf32 => "llvm.round.f32",
         sym::roundf64 => "llvm.round.f64",
-        sym::assume => "llvm.assume",
-        sym::abort => "llvm.trap",
         _ => return None,
     };
     Some(cx.get_intrinsic(&llvm_name))
@@ -112,9 +107,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 None,
             ),
-            sym::unreachable => {
-                return;
-            }
             sym::likely => {
                 let expect = self.get_intrinsic(&("llvm.expect.i1"));
                 self.call(expect, &[args[0].immediate(), self.const_bool(true)], None)
@@ -137,8 +129,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
                 self.call(llfn, &[], None)
             }
-            sym::va_start => self.va_start(args[0].immediate()),
-            sym::va_end => self.va_end(args[0].immediate()),
             sym::va_copy => {
                 let intrinsic = self.cx().get_intrinsic(&("llvm.va_copy"));
                 self.call(intrinsic, &[args[0].immediate(), args[1].immediate()], None)
@@ -169,123 +159,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     _ => bug!("the va_arg intrinsic does not work with non-scalar types"),
                 }
             }
-            sym::size_of_val => {
-                let tp_ty = substs.type_at(0);
-                if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (llsize, _) = glue::size_and_align_of_dst(self, tp_ty, Some(meta));
-                    llsize
-                } else {
-                    self.const_usize(self.size_of(tp_ty).bytes())
-                }
-            }
-            sym::min_align_of_val => {
-                let tp_ty = substs.type_at(0);
-                if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (_, llalign) = glue::size_and_align_of_dst(self, tp_ty, Some(meta));
-                    llalign
-                } else {
-                    self.const_usize(self.align_of(tp_ty).bytes())
-                }
-            }
-            sym::size_of
-            | sym::pref_align_of
-            | sym::min_align_of
-            | sym::needs_drop
-            | sym::type_id
-            | sym::type_name
-            | sym::variant_count => {
-                let value = self
-                    .tcx
-                    .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
-                    .unwrap();
-                OperandRef::from_const(self, value, ret_ty).immediate_or_packed_pair(self)
-            }
-            // Effectively no-op
-            sym::forget => {
-                return;
-            }
-            sym::offset => {
-                let ptr = args[0].immediate();
-                let offset = args[1].immediate();
-                self.inbounds_gep(ptr, &[offset])
-            }
-            sym::arith_offset => {
-                let ptr = args[0].immediate();
-                let offset = args[1].immediate();
-                self.gep(ptr, &[offset])
-            }
 
-            sym::copy_nonoverlapping => {
-                copy_intrinsic(
-                    self,
-                    false,
-                    false,
-                    substs.type_at(0),
-                    args[1].immediate(),
-                    args[0].immediate(),
-                    args[2].immediate(),
-                );
-                return;
-            }
-            sym::copy => {
-                copy_intrinsic(
-                    self,
-                    true,
-                    false,
-                    substs.type_at(0),
-                    args[1].immediate(),
-                    args[0].immediate(),
-                    args[2].immediate(),
-                );
-                return;
-            }
-            sym::write_bytes => {
-                memset_intrinsic(
-                    self,
-                    false,
-                    substs.type_at(0),
-                    args[0].immediate(),
-                    args[1].immediate(),
-                    args[2].immediate(),
-                );
-                return;
-            }
-
-            sym::volatile_copy_nonoverlapping_memory => {
-                copy_intrinsic(
-                    self,
-                    false,
-                    true,
-                    substs.type_at(0),
-                    args[0].immediate(),
-                    args[1].immediate(),
-                    args[2].immediate(),
-                );
-                return;
-            }
-            sym::volatile_copy_memory => {
-                copy_intrinsic(
-                    self,
-                    true,
-                    true,
-                    substs.type_at(0),
-                    args[0].immediate(),
-                    args[1].immediate(),
-                    args[2].immediate(),
-                );
-                return;
-            }
-            sym::volatile_set_memory => {
-                memset_intrinsic(
-                    self,
-                    true,
-                    substs.type_at(0),
-                    args[0].immediate(),
-                    args[1].immediate(),
-                    args[2].immediate(),
-                );
-                return;
-            }
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = substs.type_at(0);
                 let mut ptr = args[0].immediate();
@@ -343,20 +217,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             | sym::ctpop
             | sym::bswap
             | sym::bitreverse
-            | sym::add_with_overflow
-            | sym::sub_with_overflow
-            | sym::mul_with_overflow
-            | sym::wrapping_add
-            | sym::wrapping_sub
-            | sym::wrapping_mul
-            | sym::unchecked_div
-            | sym::unchecked_rem
-            | sym::unchecked_shl
-            | sym::unchecked_shr
-            | sym::unchecked_add
-            | sym::unchecked_sub
-            | sym::unchecked_mul
-            | sym::exact_div
             | sym::rotate_left
             | sym::rotate_right
             | sym::saturating_add
@@ -396,84 +256,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             &[args[0].immediate()],
                             None,
                         ),
-                        sym::add_with_overflow
-                        | sym::sub_with_overflow
-                        | sym::mul_with_overflow => {
-                            let intrinsic = format!(
-                                "llvm.{}{}.with.overflow.i{}",
-                                if signed { 's' } else { 'u' },
-                                &name_str[..3],
-                                width
-                            );
-                            let llfn = self.get_intrinsic(&intrinsic);
-
-                            // Convert `i1` to a `bool`, and write it to the out parameter
-                            let pair =
-                                self.call(llfn, &[args[0].immediate(), args[1].immediate()], None);
-                            let val = self.extract_value(pair, 0);
-                            let overflow = self.extract_value(pair, 1);
-                            let overflow = self.zext(overflow, self.type_bool());
-
-                            let dest = result.project_field(self, 0);
-                            self.store(val, dest.llval, dest.align);
-                            let dest = result.project_field(self, 1);
-                            self.store(overflow, dest.llval, dest.align);
-
-                            return;
-                        }
-                        sym::wrapping_add => self.add(args[0].immediate(), args[1].immediate()),
-                        sym::wrapping_sub => self.sub(args[0].immediate(), args[1].immediate()),
-                        sym::wrapping_mul => self.mul(args[0].immediate(), args[1].immediate()),
-                        sym::exact_div => {
-                            if signed {
-                                self.exactsdiv(args[0].immediate(), args[1].immediate())
-                            } else {
-                                self.exactudiv(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_div => {
-                            if signed {
-                                self.sdiv(args[0].immediate(), args[1].immediate())
-                            } else {
-                                self.udiv(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_rem => {
-                            if signed {
-                                self.srem(args[0].immediate(), args[1].immediate())
-                            } else {
-                                self.urem(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_shl => self.shl(args[0].immediate(), args[1].immediate()),
-                        sym::unchecked_shr => {
-                            if signed {
-                                self.ashr(args[0].immediate(), args[1].immediate())
-                            } else {
-                                self.lshr(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_add => {
-                            if signed {
-                                self.unchecked_sadd(args[0].immediate(), args[1].immediate())
-                            } else {
-                                self.unchecked_uadd(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_sub => {
-                            if signed {
-                                self.unchecked_ssub(args[0].immediate(), args[1].immediate())
-                            } else {
-                                self.unchecked_usub(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_mul => {
-                            if signed {
-                                self.unchecked_smul(args[0].immediate(), args[1].immediate())
-                            } else {
-                                self.unchecked_umul(args[0].immediate(), args[1].immediate())
-                            }
-                        }
                         sym::rotate_left | sym::rotate_right => {
                             let is_left = name == sym::rotate_left;
                             let val = args[0].immediate();
@@ -513,249 +295,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     }
                 }
             }
-            sym::fadd_fast | sym::fsub_fast | sym::fmul_fast | sym::fdiv_fast | sym::frem_fast => {
-                match float_type_width(arg_tys[0]) {
-                    Some(_width) => match name {
-                        sym::fadd_fast => self.fadd_fast(args[0].immediate(), args[1].immediate()),
-                        sym::fsub_fast => self.fsub_fast(args[0].immediate(), args[1].immediate()),
-                        sym::fmul_fast => self.fmul_fast(args[0].immediate(), args[1].immediate()),
-                        sym::fdiv_fast => self.fdiv_fast(args[0].immediate(), args[1].immediate()),
-                        sym::frem_fast => self.frem_fast(args[0].immediate(), args[1].immediate()),
-                        _ => bug!(),
-                    },
-                    None => {
-                        span_invalid_monomorphization_error(
-                            tcx.sess,
-                            span,
-                            &format!(
-                                "invalid monomorphization of `{}` intrinsic: \
-                                      expected basic float type, found `{}`",
-                                name, arg_tys[0]
-                            ),
-                        );
-                        return;
-                    }
-                }
-            }
-
-            sym::float_to_int_unchecked => {
-                if float_type_width(arg_tys[0]).is_none() {
-                    span_invalid_monomorphization_error(
-                        tcx.sess,
-                        span,
-                        &format!(
-                            "invalid monomorphization of `float_to_int_unchecked` \
-                                  intrinsic: expected basic float type, \
-                                  found `{}`",
-                            arg_tys[0]
-                        ),
-                    );
-                    return;
-                }
-                let (width, signed) = match int_type_width_signed(ret_ty, self.cx) {
-                    Some(pair) => pair,
-                    None => {
-                        span_invalid_monomorphization_error(
-                            tcx.sess,
-                            span,
-                            &format!(
-                                "invalid monomorphization of `float_to_int_unchecked` \
-                                      intrinsic:  expected basic integer type, \
-                                      found `{}`",
-                                ret_ty
-                            ),
-                        );
-                        return;
-                    }
-                };
-                if signed {
-                    self.fptosi(args[0].immediate(), self.cx.type_ix(width))
-                } else {
-                    self.fptoui(args[0].immediate(), self.cx.type_ix(width))
-                }
-            }
-
-            sym::discriminant_value => {
-                if ret_ty.is_integral() {
-                    args[0].deref(self.cx()).codegen_get_discr(self, ret_ty)
-                } else {
-                    span_bug!(span, "Invalid discriminant type for `{:?}`", arg_tys[0])
-                }
-            }
 
             _ if name_str.starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                     Ok(llval) => llval,
                     Err(()) => return,
                 }
-            }
-            // This requires that atomic intrinsics follow a specific naming pattern:
-            // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
-            name if name_str.starts_with("atomic_") => {
-                use rustc_codegen_ssa::common::AtomicOrdering::*;
-                use rustc_codegen_ssa::common::{AtomicRmwBinOp, SynchronizationScope};
-
-                let split: Vec<&str> = name_str.split('_').collect();
-
-                let is_cxchg = split[1] == "cxchg" || split[1] == "cxchgweak";
-                let (order, failorder) = match split.len() {
-                    2 => (SequentiallyConsistent, SequentiallyConsistent),
-                    3 => match split[2] {
-                        "unordered" => (Unordered, Unordered),
-                        "relaxed" => (Monotonic, Monotonic),
-                        "acq" => (Acquire, Acquire),
-                        "rel" => (Release, Monotonic),
-                        "acqrel" => (AcquireRelease, Acquire),
-                        "failrelaxed" if is_cxchg => (SequentiallyConsistent, Monotonic),
-                        "failacq" if is_cxchg => (SequentiallyConsistent, Acquire),
-                        _ => self.sess().fatal("unknown ordering in atomic intrinsic"),
-                    },
-                    4 => match (split[2], split[3]) {
-                        ("acq", "failrelaxed") if is_cxchg => (Acquire, Monotonic),
-                        ("acqrel", "failrelaxed") if is_cxchg => (AcquireRelease, Monotonic),
-                        _ => self.sess().fatal("unknown ordering in atomic intrinsic"),
-                    },
-                    _ => self.sess().fatal("Atomic intrinsic not in correct format"),
-                };
-
-                let invalid_monomorphization = |ty| {
-                    span_invalid_monomorphization_error(
-                        tcx.sess,
-                        span,
-                        &format!(
-                            "invalid monomorphization of `{}` intrinsic: \
-                                  expected basic integer type, found `{}`",
-                            name, ty
-                        ),
-                    );
-                };
-
-                match split[1] {
-                    "cxchg" | "cxchgweak" => {
-                        let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, self).is_some() {
-                            let weak = split[1] == "cxchgweak";
-                            let pair = self.atomic_cmpxchg(
-                                args[0].immediate(),
-                                args[1].immediate(),
-                                args[2].immediate(),
-                                order,
-                                failorder,
-                                weak,
-                            );
-                            let val = self.extract_value(pair, 0);
-                            let success = self.extract_value(pair, 1);
-                            let success = self.zext(success, self.type_bool());
-
-                            let dest = result.project_field(self, 0);
-                            self.store(val, dest.llval, dest.align);
-                            let dest = result.project_field(self, 1);
-                            self.store(success, dest.llval, dest.align);
-                            return;
-                        } else {
-                            return invalid_monomorphization(ty);
-                        }
-                    }
-
-                    "load" => {
-                        let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, self).is_some() {
-                            let size = self.size_of(ty);
-                            self.atomic_load(args[0].immediate(), order, size)
-                        } else {
-                            return invalid_monomorphization(ty);
-                        }
-                    }
-
-                    "store" => {
-                        let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, self).is_some() {
-                            let size = self.size_of(ty);
-                            self.atomic_store(
-                                args[1].immediate(),
-                                args[0].immediate(),
-                                order,
-                                size,
-                            );
-                            return;
-                        } else {
-                            return invalid_monomorphization(ty);
-                        }
-                    }
-
-                    "fence" => {
-                        self.atomic_fence(order, SynchronizationScope::CrossThread);
-                        return;
-                    }
-
-                    "singlethreadfence" => {
-                        self.atomic_fence(order, SynchronizationScope::SingleThread);
-                        return;
-                    }
-
-                    // These are all AtomicRMW ops
-                    op => {
-                        let atom_op = match op {
-                            "xchg" => AtomicRmwBinOp::AtomicXchg,
-                            "xadd" => AtomicRmwBinOp::AtomicAdd,
-                            "xsub" => AtomicRmwBinOp::AtomicSub,
-                            "and" => AtomicRmwBinOp::AtomicAnd,
-                            "nand" => AtomicRmwBinOp::AtomicNand,
-                            "or" => AtomicRmwBinOp::AtomicOr,
-                            "xor" => AtomicRmwBinOp::AtomicXor,
-                            "max" => AtomicRmwBinOp::AtomicMax,
-                            "min" => AtomicRmwBinOp::AtomicMin,
-                            "umax" => AtomicRmwBinOp::AtomicUMax,
-                            "umin" => AtomicRmwBinOp::AtomicUMin,
-                            _ => self.sess().fatal("unknown atomic operation"),
-                        };
-
-                        let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, self).is_some() {
-                            self.atomic_rmw(
-                                atom_op,
-                                args[0].immediate(),
-                                args[1].immediate(),
-                                order,
-                            )
-                        } else {
-                            return invalid_monomorphization(ty);
-                        }
-                    }
-                }
-            }
-
-            sym::nontemporal_store => {
-                let dst = args[0].deref(self.cx());
-                args[1].val.nontemporal_store(self, dst);
-                return;
-            }
-
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
-                let a = args[0].immediate();
-                let b = args[1].immediate();
-                if name == sym::ptr_guaranteed_eq {
-                    self.icmp(IntPredicate::IntEQ, a, b)
-                } else {
-                    self.icmp(IntPredicate::IntNE, a, b)
-                }
-            }
-
-            sym::ptr_offset_from => {
-                let ty = substs.type_at(0);
-                let pointee_size = self.size_of(ty);
-
-                // This is the same sequence that Clang emits for pointer subtraction.
-                // It can be neither `nsw` nor `nuw` because the input is treated as
-                // unsigned but then the output is treated as signed, so neither works.
-                let a = args[0].immediate();
-                let b = args[1].immediate();
-                let a = self.ptrtoint(a, self.type_isize());
-                let b = self.ptrtoint(b, self.type_isize());
-                let d = self.sub(a, b);
-                let pointee_size = self.const_usize(pointee_size.bytes());
-                // this is where the signed magic happens (notice the `s` in `exactsdiv`)
-                self.exactsdiv(d, pointee_size)
             }
 
             _ => bug!("unknown intrinsic '{}'", name),
@@ -805,39 +350,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let intrinsic = self.cx().get_intrinsic("llvm.va_end");
         self.call(intrinsic, &[va_list], None)
     }
-}
-
-fn copy_intrinsic(
-    bx: &mut Builder<'a, 'll, 'tcx>,
-    allow_overlap: bool,
-    volatile: bool,
-    ty: Ty<'tcx>,
-    dst: &'ll Value,
-    src: &'ll Value,
-    count: &'ll Value,
-) {
-    let (size, align) = bx.size_and_align_of(ty);
-    let size = bx.mul(bx.const_usize(size.bytes()), count);
-    let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
-    if allow_overlap {
-        bx.memmove(dst, align, src, align, size, flags);
-    } else {
-        bx.memcpy(dst, align, src, align, size, flags);
-    }
-}
-
-fn memset_intrinsic(
-    bx: &mut Builder<'a, 'll, 'tcx>,
-    volatile: bool,
-    ty: Ty<'tcx>,
-    dst: &'ll Value,
-    val: &'ll Value,
-    count: &'ll Value,
-) {
-    let (size, align) = bx.size_and_align_of(ty);
-    let size = bx.mul(bx.const_usize(size.bytes()), count);
-    let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
-    bx.memset(dst, val, size, align, flags);
 }
 
 fn try_intrinsic(
@@ -2205,37 +1717,12 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 // stuffs.
 fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
     match ty.kind() {
-        ty::Int(t) => Some((
-            match t {
-                ast::IntTy::Isize => u64::from(cx.tcx.sess.target.ptr_width),
-                ast::IntTy::I8 => 8,
-                ast::IntTy::I16 => 16,
-                ast::IntTy::I32 => 32,
-                ast::IntTy::I64 => 64,
-                ast::IntTy::I128 => 128,
-            },
-            true,
-        )),
-        ty::Uint(t) => Some((
-            match t {
-                ast::UintTy::Usize => u64::from(cx.tcx.sess.target.ptr_width),
-                ast::UintTy::U8 => 8,
-                ast::UintTy::U16 => 16,
-                ast::UintTy::U32 => 32,
-                ast::UintTy::U64 => 64,
-                ast::UintTy::U128 => 128,
-            },
-            false,
-        )),
-        _ => None,
-    }
-}
-
-// Returns the width of a float Ty
-// Returns None if the type is not a float
-fn float_type_width(ty: Ty<'_>) -> Option<u64> {
-    match ty.kind() {
-        ty::Float(t) => Some(t.bit_width()),
+        ty::Int(t) => {
+            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.ptr_width)), true))
+        }
+        ty::Uint(t) => {
+            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.ptr_width)), false))
+        }
         _ => None,
     }
 }
