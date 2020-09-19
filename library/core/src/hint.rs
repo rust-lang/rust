@@ -111,7 +111,7 @@ pub fn spin_loop() {
 #[cfg_attr(not(miri), inline)]
 #[cfg_attr(miri, inline(never))]
 #[unstable(feature = "test", issue = "50297")]
-#[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
+#[cfg_attr(miri, allow(unused_mut))]
 pub fn black_box<T>(mut dummy: T) -> T {
     // We need to "use" the argument in some way LLVM can't introspect, and on
     // targets that support it we can typically leverage inline assembly to do
