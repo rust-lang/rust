@@ -639,6 +639,26 @@ crate fn nonnull_optimization_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, def: &ty::AdtD
         .any(|a| tcx.sess.check_name(a, sym::rustc_nonnull_optimization_guaranteed))
 }
 
+/// `repr(transparent)` structs can have a single non-ZST field, this function returns that
+/// field.
+pub fn transparent_newtype_field<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    variant: &'a ty::VariantDef,
+) -> Option<&'a ty::FieldDef> {
+    let param_env = tcx.param_env(variant.def_id);
+    for field in &variant.fields {
+        let field_ty = tcx.type_of(field.did);
+        let is_zst =
+            tcx.layout_of(param_env.and(field_ty)).map(|layout| layout.is_zst()).unwrap_or(false);
+
+        if !is_zst {
+            return Some(field);
+        }
+    }
+
+    None
+}
+
 /// Is type known to be non-null?
 crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
     let tcx = cx.tcx;
@@ -654,7 +674,7 @@ crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: C
             }
 
             for variant in &def.variants {
-                if let Some(field) = variant.transparent_newtype_field(tcx) {
+                if let Some(field) = transparent_newtype_field(cx.tcx, variant) {
                     if ty_is_known_nonnull(cx, field.ty(tcx, substs), mode) {
                         return true;
                     }
@@ -675,7 +695,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
         ty::Adt(field_def, field_substs) => {
             let inner_field_ty = {
                 let first_non_zst_ty =
-                    field_def.variants.iter().filter_map(|v| v.transparent_newtype_field(tcx));
+                    field_def.variants.iter().filter_map(|v| transparent_newtype_field(cx.tcx, v));
                 debug_assert_eq!(
                     first_non_zst_ty.clone().count(),
                     1,
@@ -816,7 +836,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if def.repr.transparent() {
             // Can assume that only one field is not a ZST, so only check
             // that field's type for FFI-safety.
-            if let Some(field) = variant.transparent_newtype_field(self.cx.tcx) {
+            if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
                 self.check_field_type_for_ffi(cache, field, substs)
             } else {
                 bug!("malformed transparent type");

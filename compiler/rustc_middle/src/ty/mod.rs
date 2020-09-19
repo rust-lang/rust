@@ -1999,7 +1999,7 @@ pub struct VariantDef {
     flags: VariantFlags,
 }
 
-impl<'tcx> VariantDef {
+impl VariantDef {
     /// Creates a new `VariantDef`.
     ///
     /// `variant_did` is the `DefId` that identifies the enum variant (if this `VariantDef`
@@ -2064,19 +2064,6 @@ impl<'tcx> VariantDef {
     #[inline]
     pub fn is_recovered(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_RECOVERED)
-    }
-
-    /// `repr(transparent)` structs can have a single non-ZST field, this function returns that
-    /// field.
-    pub fn transparent_newtype_field(&self, tcx: TyCtxt<'tcx>) -> Option<&FieldDef> {
-        for field in &self.fields {
-            let field_ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, self.def_id));
-            if !field_ty.is_zst(tcx, self.def_id) {
-                return Some(field);
-            }
-        }
-
-        None
     }
 }
 
