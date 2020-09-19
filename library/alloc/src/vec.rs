@@ -55,6 +55,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::cmp::{self, Ordering};
+use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
@@ -2751,6 +2752,57 @@ impl<T> From<Vec<T>> for Box<[T]> {
 impl From<&str> for Vec<u8> {
     fn from(s: &str) -> Vec<u8> {
         From::from(s.as_bytes())
+    }
+}
+
+#[stable(feature = "array_try_from_vec", since = "1.48.0")]
+impl<T, const N: usize> TryFrom<Vec<T>> for [T; N] {
+    type Error = Vec<T>;
+
+    /// Gets the entire contents of the `Vec<T>` as an array,
+    /// if its size exactly matches that of the requested array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::convert::TryInto;
+    /// assert_eq!(vec![1, 2, 3].try_into(), Ok([1, 2, 3]));
+    /// assert_eq!(<Vec<i32>>::new().try_into(), Ok([]));
+    /// ```
+    ///
+    /// If the length doesn't match, the input comes back in `Err`:
+    /// ```
+    /// use std::convert::TryInto;
+    /// let r: Result<[i32; 4], _> = (0..10).collect::<Vec<_>>().try_into();
+    /// assert_eq!(r, Err(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
+    /// ```
+    ///
+    /// If you're fine with just getting a prefix of the `Vec<T>`,
+    /// you can call [`.truncate(N)`](Vec::truncate) first.
+    /// ```
+    /// use std::convert::TryInto;
+    /// let mut v = String::from("hello world").into_bytes();
+    /// v.sort();
+    /// v.truncate(2);
+    /// let [a, b]: [_; 2] = v.try_into().unwrap();
+    /// assert_eq!(a, b' ');
+    /// assert_eq!(b, b'd');
+    /// ```
+    fn try_from(mut vec: Vec<T>) -> Result<[T; N], Vec<T>> {
+        if vec.len() != N {
+            return Err(vec);
+        }
+
+        // SAFETY: `.set_len(0)` is always sound.
+        unsafe { vec.set_len(0) };
+
+        // SAFETY: A `Vec`'s pointer is always aligned properly, and
+        // the alignment the array needs is the same as the items.
+        // We checked earlier that we have sufficient items.
+        // The items will not double-drop as the `set_len`
+        // tells the `Vec` not to also drop them.
+        let array = unsafe { ptr::read(vec.as_ptr() as *const [T; N]) };
+        Ok(array)
     }
 }
 

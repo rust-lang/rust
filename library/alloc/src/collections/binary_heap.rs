@@ -146,7 +146,7 @@
 
 use core::fmt;
 use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
-use core::mem::{self, size_of, swap, ManuallyDrop};
+use core::mem::{self, swap, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 use core::ptr;
 
@@ -617,7 +617,7 @@ impl<T: Ord> BinaryHeap<T> {
 
         #[inline(always)]
         fn log2_fast(x: usize) -> usize {
-            8 * size_of::<usize>() - (x.leading_zeros() as usize) - 1
+            (usize::BITS - x.leading_zeros() - 1) as usize
         }
 
         // `rebuild` takes O(len1 + len2) operations

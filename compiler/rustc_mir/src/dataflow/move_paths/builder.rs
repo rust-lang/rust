@@ -4,7 +4,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
-use std::convert::TryInto;
 use std::mem;
 
 use super::abs_domain::Lift;
@@ -481,12 +480,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             };
             let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
             let len: u64 = match base_ty.kind() {
-                ty::Array(_, size) => {
-                    let length = size.eval_usize(self.builder.tcx, self.builder.param_env);
-                    length
-                        .try_into()
-                        .expect("slice pattern of array with more than u32::MAX elements")
-                }
+                ty::Array(_, size) => size.eval_usize(self.builder.tcx, self.builder.param_env),
                 _ => bug!("from_end: false slice pattern of non-array type"),
             };
             for offset in from..to {

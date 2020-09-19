@@ -14,6 +14,7 @@
 #![feature(generators)]
 #![feature(generator_trait)]
 #![feature(fn_traits)]
+#![feature(int_bits_const)]
 #![feature(min_specialization)]
 #![feature(optin_builtin_traits)]
 #![feature(nll)]

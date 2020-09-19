@@ -565,7 +565,7 @@ fn break_patterns<T>(v: &mut [T]) {
             random
         };
         let mut gen_usize = || {
-            if mem::size_of::<usize>() <= 4 {
+            if usize::BITS <= 32 {
                 gen_u32() as usize
             } else {
                 (((gen_u32() as u64) << 32) | (gen_u32() as u64)) as usize
@@ -667,7 +667,7 @@ where
 ///
 /// `limit` is the number of allowed imbalanced partitions before switching to `heapsort`. If zero,
 /// this function will immediately switch to heapsort.
-fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T>, mut limit: usize)
+fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T>, mut limit: u32)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -763,7 +763,7 @@ where
     }
 
     // Limit the number of imbalanced partitions to `floor(log2(len)) + 1`.
-    let limit = mem::size_of::<usize>() * 8 - v.len().leading_zeros() as usize;
+    let limit = usize::BITS - v.len().leading_zeros();
 
     recurse(v, &mut is_less, None, limit);
 }
