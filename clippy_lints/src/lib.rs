@@ -323,6 +323,7 @@ mod unicode;
 mod unit_return_expecting_ord;
 mod unnamed_address;
 mod unnecessary_sort_by;
+mod unnecessary_wrap;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
 mod unused_io_amount;
@@ -892,6 +893,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unnamed_address::FN_ADDRESS_COMPARISONS,
         &unnamed_address::VTABLE_ADDRESS_COMPARISONS,
         &unnecessary_sort_by::UNNECESSARY_SORT_BY,
+        &unnecessary_wrap::UNNECESSARY_WRAP,
         &unnested_or_patterns::UNNESTED_OR_PATTERNS,
         &unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         &unused_io_amount::UNUSED_IO_AMOUNT,
@@ -1064,6 +1066,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box redundant_clone::RedundantClone);
     store.register_late_pass(|| box slow_vector_initialization::SlowVectorInit);
     store.register_late_pass(|| box unnecessary_sort_by::UnnecessarySortBy);
+    store.register_late_pass(|| box unnecessary_wrap::UnnecessaryWrap);
     store.register_late_pass(|| box types::RefToMut);
     store.register_late_pass(|| box assertions_on_constants::AssertionsOnConstants);
     store.register_late_pass(|| box missing_const_for_fn::MissingConstForFn);
@@ -1571,6 +1574,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
+        LintId::of(&unnecessary_wrap::UNNECESSARY_WRAP),
         LintId::of(&unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
         LintId::of(&unused_unit::UNUSED_UNIT),
@@ -1775,6 +1779,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
+        LintId::of(&unnecessary_wrap::UNNECESSARY_WRAP),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
         LintId::of(&useless_conversion::USELESS_CONVERSION),
         LintId::of(&zero_div_zero::ZERO_DIVIDED_BY_ZERO),

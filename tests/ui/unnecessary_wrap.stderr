@@ -1,0 +1,34 @@
+error: this function unnecessarily wrapping data
+  --> $DIR/unnecessary_wrap.rs:8:1
+   |
+LL | / fn func1(a: bool, b: bool) -> Option<i32> {
+LL | |     if a && b {
+LL | |         return Some(42);
+LL | |     }
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::unnecessary-wrap` implied by `-D warnings`
+help: factor this out to
+   |
+LL |         return 42;
+LL |     }
+LL |     if a {
+LL |         Some(-1);
+LL |         2
+LL |     } else {
+ ...
+
+error: this function unnecessarily wrapping data
+  --> $DIR/unnecessary_wrap.rs:39:1
+   |
+LL | / fn func4() -> Option<i32> {
+LL | |     Some(1)
+   | |     ------- help: factor this out to: `1`
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+
