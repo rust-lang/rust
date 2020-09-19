@@ -496,10 +496,7 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: This can cause data races if called from a separate thread,
-        // but `Cell` is `!Sync` so this won't happen, and `&mut` guarantees
-        // unique access.
-        unsafe { &mut *self.value.get() }
+        self.value.get_mut()
     }
 
     /// Returns a `&Cell<T>` from a `&mut T`
@@ -945,8 +942,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: `&mut` guarantees unique access.
-        unsafe { &mut *self.value.get() }
+        self.value.get_mut()
     }
 
     /// Undo the effect of leaked guards on the borrow state of the `RefCell`.

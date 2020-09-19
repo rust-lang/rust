@@ -838,8 +838,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn get_mut(&mut self) -> &mut *mut T {
-        // SAFETY: the mutable reference guarantees unique ownership.
-        unsafe { &mut *self.p.get() }
+        self.p.get_mut()
     }
 
     /// Get atomic access to a pointer.
@@ -1275,8 +1274,7 @@ assert_eq!(some_var.load(Ordering::SeqCst), 5);
                 #[inline]
                 #[$stable_access]
                 pub fn get_mut(&mut self) -> &mut $int_type {
-                    // SAFETY: the mutable reference guarantees unique ownership.
-                    unsafe { &mut *self.v.get() }
+                    self.v.get_mut()
                 }
             }
 
