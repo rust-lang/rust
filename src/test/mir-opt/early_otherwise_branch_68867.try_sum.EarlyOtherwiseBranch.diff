@@ -84,12 +84,6 @@
       bb2: {
           StorageLive(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:24:25: 24:27
           ((_0 as Err).0: ()) = const ();  // scope 0 at $DIR/early_otherwise_branch_68867.rs:24:21: 24:28
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/early_otherwise_branch_68867.rs:24:21: 24:28
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           discriminant(_0) = 1;            // scope 0 at $DIR/early_otherwise_branch_68867.rs:24:21: 24:28
           StorageDead(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:24:27: 24:28
           StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:25:6: 25:7
