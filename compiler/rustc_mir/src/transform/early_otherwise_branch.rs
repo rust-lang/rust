@@ -29,7 +29,7 @@ pub struct EarlyOtherwiseBranch;
 
 impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 3 {
+        if tcx.sess.opts.debugging_opts.mir_opt_level < 1 {
             return;
         }
         trace!("running EarlyOtherwiseBranch on {:?}", source);
