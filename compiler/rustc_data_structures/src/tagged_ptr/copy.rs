@@ -48,7 +48,7 @@ where
     P: Pointer,
     T: Tag,
 {
-    const TAG_BIT_SHIFT: usize = (8 * std::mem::size_of::<usize>()) - T::BITS;
+    const TAG_BIT_SHIFT: usize = usize::BITS as usize - T::BITS;
     const ASSERTION: () = {
         assert!(T::BITS <= P::BITS);
         // Used for the transmute_copy's below

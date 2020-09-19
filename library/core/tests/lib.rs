@@ -52,6 +52,7 @@
 #![feature(partition_point)]
 #![feature(once_cell)]
 #![feature(unsafe_block_in_unsafe_fn)]
+#![feature(int_bits_const)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
