@@ -462,7 +462,7 @@ fn run_optimization_passes<'tcx>(
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
-        &remove_unneeded_drops::RemoveUnneededDrops::new(def_id),
+        &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,
         // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
         &instcombine::InstCombine,
