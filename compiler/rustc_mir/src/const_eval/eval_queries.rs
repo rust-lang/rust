@@ -200,13 +200,13 @@ fn turn_into_const_value<'tcx>(
     );
     assert!(
         !is_static || cid.promoted.is_some(),
-        "the `eval_to_const_value` query should not be used for statics, use `eval_to_allocation` instead"
+        "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
     // Turn this into a proper constant.
     op_to_const(&ecx, mplace.into())
 }
 
-pub fn eval_to_const_value_provider<'tcx>(
+pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
@@ -214,7 +214,7 @@ pub fn eval_to_const_value_provider<'tcx>(
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
         key.param_env = key.param_env.with_user_facing();
-        match tcx.eval_to_const_value(key) {
+        match tcx.eval_to_const_value_raw(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
             // deduplicate calls

@@ -1484,6 +1484,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedBrokenConst {
             }
             hir::ItemKind::Static(_, _, body_id) => {
                 let def_id = cx.tcx.hir().body_owner_def_id(body_id).to_def_id();
+                // FIXME: Use ensure here
                 let _ = cx.tcx.eval_static_initializer(def_id);
             }
             _ => {}

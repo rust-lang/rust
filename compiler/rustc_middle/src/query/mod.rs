@@ -724,7 +724,7 @@ rustc_queries! {
         ///
         /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
         /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
-        query eval_to_const_value(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+        query eval_to_const_value_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> EvalToConstValueResult<'tcx> {
             desc { |tcx|
                 "simplifying constant for the type system `{}`",

@@ -52,7 +52,7 @@ pub fn provide(providers: &mut Providers) {
     transform::provide(providers);
     monomorphize::partitioning::provide(providers);
     monomorphize::polymorphize::provide(providers);
-    providers.eval_to_const_value = const_eval::eval_to_const_value_provider;
+    providers.eval_to_const_value_raw = const_eval::eval_to_const_value_raw_provider;
     providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
     providers.const_caller_location = const_eval::const_caller_location;
     providers.destructure_const = |tcx, param_env_and_value| {
