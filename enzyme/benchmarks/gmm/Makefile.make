@@ -17,7 +17,7 @@ clean:
 	#opt $^ -O2 -o $@ -S
 
 gmm.o: gmm-opt.ll
-	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
+	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK) -lm
 
 results.txt: gmm.o
 	./$^ | tee $@

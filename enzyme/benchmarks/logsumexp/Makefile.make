@@ -15,7 +15,7 @@ clean:
 	opt $^ -O2 -o $@ -S
 	
 logsumexp.o: logsumexp-opt.ll
-	clang++ $^ -o $@ -lblas $(BENCHLINK)
+	clang++ $^ -o $@ -lblas $(BENCHLINK) -lm
 
 results.txt: logsumexp.o
 	./$^ 10000000 10 | tee $@

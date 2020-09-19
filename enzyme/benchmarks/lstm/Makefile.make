@@ -17,7 +17,7 @@ clean:
 	#opt $^ -O2 -o $@ -S
 
 lstm.o: lstm-opt.ll
-	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
+	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK) -lm
 
 results.txt: lstm.o
 	./$^ | tee $@

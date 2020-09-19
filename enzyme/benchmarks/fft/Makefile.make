@@ -17,7 +17,7 @@ clean:
 	#opt $^ -O2 -o $@ -S
 
 fft.o: fft-opt.ll
-	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
+	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK) -lm
 
 results.txt: fft.o
 	./$^ 1048576 | tee $@

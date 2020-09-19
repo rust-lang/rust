@@ -18,7 +18,7 @@ clean:
 	clang $^ -o $@
 
 nn.o: nn-opt.ll
-	clang++ $^ -o $@ -lblas $(BENCHLINK)
+	clang++ $^ -o $@ -lblas $(BENCHLINK) -lm
 
 results.txt: nn.o
 	./$^ | tee $@
