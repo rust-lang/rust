@@ -330,9 +330,9 @@ Definite bugs found:
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
-* [`VecDeque` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/56161)
-* [`BTreeMap` creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)
-* [`LinkedList` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/60072)
+* [`VecDeque::drain` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/56161)
+* [`BTreeMap` iterators creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)
+* [`LinkedList` cursor insertion creating overlapping mutable references](https://github.com/rust-lang/rust/pull/60072)
 * [`Vec::push` invalidating existing references into the vector](https://github.com/rust-lang/rust/issues/60847)
 * [`align_to_mut` violating uniqueness of mutable references](https://github.com/rust-lang/rust/issues/68549)
 * [`sized-chunks` creating aliasing mutable references](https://github.com/bodil/sized-chunks/issues/8)
@@ -341,6 +341,8 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [ink! creating overlapping mutable references](https://github.com/rust-lang/miri/issues/1364)
 * [TiKV creating overlapping mutable reference and raw pointer](https://github.com/tikv/tikv/pull/7709)
 * [Windows `Env` iterator creating `*const T` from `&T` to read memory outside of `T`](https://github.com/rust-lang/rust/pull/70479)
+* [`BTreeMap::iter_mut` creating overlapping mutable references](https://github.com/rust-lang/rust/issues/73915)
+* [`VecDeque::iter_mut` creating overlapping mutable references](https://github.com/rust-lang/rust/issues/74029)
 
 ## License
 
