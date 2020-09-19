@@ -1,5 +1,4 @@
 #![feature(bool_to_option)]
-#![feature(cow_is_borrowed)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(or_patterns)]
