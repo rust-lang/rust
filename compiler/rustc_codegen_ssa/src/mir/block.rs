@@ -13,7 +13,7 @@ use rustc_ast as ast;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -867,24 +867,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let ty = constant.literal.ty;
                         let size = bx.layout_of(ty).size;
                         let scalar = match const_value {
-                            // Promoted constants are evaluated into a ByRef instead of a Scalar,
-                            // but we want the scalar value here.
-                            ConstValue::ByRef { alloc, offset } => {
-                                let ptr = Pointer::new(AllocId(0), offset);
-                                alloc
-                                    .read_scalar(&bx, ptr, size)
-                                    .and_then(|s| s.check_init())
-                                    .unwrap_or_else(|e| {
-                                        bx.tcx().sess.span_err(
-                                            span,
-                                            &format!("Could not evaluate asm const: {}", e),
-                                        );
-
-                                        // We are erroring out, just emit a dummy constant.
-                                        Scalar::from_u64(0)
-                                    })
-                            }
-                            _ => span_bug!(span, "expected ByRef for promoted asm const"),
+                            ConstValue::Scalar(s) => s,
+                            _ => span_bug!(
+                                span,
+                                "expected Scalar for promoted asm const, but got {:#?}",
+                                const_value
+                            ),
                         };
                         let value = scalar.assert_bits(size);
                         let string = match ty.kind() {

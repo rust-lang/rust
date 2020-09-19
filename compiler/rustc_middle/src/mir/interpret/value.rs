@@ -12,9 +12,9 @@ use crate::ty::{ParamEnv, Ty, TyCtxt};
 
 use super::{sign_extend, truncate, AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 
-/// Represents the result of a raw const operation, pre-validation.
+/// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Clone, HashStable)]
-pub struct RawConst<'tcx> {
+pub struct ConstAlloc<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,

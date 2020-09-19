@@ -364,8 +364,10 @@ fn collect_items_rec<'tcx>(
 
             recursion_depth_reset = None;
 
-            if let Ok(val) = tcx.const_eval_poly(def_id) {
-                collect_const_value(tcx, val, &mut neighbors);
+            if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
+                for &((), id) in alloc.relocations().values() {
+                    collect_miri(tcx, id, &mut neighbors);
+                }
             }
         }
         MonoItem::Fn(instance) => {

@@ -13,9 +13,9 @@ use rustc_target::abi::{Abi, Align, FieldsShape, TagEncoding};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
-    mir_assign_valid_types, truncate, AllocId, AllocMap, Allocation, AllocationExtra, ImmTy,
-    Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer,
-    PointerArithmetic, RawConst, Scalar, ScalarMaybeUninit,
+    mir_assign_valid_types, truncate, AllocId, AllocMap, Allocation, AllocationExtra, ConstAlloc,
+    ImmTy, Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand,
+    Pointer, PointerArithmetic, Scalar, ScalarMaybeUninit,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -1120,7 +1120,7 @@ where
 
     pub fn raw_const_to_mplace(
         &self,
-        raw: RawConst<'tcx>,
+        raw: ConstAlloc<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // This must be an allocation in `tcx`
         let _ = self.tcx.global_alloc(raw.alloc_id);

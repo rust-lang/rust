@@ -631,13 +631,10 @@ pub fn write_allocations<'tcx>(
             None => write!(w, " (deallocated)")?,
             Some(GlobalAlloc::Function(inst)) => write!(w, " (fn: {})", inst)?,
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
-                match tcx.const_eval_poly(did) {
-                    Ok(ConstValue::ByRef { alloc, .. }) => {
+                match tcx.eval_static_initializer(did) {
+                    Ok(alloc) => {
                         write!(w, " (static: {}, ", tcx.def_path_str(did))?;
                         write_allocation_track_relocs(w, alloc)?;
-                    }
-                    Ok(_) => {
-                        span_bug!(tcx.def_span(did), " static item without `ByRef` initializer")
                     }
                     Err(_) => write!(
                         w,
