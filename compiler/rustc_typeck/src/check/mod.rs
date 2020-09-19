@@ -87,6 +87,7 @@ pub mod writeback;
 use crate::astconv::{
     AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, PathSeg,
 };
+use crate::check::util::MaybeInProgressTables;
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
@@ -141,7 +142,7 @@ use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt,
 };
 
-use std::cell::{Cell, Ref, RefCell, RefMut};
+use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::iter;
@@ -175,32 +176,6 @@ macro_rules! type_error_struct {
 pub struct LocalTy<'tcx> {
     decl_ty: Ty<'tcx>,
     revealed_ty: Ty<'tcx>,
-}
-
-/// A wrapper for `InferCtxt`'s `in_progress_typeck_results` field.
-#[derive(Copy, Clone)]
-struct MaybeInProgressTables<'a, 'tcx> {
-    maybe_typeck_results: Option<&'a RefCell<ty::TypeckResults<'tcx>>>,
-}
-
-impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
-    fn borrow(self) -> Ref<'a, ty::TypeckResults<'tcx>> {
-        match self.maybe_typeck_results {
-            Some(typeck_results) => typeck_results.borrow(),
-            None => bug!(
-                "MaybeInProgressTables: inh/fcx.typeck_results.borrow() with no typeck results"
-            ),
-        }
-    }
-
-    fn borrow_mut(self) -> RefMut<'a, ty::TypeckResults<'tcx>> {
-        match self.maybe_typeck_results {
-            Some(typeck_results) => typeck_results.borrow_mut(),
-            None => bug!(
-                "MaybeInProgressTables: inh/fcx.typeck_results.borrow_mut() with no typeck results"
-            ),
-        }
-    }
 }
 
 /// Closures defined within the function. For example:
