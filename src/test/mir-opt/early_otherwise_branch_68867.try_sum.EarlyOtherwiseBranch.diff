@@ -82,6 +82,7 @@
       }
   
       bb2: {
++         StorageDead(_35);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:24:25: 24:27
           StorageLive(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:24:25: 24:27
           ((_0 as Err).0: ()) = const ();  // scope 0 at $DIR/early_otherwise_branch_68867.rs:24:21: 24:28
           discriminant(_0) = 1;            // scope 0 at $DIR/early_otherwise_branch_68867.rs:24:21: 24:28
@@ -207,6 +208,7 @@
 +     }
 + 
 +     bb13: {
++         StorageDead(_35);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:20:21: 20:30
 +         switchInt(_11) -> [0_isize: bb6, 1_isize: bb7, 2_isize: bb8, 3_isize: bb9, otherwise: bb2]; // scope 0 at $DIR/early_otherwise_branch_68867.rs:20:21: 20:30
       }
   }

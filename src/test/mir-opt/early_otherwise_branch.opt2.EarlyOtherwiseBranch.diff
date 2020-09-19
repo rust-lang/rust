@@ -46,6 +46,7 @@
       }
   
       bb2: {
++         StorageDead(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:15:14: 15:15
           _0 = const 1_u32;                // scope 0 at $DIR/early_otherwise_branch.rs:15:14: 15:15
           goto -> bb6;                     // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 16:6
       }
@@ -81,6 +82,7 @@
 +     }
 + 
 +     bb8: {
++         StorageDead(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:14:16: 14:20
 +         switchInt(_8) -> [0_isize: bb5, 1_isize: bb4, otherwise: bb2]; // scope 0 at $DIR/early_otherwise_branch.rs:14:16: 14:20
       }
   }

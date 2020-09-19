@@ -46,27 +46,32 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 
         for opt_to_apply in opts_to_apply {
             trace!("SUCCESS: found optimization possibility to apply: {:?}", &opt_to_apply);
-            // create the patch using MirPatch
-            let mut patch = MirPatch::new(body);
 
-            // create temp to store second discriminant in
-            let discr_type = opt_to_apply.infos[0].second_switch_info.discr_ty;
-            let discr_span = opt_to_apply.infos[0].second_switch_info.discr_source_info.span;
-            let temp = patch.new_temp(discr_type, discr_span);
             let statements_before =
                 body.basic_blocks()[opt_to_apply.basic_block_first_switch].statements.len();
             let end_of_block_location = Location {
                 block: opt_to_apply.basic_block_first_switch,
                 statement_index: statements_before,
             };
-            patch.add_statement(end_of_block_location, StatementKind::StorageLive(temp));
+
+            let mut patch = MirPatch::new(body);
+
+            // create temp to store second discriminant in
+            let discr_type = opt_to_apply.infos[0].second_switch_info.discr_ty;
+            let discr_span = opt_to_apply.infos[0].second_switch_info.discr_source_info.span;
+            let second_discriminant_temp = patch.new_temp(discr_type, discr_span);
+
+            patch.add_statement(
+                end_of_block_location,
+                StatementKind::StorageLive(second_discriminant_temp),
+            );
 
             // create assignment of discriminant
             let place_of_adt_to_get_discriminant_of =
                 opt_to_apply.infos[0].second_switch_info.place_of_adt_discr_read;
             patch.add_assign(
                 end_of_block_location,
-                Place::from(temp),
+                Place::from(second_discriminant_temp),
                 Rvalue::Discriminant(place_of_adt_to_get_discriminant_of),
             );
 
@@ -81,7 +86,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 opt_to_apply.infos[0].first_switch_info.discr_used_in_switch;
             let not_equal_rvalue = Rvalue::BinaryOp(
                 not_equal,
-                Operand::Copy(Place::from(temp)),
+                Operand::Copy(Place::from(second_discriminant_temp)),
                 Operand::Copy(Place::from(first_descriminant_place)),
             );
             patch.add_statement(
@@ -126,8 +131,19 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 ),
             );
 
-            // generate StorageDead for the temp not in use anymore. We use the not_equal_temp in the switch, so we can't mark that dead
-            patch.add_statement(end_of_block_location, StatementKind::StorageDead(temp));
+            // generate StorageDead for the second_discriminant_temp not in use anymore
+            patch.add_statement(
+                end_of_block_location,
+                StatementKind::StorageDead(second_discriminant_temp),
+            );
+
+            // Generate a StorageDead for not_equal_temp in each of the targets, since we moved it into the switch
+            for bb in [false_case, true_case].iter() {
+                patch.add_statement(
+                    Location { block: *bb, statement_index: 0 },
+                    StatementKind::StorageDead(not_equal_temp),
+                );
+            }
 
             patch.apply(body);
         }
