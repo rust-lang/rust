@@ -48,7 +48,7 @@ fn main() -> () {
         _7 = _2;                         // scope 3 at $DIR/array-index-is-temporary.rs:16:7: 16:8
         _8 = Len(_1);                    // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
         _9 = Lt(_7, _8);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
-        assert(move _9, "index out of bounds: the len is {} but the index is {}", move _8, _7) -> bb2; // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
+        assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> bb2; // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
     }
 
     bb2: {

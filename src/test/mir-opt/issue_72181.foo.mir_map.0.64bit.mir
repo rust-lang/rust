@@ -12,7 +12,7 @@ fn foo(_1: [(Never, u32); 1]) -> u32 {
         _2 = const 0_usize;              // scope 0 at $DIR/issue-72181.rs:16:43: 16:44
         _3 = Len(_1);                    // scope 0 at $DIR/issue-72181.rs:16:40: 16:45
         _4 = Lt(_2, _3);                 // scope 0 at $DIR/issue-72181.rs:16:40: 16:45
-        assert(move _4, "index out of bounds: the len is {} but the index is {}", move _3, _2) -> [success: bb2, unwind: bb1]; // scope 0 at $DIR/issue-72181.rs:16:40: 16:45
+        assert(move _4, "index out of bounds: the length is {} but the index is {}", move _3, _2) -> [success: bb2, unwind: bb1]; // scope 0 at $DIR/issue-72181.rs:16:40: 16:45
     }
 
     bb1 (cleanup): {

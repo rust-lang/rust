@@ -42,9 +42,9 @@
           _6 = const 3_usize;              // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:23: 7:24
           _7 = Len((*_1));                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
 -         _8 = Lt(_6, _7);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
--         assert(move _8, "index out of bounds: the len is {} but the index is {}", move _7, _6) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
+-         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
 +         _8 = Lt(const 3_usize, _7);      // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
-+         assert(move _8, "index out of bounds: the len is {} but the index is {}", move _7, const 3_usize) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
++         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, const 3_usize) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
       }
   
       bb1: {

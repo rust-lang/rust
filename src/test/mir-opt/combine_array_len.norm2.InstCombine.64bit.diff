@@ -32,7 +32,7 @@
 -         _4 = Len(_1);                    // scope 0 at $DIR/combine_array_len.rs:5:13: 5:17
 +         _4 = const 2_usize;              // scope 0 at $DIR/combine_array_len.rs:5:13: 5:17
           _5 = Lt(_3, _4);                 // scope 0 at $DIR/combine_array_len.rs:5:13: 5:17
-          assert(move _5, "index out of bounds: the len is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/combine_array_len.rs:5:13: 5:17
+          assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/combine_array_len.rs:5:13: 5:17
       }
   
       bb1: {
@@ -44,7 +44,7 @@
 -         _8 = Len(_1);                    // scope 1 at $DIR/combine_array_len.rs:6:13: 6:17
 +         _8 = const 2_usize;              // scope 1 at $DIR/combine_array_len.rs:6:13: 6:17
           _9 = Lt(_7, _8);                 // scope 1 at $DIR/combine_array_len.rs:6:13: 6:17
-          assert(move _9, "index out of bounds: the len is {} but the index is {}", move _8, _7) -> bb2; // scope 1 at $DIR/combine_array_len.rs:6:13: 6:17
+          assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> bb2; // scope 1 at $DIR/combine_array_len.rs:6:13: 6:17
       }
   
       bb2: {
