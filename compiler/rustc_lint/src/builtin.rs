@@ -2350,13 +2350,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
         /// Determine if this expression is a "dangerous initialization".
         fn is_dangerous_init(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<InitKind> {
-            // `transmute` is inside an anonymous module (the `extern` block?);
-            // `Invalid` represents the empty string and matches that.
-            // FIXME(#66075): use diagnostic items.  Somehow, that does not seem to work
-            // on intrinsics right now.
-            const TRANSMUTE_PATH: &[Symbol] =
-                &[sym::core, sym::intrinsics, kw::Invalid, sym::transmute];
-
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
                 // Find calls to `mem::{uninitialized,zeroed}` methods.
                 if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
@@ -2366,7 +2359,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         return Some(InitKind::Zeroed);
                     } else if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, def_id) {
                         return Some(InitKind::Uninit);
-                    } else if cx.match_def_path(def_id, TRANSMUTE_PATH) {
+                    } else if cx.tcx.is_diagnostic_item(sym::transmute, def_id) {
                         if is_zero(&args[0]) {
                             return Some(InitKind::Zeroed);
                         }
