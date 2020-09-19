@@ -30,7 +30,7 @@ help: skipping check that does not even have a feature gate
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_mut_refs` feature
+help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references_err.rs:30:25
    |
 LL | const BLUNT: &mut i32 = &mut 42;
