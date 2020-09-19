@@ -11,3 +11,7 @@ note: rustc VERSION running on TARGET
 
 note: compiler flags: FLAGS
 
+query stack during panic:
+#0 [check_match] match-checking `main`
+#1 [analysis] running analysis passes on this crate
+end of query stack
