@@ -90,17 +90,17 @@ pub unsafe trait Searcher<A: Hay + ?Sized> {
     ///
     /// This method is used to support the following standard algorithms:
     ///
-    /// * [`matches`](std::needle::ext::matches)
-    /// * [`contains`](std::needle::ext::contains)
-    /// * [`match_indices`](std::needle::ext::match_indices)
-    /// * [`find`](std::needle::ext::find)
-    /// * [`match_ranges`](std::needle::ext::match_ranges)
-    /// * [`find_range`](std::needle::ext::find_range)
-    /// * [`split`](std::needle::ext::split)
-    /// * [`split_terminator`](std::needle::ext::split_terminator)
-    /// * [`splitn`](std::needle::ext::splitn)
-    /// * [`replace_with`](std::needle::ext::replace_with)
-    /// * [`replacen_with`](std::needle::ext::replacen_with)
+    /// * [`matches`](super::ext::matches)
+    /// * [`contains`](super::ext::contains)
+    /// * [`match_indices`](super::ext::match_indices)
+    /// * [`find`](super::ext::find)
+    /// * [`match_ranges`](super::ext::match_ranges)
+    /// * [`find_range`](super::ext::find_range)
+    /// * [`split`](super::ext::split)
+    /// * [`split_terminator`](super::ext::split_terminator)
+    /// * [`splitn`](super::ext::splitn)
+    /// * [`replace_with`](super::ext::replace_with)
+    /// * [`replacen_with`](super::ext::replacen_with)
     ///
     /// The hay and the restricted range for searching can be recovered by
     /// calling `span`[`.into_parts()`](Span::into_parts). The range returned
@@ -135,7 +135,7 @@ pub unsafe trait Consumer<A: Hay + ?Sized> {
     /// Checks if the needle can be found at the beginning of the span.
     ///
     /// This method is used to implement the standard algorithm
-    /// [`starts_with()`](std::needle::ext::starts_with) as well as providing the default
+    /// [`starts_with()`](super::ext::starts_with) as well as providing the default
     /// implementation for [`.trim_start()`](Consumer::trim_start).
     ///
     /// The hay and the restricted range for searching can be recovered by
@@ -150,7 +150,7 @@ pub unsafe trait Consumer<A: Hay + ?Sized> {
     /// Repeatedly removes prefixes of the hay which matches the needle.
     ///
     /// This method is used to implement the standard algorithm
-    /// [`trim_start()`](std::needle::ext::trim_start).
+    /// [`trim_start()`](super::ext::trim_start).
     ///
     /// Returns the start index of the slice after all prefixes are removed.
     ///
@@ -189,14 +189,14 @@ pub unsafe trait ReverseSearcher<A: Hay + ?Sized>: Searcher<A> {
     ///
     /// This method is used to support the following standard algorithms:
     ///
-    /// * [`rmatches`](std::needle::ext::rmatches)
-    /// * [`rmatch_indices`](std::needle::ext::rmatch_indices)
-    /// * [`rfind`](std::needle::ext::find)
-    /// * [`rmatch_ranges`](std::needle::ext::rmatch_ranges)
-    /// * [`rfind_range`](std::needle::ext::rfind_range)
-    /// * [`rsplit`](std::needle::ext::rsplit)
-    /// * [`rsplit_terminator`](std::needle::ext::rsplit_terminator)
-    /// * [`rsplitn`](std::needle::ext::rsplitn)
+    /// * [`rmatches`](super::ext::rmatches)
+    /// * [`rmatch_indices`](super::ext::rmatch_indices)
+    /// * [`rfind`](super::ext::find)
+    /// * [`rmatch_ranges`](super::ext::rmatch_ranges)
+    /// * [`rfind_range`](super::ext::rfind_range)
+    /// * [`rsplit`](super::ext::rsplit)
+    /// * [`rsplit_terminator`](super::ext::rsplit_terminator)
+    /// * [`rsplitn`](super::ext::rsplitn)
     ///
     /// The hay and the restricted range for searching can be recovered by
     /// calling `span`[`.into_parts()`](Span::into_parts). The returned range
@@ -221,7 +221,7 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
     /// Checks if the needle can be found at the end of the span.
     ///
     /// This method is used to implement the standard algorithm
-    /// [`ends_with()`](std::needle::ext::ends_with) as well as providing the default
+    /// [`ends_with()`](super::ext::ends_with) as well as providing the default
     /// implementation for [`.trim_end()`](ReverseConsumer::trim_end).
     ///
     /// The hay and the restricted range for searching can be recovered by
@@ -236,7 +236,7 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
     /// Repeatedly removes suffixes of the hay which matches the needle.
     ///
     /// This method is used to implement the standard algorithm
-    /// [`trim_end()`](std::needle::ext::trim_end).
+    /// [`trim_end()`](super::ext::trim_end).
     ///
     /// A fast generic implementation in terms of
     /// [`.rconsume()`](ReverseConsumer::rconsume) is provided by default.
@@ -261,36 +261,36 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
 /// A searcher which can be searched from both end with consistent results.
 ///
 /// Implementing this marker trait enables the following standard algorithms to
-/// return [`DoubleEndedIterator`](std::iter::DoubleEndedIterator)s:
+/// return [`DoubleEndedIterator`](crate::iter::DoubleEndedIterator)s:
 ///
-/// * [`matches`](std::needle::ext::matches) /
-///     [`rmatches`](std::needle::ext::rmatches)
-/// * [`match_indices`](std::needle::ext::match_indices) /
-///     [`rmatch_indices`](std::needle::ext::rmatch_indices)
-/// * [`match_ranges`](std::needle::ext::match_ranges) /
-///     [`rmatch_ranges`](std::needle::ext::rmatch_ranges)
-/// * [`split`](std::needle::ext::split) /
-///     [`rsplit`](std::needle::ext::rsplit)
-/// * [`split_terminator`](std::needle::ext::split_terminator) /
-///     [`rsplit_terminator`](std::needle::ext::rsplit_terminator)
-/// * [`splitn`](std::needle::ext::splitn) /
-///     [`rsplitn`](std::needle::ext::rsplitn)
+/// * [`matches`](super::ext::matches) /
+///     [`rmatches`](super::ext::rmatches)
+/// * [`match_indices`](super::ext::match_indices) /
+///     [`rmatch_indices`](super::ext::rmatch_indices)
+/// * [`match_ranges`](super::ext::match_ranges) /
+///     [`rmatch_ranges`](super::ext::rmatch_ranges)
+/// * [`split`](super::ext::split) /
+///     [`rsplit`](super::ext::rsplit)
+/// * [`split_terminator`](super::ext::split_terminator) /
+///     [`rsplit_terminator`](super::ext::rsplit_terminator)
+/// * [`splitn`](super::ext::splitn) /
+///     [`rsplitn`](super::ext::rsplitn)
 pub unsafe trait DoubleEndedSearcher<A: Hay + ?Sized>: ReverseSearcher<A> {}
 
 /// A consumer which can be searched from both end with consistent results.
 ///
 /// It is used to support the following standard algorithm:
 ///
-/// * [`trim`](std::needle::ext::trim)
+/// * [`trim`](super::ext::trim)
 ///
 /// The `trim` function is implemented by calling
-/// [`trim_start`](std::needle::ext::trim_start) and [`trim_end`](std::needle::ext::trim_end)
+/// [`trim_start`](super::ext::trim_start) and [`trim_end`](super::ext::trim_end)
 /// together. This trait encodes the fact that we can call these two functions in any order.
 pub unsafe trait DoubleEndedConsumer<A: Hay + ?Sized>: ReverseConsumer<A> {}
 
 /// A needle, a type which can be converted into a searcher.
 ///
-/// When using search algorithms like [`split()`](std::needle::ext::split), users will
+/// When using search algorithms like [`split()`](super::ext::split), users will
 /// search with a `Needle` e.g. a `&str`. A needle is usually stateless,
 /// however for efficient searching, we often need some preprocessing and
 /// maintain a mutable state. The preprocessed structure is called the

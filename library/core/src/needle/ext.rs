@@ -325,10 +325,10 @@ where
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the function [`matches`].
+        /// Created with the function [`matches`](self::matches).
         struct Matches;
     reverse:
-        /// Created with the function [`rmatches`].
+        /// Created with the function [`rmatches`](self::rmatches).
         struct RMatches;
     stability:
     internal:
