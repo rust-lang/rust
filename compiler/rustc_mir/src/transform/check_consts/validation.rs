@@ -551,7 +551,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
                 // If we are checking live drops after drop-elaboration, don't emit duplicate
                 // errors here.
-                if super::post_drop_elaboration::checking_enabled(self.tcx) {
+                if super::post_drop_elaboration::checking_enabled(self.tcx, self.def_id) {
                     return;
                 }
 
@@ -576,7 +576,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 if needs_drop {
                     self.check_op_spanned(
-                        ops::LiveDrop(Some(terminator.source_info.span)),
+                        ops::LiveDrop { dropped_at: Some(terminator.source_info.span) },
                         err_span,
                     );
                 }
