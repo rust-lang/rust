@@ -99,7 +99,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, ItemKind, Node, PatKind, QPath};
 use rustc_index::bit_set::BitSet;
@@ -693,18 +692,6 @@ impl Inherited<'a, 'tcx> {
         let ok = self.partially_normalize_associated_types_in(span, body_id, param_env, value);
         self.register_infer_ok_obligations(ok)
     }
-}
-
-struct CheckItemTypesVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
-    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
-        check_item_type(self.tcx, i);
-    }
-    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
 }
 
 pub fn check_wf_new(tcx: TyCtxt<'_>) {

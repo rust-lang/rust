@@ -1,9 +1,10 @@
+use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
 use std::cell::{Ref, RefCell, RefMut};
 
 use super::wfcheck;
-use crate::check::CheckItemTypesVisitor;
 use crate::{ty, TyCtxt};
 
 /// A wrapper for `InferCtxt`'s `in_progress_typeck_results` field.
@@ -30,6 +31,18 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
             ),
         }
     }
+}
+
+struct CheckItemTypesVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
+    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
+        super::check_item_type(self.tcx, i);
+    }
+    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
 }
 
 pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
