@@ -2299,19 +2299,19 @@ fn split_grouped_constructors<'p, 'tcx>(
                 // interval into a constructor.
                 split_ctors.extend(
                     borders
-                        .windows(2)
-                        .filter_map(|window| match (window[0], window[1]) {
-                            (Border::JustBefore(n), Border::JustBefore(m)) => {
+                        .array_windows()
+                        .filter_map(|&pair| match pair {
+                            [Border::JustBefore(n), Border::JustBefore(m)] => {
                                 if n < m {
                                     Some(IntRange { range: n..=(m - 1), ty, span })
                                 } else {
                                     None
                                 }
                             }
-                            (Border::JustBefore(n), Border::AfterMax) => {
+                            [Border::JustBefore(n), Border::AfterMax] => {
                                 Some(IntRange { range: n..=u128::MAX, ty, span })
                             }
-                            (Border::AfterMax, _) => None,
+                            [Border::AfterMax, _] => None,
                         })
                         .map(IntRange),
                 );
