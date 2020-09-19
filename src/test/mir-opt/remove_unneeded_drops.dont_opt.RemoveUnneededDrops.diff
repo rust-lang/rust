@@ -7,15 +7,15 @@
       let _2: ();                          // in scope 0 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
       let mut _3: std::vec::Vec<bool>;     // in scope 0 at $DIR/remove_unneeded_drops.rs:9:10: 9:11
       scope 1 (inlined std::mem::drop::<Vec<bool>>) { // at $DIR/remove_unneeded_drops.rs:9:5: 9:12
-          debug _x => _3;                  // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+          debug _x => _3;                  // in scope 1 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
       }
   
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
           StorageLive(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:9:10: 9:11
           _3 = move _1;                    // scope 0 at $DIR/remove_unneeded_drops.rs:9:10: 9:11
-          _2 = const ();                   // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          drop(_3) -> [return: bb2, unwind: bb1]; // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+          _2 = const ();                   // scope 1 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
+          drop(_3) -> [return: bb2, unwind: bb1]; // scope 1 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
       }
   
       bb1 (cleanup): {

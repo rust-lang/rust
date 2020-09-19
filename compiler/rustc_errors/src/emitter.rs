@@ -296,7 +296,7 @@ pub trait Emitter {
 
                     // Skip past non-macro entries, just in case there
                     // are some which do actually involve macros.
-                    ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+                    ExpnKind::Inlined | ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
                     ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
                 }
@@ -356,7 +356,9 @@ pub trait Emitter {
                     continue;
                 }
 
-                if always_backtrace {
+                if matches!(trace.kind, ExpnKind::Inlined) {
+                    new_labels.push((trace.call_site, "in the inlined copy of this".to_string()));
+                } else if always_backtrace {
                     new_labels.push((
                         trace.def_site,
                         format!(

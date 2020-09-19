@@ -766,6 +766,8 @@ pub enum ExpnKind {
     AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
     Desugaring(DesugaringKind),
+    /// MIR inlining
+    Inlined,
 }
 
 impl ExpnKind {
@@ -779,6 +781,7 @@ impl ExpnKind {
             },
             ExpnKind::AstPass(kind) => kind.descr().to_string(),
             ExpnKind::Desugaring(kind) => format!("desugaring of {}", kind.descr()),
+            ExpnKind::Inlined => "inlined source".to_string(),
         }
     }
 }

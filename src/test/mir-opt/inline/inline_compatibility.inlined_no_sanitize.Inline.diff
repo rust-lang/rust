@@ -16,7 +16,7 @@
 -     }
 - 
 -     bb1: {
-+         _1 = const ();                   // scope 1 at $DIR/inline-compatibility.rs:39:29: 39:31
++         _1 = const ();                   // scope 1 at $DIR/inline-compatibility.rs:25:5: 25:18
           StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:25:18: 25:19
           _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:24:37: 26:2
           return;                          // scope 0 at $DIR/inline-compatibility.rs:26:2: 26:2

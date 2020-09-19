@@ -15,10 +15,10 @@ fn bar() -> bool {
         let mut _9: &i32;                // in scope 1 at $DIR/inline-retag.rs:12:11: 12:14
         let mut _10: &i32;               // in scope 1 at $DIR/inline-retag.rs:12:7: 12:9
         scope 2 (inlined foo) {          // at $DIR/inline-retag.rs:12:5: 12:15
-            debug x => _3;               // in scope 2 at $DIR/inline-retag.rs:16:8: 16:9
-            debug y => _6;               // in scope 2 at $DIR/inline-retag.rs:16:17: 16:18
-            let mut _11: i32;            // in scope 2 at $DIR/inline-retag.rs:17:5: 17:7
-            let mut _12: i32;            // in scope 2 at $DIR/inline-retag.rs:17:11: 17:13
+            debug x => _3;               // in scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+            debug y => _6;               // in scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+            let mut _11: i32;            // in scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+            let mut _12: i32;            // in scope 2 at $DIR/inline-retag.rs:12:5: 12:15
         }
     }
 
@@ -58,15 +58,15 @@ fn bar() -> bool {
         Retag(_7);                       // scope 1 at $DIR/inline-retag.rs:12:11: 12:14
         _6 = &(*_7);                     // scope 1 at $DIR/inline-retag.rs:12:11: 12:14
         Retag(_6);                       // scope 1 at $DIR/inline-retag.rs:12:11: 12:14
-        Retag(_3);                       // scope 2 at $DIR/inline-retag.rs:16:1: 18:2
-        Retag(_6);                       // scope 2 at $DIR/inline-retag.rs:16:1: 18:2
-        StorageLive(_11);                // scope 2 at $DIR/inline-retag.rs:17:5: 17:7
-        _11 = (*_3);                     // scope 2 at $DIR/inline-retag.rs:17:5: 17:7
-        StorageLive(_12);                // scope 2 at $DIR/inline-retag.rs:17:11: 17:13
-        _12 = (*_6);                     // scope 2 at $DIR/inline-retag.rs:17:11: 17:13
-        _0 = Eq(move _11, move _12);     // scope 2 at $DIR/inline-retag.rs:17:5: 17:13
-        StorageDead(_12);                // scope 2 at $DIR/inline-retag.rs:17:12: 17:13
-        StorageDead(_11);                // scope 2 at $DIR/inline-retag.rs:17:12: 17:13
+        Retag(_3);                       // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        Retag(_6);                       // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        StorageLive(_11);                // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        _11 = (*_3);                     // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        StorageLive(_12);                // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        _12 = (*_6);                     // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        _0 = Eq(move _11, move _12);     // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        StorageDead(_12);                // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        StorageDead(_11);                // scope 2 at $DIR/inline-retag.rs:12:5: 12:15
         StorageDead(_6);                 // scope 1 at $DIR/inline-retag.rs:12:14: 12:15
         StorageDead(_3);                 // scope 1 at $DIR/inline-retag.rs:12:14: 12:15
         StorageDead(_2);                 // scope 1 at $DIR/inline-retag.rs:12:14: 12:15
