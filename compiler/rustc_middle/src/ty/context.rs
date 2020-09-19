@@ -1179,7 +1179,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_const(ty::Const { val: ty::ConstKind::Error(DelaySpanBugEmitted(())), ty })
     }
 
-    pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
+    pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
         let cname = self.crate_name(LOCAL_CRATE).as_str();
         self.sess.consider_optimizing(&cname, msg)
     }
