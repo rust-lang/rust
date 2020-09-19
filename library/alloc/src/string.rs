@@ -2475,21 +2475,21 @@ impl<'a> Drain<'a> {
     /// let _ = drain.next().unwrap();
     /// assert_eq!(drain.as_str(), "bc");
     /// ```
-    #[unstable(feature = "string_drain_as_str", issue = "none")] // Note: uncomment AsRef impls below when stabilizing.
+    #[unstable(feature = "string_drain_as_str", issue = "76905")] // Note: uncomment AsRef impls below when stabilizing.
     pub fn as_str(&self) -> &str {
         self.iter.as_str()
     }
 }
 
 // Uncomment when stabilizing `string_drain_as_str`.
-// #[unstable(feature = "string_drain_as_str", issue = "none")]
+// #[unstable(feature = "string_drain_as_str", issue = "76905")]
 // impl<'a> AsRef<str> for Drain<'a> {
 //     fn as_ref(&self) -> &str {
 //         self.as_str()
 //     }
 // }
 //
-// #[unstable(feature = "string_drain_as_str", issue = "none")]
+// #[unstable(feature = "string_drain_as_str", issue = "76905")]
 // impl<'a> AsRef<[u8]> for Drain<'a> {
 //     fn as_ref(&self) -> &[u8] {
 //         self.as_str().as_bytes()
