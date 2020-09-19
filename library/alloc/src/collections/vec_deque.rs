@@ -2500,6 +2500,25 @@ impl<T> RingSlices for &mut [T] {
     }
 }
 
+impl<T> RingSlices for *mut [T] {
+    fn slice(self, from: usize, to: usize) -> Self {
+        assert!(from <= to && to < self.len());
+        // Not using `get_unchecked_mut` to keep this a safe operation.
+        let len = to - from;
+        ptr::slice_from_raw_parts_mut(self.as_mut_ptr().wrapping_add(from), len)
+    }
+
+    fn split_at(self, mid: usize) -> (Self, Self) {
+        let len = self.len();
+        let ptr = self.as_mut_ptr();
+        assert!(mid <= len);
+        (
+            ptr::slice_from_raw_parts_mut(ptr, mid),
+            ptr::slice_from_raw_parts_mut(ptr.wrapping_add(mid), len - mid),
+        )
+    }
+}
+
 /// Calculate the number of elements left to be read in the buffer
 #[inline]
 fn count(tail: usize, head: usize, size: usize) -> usize {
@@ -2678,10 +2697,10 @@ pub struct IterMut<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME: this creates a reference to the full ring, including the part
-        // to which we already handed out mutable references via `next()`. This
-        // is an aliasing violation.
-        let (front, back) = RingSlices::ring_slices(unsafe { &*self.ring }, self.head, self.tail);
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
+        // We also ensure everything is dereferencable and in-bounds.
+        let (front, back) = unsafe { (&*front, &*back) };
         f.debug_tuple("IterMut").field(&front).field(&back).finish()
     }
 }
@@ -2714,10 +2733,10 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
-        // FIXME: this creates a reference to the full ring, including the part
-        // to which we already handed out mutable references via `next()`. This
-        // is an aliasing violation.
-        let (front, back) = RingSlices::ring_slices(unsafe { &mut *self.ring }, self.head, self.tail);
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
+        // We also ensure everything is dereferencable and in-bounds.
+        let (front, back) = unsafe { (&mut *front, &mut *back) };
         accum = front.iter_mut().fold(accum, &mut f);
         back.iter_mut().fold(accum, &mut f)
     }
@@ -2757,10 +2776,10 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
-        // FIXME: this creates a reference to the full ring, including the part
-        // to which we already handed out mutable references via `next()`. This
-        // is an aliasing violation.
-        let (front, back) = RingSlices::ring_slices(unsafe { &mut *self.ring }, self.head, self.tail);
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
+        // We also ensure everything is dereferencable and in-bounds.
+        let (front, back) = unsafe { (&mut *front, &mut *back) };
         accum = back.iter_mut().rfold(accum, &mut f);
         front.iter_mut().rfold(accum, &mut f)
     }
