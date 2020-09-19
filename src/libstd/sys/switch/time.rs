@@ -1,4 +1,5 @@
 use crate::time::Duration;
+use nnsdk::time::PosixTime;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
@@ -10,7 +11,15 @@ pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
 impl Instant {
     pub fn now() -> Instant {
-        panic!("time not implemented on switch32-unknown-unknown")
+        unsafe {
+            let mut ptime = PosixTime {
+                time: 0,
+            };
+
+            nnsdk::time::StandardUserSystemClock::GetCurrentTime(&mut ptime);
+
+            Instant(Duration::new(ptime.time, 0))
+        }
     }
 
     pub const fn zero() -> Instant {
@@ -36,7 +45,15 @@ impl Instant {
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        panic!("time not implemented on switch32-unknown-unknown")
+        unsafe {
+            let mut ptime = PosixTime {
+                time: 0,
+            };
+
+            nnsdk::time::StandardUserSystemClock::GetCurrentTime(&mut ptime);
+
+            SystemTime(Duration::new(ptime.time, 0))
+        }
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
