@@ -1,8 +1,8 @@
 use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
 
-use crate::TyCtxt;
 use super::wfcheck;
 use crate::check::CheckItemTypesVisitor;
+use crate::TyCtxt;
 
 pub fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
