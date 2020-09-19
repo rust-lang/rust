@@ -636,7 +636,7 @@ impl Step for RustdocJSStd {
                 .arg("--crate-name")
                 .arg("std")
                 .arg("--resource-suffix")
-                .arg(crate::channel::CFG_RELEASE_NUM)
+                .arg(&builder.version)
                 .arg("--doc-folder")
                 .arg(builder.doc_out(self.target))
                 .arg("--test-folder")
