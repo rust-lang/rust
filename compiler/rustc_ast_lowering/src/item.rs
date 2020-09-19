@@ -27,7 +27,7 @@ pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
 impl ItemLowerer<'_, '_, '_> {
     fn with_trait_impl_ref(&mut self, impl_ref: &Option<TraitRef>, f: impl FnOnce(&mut Self)) {
         let old = self.lctx.is_in_trait_impl;
-        self.lctx.is_in_trait_impl = if let &None = impl_ref { false } else { true };
+        self.lctx.is_in_trait_impl = impl_ref.is_some();
         f(self);
         self.lctx.is_in_trait_impl = old;
     }
