@@ -1,4 +1,4 @@
-// compile-flags: -Z span_free_formats
+// compile-flags: -Z span_free_formats -Zunsound-mir-opts
 
 // Tests that MIR inliner can handle closure arguments,
 // even when (#45894)
