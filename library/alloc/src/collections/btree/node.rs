@@ -12,7 +12,7 @@
 //     edges: if height > 0 {
 //         [Box<Node<K, V, height - 1>>; 2 * B]
 //     } else { () },
-//     parent: *const Node<K, V, height + 1>,
+//     parent: Option<NonNull<Node<K, V, height + 1>>>,
 //     parent_idx: u16,
 //     len: u16,
 // }
@@ -50,9 +50,8 @@ const EDGE_IDX_RIGHT_OF_CENTER: usize = B;
 /// The underlying representation of leaf nodes.
 #[repr(C)]
 struct LeafNode<K, V> {
-    /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
-    /// This either points to an actual node or is null.
-    parent: *const InternalNode<K, V>,
+    /// We want to be covariant in `K` and `V`.
+    parent: Option<NonNull<InternalNode<K, V>>>,
 
     /// This node's index into the parent node's `edges` array.
     /// `*node.parent.edges[node.parent_idx]` should be the same thing as `node`.
@@ -80,7 +79,7 @@ impl<K, V> LeafNode<K, V> {
             // be both slightly faster and easier to track in Valgrind.
             keys: MaybeUninit::uninit_array(),
             vals: MaybeUninit::uninit_array(),
-            parent: ptr::null(),
+            parent: None,
             parent_idx: MaybeUninit::uninit(),
             len: 0,
         }
@@ -224,7 +223,7 @@ impl<K, V> Root<K, V> {
             )
         };
         self.height -= 1;
-        self.node_as_mut().as_leaf_mut().parent = ptr::null();
+        self.node_as_mut().as_leaf_mut().parent = None;
 
         unsafe {
             Global.dealloc(NonNull::from(top).cast(), Layout::new::<InternalNode<K, V>>());
@@ -309,7 +308,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     pub fn len(&self) -> usize {
         // Crucially, we only access the `len` field here. If BorrowType is marker::ValMut,
         // there might be outstanding mutable references to values that we must not invalidate.
-        unsafe { (*self.as_leaf_ptr()).len as usize }
+        unsafe { usize::from((*self.as_leaf_ptr()).len) }
     }
 
     /// Returns the height of this node in the whole tree. Zero height denotes the
@@ -365,16 +364,19 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
         // We need to use raw pointers to nodes because, if BorrowType is marker::ValMut,
         // there might be outstanding mutable references to values that we must not invalidate.
-        let parent_as_leaf = unsafe { (*self.as_leaf_ptr()).parent as *const LeafNode<K, V> };
-        if let Some(non_zero) = NonNull::new(parent_as_leaf as *mut _) {
-            Ok(Handle {
-                node: NodeRef { height: self.height + 1, node: non_zero, _marker: PhantomData },
-                idx: unsafe { usize::from(*(*self.as_leaf_ptr()).parent_idx.as_ptr()) },
+        let leaf_ptr = self.as_leaf_ptr();
+        unsafe { (*leaf_ptr).parent }
+            .as_ref()
+            .map(|parent| Handle {
+                node: NodeRef {
+                    height: self.height + 1,
+                    node: parent.cast(),
+                    _marker: PhantomData,
+                },
+                idx: unsafe { usize::from((*leaf_ptr).parent_idx.assume_init()) },
                 _marker: PhantomData,
             })
-        } else {
-            Err(self)
-        }
+            .ok_or(self)
     }
 
     pub fn first_edge(self) -> Handle<Self, marker::Edge> {
@@ -572,7 +574,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key/value pair to the end of the node.
     pub fn push(&mut self, key: K, val: V) {
         let len = &mut self.as_leaf_mut().len;
-        let idx = *len as usize;
+        let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
@@ -617,7 +619,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         assert!(edge.height == self.height - 1);
 
         let len = &mut self.as_leaf_mut().len;
-        let idx = *len as usize;
+        let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
@@ -672,7 +674,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                     let edge =
                         ptr::read(internal.as_internal().edges.get_unchecked(idx + 1).as_ptr());
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.node_as_mut().as_leaf_mut().parent = ptr::null();
+                    new_root.node_as_mut().as_leaf_mut().parent = None;
                     Some(new_root)
                 }
             };
@@ -704,7 +706,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                     );
 
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.node_as_mut().as_leaf_mut().parent = ptr::null();
+                    new_root.node_as_mut().as_leaf_mut().parent = None;
 
                     for i in 0..old_len {
                         Handle::new_edge(internal.reborrow_mut(), i).correct_parent_link();
@@ -956,7 +958,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     /// when the ordering of edges has been changed, such as in the various `insert` methods.
     fn correct_parent_link(mut self) {
         let idx = self.idx as u16;
-        let ptr = self.node.as_internal_mut() as *mut _;
+        let ptr = NonNull::new(self.node.as_internal_mut());
         let mut child = self.descend();
         child.as_leaf_mut().parent = ptr;
         child.as_leaf_mut().parent_idx.write(idx);
