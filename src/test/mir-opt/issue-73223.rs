@@ -1,3 +1,5 @@
+// compile-flags: -Zunsound-mir-opts
+
 fn main() {
     let split = match Some(1) {
         Some(v) => v,

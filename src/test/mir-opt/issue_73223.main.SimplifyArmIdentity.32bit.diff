@@ -2,18 +2,18 @@
 + // MIR for `main` after SimplifyArmIdentity
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/issue-73223.rs:1:11: 1:11
-      let _1: i32;                         // in scope 0 at $DIR/issue-73223.rs:2:9: 2:14
-      let mut _2: std::option::Option<i32>; // in scope 0 at $DIR/issue-73223.rs:2:23: 2:30
-      let mut _3: isize;                   // in scope 0 at $DIR/issue-73223.rs:3:9: 3:16
-      let _4: i32;                         // in scope 0 at $DIR/issue-73223.rs:3:14: 3:15
-      let mut _5: !;                       // in scope 0 at $DIR/issue-73223.rs:4:17: 4:23
-      let mut _7: i32;                     // in scope 0 at $DIR/issue-73223.rs:7:22: 7:27
+      let mut _0: ();                      // return place in scope 0 at $DIR/issue-73223.rs:3:11: 3:11
+      let _1: i32;                         // in scope 0 at $DIR/issue-73223.rs:4:9: 4:14
+      let mut _2: std::option::Option<i32>; // in scope 0 at $DIR/issue-73223.rs:4:23: 4:30
+      let mut _3: isize;                   // in scope 0 at $DIR/issue-73223.rs:5:9: 5:16
+      let _4: i32;                         // in scope 0 at $DIR/issue-73223.rs:5:14: 5:15
+      let mut _5: !;                       // in scope 0 at $DIR/issue-73223.rs:6:17: 6:23
+      let mut _7: i32;                     // in scope 0 at $DIR/issue-73223.rs:9:22: 9:27
       let _8: ();                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _9: (&i32, &i32);            // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _10: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _11: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      let _12: i32;                        // in scope 0 at $DIR/issue-73223.rs:8:23: 8:24
+      let _12: i32;                        // in scope 0 at $DIR/issue-73223.rs:10:23: 10:24
       let mut _15: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _16: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _17: i32;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -42,10 +42,10 @@
       let mut _42: &&i32;                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _43: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       scope 1 {
-          debug split => _1;               // in scope 1 at $DIR/issue-73223.rs:2:9: 2:14
-          let _6: std::option::Option<i32>; // in scope 1 at $DIR/issue-73223.rs:7:9: 7:14
+          debug split => _1;               // in scope 1 at $DIR/issue-73223.rs:4:9: 4:14
+          let _6: std::option::Option<i32>; // in scope 1 at $DIR/issue-73223.rs:9:9: 9:14
           scope 3 {
-              debug _prev => _6;           // in scope 3 at $DIR/issue-73223.rs:7:9: 7:14
+              debug _prev => _6;           // in scope 3 at $DIR/issue-73223.rs:9:9: 9:14
               let _13: &i32;               // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
               let _14: &i32;               // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
               let mut _45: &i32;           // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -86,7 +86,7 @@
           }
       }
       scope 2 {
-          debug v => _4;                   // in scope 2 at $DIR/issue-73223.rs:3:14: 3:15
+          debug v => _4;                   // in scope 2 at $DIR/issue-73223.rs:5:14: 5:15
       }
       scope 7 {
       }
@@ -94,33 +94,33 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/issue-73223.rs:2:9: 2:14
-          StorageLive(_2);                 // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
-          ((_2 as Some).0: i32) = const 1_i32; // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
-          discriminant(_2) = 1;            // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
-          _3 = const 1_isize;              // scope 0 at $DIR/issue-73223.rs:3:9: 3:16
-          goto -> bb2;                     // scope 0 at $DIR/issue-73223.rs:3:9: 3:16
+          StorageLive(_1);                 // scope 0 at $DIR/issue-73223.rs:4:9: 4:14
+          StorageLive(_2);                 // scope 0 at $DIR/issue-73223.rs:4:23: 4:30
+          ((_2 as Some).0: i32) = const 1_i32; // scope 0 at $DIR/issue-73223.rs:4:23: 4:30
+          discriminant(_2) = 1;            // scope 0 at $DIR/issue-73223.rs:4:23: 4:30
+          _3 = const 1_isize;              // scope 0 at $DIR/issue-73223.rs:5:9: 5:16
+          goto -> bb2;                     // scope 0 at $DIR/issue-73223.rs:5:9: 5:16
       }
   
       bb1: {
-          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:4:17: 4:23
-          StorageDead(_2);                 // scope 0 at $DIR/issue-73223.rs:5:6: 5:7
-          StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
-          goto -> bb3;                     // scope 0 at $DIR/issue-73223.rs:4:17: 4:23
+          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:6:17: 6:23
+          StorageDead(_2);                 // scope 0 at $DIR/issue-73223.rs:7:6: 7:7
+          StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:11:1: 11:2
+          goto -> bb3;                     // scope 0 at $DIR/issue-73223.rs:6:17: 6:23
       }
   
       bb2: {
-          StorageLive(_4);                 // scope 0 at $DIR/issue-73223.rs:3:14: 3:15
-          _4 = ((_2 as Some).0: i32);      // scope 0 at $DIR/issue-73223.rs:3:14: 3:15
-          _1 = _4;                         // scope 2 at $DIR/issue-73223.rs:3:20: 3:21
-          StorageDead(_4);                 // scope 0 at $DIR/issue-73223.rs:3:20: 3:21
-          StorageDead(_2);                 // scope 0 at $DIR/issue-73223.rs:5:6: 5:7
-          StorageLive(_6);                 // scope 1 at $DIR/issue-73223.rs:7:9: 7:14
-          StorageLive(_7);                 // scope 1 at $DIR/issue-73223.rs:7:22: 7:27
-          _7 = _1;                         // scope 1 at $DIR/issue-73223.rs:7:22: 7:27
-          ((_6 as Some).0: i32) = move _7; // scope 1 at $DIR/issue-73223.rs:7:17: 7:28
-          discriminant(_6) = 1;            // scope 1 at $DIR/issue-73223.rs:7:17: 7:28
-          StorageDead(_7);                 // scope 1 at $DIR/issue-73223.rs:7:27: 7:28
+          StorageLive(_4);                 // scope 0 at $DIR/issue-73223.rs:5:14: 5:15
+          _4 = ((_2 as Some).0: i32);      // scope 0 at $DIR/issue-73223.rs:5:14: 5:15
+          _1 = _4;                         // scope 2 at $DIR/issue-73223.rs:5:20: 5:21
+          StorageDead(_4);                 // scope 0 at $DIR/issue-73223.rs:5:20: 5:21
+          StorageDead(_2);                 // scope 0 at $DIR/issue-73223.rs:7:6: 7:7
+          StorageLive(_6);                 // scope 1 at $DIR/issue-73223.rs:9:9: 9:14
+          StorageLive(_7);                 // scope 1 at $DIR/issue-73223.rs:9:22: 9:27
+          _7 = _1;                         // scope 1 at $DIR/issue-73223.rs:9:22: 9:27
+          ((_6 as Some).0: i32) = move _7; // scope 1 at $DIR/issue-73223.rs:9:17: 9:28
+          discriminant(_6) = 1;            // scope 1 at $DIR/issue-73223.rs:9:17: 9:28
+          StorageDead(_7);                 // scope 1 at $DIR/issue-73223.rs:9:27: 9:28
           StorageLive(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_9);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_10);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -157,7 +157,7 @@
       }
   
       bb3: {
-          return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
+          return;                          // scope 0 at $DIR/issue-73223.rs:11:2: 11:2
       }
   
       bb4: {
@@ -167,10 +167,10 @@
           StorageDead(_13);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_9);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
-          StorageDead(_6);                 // scope 1 at $DIR/issue-73223.rs:9:1: 9:2
-          StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
-          goto -> bb3;                     // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
+          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:3:11: 11:2
+          StorageDead(_6);                 // scope 1 at $DIR/issue-73223.rs:11:1: 11:2
+          StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:11:1: 11:2
+          goto -> bb3;                     // scope 0 at $DIR/issue-73223.rs:11:2: 11:2
       }
   
       bb5: {
