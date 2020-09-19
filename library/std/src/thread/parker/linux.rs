@@ -1,5 +1,5 @@
 use crate::sync::atomic::AtomicI32;
-use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::time::Duration;
 
 const PARKED: i32 = -1;
