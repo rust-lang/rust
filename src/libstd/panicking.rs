@@ -167,6 +167,43 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
     }
 }
 
+fn show_error(code: u32, message: &core::primitive::str, details: &core::primitive::str) {
+    use nnsdk::{err, settings};
+
+    let mut message_bytes = String::from(message).into_bytes();
+    let mut details_bytes = String::from(details).into_bytes();
+
+    if message_bytes.len() >= 2048 {
+        message_bytes.truncate(2044);
+        message_bytes.append(&mut String::from("...\0").into_bytes());
+    }
+    if details_bytes.len() >= 2048 {
+        details_bytes.truncate(2044);
+        details_bytes.append(&mut String::from("...\0").into_bytes());
+    }
+
+    let message = match core::str::from_utf8(&message_bytes) {
+        Ok(s) => s,
+        Err(e) => "Unable to parse error message.\0"
+    };
+
+    let details = match core::str::from_utf8(&details_bytes) {
+        Ok(s) => s,
+        Err(e) => "Unable to parse error details.\0"
+    };
+    
+    unsafe {
+        let error = err::ApplicationErrorArg::new_with_messages(
+            code,
+            message.as_bytes().as_ptr(),
+            details.as_bytes().as_ptr(),
+            &settings::LanguageCode_Make(settings::Language_Language_English),
+        );
+
+        err::ShowApplicationError(&error);
+    };
+}
+
 fn default_hook(info: &PanicInfo<'_>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
@@ -190,7 +227,13 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let _ = writeln!(err, "thread '{}' panicked at '{}', {}", name, msg, location);
+        let err_msg = format!("Thread '{}' panicked at '{}', {}", name, msg, location);
+        let _ = writeln!(err, "{}", err_msg.as_str());
+        show_error(
+            69,
+            "Skyline plugin has panicked! Please open the details and send a screenshot to the developer, then close the game.\n",
+            err_msg.as_str(),
+        );
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
