@@ -423,7 +423,7 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     .unwrap_or_else(|ErrorReported| true)
     // FIXME(const_evaluatable_checked): We should instead have this
     // method return the resulting `ty::Const` and return `ConstKind::Error`
-    // on `Error`.
+    // on `ErrorReported`.
 }
 
 /// Tries to unify two abstract constants using structural equality.
