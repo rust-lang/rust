@@ -4,7 +4,7 @@
 //!
 //! For more details, see the [`std::str`] module.
 //!
-//! [`std::str`]: self
+//! [`std::str`]: ../../std/str/index.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -83,9 +83,6 @@ pub trait FromStr: Sized {
     /// If parsing succeeds, return the value inside [`Ok`], otherwise
     /// when the string is ill-formatted return an error specific to the
     /// inside [`Err`]. The error type is specific to implementation of the trait.
-    ///
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -269,10 +266,8 @@ impl Utf8Error {
 ///
 /// If you are sure that the byte slice is valid UTF-8, and you don't want to
 /// incur the overhead of the validity check, there is an unsafe version of
-/// this function, [`from_utf8_unchecked`][fromutf8u], which has the same
+/// this function, [`from_utf8_unchecked`], which has the same
 /// behavior but skips the check.
-///
-/// [fromutf8u]: fn.from_utf8_unchecked.html
 ///
 /// If you need a `String` instead of a `&str`, consider
 /// [`String::from_utf8`][string].
@@ -318,10 +313,8 @@ impl Utf8Error {
 /// assert!(str::from_utf8(&sparkle_heart).is_err());
 /// ```
 ///
-/// See the docs for [`Utf8Error`][error] for more details on the kinds of
+/// See the docs for [`Utf8Error`] for more details on the kinds of
 /// errors that can be returned.
-///
-/// [error]: struct.Utf8Error.html
 ///
 /// A "stack allocated string":
 ///
@@ -371,10 +364,8 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 ///
 /// assert!(str::from_utf8_mut(&mut invalid).is_err());
 /// ```
-/// See the docs for [`Utf8Error`][error] for more details on the kinds of
+/// See the docs for [`Utf8Error`] for more details on the kinds of
 /// errors that can be returned.
-///
-/// [error]: struct.Utf8Error.html
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     run_utf8_validation(v)?;
@@ -385,9 +376,7 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
-/// See the safe version, [`from_utf8`][fromutf8], for more information.
-///
-/// [fromutf8]: fn.from_utf8.html
+/// See the safe version, [`from_utf8`], for more information.
 ///
 /// # Safety
 ///
