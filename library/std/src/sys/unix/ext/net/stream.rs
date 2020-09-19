@@ -396,7 +396,7 @@ impl UnixStream {
         target_os = "openbsd",
         target_env = "uclibc",
     ))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         self.0.set_passcred(passcred)
     }
@@ -421,7 +421,7 @@ impl UnixStream {
         target_os = "openbsd",
         target_env = "uclibc",
     ))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn passcred(&self) -> io::Result<bool> {
         self.0.passcred()
     }
@@ -550,7 +550,7 @@ impl UnixStream {
         target_os = "solaris",
         target_env = "uclibc",
     ))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn recv_vectored_with_ancillary(
         &self,
         bufs: &mut [IoSliceMut<'_>],
@@ -606,7 +606,7 @@ impl UnixStream {
         target_os = "solaris",
         target_env = "uclibc",
     ))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary(
         &self,
         bufs: &mut [IoSliceMut<'_>],

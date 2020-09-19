@@ -62,7 +62,7 @@ pub use self::addr::*;
     target_os = "solaris",
     target_env = "uclibc",
 ))]
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub use self::ancillary::*;
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub use self::datagram::*;
