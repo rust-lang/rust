@@ -16,10 +16,9 @@
           _3 = _1;                         // scope 0 at $DIR/remove_unneeded_drops.rs:13:10: 13:11
           _2 = const ();                   // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
 -         drop(_3) -> bb1;                 // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-+         goto -> bb1;                     // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-      }
-  
-      bb1: {
+-     }
+- 
+-     bb1: {
           StorageDead(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:13:11: 13:12
           StorageDead(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:13:12: 13:13
           _0 = const ();                   // scope 0 at $DIR/remove_unneeded_drops.rs:12:36: 14:2
