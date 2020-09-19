@@ -1,6 +1,7 @@
 //! A helpful diagram for debugging dataflow problems.
 
 use std::borrow::Cow;
+use std::lazy::SyncOnceCell;
 use std::{io, ops, str};
 
 use regex::Regex;
@@ -570,6 +571,13 @@ where
     }
 }
 
+macro_rules! regex {
+    ($re:literal $(,)?) => {{
+        static RE: SyncOnceCell<regex::Regex> = SyncOnceCell::new();
+        RE.get_or_init(|| Regex::new($re).unwrap())
+    }};
+}
+
 fn diff_pretty<T, C>(new: T, old: T, ctxt: &C) -> String
 where
     T: DebugWithContext<C>,
@@ -578,7 +586,7 @@ where
         return String::new();
     }
 
-    let re = Regex::new("\t?\u{001f}([+-])").unwrap();
+    let re = regex!("\t?\u{001f}([+-])");
 
     let raw_diff = format!("{:#?}", DebugDiffWithAdapter { new, old, ctxt });
 
