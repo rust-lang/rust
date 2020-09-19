@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 // compile-flags: -O
 

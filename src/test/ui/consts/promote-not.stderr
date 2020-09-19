@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-no-mut.rs:3:50
+  --> $DIR/promote-not.rs:7:50
    |
 LL | static mut TEST1: Option<&mut [i32]> = Some(&mut [1, 2, 3]);
    |                                        ----------^^^^^^^^^-
@@ -9,7 +9,7 @@ LL | static mut TEST1: Option<&mut [i32]> = Some(&mut [1, 2, 3]);
    |                                        using this value as a static requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-no-mut.rs:6:18
+  --> $DIR/promote-not.rs:10:18
    |
 LL |     let x = &mut [1,2,3];
    |                  ^^^^^^^ creates a temporary which is freed while still in use
@@ -18,6 +18,26 @@ LL |     x
 LL | };
    | - temporary value is freed at the end of this statement
 
-error: aborting due to 2 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:19:32
+   |
+LL |         let _x: &'static () = &foo();
+   |                 -----------    ^^^^^ creates a temporary which is freed while still in use
+   |                 |
+   |                 type annotation requires that borrow lasts for `'static`
+LL |     }
+   |     - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:27:29
+   |
+LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
+   |             ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |             |
+   |             type annotation requires that borrow lasts for `'static`
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0716`.
