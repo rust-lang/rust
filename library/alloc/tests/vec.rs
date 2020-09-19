@@ -1341,7 +1341,7 @@ fn test_try_reserve() {
     // on 64-bit, we assume the OS will give an OOM for such a ridiculous size.
     // Any platform that succeeds for these requests is technically broken with
     // ptr::offset because LLVM is the worst.
-    let guards_against_isize = size_of::<usize>() < 8;
+    let guards_against_isize = usize::BITS < 64;
 
     {
         // Note: basic stuff is checked by test_reserve

@@ -2086,7 +2086,7 @@ impl<T: ?Sized> Pointer for *const T {
             f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
 
             if f.width.is_none() {
-                f.width = Some(((mem::size_of::<usize>() * 8) / 4) + 2);
+                f.width = Some((usize::BITS / 4) as usize + 2);
             }
         }
         f.flags |= 1 << (FlagV1::Alternate as u32);

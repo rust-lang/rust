@@ -349,6 +349,20 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("The size of this integer type in bits.
+
+# Examples
+
+```
+", $Feature, "#![feature(int_bits_const)]
+assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");",
+$EndFeature, "
+```"),
+            #[unstable(feature = "int_bits_const", issue = "76904")]
+            pub const BITS: u32 = $BITS;
+        }
+
+        doc_comment! {
             concat!("Converts a string slice in a given base to an integer.
 
 The string is expected to be an optional `+` or `-` sign followed by digits.
@@ -2599,6 +2613,20 @@ $EndFeature, "
 ```"),
             #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MAX: Self = !0;
+        }
+
+        doc_comment! {
+            concat!("The size of this integer type in bits.
+
+# Examples
+
+```
+", $Feature, "#![feature(int_bits_const)]
+assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");",
+$EndFeature, "
+```"),
+            #[unstable(feature = "int_bits_const", issue = "76904")]
+            pub const BITS: u32 = $BITS;
         }
 
         doc_comment! {
