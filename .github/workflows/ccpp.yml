@@ -19,7 +19,8 @@ jobs:
     - name: add llvm 
       run: |
           #sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
-          sudo apt-get install -y autoconf cmake libtool gfortran llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
+          sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
+          sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
     - uses: actions/checkout@v1
       with:
           fetch-depth: 1

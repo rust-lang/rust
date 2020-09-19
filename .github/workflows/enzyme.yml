@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["7", "8", "9"] # 8
+        llvm: ["7", "8", "9", "10"]
         build: ["Release", "Debug"] # "RelWithDebInfo"
         os: [self-hosted]
     
@@ -19,7 +19,8 @@ jobs:
     - name: add llvm 
       run: |
           #sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
-          sudo apt-get install -y autoconf cmake libtool gfortran llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
+          sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
+          sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
     - uses: actions/checkout@v1
       with:
           fetch-depth: 1
