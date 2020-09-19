@@ -14,6 +14,7 @@ use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_with, FromIterator, FusedIterator};
+use core::marker::PhantomData;
 use core::mem::{self, replace, ManuallyDrop};
 use core::ops::{Index, IndexMut, Range, RangeBounds, Try};
 use core::ptr::{self, NonNull};
@@ -982,7 +983,12 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        IterMut { tail: self.tail, head: self.head, ring: unsafe { self.buffer_as_mut_slice() } }
+        IterMut {
+            tail: self.tail,
+            head: self.head,
+            ring: unsafe { self.buffer_as_mut_slice() },
+            phantom: PhantomData,
+        }
     }
 
     /// Returns a pair of slices which contain, in order, the contents of the
@@ -1175,6 +1181,7 @@ impl<T> VecDeque<T> {
             head,
             // The shared reference we have in &mut self is maintained in the '_ of IterMut.
             ring: unsafe { self.buffer_as_mut_slice() },
+            phantom: PhantomData,
         }
     }
 
@@ -2662,15 +2669,19 @@ impl<T> FusedIterator for Iter<'_, T> {}
 /// [`iter_mut`]: VecDeque::iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
-    ring: &'a mut [T],
+    ring: *mut [T],
     tail: usize,
     head: usize,
+    phantom: PhantomData<&'a mut [T]>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = RingSlices::ring_slices(&*self.ring, self.head, self.tail);
+        // FIXME: this creates a reference to the full ring, including the part
+        // to which we already handed out mutable references via `next()`. This
+        // is an aliasing violation.
+        let (front, back) = RingSlices::ring_slices(unsafe { &*self.ring }, self.head, self.tail);
         f.debug_tuple("IterMut").field(&front).field(&back).finish()
     }
 }
@@ -2689,7 +2700,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
         unsafe {
             let elem = self.ring.get_unchecked_mut(tail);
-            Some(&mut *(elem as *mut _))
+            Some(&mut *elem)
         }
     }
 
@@ -2703,7 +2714,10 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        // FIXME: this creates a reference to the full ring, including the part
+        // to which we already handed out mutable references via `next()`. This
+        // is an aliasing violation.
+        let (front, back) = RingSlices::ring_slices(unsafe { &mut *self.ring }, self.head, self.tail);
         accum = front.iter_mut().fold(accum, &mut f);
         back.iter_mut().fold(accum, &mut f)
     }
@@ -2735,7 +2749,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 
         unsafe {
             let elem = self.ring.get_unchecked_mut(self.head);
-            Some(&mut *(elem as *mut _))
+            Some(&mut *elem)
         }
     }
 
@@ -2743,7 +2757,10 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        // FIXME: this creates a reference to the full ring, including the part
+        // to which we already handed out mutable references via `next()`. This
+        // is an aliasing violation.
+        let (front, back) = RingSlices::ring_slices(unsafe { &mut *self.ring }, self.head, self.tail);
         accum = back.iter_mut().rfold(accum, &mut f);
         front.iter_mut().rfold(accum, &mut f)
     }
