@@ -124,11 +124,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn try_print_query_stack(
-        handler: &Handler,
-        num_frames: Option<usize>,
-        backtrace: Option<bool>,
-    ) {
+    pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
         eprintln!("query stack during panic:");
 
         // Be careful reyling on global state here: this code is called from
