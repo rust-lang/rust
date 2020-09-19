@@ -10,10 +10,8 @@
 #![feature(const_panic)]
 #![feature(negative_impls)]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
 #![feature(min_specialization)]
 #![feature(option_expect_none)]
-#![feature(refcell_take)]
 
 #[macro_use]
 extern crate rustc_macros;
