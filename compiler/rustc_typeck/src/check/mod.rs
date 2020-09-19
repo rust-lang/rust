@@ -75,6 +75,7 @@ mod expr;
 mod fn_ctxt;
 mod gather_locals;
 mod generator_interior;
+mod inherited;
 pub mod intrinsic;
 pub mod method;
 mod op;
@@ -86,6 +87,7 @@ mod wfcheck;
 pub mod writeback;
 
 pub use fn_ctxt::FnCtxt;
+pub use inherited::{Inherited, InheritedBuilder};
 
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
@@ -94,16 +96,15 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{HirIdMap, ItemKind, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
-use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, InferOk, RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -119,20 +120,17 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::opaque_types::OpaqueTypeDecl;
 use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite_size_error;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
-use rustc_trait_selection::traits::{self, ObligationCauseCode, TraitEngine, TraitEngineExt};
+use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 use std::cell::{Ref, RefCell, RefMut};
 use std::cmp;
-use std::ops::{self, Deref};
+use std::ops::{self};
 
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
-use self::callee::DeferredCallResolution;
 use self::coercion::{CoerceMany, DynamicCoerceMany};
 use self::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
 pub use self::Expectation::*;
@@ -153,64 +151,6 @@ macro_rules! type_error_struct {
 pub struct LocalTy<'tcx> {
     decl_ty: Ty<'tcx>,
     revealed_ty: Ty<'tcx>,
-}
-
-/// Closures defined within the function. For example:
-///
-///     fn foo() {
-///         bar(move|| { ... })
-///     }
-///
-/// Here, the function `foo()` and the closure passed to
-/// `bar()` will each have their own `FnCtxt`, but they will
-/// share the inherited fields.
-pub struct Inherited<'a, 'tcx> {
-    infcx: InferCtxt<'a, 'tcx>,
-
-    typeck_results: MaybeInProgressTables<'a, 'tcx>,
-
-    locals: RefCell<HirIdMap<LocalTy<'tcx>>>,
-
-    fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
-
-    // Some additional `Sized` obligations badly affect type inference.
-    // These obligations are added in a later stage of typeck.
-    deferred_sized_obligations: RefCell<Vec<(Ty<'tcx>, Span, traits::ObligationCauseCode<'tcx>)>>,
-
-    // When we process a call like `c()` where `c` is a closure type,
-    // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
-    // `FnOnce` closure. In that case, we defer full resolution of the
-    // call until upvar inference can kick in and make the
-    // decision. We keep these deferred resolutions grouped by the
-    // def-id of the closure, so that once we decide, we can easily go
-    // back and process them.
-    deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolution<'tcx>>>>,
-
-    deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
-
-    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
-
-    // Opaque types found in explicit return types and their
-    // associated fresh inference variable. Writeback resolves these
-    // variables to get the concrete type, which can be used to
-    // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
-    opaque_types: RefCell<DefIdMap<OpaqueTypeDecl<'tcx>>>,
-
-    /// A map from inference variables created from opaque
-    /// type instantiations (`ty::Infer`) to the actual opaque
-    /// type (`ty::Opaque`). Used during fallback to map unconstrained
-    /// opaque type inference variables to their corresponding
-    /// opaque type.
-    opaque_types_vars: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
-
-    body_id: Option<hir::BodyId>,
-}
-
-impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
-    type Target = InferCtxt<'a, 'tcx>;
-    fn deref(&self) -> &Self::Target {
-        &self.infcx
-    }
 }
 
 /// When type-checking an expression, we propagate downward
@@ -486,95 +426,6 @@ impl<'tcx> EnclosingBreakables<'tcx> {
             Some(ix) => Some(&mut self.stack[*ix]),
             None => None,
         }
-    }
-}
-
-/// Helper type of a temporary returned by `Inherited::build(...)`.
-/// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'tcx FnOnce(Inherited<'b, 'tcx>)`.
-pub struct InheritedBuilder<'tcx> {
-    infcx: infer::InferCtxtBuilder<'tcx>,
-    def_id: LocalDefId,
-}
-
-impl Inherited<'_, 'tcx> {
-    pub fn build(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> InheritedBuilder<'tcx> {
-        let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
-
-        InheritedBuilder {
-            infcx: tcx.infer_ctxt().with_fresh_in_progress_typeck_results(hir_owner),
-            def_id,
-        }
-    }
-}
-
-impl<'tcx> InheritedBuilder<'tcx> {
-    pub fn enter<F, R>(&mut self, f: F) -> R
-    where
-        F: for<'a> FnOnce(Inherited<'a, 'tcx>) -> R,
-    {
-        let def_id = self.def_id;
-        self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
-    }
-}
-
-impl Inherited<'a, 'tcx> {
-    fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
-        let tcx = infcx.tcx;
-        let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let body_id = tcx.hir().maybe_body_owned_by(item_id);
-
-        Inherited {
-            typeck_results: MaybeInProgressTables {
-                maybe_typeck_results: infcx.in_progress_typeck_results,
-            },
-            infcx,
-            fulfillment_cx: RefCell::new(TraitEngine::new(tcx)),
-            locals: RefCell::new(Default::default()),
-            deferred_sized_obligations: RefCell::new(Vec::new()),
-            deferred_call_resolutions: RefCell::new(Default::default()),
-            deferred_cast_checks: RefCell::new(Vec::new()),
-            deferred_generator_interiors: RefCell::new(Vec::new()),
-            opaque_types: RefCell::new(Default::default()),
-            opaque_types_vars: RefCell::new(Default::default()),
-            body_id,
-        }
-    }
-
-    fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
-        debug!("register_predicate({:?})", obligation);
-        if obligation.has_escaping_bound_vars() {
-            span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
-        }
-        self.fulfillment_cx.borrow_mut().register_predicate_obligation(self, obligation);
-    }
-
-    fn register_predicates<I>(&self, obligations: I)
-    where
-        I: IntoIterator<Item = traits::PredicateObligation<'tcx>>,
-    {
-        for obligation in obligations {
-            self.register_predicate(obligation);
-        }
-    }
-
-    fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
-        self.register_predicates(infer_ok.obligations);
-        infer_ok.value
-    }
-
-    fn normalize_associated_types_in<T>(
-        &self,
-        span: Span,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
-        value: &T,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        let ok = self.partially_normalize_associated_types_in(span, body_id, param_env, value);
-        self.register_infer_ok_obligations(ok)
     }
 }
 
