@@ -433,7 +433,7 @@ impl Step for Std {
                 .arg("-Z")
                 .arg("unstable-options")
                 .arg("--resource-suffix")
-                .arg(crate::channel::CFG_RELEASE_NUM)
+                .arg(&builder.version)
                 .arg("--index-page")
                 .arg(&builder.src.join("src/doc/index.md"));
 
@@ -659,7 +659,7 @@ impl Step for ErrorIndex {
         let mut index = tool::ErrorIndex::command(builder, self.compiler);
         index.arg("html");
         index.arg(out.join("error-index.html"));
-        index.arg(crate::channel::CFG_RELEASE_NUM);
+        index.arg(&builder.version);
 
         builder.run(&mut index);
     }
