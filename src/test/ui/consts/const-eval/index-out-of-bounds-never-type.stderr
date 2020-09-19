@@ -4,7 +4,7 @@ warning: any use of this value will cause an error
 LL |     const VOID: ! = { let x = 0 * std::mem::size_of::<T>(); [][x] };
    |     --------------------------------------------------------^^^^^---
    |                                                             |
-   |                                                             index out of bounds: the len is 0 but the index is 0
+   |                                                             index out of bounds: the length is 0 but the index is 0
    |
 note: the lint level is defined here
   --> $DIR/index-out-of-bounds-never-type.rs:4:9
