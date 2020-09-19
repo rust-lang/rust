@@ -127,6 +127,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
         eprintln!("query stack during panic:");
 
+        if num_frames != None {
+            eprintln!("we're just showing a limited slice of the query stack");
+        }
         // Be careful reyling on global state here: this code is called from
         // a panic hook, which means that the global `Handler` may be in a weird
         // state if it was responsible for triggering the panic.

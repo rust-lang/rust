@@ -1,4 +1,5 @@
 query stack during panic:
+we're just showing a limited slice of the query stack
 end of query stack
 error: proc macro panicked
   --> $DIR/invalid-punct-ident-1.rs:19:1
