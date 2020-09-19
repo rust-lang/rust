@@ -1,4 +1,4 @@
-// compile-flags: -Z span_free_formats -Zunsound-mir-opts
+// compile-flags: -Z span_free_formats
 
 // Tests that MIR inliner works for any operand
 

@@ -1,5 +1,3 @@
-// compile-flags: -Zunsound-mir-opts
-
 fn map(x: Option<Box<()>>) -> Option<Box<()>> {
     match x {
         None => None,
