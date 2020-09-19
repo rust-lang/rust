@@ -7,10 +7,8 @@ use crate::task::{Context, Poll};
 /// Creates a future which never resolves, representing a computation that never
 /// finishes.
 ///
-/// This `struct` is created by the [`pending`] function. See its
+/// This `struct` is created by [`pending()`]. See its
 /// documentation for more.
-///
-/// [`pending`]: fn.pending.html
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct Pending<T> {
