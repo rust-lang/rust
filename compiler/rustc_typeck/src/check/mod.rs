@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 /*!
 
 # typeck: check phase
@@ -82,6 +80,7 @@ mod pat;
 mod place_op;
 mod regionck;
 mod upvar;
+mod util;
 mod wfcheck;
 pub mod writeback;
 
@@ -97,7 +96,7 @@ use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
@@ -738,31 +737,12 @@ pub fn check_wf_new(tcx: TyCtxt<'_>) {
     tcx.hir().krate().par_visit_all_item_likes(&visit);
 }
 
-fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
-}
-
-fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
-    debug_assert!(crate_num == LOCAL_CRATE);
-    tcx.par_body_owners(|body_owner_def_id| {
-        tcx.ensure().typeck(body_owner_def_id);
-    });
-}
-
-fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    wfcheck::check_item_well_formed(tcx, def_id);
-}
-
-fn check_trait_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    wfcheck::check_trait_item(tcx, def_id);
-}
-
-fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    wfcheck::check_impl_item(tcx, def_id);
-}
-
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
+    use util::{
+        check_impl_item_well_formed, check_item_well_formed, check_mod_item_types,
+        check_trait_item_well_formed, typeck_item_bodies,
+    };
     *providers = Providers {
         typeck_item_bodies,
         typeck_const_arg,
