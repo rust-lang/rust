@@ -167,7 +167,7 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
 
 /// Unix credential.
 #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 #[derive(Clone)]
 pub struct SocketCred(libc::ucred);
 
@@ -176,43 +176,43 @@ impl SocketCred {
     /// Create a Unix credential struct.
     ///
     /// PID, UID and GID is set to 0.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn new() -> SocketCred {
         SocketCred(libc::ucred { pid: 0, uid: 0, gid: 0 })
     }
 
     /// Set the PID.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_pid(&mut self, pid: pid_t) {
         self.0.pid = pid;
     }
 
     /// Get the current PID.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_pid(&self) -> pid_t {
         self.0.pid
     }
 
     /// Set the UID.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_uid(&mut self, uid: uid_t) {
         self.0.uid = uid;
     }
 
     /// Get the current UID.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_uid(&self) -> uid_t {
         self.0.uid
     }
 
     /// Set the GID.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_gid(&mut self, gid: gid_t) {
         self.0.gid = gid;
     }
 
     /// Get the current GID.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_gid(&self) -> gid_t {
         self.0.gid
     }
@@ -221,10 +221,10 @@ impl SocketCred {
 /// This control message contains file descriptors.
 ///
 /// The level is equal to `SOL_SOCKET` and the type is equal to `SCM_RIGHTS`.
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub struct ScmRights<'a>(AncillaryDataIter<'a, RawFd>);
 
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 impl<'a> Iterator for ScmRights<'a> {
     type Item = RawFd;
 
@@ -237,11 +237,11 @@ impl<'a> Iterator for ScmRights<'a> {
 ///
 /// The level is equal to `SOL_SOCKET` and the type is equal to `SCM_CREDENTIALS` or `SCM_CREDS`.
 #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub struct ScmCredentials<'a>(AncillaryDataIter<'a, libc::ucred>);
 
 #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 impl<'a> Iterator for ScmCredentials<'a> {
     type Item = SocketCred;
 
@@ -253,13 +253,13 @@ impl<'a> Iterator for ScmCredentials<'a> {
 /// The error type which is returned from parsing the type a control message.
 #[non_exhaustive]
 #[derive(Debug)]
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub enum AncillaryError {
     Unknown { cmsg_level: i32, cmsg_type: i32 },
 }
 
 /// This enum represent one control message of variable type.
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub enum AncillaryData<'a> {
     ScmRights(ScmRights<'a>),
     #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
@@ -321,13 +321,13 @@ impl<'a> AncillaryData<'a> {
 }
 
 /// This struct is used to iterate through the control messages.
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub struct Messages<'a> {
     buffer: &'a [u8],
     current: Option<&'a libc::cmsghdr>,
 }
 
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 impl<'a> Iterator for Messages<'a> {
     type Item = Result<AncillaryData<'a>, AncillaryError>;
 
@@ -386,7 +386,7 @@ impl<'a> Iterator for Messages<'a> {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 #[derive(Debug)]
 pub struct SocketAncillary<'a> {
     buffer: &'a mut [u8],
@@ -406,25 +406,25 @@ impl<'a> SocketAncillary<'a> {
     /// let mut ancillary_buffer = [0; 128];
     /// let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     /// ```
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn new(buffer: &'a mut [u8]) -> Self {
         SocketAncillary { buffer, length: 0, truncated: false }
     }
 
     /// Returns the capacity of the buffer.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn capacity(&self) -> usize {
         self.buffer.len()
     }
 
     /// Returns the number of used bytes.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn len(&self) -> usize {
         self.length
     }
 
     /// Returns the iterator of the control messages.
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn messages(&self) -> Messages<'_> {
         Messages { buffer: &self.buffer[..self.length], current: None }
     }
@@ -452,7 +452,7 @@ impl<'a> SocketAncillary<'a> {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn truncated(&self) -> bool {
         self.truncated
     }
@@ -485,7 +485,7 @@ impl<'a> SocketAncillary<'a> {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn add_fds(&mut self, fds: &[RawFd]) -> bool {
         self.truncated = false;
         add_to_ancillary_data(
@@ -505,7 +505,7 @@ impl<'a> SocketAncillary<'a> {
     /// and type `SCM_CREDENTIALS` or `SCM_CREDS`.
     ///
     #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn add_creds(&mut self, creds: &[SocketCred]) -> bool {
         self.truncated = false;
         add_to_ancillary_data(
@@ -559,7 +559,7 @@ impl<'a> SocketAncillary<'a> {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn clear(&mut self) {
         self.length = 0;
         self.truncated = false;
