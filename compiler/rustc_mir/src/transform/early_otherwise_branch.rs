@@ -6,6 +6,8 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use std::{borrow::Cow, fmt::Debug};
 
+use super::simplify::simplify_cfg;
+
 /// This pass optimizes something like
 /// ```text
 /// let x: Option<()>;
@@ -43,6 +45,8 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 Some(OptimizationToApply { infos, basic_block_first_switch: bb_idx })
             })
             .collect();
+
+        let should_cleanup = !opts_to_apply.is_empty();
 
         for opt_to_apply in opts_to_apply {
             trace!("SUCCESS: found optimization possibility to apply: {:?}", &opt_to_apply);
@@ -146,6 +150,12 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             }
 
             patch.apply(body);
+        }
+
+        // Since this optimization adds new basic blocks and invalidates others,
+        // clean up the cfg to make it nicer for other passes
+        if should_cleanup {
+            simplify_cfg(body);
         }
     }
 }
