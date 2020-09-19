@@ -1,12 +1,11 @@
 use super::callee::{self, DeferredCallResolution};
 use super::coercion::{CoerceMany, DynamicCoerceMany};
-use super::method::{MethodCallee, SelfSource};
+use super::method::{self, MethodCallee, SelfSource};
 use super::Expectation::*;
 use super::TupleArgumentsFlag::*;
 use super::{
-    method, potentially_plural_count, struct_span_err, BreakableCtxt, Diverges,
-    EnclosingBreakables, Expectation, FallbackMode, Inherited, LocalTy, Needs, TupleArgumentsFlag,
-    UnsafetyState,
+    potentially_plural_count, struct_span_err, BreakableCtxt, Diverges, EnclosingBreakables,
+    Expectation, FallbackMode, Inherited, LocalTy, Needs, TupleArgumentsFlag, UnsafetyState,
 };
 use crate::astconv::{
     AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, PathSeg,
@@ -23,12 +22,11 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, ItemKind, Node, QPath};
-use rustc_infer::infer;
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_infer::infer::{InferOk, InferResult};
+use rustc_infer::infer::{self, InferOk, InferResult};
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -41,8 +39,7 @@ use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, Const, DefIdTree, GenericParamDefKind, ToPolyTraitRef,
     ToPredicate, Ty, TyCtxt, UserType,
 };
-use rustc_session::lint;
-use rustc_session::Session;
+use rustc_session::{lint, Session};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
