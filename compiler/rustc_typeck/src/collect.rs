@@ -2343,8 +2343,8 @@ fn from_target_feature(
                         item.span(),
                         format!("`{}` is not valid for this target", feature),
                     );
-                    if feature.starts_with('+') {
-                        let valid = supported_target_features.contains_key(&feature[1..]);
+                    if let Some(stripped) = feature.strip_prefix('+') {
+                        let valid = supported_target_features.contains_key(stripped);
                         if valid {
                             err.help("consider removing the leading `+` in the feature name");
                         }

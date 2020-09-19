@@ -370,7 +370,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let s = s.as_ref();
         let old = old.as_ref();
-        if s.starts_with(old) { Some(new.as_ref().to_owned() + &s[old.len()..]) } else { None }
+        if let Some(stripped) = s.strip_prefix(old) {
+            Some(new.as_ref().to_owned() + stripped)
+        } else {
+            None
+        }
     }
 
     /// This function is used to determine potential "simple" improvements or users' errors and
