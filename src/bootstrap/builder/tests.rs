@@ -10,6 +10,9 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     config.dry_run = true;
     config.ninja_in_file = false;
     // try to avoid spurious failures in dist where we create/delete each others file
+    config.out = PathBuf::from(env::var_os("BOOTSTRAP_OUTPUT_DIRECTORY").unwrap());
+    config.initial_rustc = PathBuf::from(env::var_os("RUSTC").unwrap());
+    config.initial_cargo = PathBuf::from(env::var_os("BOOTSTRAP_INITIAL_CARGO").unwrap());
     let dir = config
         .out
         .join("tmp-rustbuild-tests")
