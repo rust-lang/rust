@@ -82,7 +82,6 @@ mod pat;
 mod place_op;
 mod regionck;
 mod upvar;
-mod util;
 mod wfcheck;
 pub mod writeback;
 
@@ -90,14 +89,14 @@ pub use fn_ctxt::FnCtxt;
 
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
-use crate::check::util::MaybeInProgressTables;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{HirIdMap, ItemKind, Node};
 use rustc_index::bit_set::BitSet;
@@ -126,7 +125,7 @@ use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, TraitEngine, TraitEngineExt};
 
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::cmp;
 use std::ops::{self, Deref};
 
@@ -586,10 +585,6 @@ pub fn check_wf_new(tcx: TyCtxt<'_>) {
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
-    use util::{
-        check_impl_item_well_formed, check_item_well_formed, check_mod_item_types,
-        check_trait_item_well_formed, typeck_item_bodies,
-    };
     *providers = Providers {
         typeck_item_bodies,
         typeck_const_arg,
@@ -2718,6 +2713,67 @@ fn check_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, 
             }
         }
     }
+}
+
+/// A wrapper for `InferCtxt`'s `in_progress_typeck_results` field.
+#[derive(Copy, Clone)]
+struct MaybeInProgressTables<'a, 'tcx> {
+    maybe_typeck_results: Option<&'a RefCell<ty::TypeckResults<'tcx>>>,
+}
+
+impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
+    fn borrow(self) -> Ref<'a, ty::TypeckResults<'tcx>> {
+        match self.maybe_typeck_results {
+            Some(typeck_results) => typeck_results.borrow(),
+            None => bug!(
+                "MaybeInProgressTables: inh/fcx.typeck_results.borrow() with no typeck results"
+            ),
+        }
+    }
+
+    fn borrow_mut(self) -> RefMut<'a, ty::TypeckResults<'tcx>> {
+        match self.maybe_typeck_results {
+            Some(typeck_results) => typeck_results.borrow_mut(),
+            None => bug!(
+                "MaybeInProgressTables: inh/fcx.typeck_results.borrow_mut() with no typeck results"
+            ),
+        }
+    }
+}
+
+struct CheckItemTypesVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
+    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
+        check_item_type(self.tcx, i);
+    }
+    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
+}
+
+fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
+}
+
+fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    wfcheck::check_item_well_formed(tcx, def_id);
+}
+
+fn check_trait_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    wfcheck::check_trait_item(tcx, def_id);
+}
+
+fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    wfcheck::check_impl_item(tcx, def_id);
+}
+
+fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
+    debug_assert!(crate_num == LOCAL_CRATE);
+    tcx.par_body_owners(|body_owner_def_id| {
+        tcx.ensure().typeck(body_owner_def_id);
+    });
 }
 
 fn fatally_break_rust(sess: &Session) {
