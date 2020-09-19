@@ -5,6 +5,9 @@ LL |     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc2, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc2────────╼                         │ ╾──────╼
+           }
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:28:43
@@ -39,6 +42,9 @@ LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uin
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc22, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc22───────╼                         │ ╾──────╼
+           }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-pointer-values-in-various-types.rs:40:5
@@ -47,6 +53,9 @@ LL |     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.u
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ │ ░░░░░░░░░░░░░░░░
+           }
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:43:43
@@ -79,6 +88,9 @@ LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc47, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc47───────╼                         │ ╾──────╼
+           }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-pointer-values-in-various-types.rs:55:5
@@ -87,6 +99,9 @@ LL |     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.i
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ │ ░░░░░░░░░░░░░░░░
+           }
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:58:45
@@ -103,6 +118,9 @@ LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.flo
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc62, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc62───────╼                         │ ╾──────╼
+           }
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:64:47
@@ -151,6 +169,9 @@ LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc86, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc86───────╼                         │ ╾──────╼
+           }
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:82:43
@@ -191,6 +212,9 @@ LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc101, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾──────alloc101───────╼                         │ ╾──────╼
+           }
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:97:43
@@ -215,6 +239,9 @@ LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc110, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾──────alloc110───────╼                         │ ╾──────╼
+           }
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:106:43
