@@ -1563,7 +1563,7 @@ mod redundant_pattern_match {
                             "is_ok()",
                             "is_err()",
                             || true,
-                            || true
+                            || true,
                         )
                     } else {
                         None
