@@ -1440,15 +1440,12 @@ where
 
 mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
-    use crate::utils::{in_constant, match_qpath, match_trait_method, paths, snippet, span_lint_and_then};
+    use crate::utils::{match_qpath, match_trait_method, paths, snippet, span_lint_and_then};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
     use rustc_errors::Applicability;
-    use rustc_hir::{Arm, Expr, ExprKind, HirId, MatchSource, PatKind, QPath};
+    use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind, QPath};
     use rustc_lint::LateContext;
-    use rustc_middle::ty;
-    use rustc_mir::const_eval::is_const_fn;
-    use rustc_span::source_map::Symbol;
 
     pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
@@ -1468,37 +1465,24 @@ mod redundant_pattern_match {
         arms: &[Arm<'_>],
         keyword: &'static str,
     ) {
-        fn find_suggestion(cx: &LateContext<'_>, hir_id: HirId, path: &QPath<'_>) -> Option<&'static str> {
-            if match_qpath(path, &paths::RESULT_OK) {
-                return Some("is_ok()");
-            }
-            if match_qpath(path, &paths::RESULT_ERR) {
-                return Some("is_err()");
-            }
-            if match_qpath(path, &paths::OPTION_SOME) && can_suggest(cx, hir_id, sym!(option_type), "is_some") {
-                return Some("is_some()");
-            }
-            if match_qpath(path, &paths::OPTION_NONE) && can_suggest(cx, hir_id, sym!(option_type), "is_none") {
-                return Some("is_none()");
-            }
-            None
-        }
-
-        let hir_id = expr.hir_id;
         let good_method = match arms[0].pat.kind {
             PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
                 if let PatKind::Wild = patterns[0].kind {
-                    find_suggestion(cx, hir_id, path)
+                    if match_qpath(path, &paths::RESULT_OK) {
+                        "is_ok()"
+                    } else if match_qpath(path, &paths::RESULT_ERR) {
+                        "is_err()"
+                    } else if match_qpath(path, &paths::OPTION_SOME) {
+                        "is_some()"
+                    } else {
+                        return;
+                    }
                 } else {
-                    None
+                    return;
                 }
             },
-            PatKind::Path(ref path) => find_suggestion(cx, hir_id, path),
-            _ => None,
-        };
-        let good_method = match good_method {
-            Some(method) => method,
-            None => return,
+            PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
+            _ => return,
         };
 
         // check that `while_let_on_iterator` lint does not trigger
@@ -1547,7 +1531,6 @@ mod redundant_pattern_match {
         if arms.len() == 2 {
             let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 
-            let hir_id = expr.hir_id;
             let found_good_method = match node_pair {
                 (
                     PatKind::TupleStruct(ref path_left, ref patterns_left, _),
@@ -1562,8 +1545,6 @@ mod redundant_pattern_match {
                             &paths::RESULT_ERR,
                             "is_ok()",
                             "is_err()",
-                            || true,
-                            || true,
                         )
                     } else {
                         None
@@ -1582,8 +1563,6 @@ mod redundant_pattern_match {
                             &paths::OPTION_NONE,
                             "is_some()",
                             "is_none()",
-                            || can_suggest(cx, hir_id, sym!(option_type), "is_some"),
-                            || can_suggest(cx, hir_id, sym!(option_type), "is_none"),
                         )
                     } else {
                         None
@@ -1616,7 +1595,6 @@ mod redundant_pattern_match {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn find_good_method_for_match<'a>(
         arms: &[Arm<'_>],
         path_left: &QPath<'_>,
@@ -1625,8 +1603,6 @@ mod redundant_pattern_match {
         expected_right: &[&str],
         should_be_left: &'a str,
         should_be_right: &'a str,
-        can_suggest_left: impl Fn() -> bool,
-        can_suggest_right: impl Fn() -> bool,
     ) -> Option<&'a str> {
         let body_node_pair = if match_qpath(path_left, expected_left) && match_qpath(path_right, expected_right) {
             (&(*arms[0].body).kind, &(*arms[1].body).kind)
@@ -1638,34 +1614,12 @@ mod redundant_pattern_match {
 
         match body_node_pair {
             (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => match (&lit_left.node, &lit_right.node) {
-                (LitKind::Bool(true), LitKind::Bool(false)) if can_suggest_left() => Some(should_be_left),
-                (LitKind::Bool(false), LitKind::Bool(true)) if can_suggest_right() => Some(should_be_right),
+                (LitKind::Bool(true), LitKind::Bool(false)) => Some(should_be_left),
+                (LitKind::Bool(false), LitKind::Bool(true)) => Some(should_be_right),
                 _ => None,
             },
             _ => None,
         }
-    }
-
-    fn can_suggest(cx: &LateContext<'_>, hir_id: HirId, diag_item: Symbol, name: &str) -> bool {
-        if !in_constant(cx, hir_id) {
-            return true;
-        }
-
-        // Avoid suggesting calls to non-`const fn`s in const contexts, see #5697.
-        cx.tcx
-            .get_diagnostic_item(diag_item)
-            .and_then(|def_id| {
-                cx.tcx.inherent_impls(def_id).iter().find_map(|imp| {
-                    cx.tcx
-                        .associated_items(*imp)
-                        .in_definition_order()
-                        .find_map(|item| match item.kind {
-                            ty::AssocKind::Fn if item.ident.name.as_str() == name => Some(item.def_id),
-                            _ => None,
-                        })
-                })
-            })
-            .map_or(false, |def_id| is_const_fn(cx.tcx, def_id))
     }
 }
 
