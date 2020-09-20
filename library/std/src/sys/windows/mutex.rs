@@ -129,11 +129,7 @@ impl Mutex {
 }
 
 fn kind() -> Kind {
-    if c::AcquireSRWLockExclusive::is_available() {
-        Kind::SRWLock
-    } else {
-        Kind::CriticalSection
-    }
+    if c::AcquireSRWLockExclusive::is_available() { Kind::SRWLock } else { Kind::CriticalSection }
 }
 
 pub struct ReentrantMutex {
