@@ -9,15 +9,9 @@ use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
     target_os = "dragonfly",
     target_os = "emscripten",
     target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "haiku",
-    target_os = "illumos",
-    target_os = "ios",
     target_os = "linux",
-    target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "solaris",
     target_env = "uclibc",
 ))]
 use crate::sys::unix::ext::net::ancillary::{
@@ -367,15 +361,9 @@ impl UnixDatagram {
         target_os = "dragonfly",
         target_os = "emscripten",
         target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "haiku",
-        target_os = "illumos",
-        target_os = "ios",
         target_os = "linux",
-        target_os = "macos",
         target_os = "netbsd",
         target_os = "openbsd",
-        target_os = "solaris",
         target_env = "uclibc",
     ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
@@ -431,15 +419,9 @@ impl UnixDatagram {
         target_os = "dragonfly",
         target_os = "emscripten",
         target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "haiku",
-        target_os = "illumos",
-        target_os = "ios",
         target_os = "linux",
-        target_os = "macos",
         target_os = "netbsd",
         target_os = "openbsd",
-        target_os = "solaris",
         target_env = "uclibc",
     ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
@@ -539,6 +521,16 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_env = "uclibc",
+    ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary_to<P: AsRef<Path>>(
         &self,
@@ -578,6 +570,16 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_env = "uclibc",
+    ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary(
         &self,

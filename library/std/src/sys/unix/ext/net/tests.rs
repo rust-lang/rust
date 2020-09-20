@@ -557,6 +557,17 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     }
 }
 
+#[cfg(any(
+    doc,
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_env = "uclibc",
+))]
 #[test]
 fn test_send_vectored_with_ancillary_unix_datagram() {
     let dir = tmpdir();
