@@ -9,6 +9,7 @@ use crate::slice::from_raw_parts;
 use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
 use crate::sys::unix::net::Socket;
 
+#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux",))]
 use libc::{gid_t, pid_t, uid_t};
 
 pub(super) fn recv_vectored_with_ancillary_from(
