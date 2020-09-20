@@ -26,7 +26,7 @@ rustc_index = { path = "../rustc_index", package = "rustc_index" }
 bitflags = "1.2.1"
 measureme = "0.7.1"
 libc = "0.2"
-stacker = "0.1.11"
+stacker = "0.1.12"
 tempfile = "3.0.5"
 
 [dependencies.parking_lot]
