@@ -11,7 +11,6 @@ mod addr;
     target_os = "linux",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_env = "uclibc",
 )))]
 #[cfg(any(
     doc,
@@ -22,7 +21,6 @@ mod addr;
     target_os = "linux",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_env = "uclibc",
 ))]
 mod ancillary;
 mod datagram;
@@ -42,7 +40,6 @@ pub use self::addr::*;
     target_os = "linux",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_env = "uclibc",
 ))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub use self::ancillary::*;
