@@ -667,7 +667,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_peek", issue = "none")]
+    #[unstable(feature = "unix_socket_peek", issue = "76923")]
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.peek(buf)
     }
@@ -1708,7 +1708,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_peek", issue = "none")]
+    #[unstable(feature = "unix_socket_peek", issue = "76923")]
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.peek(buf)
     }
@@ -1740,7 +1740,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_peek", issue = "none")]
+    #[unstable(feature = "unix_socket_peek", issue = "76923")]
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_flags(buf, libc::MSG_PEEK)
     }
