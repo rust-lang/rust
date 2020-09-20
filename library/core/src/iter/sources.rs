@@ -531,8 +531,10 @@ where
 
 /// An iterator where each iteration calls the provided closure `F: FnMut() -> Option<T>`.
 ///
-/// This `struct` is created by the [`from_fn()`] function.
+/// This `struct` is created by the [`iter::from_fn()`] function.
 /// See its documentation for more.
+///
+/// [`iter::from_fn()`]: from_fn
 #[derive(Clone)]
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub struct FromFn<F>(F);
@@ -581,8 +583,10 @@ where
 
 /// An new iterator where each successive item is computed based on the preceding one.
 ///
-/// This `struct` is created by the [`successors()`] function.
+/// This `struct` is created by the [`iter::successors()`] function.
 /// See its documentation for more.
+///
+/// [`iter::successors()`]: successors
 #[derive(Clone)]
 #[stable(feature = "iter_successors", since = "1.34.0")]
 pub struct Successors<T, F> {
