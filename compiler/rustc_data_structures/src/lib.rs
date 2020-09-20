@@ -11,7 +11,6 @@
 #![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
 #![feature(unboxed_closures)]
-#![feature(generators)]
 #![feature(generator_trait)]
 #![feature(fn_traits)]
 #![feature(int_bits_const)]
@@ -27,7 +26,7 @@
 #![feature(thread_id_value)]
 #![feature(extend_one)]
 #![feature(const_panic)]
-#![feature(const_generics)]
+#![feature(min_const_generics)]
 #![feature(once_cell)]
 #![allow(rustc::default_hash_types)]
 

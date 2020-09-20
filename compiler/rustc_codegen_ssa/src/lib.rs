@@ -8,8 +8,6 @@
 #![feature(or_patterns)]
 #![feature(trusted_len)]
 #![feature(associated_type_bounds)]
-#![feature(const_fn)] // for rustc_index::newtype_index
-#![feature(const_panic)] // for rustc_index::newtype_index
 #![recursion_limit = "256"]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).

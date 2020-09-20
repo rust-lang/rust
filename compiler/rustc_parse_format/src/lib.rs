@@ -11,8 +11,6 @@
 )]
 #![feature(nll)]
 #![feature(or_patterns)]
-#![feature(rustc_private)]
-#![feature(unicode_internals)]
 #![feature(bool_to_option)]
 
 pub use Alignment::*;
