@@ -118,17 +118,15 @@ pub struct Annotation {
 impl Annotation {
     /// Whether this annotation is a vertical line placeholder.
     pub fn is_line(&self) -> bool {
-        if let AnnotationType::MultilineLine(_) = self.annotation_type { true } else { false }
+        matches!(self.annotation_type, AnnotationType::MultilineLine(_))
     }
 
     pub fn is_multiline(&self) -> bool {
-        match self.annotation_type {
+        matches!(self.annotation_type,
             AnnotationType::Multiline(_)
             | AnnotationType::MultilineStart(_)
             | AnnotationType::MultilineLine(_)
-            | AnnotationType::MultilineEnd(_) => true,
-            _ => false,
-        }
+            | AnnotationType::MultilineEnd(_))
     }
 
     pub fn len(&self) -> usize {

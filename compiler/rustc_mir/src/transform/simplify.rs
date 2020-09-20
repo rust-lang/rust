@@ -281,8 +281,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
-            blk.statements
-                .retain(|stmt| if let StatementKind::Nop = stmt.kind { false } else { true })
+            blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
         }
     }
 }

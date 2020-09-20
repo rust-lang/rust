@@ -1793,7 +1793,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .flat_map(|(bindings, _)| bindings)
                     .chain(&candidate.bindings)
                     .filter(|binding| {
-                        if let BindingMode::ByValue = binding.binding_mode { true } else { false }
+                        matches!(binding.binding_mode, BindingMode::ByValue )
                     });
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.

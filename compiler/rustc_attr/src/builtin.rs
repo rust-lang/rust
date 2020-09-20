@@ -160,10 +160,10 @@ pub enum StabilityLevel {
 
 impl StabilityLevel {
     pub fn is_unstable(&self) -> bool {
-        if let StabilityLevel::Unstable { .. } = *self { true } else { false }
+        matches!(self, StabilityLevel::Unstable { .. })
     }
     pub fn is_stable(&self) -> bool {
-        if let StabilityLevel::Stable { .. } = *self { true } else { false }
+        matches!(self, StabilityLevel::Stable { .. })
     }
 }
 

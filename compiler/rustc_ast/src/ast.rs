@@ -1931,7 +1931,7 @@ pub enum TyKind {
 
 impl TyKind {
     pub fn is_implicit_self(&self) -> bool {
-        if let TyKind::ImplicitSelf = *self { true } else { false }
+        matches!(self, TyKind::ImplicitSelf)
     }
 
     pub fn is_unit(&self) -> bool {
@@ -2227,7 +2227,7 @@ pub enum Async {
 
 impl Async {
     pub fn is_async(self) -> bool {
-        if let Async::Yes { .. } = self { true } else { false }
+        matches!(self, Async::Yes { .. })
     }
 
     /// In this case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
@@ -2508,7 +2508,7 @@ pub enum VisibilityKind {
 
 impl VisibilityKind {
     pub fn is_pub(&self) -> bool {
-        if let VisibilityKind::Public = *self { true } else { false }
+        matches!(self, VisibilityKind::Public)
     }
 }
 
