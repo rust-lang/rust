@@ -1633,6 +1633,7 @@ impl<T> [T] {
     /// assert!(!v.iter().any(|e| e == "hi"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn contains(&self, x: &T) -> bool
     where
         T: PartialEq,
