@@ -218,7 +218,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::E
         let mut edge = self.forget_node_type();
         loop {
             edge = match edge.right_kv() {
-                Ok(internal_kv) => return Ok(internal_kv),
+                Ok(kv) => return Ok(kv),
                 Err(last_edge) => match last_edge.into_node().ascend() {
                     Ok(parent_edge) => parent_edge.forget_node_type(),
                     Err(root) => return Err(root),
@@ -239,7 +239,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::E
         let mut edge = self.forget_node_type();
         loop {
             edge = match edge.left_kv() {
-                Ok(internal_kv) => return Ok(internal_kv),
+                Ok(kv) => return Ok(kv),
                 Err(last_edge) => match last_edge.into_node().ascend() {
                     Ok(parent_edge) => parent_edge.forget_node_type(),
                     Err(root) => return Err(root),
