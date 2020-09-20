@@ -920,7 +920,9 @@ impl fmt::Debug for StderrLock<'_> {
 /// use std::io;
 ///
 /// fn main() -> io::Result<()> {
-///     let name: String = io::read_line("Enter name: ")?;
+///     print!("Enter name: ");
+///
+///     let name: String = io::read_line()?;
 ///
 ///     println!("Your name is {}!", name);
 ///
