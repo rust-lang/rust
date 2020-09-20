@@ -149,52 +149,94 @@ LL |     let x = if let Some(_) = opt { true } else { false };
    |             -------^^^^^^^------ help: try this: `if opt.is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:102:20
+  --> $DIR/redundant_pattern_matching.rs:103:20
    |
 LL |     let _ = if let Some(_) = gen_opt() {
    |             -------^^^^^^^------------ help: try this: `if gen_opt().is_some()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching.rs:104:19
+  --> $DIR/redundant_pattern_matching.rs:105:19
    |
 LL |     } else if let None = gen_opt() {
    |            -------^^^^------------ help: try this: `if gen_opt().is_none()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:106:19
+  --> $DIR/redundant_pattern_matching.rs:107:19
    |
 LL |     } else if let Ok(_) = gen_res() {
    |            -------^^^^^------------ help: try this: `if gen_res().is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:108:19
+  --> $DIR/redundant_pattern_matching.rs:109:19
    |
 LL |     } else if let Err(_) = gen_res() {
    |            -------^^^^^^------------ help: try this: `if gen_res().is_err()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:141:19
+  --> $DIR/redundant_pattern_matching.rs:142:19
    |
 LL |         while let Some(_) = r#try!(result_opt()) {}
    |         ----------^^^^^^^----------------------- help: try this: `while r#try!(result_opt()).is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:142:16
+  --> $DIR/redundant_pattern_matching.rs:143:16
    |
 LL |         if let Some(_) = r#try!(result_opt()) {}
    |         -------^^^^^^^----------------------- help: try this: `if r#try!(result_opt()).is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:148:12
+  --> $DIR/redundant_pattern_matching.rs:149:12
    |
 LL |     if let Some(_) = m!() {}
    |     -------^^^^^^^------- help: try this: `if m!().is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:149:15
+  --> $DIR/redundant_pattern_matching.rs:150:15
    |
 LL |     while let Some(_) = m!() {}
    |     ----------^^^^^^^------- help: try this: `while m!().is_some()`
 
-error: aborting due to 29 previous errors
+error: redundant pattern matching, consider using `is_ok()`
+  --> $DIR/redundant_pattern_matching.rs:179:12
+   |
+LL |     if let Ok(_) = Ok::<i32, i32>(42) {}
+   |     -------^^^^^--------------------- help: try this: `if Ok::<i32, i32>(42).is_ok()`
+
+error: redundant pattern matching, consider using `is_err()`
+  --> $DIR/redundant_pattern_matching.rs:181:12
+   |
+LL |     if let Err(_) = Err::<i32, i32>(42) {}
+   |     -------^^^^^^---------------------- help: try this: `if Err::<i32, i32>(42).is_err()`
+
+error: redundant pattern matching, consider using `is_ok()`
+  --> $DIR/redundant_pattern_matching.rs:183:15
+   |
+LL |     while let Ok(_) = Ok::<i32, i32>(10) {}
+   |     ----------^^^^^--------------------- help: try this: `while Ok::<i32, i32>(10).is_ok()`
+
+error: redundant pattern matching, consider using `is_err()`
+  --> $DIR/redundant_pattern_matching.rs:185:15
+   |
+LL |     while let Err(_) = Ok::<i32, i32>(10) {}
+   |     ----------^^^^^^--------------------- help: try this: `while Ok::<i32, i32>(10).is_err()`
+
+error: redundant pattern matching, consider using `is_ok()`
+  --> $DIR/redundant_pattern_matching.rs:187:5
+   |
+LL | /     match Ok::<i32, i32>(42) {
+LL | |         Ok(_) => true,
+LL | |         Err(_) => false,
+LL | |     };
+   | |_____^ help: try this: `Ok::<i32, i32>(42).is_ok()`
+
+error: redundant pattern matching, consider using `is_err()`
+  --> $DIR/redundant_pattern_matching.rs:192:5
+   |
+LL | /     match Err::<i32, i32>(42) {
+LL | |         Ok(_) => false,
+LL | |         Err(_) => true,
+LL | |     };
+   | |_____^ help: try this: `Err::<i32, i32>(42).is_err()`
+
+error: aborting due to 35 previous errors
 
