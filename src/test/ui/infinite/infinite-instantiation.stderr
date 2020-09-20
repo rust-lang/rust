@@ -9,6 +9,7 @@ note: `function` defined here
    |
 LL | fn function<T:ToOpt + Clone>(counter: usize, t: T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the full type name has been written to '$TEST_BUILD_DIR/infinite/infinite-instantiation/infinite-instantiation.long-type.txt'
 
 error: aborting due to previous error
 

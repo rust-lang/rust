@@ -21,6 +21,7 @@ LL | |     // SAFETY: see comment above
 LL | |     unsafe { drop_in_place(to_drop) }
 LL | | }
    | |_^
+   = note: the full type name has been written to '$TEST_BUILD_DIR/recursion/issue-38591-non-regular-dropck-recursion/issue-38591-non-regular-dropck-recursion.long-type.txt'
 
 error: aborting due to previous error
 
