@@ -42,18 +42,28 @@ fn func4() -> Option<i32> {
     Some(1)
 }
 
+// should not be linted
+fn func5() -> Option<i32> {
+    None
+}
+
 // should be linted
-fn func5() -> Result<i32, ()> {
+fn func6() -> Result<i32, ()> {
     Ok(1)
 }
 
 // should not be linted
-fn func6(a: bool) -> Result<i32, ()> {
+fn func7(a: bool) -> Result<i32, ()> {
     if a {
         Ok(1)
     } else {
         Err(())
     }
+}
+
+// should not be linted
+fn func8(a: bool) -> Result<i32, ()> {
+    Err(())
 }
 
 fn main() {

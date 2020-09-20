@@ -36,16 +36,16 @@ LL |     1
    |
 
 error: this function returns unnecessarily wrapping data
-  --> $DIR/unnecessary_wrap.rs:46:1
+  --> $DIR/unnecessary_wrap.rs:51:1
    |
-LL | / fn func5() -> Result<i32, ()> {
+LL | / fn func6() -> Result<i32, ()> {
 LL | |     Ok(1)
 LL | | }
    | |_^
    |
 help: factor this out to
    |
-LL | fn func5() -> i32 {
+LL | fn func6() -> i32 {
 LL |     1
    |
 
