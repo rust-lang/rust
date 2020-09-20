@@ -85,6 +85,10 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
     fn can_reconstruct_query_key(&self) -> bool {
         DepKind::can_reconstruct_query_key(self)
     }
+
+    fn is_anon(&self) -> bool {
+        DepKind::is_anon(self)
+    }
 }
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {

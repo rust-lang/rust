@@ -82,4 +82,6 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
         OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
 
     fn can_reconstruct_query_key(&self) -> bool;
+
+    fn is_anon(&self) -> bool;
 }
