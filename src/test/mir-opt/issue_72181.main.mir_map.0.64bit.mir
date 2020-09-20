@@ -48,7 +48,7 @@ fn main() -> () {
         _6 = const 0_usize;              // scope 4 at $DIR/issue-72181.rs:27:24: 27:25
         _7 = Len(_2);                    // scope 4 at $DIR/issue-72181.rs:27:22: 27:26
         _8 = Lt(_6, _7);                 // scope 4 at $DIR/issue-72181.rs:27:22: 27:26
-        assert(move _8, "index out of bounds: the len is {} but the index is {}", move _7, _6) -> [success: bb3, unwind: bb1]; // scope 4 at $DIR/issue-72181.rs:27:22: 27:26
+        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb3, unwind: bb1]; // scope 4 at $DIR/issue-72181.rs:27:22: 27:26
     }
 
     bb3: {
