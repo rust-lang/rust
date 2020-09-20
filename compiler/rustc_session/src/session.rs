@@ -1234,6 +1234,7 @@ pub fn build_session(
     diagnostics_output: DiagnosticOutput,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
+    target_override: Option<Target>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1253,7 +1254,7 @@ pub fn build_session(
         DiagnosticOutput::Raw(write) => Some(write),
     };
 
-    let target_cfg = config::build_target_config(&sopts, sopts.error_format);
+    let target_cfg = config::build_target_config(&sopts, target_override);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = Target::search(&host_triple).unwrap_or_else(|e| {
         early_error(sopts.error_format, &format!("Error loading host specification: {}", e))

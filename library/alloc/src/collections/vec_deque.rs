@@ -48,11 +48,11 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (core::mem::size_of::<usize>() * 8 - 1)
 /// so that its elements do not wrap, and returns a mutable slice to the
 /// now-contiguous element sequence.
 ///
-/// [`push_back`]: #method.push_back
-/// [`pop_front`]: #method.pop_front
-/// [`extend`]: #method.extend
-/// [`append`]: #method.append
-/// [`make_contiguous`]: #method.make_contiguous
+/// [`push_back`]: VecDeque::push_back
+/// [`pop_front`]: VecDeque::pop_front
+/// [`extend`]: VecDeque::extend
+/// [`append`]: VecDeque::append
+/// [`make_contiguous`]: VecDeque::make_contiguous
 #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
@@ -640,7 +640,7 @@ impl<T> VecDeque<T> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     ///
-    /// [`reserve`]: #method.reserve
+    /// [`reserve`]: VecDeque::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.reserve(additional);
@@ -987,8 +987,10 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     ///
-    /// If [`make_contiguous`](#method.make_contiguous) was previously called, all elements
-    /// of the `VecDeque` will be in the first slice and the second slice will be empty.
+    /// If [`make_contiguous`] was previously called, all elements of the
+    /// `VecDeque` will be in the first slice and the second slice will be empty.
+    ///
+    /// [`make_contiguous`]: VecDeque::make_contiguous
     ///
     /// # Examples
     ///
@@ -1020,8 +1022,10 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     ///
-    /// If [`make_contiguous`](#method.make_contiguous) was previously called, all elements
-    /// of the `VecDeque` will be in the first slice and the second slice will be empty.
+    /// If [`make_contiguous`] was previously called, all elements of the
+    /// `VecDeque` will be in the first slice and the second slice will be empty.
+    ///
+    /// [`make_contiguous`]: VecDeque::make_contiguous
     ///
     /// # Examples
     ///
@@ -2160,14 +2164,19 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Rearranges the internal storage of this deque so it is one contiguous slice, which is then returned.
+    /// Rearranges the internal storage of this deque so it is one contiguous
+    /// slice, which is then returned.
     ///
-    /// This method does not allocate and does not change the order of the inserted elements.
-    /// As it returns a mutable slice, this can be used to sort or binary search a deque.
+    /// This method does not allocate and does not change the order of the
+    /// inserted elements. As it returns a mutable slice, this can be used to
+    /// sort or binary search a deque.
     ///
-    /// Once the internal storage is contiguous, the [`as_slices`](#method.as_slices) and
-    /// [`as_mut_slices`](#method.as_mut_slices) methods will return the entire contents of the
+    /// Once the internal storage is contiguous, the [`as_slices`] and
+    /// [`as_mut_slices`] methods will return the entire contents of the
     /// `VecDeque` in a single slice.
+    ///
+    /// [`as_slices`]: VecDeque::as_slices
+    /// [`as_mut_slices`]: VecDeque::as_mut_slices
     ///
     /// # Examples
     ///
@@ -2495,8 +2504,7 @@ fn count(tail: usize, head: usize, size: usize) -> usize {
 /// This `struct` is created by the [`iter`] method on [`VecDeque`]. See its
 /// documentation for more.
 ///
-/// [`iter`]: struct.VecDeque.html#method.iter
-/// [`VecDeque`]: struct.VecDeque.html
+/// [`iter`]: VecDeque::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ring: &'a [T],
@@ -2650,8 +2658,7 @@ impl<T> FusedIterator for Iter<'_, T> {}
 /// This `struct` is created by the [`iter_mut`] method on [`VecDeque`]. See its
 /// documentation for more.
 ///
-/// [`iter_mut`]: struct.VecDeque.html#method.iter_mut
-/// [`VecDeque`]: struct.VecDeque.html
+/// [`iter_mut`]: VecDeque::iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ring: &'a mut [T],
@@ -2756,8 +2763,7 @@ impl<T> FusedIterator for IterMut<'_, T> {}
 /// This `struct` is created by the [`into_iter`] method on [`VecDeque`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`into_iter`]: struct.VecDeque.html#method.into_iter
-/// [`VecDeque`]: struct.VecDeque.html
+/// [`into_iter`]: VecDeque::into_iter
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {

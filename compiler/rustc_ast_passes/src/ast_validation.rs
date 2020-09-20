@@ -868,10 +868,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     .emit();
                 }
 
-                if !bounds
-                    .iter()
-                    .any(|b| if let GenericBound::Trait(..) = *b { true } else { false })
-                {
+                if !bounds.iter().any(|b| matches!(b, GenericBound::Trait(..))) {
                     self.err_handler().span_err(ty.span, "at least one trait must be specified");
                 }
 

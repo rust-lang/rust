@@ -447,14 +447,14 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// Make sure to call `set_alloc_id_memory` or `set_alloc_id_same_memory` before returning such
     /// an `AllocId` from a query.
-    pub fn reserve_alloc_id(&self) -> AllocId {
+    pub fn reserve_alloc_id(self) -> AllocId {
         self.alloc_map.lock().reserve()
     }
 
     /// Reserves a new ID *if* this allocation has not been dedup-reserved before.
     /// Should only be used for function pointers and statics, we don't want
     /// to dedup IDs for "real" memory!
-    fn reserve_and_set_dedup(&self, alloc: GlobalAlloc<'tcx>) -> AllocId {
+    fn reserve_and_set_dedup(self, alloc: GlobalAlloc<'tcx>) -> AllocId {
         let mut alloc_map = self.alloc_map.lock();
         match alloc {
             GlobalAlloc::Function(..) | GlobalAlloc::Static(..) => {}
@@ -472,13 +472,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Generates an `AllocId` for a static or return a cached one in case this function has been
     /// called on the same static before.
-    pub fn create_static_alloc(&self, static_id: DefId) -> AllocId {
+    pub fn create_static_alloc(self, static_id: DefId) -> AllocId {
         self.reserve_and_set_dedup(GlobalAlloc::Static(static_id))
     }
 
     /// Generates an `AllocId` for a function.  Depending on the function type,
     /// this might get deduplicated or assigned a new ID each time.
-    pub fn create_fn_alloc(&self, instance: Instance<'tcx>) -> AllocId {
+    pub fn create_fn_alloc(self, instance: Instance<'tcx>) -> AllocId {
         // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
         // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
         // duplicated across crates.
@@ -507,7 +507,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Statics with identical content will still point to the same `Allocation`, i.e.,
     /// their data will be deduplicated through `Allocation` interning -- but they
     /// are different places in memory and as such need different IDs.
-    pub fn create_memory_alloc(&self, mem: &'tcx Allocation) -> AllocId {
+    pub fn create_memory_alloc(self, mem: &'tcx Allocation) -> AllocId {
         let id = self.reserve_alloc_id();
         self.set_alloc_id_memory(id, mem);
         id
@@ -519,7 +519,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This function exists to allow const eval to detect the difference between evaluation-
     /// local dangling pointers and allocations in constants/statics.
     #[inline]
-    pub fn get_global_alloc(&self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
+    pub fn get_global_alloc(self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
         self.alloc_map.lock().alloc_map.get(&id).cloned()
     }
 
@@ -529,7 +529,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// constants (as all constants must pass interning and validation that check for dangling
     /// ids), this function is frequently used throughout rustc, but should not be used within
     /// the miri engine.
-    pub fn global_alloc(&self, id: AllocId) -> GlobalAlloc<'tcx> {
+    pub fn global_alloc(self, id: AllocId) -> GlobalAlloc<'tcx> {
         match self.get_global_alloc(id) {
             Some(alloc) => alloc,
             None => bug!("could not find allocation for {}", id),
@@ -538,7 +538,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
-    pub fn set_alloc_id_memory(&self, id: AllocId, mem: &'tcx Allocation) {
+    pub fn set_alloc_id_memory(self, id: AllocId, mem: &'tcx Allocation) {
         if let Some(old) = self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
             bug!("tried to set allocation ID {}, but it was already existing as {:#?}", id, old);
         }
@@ -546,7 +546,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
-    fn set_alloc_id_same_memory(&self, id: AllocId, mem: &'tcx Allocation) {
+    fn set_alloc_id_same_memory(self, id: AllocId, mem: &'tcx Allocation) {
         self.alloc_map.lock().alloc_map.insert_same(id, GlobalAlloc::Memory(mem));
     }
 }

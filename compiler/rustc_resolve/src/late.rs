@@ -1034,7 +1034,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             let mut add_bindings_for_ns = |ns| {
                 let parent_rib = self.ribs[ns]
                     .iter()
-                    .rfind(|r| if let ItemRibKind(_) = r.kind { true } else { false })
+                    .rfind(|r| matches!(r.kind, ItemRibKind(_)))
                     .expect("associated item outside of an item");
                 seen_bindings
                     .extend(parent_rib.bindings.iter().map(|(ident, _)| (*ident, ident.span)));

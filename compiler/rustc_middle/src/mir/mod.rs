@@ -1077,6 +1077,25 @@ pub struct VarDebugInfo<'tcx> {
 // BasicBlock
 
 rustc_index::newtype_index! {
+    /// A node in the MIR [control-flow graph][CFG].
+    ///
+    /// There are no branches (e.g., `if`s, function calls, etc.) within a basic block, which makes
+    /// it easier to do [data-flow analyses] and optimizations. Instead, branches are represented
+    /// as an edge in a graph between basic blocks.
+    ///
+    /// Basic blocks consist of a series of [statements][Statement], ending with a
+    /// [terminator][Terminator]. Basic blocks can have multiple predecessors and successors,
+    /// however there is a MIR pass ([`CriticalCallEdges`]) that removes *critical edges*, which
+    /// are edges that go from a multi-successor node to a multi-predecessor node. This pass is
+    /// needed because some analyses require that there are no critical edges in the CFG.
+    ///
+    /// Read more about basic blocks in the [rustc-dev-guide][guide-mir].
+    ///
+    /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
+    /// [data-flow analyses]:
+    ///     https://rustc-dev-guide.rust-lang.org/appendix/background.html#what-is-a-dataflow-analysis
+    /// [`CriticalCallEdges`]: ../../rustc_mir/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
+    /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
     pub struct BasicBlock {
         derive [HashStable]
         DEBUG_FORMAT = "bb{}",
@@ -1093,6 +1112,7 @@ impl BasicBlock {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
 
+/// See [`BasicBlock`] for documentation on what basic blocks are at a high level.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.

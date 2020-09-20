@@ -1071,6 +1071,7 @@ extern "rust-intrinsic" {
     // NOTE: While this makes the intrinsic const stable, we have some custom code in const fn
     // checks that prevent its use within `const fn`.
     #[rustc_const_stable(feature = "const_transmute", since = "1.46.0")]
+    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "transmute")]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop
