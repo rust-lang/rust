@@ -916,7 +916,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(io_input_prompt)]
+/// #![feature(io_input)]
 /// use std::io;
 ///
 /// fn main() -> io::Result<()> {
