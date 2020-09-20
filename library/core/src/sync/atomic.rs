@@ -110,6 +110,8 @@ use self::Ordering::*;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::intrinsics;
+
+#[allow(unused_imports)]
 use crate::mem::align_of;
 
 use crate::hint::spin_loop;
@@ -342,6 +344,7 @@ impl AtomicBool {
     /// assert_eq!(some_bool, false);
     /// ```
     #[inline]
+    #[cfg(target_has_atomic_equal_alignment = "8")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut bool) -> &Self {
         // SAFETY: the mutable reference guarantees unique ownership, and
@@ -855,6 +858,7 @@ impl<T> AtomicPtr<T> {
     /// assert_eq!(unsafe { *some_ptr }, 456);
     /// ```
     #[inline]
+    #[cfg(target_has_atomic_equal_alignment = "ptr")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut *mut T) -> &Self {
         let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
@@ -1159,6 +1163,7 @@ macro_rules! if_not_8_bit {
 #[cfg(target_has_atomic_load_store = "8")]
 macro_rules! atomic_int {
     ($cfg_cas:meta,
+     $cfg_align:meta,
      $stable:meta,
      $stable_cxchg:meta,
      $stable_debug:meta,
@@ -1167,7 +1172,6 @@ macro_rules! atomic_int {
      $stable_nand:meta,
      $const_stable:meta,
      $stable_init_const:meta,
-     $(from_mut: cfg($from_mut_cfg:meta),)?
      $s_int_type:literal, $int_ref:expr,
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
@@ -1304,15 +1308,14 @@ assert_eq!(some_int, 100);
 ```
                 "),
                 #[inline]
-                $(#[cfg($from_mut_cfg)])?
+                #[$cfg_align]
                 #[unstable(feature = "atomic_from_mut", issue = "76314")]
                 pub fn from_mut(v: &mut $int_type) -> &Self {
                     let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
                     // SAFETY:
                     //  - the mutable reference guarantees unique ownership.
                     //  - the alignment of `$int_type` and `Self` is the
-                    //    same on all platforms enabled by `$from_mut_cfg`
-                    //    as verified above.
+                    //    same, as promised by $cfg_align and verified above.
                     unsafe { &*(v as *mut $int_type as *mut Self) }
                 }
             }
@@ -1959,6 +1962,7 @@ let mut atomic = ", stringify!($atomic_type), "::new(1);
 #[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
     cfg(target_has_atomic = "8"),
+    cfg(target_has_atomic_equal_alignment = "8"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -1977,6 +1981,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
     cfg(target_has_atomic = "8"),
+    cfg(target_has_atomic_equal_alignment = "8"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -1995,6 +2000,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
     cfg(target_has_atomic = "16"),
+    cfg(target_has_atomic_equal_alignment = "16"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -2013,6 +2019,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
     cfg(target_has_atomic = "16"),
+    cfg(target_has_atomic_equal_alignment = "16"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -2031,6 +2038,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
     cfg(target_has_atomic = "32"),
+    cfg(target_has_atomic_equal_alignment = "32"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -2049,6 +2057,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
     cfg(target_has_atomic = "32"),
+    cfg(target_has_atomic_equal_alignment = "32"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -2067,6 +2076,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
     cfg(target_has_atomic = "64"),
+    cfg(target_has_atomic_equal_alignment = "64"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -2075,7 +2085,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    from_mut: cfg(not(target_arch = "x86")),
     "i64", "../../../std/primitive.i64.html",
     "",
     atomic_min, atomic_max,
@@ -2086,6 +2095,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
     cfg(target_has_atomic = "64"),
+    cfg(target_has_atomic_equal_alignment = "64"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -2094,7 +2104,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    from_mut: cfg(not(target_arch = "x86")),
     "u64", "../../../std/primitive.u64.html",
     "",
     atomic_umin, atomic_umax,
@@ -2105,6 +2114,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "128")]
 atomic_int! {
     cfg(target_has_atomic = "128"),
+    cfg(target_has_atomic_equal_alignment = "128"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -2113,7 +2123,6 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    from_mut: cfg(not(target_arch = "x86_64")),
     "i128", "../../../std/primitive.i128.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -2124,6 +2133,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "128")]
 atomic_int! {
     cfg(target_has_atomic = "128"),
+    cfg(target_has_atomic_equal_alignment = "128"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -2132,7 +2142,6 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    from_mut: cfg(not(target_arch = "x86_64")),
     "u128", "../../../std/primitive.u128.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
@@ -2164,6 +2173,7 @@ macro_rules! ptr_width {
 #[cfg(target_has_atomic_load_store = "ptr")]
 atomic_int! {
     cfg(target_has_atomic = "ptr"),
+    cfg(target_has_atomic_equal_alignment = "ptr"),
     stable(feature = "rust1", since = "1.0.0"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
@@ -2182,6 +2192,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "ptr")]
 atomic_int! {
     cfg(target_has_atomic = "ptr"),
+    cfg(target_has_atomic_equal_alignment = "ptr"),
     stable(feature = "rust1", since = "1.0.0"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
