@@ -72,7 +72,7 @@ Points of note:
 * Trivia and non-trivia tokens are not distinguished on the type level.
 * Each token carries its full text.
 * The original text can be recovered by concatenating the texts of all tokens in order.
-* Accessing a child of particular type (for example, parameter list of a function) generally involves linear traversing the children, looking for a specific `kind`.
+* Accessing a child of particular type (for example, parameter list of a function) generally involves linearly traversing the children, looking for a specific `kind`.
 * Modifying the tree is roughly `O(depth)`.
   We don't make special efforts to guarantee that the depth is not linear, but, in practice, syntax trees are branchy and shallow.
 * If mandatory (grammar wise) node is missing from the input, it's just missing from the tree.
