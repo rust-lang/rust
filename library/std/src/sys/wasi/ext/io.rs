@@ -71,7 +71,6 @@ impl FromRawFd for RawFd {
     }
 }
 
-
 impl AsRawFd for net::TcpStream {
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().as_raw()
