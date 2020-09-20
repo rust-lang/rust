@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// pub fn get_cool_number(a: bool, b: bool) -> Option<i32> {
+    /// fn get_cool_number(a: bool, b: bool) -> Option<i32> {
     ///     if a && b {
     ///         return Some(50);
     ///     }
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
-    /// pub fn get_cool_number(a: bool, b: bool) -> i32 {
+    /// fn get_cool_number(a: bool, b: bool) -> i32 {
     ///     if a && b {
     ///         return 50;
     ///     }
