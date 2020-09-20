@@ -98,6 +98,7 @@ fn main() {
 
     issue5504();
     issue5697();
+    issue6067();
 
     let _ = if let Some(_) = gen_opt() {
         1
@@ -152,21 +153,36 @@ fn issue5504() {
 // None of these should be linted because none of the suggested methods
 // are `const fn` without toggling a feature.
 const fn issue5697() {
-    if let Ok(_) = Ok::<i32, i32>(42) {}
-
-    if let Err(_) = Err::<i32, i32>(42) {}
-
     if let Some(_) = Some(42) {}
 
     if let None = None::<()> {}
 
-    while let Ok(_) = Ok::<i32, i32>(10) {}
-
-    while let Err(_) = Ok::<i32, i32>(10) {}
-
     while let Some(_) = Some(42) {}
 
     while let None = None::<()> {}
+
+    match Some(42) {
+        Some(_) => true,
+        None => false,
+    };
+
+    match None::<()> {
+        Some(_) => false,
+        None => true,
+    };
+}
+
+// Methods that are unstable const should not be suggested within a const context, see issue #5697.
+// However, in Rust 1.48.0 the methods `is_ok` and `is_err` of `Result` were stabilized as const,
+// so the following should be linted.
+const fn issue6067() {
+    if let Ok(_) = Ok::<i32, i32>(42) {}
+
+    if let Err(_) = Err::<i32, i32>(42) {}
+
+    while let Ok(_) = Ok::<i32, i32>(10) {}
+
+    while let Err(_) = Ok::<i32, i32>(10) {}
 
     match Ok::<i32, i32>(42) {
         Ok(_) => true,
@@ -176,14 +192,5 @@ const fn issue5697() {
     match Err::<i32, i32>(42) {
         Ok(_) => false,
         Err(_) => true,
-    };
-    match Some(42) {
-        Some(_) => true,
-        None => false,
-    };
-
-    match None::<()> {
-        Some(_) => false,
-        None => true,
     };
 }

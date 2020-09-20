@@ -304,3 +304,19 @@ fn test_result_as_deref_mut() {
     let expected_result = Result::Err::<&mut u32, &mut Vec<i32>>(&mut expected_vec);
     assert_eq!(mut_err.as_deref_mut(), expected_result);
 }
+
+#[test]
+fn result_const() {
+    // test that the methods of `Result` are usable in a const context
+
+    const RESULT: Result<usize, bool> = Ok(32);
+
+    const REF: Result<&usize, &bool> = RESULT.as_ref();
+    assert_eq!(REF, Ok(&32));
+
+    const IS_OK: bool = RESULT.is_ok();
+    assert!(IS_OK);
+
+    const IS_ERR: bool = RESULT.is_err();
+    assert!(!IS_ERR)
+}
