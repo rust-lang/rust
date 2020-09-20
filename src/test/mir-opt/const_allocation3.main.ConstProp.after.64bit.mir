@@ -24,10 +24,10 @@ fn main() -> () {
 }
 
 alloc0 (static: FOO, size: 8, align: 8) {
-    ╾───────alloc9────────╼                         │ ╾──────╼
+    ╾───────alloc3────────╼                         │ ╾──────╼
 }
 
-alloc9 (size: 180, align: 1) {
+alloc3 (size: 180, align: 1) {
     0x00 │ ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab │ ................
     0x10 │ ab ab ab ab ab ab ab ab ab ab ab ab ╾──alloc4── │ ............╾───
     0x20 │ ──────────╼ 01 ef cd ab 00 00 00 00 00 00 00 00 │ ───╼............

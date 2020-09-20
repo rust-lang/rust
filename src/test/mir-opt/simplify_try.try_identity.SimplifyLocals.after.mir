@@ -1,13 +1,13 @@
 // MIR for `try_identity` after SimplifyLocals
 
 fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i32> {
-    debug x => _1;                       // in scope 0 at $DIR/simplify_try.rs:5:17: 5:18
-    let mut _0: std::result::Result<u32, i32>; // return place in scope 0 at $DIR/simplify_try.rs:5:41: 5:57
+    debug x => _1;                       // in scope 0 at $DIR/simplify_try.rs:6:17: 6:18
+    let mut _0: std::result::Result<u32, i32>; // return place in scope 0 at $DIR/simplify_try.rs:6:41: 6:57
     scope 1 {
-        debug y => ((_0 as Ok).0: u32);  // in scope 1 at $DIR/simplify_try.rs:6:9: 6:10
+        debug y => ((_0 as Ok).0: u32);  // in scope 1 at $DIR/simplify_try.rs:7:9: 7:10
     }
     scope 2 {
-        debug err => ((_0 as Err).0: i32); // in scope 2 at $DIR/simplify_try.rs:6:14: 6:15
+        debug err => ((_0 as Err).0: i32); // in scope 2 at $DIR/simplify_try.rs:7:14: 7:15
         scope 3 {
             scope 7 {
                 debug t => ((_0 as Err).0: i32); // in scope 7 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
@@ -18,16 +18,16 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
         }
     }
     scope 4 {
-        debug val => ((_0 as Ok).0: u32); // in scope 4 at $DIR/simplify_try.rs:6:13: 6:15
+        debug val => ((_0 as Ok).0: u32); // in scope 4 at $DIR/simplify_try.rs:7:13: 7:15
         scope 5 {
         }
     }
     scope 6 {
-        debug self => _1;                // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
+        debug self => _0;                // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
     }
 
     bb0: {
-        _0 = move _1;                    // scope 1 at $DIR/simplify_try.rs:7:5: 7:10
-        return;                          // scope 0 at $DIR/simplify_try.rs:8:2: 8:2
+        _0 = _1;                         // scope 0 at $DIR/simplify_try.rs:7:13: 7:14
+        return;                          // scope 0 at $DIR/simplify_try.rs:9:2: 9:2
     }
 }
