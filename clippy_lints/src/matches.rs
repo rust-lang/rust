@@ -502,7 +502,7 @@ impl_lint_pass!(Matches => [
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span) || in_macro(expr.span) {
             return;
         }
 
