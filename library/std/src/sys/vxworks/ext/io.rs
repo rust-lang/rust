@@ -82,7 +82,6 @@ impl FromRawFd for RawFd {
     }
 }
 
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for fs::File {
     fn as_raw_fd(&self) -> RawFd {
