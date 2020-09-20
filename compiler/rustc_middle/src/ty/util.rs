@@ -170,9 +170,7 @@ impl<'tcx> TyCtxt<'tcx> {
         });
         hasher.finish()
     }
-}
 
-impl<'tcx> TyCtxt<'tcx> {
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
         if let ty::Adt(def, substs) = *ty.kind() {
             for field in def.all_fields() {
@@ -526,22 +524,22 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.
-    pub fn is_static(&self, def_id: DefId) -> bool {
+    pub fn is_static(self, def_id: DefId) -> bool {
         self.static_mutability(def_id).is_some()
     }
 
     /// Returns `true` if this is a `static` item with the `#[thread_local]` attribute.
-    pub fn is_thread_local_static(&self, def_id: DefId) -> bool {
+    pub fn is_thread_local_static(self, def_id: DefId) -> bool {
         self.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
-    pub fn is_mutable_static(&self, def_id: DefId) -> bool {
+    pub fn is_mutable_static(self, def_id: DefId) -> bool {
         self.static_mutability(def_id) == Some(hir::Mutability::Mut)
     }
 
     /// Get the type of the pointer to the static that we use in MIR.
-    pub fn static_ptr_ty(&self, def_id: DefId) -> Ty<'tcx> {
+    pub fn static_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
         // Make sure that any constants in the static's type are evaluated.
         let static_ty = self.normalize_erasing_regions(ty::ParamEnv::empty(), self.type_of(def_id));
 
