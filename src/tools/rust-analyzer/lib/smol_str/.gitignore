@@ -1,2 +1,3 @@
-target/
+/target
+/ci
 Cargo.lock

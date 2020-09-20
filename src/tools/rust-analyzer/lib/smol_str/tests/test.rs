@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate proptest;
+use proptest::{prop_assert, prop_assert_eq, proptest};
 
 use smol_str::SmolStr;
 
@@ -27,6 +26,20 @@ fn conversions() {
 
 #[test]
 fn const_fn_ctor() {
+    const EMPTY: SmolStr = SmolStr::new_inline("");
+    const A: SmolStr = SmolStr::new_inline("A");
+    const HELLO: SmolStr = SmolStr::new_inline("HELLO");
+    const LONG: SmolStr = SmolStr::new_inline("ABCDEFGHIZKLMNOPQRSTUV");
+
+    assert_eq!(EMPTY, SmolStr::from(""));
+    assert_eq!(A, SmolStr::from("A"));
+    assert_eq!(HELLO, SmolStr::from("HELLO"));
+    assert_eq!(LONG, SmolStr::from("ABCDEFGHIZKLMNOPQRSTUV"));
+}
+
+#[allow(deprecated)]
+#[test]
+fn old_const_fn_ctor() {
     const EMPTY: SmolStr = SmolStr::new_inline_from_ascii(0, b"");
     const A: SmolStr = SmolStr::new_inline_from_ascii(1, b"A");
     const HELLO: SmolStr = SmolStr::new_inline_from_ascii(5, b"HELLO");
