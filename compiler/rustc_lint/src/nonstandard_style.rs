@@ -70,9 +70,9 @@ fn is_camel_case(name: &str) -> bool {
     // ones (some scripts don't have a concept of upper/lowercase)
     !name.chars().next().unwrap().is_lowercase()
         && !name.contains("__")
-        && !name.chars().collect::<Vec<_>>().windows(2).any(|pair| {
+        && !name.chars().collect::<Vec<_>>().array_windows().any(|&[fst, snd]| {
             // contains a capitalisable character followed by, or preceded by, an underscore
-            char_has_case(pair[0]) && pair[1] == '_' || char_has_case(pair[1]) && pair[0] == '_'
+            char_has_case(fst) && snd == '_' || char_has_case(snd) && fst == '_'
         })
 }
 
