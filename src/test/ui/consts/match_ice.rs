@@ -8,8 +8,10 @@ struct T;
 fn main() {
     const C: &S = &S;
     match C {
+        //~^ non-exhaustive patterns: `&S` not covered
         C => {}
-        //~^ ERROR to use a constant of type `S` in a pattern, `S` must be annotated with
+        //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
+        //~| WARN was previously accepted by the compiler
     }
     const K: &T = &T;
     match K {

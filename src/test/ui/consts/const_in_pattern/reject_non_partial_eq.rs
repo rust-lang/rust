@@ -27,6 +27,7 @@ fn main() {
     match None {
         NO_PARTIAL_EQ_NONE => println!("NO_PARTIAL_EQ_NONE"),
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~| ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         _ => panic!("whoops"),
     }
 }

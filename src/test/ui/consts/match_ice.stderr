@@ -1,8 +1,25 @@
-error: to use a constant of type `S` in a pattern, `S` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/match_ice.rs:11:9
+warning: to use a constant of type `&S` in a pattern, the constant's initializer must be trivial or all types in the constant must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/match_ice.rs:12:9
    |
 LL |         C => {}
    |         ^
+   |
+   = note: `#[warn(nontrivial_structural_match)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
 
-error: aborting due to previous error
+error[E0004]: non-exhaustive patterns: `&S` not covered
+  --> $DIR/match_ice.rs:10:11
+   |
+LL | struct S;
+   | --------- `S` defined here
+...
+LL |     match C {
+   |           ^ pattern `&S` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&S`
 
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0004`.

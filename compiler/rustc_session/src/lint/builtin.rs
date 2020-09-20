@@ -2138,22 +2138,16 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(indirect_structural_match)]
     ///
-    /// struct Plus(i32, i32);
-    /// const ONE_PLUS_TWO: &&Plus = &&Plus(1, 2);
-    ///
-    /// impl PartialEq for Plus {
-    ///     fn eq(&self, other: &Self) -> bool {
-    ///         self.0 + self.1 == other.0 + other.1
-    ///     }
-    /// }
-    ///
-    /// impl Eq for Plus {}
-    ///
+    /// struct NoDerive(i32);
+    /// impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
+    /// impl Eq for NoDerive { }
+    /// #[derive(PartialEq, Eq)]
+    /// struct WrapParam<T>(T);
+    /// const WRAP_INDIRECT_PARAM: & &WrapParam<NoDerive> = & &WrapParam(NoDerive(0));
     /// fn main() {
-    ///     if let ONE_PLUS_TWO = &&Plus(3, 0) {
-    ///         println!("semantic!");
-    ///     } else {
-    ///         println!("structural!");
+    ///     match WRAP_INDIRECT_PARAM {
+    ///         WRAP_INDIRECT_PARAM => { }
+    ///         _ => { }
     ///     }
     /// }
     /// ```
@@ -2170,9 +2164,8 @@ declare_lint! {
     /// [issue #62411]: https://github.com/rust-lang/rust/issues/62411
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub INDIRECT_STRUCTURAL_MATCH,
-    // defaulting to allow until rust-lang/rust#62614 is fixed.
-    Allow,
-    "pattern with const indirectly referencing non-structural-match type",
+    Warn,
+    "constant used in pattern contains value of non-structural-match type in a field or a variant",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
         edition: None,
@@ -2219,6 +2212,46 @@ declare_lint! {
     "pointers are not structural-match",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #62411 <https://github.com/rust-lang/rust/issues/70861>",
+        edition: None,
+    };
+}
+
+declare_lint! {
+    /// The `nontrivial_structural_match` lint detects constants that are used in patterns,
+    /// whose type is not structural-match and whose initializer body actually uses values
+    /// that are not structural-match. So `Option<NotStruturalMatch>` is ok if the constant
+    /// is just `None`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(nontrivial_structural_match)]
+    ///
+    /// struct Plus(i32, i32);
+    /// const ONE_PLUS_TWO: &&Plus = &&Plus(1, 2);
+    ///
+    /// impl PartialEq for Plus {
+    ///     fn eq(&self, other: &Self) -> bool {
+    ///         self.0 + self.1 == other.0 + other.1
+    ///     }
+    /// }
+    ///
+    /// impl Eq for Plus {}
+    ///
+    /// fn main() {
+    ///     if let ONE_PLUS_TWO = &&Plus(3, 0) {
+    ///         println!("semantic!");
+    ///     } else {
+    ///         println!("structural!");
+    ///     }
+    /// }
+    /// ```
+    pub NONTRIVIAL_STRUCTURAL_MATCH,
+    Warn,
+    "constant used in pattern of non-structural-match type and the constant's initializer \
+    expression contains values of non-structural-match types",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #73448 <https://github.com/rust-lang/rust/issues/73448>",
         edition: None,
     };
 }
@@ -2657,6 +2690,7 @@ declare_lint_pass! {
         MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
         POINTER_STRUCTURAL_MATCH,
+        NONTRIVIAL_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
         INLINE_NO_SANITIZE,
         ASM_SUB_REGISTER,
