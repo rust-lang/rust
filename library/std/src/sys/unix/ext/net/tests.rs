@@ -566,7 +566,6 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     target_os = "linux",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_env = "uclibc",
 ))]
 #[test]
 fn test_send_vectored_with_ancillary_unix_datagram() {

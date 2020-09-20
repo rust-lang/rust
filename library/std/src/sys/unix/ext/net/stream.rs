@@ -24,7 +24,6 @@ use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
     target_os = "linux",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_env = "uclibc",
 ))]
 use crate::sys::unix::ext::net::ancillary::{
     recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary,
@@ -536,7 +535,6 @@ impl UnixStream {
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
-        target_env = "uclibc",
     ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn recv_vectored_with_ancillary(
@@ -586,7 +584,6 @@ impl UnixStream {
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
-        target_env = "uclibc",
     ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary(
