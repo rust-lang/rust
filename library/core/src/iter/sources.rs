@@ -5,7 +5,7 @@ use super::{FusedIterator, TrustedLen};
 
 /// An iterator that repeats an element endlessly.
 ///
-/// This `struct` is created by [`repeat`].
+/// This `struct` is created by [`iter::repeat`].
 /// See its documentation for more.
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -101,7 +101,7 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 /// An iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure `F: FnMut() -> A`.
 ///
-/// This `struct` is created by [`repeat_with`].
+/// This `struct` is created by [`iter::repeat_with`].
 /// See its documentation for more.
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
@@ -198,7 +198,7 @@ pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
 
 /// An iterator that yields nothing.
 ///
-/// This `struct` is created by [`empty`].
+/// This `struct` is created by [`iter::empty`].
 /// See its documentation for more.
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
@@ -288,7 +288,7 @@ pub const fn empty<T>() -> Empty<T> {
 
 /// An iterator that yields an element exactly once.
 ///
-/// This `struct` is created by [`once`].
+/// This `struct` is created by [`iter::once`].
 /// See its documentation for more.
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
@@ -388,7 +388,7 @@ pub fn once<T>(value: T) -> Once<T> {
 /// An iterator that yields a single element of type `A` by
 /// applying the provided closure `F: FnOnce() -> A`.
 ///
-/// This `struct` is created by [`once_with`].
+/// This `struct` is created by [`iter::once_with`].
 /// See its documentation for more.
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once_with", since = "1.43.0")]
@@ -542,7 +542,7 @@ where
 
 /// An iterator where each iteration calls the provided closure `F: FnMut() -> Option<T>`.
 ///
-/// This `struct` is created by [`from_fn`].
+/// This `struct` is created by [`iter::from_fn`].
 /// See its documentation for more.
 #[derive(Clone)]
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
@@ -592,7 +592,7 @@ where
 
 /// An new iterator where each successive item is computed based on the preceding one.
 ///
-/// This `struct` is created by [`successors`].
+/// This `struct` is created by [`iter::successors`].
 /// See its documentation for more.
 #[derive(Clone)]
 #[stable(feature = "iter_successors", since = "1.34.0")]
