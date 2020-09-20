@@ -80,10 +80,7 @@ error: unresolved link to `u8::not_found`
   --> $DIR/intra-link-errors.rs:55:6
    |
 LL | /// [u8::not_found]
-   |      ^^^^^^^^^^^^^
-   |      |
-   |      the builtin type `u8` does not have an associated item named `not_found`
-   |      the builtin type `u8` has no builtin type named `not_found`
+   |      ^^^^^^^^^^^^^ the builtin type `u8` does not have an associated item named `not_found`
 
 error: unresolved link to `S`
   --> $DIR/intra-link-errors.rs:59:6

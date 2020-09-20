@@ -273,13 +273,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     return handle_variant(cx, res, extra_fragment);
                 }
                 // Not a trait item; just return what we found.
-                Res::PrimTy(..) => {
+                Res::PrimTy(ty) => {
                     if extra_fragment.is_some() {
                         return Err(ErrorKind::AnchorFailure(
                             AnchorFailure::RustdocAnchorConflict(res),
                         ));
                     }
-                    return Ok((res, Some(path_str.to_owned())));
+                    return Ok((res, Some(ty.name_str().to_owned())));
                 }
                 Res::Def(DefKind::Mod, _) => {
                     return Ok((res, extra_fragment.clone()));
@@ -292,6 +292,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             if value != (ns == ValueNS) {
                 return Err(ResolutionFailure::WrongNamespace(res, ns).into());
             }
+        // FIXME: why is this necessary?
         } else if let Some((path, prim)) = is_primitive(path_str, ns) {
             if extra_fragment.is_some() {
                 return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(prim)));
@@ -1008,12 +1009,12 @@ impl LinkCollector<'_, '_> {
                 suggest_disambiguator(resolved, diag, path_str, dox, sp, &link_range);
             });
         };
-        if let Res::PrimTy(_) = res {
+        if let Res::PrimTy(ty) = res {
             match disambiguator {
                 Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
                     item.attrs.links.push(ItemLink {
                         link: ori_link,
-                        link_text: path_str.to_owned(),
+                        link_text,
                         did: None,
                         fragment,
                     });
@@ -1488,6 +1489,10 @@ fn resolution_failure(
     link_range: Option<Range<usize>>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
 ) {
+    let has_primitive = kinds.iter().any(|err|
+        matches!(err, ResolutionFailure::NoPrimitiveAssocItem{..} | ResolutionFailure::NoPrimitiveImpl(_, _))
+    );
+
     report_diagnostic(
         collector.cx,
         &format!("unresolved link to `{}`", path_str),
@@ -1528,6 +1533,7 @@ fn resolution_failure(
 
                     let module_id = *module_id;
                     // FIXME(jynelson): this might conflict with my `Self` fix in #76467
+                    // FIXME: use itertools `collect_tuple` instead
                     fn split(path: &str) -> Option<(&str, &str)> {
                         let mut splitter = path.rsplitn(2, "::");
                         splitter.next().and_then(|right| splitter.next().map(|left| (left, right)))
@@ -1567,7 +1573,6 @@ fn resolution_failure(
                     };
                     // See if this was a module: `[path]` or `[std::io::nope]`
                     if let Some(module) = last_found_module {
-                        // NOTE: uses an explicit `continue` so the `note:` will come before the `help:`
                         let module_name = collector.cx.tcx.item_name(module);
                         let note = format!(
                             "the module `{}` contains no item named `{}`",
@@ -1595,7 +1600,10 @@ fn resolution_failure(
                             diagnostic_name = collector.cx.tcx.item_name(def_id).as_str();
                             (Some(kind), &*diagnostic_name)
                         }
-                        Res::PrimTy(_) => (None, name),
+                        Res::PrimTy(_) => {
+                            assert!(has_primitive);
+                            continue;
+                        }
                         _ => unreachable!("only ADTs and primitives are in scope at module level"),
                     };
                     let path_description = if let Some(kind) = kind {
