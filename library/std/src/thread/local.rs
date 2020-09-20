@@ -288,13 +288,15 @@ mod lazy {
         }
 
         pub unsafe fn get(&self) -> Option<&'static T> {
-            // SAFETY: No reference is ever handed out to the inner cell nor
-            // mutable reference to the Option<T> inside said cell. This make it
-            // safe to hand a reference, though the lifetime of 'static
-            // is itself unsafe, making the get method unsafe.
+            // SAFETY: The caller must ensure no reference is ever handed out to
+            // the inner cell nor mutable reference to the Option<T> inside said
+            // cell. This make it safe to hand a reference, though the lifetime
+            // of 'static is itself unsafe, making the get method unsafe.
             unsafe { (*self.inner.get()).as_ref() }
         }
 
+        /// The caller must ensure that no reference is active: this method
+        /// needs unique access.
         pub unsafe fn initialize<F: FnOnce() -> T>(&self, init: F) -> &'static T {
             // Execute the initialization up front, *then* move it into our slot,
             // just in case initialization fails.
@@ -316,20 +318,13 @@ mod lazy {
             // destructor" flag we just use `mem::replace` which should sequence the
             // operations a little differently and make this safe to call.
             //
-            // `ptr` can be dereferenced safely since it was obtained from
-            // `UnsafeCell::get`, which should not return a non-aligned or NUL pointer.
-            // What's more a `LazyKeyInner` can only be created with `new`, which ensures
-            // `inner` is correctly initialized and all calls to methods on `LazyKeyInner`
-            // will leave `inner` initialized too.
+            // The precondition also ensures that we are the only one accessing
+            // `self` at the moment so replacing is fine.
             unsafe {
                 let _ = mem::replace(&mut *ptr, Some(value));
             }
 
-            // SAFETY: the `*ptr` operation is made safe by the `mem::replace`
-            // call above combined with `ptr` being correct from the beginning
-            // (see previous SAFETY: comment above).
-            //
-            // Plus, with the call to `mem::replace` it is guaranteed there is
+            // SAFETY: With the call to `mem::replace` it is guaranteed there is
             // a `Some` behind `ptr`, not a `None` so `unreachable_unchecked`
             // will never be reached.
             unsafe {
@@ -345,11 +340,12 @@ mod lazy {
             }
         }
 
+        /// The other methods hand out references while taking &self.
+        /// As such, callers of this method must ensure no `&` and `&mut` are
+        /// available and used at the same time.
         #[allow(unused)]
         pub unsafe fn take(&mut self) -> Option<T> {
-            // SAFETY: The other methods hand out references while taking &self.
-            // As such, callers of this method must ensure no `&` and `&mut` are
-            // available and used at the same time.
+            // SAFETY: See doc comment for this method.
             unsafe { (*self.inner.get()).take() }
         }
     }
@@ -442,9 +438,10 @@ pub mod fast {
             // SAFETY: See the definitions of `LazyKeyInner::get` and
             // `try_initialize` for more informations.
             //
-            // The call to `get` is made safe because no mutable references are
-            // ever handed out and the `try_initialize` is dependant on the
-            // passed `init` function.
+            // The caller must ensure no mutable references are ever active to
+            // the inner cell or the inner T when this is called.
+            // The `try_initialize` is dependant on the passed `init` function
+            // for this.
             unsafe {
                 match self.inner.get() {
                     Some(val) => Some(val),
@@ -549,9 +546,10 @@ pub mod os {
             Key { os: OsStaticKey::new(Some(destroy_value::<T>)), marker: marker::PhantomData }
         }
 
+        /// It is a requirement for the caller to ensure that no mutable
+        /// reference is active when this method is called.
         pub unsafe fn get(&'static self, init: fn() -> T) -> Option<&'static T> {
-            // SAFETY: No mutable references are ever handed out meaning getting
-            // the value is ok.
+            // SAFETY: See the documentation for this method.
             let ptr = unsafe { self.os.get() as *mut Value<T> };
             if ptr as usize > 1 {
                 // SAFETY: the check ensured the pointer is safe (its destructor
