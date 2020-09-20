@@ -929,14 +929,14 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// The returned pointer points to the inserted value.
     fn insert(mut self, key: K, val: V) -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {
         if self.node.len() < CAPACITY {
-            let ptr = self.insert_fit(key, val);
+            let val_ptr = self.insert_fit(key, val);
             let kv = unsafe { Handle::new_kv(self.node, self.idx) };
-            (InsertResult::Fit(kv), ptr)
+            (InsertResult::Fit(kv), val_ptr)
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let (mut left, k, v, mut right) = middle.split();
-            let ptr = match insertion {
+            let val_ptr = match insertion {
                 InsertionPlace::Left(insert_idx) => unsafe {
                     Handle::new_edge(left.reborrow_mut(), insert_idx).insert_fit(key, val)
                 },
@@ -948,7 +948,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                     .insert_fit(key, val)
                 },
             };
-            (InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right }), ptr)
+            (InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right }), val_ptr)
         }
     }
 }
