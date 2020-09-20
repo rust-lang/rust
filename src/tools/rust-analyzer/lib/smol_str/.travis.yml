@@ -1,4 +1,0 @@
-language: rust
-
-script:
-  - cargo test --all-features
