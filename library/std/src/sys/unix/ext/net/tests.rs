@@ -559,7 +559,7 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
 }
 
 #[cfg(any(
-    doc,
+    test,
     target_os = "android",
     target_os = "dragonfly",
     target_os = "emscripten",
