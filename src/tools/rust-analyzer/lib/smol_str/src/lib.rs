@@ -25,67 +25,7 @@ use std::{
 pub struct SmolStr(Repr);
 
 impl SmolStr {
-    /// Constructs an inline variant of `SmolStr` at compile time.
-    ///
-    /// # Parameters
-    ///
-    /// - `len`: Must be short (≤ 22 bytes)
-    /// - `bytes`: Must be ASCII bytes, and there must be at least `len` of
-    ///   them. If `len` is smaller than the actual len of `bytes`, the string
-    ///   is truncated.
-    ///
-    /// # Returns
-    ///
-    /// A constant `SmolStr` with inline data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use smol_str::SmolStr;
-    /// const IDENT: SmolStr = SmolStr::new_inline_from_ascii(5, b"hello");
-    /// ```
-    ///
-    /// Given a `len` smaller than the number of bytes in `bytes`, the string is
-    /// cut off:
-    ///
-    /// ```rust
-    /// # use smol_str::SmolStr;
-    /// const SHORT: SmolStr = SmolStr::new_inline_from_ascii(5, b"hello world");
-    /// assert_eq!(SHORT.as_str(), "hello");
-    /// ```
-    ///
-    /// ## Compile-time errors
-    ///
-    /// This will **fail** at compile-time with a message like "index out of
-    /// bounds" on a `_len_is_short` because the string is too large:
-    ///
-    /// ```rust,compile_fail
-    /// # use smol_str::SmolStr;
-    /// const IDENT: SmolStr = SmolStr::new_inline_from_ascii(
-    ///     49,
-    ///     b"hello world, how are you doing this fine morning?",
-    /// );
-    /// ```
-    ///
-    /// Similarly, this will **fail** to compile with "index out of bounds" on
-    /// an `_is_ascii` binding because it contains non-ASCII characters:
-    ///
-    /// ```rust,compile_fail
-    /// # use smol_str::SmolStr;
-    /// const IDENT: SmolStr = SmolStr::new_inline_from_ascii(
-    ///     2,
-    ///     &[209, 139],
-    /// );
-    /// ```
-    ///
-    /// Last but not least, given a `len` that is larger than the number of
-    /// bytes in `bytes`, it will fail to compile with "index out of bounds: the
-    /// len is 5 but the index is 5" on a binding called `byte`:
-    ///
-    /// ```rust,compile_fail
-    /// # use smol_str::SmolStr;
-    /// const IDENT: SmolStr = SmolStr::new_inline_from_ascii(10, b"hello");
-    /// ```
+    #[deprecated = "Use `new_inline` instead"]
     pub const fn new_inline_from_ascii(len: usize, bytes: &[u8]) -> SmolStr {
         let _len_is_short = [(); INLINE_CAP + 1][len];
 
@@ -104,6 +44,23 @@ impl SmolStr {
         s!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21);
         SmolStr(Repr::Inline {
             len: len as u8,
+            buf,
+        })
+    }
+
+    /// Constructs inline variant of `SmolStr`.
+    ///
+    /// Panics if `text.len() > 22`.
+    #[inline]
+    pub const fn new_inline(text: &str) -> SmolStr {
+        let mut buf = [0; INLINE_CAP];
+        let mut i = 0;
+        while i < text.len() {
+            buf[i] = text.as_bytes()[i];
+            i += 1
+        }
+        SmolStr(Repr::Inline {
+            len: text.len() as u8,
             buf,
         })
     }
