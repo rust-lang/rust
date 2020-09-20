@@ -1,0 +1,67 @@
+- // MIR for `opt_has_storage` before InstCombine
++ // MIR for `opt_has_storage` after InstCombine
+  
+  fn opt_has_storage(_1: Vec<u8>) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/eq_not.rs:7:20: 7:21
+      let mut _0: ();                      // return place in scope 0 at $DIR/eq_not.rs:7:32: 7:32
+      let _2: ();                          // in scope 0 at $DIR/eq_not.rs:8:5: 8:27
+      let mut _3: bool;                    // in scope 0 at $DIR/eq_not.rs:8:5: 8:27
+      let mut _4: bool;                    // in scope 0 at $DIR/eq_not.rs:8:13: 8:25
+      let mut _5: usize;                   // in scope 0 at $DIR/eq_not.rs:8:13: 8:20
+      let mut _6: &std::vec::Vec<u8>;      // in scope 0 at $DIR/eq_not.rs:8:13: 8:14
+      let mut _7: !;                       // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      scope 1 {
+          debug self => _6;                // in scope 1 at $SRC_DIR/alloc/src/vec.rs:LL:COL
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/eq_not.rs:8:5: 8:27
+          StorageLive(_3);                 // scope 0 at $DIR/eq_not.rs:8:5: 8:27
+          StorageLive(_4);                 // scope 0 at $DIR/eq_not.rs:8:13: 8:25
+          StorageLive(_5);                 // scope 0 at $DIR/eq_not.rs:8:13: 8:20
+          StorageLive(_6);                 // scope 0 at $DIR/eq_not.rs:8:13: 8:14
+          _6 = &_1;                        // scope 0 at $DIR/eq_not.rs:8:13: 8:14
+          _5 = ((*_6).1: usize);           // scope 1 at $SRC_DIR/alloc/src/vec.rs:LL:COL
+          StorageDead(_6);                 // scope 0 at $DIR/eq_not.rs:8:19: 8:20
+          _4 = Eq(move _5, const 2_usize); // scope 0 at $DIR/eq_not.rs:8:13: 8:25
+          StorageDead(_5);                 // scope 0 at $DIR/eq_not.rs:8:24: 8:25
+          _3 = Not(move _4);               // scope 0 at $DIR/eq_not.rs:8:5: 8:27
+          StorageDead(_4);                 // scope 0 at $DIR/eq_not.rs:8:26: 8:27
+          switchInt(_3) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/eq_not.rs:8:5: 8:27
+      }
+  
+      bb1 (cleanup): {
+          resume;                          // scope 0 at $DIR/eq_not.rs:7:1: 9:2
+      }
+  
+      bb2 (cleanup): {
+          drop(_1) -> bb1;                 // scope 0 at $DIR/eq_not.rs:9:1: 9:2
+      }
+  
+      bb3: {
+          _2 = const ();                   // scope 0 at $DIR/eq_not.rs:8:5: 8:27
+          StorageDead(_3);                 // scope 0 at $DIR/eq_not.rs:8:26: 8:27
+          StorageDead(_2);                 // scope 0 at $DIR/eq_not.rs:8:26: 8:27
+          _0 = const ();                   // scope 0 at $DIR/eq_not.rs:7:32: 9:2
+          drop(_1) -> [return: bb5, unwind: bb1]; // scope 0 at $DIR/eq_not.rs:9:1: 9:2
+      }
+  
+      bb4: {
+          StorageLive(_7);                 // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+          begin_panic::<&str>(const "assertion failed: x.len() == 2") -> bb2; // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
+                                           // ty::Const
+                                           // + ty: &str
+                                           // + val: Value(Slice { data: Allocation { bytes: [97, 115, 115, 101, 114, 116, 105, 111, 110, 32, 102, 97, 105, 108, 101, 100, 58, 32, 120, 46, 108, 101, 110, 40, 41, 32, 61, 61, 32, 50], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1073741823], len: Size { raw: 30 } }, size: Size { raw: 30 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 30 })
+                                           // mir::Constant
+                                           // + span: $DIR/eq_not.rs:1:1: 1:1
+                                           // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [97, 115, 115, 101, 114, 116, 105, 111, 110, 32, 102, 97, 105, 108, 101, 100, 58, 32, 120, 46, 108, 101, 110, 40, 41, 32, 61, 61, 32, 50], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1073741823], len: Size { raw: 30 } }, size: Size { raw: 30 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 30 }) }
+      }
+  
+      bb5: {
+          return;                          // scope 0 at $DIR/eq_not.rs:9:2: 9:2
+      }
+  }
+  
