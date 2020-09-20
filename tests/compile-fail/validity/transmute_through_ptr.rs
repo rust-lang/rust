@@ -1,4 +1,5 @@
 #[repr(u32)]
+#[derive(Debug)]
 enum Bool { True }
 
 fn evil(x: &mut Bool) {
@@ -9,6 +10,7 @@ fn evil(x: &mut Bool) {
 fn main() {
     let mut x = Bool::True;
     evil(&mut x);
-    let _y = x; // reading this ought to be enough to trigger validation
+    let y = x; // reading this ought to be enough to trigger validation
     //~^ ERROR encountered 0x0000002c at .<enum-tag>, but expected a valid enum tag
+    println!("{:?}", y); // make sure it is used (and not optimized away)
 }
