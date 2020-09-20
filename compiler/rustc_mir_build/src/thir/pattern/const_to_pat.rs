@@ -159,34 +159,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     }
                 });
 
-                // double-check there even *is* a semantic `PartialEq` to dispatch to.
-                //
-                // (If there isn't, then we can safely issue a hard
-                // error, because that's never worked, due to compiler
-                // using `PartialEq::eq` in this scenario in the past.)
-                //
-                // Note: To fix rust-lang/rust#65466, one could lift this check
-                // *before* any structural-match checking, and unconditionally error
-                // if `PartialEq` is not implemented. However, that breaks stable
-                // code at the moment, because types like `for <'a> fn(&'a ())` do
-                // not *yet* implement `PartialEq`. So for now we leave this here.
-                let ty_is_partial_eq: bool = {
-                    let partial_eq_trait_id =
-                        self.tcx().require_lang_item(hir::LangItem::PartialEq, Some(self.span));
-                    let obligation: PredicateObligation<'_> = predicate_for_trait_def(
-                        self.tcx(),
-                        self.param_env,
-                        ObligationCause::misc(self.span, self.id),
-                        partial_eq_trait_id,
-                        0,
-                        cv.ty,
-                        &[],
-                    );
-                    // FIXME: should this call a `predicate_must_hold` variant instead?
-                    self.infcx.predicate_may_hold(&obligation)
-                };
-
-                if !ty_is_partial_eq {
+                if !self.type_has_partial_eq_impl(cv.ty) {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
                     self.tcx().sess.span_fatal(self.span, &msg);
                 } else if mir_structural_match_violation {
@@ -206,6 +179,40 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         }
 
         inlined_const_as_pat
+    }
+
+    fn type_has_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
+        // double-check there even *is* a semantic `PartialEq` to dispatch to.
+        //
+        // (If there isn't, then we can safely issue a hard
+        // error, because that's never worked, due to compiler
+        // using `PartialEq::eq` in this scenario in the past.)
+        let partial_eq_trait_id =
+            self.tcx().require_lang_item(hir::LangItem::PartialEq, Some(self.span));
+        let obligation: PredicateObligation<'_> = predicate_for_trait_def(
+            self.tcx(),
+            self.param_env,
+            ObligationCause::misc(self.span, self.id),
+            partial_eq_trait_id,
+            0,
+            ty,
+            &[],
+        );
+        // FIXME: should this call a `predicate_must_hold` variant instead?
+
+        let has_impl = self.infcx.predicate_may_hold(&obligation);
+
+        // Note: To fix rust-lang/rust#65466, we could just remove this type
+        // walk hack for function pointers, and unconditionally error
+        // if `PartialEq` is not implemented. However, that breaks stable
+        // code at the moment, because types like `for <'a> fn(&'a ())` do
+        // not *yet* implement `PartialEq`. So for now we leave this here.
+        has_impl
+            || ty.walk().any(|t| match t.unpack() {
+                ty::subst::GenericArgKind::Lifetime(_) => false,
+                ty::subst::GenericArgKind::Type(t) => t.is_fn_ptr(),
+                ty::subst::GenericArgKind::Const(_) => false,
+            })
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
