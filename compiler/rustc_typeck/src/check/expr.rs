@@ -439,9 +439,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This is maybe too permissive, since it allows
             // `let u = &raw const Box::new((1,)).0`, which creates an
             // immediately dangling raw pointer.
-            self.typeck_results.borrow().adjustments().get(base.hir_id).map_or(false, |x| {
-                x.iter().any(|adj| if let Adjust::Deref(_) = adj.kind { true } else { false })
-            })
+            self.typeck_results
+                .borrow()
+                .adjustments()
+                .get(base.hir_id)
+                .map_or(false, |x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         });
         if !is_named {
             self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span })

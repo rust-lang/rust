@@ -1529,7 +1529,7 @@ impl<'a> TraitDef<'a> {
             }
         }
 
-        let is_tuple = if let ast::VariantData::Tuple(..) = struct_def { true } else { false };
+        let is_tuple = matches!(struct_def, ast::VariantData::Tuple(..));
         match (just_spans.is_empty(), named_idents.is_empty()) {
             (false, false) => cx.span_bug(
                 self.span,

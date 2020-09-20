@@ -69,7 +69,7 @@ pub enum LibSource {
 
 impl LibSource {
     pub fn is_some(&self) -> bool {
-        if let LibSource::Some(_) = *self { true } else { false }
+        matches!(self, LibSource::Some(_))
     }
 
     pub fn option(&self) -> Option<PathBuf> {
