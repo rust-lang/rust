@@ -589,10 +589,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     msg
                                 },
-                                if lstring.starts_with('&') {
+                                if let Some(stripped) = lstring.strip_prefix('&') {
                                     // let a = String::new();
                                     // let _ = &a + "bar";
-                                    lstring[1..].to_string()
+                                    stripped.to_string()
                                 } else {
                                     format!("{}.to_owned()", lstring)
                                 },
@@ -617,10 +617,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), IsAssign::No) => {
-                        let to_string = if l.starts_with('&') {
+                        let to_string = if let Some(stripped) = l.strip_prefix('&') {
                             // let a = String::new(); let b = String::new();
                             // let _ = &a + b;
-                            l[1..].to_string()
+                            stripped.to_string()
                         } else {
                             format!("{}.to_owned()", l)
                         };
