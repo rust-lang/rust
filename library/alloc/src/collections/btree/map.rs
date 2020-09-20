@@ -47,7 +47,6 @@ use UnderflowResult::*;
 /// any other key, as determined by the [`Ord`] trait, changes while it is in the map. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
 ///
-/// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 ///
@@ -93,9 +92,10 @@ use UnderflowResult::*;
 /// }
 /// ```
 ///
-/// `BTreeMap` also implements an [`Entry API`](#method.entry), which allows
-/// for more complex methods of getting, setting, updating and removing keys and
-/// their values:
+/// `BTreeMap` also implements an [`Entry API`], which allows for more complex
+/// methods of getting, setting, updating and removing keys and their values:
+///
+/// [`Entry API`]: BTreeMap::entry
 ///
 /// ```
 /// use std::collections::BTreeMap;
@@ -453,8 +453,6 @@ impl<K: Debug + Ord, V: Debug> Debug for Entry<'_, K, V> {
 
 /// A view into a vacant entry in a `BTreeMap`.
 /// It is part of the [`Entry`] enum.
-///
-/// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     key: K,
@@ -474,8 +472,6 @@ impl<K: Debug + Ord, V> Debug for VacantEntry<'_, K, V> {
 
 /// A view into an occupied entry in a `BTreeMap`.
 /// It is part of the [`Entry`] enum.
-///
-/// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>,
@@ -815,7 +811,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// types that can be `==` without being identical. See the [module-level
     /// documentation] for more.
     ///
-    /// [module-level documentation]: index.html#insert-and-complex-keys
+    /// [module-level documentation]: crate::collections#insert-and-complex-keys
     ///
     /// # Examples
     ///
@@ -2554,7 +2550,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// If you need a reference to the `OccupiedEntry` that may outlive the
     /// destruction of the `Entry` value, see [`into_mut`].
     ///
-    /// [`into_mut`]: #method.into_mut
+    /// [`into_mut`]: OccupiedEntry::into_mut
     ///
     /// # Examples
     ///
@@ -2584,7 +2580,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     ///
     /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
     ///
-    /// [`get_mut`]: #method.get_mut
+    /// [`get_mut`]: OccupiedEntry::get_mut
     ///
     /// # Examples
     ///
