@@ -112,11 +112,10 @@ fn unwrap_or_drop() {
     for _ in 0..100
     // ^ increase chances of hitting uncommon race conditions
     {
-        use std::sync::Arc;
         let x = Arc::new(3);
         let y = Arc::clone(&x);
-        let r_thread = std::thread::spawn(|| Arc::try_unwrap(x).ok());
-        let s_thread = std::thread::spawn(|| Arc::try_unwrap(y).ok());
+        let r_thread = std::thread::spawn(|| Arc::unwrap_or_drop(x));
+        let s_thread = std::thread::spawn(|| Arc::unwrap_or_drop(y));
         let r = r_thread.join().expect("r_thread panicked");
         let s = s_thread.join().expect("s_thread panicked");
         assert!(
