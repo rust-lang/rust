@@ -140,13 +140,13 @@ warning: this arithmetic operation will overflow
   --> $DIR/lint-exceeding-bitshifts.rs:77:15
    |
 LL |       let n = 1_isize << BITS;
-   |               ^^^^^^^^^^^^^^^ attempt to shift left by `64_usize`, which would overflow
+   |               ^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
 
 warning: this arithmetic operation will overflow
   --> $DIR/lint-exceeding-bitshifts.rs:78:15
    |
 LL |       let n = 1_usize << BITS;
-   |               ^^^^^^^^^^^^^^^ attempt to shift left by `64_usize`, which would overflow
+   |               ^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
 
 warning: 24 warnings emitted
 
