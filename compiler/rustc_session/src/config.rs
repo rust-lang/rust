@@ -749,7 +749,9 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     let min_atomic_width = sess.target.target.min_atomic_width();
     let max_atomic_width = sess.target.target.max_atomic_width();
     let atomic_cas = sess.target.target.options.atomic_cas;
-    let layout = TargetDataLayout::parse(&sess.target.target).unwrap();
+    let layout = TargetDataLayout::parse(&sess.target.target).unwrap_or_else(|err| {
+        sess.fatal(&err);
+    });
 
     let mut ret = FxHashSet::default();
     ret.reserve(6); // the minimum number of insertions
