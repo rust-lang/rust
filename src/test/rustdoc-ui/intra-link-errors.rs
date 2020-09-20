@@ -54,7 +54,16 @@
 
 /// [u8::not_found]
 //~^ ERROR unresolved link
-//~| NOTE the builtin type `u8` does not have an associated item named `not_found`
+//~| NOTE the builtin type `u8` has no associated item named `not_found`
+
+/// [std::primitive::u8::not_found]
+//~^ ERROR unresolved link
+//~| NOTE the builtin type `u8` has no associated item named `not_found`
+
+/// [type@Vec::into_iter]
+//~^ ERROR unresolved link
+//~| HELP to link to the associated function, add parentheses
+//~| NOTE this link resolves to the associated function `into_iter`
 
 /// [S!]
 //~^ ERROR unresolved link

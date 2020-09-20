@@ -60,13 +60,6 @@ impl<'a> From<ResolutionFailure<'a>> for ErrorKind<'a> {
 
 #[derive(Debug)]
 enum ResolutionFailure<'a> {
-    /// this is a primitive type without an impls (no associated methods)
-    /// when will this actually happen?
-    /// the `Res` is the primitive it resolved to
-    NoPrimitiveImpl(Res, String),
-    /// `[u8::not_found]`
-    /// the `Res` is the primitive it resolved to
-    NoPrimitiveAssocItem { res: Res, prim_name: &'a str, assoc_item: Symbol },
     /// This resolved, but with the wrong namespace.
     /// `Namespace` is the expected namespace (as opposed to the actual).
     WrongNamespace(Res, Namespace),
@@ -326,8 +319,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })?;
 
         if let Some((path, prim)) = is_primitive(&path_root, TypeNS) {
-            let impls = primitive_impl(cx, &path)
-                .ok_or_else(|| ResolutionFailure::NoPrimitiveImpl(prim, path_root.into()))?;
+            let impls =
+                primitive_impl(cx, &path).ok_or_else(|| ResolutionFailure::NotResolved {
+                    module_id,
+                    partial_res: Some(prim),
+                    unresolved: item_str.into(),
+                })?;
             for &impl_ in impls {
                 let link = cx
                     .tcx
@@ -354,10 +351,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 item_name,
                 ns.descr()
             );
-            return Err(ResolutionFailure::NoPrimitiveAssocItem {
-                res: prim,
-                prim_name: path,
-                assoc_item: item_name,
+            return Err(ResolutionFailure::NotResolved {
+                module_id,
+                partial_res: Some(prim),
+                unresolved: item_str.into(),
             }
             .into());
         }
@@ -1009,7 +1006,7 @@ impl LinkCollector<'_, '_> {
                 suggest_disambiguator(resolved, diag, path_str, dox, sp, &link_range);
             });
         };
-        if let Res::PrimTy(ty) = res {
+        if let Res::PrimTy(..) = res {
             match disambiguator {
                 Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
                     item.attrs.links.push(ItemLink {
@@ -1489,10 +1486,6 @@ fn resolution_failure(
     link_range: Option<Range<usize>>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
 ) {
-    let has_primitive = kinds.iter().any(|err|
-        matches!(err, ResolutionFailure::NoPrimitiveAssocItem{..} | ResolutionFailure::NoPrimitiveImpl(_, _))
-    );
-
     report_diagnostic(
         collector.cx,
         &format!("unresolved link to `{}`", path_str),
@@ -1533,7 +1526,7 @@ fn resolution_failure(
 
                     let module_id = *module_id;
                     // FIXME(jynelson): this might conflict with my `Self` fix in #76467
-                    // FIXME: use itertools `collect_tuple` instead
+                    // FIXME: maybe use itertools `collect_tuple` instead?
                     fn split(path: &str) -> Option<(&str, &str)> {
                         let mut splitter = path.rsplitn(2, "::");
                         splitter.next().and_then(|right| splitter.next().map(|left| (left, right)))
@@ -1600,10 +1593,7 @@ fn resolution_failure(
                             diagnostic_name = collector.cx.tcx.item_name(def_id).as_str();
                             (Some(kind), &*diagnostic_name)
                         }
-                        Res::PrimTy(_) => {
-                            assert!(has_primitive);
-                            continue;
-                        }
+                        Res::PrimTy(ty) => (None, ty.name_str()),
                         _ => unreachable!("only ADTs and primitives are in scope at module level"),
                     };
                     let path_description = if let Some(kind) = kind {
@@ -1640,7 +1630,7 @@ fn resolution_failure(
                             Impl | GlobalAsm => unreachable!("not a path"),
                         }
                     } else {
-                        res.descr()
+                        "associated item"
                     };
                     let note = format!(
                         "the {} `{}` has no {} named `{}`",
@@ -1682,16 +1672,6 @@ fn resolution_failure(
                     ResolutionFailure::NoParentItem => {
                         diag.level = rustc_errors::Level::Bug;
                         "all intra doc links should have a parent item".to_owned()
-                    }
-                    ResolutionFailure::NoPrimitiveImpl(res, _) => format!(
-                        "this link partially resolves to {}, which does not have any associated items",
-                        item(res),
-                    ),
-                    ResolutionFailure::NoPrimitiveAssocItem { prim_name, assoc_item, .. } => {
-                        format!(
-                            "the builtin type `{}` does not have an associated item named `{}`",
-                            prim_name, assoc_item
-                        )
                     }
                 };
                 if let Some(span) = sp {

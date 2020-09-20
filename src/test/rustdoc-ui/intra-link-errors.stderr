@@ -80,10 +80,25 @@ error: unresolved link to `u8::not_found`
   --> $DIR/intra-link-errors.rs:55:6
    |
 LL | /// [u8::not_found]
-   |      ^^^^^^^^^^^^^ the builtin type `u8` does not have an associated item named `not_found`
+   |      ^^^^^^^^^^^^^ the builtin type `u8` has no associated item named `not_found`
+
+error: unresolved link to `std::primitive::u8::not_found`
+  --> $DIR/intra-link-errors.rs:59:6
+   |
+LL | /// [std::primitive::u8::not_found]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the builtin type `u8` has no associated item named `not_found`
+
+error: unresolved link to `Vec::into_iter`
+  --> $DIR/intra-link-errors.rs:63:6
+   |
+LL | /// [type@Vec::into_iter]
+   |      ^^^^^^^^^^^^^^^^^^^
+   |      |
+   |      this link resolves to the associated function `into_iter`, which is not in the type namespace
+   |      help: to link to the associated function, add parentheses: `Vec::into_iter()`
 
 error: unresolved link to `S`
-  --> $DIR/intra-link-errors.rs:59:6
+  --> $DIR/intra-link-errors.rs:68:6
    |
 LL | /// [S!]
    |      ^^
@@ -92,7 +107,7 @@ LL | /// [S!]
    |      help: to link to the struct, prefix with `struct@`: `struct@S`
 
 error: unresolved link to `T::g`
-  --> $DIR/intra-link-errors.rs:77:6
+  --> $DIR/intra-link-errors.rs:86:6
    |
 LL | /// [type@T::g]
    |      ^^^^^^^^^
@@ -101,13 +116,13 @@ LL | /// [type@T::g]
    |      help: to link to the associated function, add parentheses: `T::g()`
 
 error: unresolved link to `T::h`
-  --> $DIR/intra-link-errors.rs:82:6
+  --> $DIR/intra-link-errors.rs:91:6
    |
 LL | /// [T::h!]
    |      ^^^^^ the trait `T` has no macro named `h`
 
 error: unresolved link to `S::h`
-  --> $DIR/intra-link-errors.rs:69:6
+  --> $DIR/intra-link-errors.rs:78:6
    |
 LL | /// [type@S::h]
    |      ^^^^^^^^^
@@ -116,7 +131,7 @@ LL | /// [type@S::h]
    |      help: to link to the associated function, add parentheses: `S::h()`
 
 error: unresolved link to `m`
-  --> $DIR/intra-link-errors.rs:89:6
+  --> $DIR/intra-link-errors.rs:98:6
    |
 LL | /// [m()]
    |      ^^^
@@ -124,5 +139,5 @@ LL | /// [m()]
    |      this link resolves to the macro `m`, which is not in the value namespace
    |      help: to link to the macro, add an exclamation mark: `m!`
 
-error: aborting due to 18 previous errors
+error: aborting due to 20 previous errors
 
