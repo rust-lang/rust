@@ -78,6 +78,17 @@ pub use index::check_range;
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
+    #[cfg(not(bootstrap))] // Unused in bootstrap
+    /// The maximum, inclusive, length such that the slice is no larger than `isize::MAX` bytes.
+    /// This constant is used in `len` below.
+    const MAX_LEN_BOUND: usize = {
+        if mem::size_of::<T>() == 0 {
+            usize::MAX
+        } else {
+            isize::MAX as usize / mem::size_of::<T>()
+        }
+    };
+
     /// Returns the number of elements in the slice.
     ///
     /// # Examples
@@ -90,11 +101,23 @@ impl<T> [T] {
     #[rustc_const_stable(feature = "const_slice_len", since = "1.32.0")]
     #[inline]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
-    #[allow_internal_unstable(const_fn_union)]
+    #[allow_internal_unstable(const_fn_union, const_assume)]
     pub const fn len(&self) -> usize {
         // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
         // Only `std` can make this guarantee.
-        unsafe { crate::ptr::Repr { rust: self }.raw.len }
+        let raw_len = unsafe { crate::ptr::Repr { rust: self }.raw.len };
+
+        #[cfg(not(bootstrap))] // FIXME: executing assume in const eval not supported in bootstrap
+        // SAFETY: this assume asserts that `raw_len * size_of::<T>() <= isize::MAX`. All
+        // references must point to one allocation with size at most isize::MAX. Note that we the
+        // multiplication could appear to overflow until we have assumed the bound. This overflow
+        // would make additional values appear 'valid' and then `n > 1` the range of permissible
+        // length would no longer be the full or even a single range.
+        unsafe {
+            crate::intrinsics::assume(raw_len <= Self::MAX_LEN_BOUND)
+        };
+
+        raw_len
     }
 
     /// Returns `true` if the slice has a length of 0.
