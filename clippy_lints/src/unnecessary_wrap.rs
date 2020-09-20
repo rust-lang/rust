@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
+use rustc_middle::{hir::map::Map, ty::subst::GenericArgKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
@@ -100,14 +100,27 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
                 return;
             }
 
-            let suggs = result.iter().filter_map(|expr| {
-                let snippet = if let ExprKind::Call(_, ref args) = expr.kind {
-                    Some(snippet(cx, args[0].span, "..").to_string())
-                } else {
-                    None
-                };
-                snippet.map(|snip| (expr.span, snip))
-            });
+            let suggs = result
+                .iter()
+                .filter_map(|expr| {
+                    let snippet = if let ExprKind::Call(_, ref args) = expr.kind {
+                        Some(snippet(cx, args[0].span, "..").to_string())
+                    } else {
+                        None
+                    };
+                    snippet.map(|snip| (expr.span, snip))
+                })
+                .chain({
+                    let inner_ty = return_ty(cx, hir_id)
+                        .walk()
+                        .skip(1) // skip `std::option::Option` or `std::result::Result`
+                        .take(1) // first outermost inner type is needed
+                        .filter_map(|inner| match inner.unpack() {
+                            GenericArgKind::Type(inner_ty) => Some(inner_ty.to_string()),
+                            _ => None,
+                        });
+                    inner_ty.map(|inner_ty| (fn_decl.output.span(), inner_ty))
+                });
 
             span_lint_and_then(
                 cx,

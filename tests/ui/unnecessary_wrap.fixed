@@ -1,8 +1,10 @@
 // run-rustfix
+
 #![warn(clippy::unnecessary_wrap)]
 #![allow(clippy::no_effect)]
 #![allow(clippy::needless_return)]
 #![allow(clippy::if_same_then_else)]
+#![allow(dead_code)]
 
 // should be linted
 fn func1(a: bool, b: bool) -> Option<i32> {
@@ -37,7 +39,21 @@ fn func3(a: bool) -> Option<i32> {
 
 // should be linted
 fn func4() -> Option<i32> {
-    1
+    Some(1)
+}
+
+// should be linted
+fn func5() -> Result<i32, ()> {
+    Ok(1)
+}
+
+// should not be linted
+fn func6(a: bool) -> Result<i32, ()> {
+    if a {
+        Ok(1)
+    } else {
+        Err(())
+    }
 }
 
 fn main() {
