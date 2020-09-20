@@ -149,7 +149,7 @@ where
     F: FnMut(Local) -> bool,
 {
     match rvalue {
-        Rvalue::ThreadLocalRef(_) | Rvalue::NullaryOp(..) => {
+        Rvalue::ThreadLocalRef(..) | Rvalue::NullaryOp(..) => {
             Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx))
         }
 

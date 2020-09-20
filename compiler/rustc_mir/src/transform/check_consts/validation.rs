@@ -305,7 +305,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         self.super_rvalue(rvalue, location);
 
         match *rvalue {
-            Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
+            Rvalue::ThreadLocalRef(..) => self.check_op(ops::ThreadLocalAccess),
 
             Rvalue::Use(_)
             | Rvalue::Repeat(..)

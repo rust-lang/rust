@@ -258,7 +258,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::InlineAsm { .. }
             | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::Yield { .. }
-            | ExprKind::ThreadLocalRef(_)
+            | ExprKind::ThreadLocalRef(..)
             | ExprKind::Call { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(match Category::of(&expr.kind) {

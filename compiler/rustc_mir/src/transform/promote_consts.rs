@@ -645,7 +645,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
 
         match rvalue {
-            Rvalue::ThreadLocalRef(_) => Err(Unpromotable),
+            Rvalue::ThreadLocalRef(..) => Err(Unpromotable),
 
             Rvalue::NullaryOp(..) => Ok(()),
 

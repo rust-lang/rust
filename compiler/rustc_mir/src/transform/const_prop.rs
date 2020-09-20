@@ -684,8 +684,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
                 return None;
             }
-            Rvalue::ThreadLocalRef(def_id) => {
-                trace!("skipping ThreadLocalRef({:?})", def_id);
+            Rvalue::ThreadLocalRef(def_id, ty) => {
+                trace!("skipping ThreadLocalRef({:?}, {})", def_id, ty);
 
                 return None;
             }

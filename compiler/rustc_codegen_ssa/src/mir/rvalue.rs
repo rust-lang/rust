@@ -537,10 +537,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let operand = OperandRef { val: OperandValue::Immediate(val), layout: box_layout };
                 (bx, operand)
             }
-            mir::Rvalue::ThreadLocalRef(def_id) => {
+            mir::Rvalue::ThreadLocalRef(def_id, ty) => {
                 assert!(bx.cx().tcx().is_static(def_id));
                 let static_ = bx.get_static(def_id);
-                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
+                let layout = bx.layout_of(ty);
                 let operand = OperandRef::from_immediate_or_packed_pair(&mut bx, static_, layout);
                 (bx, operand)
             }
@@ -767,7 +767,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::UnaryOp(..) |
             mir::Rvalue::Discriminant(..) |
             mir::Rvalue::NullaryOp(..) |
-            mir::Rvalue::ThreadLocalRef(_) |
+            mir::Rvalue::ThreadLocalRef(..) |
             mir::Rvalue::Use(..) => // (*)
                 true,
             mir::Rvalue::Repeat(..) |

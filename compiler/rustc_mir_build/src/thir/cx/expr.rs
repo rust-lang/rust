@@ -229,12 +229,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             }
         }
 
-        hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, ref arg) => {
-            ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg: arg.to_ref() }
-        }
-
-        hir::ExprKind::AddrOf(hir::BorrowKind::Raw, mutability, ref arg) => {
-            ExprKind::AddressOf { mutability, arg: arg.to_ref() }
+        hir::ExprKind::AddrOf(kind, mutability, arg) => {
+            convert_addr_of_expr(cx, kind, mutability, arg)
         }
 
         hir::ExprKind::Block(ref blk, _) => ExprKind::Block { body: &blk },
@@ -863,21 +859,54 @@ fn convert_path_expr<'a, 'tcx>(
         Res::Def(DefKind::Static, id) => {
             let ty = cx.tcx.static_ptr_ty(id);
             let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-            let kind = if cx.tcx.is_thread_local_static(id) {
-                ExprKind::ThreadLocalRef(id)
-            } else {
-                let ptr = cx.tcx.create_static_alloc(id);
-                ExprKind::StaticRef {
-                    literal: ty::Const::from_scalar(cx.tcx, Scalar::Ptr(ptr.into()), ty),
-                    def_id: id,
-                }
-            };
+            let kind = convert_static_ref(cx, id, ty);
             ExprKind::Deref { arg: Expr { ty, temp_lifetime, span: expr.span, kind }.to_ref() }
         }
 
         Res::Local(var_hir_id) => convert_var(cx, expr, var_hir_id),
 
         _ => span_bug!(expr.span, "res `{:?}` not yet implemented", res),
+    }
+}
+
+fn convert_static_ref<'tcx>(cx: &mut Cx<'_, 'tcx>, id: DefId, ty: Ty<'tcx>) -> ExprKind<'tcx> {
+    if cx.tcx.is_thread_local_static(id) {
+        ExprKind::ThreadLocalRef(id, ty)
+    } else {
+        let ptr = cx.tcx.create_static_alloc(id);
+        ExprKind::StaticRef {
+            literal: ty::Const::from_scalar(cx.tcx, Scalar::Ptr(ptr.into()), ty),
+            def_id: id,
+        }
+    }
+}
+
+fn convert_addr_of_expr<'tcx>(
+    cx: &mut Cx<'_, 'tcx>,
+    kind: hir::BorrowKind,
+    mutability: hir::Mutability,
+    arg: &'tcx hir::Expr<'tcx>,
+) -> ExprKind<'tcx> {
+    // Fast path so that taking a reference to a static doesn't end up
+    // as `&*&STATIC` but just `&STATIC`
+    if let hir::ExprKind::Path(qpath) = &arg.kind {
+        let res = cx.typeck_results().qpath_res(qpath, arg.hir_id);
+        if let Res::Def(DefKind::Static, id) = res {
+            let mut tm = cx.tcx.static_ptr_ty(id).builtin_deref(true).unwrap();
+            tm.mutbl = mutability;
+            let ty = match kind {
+                hir::BorrowKind::Ref => cx.tcx.mk_ref(cx.tcx.lifetimes.re_erased, tm),
+                hir::BorrowKind::Raw => cx.tcx.mk_ptr(tm),
+            };
+            return convert_static_ref(cx, id, ty);
+        }
+    }
+    match kind {
+        hir::BorrowKind::Ref => {
+            ExprKind::Borrow { borrow_kind: mutability.to_borrow_kind(), arg: arg.to_ref() }
+        }
+
+        hir::BorrowKind::Raw => ExprKind::AddressOf { mutability, arg: arg.to_ref() },
     }
 }
 

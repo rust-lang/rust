@@ -1,0 +1,47 @@
+// MIR for `main` after PreCodegen
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/extern-static-ref.rs:18:11: 18:11
+    let _1: ();                          // in scope 0 at $DIR/extern-static-ref.rs:19:5: 19:47
+    let _2: ();                          // in scope 0 at $DIR/extern-static-ref.rs:20:5: 20:35
+    scope 1 {
+    }
+    scope 2 {
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at $DIR/extern-static-ref.rs:19:5: 19:47
+        _1 = bar::<*const !>(const {alloc0: *const !}) -> bb1; // scope 0 at $DIR/extern-static-ref.rs:19:5: 19:47
+                                         // mir::Constant
+                                         // + span: $DIR/extern-static-ref.rs:19:5: 19:8
+                                         // + literal: Const { ty: fn(*const !) {bar::<*const !>}, val: Value(Scalar(<ZST>)) }
+                                         // ty::Const
+                                         // + ty: *const !
+                                         // + val: Value(Scalar(alloc0))
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                         // + literal: Const { ty: *const !, val: Value(Scalar(alloc0)) }
+    }
+
+    bb1: {
+        StorageDead(_1);                 // scope 0 at $DIR/extern-static-ref.rs:19:47: 19:48
+        StorageLive(_2);                 // scope 0 at $DIR/extern-static-ref.rs:20:5: 20:35
+        _2 = bar::<*const !>(const {alloc0: *const !}) -> bb2; // scope 0 at $DIR/extern-static-ref.rs:20:5: 20:35
+                                         // mir::Constant
+                                         // + span: $DIR/extern-static-ref.rs:20:5: 20:8
+                                         // + literal: Const { ty: fn(*const !) {bar::<*const !>}, val: Value(Scalar(<ZST>)) }
+                                         // ty::Const
+                                         // + ty: *const !
+                                         // + val: Value(Scalar(alloc0))
+                                         // mir::Constant
+                                         // + span: $DIR/extern-static-ref.rs:20:18: 20:32
+                                         // + literal: Const { ty: *const !, val: Value(Scalar(alloc0)) }
+    }
+
+    bb2: {
+        StorageDead(_2);                 // scope 0 at $DIR/extern-static-ref.rs:20:35: 20:36
+        unreachable;                     // scope 0 at $DIR/extern-static-ref.rs:18:11: 21:2
+    }
+}
+
+alloc0 (extern static: FOO)

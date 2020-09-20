@@ -70,7 +70,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     local_decl.local_info =
                         Some(box LocalInfo::StaticRef { def_id, is_thread_local: false });
                 }
-                ExprKind::ThreadLocalRef(def_id) => {
+                ExprKind::ThreadLocalRef(def_id, _) => {
                     assert!(this.hir.tcx().is_thread_local_static(def_id));
                     local_decl.internal = true;
                     local_decl.local_info =

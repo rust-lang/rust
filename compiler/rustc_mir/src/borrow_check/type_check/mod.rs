@@ -2369,7 +2369,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn rvalue_user_ty(&self, rvalue: &Rvalue<'tcx>) -> Option<UserTypeAnnotationIndex> {
         match rvalue {
             Rvalue::Use(_)
-            | Rvalue::ThreadLocalRef(_)
+            | Rvalue::ThreadLocalRef(..)
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
             | Rvalue::AddressOf(..)
