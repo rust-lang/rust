@@ -1469,10 +1469,10 @@ mod redundant_pattern_match {
         keyword: &'static str,
     ) {
         fn find_suggestion(cx: &LateContext<'_>, hir_id: HirId, path: &QPath<'_>) -> Option<&'static str> {
-            if match_qpath(path, &paths::RESULT_OK) && can_suggest(cx, hir_id, sym!(result_type), "is_ok") {
+            if match_qpath(path, &paths::RESULT_OK) {
                 return Some("is_ok()");
             }
-            if match_qpath(path, &paths::RESULT_ERR) && can_suggest(cx, hir_id, sym!(result_type), "is_err") {
+            if match_qpath(path, &paths::RESULT_ERR) {
                 return Some("is_err()");
             }
             if match_qpath(path, &paths::OPTION_SOME) && can_suggest(cx, hir_id, sym!(option_type), "is_some") {
@@ -1562,8 +1562,8 @@ mod redundant_pattern_match {
                             &paths::RESULT_ERR,
                             "is_ok()",
                             "is_err()",
-                            || can_suggest(cx, hir_id, sym!(result_type), "is_ok"),
-                            || can_suggest(cx, hir_id, sym!(result_type), "is_err"),
+                            || true,
+                            || true,
                         )
                     } else {
                         None
