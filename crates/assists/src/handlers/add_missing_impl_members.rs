@@ -111,8 +111,6 @@ fn add_missing_impl_members_inner(
 ) -> Option<()> {
     let _p = profile::span("add_missing_impl_members_inner");
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
-    let impl_item_list = impl_def.assoc_item_list()?;
-
     let trait_ = resolve_target_trait(&ctx.sema, &impl_def)?;
 
     let def_name = |item: &ast::AssocItem| -> Option<SmolStr> {
@@ -148,11 +146,14 @@ fn add_missing_impl_members_inner(
 
     let target = impl_def.syntax().text_range();
     acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |builder| {
+        let impl_item_list = impl_def.assoc_item_list().unwrap_or(make::assoc_item_list());
+
         let n_existing_items = impl_item_list.assoc_items().count();
         let source_scope = ctx.sema.scope_for_def(trait_);
-        let target_scope = ctx.sema.scope(impl_item_list.syntax());
+        let target_scope = ctx.sema.scope(impl_def.syntax());
         let ast_transform = QualifyPaths::new(&target_scope, &source_scope)
-            .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_def));
+            .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_def.clone()));
+
         let items = missing_items
             .into_iter()
             .map(|it| ast_transform::apply(&*ast_transform, it))
@@ -162,12 +163,14 @@ fn add_missing_impl_members_inner(
                 _ => it,
             })
             .map(|it| edit::remove_attrs_and_docs(&it));
-        let new_impl_item_list = impl_item_list.append_items(items);
-        let first_new_item = new_impl_item_list.assoc_items().nth(n_existing_items).unwrap();
 
-        let original_range = impl_item_list.syntax().text_range();
+        let new_impl_item_list = impl_item_list.append_items(items);
+        let new_impl_def = impl_def.with_items(new_impl_item_list);
+        let first_new_item =
+            new_impl_def.assoc_item_list().unwrap().assoc_items().nth(n_existing_items).unwrap();
+
         match ctx.config.snippet_cap {
-            None => builder.replace(original_range, new_impl_item_list.to_string()),
+            None => builder.replace(target, new_impl_def.to_string()),
             Some(cap) => {
                 let mut cursor = Cursor::Before(first_new_item.syntax());
                 let placeholder;
@@ -181,8 +184,8 @@ fn add_missing_impl_members_inner(
                 }
                 builder.replace_snippet(
                     cap,
-                    original_range,
-                    render_snippet(cap, new_impl_item_list.syntax(), cursor),
+                    target,
+                    render_snippet(cap, new_impl_def.syntax(), cursor),
                 )
             }
         };
