@@ -34,10 +34,10 @@ where
 
 fn main() {
     let mut generator_iterator_2 = {
-        let mut generator_iterator = GeneratorIteratorAdapter(firstn());
+        let mut generator_iterator = Box::new(GeneratorIteratorAdapter(firstn()));
         generator_iterator.next(); // pin it
 
-        generator_iterator // move it
+        Box::new(*generator_iterator) // move it
     }; // *deallocate* generator_iterator
 
     generator_iterator_2.next(); // and use moved value
