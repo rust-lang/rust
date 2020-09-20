@@ -351,10 +351,27 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => {
                 PatKind::Constant { value: cv }
             }
+            ty::RawPtr(pointee) if pointee.ty.is_sized(tcx.at(span), param_env) => {
+                PatKind::Constant { value: cv }
+            }
             // FIXME: these can have very suprising behaviour where optimization levels or other
             // compilation choices change the runtime behaviour of the match.
             // See https://github.com/rust-lang/rust/issues/70861 for examples.
-            ty::FnPtr(..) | ty::RawPtr(..) => PatKind::Constant { value: cv },
+            ty::FnPtr(..) | ty::RawPtr(..) => {
+                if self.include_lint_checks && !self.saw_const_match_error.get() {
+                    self.saw_const_match_error.set(true);
+                    let msg = "function pointers and unsized pointers in patterns do not behave \
+                        deterministically. \
+                        See https://github.com/rust-lang/rust/issues/70861 for details.";
+                    tcx.struct_span_lint_hir(
+                        lint::builtin::POINTER_STRUCTURAL_MATCH,
+                        id,
+                        span,
+                        |lint| lint.build(&msg).emit(),
+                    );
+                }
+                PatKind::Constant { value: cv }
+            }
             _ => {
                 tcx.sess.delay_span_bug(span, &format!("cannot make a pattern out of {}", cv.ty));
                 PatKind::Wild

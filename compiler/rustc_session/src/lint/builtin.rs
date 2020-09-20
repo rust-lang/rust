@@ -2198,6 +2198,32 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `pointer_structural_match` lint detects pointers used in patterns that do not
+    /// behave deterministically across optimizations.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(pointer_structural_match)]
+    /// fn foo(a: usize, b: usize) -> usize { a + b }
+    /// const FOO: fn(usize, usize) -> usize = foo;
+    /// fn main() {
+    ///     match FOO {
+    ///         FOO => {},
+    ///         _ => {},
+    ///     }
+    /// }
+    /// ```
+    pub POINTER_STRUCTURAL_MATCH,
+    Allow,
+    "pointers are not structural-match",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/70861>",
+        edition: None,
+    };
+}
+
+declare_lint! {
     /// The `ambiguous_associated_items` lint detects ambiguity between
     /// [associated items] and [enum variants].
     ///
@@ -2630,6 +2656,7 @@ declare_lint_pass! {
         AMBIGUOUS_ASSOCIATED_ITEMS,
         MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
+        POINTER_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
         INLINE_NO_SANITIZE,
         ASM_SUB_REGISTER,
