@@ -1,7 +1,7 @@
 //! Construction of MIR from HIR.
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
-
+#![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]

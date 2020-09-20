@@ -2419,7 +2419,7 @@ impl<'tcx> TyCtxt<'tcx> {
         eps: &[ExistentialPredicate<'tcx>],
     ) -> &'tcx List<ExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
-        assert!(eps.windows(2).all(|w| w[0].stable_cmp(self, &w[1]) != Ordering::Greater));
+        assert!(eps.array_windows().all(|[a, b]| a.stable_cmp(self, b) != Ordering::Greater));
         self._intern_existential_predicates(eps)
     }
 
