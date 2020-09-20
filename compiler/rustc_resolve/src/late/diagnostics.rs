@@ -1418,9 +1418,9 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         if snippet.starts_with('&') && !snippet.starts_with("&'") {
                             introduce_suggestion
                                 .push((param.span, format!("&{} {}", lt_name, &snippet[1..])));
-                        } else if snippet.starts_with("&'_ ") {
+                        } else if let Some(stripped) = snippet.strip_prefix("&'_ ") {
                             introduce_suggestion
-                                .push((param.span, format!("&{} {}", lt_name, &snippet[4..])));
+                                .push((param.span, format!("&{} {}", lt_name, stripped)));
                         }
                     }
                 }

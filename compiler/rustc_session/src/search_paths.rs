@@ -56,16 +56,16 @@ impl PathKind {
 
 impl SearchPath {
     pub fn from_cli_opt(path: &str, output: config::ErrorOutputType) -> Self {
-        let (kind, path) = if path.starts_with("native=") {
-            (PathKind::Native, &path["native=".len()..])
-        } else if path.starts_with("crate=") {
-            (PathKind::Crate, &path["crate=".len()..])
-        } else if path.starts_with("dependency=") {
-            (PathKind::Dependency, &path["dependency=".len()..])
-        } else if path.starts_with("framework=") {
-            (PathKind::Framework, &path["framework=".len()..])
-        } else if path.starts_with("all=") {
-            (PathKind::All, &path["all=".len()..])
+        let (kind, path) = if let Some(stripped) = path.strip_prefix("native=") {
+            (PathKind::Native, stripped)
+        } else if let Some(stripped) = path.strip_prefix("crate=") {
+            (PathKind::Crate, stripped)
+        } else if let Some(stripped) = path.strip_prefix("dependency=") {
+            (PathKind::Dependency, stripped)
+        } else if let Some(stripped) = path.strip_prefix("framework=") {
+            (PathKind::Framework, stripped)
+        } else if let Some(stripped) = path.strip_prefix("all=") {
+            (PathKind::All, stripped)
         } else {
             (PathKind::All, path)
         };

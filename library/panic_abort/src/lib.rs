@@ -47,7 +47,7 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
                 }
                 __rust_abort();
             }
-        } else if #[cfg(windows)] {
+        } else if #[cfg(all(windows, not(miri)))] {
             // On Windows, use the processor-specific __fastfail mechanism. In Windows 8
             // and later, this will terminate the process immediately without running any
             // in-process exception handlers. In earlier versions of Windows, this

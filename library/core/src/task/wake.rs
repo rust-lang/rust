@@ -8,10 +8,8 @@ use crate::marker::{PhantomData, Unpin};
 ///
 /// [vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
 ///
-/// It consists of a data pointer and a [virtual function pointer table (vtable)][vtable] that
-/// customizes the behavior of the `RawWaker`.
-///
-/// [`Waker`]: struct.Waker.html
+/// It consists of a data pointer and a [virtual function pointer table (vtable)][vtable]
+/// that customizes the behavior of the `RawWaker`.
 #[derive(PartialEq, Debug)]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct RawWaker {
@@ -52,12 +50,10 @@ impl RawWaker {
 /// The pointer passed to all functions inside the vtable is the `data` pointer
 /// from the enclosing [`RawWaker`] object.
 ///
-/// The functions inside this struct are only intended be called on the `data`
+/// The functions inside this struct are only intended to be called on the `data`
 /// pointer of a properly constructed [`RawWaker`] object from inside the
 /// [`RawWaker`] implementation. Calling one of the contained functions using
 /// any other `data` pointer will cause undefined behavior.
-///
-/// [`RawWaker`]: struct.RawWaker.html
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RawWakerVTable {
@@ -68,9 +64,6 @@ pub struct RawWakerVTable {
     /// required for this additional instance of a [`RawWaker`] and associated
     /// task. Calling `wake` on the resulting [`RawWaker`] should result in a wakeup
     /// of the same task that would have been awoken by the original [`RawWaker`].
-    ///
-    /// [`Waker`]: struct.Waker.html
-    /// [`RawWaker`]: struct.RawWaker.html
     clone: unsafe fn(*const ()) -> RawWaker,
 
     /// This function will be called when `wake` is called on the [`Waker`].
@@ -79,9 +72,6 @@ pub struct RawWakerVTable {
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
-    ///
-    /// [`Waker`]: struct.Waker.html
-    /// [`RawWaker`]: struct.RawWaker.html
     wake: unsafe fn(*const ()),
 
     /// This function will be called when `wake_by_ref` is called on the [`Waker`].
@@ -89,9 +79,6 @@ pub struct RawWakerVTable {
     ///
     /// This function is similar to `wake`, but must not consume the provided data
     /// pointer.
-    ///
-    /// [`Waker`]: struct.Waker.html
-    /// [`RawWaker`]: struct.RawWaker.html
     wake_by_ref: unsafe fn(*const ()),
 
     /// This function gets called when a [`RawWaker`] gets dropped.
@@ -99,8 +86,6 @@ pub struct RawWakerVTable {
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
-    ///
-    /// [`RawWaker`]: struct.RawWaker.html
     drop: unsafe fn(*const ()),
 }
 
@@ -142,9 +127,6 @@ impl RawWakerVTable {
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
-    ///
-    /// [`Waker`]: struct.Waker.html
-    /// [`RawWaker`]: struct.RawWaker.html
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
     // `rustc_allow_const_fn_ptr` is a hack that should not be used anywhere else
@@ -208,8 +190,6 @@ impl fmt::Debug for Context<'_> {
 /// executor-specific wakeup behavior.
 ///
 /// Implements [`Clone`], [`Send`], and [`Sync`].
-///
-/// [`RawWaker`]: struct.RawWaker.html
 #[repr(transparent)]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Waker {
@@ -275,9 +255,6 @@ impl Waker {
     /// The behavior of the returned `Waker` is undefined if the contract defined
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
     /// Therefore this method is unsafe.
-    ///
-    /// [`RawWaker`]: struct.RawWaker.html
-    /// [`RawWakerVTable`]: struct.RawWakerVTable.html
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub unsafe fn from_raw(waker: RawWaker) -> Waker {

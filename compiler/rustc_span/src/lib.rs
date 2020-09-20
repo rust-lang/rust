@@ -5,15 +5,14 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(negative_impls)]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
 #![feature(min_specialization)]
 #![feature(option_expect_none)]
-#![feature(refcell_take)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -1158,7 +1157,12 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     let max_line_length = if lines.len() == 1 {
                         0
                     } else {
-                        lines.windows(2).map(|w| w[1] - w[0]).map(|bp| bp.to_usize()).max().unwrap()
+                        lines
+                            .array_windows()
+                            .map(|&[fst, snd]| snd - fst)
+                            .map(|bp| bp.to_usize())
+                            .max()
+                            .unwrap()
                     };
 
                     let bytes_per_diff: u8 = match max_line_length {
@@ -1173,7 +1177,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     // Encode the first element.
                     lines[0].encode(s)?;
 
-                    let diff_iter = (&lines[..]).windows(2).map(|w| (w[1] - w[0]));
+                    let diff_iter = lines[..].array_windows().map(|&[fst, snd]| snd - fst);
 
                     match bytes_per_diff {
                         1 => {
