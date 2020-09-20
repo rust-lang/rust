@@ -297,6 +297,17 @@ impl std::ops::Deref for Validator<'a, 'tcx> {
 struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
+    /// Determines if this code could be executed at runtime and thus is subject to codegen.
+    /// That means even unused constants need to be evaluated.
+    ///
+    /// `const_kind` should not be used in this file other than through this method!
+    fn maybe_runtime(&self) -> bool {
+        match self.const_kind {
+            None | Some(hir::ConstContext::ConstFn) => true,
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const) => false,
+        }
+    }
+
     fn validate_candidate(&self, candidate: Candidate) -> Result<(), Unpromotable> {
         match candidate {
             Candidate::Ref(loc) => {
@@ -363,12 +374,10 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                             // In theory, any zero-sized value could be borrowed
                             // mutably without consequences. However, only &mut []
-                            // is allowed right now, and only in functions.
+                            // is allowed right now.
                             if let ty::Array(_, len) = ty.kind() {
-                                // FIXME(eddyb) the `self.is_non_const_fn` condition
-                                // seems unnecessary, given that this is merely a ZST.
                                 match len.try_eval_usize(self.tcx, self.param_env) {
-                                    Some(0) if self.const_kind.is_none() => {}
+                                    Some(0) => {}
                                     _ => return Err(Unpromotable),
                                 }
                             } else {
@@ -495,9 +504,10 @@ impl<'tcx> Validator<'_, 'tcx> {
         match place {
             PlaceRef { local, projection: [] } => self.validate_local(local),
             PlaceRef { local, projection: [proj_base @ .., elem] } => {
+                // Validate topmost projection, then recurse.
                 match *elem {
                     ProjectionElem::Deref => {
-                        let mut not_promotable = true;
+                        let mut promotable = false;
                         // This is a special treatment for cases like *&STATIC where STATIC is a
                         // global static variable.
                         // This pattern is generated only when global static variables are directly
@@ -512,6 +522,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                             }) = def_stmt
                             {
                                 if let Some(did) = c.check_static_ptr(self.tcx) {
+                                    // Evaluating a promoted may not read statics except if it got
+                                    // promoted from a static (this is a CTFE check). So we
+                                    // can only promote static accesses inside statics.
                                     if let Some(hir::ConstContext::Static(..)) = self.const_kind {
                                         // The `is_empty` predicate is introduced to exclude the case
                                         // where the projection operations are [ .field, * ].
@@ -524,13 +537,13 @@ impl<'tcx> Validator<'_, 'tcx> {
                                         if proj_base.is_empty()
                                             && !self.tcx.is_thread_local_static(did)
                                         {
-                                            not_promotable = false;
+                                            promotable = true;
                                         }
                                     }
                                 }
                             }
                         }
-                        if not_promotable {
+                        if !promotable {
                             return Err(Unpromotable);
                         }
                     }
@@ -545,7 +558,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     }
 
                     ProjectionElem::Field(..) => {
-                        if self.const_kind.is_none() {
+                        if self.maybe_runtime() {
                             let base_ty =
                                 Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
                             if let Some(def) = base_ty.ty_adt_def() {
@@ -573,6 +586,10 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if let Some(def_id) = c.check_static_ptr(self.tcx) {
                     // Only allow statics (not consts) to refer to other statics.
                     // FIXME(eddyb) does this matter at all for promotion?
+                    // FIXME(RalfJung) it makes little sense to not promote this in `fn`/`const fn`,
+                    // and in `const` this cannot occur anyway. The only concern is that we might
+                    // promote even `let x = &STATIC` which would be useless, but this applies to
+                    // promotion inside statics as well.
                     let is_static = matches!(self.const_kind, Some(hir::ConstContext::Static(_)));
                     if !is_static {
                         return Err(Unpromotable);
@@ -591,20 +608,20 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if self.const_kind.is_none() => {
+            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
-                        // in normal functions, mark such casts as not promotable
+                        // ptr-to-int casts are not possible in consts and thus not promotable
                         return Err(Unpromotable);
                     }
                     _ => {}
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) if self.const_kind.is_none() => {
+            Rvalue::BinaryOp(op, ref lhs, _) => {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
                     assert!(
                         op == BinOp::Eq
@@ -616,13 +633,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                             || op == BinOp::Offset
                     );
 
-                    // raw pointer operations are not allowed inside promoteds
+                    // raw pointer operations are not allowed inside consts and thus not promotable
                     return Err(Unpromotable);
                 }
             }
 
             Rvalue::NullaryOp(NullOp::Box, _) => return Err(Unpromotable),
 
+            // FIXME(RalfJung): the rest is *implicitly considered promotable*... that seems dangerous.
             _ => {}
         }
 
@@ -644,8 +662,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
 
             Rvalue::AddressOf(_, place) => {
-                // Raw reborrows can come from reference to pointer coercions,
-                // so are allowed.
+                // We accept `&raw *`, i.e., raw reborrows -- creating a raw pointer is
+                // no problem, only using it is.
                 if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
                     let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind() {
@@ -664,12 +682,10 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
-                    // is allowed right now, and only in functions.
+                    // is allowed right now.
                     if let ty::Array(_, len) = ty.kind() {
-                        // FIXME(eddyb): We only return `Unpromotable` for `&mut []` inside a
-                        // const context which seems unnecessary given that this is merely a ZST.
                         match len.try_eval_usize(self.tcx, self.param_env) {
-                            Some(0) if self.const_kind.is_none() => {}
+                            Some(0) => {}
                             _ => return Err(Unpromotable),
                         }
                     } else {
@@ -734,14 +750,7 @@ impl<'tcx> Validator<'_, 'tcx> {
     ) -> Result<(), Unpromotable> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
-        // `const` and `static` use the explicit rules for promotion regardless of the `Candidate`,
-        // meaning calls to `const fn` can be promoted.
-        let context_uses_explicit_promotion_rules = matches!(
-            self.const_kind,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const)
-        );
-
-        if !self.explicit && !context_uses_explicit_promotion_rules {
+        if !self.explicit && self.maybe_runtime() {
             if let ty::FnDef(def_id, _) = *fn_ty.kind() {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
