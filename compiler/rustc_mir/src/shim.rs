@@ -33,7 +33,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
         ty::InstanceDef::VtableShim(def_id) => {
-            build_call_shim(tcx, instance, Some(Adjustment::Deref), CallKind::Direct(def_id), None)
+            build_call_shim(tcx, instance, Some(Adjustment::Deref), CallKind::Direct(def_id))
         }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
@@ -42,16 +42,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
                 Some(ty::ClosureKind::FnMut | ty::ClosureKind::Fn) => Adjustment::Deref,
                 None => bug!("fn pointer {:?} is not an fn", ty),
             };
-            // HACK: we need the "real" argument types for the MIR,
-            // but because our substs are (Self, Args), where Args
-            // is a tuple, we must include the *concrete* argument
-            // types in the MIR. They will be substituted again with
-            // the param-substs, but because they are concrete, this
-            // will not do any harm.
-            let sig = tcx.erase_late_bound_regions(&ty.fn_sig(tcx));
-            let arg_tys = sig.inputs();
 
-            build_call_shim(tcx, instance, Some(adjustment), CallKind::Indirect(ty), Some(arg_tys))
+            build_call_shim(tcx, instance, Some(adjustment), CallKind::Indirect(ty))
         }
         // We are generating a call back to our def-id, which the
         // codegen backend knows to turn to an actual call, be it
@@ -59,7 +51,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         // indirect calls must be codegen'd differently than direct ones
         // (such as `#[track_caller]`).
         ty::InstanceDef::ReifyShim(def_id) => {
-            build_call_shim(tcx, instance, None, CallKind::Direct(def_id), None)
+            build_call_shim(tcx, instance, None, CallKind::Direct(def_id))
         }
         ty::InstanceDef::ClosureOnceShim { call_once: _ } => {
             let fn_mut = tcx.require_lang_item(LangItem::FnMut, None);
@@ -70,13 +62,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
                 .unwrap()
                 .def_id;
 
-            build_call_shim(
-                tcx,
-                instance,
-                Some(Adjustment::RefMut),
-                CallKind::Direct(call_mut),
-                None,
-            )
+            build_call_shim(tcx, instance, Some(Adjustment::RefMut), CallKind::Direct(call_mut))
         }
         ty::InstanceDef::DropGlue(def_id, ty) => build_drop_shim(tcx, def_id, ty),
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
@@ -641,28 +627,44 @@ impl CloneShimBuilder<'tcx> {
     }
 }
 
-/// Builds a "call" shim for `instance`. The shim calls the
-/// function specified by `call_kind`, first adjusting its first
-/// argument according to `rcvr_adjustment`.
-///
-/// If `untuple_args` is a vec of types, the second argument of the
-/// function will be untupled as these types.
+/// Builds a "call" shim for `instance`. The shim calls the function specified by `call_kind`,
+/// first adjusting its first argument according to `rcvr_adjustment`.
 fn build_call_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
     rcvr_adjustment: Option<Adjustment>,
     call_kind: CallKind<'tcx>,
-    untuple_args: Option<&[Ty<'tcx>]>,
 ) -> Body<'tcx> {
     debug!(
-        "build_call_shim(instance={:?}, rcvr_adjustment={:?}, \
-            call_kind={:?}, untuple_args={:?})",
-        instance, rcvr_adjustment, call_kind, untuple_args
+        "build_call_shim(instance={:?}, rcvr_adjustment={:?}, call_kind={:?})",
+        instance, rcvr_adjustment, call_kind
     );
+
+    // `FnPtrShim` contains the fn pointer type that a call shim is being built for - this is used
+    // to substitute into the signature of the shim. It is not necessary for users of this
+    // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
+    let (sig_substs, untuple_args) = if let ty::InstanceDef::FnPtrShim(_, ty) = instance {
+        let sig = tcx.erase_late_bound_regions(&ty.fn_sig(tcx));
+
+        let untuple_args = sig.inputs();
+
+        // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
+        let arg_tup = tcx.mk_tup(untuple_args.iter());
+        let sig_substs = tcx.mk_substs_trait(ty, &[ty::subst::GenericArg::from(arg_tup)]);
+
+        (Some(sig_substs), Some(untuple_args))
+    } else {
+        (None, None)
+    };
 
     let def_id = instance.def_id();
     let sig = tcx.fn_sig(def_id);
     let mut sig = tcx.erase_late_bound_regions(&sig);
+
+    assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
+    if let Some(sig_substs) = sig_substs {
+        sig = sig.subst(tcx, sig_substs);
+    }
 
     if let CallKind::Indirect(fnty) = call_kind {
         // `sig` determines our local decls, and thus the callee type in the `Call` terminator. This
