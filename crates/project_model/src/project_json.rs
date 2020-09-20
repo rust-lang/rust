@@ -34,6 +34,13 @@ pub struct Crate {
 }
 
 impl ProjectJson {
+    /// Create a new ProjectJson instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `base` - The path to the workspace root (i.e. the folder containing `rust-project.json`)
+    /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
+    ///            configuration.
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
         ProjectJson {
             sysroot_src: data.sysroot_src.map(|it| base.join(it)),
@@ -85,12 +92,15 @@ impl ProjectJson {
                 .collect::<Vec<_>>(),
         }
     }
+    /// Returns the number of crates in the project.
     pub fn n_crates(&self) -> usize {
         self.crates.len()
     }
+    /// Returns an iterator over the crates in the project.
     pub fn crates(&self) -> impl Iterator<Item = (CrateId, &Crate)> + '_ {
         self.crates.iter().enumerate().map(|(idx, krate)| (CrateId(idx as u32), krate))
     }
+    /// Returns the path to the project's root folder.
     pub fn path(&self) -> &AbsPath {
         &self.project_root
     }
