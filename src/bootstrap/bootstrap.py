@@ -966,7 +966,6 @@ def bootstrap(help_triggered):
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
-    parser.add_argument('--src')
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
@@ -975,7 +974,7 @@ def bootstrap(help_triggered):
 
     # Configure initial bootstrap
     build = RustBuild()
-    build.rust_root = args.src or os.path.abspath(os.path.join(__file__, '../../..'))
+    build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
     build.verbose = args.verbose
     build.clean = args.clean
 
@@ -1032,18 +1031,12 @@ def bootstrap(help_triggered):
     args = [build.bootstrap_binary()]
     args.extend(sys.argv[1:])
     env = os.environ.copy()
-    env["BUILD"] = build.build
-    env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
     env["BUILD_DIR"] = build.build_dir
     env["RUSTC_BOOTSTRAP"] = '1'
-    env["CARGO"] = build.cargo()
-    env["RUSTC"] = build.rustc()
     if toml_path:
         env["BOOTSTRAP_CONFIG"] = toml_path
-    if build.rustfmt():
-        env["RUSTFMT"] = build.rustfmt()
     run(args, env=env, verbose=build.verbose)
 
 
