@@ -491,6 +491,7 @@ fn test_send_vectored_fds_unix_stream() {
     }
 }
 
+#[cfg(any(test, target_os = "android", target_os = "emscripten", target_os = "linux",))]
 #[test]
 fn test_send_vectored_with_ancillary_to_unix_datagram() {
     fn getpid() -> libc::pid_t {
