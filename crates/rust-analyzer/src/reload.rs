@@ -252,7 +252,7 @@ impl GlobalState {
                     // Enable flychecks for json projects if a custom flycheck command was supplied
                     // in the workspace configuration.
                     match config {
-                        FlycheckConfig::CustomCommand { .. } => project.path(),
+                        FlycheckConfig::CustomCommand { .. } => Some(project.path()),
                         _ => None,
                     }
                 }

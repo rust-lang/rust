@@ -13,7 +13,7 @@ use crate::cfg_flag::CfgFlag;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectJson {
     pub(crate) sysroot_src: Option<AbsPathBuf>,
-    project_root: Option<AbsPathBuf>,
+    project_root: AbsPathBuf,
     crates: Vec<Crate>,
 }
 
@@ -34,10 +34,17 @@ pub struct Crate {
 }
 
 impl ProjectJson {
+    /// Create a new ProjectJson instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `base` - The path to the workspace root (i.e. the folder containing `rust-project.json`)
+    /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
+    ///            configuration.
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
         ProjectJson {
             sysroot_src: data.sysroot_src.map(|it| base.join(it)),
-            project_root: base.parent().map(AbsPath::to_path_buf),
+            project_root: base.to_path_buf(),
             crates: data
                 .crates
                 .into_iter()
@@ -85,17 +92,17 @@ impl ProjectJson {
                 .collect::<Vec<_>>(),
         }
     }
+    /// Returns the number of crates in the project.
     pub fn n_crates(&self) -> usize {
         self.crates.len()
     }
+    /// Returns an iterator over the crates in the project.
     pub fn crates(&self) -> impl Iterator<Item = (CrateId, &Crate)> + '_ {
         self.crates.iter().enumerate().map(|(idx, krate)| (CrateId(idx as u32), krate))
     }
-    pub fn path(&self) -> Option<&AbsPath> {
-        match &self.project_root {
-            Some(p) => Some(p.as_path()),
-            None => None,
-        }
+    /// Returns the path to the project's root folder.
+    pub fn path(&self) -> &AbsPath {
+        &self.project_root
     }
 }
 
