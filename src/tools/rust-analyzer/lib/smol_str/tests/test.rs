@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate proptest;
+use proptest::{prop_assert, prop_assert_eq, proptest};
 
 use smol_str::SmolStr;
 
