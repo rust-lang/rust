@@ -59,7 +59,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };
-        let const_val = this.const_eval_raw(cid)?;
+        let const_val = this.eval_to_allocation(cid)?;
         let const_val = this.read_scalar(const_val.into())?;
         return Ok(const_val);
     }
