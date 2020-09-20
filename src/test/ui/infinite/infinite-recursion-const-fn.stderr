@@ -1,17 +1,17 @@
-error[E0391]: cycle detected when const-evaluating `a`
+error[E0391]: cycle detected when const-evaluating + checking `a`
   --> $DIR/infinite-recursion-const-fn.rs:3:1
    |
-LL | const fn a() -> usize { b() }
+LL | const fn a() -> usize {
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires const-evaluating `b`...
-  --> $DIR/infinite-recursion-const-fn.rs:4:1
+note: ...which requires const-evaluating + checking `b`...
+  --> $DIR/infinite-recursion-const-fn.rs:7:1
    |
-LL | const fn b() -> usize { a() }
+LL | const fn b() -> usize {
    | ^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires const-evaluating `a`, completing the cycle
-note: cycle used when const-evaluating `ARR::{{constant}}#0`
-  --> $DIR/infinite-recursion-const-fn.rs:5:18
+   = note: ...which again requires const-evaluating + checking `a`, completing the cycle
+note: cycle used when const-evaluating + checking `ARR::{{constant}}#0`
+  --> $DIR/infinite-recursion-const-fn.rs:10:18
    |
 LL | const ARR: [i32; a()] = [5; 6];
    |                  ^^^

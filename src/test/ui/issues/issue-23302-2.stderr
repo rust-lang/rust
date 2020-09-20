@@ -1,21 +1,21 @@
-error[E0391]: cycle detected when const-evaluating + checking `Y::A::{{constant}}#0`
+error[E0391]: cycle detected when simplifying constant for the type system `Y::A::{{constant}}#0`
   --> $DIR/issue-23302-2.rs:4:9
    |
 LL |     A = Y::B as isize,
    |         ^^^^^^^^^^^^^
    |
+note: ...which requires simplifying constant for the type system `Y::A::{{constant}}#0`...
+  --> $DIR/issue-23302-2.rs:4:9
+   |
+LL |     A = Y::B as isize,
+   |         ^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `Y::A::{{constant}}#0`...
   --> $DIR/issue-23302-2.rs:4:9
    |
 LL |     A = Y::B as isize,
    |         ^^^^^^^^^^^^^
-note: ...which requires const-evaluating `Y::A::{{constant}}#0`...
-  --> $DIR/issue-23302-2.rs:4:9
-   |
-LL |     A = Y::B as isize,
-   |         ^^^^^^^^^^^^^
    = note: ...which requires normalizing `Y::B as isize`...
-   = note: ...which again requires const-evaluating + checking `Y::A::{{constant}}#0`, completing the cycle
+   = note: ...which again requires simplifying constant for the type system `Y::A::{{constant}}#0`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/issue-23302-2.rs:3:1
    |

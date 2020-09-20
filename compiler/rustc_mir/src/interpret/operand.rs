@@ -553,13 +553,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Error(_) => throw_inval!(TypeckError(ErrorReported)),
             ty::ConstKind::Unevaluated(def, substs, promoted) => {
                 let instance = self.resolve(def.did, substs)?;
-                // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
-                // The reason we use `const_eval_raw` everywhere else is to prevent cycles during
-                // validation, because validation automatically reads through any references, thus
-                // potentially requiring the current static to be evaluated again. This is not a
-                // problem here, because we are building an operand which means an actual read is
-                // happening.
-                return Ok(self.const_eval(GlobalId { instance, promoted }, val.ty)?);
+                return Ok(self.eval_to_allocation(GlobalId { instance, promoted })?.into());
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)

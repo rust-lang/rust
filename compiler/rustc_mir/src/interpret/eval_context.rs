@@ -20,7 +20,7 @@ use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
-    Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
+    Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, Operand, Place, PlaceTy,
     ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
@@ -875,32 +875,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub(super) fn const_eval(
-        &self,
-        gid: GlobalId<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
-        // and thus don't care about the parameter environment. While we could just use
-        // `self.param_env`, that would mean we invoke the query to evaluate the static
-        // with different parameter environments, thus causing the static to be evaluated
-        // multiple times.
-        let param_env = if self.tcx.is_static(gid.instance.def_id()) {
-            ty::ParamEnv::reveal_all()
-        } else {
-            self.param_env
-        };
-        let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.tcx.span))?;
-
-        // Even though `ecx.const_eval` is called from `const_to_op` we can never have a
-        // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
-        // return `ConstValue::Unevaluated`, which is the only way that `const_to_op` will call
-        // `ecx.const_eval`.
-        let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
-        self.const_to_op(&const_, None)
-    }
-
-    pub fn const_eval_raw(
+    pub fn eval_to_allocation(
         &self,
         gid: GlobalId<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
@@ -914,14 +889,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        // We use `const_eval_raw` here, and get an unvalidated result.  That is okay:
-        // Our result will later be validated anyway, and there seems no good reason
-        // to have to fail early here.  This is also more consistent with
-        // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
-        // FIXME: We can hit delay_span_bug if this is an invalid const, interning finds
-        // that problem, but we never run validation to show an error. Can we ensure
-        // this does not happen?
-        let val = self.tcx.const_eval_raw(param_env.and(gid))?;
+        let val = self.tcx.eval_to_allocation_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }
 

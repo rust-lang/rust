@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer,
+    read_target_uint, Allocation, ErrorHandled, GlobalAlloc, Pointer,
 };
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
@@ -85,10 +85,7 @@ pub fn codegen_static_initializer(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
 ) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
-    let alloc = match cx.tcx.const_eval_poly(def_id)? {
-        ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => alloc,
-        val => bug!("static const eval returned {:#?}", val),
-    };
+    let alloc = cx.tcx.eval_static_initializer(def_id)?;
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 

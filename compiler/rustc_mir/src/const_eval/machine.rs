@@ -51,7 +51,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
 
         let gid = GlobalId { instance, promoted: None };
 
-        let place = self.const_eval_raw(gid)?;
+        let place = self.eval_to_allocation(gid)?;
 
         self.copy_op(place.into(), dest)?;
 
