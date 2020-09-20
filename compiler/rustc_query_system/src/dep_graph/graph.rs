@@ -260,12 +260,11 @@ impl<K: DepKind> DepGraph<K> {
 
             let print_status = cfg!(debug_assertions) && cx.debug_dep_tasks();
 
-            if matches!(dep_node_index, None) {
+            let dep_node_index = if let Some(dep_node_index) = dep_node_index {
+                dep_node_index
+            } else {
                 return (result, self.next_virtual_depnode_index());
-            }
-
-            // Handled None case above, safe to unwrap here.
-            let dep_node_index = dep_node_index.unwrap();
+            };
 
             // Determine the color of the new DepNode.
             if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
@@ -1001,7 +1000,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             !self.node_to_node_index.get_shard_by_value(&dep_node).lock().contains_key(&dep_node)
         );
 
-        if dep_node.kind.is_anon() || edges.is_empty() {
+        if dep_node.kind.is_anon() {
             return None;
         }
 

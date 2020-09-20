@@ -86,6 +86,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         DepKind::can_reconstruct_query_key(self)
     }
 
+    #[inline]
     fn is_anon(&self) -> bool {
         DepKind::is_anon(self)
     }
