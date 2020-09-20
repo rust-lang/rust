@@ -314,6 +314,25 @@ impl Foo for S {
     }
 
     #[test]
+    fn test_impl_def_without_braces() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Foo { fn foo(&self); }
+struct S;
+impl Foo for S<|>"#,
+            r#"
+trait Foo { fn foo(&self); }
+struct S;
+impl Foo for S {
+    fn foo(&self) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn fill_in_type_params_1() {
         check_assist(
             add_missing_impl_members,
