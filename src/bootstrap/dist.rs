@@ -18,7 +18,6 @@ use build_helper::{output, t};
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::channel;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::tool::{self, Tool};
@@ -569,7 +568,7 @@ impl Step for Rustc {
                     &page_dst,
                     &[
                         ("<INSERT DATE HERE>", &month_year),
-                        ("<INSERT VERSION HERE>", channel::CFG_RELEASE_NUM),
+                        ("<INSERT VERSION HERE>", &builder.version),
                     ],
                 );
             }
@@ -2301,9 +2300,9 @@ impl Step for Extended {
 }
 
 fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
-    let mut parts = channel::CFG_RELEASE_NUM.split('.');
+    let mut parts = builder.version.split('.');
     cmd.env("CFG_RELEASE_INFO", builder.rust_version())
-        .env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM)
+        .env("CFG_RELEASE_NUM", &builder.version)
         .env("CFG_RELEASE", builder.rust_release())
         .env("CFG_VER_MAJOR", parts.next().unwrap())
         .env("CFG_VER_MINOR", parts.next().unwrap())

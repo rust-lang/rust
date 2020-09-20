@@ -7,7 +7,6 @@ use std::process::{exit, Command};
 use build_helper::t;
 
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
-use crate::channel;
 use crate::channel::GitInfo;
 use crate::compile;
 use crate::config::TargetSelection;
@@ -255,7 +254,7 @@ pub fn prepare_tool_cargo(
     cargo.env("CFG_RELEASE", builder.rust_release());
     cargo.env("CFG_RELEASE_CHANNEL", &builder.config.channel);
     cargo.env("CFG_VERSION", builder.rust_version());
-    cargo.env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM);
+    cargo.env("CFG_RELEASE_NUM", &builder.version);
 
     let info = GitInfo::new(builder.config.ignore_git, &dir);
     if let Some(sha) = info.sha() {
