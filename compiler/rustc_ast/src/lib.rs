@@ -5,17 +5,13 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
-#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(const_fn)] // For the `transmute` in `P::new`
 #![feature(const_panic)]
-#![feature(const_fn_transmute)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]
 #![feature(or_patterns)]
-#![feature(try_trait)]
-#![feature(unicode_internals)]
 #![recursion_limit = "256"]
 
 #[macro_use]
