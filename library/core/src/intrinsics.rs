@@ -733,6 +733,7 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_assume", issue = "76972")]
     pub fn assume(b: bool);
 
     /// Hints to the compiler that branch condition is likely to be true.
