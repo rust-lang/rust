@@ -95,8 +95,7 @@ use crate::thread::{self, Thread};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
-/// functionality. This type can only be constructed with the [`Once::new()`]
-/// constructor.
+/// functionality. This type can only be constructed with [`Once::new()`].
 ///
 /// # Examples
 ///

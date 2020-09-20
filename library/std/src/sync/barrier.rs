@@ -150,8 +150,8 @@ impl fmt::Debug for BarrierWaitResult {
 }
 
 impl BarrierWaitResult {
-    /// Returns `true` if this thread from [`Barrier::wait()`] is the
-    /// "leader thread".
+    /// Returns `true` if this thread is the "leader thread" for the call to
+    /// [`Barrier::wait()`].
     ///
     /// Only one thread will have `true` returned from their result, all other
     /// threads will have `false` returned.
