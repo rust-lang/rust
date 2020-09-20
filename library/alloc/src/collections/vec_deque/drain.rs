@@ -9,8 +9,7 @@ use super::{count, Iter, VecDeque};
 /// This `struct` is created by the [`drain`] method on [`VecDeque`]. See its
 /// documentation for more.
 ///
-/// [`drain`]: struct.VecDeque.html#method.drain
-/// [`VecDeque`]: struct.VecDeque.html
+/// [`drain`]: VecDeque::drain
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     pub(crate) after_tail: usize,
