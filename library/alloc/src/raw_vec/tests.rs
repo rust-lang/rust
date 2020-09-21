@@ -1,9 +1,5 @@
-#![feature(cell_update)]
-
 use super::*;
 use std::cell::Cell;
-
-
 
 #[test]
 fn allocator_param() {
@@ -32,7 +28,7 @@ fn allocator_param() {
             }
             match Global.alloc(layout) {
                 ok @ Ok(_) => {
-                    self.fuel.update(|old| old - size);
+                    self.fuel.set(self.fuel.get() - size);
                     ok
                 }
                 err @ Err(_) => err,
