@@ -165,9 +165,17 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     _ => {}
                 }
             }
+            Rvalue::ThreadLocalRef(did) => self.check_static(*did),
             _ => {}
         }
         self.super_rvalue(rvalue, location);
+    }
+
+    fn visit_constant(&mut self, constant: &Constant<'tcx>, _location: Location) {
+        // Accesses to statics are encoded as constants with `&STATIC` or `&mut STATIC` value.
+        if let Some(did) = constant.check_static_ptr(self.tcx) {
+            self.check_static(did);
+        }
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
@@ -204,26 +212,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if let [] = proj_base {
                 let decl = &self.body.local_decls[place.local];
                 if decl.internal {
-                    if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
-                        if self.tcx.is_mutable_static(def_id) {
-                            self.require_unsafe(
-                                UnsafetyViolationKind::General,
-                                UnsafetyViolationDetails::UseOfMutableStatic,
-                            );
-                            return;
-                        } else if self.tcx.is_foreign_item(def_id) {
-                            self.require_unsafe(
-                                UnsafetyViolationKind::General,
-                                UnsafetyViolationDetails::UseOfExternStatic,
-                            );
-                            return;
-                        }
-                    } else {
-                        // Internal locals are used in the `move_val_init` desugaring.
-                        // We want to check unsafety against the source info of the
-                        // desugaring, rather than the source info of the RHS.
-                        self.source_info = self.body.local_decls[place.local].source_info;
-                    }
+                    // Internal locals are used in the `move_val_init` desugaring.
+                    // We want to check unsafety against the source info of the
+                    // desugaring, rather than the source info of the RHS.
+                    self.source_info = self.body.local_decls[place.local].source_info;
                 }
             }
             let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
@@ -273,6 +265,20 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
+    fn check_static(&mut self, did: DefId) {
+        if self.tcx.is_mutable_static(did) {
+            self.require_unsafe(
+                UnsafetyViolationKind::General,
+                UnsafetyViolationDetails::UseOfMutableStatic,
+            )
+        } else if self.tcx.is_foreign_item(did) {
+            self.require_unsafe(
+                UnsafetyViolationKind::General,
+                UnsafetyViolationDetails::UseOfExternStatic,
+            )
+        }
+    }
+
     fn require_unsafe(&mut self, kind: UnsafetyViolationKind, details: UnsafetyViolationDetails) {
         let source_info = self.source_info;
         let lint_root = self.body.source_scopes[self.source_info.scope]

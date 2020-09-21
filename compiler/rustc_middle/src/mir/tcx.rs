@@ -153,7 +153,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::ThreadLocalRef(did) => {
                 if tcx.is_mutable_static(did) {
-                    tcx.mk_mut_ptr(tcx.type_of(did))
+                    tcx.mk_mut_ref(tcx.lifetimes.re_static, tcx.type_of(did))
                 } else {
                     tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.type_of(did))
                 }

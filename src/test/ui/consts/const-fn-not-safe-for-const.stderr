@@ -13,14 +13,22 @@ LL |     Y
    = help: consider extracting the value of the `static` to a `const`, and referring to that
 
 error[E0013]: constant functions cannot refer to statics
-  --> $DIR/const-fn-not-safe-for-const.rs:25:6
+  --> $DIR/const-fn-not-safe-for-const.rs:20:5
    |
-LL |     &Y
-   |      ^
+LL |     Y
+   |     ^
    |
    = help: consider extracting the value of the `static` to a `const`, and referring to that
 
-error: aborting due to 3 previous errors
+error[E0013]: constant functions cannot refer to statics
+  --> $DIR/const-fn-not-safe-for-const.rs:26:5
+   |
+LL |     &Y
+   |     ^^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0013, E0015.
 For more information about an error, try `rustc --explain E0013`.

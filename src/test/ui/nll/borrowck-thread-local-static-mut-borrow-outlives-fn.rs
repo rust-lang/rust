@@ -1,8 +1,3 @@
-//
-// run-pass
-//
-// FIXME(#54366) - We probably shouldn't allow #[thread_local] static mut to get a 'static lifetime.
-
 #![feature(thread_local)]
 
 #[thread_local]
@@ -16,6 +11,7 @@ impl S1 {
     fn new(_x: u64) -> S1 {
         S1 {
             a: unsafe { &mut X1 },
+            //~^ ERROR thread-local variable borrowed past end of function
         }
     }
 }

@@ -2,8 +2,8 @@
 
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/tls-access.rs:6:11: 6:11
-    let _2: *mut u8;                     // in scope 0 at $DIR/tls-access.rs:8:18: 8:21
-    let mut _3: *mut u8;                 // in scope 0 at $DIR/tls-access.rs:9:9: 9:12
+    let _2: &mut u8;                     // in scope 0 at $DIR/tls-access.rs:8:18: 8:21
+    let mut _3: &mut u8;                 // in scope 0 at $DIR/tls-access.rs:9:9: 9:12
     scope 1 {
         let _1: &u8;                     // in scope 1 at $DIR/tls-access.rs:8:13: 8:14
         scope 2 {

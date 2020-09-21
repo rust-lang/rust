@@ -8,7 +8,7 @@ use std::cell::UnsafeCell;
 static mut FOO: u32 = 42;
 static BOO: () = unsafe {
     FOO = 5;
-    //~^ could not evaluate static initializer [E0080]
+    //~^ ERROR could not evaluate static initializer
 };
 
 fn main() {}

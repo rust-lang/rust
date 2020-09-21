@@ -15,6 +15,11 @@ help: skipping check that does not even have a feature gate
    |
 LL | const TEST: u8 = MY_STATIC;
    |                  ^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const-prop-read-static-in-const.rs:5:18
+   |
+LL | const TEST: u8 = MY_STATIC;
+   |                  ^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

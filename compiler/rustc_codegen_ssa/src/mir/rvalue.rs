@@ -540,7 +540,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(bx.cx().tcx().is_static(def_id));
                 let static_ = bx.get_static(def_id);
-                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
+                let layout =
+                    bx.layout_of(bx.cx().tcx().mk_imm_ptr(bx.cx().tcx().static_ty(def_id)));
                 let operand = OperandRef::from_immediate_or_packed_pair(&mut bx, static_, layout);
                 (bx, operand)
             }

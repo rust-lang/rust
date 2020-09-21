@@ -425,18 +425,20 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
-                if let ty::RawPtr(_) = base_ty.kind() {
-                    if proj_base.is_empty() {
-                        if let (local, []) = (place_local, proj_base) {
-                            let decl = &self.body.local_decls[local];
-                            if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
-                                let span = decl.source_info.span;
-                                self.check_static(def_id, span);
-                                return;
-                            }
+                if proj_base.is_empty() {
+                    if let (local, []) = (place_local, proj_base) {
+                        let decl = &self.body.local_decls[local];
+                        if let Some(box LocalInfo::StaticRef { def_id, is_thread_local: false }) =
+                            decl.local_info
+                        {
+                            let span = decl.source_info.span;
+                            self.check_static(def_id, span);
+                            return;
                         }
                     }
+                }
+                let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
+                if let ty::RawPtr(_) = base_ty.kind() {
                     self.check_op(ops::RawPtrDeref);
                 }
 
@@ -633,12 +635,6 @@ fn place_as_reborrow(
 ) -> Option<&'a [PlaceElem<'tcx>]> {
     place.projection.split_last().and_then(|(outermost, inner)| {
         if outermost != &ProjectionElem::Deref {
-            return None;
-        }
-
-        // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
-        // that points to the allocation for the static. Don't treat these as reborrows.
-        if body.local_decls[place.local].is_ref_to_static() {
             return None;
         }
 

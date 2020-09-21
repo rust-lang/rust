@@ -107,15 +107,10 @@ LL |         U8_MUT3 => true,
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:14:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:14:14
    |
 LL |     unsafe { &static_cross_crate::ZERO }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:14:15
-   |
-LL |     unsafe { &static_cross_crate::ZERO }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/const_refers_to_static_cross_crate.rs:20:15
    |
@@ -131,6 +126,16 @@ help: skipping check that does not even have a feature gate
    |
 LL |     unsafe { &static_cross_crate::ZERO[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:26:17
+   |
+LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:26:17
+   |
+LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/const_refers_to_static_cross_crate.rs:26:17
    |

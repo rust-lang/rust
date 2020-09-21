@@ -9,10 +9,10 @@ LL | const TEST: &u8 = &MY_STATIC;
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/const-points-to-static.rs:5:20
+  --> $DIR/const-points-to-static.rs:5:19
    |
 LL | const TEST: &u8 = &MY_STATIC;
-   |                    ^^^^^^^^^
+   |                   ^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 
