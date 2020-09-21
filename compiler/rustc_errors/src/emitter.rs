@@ -1227,18 +1227,14 @@ impl EmitterWriter {
             }
             draw_note_separator(&mut buffer, 0, max_line_num_len + 1);
             if *level != Level::FailureNote {
-                let level_str = level.to_string();
-                if !level_str.is_empty() {
-                    buffer.append(0, &level_str, Style::MainHeaderMsg);
-                    buffer.append(0, ": ", Style::NoStyle);
-                }
+                buffer.append(0, level.to_str(), Style::MainHeaderMsg);
+                buffer.append(0, ": ", Style::NoStyle);
             }
             self.msg_to_buffer(&mut buffer, msg, max_line_num_len, "note", None);
         } else {
-            let level_str = level.to_string();
             // The failure note level itself does not provide any useful diagnostic information
-            if *level != Level::FailureNote && !level_str.is_empty() {
-                buffer.append(0, &level_str, Style::Level(*level));
+            if *level != Level::FailureNote {
+                buffer.append(0, level.to_str(), Style::Level(*level));
             }
             // only render error codes, not lint codes
             if let Some(DiagnosticId::Error(ref code)) = *code {
@@ -1246,7 +1242,7 @@ impl EmitterWriter {
                 buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
             }
-            if *level != Level::FailureNote && !level_str.is_empty() {
+            if *level != Level::FailureNote {
                 buffer.append(0, ": ", header_style);
             }
             for &(ref text, _) in msg.iter() {
@@ -1548,11 +1544,9 @@ impl EmitterWriter {
         let mut buffer = StyledBuffer::new();
 
         // Render the suggestion message
-        let level_str = level.to_string();
-        if !level_str.is_empty() {
-            buffer.append(0, &level_str, Style::Level(*level));
-            buffer.append(0, ": ", Style::HeaderMsg);
-        }
+        buffer.append(0, level.to_str(), Style::Level(*level));
+        buffer.append(0, ": ", Style::HeaderMsg);
+
         self.msg_to_buffer(
             &mut buffer,
             &[(suggestion.msg.to_owned(), Style::NoStyle)],
