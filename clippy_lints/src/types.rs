@@ -321,14 +321,15 @@ impl Types {
                 if let Some(def_id) = res.opt_def_id() {
                     if Some(def_id) == cx.tcx.lang_items().owned_box() {
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Box<&T>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
-                                Applicability::MachineApplicable,
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
                             );
                             return; // don't recurse into the type
                         }
@@ -345,14 +346,15 @@ impl Types {
                         }
                     } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
                         if let Some(span) = match_type_parameter(cx, qpath, &paths::RC) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<Rc<T>>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
-                                Applicability::MachineApplicable,
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
                             );
                             return; // don't recurse into the type
                         }
@@ -368,26 +370,31 @@ impl Types {
                                 GenericArg::Type(ty) => ty.span,
                                 _ => return,
                             };
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<Box<T>>`",
                                 "try",
-                                format!("Rc<{}>", snippet(cx, inner_span, "..")),
-                                Applicability::MachineApplicable,
+                                format!(
+                                    "Rc<{}>",
+                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
+                                ),
+                                applicability,
                             );
                             return; // don't recurse into the type
                         }
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<&T>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
-                                Applicability::MachineApplicable,
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
                             );
                             return; // don't recurse into the type
                         }
@@ -546,7 +553,6 @@ impl Types {
                             // details.
                             return;
                         }
-                        let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
                             BORROWED_BOX,
@@ -556,8 +562,12 @@ impl Types {
                             format!(
                                 "&{}{}",
                                 ltopt,
-                                &snippet_with_applicability(cx, inner.span, "..", &mut applicability)
+                                &snippet(cx, inner.span, "..")
                             ),
+                            // To make this `MachineApplicable`, at least one needs to check if it isn't a trait item
+                            // because the trait impls of it will break otherwise;
+                            // and there may be other cases that result in invalid code.
+                            // For example, type coercion doesn't work nicely.
                             Applicability::Unspecified,
                         );
                         return; // don't recurse into the type

@@ -8,7 +8,7 @@ use rustc_span::source_map::Spanned;
 use if_chain::if_chain;
 
 use crate::utils::SpanlessEq;
-use crate::utils::{get_parent_expr, is_allowed, is_type_diagnostic_item, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{get_parent_expr, is_allowed, is_type_diagnostic_item, span_lint, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for string appends of the form `x = x + y` (without
@@ -134,7 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    is_type_diagnostic_item(cx, walk_ptrs_ty(cx.typeck_results().expr_ty(e)), sym!(string_type))
+    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), sym!(string_type))
 }
 
 fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {

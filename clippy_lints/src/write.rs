@@ -322,10 +322,14 @@ impl EarlyLintPass for Write {
 }
 
 /// Given a format string that ends in a newline and its span, calculates the span of the
-/// newline.
+/// newline, or the format string itself if the format string consists solely of a newline.
 fn newline_span(fmtstr: &StrLit) -> Span {
     let sp = fmtstr.span;
     let contents = &fmtstr.symbol.as_str();
+
+    if *contents == r"\n" {
+        return sp;
+    }
 
     let newline_sp_hi = sp.hi()
         - match fmtstr.style {
