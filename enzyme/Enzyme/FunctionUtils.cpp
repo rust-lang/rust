@@ -73,6 +73,7 @@ using namespace llvm;
 
 static cl::opt<bool>
     enzyme_preopt("enzyme_preopt", cl::init(true), cl::Hidden,
+//    enzyme_preopt("enzyme_preopt", cl::init( (LLVM_VERSION_MAJOR <= 7) ? true : false), cl::Hidden,
                   cl::desc("Run enzyme preprocessing optimizations"));
 
 static cl::opt<bool> autodiff_inline("enzyme_inline", cl::init(false),
@@ -166,7 +167,11 @@ remover:
       // llvm::errs() << "inlining " << call->getCalledFunction()->getName() <<
       // "\n";
       InlineFunctionInfo IFI;
+      #if LLVM_VERSION_MAJOR >= 11
+      InlineFunction(*call, IFI);
+      #else
       InlineFunction(call, IFI);
+      #endif
       count++;
       if (count >= autodiff_inline_count)
         break;
@@ -261,7 +266,11 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
         if (auto CI = dyn_cast<CallInst>(&I)) {
 
           Function *called = CI->getCalledFunction();
+          #if LLVM_VERSION_MAJOR >= 11
+          if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand())) {
+          #else
           if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue())) {
+          #endif
             if (castinst->isCast()) {
               if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
                 if (isDeallocationFunction(*fn, TLI)) {
@@ -308,7 +317,9 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #endif
         AM.registerPass([] { return LazyValueAnalysis(); });
 
+#if LLVM_VERSION_MAJOR <= 7
         GVN().run(*NewF, AM);
+#endif
 
         SROA().run(*NewF, AM);
       }

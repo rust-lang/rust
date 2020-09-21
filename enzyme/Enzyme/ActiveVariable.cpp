@@ -354,7 +354,11 @@ bool isconstantM(TypeResults &TR, Instruction *inst,
   }
 
   if (auto call = dyn_cast<CallInst>(inst)) {
+    #if LLVM_VERSION_MAJOR >= 11
+    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledOperand())) {
+    #else
     if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue())) {
+    #endif
       if (iasm->getAsmString() == "cpuid") {
         if (printconst)
           llvm::errs() << " constant instruction from known cpuid instruction "

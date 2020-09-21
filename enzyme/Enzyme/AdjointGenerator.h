@@ -22,7 +22,6 @@ public:
       uncacheable_args_map;
   const SmallPtrSetImpl<Instruction *> *returnuses;
   AugmentedReturnType augmentedReturn;
-  std::vector<Instruction *> *fakeTBAA;
   const std::map<ReturnInst *, StoreInst *> *replacedReturns;
 
   const SmallPtrSetImpl<const Value *> &unnecessaryValues;
@@ -37,7 +36,7 @@ public:
       const std::map<CallInst *, const std::map<Argument *, bool>>
           uncacheable_args_map,
       const SmallPtrSetImpl<Instruction *> *returnuses,
-      AugmentedReturnType augmentedReturn, std::vector<Instruction *> *fakeTBAA,
+      AugmentedReturnType augmentedReturn,
       const std::map<ReturnInst *, StoreInst *> *replacedReturns,
       const SmallPtrSetImpl<const Value *> &unnecessaryValues,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
@@ -46,7 +45,7 @@ public:
       : mode(mode), gutils(gutils), constant_args(constant_args), TR(TR),
         getIndex(getIndex), uncacheable_args_map(uncacheable_args_map),
         returnuses(returnuses), augmentedReturn(augmentedReturn),
-        fakeTBAA(fakeTBAA), replacedReturns(replacedReturns),
+        replacedReturns(replacedReturns),
         unnecessaryValues(unnecessaryValues),
         unnecessaryInstructions(unnecessaryInstructions),
         unnecessaryStores(unnecessaryStores), dretAlloca(dretAlloca) {
@@ -226,11 +225,6 @@ public:
 
       if (mode == DerivativeMode::Reverse) {
         assert(inst != newi);
-        // if (tbaa) {
-        // inst->setMetadata(LLVMContext::MD_tbaa, tbaa);
-        //  assert(fakeTBAA);
-        //  fakeTBAA->push_back(inst);
-        //}
       } else {
         assert(inst == newi);
       }
@@ -272,7 +266,7 @@ public:
     }
 
     if (isfloat) {
-      IRBuilder<> Builder2 = getReverseBuilder(parent);
+      IRBuilder<> Builder2(parent); getReverseBuilder(Builder2);
       auto prediff = diffe(&LI, Builder2);
       setDiffe(&LI, Constant::getNullValue(type), Builder2);
       // llvm::errs() << "  + doing load propagation: orig:" << *oorig << "
@@ -344,7 +338,7 @@ public:
     if (FT) {
       //! Only need to update the reverse function
       if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
-        IRBuilder<> Builder2 = getReverseBuilder(SI.getParent());
+        IRBuilder<> Builder2(SI.getParent()); getReverseBuilder(Builder2);
 
         if (gutils->isConstantValue(orig_val)) {
           ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
@@ -413,7 +407,7 @@ public:
     Value *orig_op0 = I.getOperand(0);
     Value *op0 = gutils->getNewFromOriginal(orig_op0);
 
-    IRBuilder<> Builder2 = getReverseBuilder(I.getParent());
+    IRBuilder<> Builder2(I.getParent()); getReverseBuilder(Builder2);
 
     if (!gutils->isConstantValue(orig_op0)) {
       Value *dif = diffe(&I, Builder2);
@@ -456,7 +450,7 @@ public:
     Value *op2 = gutils->getNewFromOriginal(orig_op2);
 
     // TODO fix all the reverse builders
-    IRBuilder<> Builder2 = getReverseBuilder(SI.getParent());
+    IRBuilder<> Builder2(SI.getParent()); getReverseBuilder(Builder2);
 
     Value *dif1 = nullptr;
     Value *dif2 = nullptr;
@@ -486,7 +480,7 @@ public:
     if (mode == DerivativeMode::Forward)
       return;
 
-    IRBuilder<> Builder2 = getReverseBuilder(EEI.getParent());
+    IRBuilder<> Builder2(EEI.getParent()); getReverseBuilder(Builder2);
 
     Value *orig_vec = EEI.getVectorOperand();
 
@@ -506,7 +500,7 @@ public:
     if (mode == DerivativeMode::Forward)
       return;
 
-    IRBuilder<> Builder2 = getReverseBuilder(IEI.getParent());
+    IRBuilder<> Builder2(IEI.getParent()); getReverseBuilder(Builder2);
 
     Value *dif1 = diffe(&IEI, Builder2);
 
@@ -537,7 +531,7 @@ public:
     if (mode == DerivativeMode::Forward)
       return;
 
-    IRBuilder<> Builder2 = getReverseBuilder(SVI.getParent());
+    IRBuilder<> Builder2(SVI.getParent()); getReverseBuilder(Builder2);
 
     auto loaded = diffe(&SVI, Builder2);
     size_t l1 =
@@ -571,7 +565,7 @@ public:
 
     Value *orig_op0 = EVI.getOperand(0);
 
-    IRBuilder<> Builder2 = getReverseBuilder(EVI.getParent());
+    IRBuilder<> Builder2(EVI.getParent()); getReverseBuilder(Builder2);
 
     auto prediff = diffe(&EVI, Builder2);
 
@@ -630,7 +624,7 @@ public:
     // TODO handle pointers
     // TODO type analysis handle structs
 
-    IRBuilder<> Builder2 = getReverseBuilder(IVI.getParent());
+    IRBuilder<> Builder2(IVI.getParent()); getReverseBuilder(Builder2);
 
     Value *orig_inserted = IVI.getInsertedValueOperand();
     Value *orig_agg = IVI.getAggregateOperand();
@@ -657,8 +651,8 @@ public:
     setDiffe(&IVI, Constant::getNullValue(IVI.getType()), Builder2);
   }
 
-  inline IRBuilder<> getReverseBuilder(BasicBlock *oBB) {
-    BasicBlock *BB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
+  inline void getReverseBuilder(IRBuilder<> &Builder2) {
+    BasicBlock *BB = cast<BasicBlock>(gutils->getNewFromOriginal(Builder2.GetInsertBlock()));
     BasicBlock *BB2 = gutils->reverseBlocks[BB];
     if (!BB2) {
       llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
@@ -667,12 +661,8 @@ public:
     }
     assert(BB2);
 
-    IRBuilder<> Builder2(BB2);
-    // if (BB2->size() > 0) {
-    //    Builder2.SetInsertPoint(BB2->getFirstNonPHI());
-    //}
+    Builder2.SetInsertPoint(BB2);
     Builder2.setFastMathFlags(getFast());
-    return Builder2;
   }
 
   Value *diffe(Value *val, IRBuilder<> &Builder) {
@@ -716,7 +706,7 @@ public:
       return;
     }
 
-    IRBuilder<> Builder2 = getReverseBuilder(BO.getParent());
+    IRBuilder<> Builder2(BO.getParent()); getReverseBuilder(Builder2);
 
     Value *dif0 = nullptr;
     Value *dif1 = nullptr;
@@ -884,7 +874,7 @@ public:
     if (secretty) {
       // no change to forward pass if represents floats
       if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
-        IRBuilder<> Builder2 = getReverseBuilder(parent);
+        IRBuilder<> Builder2(parent); getReverseBuilder(Builder2);
 
         // If the src is context simply zero d_dst and don't propagate to d_src
         // (which thus == src and may be illegal)
@@ -1204,7 +1194,7 @@ public:
 
     if (mode == DerivativeMode::Both || mode == DerivativeMode::Reverse) {
 
-      IRBuilder<> Builder2 = getReverseBuilder(II.getParent());
+      IRBuilder<> Builder2(II.getParent()); getReverseBuilder(Builder2);
       Module *M = II.getParent()->getParent()->getParent();
 
       Value *vdiff = nullptr;
@@ -1529,7 +1519,11 @@ public:
 
     Function *called = orig->getCalledFunction();
 
+    #if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand())) {
+    #else
     if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue())) {
+    #endif
       if (castinst->isCast())
         if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
           if (isAllocationFunction(*called, gutils->TLI) ||
@@ -1557,7 +1551,7 @@ public:
         if (gutils->isConstantValue(orig))
           return;
 
-        IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+        IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
         Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
                           Builder2);
         Value *oneMx2 = Builder2.CreateFSub(ConstantFP::get(x->getType(), 1.0),
@@ -1580,7 +1574,7 @@ public:
         if (mode == DerivativeMode::Forward || gutils->isConstantValue(orig))
           return;
 
-        IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+        IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
         Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
                           Builder2);
 
@@ -1614,7 +1608,7 @@ public:
         auto anti =
             gutils->createAntiMalloc(orig, getIndex(orig, CacheType::Shadow));
         if (mode == DerivativeMode::Both || mode == DerivativeMode::Reverse) {
-          IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+          IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
           Value *tofree = lookup(anti, Builder2);
           assert(tofree);
           assert(tofree->getType());
@@ -1646,7 +1640,7 @@ public:
           gutils->erase(op);
         }
       } else {
-        IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+        IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
         freeKnownAllocation(Builder2, lookup(op, Builder2), *called,
                             gutils->TLI);
       }
@@ -1736,7 +1730,7 @@ public:
       pre_args.push_back(argi);
 
       if (mode != DerivativeMode::Forward) {
-        IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+        IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
         args.push_back(lookup(argi, Builder2));
       }
 
@@ -1763,7 +1757,7 @@ public:
         argsInverted.push_back(ty);
 
         if (mode != DerivativeMode::Forward) {
-          IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+          IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
           args.push_back(
               gutils->invertPointerM(orig->getArgOperand(i), Builder2));
         }
@@ -1847,10 +1841,15 @@ public:
       const AugmentedReturn *fnandtapetype = nullptr;
 
       if (!called) {
-        newcalled = gutils->invertPointerM(orig->getCalledValue(), BuilderZ);
+        #if LLVM_VERSION_MAJOR >= 11
+        auto callval = orig->getCalledOperand();
+        #else
+        auto callval = orig->getCalledValue();
+        #endif
+        newcalled = gutils->invertPointerM(callval, BuilderZ);
 
         auto ft = cast<FunctionType>(
-            cast<PointerType>(orig->getCalledValue()->getType())
+            cast<PointerType>(callval->getType())
                 ->getElementType());
 
         DIFFE_TYPE subretType = orig->getType()->isFPOrFPVectorTy()
@@ -1954,7 +1953,7 @@ public:
             goto badaugmentedfn;
         }
 
-        augmentcall = BuilderZ.CreateCall(newcalled, pre_args);
+        augmentcall = BuilderZ.CreateCall(FT, newcalled, pre_args);
         augmentcall->setCallingConv(orig->getCallingConv());
         augmentcall->setDebugLoc(orig->getDebugLoc());
 
@@ -2151,7 +2150,7 @@ public:
       return;
     }
 
-    IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+    IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
 
     bool retUsed = replaceFunction && subretused;
     Value *newcalled = nullptr;
@@ -2171,10 +2170,16 @@ public:
 
       assert(!subtopLevel);
 
-      newcalled = gutils->invertPointerM(orig->getCalledValue(), Builder2);
+      #if LLVM_VERSION_MAJOR >= 11
+      auto callval = orig->getCalledOperand();
+      #else
+      auto callval = orig->getCalledValue();
+      #endif
+
+      newcalled = gutils->invertPointerM(callval, Builder2);
 
       auto ft = cast<FunctionType>(
-          cast<PointerType>(orig->getCalledValue()->getType())
+          cast<PointerType>(callval->getType())
               ->getElementType());
 
       DIFFE_TYPE subretType = orig->getType()->isFPOrFPVectorTy()
@@ -2240,7 +2245,7 @@ public:
         goto badfn;
     }
 
-    CallInst *diffes = Builder2.CreateCall(newcalled, args);
+    CallInst *diffes = Builder2.CreateCall(FT, newcalled, args);
     diffes->setCallingConv(orig->getCallingConv());
     diffes->setDebugLoc(orig->getDebugLoc());
 

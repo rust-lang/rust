@@ -16,7 +16,11 @@
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/LoopInfo.h"
+#if LLVM_VERSION_MAJOR >= 11
+#include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
+#else
 #include "llvm/Analysis/ScalarEvolutionExpander.h"
+#endif
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Dominators.h"

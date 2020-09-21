@@ -1509,11 +1509,15 @@ public:
           return nullptr;
       }
 
+      #if LLVM_VERSION_MAJOR >= 11
+      Value *fn = getOp(SAFE(op, getCalledOperand()));
+      #else
       Value *fn = getOp(SAFE(op, getCalledValue()));
+      #endif
       if (fn == nullptr)
         return nullptr;
 
-      auto toreturn = cast<CallInst>(BuilderM.CreateCall(fn, args));
+      auto toreturn = cast<CallInst>(BuilderM.CreateCall(op->getFunctionType(), fn, args));
       toreturn->copyIRFlags(op);
       toreturn->setAttributes(op->getAttributes());
       toreturn->setCallingConv(op->getCallingConv());
@@ -2197,7 +2201,8 @@ public:
     assert(BuilderM.GetInsertBlock()->getParent() == newFunc);
     if (auto inst = dyn_cast<Instruction>(val))
       assert(inst->getParent()->getParent() == newFunc);
-    IRBuilder<> v(BuilderM);
+    IRBuilder<> v(BuilderM.GetInsertBlock());
+    v.SetInsertPoint(BuilderM.GetInsertBlock(), BuilderM.GetInsertPoint());
     v.setFastMathFlags(getFast());
 
     // Note for dynamic loops where the allocation is stored somewhere inside
@@ -2566,7 +2571,11 @@ public:
 
       if (oldBitSize > newBitSize && oldBitSize % newBitSize == 0 &&
           !addingType->isVectorTy()) {
+        #if LLVM_VERSION_MAJOR >= 11
+        addingType = VectorType::get(addingType, oldBitSize / newBitSize, false);
+        #else
         addingType = VectorType::get(addingType, oldBitSize / newBitSize);
+        #endif
       }
 
       Value *bcold = BuilderM.CreateBitCast(old, addingType);

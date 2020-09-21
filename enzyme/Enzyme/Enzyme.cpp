@@ -276,7 +276,11 @@ reset:
 
       Function *Fn = CI->getCalledFunction();
 
+      #if LLVM_VERSION_MAJOR >= 11
+      if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand())) {
+      #else
       if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue())) {
+      #endif
         if (castinst->isCast())
           if (auto fn = dyn_cast<Function>(castinst->getOperand(0)))
             Fn = fn;

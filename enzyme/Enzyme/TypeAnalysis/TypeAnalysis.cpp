@@ -1529,7 +1529,11 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
   assert(fntypeinfo.knownValues.size() ==
          fntypeinfo.function->getFunctionType()->getNumParams());
 
+  #if LLVM_VERSION_MAJOR >= 11
+  if (auto iasm = dyn_cast<InlineAsm>(call.getCalledOperand())) {
+  #else
   if (auto iasm = dyn_cast<InlineAsm>(call.getCalledValue())) {
+  #endif
     if (iasm->getAsmString() == "cpuid") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       for (unsigned i = 0; i < call.getNumArgOperands(); i++) {

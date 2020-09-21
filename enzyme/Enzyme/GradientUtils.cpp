@@ -2092,7 +2092,11 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 #endif
                 }
 
-#if LLVM_VERSION_MAJOR >= 10
+#if LLVM_VERSION_MAJOR >= 11
+                  mem->addParamAttr(
+                      1, Attribute::getWithAlignment(
+                             memcpyF->getContext(), li->getAlign()));
+#elif LLVM_VERSION_MAJOR >= 10
                 if (li->getAlign())
                   mem->addParamAttr(
                       1, Attribute::getWithAlignment(

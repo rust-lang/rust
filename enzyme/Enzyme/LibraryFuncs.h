@@ -230,19 +230,24 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   Type *VoidTy = Type::getVoidTy(tofree->getContext());
   Type *IntPtrTy = Type::getInt8PtrTy(tofree->getContext());
 
+  auto FT = FunctionType::get(VoidTy, {IntPtrTy}, false);
 #if LLVM_VERSION_MAJOR >= 9
   Value *freevalue =
       allocationfn.getParent()
           ->getOrInsertFunction(freename,
-                                FunctionType::get(VoidTy, {IntPtrTy}, false))
+                                FT)
           .getCallee();
 #else
   Value *freevalue = allocationfn.getParent()->getOrInsertFunction(
-      freename, FunctionType::get(VoidTy, {IntPtrTy}, false));
+      freename, FT);
 #endif
 
   CallInst *freecall = cast<CallInst>(
+    #if LLVM_VERSION_MAJOR >= 8
+      CallInst::Create(FT, freevalue, {builder.CreatePointerCast(tofree, IntPtrTy)},
+    #else
       CallInst::Create(freevalue, {builder.CreatePointerCast(tofree, IntPtrTy)},
+    #endif
                        "", builder.GetInsertBlock()));
   freecall->setTailCall();
   if (isa<CallInst>(tofree) &&

@@ -2,7 +2,9 @@
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR >= 9
+#if LLVM_VERSION_MAJOR >= 11
+#include "ScalarEvolutionExpander11.cpp"
+#elif LLVM_VERSION_MAJOR >= 9
 #include "ScalarEvolutionExpander9.cpp"
 #elif LLVM_VERSION_MAJOR >= 7
 #include "ScalarEvolutionExpander8.cpp"

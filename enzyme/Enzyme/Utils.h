@@ -229,7 +229,11 @@ static inline llvm::Type *FloatToIntTy(llvm::Type *T) {
   assert(T->isFPOrFPVectorTy());
   if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
     return llvm::VectorType::get(FloatToIntTy(ty->getElementType()),
+    #if LLVM_VERSION_MAJOR >= 11
+                                 ty->getNumElements(), false);
+    #else
                                  ty->getNumElements());
+    #endif
   }
   if (T->isHalfTy())
     return llvm::IntegerType::get(T->getContext(), 16);
@@ -245,7 +249,11 @@ static inline llvm::Type *IntToFloatTy(llvm::Type *T) {
   assert(T->isIntOrIntVectorTy());
   if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
     return llvm::VectorType::get(IntToFloatTy(ty->getElementType()),
+    #if LLVM_VERSION_MAJOR >= 11
+                                 ty->getNumElements(), false);
+    #else
                                  ty->getNumElements());
+    #endif
   }
   if (auto ty = llvm::dyn_cast<llvm::IntegerType>(T)) {
     switch (ty->getBitWidth()) {
