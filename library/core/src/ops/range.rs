@@ -1004,3 +1004,21 @@ impl<T> RangeBounds<T> for RangeToInclusive<&T> {
         Included(self.end)
     }
 }
+
+/// `OneSidedRange` is implemented by Rust's built-in range types which
+/// are unbounded on one side. For example, `a..`, `..b` and `..=c` implement
+/// `OneSidedRange`, but `..`, `d..e`, and `f..=g` do not.
+///
+/// Types which implement `OneSidedRange<T>` must return `Bound::Unbounded`
+/// from exactly one of `RangeBounds::start_bound` and `RangeBounds::end_bound`.
+#[unstable(feature = "one_sided_range", issue = "69780")]
+pub trait OneSidedRange<T: ?Sized>: RangeBounds<T> {}
+
+#[unstable(feature = "one_sided_range", issue = "69780")]
+impl<T> OneSidedRange<T> for RangeTo<T> where Self: RangeBounds<T> {}
+
+#[unstable(feature = "one_sided_range", issue = "69780")]
+impl<T> OneSidedRange<T> for RangeFrom<T> where Self: RangeBounds<T> {}
+
+#[unstable(feature = "one_sided_range", issue = "69780")]
+impl<T> OneSidedRange<T> for RangeToInclusive<T> where Self: RangeBounds<T> {}

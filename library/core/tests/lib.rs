@@ -39,6 +39,7 @@
 #![feature(try_trait)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
+#![feature(slice_take)]
 #![feature(int_error_matching)]
 #![feature(array_value_iter)]
 #![feature(iter_advance_by)]
