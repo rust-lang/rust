@@ -67,7 +67,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a type suitable for a function or function pointer parameter.
     /// The difference from `parse_ty` is that this version allows `...`
-    /// (`CVarArgs`) at the top level of the the type.
+    /// (`CVarArgs`) at the top level of the type.
     pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(AllowPlus::Yes, RecoverQPath::Yes, AllowCVariadic::Yes)
     }

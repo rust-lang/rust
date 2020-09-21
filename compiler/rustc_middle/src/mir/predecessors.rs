@@ -33,7 +33,7 @@ impl PredecessorCache {
         self.cache = OnceCell::new();
     }
 
-    /// Returns the the predecessor graph for this MIR.
+    /// Returns the predecessor graph for this MIR.
     #[inline]
     pub(super) fn compute(
         &self,

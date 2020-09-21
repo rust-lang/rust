@@ -733,7 +733,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 }
 
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
-/// can, return the the type that `ty` can be safely converted to, otherwise return `None`.
+/// can, return the type that `ty` can be safely converted to, otherwise return `None`.
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero*`,
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
 /// FIXME: This duplicates code in codegen.
