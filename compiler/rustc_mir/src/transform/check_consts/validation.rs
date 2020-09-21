@@ -425,16 +425,18 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
+                // Allow dereferencing if the reference/pointer is a synthetic pointer from the
+                // mir building for accesses to statics. We check that the projection list is empty,
+                // because we don't want to allow dereferencing pointers *stored* within a static.
                 if proj_base.is_empty() {
-                    if let (local, []) = (place_local, proj_base) {
-                        let decl = &self.body.local_decls[local];
-                        if let Some(box LocalInfo::StaticRef { def_id, is_thread_local: false }) =
-                            decl.local_info
-                        {
-                            let span = decl.source_info.span;
-                            self.check_static(def_id, span);
-                            return;
-                        }
+                    let decl = &self.body.local_decls[place_local];
+                    // Don't check thread locals here, they are checked via `Rvalue::ThreadLocalRef`
+                    if let Some(box LocalInfo::StaticRef { def_id, is_thread_local: false }) =
+                        decl.local_info
+                    {
+                        let span = decl.source_info.span;
+                        self.check_static(def_id, span);
+                        return;
                     }
                 }
                 let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
