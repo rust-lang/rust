@@ -21,8 +21,8 @@ panic_abort = { path = "../libpanic_abort" }
 core = { path = "../libcore" }
 #libc = { version = "0.2.51", default-features = false, features = ['rustc-dep-of-std'] }
 
-libc = { git = "https://github.com/ultimate-research/libc-nnsdk.git", rev = "b3a17840", features = ['rustc-dep-of-std']}
-#libc = { path = '../../../libc_nnsdk' }
+libc-nnsdk = { git = "https://github.com/ultimate-research/libc-nnsdk.git", features = ['rustc-dep-of-std']}
+#libc-nnsdk = { path = '../../../libc-nnsdk' }
 compiler_builtins = { version = "0.1.16" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
