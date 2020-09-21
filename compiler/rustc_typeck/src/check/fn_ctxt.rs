@@ -1,3 +1,8 @@
+// ignore-tidy-filelength
+// FIXME: This file seems to have too much functionality wrapped into it,
+// leading to it being too long.
+// Splitting this file may involve abstracting functionality into other files.
+
 use super::callee::{self, DeferredCallResolution};
 use super::coercion::{CoerceMany, DynamicCoerceMany};
 use super::method::{self, MethodCallee, SelfSource};
