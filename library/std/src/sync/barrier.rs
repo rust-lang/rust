@@ -43,11 +43,8 @@ struct BarrierState {
     generation_id: usize,
 }
 
-/// A `BarrierWaitResult` is returned by [`wait`] when all threads in the [`Barrier`]
-/// have rendezvoused.
-///
-/// [`wait`]: struct.Barrier.html#method.wait
-/// [`Barrier`]: struct.Barrier.html
+/// A `BarrierWaitResult` is returned by [`Barrier::wait()`] when all threads
+/// in the [`Barrier`] have rendezvoused.
 ///
 /// # Examples
 ///
@@ -70,10 +67,10 @@ impl fmt::Debug for Barrier {
 impl Barrier {
     /// Creates a new barrier that can block a given number of threads.
     ///
-    /// A barrier will block `n`-1 threads which call [`wait`] and then wake up
-    /// all threads at once when the `n`th thread calls [`wait`].
+    /// A barrier will block `n`-1 threads which call [`wait()`] and then wake
+    /// up all threads at once when the `n`th thread calls [`wait()`].
     ///
-    /// [`wait`]: #method.wait
+    /// [`wait()`]: Barrier::wait
     ///
     /// # Examples
     ///
@@ -97,12 +94,9 @@ impl Barrier {
     /// be used continuously.
     ///
     /// A single (arbitrary) thread will receive a [`BarrierWaitResult`] that
-    /// returns `true` from [`is_leader`] when returning from this function, and
-    /// all other threads will receive a result that will return `false` from
-    /// [`is_leader`].
-    ///
-    /// [`BarrierWaitResult`]: struct.BarrierWaitResult.html
-    /// [`is_leader`]: struct.BarrierWaitResult.html#method.is_leader
+    /// returns `true` from [`BarrierWaitResult::is_leader()`] when returning
+    /// from this function, and all other threads will receive a result that
+    /// will return `false` from [`BarrierWaitResult::is_leader()`].
     ///
     /// # Examples
     ///
@@ -156,12 +150,11 @@ impl fmt::Debug for BarrierWaitResult {
 }
 
 impl BarrierWaitResult {
-    /// Returns `true` if this thread from [`wait`] is the "leader thread".
+    /// Returns `true` if this thread is the "leader thread" for the call to
+    /// [`Barrier::wait()`].
     ///
     /// Only one thread will have `true` returned from their result, all other
     /// threads will have `false` returned.
-    ///
-    /// [`wait`]: struct.Barrier.html#method.wait
     ///
     /// # Examples
     ///
