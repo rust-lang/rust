@@ -440,6 +440,7 @@ E0751: include_str!("./error_codes/E0751.md"),
 E0752: include_str!("./error_codes/E0752.md"),
 E0753: include_str!("./error_codes/E0753.md"),
 E0754: include_str!("./error_codes/E0754.md"),
+E0755: include_str!("./error_codes/E0755.md"),
 E0758: include_str!("./error_codes/E0758.md"),
 E0759: include_str!("./error_codes/E0759.md"),
 E0760: include_str!("./error_codes/E0760.md"),
@@ -632,7 +633,6 @@ E0774: include_str!("./error_codes/E0774.md"),
     E0722, // Malformed `#[optimize]` attribute
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
-    E0755, // `#[ffi_pure]` is only allowed on foreign functions
     E0756, // `#[ffi_const]` is only allowed on foreign functions
     E0757, // `#[ffi_const]` functions cannot be `#[ffi_pure]`
     E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.

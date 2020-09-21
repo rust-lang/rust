@@ -1,0 +1,28 @@
+The `ffi_pure` attribute was used on a non-foreign function.
+
+Erroneous code example:
+
+```compile_fail,E0755
+#![feature(ffi_pure)]
+
+#[ffi_pure] // error!
+pub fn foo() {}
+# fn main() {}
+```
+
+The `ffi_pure` attribute can only be used on foreign functions which do not have
+side effects or infinite loops:
+
+```
+#![feature(ffi_pure)]
+
+extern "C" {
+    #[ffi_pure] // ok!
+    pub fn strlen(s: *const i8) -> isize;
+}
+# fn main() {}
+```
+
+You can find more information about it in the [unstable Rust Book].
+
+[unstable Rust Book]: https://doc.rust-lang.org/unstable-book/language-features/ffi-pure.html
