@@ -111,9 +111,6 @@ use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::intrinsics;
 
-#[allow(unused_imports)]
-use crate::mem::align_of;
-
 use crate::hint::spin_loop;
 
 /// Signals the processor that it is inside a busy-wait spin-loop ("spin lock").
@@ -861,6 +858,7 @@ impl<T> AtomicPtr<T> {
     #[cfg(target_has_atomic_equal_alignment = "ptr")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut *mut T) -> &Self {
+        use crate::mem::align_of;
         let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
         // SAFETY:
         //  - the mutable reference guarantees unique ownership.
@@ -1311,6 +1309,7 @@ assert_eq!(some_int, 100);
                 #[$cfg_align]
                 #[unstable(feature = "atomic_from_mut", issue = "76314")]
                 pub fn from_mut(v: &mut $int_type) -> &Self {
+                    use crate::mem::align_of;
                     let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
                     // SAFETY:
                     //  - the mutable reference guarantees unique ownership.
