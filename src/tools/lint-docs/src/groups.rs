@@ -18,10 +18,10 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
 /// Updates the documentation of lint groups.
 pub(crate) fn generate_group_docs(
     lints: &[Lint],
-    rustc_path: &Path,
+    rustc: crate::Rustc<'_>,
     out_path: &Path,
 ) -> Result<(), Box<dyn Error>> {
-    let groups = collect_groups(rustc_path)?;
+    let groups = collect_groups(rustc)?;
     let groups_path = out_path.join("groups.md");
     let contents = fs::read_to_string(&groups_path)
         .map_err(|e| format!("could not read {}: {}", groups_path.display(), e))?;
@@ -36,9 +36,9 @@ pub(crate) fn generate_group_docs(
 type LintGroups = BTreeMap<String, BTreeSet<String>>;
 
 /// Collects the group names from rustc.
-fn collect_groups(rustc: &Path) -> Result<LintGroups, Box<dyn Error>> {
+fn collect_groups(rustc: crate::Rustc<'_>) -> Result<LintGroups, Box<dyn Error>> {
     let mut result = BTreeMap::new();
-    let mut cmd = Command::new(rustc);
+    let mut cmd = Command::new(rustc.path);
     cmd.arg("-Whelp");
     let output = cmd.output().map_err(|e| format!("failed to run command {:?}\n{}", cmd, e))?;
     if !output.status.success() {
