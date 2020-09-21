@@ -248,7 +248,7 @@ impl Write for Sink {
     }
 }
 
-#[stable(feature = "write_mt", since = "1.47.0")]
+#[stable(feature = "write_mt", since = "1.48.0")]
 impl Write for &Sink {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {

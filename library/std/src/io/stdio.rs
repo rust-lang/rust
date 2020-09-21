@@ -607,7 +607,7 @@ impl Write for Stdout {
     }
 }
 
-#[stable(feature = "write_mt", since = "1.47.0")]
+#[stable(feature = "write_mt", since = "1.48.0")]
 impl Write for &Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
@@ -810,7 +810,7 @@ impl Write for Stderr {
     }
 }
 
-#[stable(feature = "write_mt", since = "1.47.0")]
+#[stable(feature = "write_mt", since = "1.48.0")]
 impl Write for &Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
