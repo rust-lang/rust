@@ -5,9 +5,7 @@ use super::{FusedIterator, TrustedLen};
 
 /// An iterator that repeats an element endlessly.
 ///
-/// This `struct` is created by the [`repeat`] function. See its documentation for more.
-///
-/// [`repeat`]: fn.repeat.html
+/// This `struct` is created by the [`repeat()`] function. See its documentation for more.
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat<A> {
@@ -47,15 +45,11 @@ unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 /// The `repeat()` function repeats a single value over and over again.
 ///
 /// Infinite iterators like `repeat()` are often used with adapters like
-/// [`take`], in order to make them finite.
-///
-/// [`take`]: trait.Iterator.html#method.take
+/// [`Iterator::take()`], in order to make them finite.
 ///
 /// If the element type of the iterator you need does not implement `Clone`,
 /// or if you do not want to keep the repeated element in memory, you can
-/// instead use the [`repeat_with`] function.
-///
-/// [`repeat_with`]: fn.repeat_with.html
+/// instead use the [`repeat_with()`] function.
 ///
 /// # Examples
 ///
@@ -77,7 +71,7 @@ unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 /// assert_eq!(Some(4), fours.next());
 /// ```
 ///
-/// Going finite with [`take`]:
+/// Going finite with [`Iterator::take()`]:
 ///
 /// ```
 /// use std::iter;
@@ -102,10 +96,8 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 /// An iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure `F: FnMut() -> A`.
 ///
-/// This `struct` is created by the [`repeat_with`] function.
+/// This `struct` is created by the [`repeat_with()`] function.
 /// See its documentation for more.
-///
-/// [`repeat_with`]: fn.repeat_with.html
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub struct RepeatWith<F> {
@@ -139,19 +131,17 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// The `repeat_with()` function calls the repeater over and over again.
 ///
 /// Infinite iterators like `repeat_with()` are often used with adapters like
-/// [`take`], in order to make them finite.
+/// [`Iterator::take()`], in order to make them finite.
 ///
-/// [`take`]: trait.Iterator.html#method.take
-///
-/// If the element type of the iterator you need implements `Clone`, and
+/// If the element type of the iterator you need implements [`Clone`], and
 /// it is OK to keep the source element in memory, you should instead use
-/// the [`repeat`] function.
+/// the [`repeat()`] function.
 ///
-/// [`repeat`]: fn.repeat.html
-///
-/// An iterator produced by `repeat_with()` is not a `DoubleEndedIterator`.
-/// If you need `repeat_with()` to return a `DoubleEndedIterator`,
+/// An iterator produced by `repeat_with()` is not a [`DoubleEndedIterator`].
+/// If you need `repeat_with()` to return a [`DoubleEndedIterator`],
 /// please open a GitHub issue explaining your use case.
+///
+/// [`DoubleEndedIterator`]: crate::iter::DoubleEndedIterator
 ///
 /// # Examples
 ///
@@ -201,9 +191,7 @@ pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
 
 /// An iterator that yields nothing.
 ///
-/// This `struct` is created by the [`empty`] function. See its documentation for more.
-///
-/// [`empty`]: fn.empty.html
+/// This `struct` is created by the [`empty()`] function. See its documentation for more.
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
 
@@ -292,9 +280,7 @@ pub const fn empty<T>() -> Empty<T> {
 
 /// An iterator that yields an element exactly once.
 ///
-/// This `struct` is created by the [`once`] function. See its documentation for more.
-///
-/// [`once`]: fn.once.html
+/// This `struct` is created by the [`once()`] function. See its documentation for more.
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
@@ -336,12 +322,12 @@ impl<T> FusedIterator for Once<T> {}
 
 /// Creates an iterator that yields an element exactly once.
 ///
-/// This is commonly used to adapt a single value into a [`chain`] of other
+/// This is commonly used to adapt a single value into a [`chain()`] of other
 /// kinds of iteration. Maybe you have an iterator that covers almost
 /// everything, but you need an extra special case. Maybe you have a function
 /// which works on iterators, but you only need to process one value.
 ///
-/// [`chain`]: trait.Iterator.html#method.chain
+/// [`chain()`]: Iterator::chain
 ///
 /// # Examples
 ///
@@ -393,10 +379,8 @@ pub fn once<T>(value: T) -> Once<T> {
 /// An iterator that yields a single element of type `A` by
 /// applying the provided closure `F: FnOnce() -> A`.
 ///
-/// This `struct` is created by the [`once_with`] function.
+/// This `struct` is created by the [`once_with()`] function.
 /// See its documentation for more.
-///
-/// [`once_with`]: fn.once_with.html
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once_with", since = "1.43.0")]
 pub struct OnceWith<F> {
@@ -442,15 +426,14 @@ unsafe impl<A, F: FnOnce() -> A> TrustedLen for OnceWith<F> {}
 /// Creates an iterator that lazily generates a value exactly once by invoking
 /// the provided closure.
 ///
-/// This is commonly used to adapt a single value generator into a [`chain`] of
+/// This is commonly used to adapt a single value generator into a [`chain()`] of
 /// other kinds of iteration. Maybe you have an iterator that covers almost
 /// everything, but you need an extra special case. Maybe you have a function
 /// which works on iterators, but you only need to process one value.
 ///
-/// Unlike [`once`], this function will lazily generate the value on request.
+/// Unlike [`once()`], this function will lazily generate the value on request.
 ///
-/// [`once`]: fn.once.html
-/// [`chain`]: trait.Iterator.html#method.chain
+/// [`chain()`]: Iterator::chain
 ///
 /// # Examples
 ///
@@ -505,17 +488,16 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 ///
 /// This allows creating a custom iterator with any behavior
 /// without using the more verbose syntax of creating a dedicated type
-/// and implementing the `Iterator` trait for it.
+/// and implementing the [`Iterator`] trait for it.
 ///
 /// Note that the `FromFn` iterator doesn’t make assumptions about the behavior of the closure,
 /// and therefore conservatively does not implement [`FusedIterator`],
-/// or override [`Iterator::size_hint`] from its default `(0, None)`.
-///
-/// [`FusedIterator`]: trait.FusedIterator.html
-/// [`Iterator::size_hint`]: trait.Iterator.html#method.size_hint
+/// or override [`Iterator::size_hint()`] from its default `(0, None)`.
 ///
 /// The closure can use captures and its environment to track state across iterations. Depending on
-/// how the iterator is used, this may require specifying the `move` keyword on the closure.
+/// how the iterator is used, this may require specifying the [`move`] keyword on the closure.
+///
+/// [`move`]: ../../std/keyword.move.html
 ///
 /// # Examples
 ///
@@ -549,10 +531,10 @@ where
 
 /// An iterator where each iteration calls the provided closure `F: FnMut() -> Option<T>`.
 ///
-/// This `struct` is created by the [`iter::from_fn`] function.
+/// This `struct` is created by the [`iter::from_fn()`] function.
 /// See its documentation for more.
 ///
-/// [`iter::from_fn`]: fn.from_fn.html
+/// [`iter::from_fn()`]: from_fn
 #[derive(Clone)]
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub struct FromFn<F>(F);
@@ -601,10 +583,10 @@ where
 
 /// An new iterator where each successive item is computed based on the preceding one.
 ///
-/// This `struct` is created by the [`successors`] function.
+/// This `struct` is created by the [`iter::successors()`] function.
 /// See its documentation for more.
 ///
-/// [`successors`]: fn.successors.html
+/// [`iter::successors()`]: successors
 #[derive(Clone)]
 #[stable(feature = "iter_successors", since = "1.34.0")]
 pub struct Successors<T, F> {
