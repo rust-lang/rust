@@ -67,14 +67,14 @@ impl IndexMut<RangeFull> for Foo {
 
 fn main() {
     let mut x = Foo;
-    &x[..];
-    &x[Foo..];
-    &x[..Foo];
-    &x[Foo..Foo];
-    &mut x[..];
-    &mut x[Foo..];
-    &mut x[..Foo];
-    &mut x[Foo..Foo];
+    let _ = &x[..];
+    let _ = &x[Foo..];
+    let _ = &x[..Foo];
+    let _ = &x[Foo..Foo];
+    let _ = &mut x[..];
+    let _ = &mut x[Foo..];
+    let _ = &mut x[..Foo];
+    let _ = &mut x[Foo..Foo];
     unsafe {
         assert_eq!(COUNT, 8);
     }

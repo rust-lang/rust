@@ -11,7 +11,7 @@ fn main() {
                 yield;
                 true
             };
-            &opt;
+            let _ = &opt;
         }
     };
 }
