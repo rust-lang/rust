@@ -1,0 +1,15 @@
+error: overly complex generic constant
+  --> $DIR/closures.rs:3:35
+   |
+LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
+   |                                   ^^^^^^^^^^^^^
+   |
+note: unsupported rvalue
+  --> $DIR/closures.rs:3:39
+   |
+LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
+   |                                       ^^^^^^^
+   = help: consider moving this anonymous constant into a `const` function
+
+error: aborting due to previous error
+
