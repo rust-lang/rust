@@ -1,10 +1,12 @@
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::io;
+use crate::marker::PhantomData;
+use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::{unsupported, Void};
-use crate::sys_common::process::CommandEnv;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub use crate::ffi::OsString as EnvKey;
 
@@ -48,6 +50,22 @@ impl Command {
     pub fn stdout(&mut self, _stdout: Stdio) {}
 
     pub fn stderr(&mut self, _stderr: Stdio) {}
+
+    pub fn get_program(&self) -> &OsStr {
+        panic!("unsupported")
+    }
+
+    pub fn get_args(&self) -> CommandArgs<'_> {
+        CommandArgs { _p: PhantomData }
+    }
+
+    pub fn get_envs(&self) -> CommandEnvs<'_> {
+        self.env.iter()
+    }
+
+    pub fn get_current_dir(&self) -> Option<&Path> {
+        None
+    }
 
     pub fn spawn(
         &mut self,
@@ -145,5 +163,24 @@ impl Process {
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         match self.0 {}
+    }
+}
+
+pub struct CommandArgs<'a> {
+    _p: PhantomData<&'a ()>,
+}
+
+impl<'a> Iterator for CommandArgs<'a> {
+    type Item = &'a OsStr;
+    fn next(&mut self) -> Option<&'a OsStr> {
+        None
+    }
+}
+
+impl<'a> ExactSizeIterator for CommandArgs<'a> {}
+
+impl<'a> fmt::Debug for CommandArgs<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().finish()
     }
 }
