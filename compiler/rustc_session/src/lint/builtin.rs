@@ -2207,6 +2207,16 @@ declare_lint! {
     ///     }
     /// }
     /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust allowed function pointers and wide raw pointers in patterns.
+    /// While these work in many cases as expected by users, it is possible that due to
+    /// optimizations pointers are "not equal to themselves" or pointers to different functions
+    /// compare as equal during runtime. This is because LLVM optimizations can deduplicate
+    /// functions if their bodies are the same, thus also making pointers to these functions point
+    /// to the same location. Additionally functions may get duplicated if they are instantiated
+    /// in different crates and not deduplicated again via LTO.
     pub POINTER_STRUCTURAL_MATCH,
     Allow,
     "pointers are not structural-match",
@@ -2246,6 +2256,13 @@ declare_lint! {
     ///     }
     /// }
     /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust accepted constants in patterns, even if those constants's types
+    /// did not have `PartialEq` derived. Thus the compiler falls back to runtime execution of
+    /// `PartialEq`, which can report that two constants are not equal even if they are
+    /// bit-equivalent.
     pub NONTRIVIAL_STRUCTURAL_MATCH,
     Warn,
     "constant used in pattern of non-structural-match type and the constant's initializer \
