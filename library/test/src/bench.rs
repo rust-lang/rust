@@ -61,15 +61,15 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
     let median = bs.ns_iter_summ.median as usize;
     let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
 
-    output
-        .write_fmt(format_args!(
-            "{:>11} ns/iter (+/- {})",
-            fmt_thousands_sep(median, ','),
-            fmt_thousands_sep(deviation, ',')
-        ))
-        .unwrap();
+    write!(
+        output,
+        "{:>11} ns/iter (+/- {})",
+        fmt_thousands_sep(median, ','),
+        fmt_thousands_sep(deviation, ',')
+    )
+    .unwrap();
     if bs.mb_s != 0 {
-        output.write_fmt(format_args!(" = {} MB/s", bs.mb_s)).unwrap();
+        write!(output, " = {} MB/s", bs.mb_s).unwrap();
     }
     output
 }
@@ -83,9 +83,9 @@ fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
         let base = 10_usize.pow(pow);
         if pow == 0 || trailing || n / base != 0 {
             if !trailing {
-                output.write_fmt(format_args!("{}", n / base)).unwrap();
+                write!(output, "{}", n / base).unwrap();
             } else {
-                output.write_fmt(format_args!("{:03}", n / base)).unwrap();
+                write!(output, "{:03}", n / base).unwrap();
             }
             if pow != 0 {
                 output.push(sep);
