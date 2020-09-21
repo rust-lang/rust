@@ -70,10 +70,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.typeck_results.used_trait_imports = used_trait_imports;
 
-        wbcx.typeck_results.closure_captures = mem::replace(
-            &mut self.typeck_results.borrow_mut().closure_captures,
-            Default::default(),
-        );
+        wbcx.typeck_results.closure_captures =
+            mem::take(&mut self.typeck_results.borrow_mut().closure_captures);
 
         if self.is_tainted_by_errors() {
             // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
