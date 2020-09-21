@@ -70,38 +70,16 @@ impl<'sm> CachingSourceMapView<'sm> {
         }
 
         // No cache hit ...
-        let mut oldest = 0;
-        for index in 1..self.line_cache.len() {
-            if self.line_cache[index].time_stamp < self.line_cache[oldest].time_stamp {
-                oldest = index;
-            }
+        let oldest = self.oldest_cache_entry_index();
+
+        // If the entry doesn't point to the correct file, fix it up
+        if !file_contains(&self.line_cache[oldest].file, pos) {
+            let (file, file_index) = self.file_for_position(pos)?;
+            self.line_cache[oldest].file = file;
+            self.line_cache[oldest].file_index = file_index;
         }
 
         let cache_entry = &mut self.line_cache[oldest];
-
-        // If the entry doesn't point to the correct file, fix it up
-        if !file_contains(&cache_entry.file, pos) {
-            let file_valid;
-            if self.source_map.files().len() > 0 {
-                let file_index = self.source_map.lookup_source_file_idx(pos);
-                let file = &self.source_map.files()[file_index];
-
-                if file_contains(&file, pos) {
-                    cache_entry.file = file.clone();
-                    cache_entry.file_index = file_index;
-                    file_valid = true;
-                } else {
-                    file_valid = false;
-                }
-            } else {
-                file_valid = false;
-            }
-
-            if !file_valid {
-                return None;
-            }
-        }
-
         let line_index = cache_entry.file.lookup_line(pos).unwrap();
         let line_bounds = cache_entry.file.line_bounds(line_index);
 
@@ -110,6 +88,31 @@ impl<'sm> CachingSourceMapView<'sm> {
         cache_entry.time_stamp = self.time_stamp;
 
         Some((cache_entry.file.clone(), cache_entry.line_number, pos - cache_entry.line.start))
+    }
+
+    fn oldest_cache_entry_index(&self) -> usize {
+        let mut oldest = 0;
+
+        for idx in 1..self.line_cache.len() {
+            if self.line_cache[idx].time_stamp < self.line_cache[oldest].time_stamp {
+                oldest = idx;
+            }
+        }
+
+        oldest
+    }
+
+    fn file_for_position(&self, pos: BytePos) -> Option<(Lrc<SourceFile>, usize)> {
+        if !self.source_map.files().is_empty() {
+            let file_idx = self.source_map.lookup_source_file_idx(pos);
+            let file = &self.source_map.files()[file_idx];
+
+            if file_contains(file, pos) {
+                return Some((file.clone(), file_idx));
+            }
+        }
+
+        None
     }
 }
 
