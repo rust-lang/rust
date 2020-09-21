@@ -2,7 +2,7 @@
 //!
 //! The idea with `librustc_lexer` is to make a reusable library,
 //! by separating out pure lexing and rustc-specific concerns, like spans,
-//! error reporting an interning.  So, rustc_lexer operates directly on `&str`,
+//! error reporting, and interning.  So, rustc_lexer operates directly on `&str`,
 //! produces simple tokens which are a pair of type-tag and a bit of original text,
 //! and does not report errors, instead storing them as flags on the token.
 //!
