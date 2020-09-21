@@ -2797,6 +2797,13 @@ where
 ///
 /// This `struct` is created by the `into_iter` method on [`Vec`] (provided
 /// by the [`IntoIterator`] trait).
+///
+/// # Example
+///
+/// ```
+/// let v = vec![0, 1, 2];
+/// let iter: std::vec::IntoIter<_> = v.into_iter();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     buf: NonNull<T>,
@@ -3040,6 +3047,13 @@ impl<T> AsIntoIter for IntoIter<T> {
 ///
 /// This `struct` is created by [`Vec::drain`].
 /// See its documentation for more.
+///
+/// # Example
+///
+/// ```
+/// let mut v = vec![0, 1, 2];
+/// let iter: std::vec::Drain<_> = v.drain(..);
+/// ```
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
@@ -3169,6 +3183,14 @@ impl<T> FusedIterator for Drain<'_, T> {}
 ///
 /// This struct is created by [`Vec::splice()`].
 /// See its documentation for more.
+///
+/// # Example
+///
+/// ```
+/// let mut v = vec![0, 1, 2];
+/// let new = [7, 8];
+/// let iter: std::vec::Splice<_> = v.splice(1.., new.iter().cloned());
+/// ```
 #[derive(Debug)]
 #[stable(feature = "vec_splice", since = "1.21.0")]
 pub struct Splice<'a, I: Iterator + 'a> {
@@ -3285,6 +3307,15 @@ impl<T> Drain<'_, T> {
 ///
 /// This struct is created by [`Vec::drain_filter`].
 /// See its documentation for more.
+///
+/// # Example
+///
+/// ```
+/// #![feature(drain_filter)]
+///
+/// let mut v = vec![0, 1, 2];
+/// let iter: std::vec::DrainFilter<_, _> = v.drain_filter(|x| *x % 2 == 0);
+/// ```
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
 pub struct DrainFilter<'a, T, F>
