@@ -139,10 +139,10 @@
 //!
 //!    It is computed as follows. We look at the pattern `p_1` on top of the stack,
 //!    and we have three cases:
-//!         1.1. `p_1 = c(r_1, .., r_a)`. We discard the current stack and return nothing.
-//!         1.2. `p_1 = _`. We return the rest of the stack:
+//!         2.1. `p_1 = c(r_1, .., r_a)`. We discard the current stack and return nothing.
+//!         2.2. `p_1 = _`. We return the rest of the stack:
 //!                 p_2, .., p_n
-//!         1.3. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
+//!         2.3. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
 //!           stack.
 //!                 D((r_1, p_2, .., p_n))
 //!                 D((r_2, p_2, .., p_n))
@@ -509,6 +509,14 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
 #[derive(Clone, Debug)]
 enum SpecializationCache {
     /// Patterns consist of only enum variants.
+    /// Variant patterns does not intersect with each other (in contrast to range patterns),
+    /// so it is possible to precompute the result of `Matrix::specialize_constructor` at a
+    /// lower computational complexity.
+    /// `lookup` is responsible for holding the precomputed result of
+    /// `Matrix::specialize_constructor`, while `wilds` is used for two purposes: the first one is
+    /// the precomputed result of `Matrix::specialize_wildcard`, and the second is to be used as a
+    /// fallback for `Matrix::specialize_constructor` when it tries to apply a constructor that
+    /// has not been seen in the `Matrix`. See `update_cache` for further explanations.
     Variants { lookup: FxHashMap<DefId, SmallVec<[usize; 1]>>, wilds: SmallVec<[usize; 1]> },
     /// Does not belong to the cases above, use the slow path.
     Incompatible,
@@ -523,7 +531,8 @@ crate struct Matrix<'p, 'tcx> {
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     crate fn empty() -> Self {
-        // Use SpecializationCache::Incompatible as a placeholder; the initialization is in push().
+        // Use `SpecializationCache::Incompatible` as a placeholder; we will initialize it on the
+        // first call to `push`. See the first half of `update_cache`.
         Matrix { patterns: vec![], cache: SpecializationCache::Incompatible }
     }
 
@@ -536,47 +545,71 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 self.push(row)
             }
         } else {
-            if self.patterns.is_empty() {
-                self.cache = if row.is_empty() {
-                    SpecializationCache::Incompatible
-                } else {
-                    match *row.head().kind {
-                        PatKind::Variant { .. } => SpecializationCache::Variants {
-                            lookup: FxHashMap::default(),
-                            wilds: SmallVec::new(),
-                        },
-                        // Note: If the first pattern is a wildcard, then all patterns after that is not
-                        // useful. The check is simple enough so we treat it as the same as unsupported
-                        // patterns.
-                        _ => SpecializationCache::Incompatible,
+            self.patterns.push(row);
+            self.update_cache(self.patterns.len() - 1);
+        }
+    }
+
+    fn update_cache(&mut self, idx: usize) {
+        let row = &self.patterns[idx];
+        // We don't know which kind of cache could be used until we see the first row; therefore an
+        // empty `Matrix` is initialized with `SpecializationCache::Empty`, then the cache is
+        // assigned the appropriate variant below on the first call to `push`.
+        if self.patterns.is_empty() {
+            self.cache = if row.is_empty() {
+                SpecializationCache::Incompatible
+            } else {
+                match *row.head().kind {
+                    PatKind::Variant { .. } => SpecializationCache::Variants {
+                        lookup: FxHashMap::default(),
+                        wilds: SmallVec::new(),
+                    },
+                    // Note: If the first pattern is a wildcard, then all patterns after that is not
+                    // useful. The check is simple enough so we treat it as the same as unsupported
+                    // patterns.
+                    _ => SpecializationCache::Incompatible,
+                }
+            };
+        }
+        // Update the cache.
+        match &mut self.cache {
+            SpecializationCache::Variants { ref mut lookup, ref mut wilds } => {
+                let head = row.head();
+                match *head.kind {
+                    _ if head.is_wildcard() => {
+                        // Per rule 1.3 in the top-level comments, a wildcard pattern is included in
+                        // the result of `specialize_constructor` for *any* `Constructor`.
+                        // We push the wildcard pattern to the precomputed result for constructors
+                        // that we have seen before; results for constructors we have not yet seen
+                        // defaults to `wilds`, which is updated right below.
+                        for (_, v) in lookup.iter_mut() {
+                            v.push(idx);
+                        }
+                        // Per rule 2.1 and 2.2 in the top-level comments, only wildcard patterns
+                        // are included in the result of `specialize_wildcard`.
+                        // What we do here is to track the wildcards we have seen; so in addition to
+                        // acting as the precomputed result of `specialize_wildcard`, `wilds` also
+                        // serves as the default value of `specialize_constructor` for constructors
+                        // that are not in `lookup`.
+                        wilds.push(idx);
                     }
-                };
-            }
-            let idx_to_insert = self.patterns.len();
-            match &mut self.cache {
-                SpecializationCache::Variants { ref mut lookup, ref mut wilds } => {
-                    let head = row.head();
-                    match *head.kind {
-                        _ if head.is_wildcard() => {
-                            for (_, v) in lookup.iter_mut() {
-                                v.push(idx_to_insert);
-                            }
-                            wilds.push(idx_to_insert);
-                        }
-                        PatKind::Variant { adt_def, variant_index, .. } => {
-                            lookup
-                                .entry(adt_def.variants[variant_index].def_id)
-                                .or_insert_with(|| wilds.clone())
-                                .push(idx_to_insert);
-                        }
-                        _ => {
-                            self.cache = SpecializationCache::Incompatible;
-                        }
+                    PatKind::Variant { adt_def, variant_index, .. } => {
+                        // Handle the cases of rule 1.1 and 1.2 in the top-level comments.
+                        // A variant pattern can only be included in the results of
+                        // `specialize_constructor` for a particular constructor, therefore we are
+                        // using a HashMap to track that.
+                        lookup
+                            .entry(adt_def.variants[variant_index].def_id)
+                            // Default to `wilds` for absent keys. See above for an explanation.
+                            .or_insert_with(|| wilds.clone())
+                            .push(idx);
+                    }
+                    _ => {
+                        self.cache = SpecializationCache::Incompatible;
                     }
                 }
-                SpecializationCache::Incompatible => {}
             }
-            self.patterns.push(row);
+            SpecializationCache::Incompatible => {}
         }
     }
 
@@ -609,6 +642,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 if let Constructor::Variant(id) = constructor {
                     lookup
                         .get(id)
+                        // Default to `wilds` for absent keys. See `update_cache` for an explanation.
                         .unwrap_or(&wilds)
                         .iter()
                         .filter_map(|&i| {
