@@ -49,9 +49,11 @@
           StorageLive(_9);                 // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:21
           StorageLive(_10);                // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:15
           _10 = (*_3);                     // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:15
-          _9 = Eq(move _10, const 99_i32); // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:21
+-         _9 = Eq(move _10, const 99_i32); // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:21
++         nop;                             // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:21
++         _8 = Ne(move _10, const 99_i32); // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
           StorageDead(_10);                // scope 4 at $DIR/inst_combine_deref.rs:60:20: 60:21
-          _8 = Not(move _9);               // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+-         _8 = Not(move _9);               // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
           StorageDead(_9);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
           switchInt(_8) -> [false: bb1, otherwise: bb2]; // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
       }

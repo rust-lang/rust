@@ -1,0 +1,55 @@
+- // MIR for `opt_both_moved` before InstCombine
++ // MIR for `opt_both_moved` after InstCombine
+  
+  fn opt_both_moved(_1: u8) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/eq_not.rs:18:19: 18:20
+      let mut _0: ();                      // return place in scope 0 at $DIR/eq_not.rs:18:26: 18:26
+      let _2: ();                          // in scope 0 at $DIR/eq_not.rs:19:5: 19:21
+      let mut _3: bool;                    // in scope 0 at $DIR/eq_not.rs:19:5: 19:21
+      let mut _4: bool;                    // in scope 0 at $DIR/eq_not.rs:19:13: 19:19
+      let mut _5: u8;                      // in scope 0 at $DIR/eq_not.rs:19:13: 19:14
+      let mut _6: u8;                      // in scope 0 at $DIR/eq_not.rs:19:18: 19:19
+      let mut _7: !;                       // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/eq_not.rs:19:5: 19:21
+          StorageLive(_3);                 // scope 0 at $DIR/eq_not.rs:19:5: 19:21
+          StorageLive(_4);                 // scope 0 at $DIR/eq_not.rs:19:13: 19:19
+          StorageLive(_5);                 // scope 0 at $DIR/eq_not.rs:19:13: 19:14
+          _5 = _1;                         // scope 0 at $DIR/eq_not.rs:19:13: 19:14
+          StorageLive(_6);                 // scope 0 at $DIR/eq_not.rs:19:18: 19:19
+          _6 = _1;                         // scope 0 at $DIR/eq_not.rs:19:18: 19:19
+-         _4 = Eq(move _5, move _6);       // scope 0 at $DIR/eq_not.rs:19:13: 19:19
+-         StorageDead(_6);                 // scope 0 at $DIR/eq_not.rs:19:18: 19:19
++         nop;                             // scope 0 at $DIR/eq_not.rs:19:13: 19:19
++         _3 = Ne(move _5, move _6);       // scope 0 at $DIR/eq_not.rs:19:5: 19:21
+          StorageDead(_5);                 // scope 0 at $DIR/eq_not.rs:19:18: 19:19
+-         _3 = Not(move _4);               // scope 0 at $DIR/eq_not.rs:19:5: 19:21
++         StorageDead(_6);                 // scope 0 at $DIR/eq_not.rs:19:18: 19:19
+          StorageDead(_4);                 // scope 0 at $DIR/eq_not.rs:19:20: 19:21
+          switchInt(_3) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/eq_not.rs:19:5: 19:21
+      }
+  
+      bb1: {
+          _2 = const ();                   // scope 0 at $DIR/eq_not.rs:19:5: 19:21
+          StorageDead(_3);                 // scope 0 at $DIR/eq_not.rs:19:20: 19:21
+          StorageDead(_2);                 // scope 0 at $DIR/eq_not.rs:19:20: 19:21
+          _0 = const ();                   // scope 0 at $DIR/eq_not.rs:18:26: 20:2
+          return;                          // scope 0 at $DIR/eq_not.rs:20:2: 20:2
+      }
+  
+      bb2: {
+          StorageLive(_7);                 // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+          begin_panic::<&str>(const "assertion failed: x == x"); // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
+                                           // ty::Const
+                                           // + ty: &str
+                                           // + val: Value(Slice { data: Allocation { bytes: [97, 115, 115, 101, 114, 116, 105, 111, 110, 32, 102, 97, 105, 108, 101, 100, 58, 32, 120, 32, 61, 61, 32, 120], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16777215], len: Size { raw: 24 } }, size: Size { raw: 24 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 24 })
+                                           // mir::Constant
+                                           // + span: $DIR/eq_not.rs:1:1: 1:1
+                                           // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [97, 115, 115, 101, 114, 116, 105, 111, 110, 32, 102, 97, 105, 108, 101, 100, 58, 32, 120, 32, 61, 61, 32, 120], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16777215], len: Size { raw: 24 } }, size: Size { raw: 24 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 24 }) }
+      }
+  }
+  

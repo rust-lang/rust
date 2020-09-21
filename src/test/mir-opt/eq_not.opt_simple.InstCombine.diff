@@ -16,9 +16,11 @@
           StorageLive(_4);                 // scope 0 at $DIR/eq_not.rs:3:13: 3:19
           StorageLive(_5);                 // scope 0 at $DIR/eq_not.rs:3:13: 3:14
           _5 = _1;                         // scope 0 at $DIR/eq_not.rs:3:13: 3:14
-          _4 = Eq(move _5, const 2_u8);    // scope 0 at $DIR/eq_not.rs:3:13: 3:19
+-         _4 = Eq(move _5, const 2_u8);    // scope 0 at $DIR/eq_not.rs:3:13: 3:19
++         nop;                             // scope 0 at $DIR/eq_not.rs:3:13: 3:19
++         _3 = Ne(move _5, const 2_u8);    // scope 0 at $DIR/eq_not.rs:3:5: 3:21
           StorageDead(_5);                 // scope 0 at $DIR/eq_not.rs:3:18: 3:19
-          _3 = Not(move _4);               // scope 0 at $DIR/eq_not.rs:3:5: 3:21
+-         _3 = Not(move _4);               // scope 0 at $DIR/eq_not.rs:3:5: 3:21
           StorageDead(_4);                 // scope 0 at $DIR/eq_not.rs:3:20: 3:21
           switchInt(_3) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/eq_not.rs:3:5: 3:21
       }

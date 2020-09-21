@@ -10,12 +10,18 @@ fn opt_has_storage(x: Vec<u8>) {
 
 // EMIT_MIR eq_not.opt_has_later_use.InstCombine.diff
 fn opt_has_later_use(x: Vec<u8>) -> u8 {
-    assert!(x.len() == 2);
-    x[0]
+    let x = !(x.len() == 2);
+    if x { 0 } else { 1 }
+}
+
+// EMIT_MIR eq_not.opt_both_moved.InstCombine.diff
+fn opt_both_moved(x: u8) {
+    assert!(x == x);
 }
 
 fn main() {
     opt_simple(0);
     opt_has_storage(vec![]);
     opt_has_later_use(vec![]);
+    opt_both_moved(0);
 }

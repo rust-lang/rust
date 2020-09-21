@@ -4,6 +4,7 @@ use crate::transform::{MirPass, MirSource};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::Mutability;
 use rustc_index::vec::Idx;
+use rustc_middle::mir::UnOp;
 use rustc_middle::mir::{
     visit::PlaceContext,
     visit::{MutVisitor, Visitor},
@@ -14,6 +15,7 @@ use rustc_middle::mir::{
     Rvalue,
 };
 use rustc_middle::ty::{self, TyCtxt};
+use smallvec::SmallVec;
 use std::mem;
 
 pub struct InstCombine;
@@ -29,8 +31,28 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
             optimization_finder.optimizations
         };
 
+        // Since eq_not has elements removed in the visitor, we clone it here,
+        // such that we can still do the post visitor cleanup.
+        let clone_eq_not = optimizations.eq_not.clone();
         // Then carry out those optimizations.
         MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        eq_not_post_visitor_mutations(body, clone_eq_not);
+    }
+}
+
+fn eq_not_post_visitor_mutations<'tcx>(
+    body: &mut Body<'tcx>,
+    eq_not_opts: FxHashMap<Location, EqNotOptInfo<'tcx>>,
+) {
+    for (location, eq_not_opt_info) in eq_not_opts.iter() {
+        let statements = &mut body.basic_blocks_mut()[location.block].statements;
+        // We have to make sure that Ne is before any StorageDead as the operand being killed is used in the Ne
+        if let Some(storage_dead_idx_to_swap_with) = eq_not_opt_info.storage_dead_to_swap_with_ne {
+            statements.swap(location.statement_index, storage_dead_idx_to_swap_with);
+        }
+        if let Some(eq_stmt_idx) = eq_not_opt_info.can_remove_eq {
+            statements[eq_stmt_idx].make_nop();
+        }
     }
 }
 
@@ -79,6 +101,11 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         if let Some(place) = self.optimizations.unneeded_deref.remove(&location) {
             debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
             *rvalue = Rvalue::Use(Operand::Copy(place));
+        }
+
+        if let Some(eq_not_opt_info) = self.optimizations.eq_not.remove(&location) {
+            *rvalue = Rvalue::BinaryOp(BinOp::Ne, eq_not_opt_info.op1, eq_not_opt_info.op2);
+            debug!("replacing Eq and Not with {:?}", rvalue);
         }
 
         self.super_rvalue(rvalue, location)
@@ -221,6 +248,85 @@ impl OptimizationFinder<'b, 'tcx> {
         }
     }
 
+    fn find_eq_not(&mut self, rvalue: &Rvalue<'tcx>, location: Location) -> Option<()> {
+        // Optimize the sequence
+        // _4 = Eq(move _5, const 2_u8);
+        // StorageDead(_5);
+        // _3 = Not(move _4);
+        //
+        // into _3 = Ne(move _5, const 2_u8)
+        if let Rvalue::UnaryOp(UnOp::Not, op) = rvalue {
+            let place = op.place()?;
+            // See if we can find a Eq that assigns `place`.
+            // We limit the search to 3 statements lookback.
+            // Usually the first 2 statements are `StorageDead`s for operands for Eq.
+            // We record what is marked dead so that we can reorder StorageDead so it comes after Ne
+
+            // We will maximum see 2 StorageDeads
+            let mut seen_storage_deads: SmallVec<[_; 2]> = SmallVec::new();
+            let lower_index = location.statement_index.saturating_sub(3);
+            for (stmt_idx, stmt) in self.body.basic_blocks()[location.block].statements
+                [lower_index..location.statement_index]
+                .iter()
+                .enumerate()
+                .rev()
+            {
+                match &stmt.kind {
+                    rustc_middle::mir::StatementKind::Assign(box (l, r)) => {
+                        if *l == place {
+                            match r {
+                                Rvalue::BinaryOp(BinOp::Eq, op1, op2) => {
+                                    // We need to make sure that the StorageDeads we saw are for
+                                    // either `op1`or `op2` of Eq. Else we bail the optimization.
+                                    for (dead_local, _) in seen_storage_deads.iter() {
+                                        let dead_local_matches = [op1, op2].iter().any(|x| {
+                                            Some(*dead_local) == x.place().map(|x| x.local)
+                                        });
+                                        if !dead_local_matches {
+                                            return None;
+                                        }
+                                    }
+
+                                    // We need to make sure that the Ne we are going to insert comes before the
+                                    // StorageDeads so we want to swap the StorageDead closest to Eq with Ne.
+                                    let storage_dead_to_swap =
+                                        seen_storage_deads.last().map(|(_, idx)| *idx);
+
+                                    // If the operand of Not is moved into it,
+                                    // and that same operand is the lhs of the Eq assignment,
+                                    // then we can safely remove the Eq
+                                    let can_remove_eq = if op.is_move() {
+                                        Some(stmt_idx + lower_index)
+                                    } else {
+                                        None
+                                    };
+
+                                    self.optimizations.eq_not.insert(
+                                        location,
+                                        EqNotOptInfo {
+                                            op1: op1.clone(),
+                                            op2: op2.clone(),
+                                            storage_dead_to_swap_with_ne: storage_dead_to_swap,
+                                            can_remove_eq,
+                                        },
+                                    );
+                                    return Some(());
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    rustc_middle::mir::StatementKind::StorageDead(dead) => {
+                        seen_storage_deads.push((*dead, stmt_idx + lower_index));
+                    }
+                    // If we see a pattern other than (0..=2) StorageDeads and then an Eq assignment, we conservatively bail
+                    _ => return None,
+                }
+            }
+        }
+        Some(())
+    }
+
     fn find_operand_in_equality_comparison_pattern(
         &self,
         l: &Operand<'tcx>,
@@ -265,10 +371,20 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
         let _ = self.find_deref_of_address(rvalue, location);
 
+        let _ = self.find_eq_not(rvalue, location);
+
         self.find_unneeded_equality_comparison(rvalue, location);
 
         self.super_rvalue(rvalue, location)
     }
+}
+
+#[derive(Clone)]
+struct EqNotOptInfo<'tcx> {
+    op1: Operand<'tcx>,
+    op2: Operand<'tcx>,
+    storage_dead_to_swap_with_ne: Option<usize>,
+    can_remove_eq: Option<usize>,
 }
 
 #[derive(Default)]
@@ -277,4 +393,5 @@ struct OptimizationList<'tcx> {
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
     unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
     unneeded_deref: FxHashMap<Location, Place<'tcx>>,
+    eq_not: FxHashMap<Location, EqNotOptInfo<'tcx>>,
 }

@@ -23,9 +23,11 @@
           _6 = &_1;                        // scope 0 at $DIR/eq_not.rs:8:13: 8:14
           _5 = ((*_6).1: usize);           // scope 1 at $SRC_DIR/alloc/src/vec.rs:LL:COL
           StorageDead(_6);                 // scope 0 at $DIR/eq_not.rs:8:19: 8:20
-          _4 = Eq(move _5, const 2_usize); // scope 0 at $DIR/eq_not.rs:8:13: 8:25
+-         _4 = Eq(move _5, const 2_usize); // scope 0 at $DIR/eq_not.rs:8:13: 8:25
++         nop;                             // scope 0 at $DIR/eq_not.rs:8:13: 8:25
++         _3 = Ne(move _5, const 2_usize); // scope 0 at $DIR/eq_not.rs:8:5: 8:27
           StorageDead(_5);                 // scope 0 at $DIR/eq_not.rs:8:24: 8:25
-          _3 = Not(move _4);               // scope 0 at $DIR/eq_not.rs:8:5: 8:27
+-         _3 = Not(move _4);               // scope 0 at $DIR/eq_not.rs:8:5: 8:27
           StorageDead(_4);                 // scope 0 at $DIR/eq_not.rs:8:26: 8:27
           switchInt(_3) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/eq_not.rs:8:5: 8:27
       }
