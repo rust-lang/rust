@@ -1,0 +1,20 @@
+error[E0107]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/issue-76595.rs:15:5
+   |
+LL |     test::<2>();
+   |     ^^^^^^^^^ expected 1 type argument
+
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-76595.rs:15:5
+   |
+LL | fn test<T, const P: usize>() where Bool<{core::mem::size_of::<T>() > 4}>: True {
+   |                                                                           ---- required by this bound in `test`
+...
+LL |     test::<2>();
+   |     ^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.
