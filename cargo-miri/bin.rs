@@ -452,26 +452,28 @@ fn phase_cargo_miri(mut args: env::Args) {
             // Check if the next argument starts with `-Zmiri`. If yes, we assume
             // this is an old-style invocation.
             if let Some(next_arg) = args.next() {
-                if next_arg.starts_with("-Zmiri") {
+                if next_arg.starts_with("-Zmiri") || next_arg == "--" {
                     eprintln!(
                         "WARNING: it seems like you are setting Miri's flags in `cargo miri` the old way,\n\
                         i.e., by passing them after the first `--`. This style is deprecated; please set\n\
                         the MIRIFLAGS environment variable instead. `cargo miri run/test` now interprets\n\
                         arguments the exact same way as `cargo run/test`."
                     );
-                    // Old-style invocation. Turn these into MIRIFLAGS.
-                    let mut miriflags = env::var("MIRIFLAGS").unwrap_or_default();
-                    miriflags.push(' ');
-                    miriflags.push_str(&next_arg);
-                    while let Some(further_arg) = args.next() {
-                        if further_arg == "--" {
-                            // End of the Miri flags!
-                            break;
-                        }
+                    // Old-style invocation. Turn these into MIRIFLAGS, if there are any.
+                    if next_arg != "--" {
+                        let mut miriflags = env::var("MIRIFLAGS").unwrap_or_default();
                         miriflags.push(' ');
-                        miriflags.push_str(&further_arg);
+                        miriflags.push_str(&next_arg);
+                        while let Some(further_arg) = args.next() {
+                            if further_arg == "--" {
+                                // End of the Miri flags!
+                                break;
+                            }
+                            miriflags.push(' ');
+                            miriflags.push_str(&further_arg);
+                        }
+                        env::set_var("MIRIFLAGS", miriflags);
                     }
-                    env::set_var("MIRIFLAGS", miriflags);
                     // Pass the remaining flags to cargo.
                     cmd.args(args);
                     break;
