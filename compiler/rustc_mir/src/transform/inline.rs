@@ -2,7 +2,7 @@
 
 use rustc_attr as attr;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -14,6 +14,7 @@ use super::simplify::{remove_dead_blocks, CfgSimplifier};
 use crate::transform::MirPass;
 use std::collections::VecDeque;
 use std::iter;
+use std::ops::RangeFrom;
 
 const DEFAULT_THRESHOLD: usize = 50;
 const HINT_THRESHOLD: usize = 100;
@@ -477,12 +478,11 @@ impl Inliner<'tcx> {
                 // Copy the arguments if needed.
                 let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, return_block);
 
-                let bb_len = caller_body.basic_blocks().len();
                 let mut integrator = Integrator {
-                    block_idx: bb_len,
                     args: &args,
-                    local_map: IndexVec::with_capacity(callee_body.local_decls.len()),
-                    scope_map: IndexVec::with_capacity(callee_body.source_scopes.len()),
+                    new_locals: Local::new(caller_body.local_decls.len())..,
+                    new_scopes: SourceScope::new(caller_body.source_scopes.len())..,
+                    new_blocks: BasicBlock::new(caller_body.basic_blocks().len())..,
                     destination: dest,
                     return_block,
                     cleanup_block: cleanup,
@@ -490,13 +490,12 @@ impl Inliner<'tcx> {
                     tcx: self.tcx,
                 };
 
-                for mut scope in callee_body.source_scopes.iter().cloned() {
-                    // Map the callee scopes into the caller.
-                    // FIXME(eddyb) this may ICE if the scopes are out of order.
-                    scope.parent_scope = scope.parent_scope.map(|s| integrator.scope_map[s]);
-                    scope.inlined_parent_scope =
-                        scope.inlined_parent_scope.map(|s| integrator.scope_map[s]);
+                // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
+                // (or existing ones, in a few special cases) in the caller.
+                integrator.visit_body(&mut callee_body);
 
+                for scope in &mut callee_body.source_scopes {
+                    // FIXME(eddyb) move this into a `fn visit_scope_data` in `Integrator`.
                     if scope.parent_scope.is_none() {
                         let callsite_scope = &caller_body.source_scopes[callsite.source_info.scope];
 
@@ -516,38 +515,26 @@ impl Inliner<'tcx> {
                     } else if scope.inlined_parent_scope.is_none() {
                         // Make it easy to find the scope with `inlined` set above.
                         scope.inlined_parent_scope =
-                            Some(integrator.scope_map[OUTERMOST_SOURCE_SCOPE]);
+                            Some(integrator.map_scope(OUTERMOST_SOURCE_SCOPE));
                     }
-
-                    let idx = caller_body.source_scopes.push(scope);
-                    integrator.scope_map.push(idx);
                 }
 
-                for loc in callee_body.vars_and_temps_iter() {
-                    let mut local = callee_body.local_decls[loc].clone();
+                // Insert all of the (mapped) parts of the callee body into the caller.
+                caller_body.local_decls.extend(
+                    // FIXME(eddyb) make `Range<Local>` iterable so that we can use
+                    // `callee_body.local_decls.drain(callee_body.vars_and_temps())`
+                    callee_body
+                        .vars_and_temps_iter()
+                        .map(|local| callee_body.local_decls[local].clone()),
+                );
+                caller_body.source_scopes.extend(callee_body.source_scopes.drain(..));
+                caller_body.var_debug_info.extend(callee_body.var_debug_info.drain(..));
+                caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
 
-                    local.source_info.scope = integrator.scope_map[local.source_info.scope];
-
-                    let idx = caller_body.local_decls.push(local);
-                    integrator.local_map.push(idx);
-                }
-
-                for mut var_debug_info in callee_body.var_debug_info.drain(..) {
-                    integrator.visit_var_debug_info(&mut var_debug_info);
-                    caller_body.var_debug_info.push(var_debug_info);
-                }
-
-                for (bb, mut block) in callee_body.basic_blocks_mut().drain_enumerated(..) {
-                    integrator.visit_basic_block_data(bb, &mut block);
-                    caller_body.basic_blocks_mut().push(block);
-                }
-
-                let terminator = Terminator {
+                caller_body[callsite.bb].terminator = Some(Terminator {
                     source_info: callsite.source_info,
-                    kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) },
-                };
-
-                caller_body[callsite.bb].terminator = Some(terminator);
+                    kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
+                });
 
                 true
             }
@@ -703,10 +690,10 @@ fn type_size_of<'tcx>(
  * stuff.
 */
 struct Integrator<'a, 'tcx> {
-    block_idx: usize,
     args: &'a [Local],
-    local_map: IndexVec<Local, Local>,
-    scope_map: IndexVec<SourceScope, SourceScope>,
+    new_locals: RangeFrom<Local>,
+    new_scopes: RangeFrom<SourceScope>,
+    new_blocks: RangeFrom<BasicBlock>,
     destination: Place<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
@@ -715,23 +702,31 @@ struct Integrator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
-    fn update_target(&self, tgt: BasicBlock) -> BasicBlock {
-        let new = BasicBlock::new(tgt.index() + self.block_idx);
-        debug!("updating target `{:?}`, new: `{:?}`", tgt, new);
+    fn map_local(&self, local: Local) -> Local {
+        let new = if local == RETURN_PLACE {
+            self.destination.local
+        } else {
+            let idx = local.index() - 1;
+            if idx < self.args.len() {
+                self.args[idx]
+            } else {
+                Local::new(self.new_locals.start.index() + (idx - self.args.len()))
+            }
+        };
+        debug!("mapping local `{:?}` to `{:?}`", local, new);
         new
     }
 
-    fn make_integrate_local(&self, local: Local) -> Local {
-        if local == RETURN_PLACE {
-            return self.destination.local;
-        }
+    fn map_scope(&self, scope: SourceScope) -> SourceScope {
+        let new = SourceScope::new(self.new_scopes.start.index() + scope.index());
+        debug!("mapping scope `{:?}` to `{:?}`", scope, new);
+        new
+    }
 
-        let idx = local.index() - 1;
-        if idx < self.args.len() {
-            return self.args[idx];
-        }
-
-        self.local_map[Local::new(idx - self.args.len())]
+    fn map_block(&self, block: BasicBlock) -> BasicBlock {
+        let new = BasicBlock::new(self.new_blocks.start.index() + block.index());
+        debug!("mapping block `{:?}` to `{:?}`", block, new);
+        new
     }
 }
 
@@ -741,7 +736,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _ctxt: PlaceContext, _location: Location) {
-        *local = self.make_integrate_local(*local);
+        *local = self.map_local(*local);
+    }
+
+    fn visit_source_scope(&mut self, scope: &mut SourceScope) {
+        *scope = self.map_scope(*scope);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
@@ -785,18 +784,18 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         match terminator.kind {
             TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => bug!(),
             TerminatorKind::Goto { ref mut target } => {
-                *target = self.update_target(*target);
+                *target = self.map_block(*target);
             }
             TerminatorKind::SwitchInt { ref mut targets, .. } => {
                 for tgt in targets.all_targets_mut() {
-                    *tgt = self.update_target(*tgt);
+                    *tgt = self.map_block(*tgt);
                 }
             }
             TerminatorKind::Drop { ref mut target, ref mut unwind, .. }
             | TerminatorKind::DropAndReplace { ref mut target, ref mut unwind, .. } => {
-                *target = self.update_target(*target);
+                *target = self.map_block(*target);
                 if let Some(tgt) = *unwind {
-                    *unwind = Some(self.update_target(tgt));
+                    *unwind = Some(self.map_block(tgt));
                 } else if !self.in_cleanup_block {
                     // Unless this drop is in a cleanup block, add an unwind edge to
                     // the original call's cleanup block
@@ -805,10 +804,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             }
             TerminatorKind::Call { ref mut destination, ref mut cleanup, .. } => {
                 if let Some((_, ref mut tgt)) = *destination {
-                    *tgt = self.update_target(*tgt);
+                    *tgt = self.map_block(*tgt);
                 }
                 if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.update_target(tgt));
+                    *cleanup = Some(self.map_block(tgt));
                 } else if !self.in_cleanup_block {
                     // Unless this call is in a cleanup block, add an unwind edge to
                     // the original call's cleanup block
@@ -816,9 +815,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 }
             }
             TerminatorKind::Assert { ref mut target, ref mut cleanup, .. } => {
-                *target = self.update_target(*target);
+                *target = self.map_block(*target);
                 if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.update_target(tgt));
+                    *cleanup = Some(self.map_block(tgt));
                 } else if !self.in_cleanup_block {
                     // Unless this assert is in a cleanup block, add an unwind edge to
                     // the original call's cleanup block
@@ -836,8 +835,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             TerminatorKind::Abort => {}
             TerminatorKind::Unreachable => {}
             TerminatorKind::FalseEdge { ref mut real_target, ref mut imaginary_target } => {
-                *real_target = self.update_target(*real_target);
-                *imaginary_target = self.update_target(*imaginary_target);
+                *real_target = self.map_block(*real_target);
+                *imaginary_target = self.map_block(*imaginary_target);
             }
             TerminatorKind::FalseUnwind { real_target: _, unwind: _ } =>
             // see the ordering of passes in the optimized_mir query.
@@ -846,13 +845,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             }
             TerminatorKind::InlineAsm { ref mut destination, .. } => {
                 if let Some(ref mut tgt) = *destination {
-                    *tgt = self.update_target(*tgt);
+                    *tgt = self.map_block(*tgt);
                 }
             }
         }
-    }
-
-    fn visit_source_scope(&mut self, scope: &mut SourceScope) {
-        *scope = self.scope_map[*scope];
     }
 }
