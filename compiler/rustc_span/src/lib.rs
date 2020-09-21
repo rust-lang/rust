@@ -1427,7 +1427,7 @@ impl SourceFile {
     }
 
     pub fn line_bounds(&self, line_index: usize) -> (BytePos, BytePos) {
-        if self.start_pos == self.end_pos {
+        if self.is_empty() {
             return (self.start_pos, self.end_pos);
         }
 
@@ -1439,9 +1439,18 @@ impl SourceFile {
         }
     }
 
+    /// Returns whether or not the file contains the given `SourceMap` byte
+    /// position. The position one past the end of the file is considered to be
+    /// contained by the file. This implies that files for which `is_empty`
+    /// returns true still contain one byte position according to this function.
     #[inline]
     pub fn contains(&self, byte_pos: BytePos) -> bool {
         byte_pos >= self.start_pos && byte_pos <= self.end_pos
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.start_pos == self.end_pos
     }
 
     /// Calculates the original byte position relative to the start of the file

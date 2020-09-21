@@ -47,7 +47,7 @@ impl<'sm> CachingSourceMapView<'sm> {
 
         // Check if the position is in one of the cached lines
         for cache_entry in self.line_cache.iter_mut() {
-            if pos >= cache_entry.line_start && pos < cache_entry.line_end {
+            if line_contains((cache_entry.line_start, cache_entry.line_end), pos) {
                 cache_entry.time_stamp = self.time_stamp;
 
                 return Some((
@@ -69,13 +69,13 @@ impl<'sm> CachingSourceMapView<'sm> {
         let cache_entry = &mut self.line_cache[oldest];
 
         // If the entry doesn't point to the correct file, fix it up
-        if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
+        if !file_contains(&cache_entry.file, pos) {
             let file_valid;
             if self.source_map.files().len() > 0 {
                 let file_index = self.source_map.lookup_source_file_idx(pos);
                 let file = self.source_map.files()[file_index].clone();
 
-                if pos >= file.start_pos && pos < file.end_pos {
+                if file_contains(&file, pos) {
                     cache_entry.file = file;
                     cache_entry.file_index = file_index;
                     file_valid = true;
@@ -101,4 +101,30 @@ impl<'sm> CachingSourceMapView<'sm> {
 
         Some((cache_entry.file.clone(), cache_entry.line_number, pos - cache_entry.line_start))
     }
+}
+
+#[inline]
+fn line_contains(line_bounds: (BytePos, BytePos), pos: BytePos) -> bool {
+    // This condition will be false in one case where we'd rather it wasn't. Spans often start/end
+    // one past something, and when that something is the last character of a file (this can happen
+    // when a file doesn't end in a newline, for example), we'd still like for the position to be
+    // considered within the last line. However, it isn't according to the exclusive upper bound
+    // below. We cannot change the upper bound to be inclusive, because for most lines, the upper
+    // bound is the same as the lower bound of the next line, so there would be an ambiguity.
+    //
+    // Supposing we only use this function to check whether or not the line cache entry contains
+    // a position, the only ramification of the above is that we will get cache misses for these
+    // rare positions. A line lookup for the position via `SourceMap::lookup_line` after a cache
+    // miss will produce the last line number, as desired.
+    line_bounds.0 <= pos && pos < line_bounds.1
+}
+
+#[inline]
+fn file_contains(file: &SourceFile, pos: BytePos) -> bool {
+    // `SourceMap::lookup_source_file_idx` and `SourceFile::contains` both consider the position
+    // one past the end of a file to belong to it. Normally, that's what we want. But for the
+    // purposes of converting a byte position to a line and column number, we can't come up with a
+    // line and column number if the file is empty, because an empty file doesn't contain any
+    // lines. So for our purposes, we don't consider empty files to contain any byte position.
+    file.contains(pos) && !file.is_empty()
 }
