@@ -197,6 +197,7 @@ use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use smallvec::SmallVec;
 use std::iter;
+use std::path::PathBuf;
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
@@ -420,27 +421,38 @@ fn record_accesses<'a, 'tcx: 'a>(
     inlining_map.lock_mut().record_accesses(caller, &accesses);
 }
 
-// Shrinks string by keeping prefix and suffix of given sizes.
-fn shrink(s: String, before: usize, after: usize) -> String {
-    // An iterator of all byte positions including the end of the string.
-    let positions = || s.char_indices().map(|(i, _)| i).chain(iter::once(s.len()));
-
-    let shrunk = format!(
-        "{before}...{after}",
-        before = &s[..positions().nth(before).unwrap_or(s.len())],
-        after = &s[positions().rev().nth(after).unwrap_or(0)..],
-    );
+/// Format instance name that is already known to be too long for rustc.
+/// Show only the first and last 32 characters to avoid blasting
+/// the user's terminal with thousands of lines of type-name.
+///
+/// If the type name is longer than before+after, it will be written to a file.
+fn shrunk_instance_name(
+    tcx: TyCtxt<'tcx>,
+    instance: &Instance<'tcx>,
+    before: usize,
+    after: usize,
+) -> (String, Option<PathBuf>) {
+    let s = instance.to_string();
 
     // Only use the shrunk version if it's really shorter.
     // This also avoids the case where before and after slices overlap.
-    if shrunk.len() < s.len() { shrunk } else { s }
-}
+    if s.chars().nth(before + after + 1).is_some() {
+        // An iterator of all byte positions including the end of the string.
+        let positions = || s.char_indices().map(|(i, _)| i).chain(iter::once(s.len()));
 
-// Format instance name that is already known to be too long for rustc.
-// Show only the first and last 32 characters to avoid blasting
-// the user's terminal with thousands of lines of type-name.
-fn shrunk_instance_name(instance: &Instance<'tcx>) -> String {
-    shrink(instance.to_string(), 32, 32)
+        let shrunk = format!(
+            "{before}...{after}",
+            before = &s[..positions().nth(before).unwrap_or(s.len())],
+            after = &s[positions().rev().nth(after).unwrap_or(0)..],
+        );
+
+        let path = tcx.output_filenames(LOCAL_CRATE).temp_path_ext("long-type.txt", None);
+        let written_to_path = std::fs::write(&path, s).ok().map(|_| path);
+
+        (shrunk, written_to_path)
+    } else {
+        (s, None)
+    }
 }
 
 fn check_recursion_limit<'tcx>(
@@ -465,15 +477,16 @@ fn check_recursion_limit<'tcx>(
     // more than the recursion limit is assumed to be causing an
     // infinite expansion.
     if !tcx.sess.recursion_limit().value_within_limit(adjusted_recursion_depth) {
-        let error = format!(
-            "reached the recursion limit while instantiating `{}`",
-            shrunk_instance_name(&instance),
-        );
+        let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance, 32, 32);
+        let error = format!("reached the recursion limit while instantiating `{}`", shrunk);
         let mut err = tcx.sess.struct_span_fatal(span, &error);
         err.span_note(
             tcx.def_span(def_id),
             &format!("`{}` defined here", tcx.def_path_str(def_id)),
         );
+        if let Some(path) = written_to_path {
+            err.note(&format!("the full type name has been written to '{}'", path.display()));
+        }
         err.emit();
         FatalError.raise();
     }
@@ -502,12 +515,13 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     //
     // Bail out in these cases to avoid that bad user experience.
     if !tcx.sess.type_length_limit().value_within_limit(type_length) {
-        let msg = format!(
-            "reached the type-length limit while instantiating `{}`",
-            shrunk_instance_name(&instance),
-        );
+        let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance, 32, 32);
+        let msg = format!("reached the type-length limit while instantiating `{}`", shrunk);
         let mut diag = tcx.sess.struct_span_fatal(tcx.def_span(instance.def_id()), &msg);
-        diag.note(&format!(
+        if let Some(path) = written_to_path {
+            diag.note(&format!("the full type name has been written to '{}'", path.display()));
+        }
+        diag.help(&format!(
             "consider adding a `#![type_length_limit=\"{}\"]` attribute to your crate",
             type_length
         ));

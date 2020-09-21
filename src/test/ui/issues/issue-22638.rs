@@ -1,5 +1,6 @@
 // build-fail
 // normalize-stderr-test: "<\[closure@.+`" -> "$$CLOSURE`"
+// normalize-stderr-test: ".nll/" -> "/"
 
 #![allow(unused)]
 

@@ -1,5 +1,6 @@
 // build-fail
 // error-pattern: reached the type-length limit while instantiating
+// normalize-stderr-test: ".nll/" -> "/"
 
 // Test that the type length limit can be changed.
 
