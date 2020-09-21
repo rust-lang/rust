@@ -262,7 +262,7 @@ impl Write for ChildStdin {
     }
 }
 
-#[stable(feature = "write_mt", since = "1.47.0")]
+#[stable(feature = "write_mt", since = "1.48.0")]
 impl Write for &ChildStdin {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
