@@ -2850,9 +2850,9 @@ public:
 
     // llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>
     // sub_index_map;
-    int tapeIdx = 0xDEADBEEF;
-    int returnIdx = 0xDEADBEEF;
-    int differetIdx = 0xDEADBEEF;
+    Optional<int> tapeIdx;
+    Optional<int> returnIdx;
+    Optional<int> differetIdx;
 
     const AugmentedReturn *subdata = nullptr;
     if (mode == DerivativeMode::Reverse) {
@@ -2985,11 +2985,11 @@ public:
         if (!augmentcall->getType()->isVoidTy())
           augmentcall->setName(orig->getName() + "_augmented");
 
-        if (tapeIdx != 0xDEADBEEF) {
-          tape = (tapeIdx == -1)
+        if (tapeIdx.hasValue()) {
+          tape = (tapeIdx.getValue() == -1)
                      ? augmentcall
                      : BuilderZ.CreateExtractValue(
-                           augmentcall, {(unsigned)tapeIdx}, "subcache");
+                           augmentcall, {(unsigned)tapeIdx.getValue()}, "subcache");
           if (tape->getType()->isEmptyTy()) {
             auto tt = tape->getType();
             gutils->erase(cast<Instruction>(tape));
@@ -3004,9 +3004,9 @@ public:
               cast<CallInst>(gutils->getNewFromOriginal(&call));
 
           Value *dcall = nullptr;
-          dcall = (returnIdx < 0) ? augmentcall
+          dcall = (returnIdx.getValue() < 0) ? augmentcall
                                   : BuilderZ.CreateExtractValue(
-                                        augmentcall, {(unsigned)returnIdx});
+                                        augmentcall, {(unsigned)returnIdx.getValue()});
           gutils->originalToNewFn[orig] = dcall;
           assert(dcall->getType() == orig->getType());
           assert(dcall);
@@ -3052,11 +3052,11 @@ public:
           // assert(!tape);
           // assert(subdata);
           if (!tape) {
-            assert(tapeIdx != 0xDEADBEEF);
+            assert(tapeIdx.hasValue());
             tape = BuilderZ.CreatePHI(
                 (tapeIdx == -1) ? FT->getReturnType()
                                 : cast<StructType>(FT->getReturnType())
-                                      ->getElementType(tapeIdx),
+                                      ->getElementType(tapeIdx.getValue()),
                 1, "tapeArg");
           }
           tape = gutils->addMalloc(BuilderZ, tape,
@@ -3107,10 +3107,10 @@ public:
 
           Value *newip = nullptr;
           if (mode == DerivativeMode::Both || mode == DerivativeMode::Forward) {
-            newip = (differetIdx < 0)
+            newip = (differetIdx.getValue() < 0)
                         ? augmentcall
                         : BuilderZ.CreateExtractValue(augmentcall,
-                                                      {(unsigned)differetIdx},
+                                                      {(unsigned)differetIdx.getValue()},
                                                       orig->getName() + "'ac");
             assert(newip->getType() == orig->getType());
             placeholder->replaceAllUsesWith(newip);

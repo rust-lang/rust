@@ -1958,7 +1958,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 goto noSpeedCache;
               }
 
-              Value *lim = unwrapM(l1.limit, v, {},
+              Value *lim = unwrapM(l1.limit, v,
+                                   /*available*/ValueToValueMapTy(),
                                    UnwrapMode::AttemptFullUnwrapWithLookup);
               if (!lim) {
                 goto noSpeedCache;
@@ -1978,7 +1979,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 Exp.setInsertPoint(l1.header->getTerminator());
                 Value *start0 = Exp.expandCodeFor(
                     ar1->getStart(), li->getPointerOperand()->getType());
-                start = unwrapM(start0, v, {},
+                start = unwrapM(start0, v,
+                                /*available*/ValueToValueMapTy(),
                                 UnwrapMode::AttemptFullUnwrapWithLookup);
                 l1.header->dump();
                 std::set<Value *> todo = {start0};
