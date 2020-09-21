@@ -270,6 +270,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 fx.bcx.ins().jump(target, &[]);
 
                 fx.bcx.switch_to_block(failure);
+                fx.bcx.ins().nop();
 
                 let location = fx
                     .get_caller_location(bb_data.terminator().source_info.span)
@@ -720,6 +721,7 @@ fn trans_stmt<'tcx>(
                         fx.bcx.ins().jump(loop_block, &[index]);
 
                         fx.bcx.switch_to_block(done_block);
+                        fx.bcx.ins().nop();
                     }
                 }
                 Rvalue::Len(place) => {
