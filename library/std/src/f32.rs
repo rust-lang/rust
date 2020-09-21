@@ -206,8 +206,11 @@ impl f32 {
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error, yielding a more accurate result than an unfused multiply-add.
     ///
-    /// Using `mul_add` can be more performant than an unfused multiply-add if
-    /// the target architecture has a dedicated `fma` CPU instruction.
+    /// Using `mul_add` *can* be more performant than an unfused multiply-add if
+    /// the target architecture has a dedicated `fma` CPU instruction. However,
+    /// this is not always true, and care must be taken not to overload the
+    /// architecture's available FMA units when using many FMA instructions
+    /// in a row, which can cause a stall and performance degradation.
     ///
     /// # Examples
     ///
