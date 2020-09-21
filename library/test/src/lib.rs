@@ -29,6 +29,7 @@
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
 #![feature(test)]
+#![feature(total_cmp)]
 
 // Public reexports
 pub use self::bench::{black_box, Bencher};
