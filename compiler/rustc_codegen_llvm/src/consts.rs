@@ -7,6 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::c_uint;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::const_cstr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
@@ -21,8 +22,6 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
 use tracing::debug;
-
-use std::ffi::CStr;
 
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
@@ -454,9 +453,9 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                             .all(|&byte| byte == 0);
 
                     let sect_name = if all_bytes_are_zero {
-                        CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_bss\0")
+                        const_cstr!("__DATA,__thread_bss")
                     } else {
-                        CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_data\0")
+                        const_cstr!("__DATA,__thread_data")
                     };
                     llvm::LLVMSetSection(g, sect_name.as_ptr());
                 }
