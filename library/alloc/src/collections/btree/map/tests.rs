@@ -88,6 +88,11 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
                     let min_len = if is_root { 1 } else { node::MIN_LEN };
                     assert!(node.len() >= min_len, "{} < {}", node.len(), min_len);
 
+                    for idx in 0..=node.len() {
+                        let edge = unsafe { node::Handle::new_edge(node, idx) };
+                        assert!(edge.descend().ascend().ok().unwrap() == edge);
+                    }
+
                     internal_length += node.len();
                 }
                 Position::InternalKV(kv) => {
@@ -1845,4 +1850,18 @@ fn test_into_values() {
     assert!(values.contains(&'a'));
     assert!(values.contains(&'b'));
     assert!(values.contains(&'c'));
+}
+
+#[test]
+fn test_insert_remove_intertwined() {
+    let loops = if cfg!(miri) { 100 } else { 1_000_000 };
+    let mut map = BTreeMap::new();
+    let mut i = 1;
+    for _ in 0..loops {
+        i = (i + 421) & 0xFF;
+        map.insert(i, i);
+        map.remove(&(0xFF - i));
+    }
+
+    map.check();
 }
