@@ -10,11 +10,12 @@ use crate::ops::{ControlFlow, Try};
 /// and do not cross: iteration is over when they meet in the middle.
 ///
 /// In a similar fashion to the [`Iterator`] protocol, once a
-/// `DoubleEndedIterator` returns `None` from a `next_back()`, calling it again
-/// may or may not ever return `Some` again. `next()` and `next_back()` are
-/// interchangeable for this purpose.
+/// `DoubleEndedIterator` returns [`None`] from a [`next_back()`], calling it
+/// again may or may not ever return [`Some`] again. [`next()`] and
+/// [`next_back()`] are interchangeable for this purpose.
 ///
-/// [`Iterator`]: trait.Iterator.html
+/// [`next_back()`]: DoubleEndedIterator::next_back
+/// [`next()`]: Iterator::next
 ///
 /// # Examples
 ///
@@ -42,7 +43,7 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// The [trait-level] docs contain more details.
     ///
-    /// [trait-level]: trait.DoubleEndedIterator.html
+    /// [trait-level]: DoubleEndedIterator
     ///
     /// # Examples
     ///
@@ -66,7 +67,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// # Remarks
     ///
     /// The elements yielded by `DoubleEndedIterator`'s methods may differ from
-    /// the ones yielded by `Iterator`'s methods:
+    /// the ones yielded by [`Iterator`]'s methods:
     ///
     /// ```
     /// let vec = vec![(1, 'a'), (1, 'b'), (1, 'c'), (2, 'a'), (2, 'b')];
@@ -87,25 +88,23 @@ pub trait DoubleEndedIterator: Iterator {
     ///     vec![(2, 'b'), (1, 'c')]
     /// );
     /// ```
-    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
     /// Returns the `n`th element from the end of the iterator.
     ///
-    /// This is essentially the reversed version of [`nth`]. Although like most indexing
-    /// operations, the count starts from zero, so `nth_back(0)` returns the first value from
-    /// the end, `nth_back(1)` the second, and so on.
+    /// This is essentially the reversed version of [`Iterator::nth()`].
+    /// Although like most indexing operations, the count starts from zero, so
+    /// `nth_back(0)` returns the first value from the end, `nth_back(1)` the
+    /// second, and so on.
     ///
     /// Note that all elements between the end and the returned element will be
     /// consumed, including the returned element. This also means that calling
     /// `nth_back(0)` multiple times on the same iterator will return different
     /// elements.
     ///
-    /// `nth_back()` will return [`None`] if `n` is greater than or equal to the length of the
-    /// iterator.
-    ///
-    /// [`nth`]: crate::iter::Iterator::nth
+    /// `nth_back()` will return [`None`] if `n` is greater than or equal to the
+    /// length of the iterator.
     ///
     /// # Examples
     ///
@@ -145,10 +144,8 @@ pub trait DoubleEndedIterator: Iterator {
         None
     }
 
-    /// This is the reverse version of [`try_fold()`]: it takes elements
-    /// starting from the back of the iterator.
-    ///
-    /// [`try_fold()`]: Iterator::try_fold
+    /// This is the reverse version of [`Iterator::try_fold()`]: it takes
+    /// elements starting from the back of the iterator.
     ///
     /// # Examples
     ///
@@ -195,8 +192,8 @@ pub trait DoubleEndedIterator: Iterator {
     /// An iterator method that reduces the iterator's elements to a single,
     /// final value, starting from the back.
     ///
-    /// This is the reverse version of [`fold()`]: it takes elements starting from
-    /// the back of the iterator.
+    /// This is the reverse version of [`Iterator::fold()`]: it takes elements
+    /// starting from the back of the iterator.
     ///
     /// `rfold()` takes two arguments: an initial value, and a closure with two
     /// arguments: an 'accumulator', and an element. The closure returns the value that
@@ -212,8 +209,6 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// Folding is useful whenever you have a collection of something, and want
     /// to produce a single value from it.
-    ///
-    /// [`fold()`]: Iterator::fold
     ///
     /// # Examples
     ///
