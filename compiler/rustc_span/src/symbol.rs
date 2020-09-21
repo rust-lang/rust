@@ -400,6 +400,7 @@ symbols! {
         crate_type,
         crate_visibility_modifier,
         crt_dash_static: "crt-static",
+        cstring_type,
         ctlz,
         ctlz_nonzero,
         ctpop,

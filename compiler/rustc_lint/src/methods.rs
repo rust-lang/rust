@@ -3,10 +3,7 @@ use crate::LateLintPass;
 use crate::LintContext;
 use rustc_hir::{Expr, ExprKind, PathSegment};
 use rustc_middle::ty;
-use rustc_span::{
-    symbol::{sym, Symbol},
-    ExpnKind, Span,
-};
+use rustc_span::{symbol::sym, ExpnKind, Span};
 
 declare_lint! {
     pub TEMPORARY_CSTRING_AS_PTR,
@@ -59,8 +56,6 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
     }
 }
 
-const CSTRING_PATH: [Symbol; 4] = [sym::std, sym::ffi, sym::c_str, sym::CString];
-
 fn lint_cstring_as_ptr(
     cx: &LateContext<'_>,
     as_ptr_span: Span,
@@ -68,19 +63,21 @@ fn lint_cstring_as_ptr(
     unwrap: &rustc_hir::Expr<'_>,
 ) {
     let source_type = cx.typeck_results().expr_ty(source);
-    if let ty::Adt(def, substs) = source_type.kind {
+    if let ty::Adt(def, substs) = source_type.kind() {
         if cx.tcx.is_diagnostic_item(sym::result_type, def.did) {
-            if let ty::Adt(adt, _) = substs.type_at(0).kind {
-                if cx.match_def_path(adt.did, &CSTRING_PATH) {
+            if let ty::Adt(adt, _) = substs.type_at(0).kind() {
+                if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did) {
                     cx.struct_span_lint(TEMPORARY_CSTRING_AS_PTR, as_ptr_span, |diag| {
                         let mut diag = diag
                             .build("getting the inner pointer of a temporary `CString`");
                         diag.span_label(as_ptr_span, "this pointer will be invalid");
                         diag.span_label(
                             unwrap.span,
-                            "this `CString` is deallocated at the end of the expression, bind it to a variable to extend its lifetime",
+                            "this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime",
                         );
-                        diag.note("pointers do not have a lifetime; when calling `as_ptr` the `CString` is deallocated because nothing is referencing it as far as the type system is concerned");
+                        diag.note("pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement...");
+                        diag.note("...because nothing is referencing it as far as the type system is concerned");
+                        diag.help("for more information, see https://doc.rust-lang.org/reference/destructors.html");
                         diag.emit();
                     });
                 }
