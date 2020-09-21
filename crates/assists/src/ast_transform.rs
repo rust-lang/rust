@@ -18,6 +18,34 @@ pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
     .rewrite_ast(&node)
 }
 
+/// `AstTransform` helps with applying bulk transformations to syntax nodes.
+///
+/// This is mostly useful for IDE code generation. If you paste some existing
+/// code into a new context (for example, to add method overrides to an `impl`
+/// block), you generally want to appropriately qualify the names, and sometimes
+/// you might want to substitute generic parameters as well:
+///
+/// ```
+/// mod x {
+///   pub struct A;
+///   pub trait T<U> { fn foo(&self, _: U) -> A; }
+/// }
+///
+/// mod y {
+///   use x::T;
+///
+///   impl T<()> for () {
+///      // If we invoke **Add Missing Members** here, we want to copy-paste `foo`.
+///      // But we want a slightly-modified version of it:
+///      fn foo(&self, _: ()) -> x::A {}
+///   }
+/// }
+/// ```
+///
+/// So, a single `AstTransform` describes such function from `SyntaxNode` to
+/// `SyntaxNode`. Note that the API here is a bit too high-order and high-brow.
+/// We'd want to somehow express this concept simpler, but so far nobody got to
+/// simplifying this!
 pub trait AstTransform<'a> {
     fn get_substitution(&self, node: &syntax::SyntaxNode) -> Option<syntax::SyntaxNode>;
 
