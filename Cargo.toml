@@ -14,7 +14,7 @@ cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/", br
 cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
 cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
-target-lexicon = "0.10.0"
+target-lexicon = "0.11.0"
 gimli = { version = "0.21.0", default-features = false, features = ["write"]}
 object = { version = "0.21.1", default-features = false, features = ["std", "read_core", "write", "coff", "elf", "macho", "pe"] }
 

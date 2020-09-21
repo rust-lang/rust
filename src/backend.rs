@@ -159,13 +159,10 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
         target_lexicon::BinaryFormat::Elf => object::BinaryFormat::Elf,
         target_lexicon::BinaryFormat::Coff => object::BinaryFormat::Coff,
         target_lexicon::BinaryFormat::Macho => object::BinaryFormat::MachO,
-        target_lexicon::BinaryFormat::Wasm => sess.fatal("binary format wasm is unsupported"),
-        target_lexicon::BinaryFormat::Unknown => sess.fatal("binary format is unknown"),
+        binary_format => sess.fatal(&format!("binary format {} is unsupported", binary_format)),
     };
     let architecture = match triple.architecture {
-        target_lexicon::Architecture::I386
-        | target_lexicon::Architecture::I586
-        | target_lexicon::Architecture::I686 => object::Architecture::I386,
+        target_lexicon::Architecture::X86_32(_) => object::Architecture::I386,
         target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
         target_lexicon::Architecture::Arm(_) => object::Architecture::Arm,
         target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
