@@ -1596,7 +1596,7 @@ macro_rules! impl_pos {
 
                 #[inline(always)]
                 fn add(self, rhs: $ident) -> $ident {
-                    $ident((self.to_usize() + rhs.to_usize()) as $inner_ty)
+                    $ident(self.0 + rhs.0)
                 }
             }
 
@@ -1605,7 +1605,7 @@ macro_rules! impl_pos {
 
                 #[inline(always)]
                 fn sub(self, rhs: $ident) -> $ident {
-                    $ident((self.to_usize() - rhs.to_usize()) as $inner_ty)
+                    $ident(self.0 - rhs.0)
                 }
             }
         )*
