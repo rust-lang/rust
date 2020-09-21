@@ -377,10 +377,17 @@ pub mod statik {
         }
 
         pub unsafe fn get(&self, init: fn() -> T) -> Option<&'static T> {
-            let value = match self.inner.get() {
-                Some(ref value) => value,
-                None => self.inner.initialize(init),
+            // SAFETY: The caller must ensure no reference is ever handed out to
+            // the inner cell nor mutable reference to the Option<T> inside said
+            // cell. This make it safe to hand a reference, though the lifetime
+            // of 'static is itself unsafe, making the get method unsafe.
+            let value = unsafe {
+                match self.inner.get() {
+                    Some(ref value) => value,
+                    None => self.inner.initialize(init),
+                }
             };
+
             Some(value)
         }
     }
