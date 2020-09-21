@@ -21,6 +21,10 @@ pub fn ty(text: &str) -> ast::Type {
     ast_from_text(&format!("impl {} for D {{}};", text))
 }
 
+pub fn assoc_item_list() -> ast::AssocItemList {
+    ast_from_text("impl C for D {};")
+}
+
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("use {};", name_ref))
 }
