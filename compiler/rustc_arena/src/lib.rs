@@ -299,11 +299,13 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
 unsafe impl<T: Send> Send for TypedArena<T> {}
 
 pub struct DroplessArena {
-    /// A pointer to the next object to be allocated.
-    ptr: Cell<*mut u8>,
+    /// A pointer to the start of the free space.
+    start: Cell<*mut u8>,
 
-    /// A pointer to the end of the allocated area. When this pointer is
-    /// reached, a new chunk is allocated.
+    /// A pointer to the end of free space.
+    ///
+    /// The allocation proceeds from the end of the chunk towards the start.
+    /// When this pointer crosses the start pointer, a new chunk is allocated.
     end: Cell<*mut u8>,
 
     /// A vector of arena chunks.
@@ -316,7 +318,7 @@ impl Default for DroplessArena {
     #[inline]
     fn default() -> DroplessArena {
         DroplessArena {
-            ptr: Cell::new(ptr::null_mut()),
+            start: Cell::new(ptr::null_mut()),
             end: Cell::new(ptr::null_mut()),
             chunks: Default::default(),
         }
@@ -348,7 +350,7 @@ impl DroplessArena {
             new_cap = cmp::max(additional, new_cap);
 
             let mut chunk = TypedArenaChunk::<u8>::new(new_cap);
-            self.ptr.set(chunk.start());
+            self.start.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
         }
@@ -359,24 +361,17 @@ impl DroplessArena {
     /// request.
     #[inline]
     fn alloc_raw_without_grow(&self, layout: Layout) -> Option<*mut u8> {
-        let ptr = self.ptr.get() as usize;
+        let start = self.start.get() as usize;
         let end = self.end.get() as usize;
+
         let align = layout.align();
         let bytes = layout.size();
-        // The allocation request fits into the current chunk iff:
-        //
-        // let aligned = align_to(ptr, align);
-        // ptr <= aligned && aligned + bytes <= end
-        //
-        // Except that we work with fixed width integers and need to be careful
-        // about potential overflow in the calcuation. If the overflow does
-        // happen, then we definitely don't have enough free and need to grow
-        // the arena.
-        let aligned = ptr.checked_add(align - 1)? & !(align - 1);
-        let new_ptr = aligned.checked_add(bytes)?;
-        if new_ptr <= end {
-            self.ptr.set(new_ptr as *mut u8);
-            Some(aligned as *mut u8)
+
+        let new_end = end.checked_sub(bytes)? & !(align - 1);
+        if start <= new_end {
+            let new_end = new_end as *mut u8;
+            self.end.set(new_end);
+            Some(new_end)
         } else {
             None
         }
