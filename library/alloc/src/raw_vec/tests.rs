@@ -1,5 +1,9 @@
+#![feature(cell_update)]
+
 use super::*;
 use std::cell::Cell;
+
+
 
 #[test]
 fn allocator_param() {
