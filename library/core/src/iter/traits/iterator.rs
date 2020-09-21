@@ -2203,7 +2203,6 @@ pub trait Iterator {
     ///
     /// `iter.find_map(f)` is equivalent to `iter.filter_map(f).next()`.
     ///
-    ///
     /// # Examples
     ///
     /// ```

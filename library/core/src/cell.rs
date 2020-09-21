@@ -496,10 +496,7 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: This can cause data races if called from a separate thread,
-        // but `Cell` is `!Sync` so this won't happen, and `&mut` guarantees
-        // unique access.
-        unsafe { &mut *self.value.get() }
+        self.value.get_mut()
     }
 
     /// Returns a `&Cell<T>` from a `&mut T`
@@ -945,8 +942,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: `&mut` guarantees unique access.
-        unsafe { &mut *self.value.get() }
+        self.value.get_mut()
     }
 
     /// Undo the effect of leaked guards on the borrow state of the `RefCell`.
@@ -1543,8 +1539,11 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// allow internal mutability, such as `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their
 /// internal data. There is *no* legal way to obtain aliasing `&mut`, not even with `UnsafeCell<T>`.
 ///
-/// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to
-/// its contents. It is up to _you_ as the abstraction designer to use that raw pointer correctly.
+/// The `UnsafeCell` API itself is technically very simple: [`.get()`] gives you a raw pointer
+/// `*mut T` to its contents. It is up to _you_ as the abstraction designer to use that raw pointer
+/// correctly.
+///
+/// [`.get()`]: `UnsafeCell::get`
 ///
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
 ///
@@ -1571,21 +1570,70 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// 2. A `&mut T` reference may be released to safe code provided neither other `&mut T` nor `&T`
 /// co-exist with it. A `&mut T` must always be unique.
 ///
-/// Note that while mutating or mutably aliasing the contents of an `&UnsafeCell<T>` is
-/// ok (provided you enforce the invariants some other way), it is still undefined behavior
-/// to have multiple `&mut UnsafeCell<T>` aliases.
+/// Note that whilst mutating the contents of an `&UnsafeCell<T>` (even while other
+/// `&UnsafeCell<T>` references alias the cell) is
+/// ok (provided you enforce the above invariants some other way), it is still undefined behavior
+/// to have multiple `&mut UnsafeCell<T>` aliases. That is, `UnsafeCell` is a wrapper
+/// designed to have a special interaction with _shared_ accesses (_i.e._, through an
+/// `&UnsafeCell<_>` reference); there is no magic whatsoever when dealing with _exclusive_
+/// accesses (_e.g._, through an `&mut UnsafeCell<_>`): neither the cell nor the wrapped value
+/// may be aliased for the duration of that `&mut` borrow.
+/// This is showcased by the [`.get_mut()`] accessor, which is a non-`unsafe` getter that yields
+/// a `&mut T`.
+///
+/// [`.get_mut()`]: `UnsafeCell::get_mut`
 ///
 /// # Examples
+///
+/// Here is an example showcasing how to soundly mutate the contents of an `UnsafeCell<_>` despite
+/// there being multiple references aliasing the cell:
 ///
 /// ```
 /// use std::cell::UnsafeCell;
 ///
-/// # #[allow(dead_code)]
-/// struct NotThreadSafe<T> {
-///     value: UnsafeCell<T>,
-/// }
+/// let x: UnsafeCell<i32> = 42.into();
+/// // Get multiple / concurrent / shared references to the same `x`.
+/// let (p1, p2): (&UnsafeCell<i32>, &UnsafeCell<i32>) = (&x, &x);
 ///
-/// unsafe impl<T> Sync for NotThreadSafe<T> {}
+/// unsafe {
+///     // SAFETY: within this scope there are no other references to `x`'s contents,
+///     // so ours is effectively unique.
+///     let p1_exclusive: &mut i32 = &mut *p1.get(); // -- borrow --+
+///     *p1_exclusive += 27; //                                     |
+/// } // <---------- cannot go beyond this point -------------------+
+///
+/// unsafe {
+///     // SAFETY: within this scope nobody expects to have exclusive access to `x`'s contents,
+///     // so we can have multiple shared accesses concurrently.
+///     let p2_shared: &i32 = &*p2.get();
+///     assert_eq!(*p2_shared, 42 + 27);
+///     let p1_shared: &i32 = &*p1.get();
+///     assert_eq!(*p1_shared, *p2_shared);
+/// }
+/// ```
+///
+/// The following example showcases the fact that exclusive access to an `UnsafeCell<T>`
+/// implies exclusive access to its `T`:
+///
+/// ```rust
+/// #![feature(unsafe_cell_get_mut)]
+/// #![forbid(unsafe_code)] // with exclusive accesses,
+///                         // `UnsafeCell` is a transparent no-op wrapper,
+///                         // so no need for `unsafe` here.
+/// use std::cell::UnsafeCell;
+///
+/// let mut x: UnsafeCell<i32> = 42.into();
+///
+/// // Get a compile-time-checked unique reference to `x`.
+/// let p_unique: &mut UnsafeCell<i32> = &mut x;
+/// // With an exclusive reference, we can mutate the contents for free.
+/// *p_unique.get_mut() = 0;
+/// // Or, equivalently:
+/// x = UnsafeCell::new(0);
+///
+/// // When we own the value, we can extract the contents for free.
+/// let contents: i32 = x.into_inner();
+/// assert_eq!(contents, 0);
 /// ```
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1661,6 +1709,29 @@ impl<T: ?Sized> UnsafeCell<T> {
         // #[repr(transparent)]. This exploits libstd's special status, there is
         // no guarantee for user code that this will work in future versions of the compiler!
         self as *const UnsafeCell<T> as *const T as *mut T
+    }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// This call borrows the `UnsafeCell` mutably (at compile-time) which
+    /// guarantees that we possess the only reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unsafe_cell_get_mut)]
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let mut c = UnsafeCell::new(5);
+    /// *c.get_mut() += 1;
+    ///
+    /// assert_eq!(*c.get_mut(), 6);
+    /// ```
+    #[inline]
+    #[unstable(feature = "unsafe_cell_get_mut", issue = "76943")]
+    pub fn get_mut(&mut self) -> &mut T {
+        // SAFETY: (outer) `&mut` guarantees unique access.
+        unsafe { &mut *self.get() }
     }
 
     /// Gets a mutable pointer to the wrapped value.

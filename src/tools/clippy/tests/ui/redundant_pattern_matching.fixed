@@ -76,7 +76,6 @@ fn main() {
     takes_bool(x);
 
     issue5504();
-    issue5697();
     issue6067();
 
     let _ = if gen_opt().is_some() {
@@ -129,41 +128,31 @@ fn issue5504() {
     while m!().is_some() {}
 }
 
-// None of these should be linted because none of the suggested methods
-// are `const fn` without toggling a feature.
-const fn issue5697() {
-    if let Some(_) = Some(42) {}
-
-    if let None = None::<()> {}
-
-    while let Some(_) = Some(42) {}
-
-    while let None = None::<()> {}
-
-    match Some(42) {
-        Some(_) => true,
-        None => false,
-    };
-
-    match None::<()> {
-        Some(_) => false,
-        None => true,
-    };
-}
-
 // Methods that are unstable const should not be suggested within a const context, see issue #5697.
-// However, in Rust 1.48.0 the methods `is_ok` and `is_err` of `Result` were stabilized as const,
-// so the following should be linted.
+// However, in Rust 1.48.0 the methods `is_ok` and `is_err` of `Result`, and `is_some` and `is_none`
+// of `Option` were stabilized as const, so the following should be linted.
 const fn issue6067() {
     if Ok::<i32, i32>(42).is_ok() {}
 
     if Err::<i32, i32>(42).is_err() {}
 
+    if Some(42).is_some() {}
+
+    if None::<()>.is_none() {}
+
     while Ok::<i32, i32>(10).is_ok() {}
 
     while Ok::<i32, i32>(10).is_err() {}
 
+    while Some(42).is_some() {}
+
+    while None::<()>.is_none() {}
+
     Ok::<i32, i32>(42).is_ok();
 
     Err::<i32, i32>(42).is_err();
+
+    Some(42).is_some();
+
+    None::<()>.is_none();
 }
