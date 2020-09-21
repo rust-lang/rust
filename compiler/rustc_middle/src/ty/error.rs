@@ -56,6 +56,7 @@ pub enum TypeError<'tcx> {
     /// created a cycle (because it appears somewhere within that
     /// type).
     CyclicTy(Ty<'tcx>),
+    CyclicConst(&'tcx ty::Const<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
     ObjectUnsafeCoercion(DefId),
@@ -100,6 +101,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
+            CyclicConst(_) => write!(f, "encountered a self-referencing constant"),
             Mismatch => write!(f, "types differ"),
             UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn", values.expected, values.found)
@@ -195,9 +197,9 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(&self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
-            | Sorts(_) | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_)
-            | TargetFeatureCast(_) => false,
+            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_)
+            | FixedArraySize(_) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
+            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | TupleSize(_)

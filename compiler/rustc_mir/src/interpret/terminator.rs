@@ -64,7 +64,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     ty::FnDef(def_id, substs) => {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
-                        (FnVal::Instance(self.resolve(def_id, substs)?), sig.abi())
+                        (
+                            FnVal::Instance(
+                                self.resolve(ty::WithOptConstParam::unknown(def_id), substs)?,
+                            ),
+                            sig.abi(),
+                        )
                     }
                     _ => span_bug!(
                         terminator.source_info.span,
