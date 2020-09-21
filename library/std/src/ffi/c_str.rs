@@ -109,7 +109,9 @@ use crate::sys;
 /// documentation of `CString` before use, as improper ownership management
 /// of `CString` instances can lead to invalid memory accesses, memory leaks,
 /// and other memory errors.
+
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "cstring_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
     // Invariant 1: the slice ends with a zero byte and has a length of at least one.
