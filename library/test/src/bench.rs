@@ -98,10 +98,6 @@ fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
     output
 }
 
-fn ns_from_dur(dur: Duration) -> u64 {
-    dur.as_secs() * 1_000_000_000 + (dur.subsec_nanos() as u64)
-}
-
 fn ns_iter_inner<T, F>(inner: &mut F, k: u64) -> u64
 where
     F: FnMut() -> T,
@@ -110,7 +106,7 @@ where
     for _ in 0..k {
         black_box(inner());
     }
-    ns_from_dur(start.elapsed())
+    start.elapsed().as_nanos() as u64
 }
 
 pub fn iter<T, F>(inner: &mut F) -> stats::Summary
