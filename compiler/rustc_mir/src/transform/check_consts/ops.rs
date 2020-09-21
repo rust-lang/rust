@@ -1,6 +1,6 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::config::nightly_options;
@@ -14,35 +14,54 @@ use super::ConstCx;
 pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) {
     debug!("illegal_op: op={:?}", op);
 
-    if op.is_allowed_in_item(ccx) {
-        return;
-    }
+    let gate = match op.status_in_item(ccx) {
+        Status::Allowed => return,
+
+        Status::Unstable(gate) if ccx.tcx.features().enabled(gate) => {
+            let unstable_in_stable = ccx.const_kind() == hir::ConstContext::ConstFn
+                && ccx.tcx.features().enabled(sym::staged_api)
+                && !ccx.tcx.has_attr(ccx.def_id.to_def_id(), sym::rustc_const_unstable)
+                && !super::allow_internal_unstable(ccx.tcx, ccx.def_id.to_def_id(), gate);
+
+            if unstable_in_stable {
+                ccx.tcx.sess
+                    .struct_span_err(span, &format!("`#[feature({})]` cannot be depended on in a const-stable function", gate.as_str()))
+                    .span_suggestion(
+                        ccx.body.span,
+                        "if it is not part of the public API, make this function unstably const",
+                        concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
+                        Applicability::HasPlaceholders,
+                    )
+                    .help("otherwise `#[allow_internal_unstable]` can be used to bypass stability checks")
+                    .emit();
+            }
+
+            return;
+        }
+
+        Status::Unstable(gate) => Some(gate),
+        Status::Forbidden => None,
+    };
 
     if ccx.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-        ccx.tcx.sess.miri_unleashed_feature(span, O::feature_gate());
+        ccx.tcx.sess.miri_unleashed_feature(span, gate);
         return;
     }
 
     op.emit_error(ccx, span);
 }
 
+pub enum Status {
+    Allowed,
+    Unstable(Symbol),
+    Forbidden,
+}
+
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
-    /// Returns the `Symbol` corresponding to the feature gate that would enable this operation,
-    /// or `None` if such a feature gate does not exist.
-    fn feature_gate() -> Option<Symbol> {
-        None
-    }
-
-    /// Returns `true` if this operation is allowed in the given item.
-    ///
-    /// This check should assume that we are not in a non-const `fn`, where all operations are
-    /// legal.
-    ///
-    /// By default, it returns `true` if and only if this operation has a corresponding feature
-    /// gate and that gate is enabled.
-    fn is_allowed_in_item(&self, ccx: &ConstCx<'_, '_>) -> bool {
-        Self::feature_gate().map_or(false, |gate| ccx.tcx.features().enabled(gate))
+    /// Returns an enum indicating whether this operation is allowed within the given item.
+    fn status_in_item(&self, _ccx: &ConstCx<'_, '_>) -> Status {
+        Status::Forbidden
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
@@ -53,9 +72,13 @@ pub trait NonConstOp: std::fmt::Debug {
             "{} contains unimplemented expression type",
             ccx.const_kind()
         );
-        if let Some(feat) = Self::feature_gate() {
-            err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feat));
+
+        if let Status::Unstable(gate) = self.status_in_item(ccx) {
+            if !ccx.tcx.features().enabled(gate) && nightly_options::is_nightly_build() {
+                err.help(&format!("add `#![feature({})]` to the crate attributes to enable", gate));
+            }
         }
+
         if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "A function call isn't allowed in the const's initialization expression \
@@ -147,7 +170,9 @@ pub struct InlineAsm;
 impl NonConstOp for InlineAsm {}
 
 #[derive(Debug)]
-pub struct LiveDrop(pub Option<Span>);
+pub struct LiveDrop {
+    pub dropped_at: Option<Span>,
+}
 impl NonConstOp for LiveDrop {
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
         let mut diagnostic = struct_span_err!(
@@ -157,7 +182,7 @@ impl NonConstOp for LiveDrop {
             "destructors cannot be evaluated at compile-time"
         );
         diagnostic.span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()));
-        if let Some(span) = self.0 {
+        if let Some(span) = self.dropped_at {
             diagnostic.span_label(span, "value is dropped here");
         }
         diagnostic.emit();
@@ -182,14 +207,13 @@ impl NonConstOp for CellBorrow {
 #[derive(Debug)]
 pub struct MutBorrow;
 impl NonConstOp for MutBorrow {
-    fn is_allowed_in_item(&self, ccx: &ConstCx<'_, '_>) -> bool {
-        // Forbid everywhere except in const fn
-        ccx.const_kind() == hir::ConstContext::ConstFn
-            && ccx.tcx.features().enabled(Self::feature_gate().unwrap())
-    }
-
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_mut_refs)
+    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
+        // Forbid everywhere except in const fn with a feature gate
+        if ccx.const_kind() == hir::ConstContext::ConstFn {
+            Status::Unstable(sym::const_mut_refs)
+        } else {
+            Status::Forbidden
+        }
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
@@ -201,15 +225,16 @@ impl NonConstOp for MutBorrow {
                 &format!("mutable references are not allowed in {}s", ccx.const_kind()),
             )
         } else {
-            struct_span_err!(
+            let mut err = struct_span_err!(
                 ccx.tcx.sess,
                 span,
                 E0764,
                 "mutable references are not allowed in {}s",
                 ccx.const_kind(),
-            )
+            );
+            err.span_label(span, format!("`&mut` is only allowed in `const fn`"));
+            err
         };
-        err.span_label(span, "`&mut` is only allowed in `const fn`".to_string());
         if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "References in statics and constants may only refer \
@@ -226,11 +251,17 @@ impl NonConstOp for MutBorrow {
     }
 }
 
+// FIXME(ecstaticmorse): Unify this with `MutBorrow`. It has basically the same issues.
 #[derive(Debug)]
 pub struct MutAddressOf;
 impl NonConstOp for MutAddressOf {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_mut_refs)
+    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
+        // Forbid everywhere except in const fn with a feature gate
+        if ccx.const_kind() == hir::ConstContext::ConstFn {
+            Status::Unstable(sym::const_mut_refs)
+        } else {
+            Status::Forbidden
+        }
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
@@ -247,16 +278,16 @@ impl NonConstOp for MutAddressOf {
 #[derive(Debug)]
 pub struct MutDeref;
 impl NonConstOp for MutDeref {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_mut_refs)
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_mut_refs)
     }
 }
 
 #[derive(Debug)]
 pub struct Panic;
 impl NonConstOp for Panic {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_panic)
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_panic)
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
@@ -289,8 +320,8 @@ impl NonConstOp for RawPtrComparison {
 #[derive(Debug)]
 pub struct RawPtrDeref;
 impl NonConstOp for RawPtrDeref {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_raw_ptr_deref)
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_raw_ptr_deref)
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
@@ -307,8 +338,8 @@ impl NonConstOp for RawPtrDeref {
 #[derive(Debug)]
 pub struct RawPtrToIntCast;
 impl NonConstOp for RawPtrToIntCast {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_raw_ptr_to_usize_cast)
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_raw_ptr_to_usize_cast)
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
@@ -326,8 +357,12 @@ impl NonConstOp for RawPtrToIntCast {
 #[derive(Debug)]
 pub struct StaticAccess;
 impl NonConstOp for StaticAccess {
-    fn is_allowed_in_item(&self, ccx: &ConstCx<'_, '_>) -> bool {
-        matches!(ccx.const_kind(), hir::ConstContext::Static(_))
+    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
+        if let hir::ConstContext::Static(_) = ccx.const_kind() {
+            Status::Allowed
+        } else {
+            Status::Forbidden
+        }
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
@@ -371,14 +406,13 @@ impl NonConstOp for ThreadLocalAccess {
 #[derive(Debug)]
 pub struct UnionAccess;
 impl NonConstOp for UnionAccess {
-    fn is_allowed_in_item(&self, ccx: &ConstCx<'_, '_>) -> bool {
+    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
         // Union accesses are stable in all contexts except `const fn`.
-        ccx.const_kind() != hir::ConstContext::ConstFn
-            || ccx.tcx.features().enabled(Self::feature_gate().unwrap())
-    }
-
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_fn_union)
+        if ccx.const_kind() != hir::ConstContext::ConstFn {
+            Status::Allowed
+        } else {
+            Status::Unstable(sym::const_fn_union)
+        }
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {

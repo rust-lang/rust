@@ -2,7 +2,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 use super::ops;
 use super::qualifs::{NeedsDrop, Qualif};
@@ -11,7 +11,12 @@ use super::ConstCx;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
 /// elaboration.
-pub fn checking_enabled(tcx: TyCtxt<'tcx>) -> bool {
+pub fn checking_enabled(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+    // Const-stable functions must always use the stable live drop checker.
+    if tcx.features().staged_api && !tcx.has_attr(def_id.to_def_id(), sym::rustc_const_unstable) {
+        return false;
+    }
+
     tcx.features().const_precise_live_drops
 }
 
@@ -25,7 +30,7 @@ pub fn check_live_drops(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mir::Body<
         return;
     }
 
-    if !checking_enabled(tcx) {
+    if !checking_enabled(tcx, def_id) {
         return;
     }
 
@@ -52,7 +57,7 @@ impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
 
 impl CheckLiveDrops<'mir, 'tcx> {
     fn check_live_drop(&self, span: Span) {
-        ops::non_const(self.ccx, ops::LiveDrop(None), span);
+        ops::non_const(self.ccx, ops::LiveDrop { dropped_at: None }, span);
     }
 }
 
