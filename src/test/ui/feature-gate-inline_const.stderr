@@ -1,0 +1,8 @@
+error: expected expression, found keyword `const`
+  --> $DIR/feature-gate-inline_const.rs:2:13
+   |
+LL |     let _ = const {
+   |             ^^^^^ expected expression
+
+error: aborting due to previous error
+

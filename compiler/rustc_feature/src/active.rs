@@ -598,6 +598,9 @@ declare_features! (
     /// Allows `#[instruction_set(_)]` attribute
     (active, isa_attribute, "1.48.0", Some(74727), None),
 
+    /// Allow anonymous constants from an inline `const` block
+    (active, inline_const, "1.49.0", Some(76001), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

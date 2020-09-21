@@ -593,6 +593,7 @@ symbols! {
         infer_static_outlives_requirements,
         inlateout,
         inline,
+        inline_const,
         inout,
         instruction_set,
         intel,
