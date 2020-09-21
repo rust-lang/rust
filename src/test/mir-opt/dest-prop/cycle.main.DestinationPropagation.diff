@@ -57,10 +57,6 @@
 -         _6 = _1;                         // scope 3 at $DIR/cycle.rs:14:10: 14:11
 +         _6 = _4;                         // scope 3 at $DIR/cycle.rs:14:10: 14:11
           _5 = const ();                   // scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          drop(_6) -> bb2;                 // scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-      }
-  
-      bb2: {
           StorageDead(_6);                 // scope 3 at $DIR/cycle.rs:14:11: 14:12
           StorageDead(_5);                 // scope 3 at $DIR/cycle.rs:14:12: 14:13
           _0 = const ();                   // scope 0 at $DIR/cycle.rs:8:11: 15:2
