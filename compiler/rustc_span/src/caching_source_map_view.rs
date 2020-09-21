@@ -84,10 +84,10 @@ impl<'sm> CachingSourceMapView<'sm> {
             let file_valid;
             if self.source_map.files().len() > 0 {
                 let file_index = self.source_map.lookup_source_file_idx(pos);
-                let file = self.source_map.files()[file_index].clone();
+                let file = &self.source_map.files()[file_index];
 
                 if file_contains(&file, pos) {
-                    cache_entry.file = file;
+                    cache_entry.file = file.clone();
                     cache_entry.file_index = file_index;
                     file_valid = true;
                 } else {
