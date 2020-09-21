@@ -66,6 +66,7 @@ To disable this notification put the following to `settings.json`
 The server binary is stored in:
 
 * Linux: `~/.config/Code/User/globalStorage/matklad.rust-analyzer`
+* Linux (Remote, such as WSL): `~/.vscode-server/data/User/globalStorage/matklad.rust-analyzer`
 * macOS: `~/Library/Application\ Support/Code/User/globalStorage/matklad.rust-analyzer`
 * Windows: `%APPDATA%\Code\User\globalStorage\matklad.rust-analyzer`
 
