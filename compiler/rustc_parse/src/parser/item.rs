@@ -1,6 +1,6 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
 use super::ty::{AllowPlus, RecoverQPath};
-use super::{FollowedByType, Parser, PathStyle};
+use super::{FollowedByType, Parser, PathStyle, SupportsCustomAttr};
 
 use crate::maybe_whole;
 use crate::parser::attr::attrs_require_tokens;
@@ -101,9 +101,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_item_(&mut self, req_name: ReqName) -> PResult<'a, Option<Item>> {
-        let res = self.parse_outer_attributes_with_tokens(|this, attrs| {
-            this.parse_item_common(attrs, true, false, req_name)
-        });
+        let res = self
+            .parse_outer_attributes_with_tokens(SupportsCustomAttr::Yes, |this, attrs| {
+                this.parse_item_common(attrs, true, false, req_name)
+            });
         res.map(|(mut item, tokens)| {
             if let Some(item) = item.as_mut() {
                 if item.tokens.is_none() {
@@ -1073,7 +1074,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
-        self.parse_outer_attributes(|this, variant_attrs| {
+        self.parse_outer_attributes(SupportsCustomAttr::No, |this, variant_attrs| {
             let vlo = this.token.span;
 
             let vis = this.parse_visibility(FollowedByType::No)?;
@@ -1259,7 +1260,7 @@ impl<'a> Parser<'a> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
         self.parse_paren_comma_seq(|p| {
-            p.parse_outer_attributes(|p, attrs| {
+            p.parse_outer_attributes(SupportsCustomAttr::No, |p, attrs| {
                 let lo = p.token.span;
                 let vis = p.parse_visibility(FollowedByType::Yes)?;
                 let ty = p.parse_ty()?;
@@ -1279,7 +1280,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an element of a struct declaration.
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
-        self.parse_outer_attributes(|this, attrs| {
+        self.parse_outer_attributes(SupportsCustomAttr::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
             this.parse_single_struct_field(lo, vis, attrs)
@@ -1720,7 +1721,7 @@ impl<'a> Parser<'a> {
     /// - `self` is syntactically allowed when `first_param` holds.
     fn parse_param_general(&mut self, req_name: ReqName, first_param: bool) -> PResult<'a, Param> {
         let lo = self.token.span;
-        self.parse_outer_attributes(|this, attrs| {
+        self.parse_outer_attributes(SupportsCustomAttr::No, |this, attrs| {
             // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
             if let Some(mut param) = this.parse_self_param()? {
                 param.attrs = attrs.into();
@@ -1908,7 +1909,7 @@ impl<'a> Parser<'a> {
 
     fn recover_first_param(&mut self) -> &'static str {
         let res = self
-            .parse_outer_attributes(|this, _attrs| this.parse_self_param())
+            .parse_outer_attributes(SupportsCustomAttr::No, |this, _attrs| this.parse_self_param())
             .map_err(|mut err| err.cancel());
         match res {
             Ok(Some(_)) => "method",

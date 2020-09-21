@@ -1,4 +1,4 @@
-use super::Parser;
+use super::{Parser, SupportsCustomAttr};
 
 use rustc_ast::token;
 use rustc_ast::{
@@ -74,7 +74,7 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         loop {
             let mut should_break = false;
-            let param = self.parse_outer_attributes(|this, attrs| {
+            let param = self.parse_outer_attributes(SupportsCustomAttr::No, |this, attrs| {
                 let param = if this.check_lifetime() {
                     let lifetime = this.expect_lifetime();
                     // Parse lifetime parameter.

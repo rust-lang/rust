@@ -22,6 +22,12 @@ pub(super) enum InnerAttrPolicy<'a> {
 const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
                                                      permitted in this context";
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum SupportsCustomAttr {
+    Yes,
+    No,
+}
+
 pub struct CfgAttrItem {
     pub item: ast::AttrItem,
     pub span: Span,
@@ -39,12 +45,15 @@ impl<'a> Parser<'a> {
         self.check(&token::Pound) || matches!(self.token.kind, token::DocComment(..))
     }
 
-    fn parse_outer_attributes_(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    fn parse_outer_attributes_(
+        &mut self,
+        custom: SupportsCustomAttr,
+    ) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
 
         loop {
-            let (attr, tokens) = self.collect_tokens_keep_in_stream(false, |this| {
+            let mut parse_attr = |this: &mut Self| {
                 debug!("parse_outer_attributes: self.token={:?}", this.token);
                 if this.check(&token::Pound) {
                     let inner_error_reason = if just_parsed_doc_comment {
@@ -85,9 +94,21 @@ impl<'a> Parser<'a> {
                 } else {
                     Ok((None, Vec::new()))
                 }
-            })?;
+            };
+
+            // `in_derive` does not take into account the attributes we are currently parsing
+            // (which may contain a `derive`). This is fine - if a `derive` attribute
+            // can legally occur here, `custom` will be `SupportsCustomAttr::Yes`
+            let (attr, tokens) = if custom == SupportsCustomAttr::Yes || self.in_derive {
+                let (attr, tokens) = self.collect_tokens_keep_in_stream(false, parse_attr)?;
+                (attr, Some(tokens))
+            } else {
+                let (attr, _nested_attrs) = parse_attr(self)?;
+                (attr, None)
+            };
+
             if let Some(mut attr) = attr {
-                attr.tokens = Some(tokens.to_tokenstream());
+                attr.tokens = tokens.map(|t| t.to_tokenstream());
                 attrs.push(attr);
             } else {
                 break;
@@ -102,6 +123,7 @@ impl<'a> Parser<'a> {
     >(
         &mut self,
         already_parsed_attrs: Option<AttrVec>,
+        custom: SupportsCustomAttr,
         f: F,
     ) -> PResult<'a, (R, Option<PreexpTokenStream>)> {
         let in_derive = self.in_derive;
@@ -119,10 +141,17 @@ impl<'a> Parser<'a> {
 
                 let mut res = res?;
 
-                res.visit_attrs(|attrs| {
-                    new_attrs = attrs.clone();
-                });
-                Ok((res, new_attrs))
+                // `this.in_derive` does not take into account our new attributes
+                // (which may contain a `derive`). This is fine - if a `derive` attribute
+                // can legally occur here, `custom` will be `SupportsCustomAttr::Yes`
+                if custom == SupportsCustomAttr::Yes || this.in_derive {
+                    res.visit_attrs(|attrs| {
+                        new_attrs = attrs.clone();
+                    });
+                    Ok((res, new_attrs))
+                } else {
+                    Ok((res, Vec::new()))
+                }
             })?;
             Ok((res, Some(tokens)))
         };
@@ -142,7 +171,7 @@ impl<'a> Parser<'a> {
                 return Ok((f(self, AttrVec::new())?, None));
             }
 
-            let attrs = self.parse_outer_attributes_()?;
+            let attrs = self.parse_outer_attributes_(custom)?;
             if !needs_tokens(&attrs) {
                 return Ok((f(self, attrs.into())?, None));
             }
@@ -153,17 +182,19 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_outer_attributes<R: HasAttrs>(
         &mut self,
+        custom: SupportsCustomAttr,
         f: impl FnOnce(&mut Self, Vec<ast::Attribute>) -> PResult<'a, R>,
     ) -> PResult<'a, R> {
-        self.parse_outer_attributes_with_tokens(f).map(|(res, _tokens)| res)
+        self.parse_outer_attributes_with_tokens(custom, f).map(|(res, _tokens)| res)
     }
 
     /// Parses attributes that appear before an item.
     pub(super) fn parse_outer_attributes_with_tokens<R: HasAttrs>(
         &mut self,
+        custom: SupportsCustomAttr,
         f: impl FnOnce(&mut Self, Vec<ast::Attribute>) -> PResult<'a, R>,
     ) -> PResult<'a, (R, Option<PreexpTokenStream>)> {
-        self.parse_or_use_outer_attributes(None, |this, attrs| f(this, attrs.into()))
+        self.parse_or_use_outer_attributes(None, custom, |this, attrs| f(this, attrs.into()))
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.

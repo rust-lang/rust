@@ -3,7 +3,7 @@ use super::diagnostics::Error;
 use super::expr::LhsExpr;
 use super::pat::GateOr;
 use super::path::PathStyle;
-use super::{BlockMode, Parser, Restrictions, SemiColonMode};
+use super::{BlockMode, Parser, Restrictions, SemiColonMode, SupportsCustomAttr};
 use crate::maybe_whole;
 
 use rustc_ast as ast;
@@ -33,49 +33,50 @@ impl<'a> Parser<'a> {
     fn parse_stmt_without_recovery(&mut self) -> PResult<'a, Option<Stmt>> {
         maybe_whole!(self, NtStmt, |x| Some(x));
 
-        let (mut stmt, tokens) = self.parse_outer_attributes_with_tokens(|this, attrs| {
-            let lo = this.token.span;
+        let (mut stmt, tokens) =
+            self.parse_outer_attributes_with_tokens(SupportsCustomAttr::Yes, |this, attrs| {
+                let lo = this.token.span;
 
-            let stmt = if this.eat_keyword(kw::Let) {
-                this.parse_local_mk(lo, attrs.into())?
-            } else if this.is_kw_followed_by_ident(kw::Mut) {
-                this.recover_stmt_local(lo, attrs.into(), "missing keyword", "let mut")?
-            } else if this.is_kw_followed_by_ident(kw::Auto) {
-                this.bump(); // `auto`
-                let msg = "write `let` instead of `auto` to introduce a new variable";
-                this.recover_stmt_local(lo, attrs.into(), msg, "let")?
-            } else if this.is_kw_followed_by_ident(sym::var) {
-                this.bump(); // `var`
-                let msg = "write `let` instead of `var` to introduce a new variable";
-                this.recover_stmt_local(lo, attrs.into(), msg, "let")?
-            } else if this.check_path()
-                && !this.token.is_qpath_start()
-                && !this.is_path_start_item()
-            {
-                // We have avoided contextual keywords like `union`, items with `crate` visibility,
-                // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
-                // that starts like a path (1 token), but it fact not a path.
-                // Also, we avoid stealing syntax from `parse_item_`.
-                this.parse_stmt_path_start(lo, attrs)?
-            } else if let Some(item) =
-                this.parse_item_common(attrs.clone(), false, true, |_| true)?
-            {
-                // FIXME: Bad copy of attrs
-                this.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
-            } else if this.eat(&token::Semi) {
-                // Do not attempt to parse an expression if we're done here.
-                this.error_outer_attrs(&attrs);
-                this.mk_stmt(lo, StmtKind::Empty)
-            } else if this.token != token::CloseDelim(token::Brace) {
-                // Remainder are line-expr stmts.
-                let e = this.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs.into()))?;
-                this.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
-            } else {
-                this.error_outer_attrs(&attrs);
-                return Ok(None);
-            };
-            Ok(Some(stmt))
-        })?;
+                let stmt = if this.eat_keyword(kw::Let) {
+                    this.parse_local_mk(lo, attrs.into())?
+                } else if this.is_kw_followed_by_ident(kw::Mut) {
+                    this.recover_stmt_local(lo, attrs.into(), "missing keyword", "let mut")?
+                } else if this.is_kw_followed_by_ident(kw::Auto) {
+                    this.bump(); // `auto`
+                    let msg = "write `let` instead of `auto` to introduce a new variable";
+                    this.recover_stmt_local(lo, attrs.into(), msg, "let")?
+                } else if this.is_kw_followed_by_ident(sym::var) {
+                    this.bump(); // `var`
+                    let msg = "write `let` instead of `var` to introduce a new variable";
+                    this.recover_stmt_local(lo, attrs.into(), msg, "let")?
+                } else if this.check_path()
+                    && !this.token.is_qpath_start()
+                    && !this.is_path_start_item()
+                {
+                    // We have avoided contextual keywords like `union`, items with `crate` visibility,
+                    // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
+                    // that starts like a path (1 token), but it fact not a path.
+                    // Also, we avoid stealing syntax from `parse_item_`.
+                    this.parse_stmt_path_start(lo, attrs)?
+                } else if let Some(item) =
+                    this.parse_item_common(attrs.clone(), false, true, |_| true)?
+                {
+                    // FIXME: Bad copy of attrs
+                    this.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
+                } else if this.eat(&token::Semi) {
+                    // Do not attempt to parse an expression if we're done here.
+                    this.error_outer_attrs(&attrs);
+                    this.mk_stmt(lo, StmtKind::Empty)
+                } else if this.token != token::CloseDelim(token::Brace) {
+                    // Remainder are line-expr stmts.
+                    let e = this.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs.into()))?;
+                    this.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
+                } else {
+                    this.error_outer_attrs(&attrs);
+                    return Ok(None);
+                };
+                Ok(Some(stmt))
+            })?;
         match stmt.as_mut() {
             Some(Stmt { kind: StmtKind::Local(local), .. }) => local.tokens = tokens,
             Some(Stmt { kind: StmtKind::Item(item), .. }) => item.tokens = tokens,
