@@ -407,16 +407,18 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // listing.
         let main_ret_ty = cx.tcx().erase_regions(&main_ret_ty.no_bound_vars().unwrap());
 
-        if cx.get_declared_value("main").is_some() {
-            // FIXME: We should be smart and show a better diagnostic here.
-            cx.sess()
-                .struct_span_err(sp, "entry symbol `main` declared multiple times")
-                .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
-                .emit();
-            cx.sess().abort_if_errors();
-            bug!();
-        }
-        let llfn = cx.declare_cfn("main", llfty);
+        let llfn = match cx.declare_c_main(llfty) {
+            Some(llfn) => llfn,
+            None => {
+                // FIXME: We should be smart and show a better diagnostic here.
+                cx.sess()
+                    .struct_span_err(sp, "entry symbol `main` declared multiple times")
+                    .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
+                    .emit();
+                cx.sess().abort_if_errors();
+                bug!();
+            }
+        };
 
         // `main` should respect same config for frame pointer elimination as rest of code
         cx.set_frame_pointer_elimination(llfn);
