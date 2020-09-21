@@ -312,6 +312,7 @@
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_block_in_unsafe_fn)]
+#![feature(unsafe_cell_get_mut)]
 #![feature(unsafe_cell_raw_get)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
