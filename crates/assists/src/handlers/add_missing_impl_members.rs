@@ -165,7 +165,7 @@ fn add_missing_impl_members_inner(
             .map(|it| edit::remove_attrs_and_docs(&it));
 
         let new_impl_item_list = impl_item_list.append_items(items);
-        let new_impl_def = impl_def.with_items(new_impl_item_list);
+        let new_impl_def = impl_def.with_assoc_item_list(new_impl_item_list);
         let first_new_item =
             new_impl_def.assoc_item_list().unwrap().assoc_items().nth(n_existing_items).unwrap();
 

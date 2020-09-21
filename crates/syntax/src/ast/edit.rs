@@ -95,7 +95,7 @@ where
 
 impl ast::Impl {
     #[must_use]
-    pub fn with_items(&self, items: ast::AssocItemList) -> ast::Impl {
+    pub fn with_assoc_item_list(&self, items: ast::AssocItemList) -> ast::Impl {
         let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
         if let Some(old_items) = self.assoc_item_list() {
             let to_replace: SyntaxElement = old_items.syntax().clone().into();
