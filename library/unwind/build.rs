@@ -12,11 +12,9 @@ fn main() {
     } else if target.contains("x86_64-fortanix-unknown-sgx") {
         llvm_libunwind::compile();
     } else if target.contains("linux") {
+        // linking for Linux is handled in lib.rs
         if target.contains("musl") {
-            // linking for musl is handled in lib.rs
             llvm_libunwind::compile();
-        } else if !target.contains("android") {
-            println!("cargo:rustc-link-lib=gcc_s");
         }
     } else if target.contains("freebsd") {
         println!("cargo:rustc-link-lib=gcc_s");
