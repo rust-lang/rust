@@ -64,7 +64,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"data'", align 8
 ; CHECK-NEXT:   %[[identr:.+]] = call { double } @diffeidentity(double %res, double %differeturn)
 ; CHECK-NEXT:   %[[iev:.+]] = extractvalue { double } %[[identr]], 0
-; CHECK-NEXT:   call void @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %[[iev]], { i64, i64* } %[[resev]])
+; CHECK-NEXT:   call void @diffebadfunc(double* {{(nonnull )?}}%data, double* {{(nonnull )?}}%"data'", i64* {{(nonnull )?}}%a4, double %[[iev]], { i64, i64* } %[[resev]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -82,7 +82,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK: define internal { { i64, i64* }, double } @augmented_badfunc(double* %data, double* %"data'", i64* %a4) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %a5 = load i64, i64* %a4, align 4
-; CHECK-NEXT:   %mallocsize = shl i64 %a5, 3
+; CHECK-NEXT:   %mallocsize = shl nuw nsw i64 %a5, 3
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %a19_malloccache = bitcast i8* %malloccall to i64*
 ; CHECK-NEXT:   br label %loop1

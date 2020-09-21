@@ -494,12 +494,12 @@ attributes #9 = { cold }
 
 ; CHECK: define internal { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } @augmented_subfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i64 16)
-; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull i8* @malloc(i64 16)
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"malloccall'mi", i8 0, i64 16, i1 false)
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
+; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"malloccall'mi", i8 0, i64 16, i1 false)
 ; CHECK-NEXT:   %"tmp.i'ipc" = bitcast i8* %"malloccall'mi" to <2 x double>*
 ; CHECK-NEXT:   %tmp.i = bitcast i8* %malloccall to <2 x double>*
-; CHECK-NEXT:   %subcast_augmented = call { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>*{{( nonnull)?}} %"tmp.i'ipc")
+; CHECK-NEXT:   %subcast_augmented = call { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>*{{( nonnull)?}} %tmp.i, <2 x double>*{{( nonnull)?}} %"tmp.i'ipc")
 ; CHECK-NEXT:   %subcast = extractvalue { <2 x double>*, <2 x double>* } %subcast_augmented, 0
 ; CHECK-NEXT:   %[[antisubcast:.+]] = extractvalue { <2 x double>*, <2 x double>* } %subcast_augmented, 1
 ; CHECK-NEXT:   call void @augmented_get2(%"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")
@@ -599,7 +599,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   store <2 x double> %18, <2 x double>* %[[W12p_ipc1]], align 16
 ; CHECK-NEXT:   call void @diffeget2(%"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")
 
-; CHECK-NEXT:   call void @diffesubcast(<2 x double>* %[[tmpi]], <2 x double>* %[[tmpiipc]])
+; CHECK-NEXT:   call void @diffesubcast(<2 x double>* %[[tmpi]], <2 x double>* {{(nonnull )?}}%[[tmpiipc]])
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccallmi]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

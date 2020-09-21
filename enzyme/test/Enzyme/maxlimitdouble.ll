@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
+; RUN: if [ %llvmver < 10 ]; then %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s; fi
 
 source_filename = "ode.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -19098,7 +19098,7 @@ attributes #28 = { builtin }
 ; CHECK-NEXT:   %4 = fadd fast double %3, %26
 ; CHECK-NEXT:   store double %4, double* %"arg3'", align 8
 ; CHECK-NEXT:   %5 = load double, double* %"arg4'", align 8
-; CHECK-NEXT:   %6 = fadd fast double %5, %23
+; CHECK-NEXT:   %6 = fadd fast double %5, %[[p23:.+]]
 ; CHECK-NEXT:   store double %6, double* %"arg4'", align 8
 ; CHECK-NEXT:   ret void
 
@@ -19111,7 +19111,7 @@ attributes #28 = { builtin }
 ; CHECK-NEXT:   br label %invertbb22
 
 ; CHECK: invertbb22:                                       ; preds = %bb22, %incinvertbb9
-; CHECK-NEXT:   %"A'de.0" = phi double [ %23, %incinvertbb9 ], [ 0.000000e+00, %bb22 ]
+; CHECK-NEXT:   %"A'de.0" = phi double [ %[[p23]], %incinvertbb9 ], [ 0.000000e+00, %bb22 ]
 ; CHECK-NEXT:   %"v0'de.0" = phi double [ %26, %incinvertbb9 ], [ 0.000000e+00, %bb22 ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %8, %incinvertbb9 ], [ 31, %bb22 ]
 ; CHECK-NEXT:   %9 = getelementptr inbounds i64, i64* %loopLimit_realloccast, i64 %"iv'ac.0"
@@ -19124,7 +19124,7 @@ attributes #28 = { builtin }
 ; CHECK-NEXT:   br label %invertbb39
 
 ; CHECK: invertbb39:                                       ; preds = %incinvertbb25, %invertbb22
-; CHECK-NEXT:   %"A'de.1" = phi double [ %"A'de.0", %invertbb22 ], [ %23, %incinvertbb25 ]
+; CHECK-NEXT:   %"A'de.1" = phi double [ %"A'de.0", %invertbb22 ], [ %[[p23]], %incinvertbb25 ]
 ; CHECK-NEXT:   %"v0'de.1" = phi double [ %"v0'de.0", %invertbb22 ], [ %26, %incinvertbb25 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %10, %invertbb22 ], [ %11, %incinvertbb25 ]
 ; CHECK-NEXT:   %ij_unwrap = add nuw nsw i64 %"iv1'ac.0", %i32_unwrap
@@ -19189,7 +19189,7 @@ attributes #28 = { builtin }
 ; CHECK-NEXT:   %tmp61_unwrap = fmul fast double %vij_unwrap, %v0
 ; CHECK-NEXT:   %term2_unwrap = fsub fast double %A, %tmp61_unwrap
 ; CHECK-NEXT:   %m1diffevij = fmul fast double %12, %term2_unwrap
-; CHECK-NEXT:   %23 = fadd fast double %13, %m0diffeterm2
+; CHECK-NEXT:   %[[p23]] = fadd fast double %13, %m0diffeterm2
 ; CHECK-NEXT:   %24 = fsub fast double 0.000000e+00, %m0diffeterm2
 ; CHECK-NEXT:   %m0diffevij = fmul fast double %24, %v0
 ; CHECK-NEXT:   %m1diffev0 = fmul fast double %24, %vij_unwrap

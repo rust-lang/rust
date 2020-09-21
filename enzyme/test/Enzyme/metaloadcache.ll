@@ -62,7 +62,7 @@ entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffeloader(double* %a, double* %"a'", double %differeturn, double) {
+; CHECK: define internal void @diffeloader(double* %a, double* %"a'", double %differeturn, double
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %0
 ; CHECK-NEXT:   %m1diffe = fmul fast double %differeturn, %0

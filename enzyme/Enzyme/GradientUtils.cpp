@@ -494,7 +494,11 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
       IRBuilder <> bb(getNewFromOriginal(arg));
       Value* op0 = arg->getOperand(0);
       auto li = bb.CreateLoad(invertPointerM(op0, bb), arg->getName()+"'ipl");
+      #if LLVM_VERSION_MAJOR >= 10
+      li->setAlignment(arg->getAlign());
+      #else
       li->setAlignment(arg->getAlignment());
+      #endif
       li->setVolatile(arg->isVolatile());
       li->setOrdering(arg->getOrdering());
       li->setSyncScopeID(arg->getSyncScopeID ());
@@ -530,12 +534,25 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
       Value* asize = getNewFromOriginal(inst->getArraySize());
       AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), asize, inst->getName()+"'ipa");
       invertedPointers[inst] = antialloca;
-      antialloca->setAlignment(inst->getAlignment());
+
+      if (inst->getAlignment()) {
+        #if LLVM_VERSION_MAJOR >= 10
+        antialloca->setAlignment(Align(inst->getAlignment()));
+        #else
+        antialloca->setAlignment(inst->getAlignment());
+        #endif
+      }
 
       if (auto ci = dyn_cast<ConstantInt>(asize)) {
         if (ci->isOne()) {
           auto st = bb.CreateStore(Constant::getNullValue(inst->getAllocatedType()), antialloca);
-          st->setAlignment(inst->getAlignment());
+          if (inst->getAlignment()) {
+            #if LLVM_VERSION_MAJOR >= 10
+            st->setAlignment(Align(inst->getAlignment()));
+            #else
+            st->setAlignment(inst->getAlignment());
+            #endif
+          }
           return lookupM(invertedPointers[inst], BuilderM);
         }
       }
@@ -553,9 +570,15 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
 #endif
       Type *tys[] = {dst_arg->getType(), len_arg->getType()};
       auto memset = cast<CallInst>(bb.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+      #if LLVM_VERSION_MAJOR >= 10
+      if (inst->getAlignment()) {
+          memset->addParamAttr(0, Attribute::getWithAlignment(inst->getContext(), Align(inst->getAlignment())));
+      }
+      #else
       if (inst->getAlignment() != 0) {
           memset->addParamAttr(0, Attribute::getWithAlignment(inst->getContext(), inst->getAlignment()));
       }
+      #endif
       memset->addParamAttr(0, Attribute::NonNull);
       return lookupM(invertedPointers[inst], BuilderM);
     } else if (auto phi = dyn_cast<PHINode>(oval)) {
@@ -1319,7 +1342,11 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         loopContexts[L].incvar = pair.second;
         removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, getLatches(L, loopContexts[L].exitBlocks));
         loopContexts[L].antivaralloc = IRBuilder<>(gutils.inversionAllocs).CreateAlloca(CanonicalIV->getType(), nullptr, CanonicalIV->getName()+"'ac");
+        #if LLVM_VERSION_MAJOR >= 10
+        loopContexts[L].antivaralloc->setAlignment(Align(cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8));
+        #else
         loopContexts[L].antivaralloc->setAlignment(cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8);
+        #endif
 
         SCEVUnionPredicate BackedgePred;
 
@@ -1766,12 +1793,20 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
 
               auto bsize = newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(li->getType())/8;
               if ((bsize & (bsize - 1)) == 0) {
+                #if LLVM_VERSION_MAJOR >= 10
+                mem->addParamAttr(0, Attribute::getWithAlignment(memcpyF->getContext(), Align(bsize)));
+                #else
                 mem->addParamAttr(0, Attribute::getWithAlignment(memcpyF->getContext(), bsize));
+                #endif
               }
 
-              if (li->getAlignment()) {
+              #if LLVM_VERSION_MAJOR >= 10
+              if (li->getAlign())
+                mem->addParamAttr(1, Attribute::getWithAlignment(memcpyF->getContext(), li->getAlign().getValue()));
+              #else
+              if (li->getAlignment())
                 mem->addParamAttr(1, Attribute::getWithAlignment(memcpyF->getContext(), li->getAlignment()));
-              }
+              #endif
 
               // TODO alignment
 

@@ -25,6 +25,6 @@ declare double @__enzyme_autodiff(double (double)*, ...)
 ; CHECK: define double @test_derivative(double %x)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = tail call fast double @llvm.sin.f64(double %x)
-; CHECK-NEXT:   %1 = fsub fast double -0.000000e+00, %0
+; CHECK-NEXT:   %1 = {{(fsub fast double -0.000000e\+00,|fneg fast double)}} %0
 ; CHECK-NEXT:   ret double %1
 ; CHECK-NEXT: }

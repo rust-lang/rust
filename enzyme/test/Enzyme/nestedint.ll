@@ -1,5 +1,6 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
-
+; RUN: if [ %llvmver < 10 ]; then %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -simplifycfg -dce -S | FileCheck %s; fi
+; Note this doesn't run on LLVM 10 as 10 will simplify the cfg to remove a block unlike lower versions
+;  The code is still correct but cannot be easily tested in regex
 ; ModuleID = 'seg.ll'
 source_filename = "/home/enzyme/Enzyme/enzyme/test/Integration/simpleeigen-made.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -733,14 +734,14 @@ entry:
   ret i64 %finalcall
 }
 
-define linkonce_odr dso_local i64 @sub(double*, i64 %subsize) local_unnamed_addr {
+define linkonce_odr dso_local i64 @sub(double* %in, i64 %subsize) local_unnamed_addr {
 entry:
-  %1 = ptrtoint double* %0 to i64
-  %tobool = icmp eq i64 %1, 0
+  %0 = ptrtoint double* %in to i64
+  %tobool = icmp eq i64 %0, 0
   br i1 %tobool, label %if.end, label %return
 
 if.end:                                           ; preds = %entry
-  %metacall = tail call i64 @metasub(double* %0, i64 %subsize)
+  %metacall = tail call i64 @metasub(double* %in, i64 %subsize)
   br label %return
 
 return:                                           ; preds = %if.end, %entry
@@ -817,7 +818,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   %m_data.i17 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 0
 ; CHECK-NEXT:   %"a9'ipl" = load double*, double** %[[m_datai17ipge:.+]], align 8
 ; CHECK-NEXT:   %a9 = load double*, double** %m_data.i17, align 8, !tbaa !9
-; CHECK-NEXT:   %subcall = call i64 @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8) #9
+; CHECK-NEXT:   %subcall = call i64 @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8)
 ; CHECK-NEXT:   %mvcond = icmp slt i64 %subcall, 0
 ; CHECK-NEXT:   br i1 %mvcond, label %one, label %invertentry
 
@@ -827,7 +828,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertentry:                                      ; preds = %entry, %one
-; CHECK-NEXT:   call void @diffesub(double* %a9, double* %"a9'ipl", i64 %a8) #9
+; CHECK-NEXT:   call void @diffesub(double* %a9, double* %"a9'ipl", i64 %a8)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -836,9 +837,9 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   %0 = ptrtoint double* %array to i64
 ; CHECK-NEXT:   %and = and i64 %0, 7
 ; CHECK-NEXT:   %tobool = icmp eq i64 %and, 0
-; CHECK-NEXT:   br i1 %tobool, label %if.else, label %cleanup
+; CHECK-NEXT:   br i1 %tobool, label %[[ifelse:.+]], label %cleanup
 
-; CHECK: if.else:                                          ; preds = %entry
+; CHECK: [[ifelse]]:                                          ; preds = %entry
 ; CHECK-NEXT:   %div = lshr i64 %0, 3
 ; CHECK-NEXT:   %and2 = and i64 %div, 1
 ; CHECK-NEXT:   %cmp = icmp slt i64 %and2, %finalsize
@@ -846,7 +847,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   br label %cleanup
 
 ; CHECK: cleanup:                                          ; preds = %if.else, %entry
-; CHECK-NEXT:   %finalret = phi i64 [ %cond, %if.else ], [ %finalsize, %entry ]
+; CHECK-NEXT:   %finalret = phi i64 [ %cond, %[[ifelse]] ], [ %finalsize, %entry ]
 ; CHECK-NEXT:   ret i64 %finalret
 ; CHECK-NEXT: }
 
@@ -856,13 +857,14 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret i64 %finalcall
 ; CHECK-NEXT: }
 
-; CHECK: define internal i64 @augmented_sub(double*, double* %"'", i64 %subsize)
+; CHECK: define internal i64 @augmented_sub(double* %in, double* %"in'", i64 %subsize)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %tobool = icmp eq double* %0, null
+; CHECK-NEXT:   %0 = ptrtoint double* %in to i64
+; CHECK-NEXT:   %tobool = icmp eq i64 %0, 0
 ; CHECK-NEXT:   br i1 %tobool, label %if.end, label %return
 
 ; CHECK: if.end:                                           ; preds = %entry
-; CHECK-NEXT:   %metacall = call i64 @augmented_metasub(double* %0, double* %"'", i64 %subsize)
+; CHECK-NEXT:   %metacall = call i64 @augmented_metasub(double* %in, double* %"in'", i64 %subsize)
 ; CHECK-NEXT:   br label %return
 
 ; CHECK: return:                                           ; preds = %if.end, %entry
@@ -870,16 +872,17 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret i64 %subret
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesub(double*, double* %"'", i64 %subsize)
+; CHECK: define internal void @diffesub(double* %in, double* %"in'", i64 %subsize)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[tobool:.+]] = icmp eq double* %0, null
+; CHECK-NEXT:   %0 = ptrtoint double* %in to i64
+; CHECK-NEXT:   %[[tobool:.+]] = icmp eq i64 %0, 0
 ; CHECK-NEXT:   br i1 %[[tobool]], label %[[ifend:.+]], label %invertentry
 
 ; CHECK: invertentry:
 ; CHECK-NEXT:   ret void
 
 ; CHECK: [[ifend]]:                                           ; preds = %entry
-; CHECK-NEXT:   call void @diffemetasub(double* %0, double* %"'", i64 %subsize)
+; CHECK-NEXT:   call void @diffemetasub(double* %in, double* %"in'", i64 %subsize)
 ; CHECK-NEXT:   br label %invertentry
 ; CHECK-NEXT: }
 

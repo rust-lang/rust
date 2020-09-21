@@ -93,7 +93,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  br label %for.body.i
 
 ; CHECK:[[invertforcondcleanup:.+]]:
-; CHECK-NEXT:  call void @diffesum_list(%struct.n* %[[thisbc:.+]], %struct.n* nonnull %[[dstructncast:.+]], double 1.000000e+00)
+; CHECK-NEXT:  call void @diffesum_list(%struct.n* nonnull %[[thisbc:.+]], %struct.n* nonnull %[[dstructncast:.+]], double 1.000000e+00)
 ; CHECK-NEXT:  br label %invertfor.body.i
 
 ; CHECK:for.body.i:                                       ; preds = %for.body.i, %entry
@@ -101,10 +101,10 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  %[[structtostore:.+]] = phi %struct.n* [ %[[dstructncast]], %for.body.i ], [ null, %entry ]
 ; CHECK-NEXT:  %list.011.i = phi %struct.n* [ %[[thisbc]], %for.body.i ], [ null, %entry ]
 ; CHECK-NEXT:  %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
-; CHECK-NEXT:  %call.i = call noalias i8* @malloc(i64 16) #4
+; CHECK-NEXT:  %call.i = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16) #4
 
-; CHECK-NEXT:  %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
-; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
+; CHECK-NEXT:  %"call'mi.i" = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16) #4
+; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}dereferenceable(16) dereferenceable_or_null(16) %"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 
 ; CHECK-NEXT:  %[[dstructncast]] = bitcast i8* %"call'mi.i" to %struct.n*
 ; CHECK-NEXT:  %[[thisbc]] = bitcast i8* %call.i to %struct.n*

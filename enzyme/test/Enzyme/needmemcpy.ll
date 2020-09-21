@@ -260,7 +260,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %bc = bitcast double* %x to i8*
 ; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %bc, i8* align 8 bitcast (double* @_ZZ6foobardE1x to i8*), i64 8, i1 false)
 ; CHECK-NEXT:   %div = fdiv fast double %t, 3.000000e+00
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 24)
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(24) dereferenceable_or_null(24) i8* @malloc(i64 24)
 ; CHECK-NEXT:   %mul.i_malloccache = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   br label %while.body.i.i.i
 

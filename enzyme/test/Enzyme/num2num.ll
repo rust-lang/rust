@@ -18,11 +18,11 @@ target triple = "x86_64-linux-gnu"
 ; Function Attrs: nounwind readnone speculatable
 declare double @llvm.pow.f64(double, double) #11
 
-define dso_local double @julia_num2num_3(double) {
+define dso_local double @julia_num2num_3(double %x) {
 top:
-  %1 = fadd double %0, %0
-  %2 = call double @llvm.pow.f64(double 1.031000e+01, double %1)
-  %ret = fsub double %2, %0
+  %y = fadd double %x, %x
+  %z = call double @llvm.pow.f64(double 1.031000e+01, double %y)
+  %ret = fsub double %z, %x
   ret double %ret
 }
 
@@ -77,9 +77,9 @@ attributes #14 = { nounwind }
 !16 = !{!"jtbaa_mutab", !11, i64 0}
 !17 = distinct !{}
 
-; CHECK: define internal { double } @diffejulia_num2num_3(double, double %differeturn)
+; CHECK: define internal { double } @diffejulia_num2num_3(double %x, double %differeturn)
 ; CHECK-NEXT: top:
-; CHECK-NEXT:   %[[x2:.+]] = fadd double %0, %0
+; CHECK-NEXT:   %[[x2:.+]] = fadd double %x, %x
 ; CHECK-NEXT:   %[[pow:.+]] = call double @llvm.pow.f64(double 1.031000e+01, double %[[x2]])
 ; CHECK-NEXT:   %[[dmul:.+]] = fmul fast double %[[pow]], %differeturn
 ; CHECK-NEXT:   %[[cmul:.+]] = fmul fast double %[[dmul]], 0x4002AA37D43EE973

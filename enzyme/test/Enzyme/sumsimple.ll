@@ -40,7 +40,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = add i64 %n, 1
 ; CHECK-NEXT:   %1 = add nuw i64 %0, 1
-; CHECK-NEXT:   %mallocsize = mul i64 %1, 8
+; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %1, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %[[antimallocs:.+]] = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   br label %for.cond

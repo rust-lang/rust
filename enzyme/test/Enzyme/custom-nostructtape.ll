@@ -70,9 +70,9 @@ declare double @__enzyme_autodiff(double (double)*, ...)
 ; CHECK-NEXT:   ret { {}, double } %[[iv]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ double } @fixgradient_add2(double, double, {}) {
+; CHECK: define internal {{(dso_local )?}}{ double } @fixgradient_add2(double %arg0, double %arg1, {} %arg2) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %3 = call double @gradient_add2(double %0, double %1)
-; CHECK-NEXT:   %4 = insertvalue { double } undef, double %3, 0
-; CHECK-NEXT:   ret { double } %4
+; CHECK-NEXT:   %0 = call double @gradient_add2(double %arg0, double %arg1)
+; CHECK-NEXT:   %1 = insertvalue { double } undef, double %0, 0
+; CHECK-NEXT:   ret { double } %1
 ; CHECK-NEXT: }

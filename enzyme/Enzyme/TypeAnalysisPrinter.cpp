@@ -27,6 +27,8 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 
+#include "llvm/Support/CommandLine.h"
+
 #include "TypeAnalysis.h"
 #include "Utils.h"
 
@@ -56,7 +58,12 @@ public:
 
   bool runOnFunction(Function &F) override {
     if (F.getName() != ta_fn) return /*changed*/false;
+    #if LLVM_VERSION_MAJOR >= 10
+    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
+    #else
     auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+    #endif
+
     //auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
     auto &G_AA = getAnalysis<GlobalsAAWrapperPass>().getResult();
 

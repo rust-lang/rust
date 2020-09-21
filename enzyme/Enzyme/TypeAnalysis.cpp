@@ -23,6 +23,8 @@
 #include "llvm/IR/InstIterator.h"
 
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/CommandLine.h"
+
 
 #include "llvm/IR/InlineAsm.h"
 
@@ -113,7 +115,7 @@ ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, l
 }
 
 
-cl::opt<bool> printtype(
+llvm::cl::opt<bool> printtype(
             "enzyme_printtype", cl::init(false), cl::Hidden,
             cl::desc("Print type detection algorithm"));
 
@@ -1373,11 +1375,13 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
             updateAnalysis(I.getOperand(0), ValueData(DataType(I.getOperand(0)->getType()->getScalarType())).Only(-1), &I);
             return;
 
+        #if LLVM_VERSION_MAJOR < 10
         case Intrinsic::x86_sse_max_ss:
         case Intrinsic::x86_sse_max_ps:
-        case Intrinsic::maxnum:
         case Intrinsic::x86_sse_min_ss:
         case Intrinsic::x86_sse_min_ps:
+        #endif
+        case Intrinsic::maxnum:
         case Intrinsic::minnum:
         case Intrinsic::pow:
             updateAnalysis(&I, ValueData(DataType(I.getType()->getScalarType())).Only(-1), &I);

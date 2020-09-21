@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instcombine -correlated-propagation -adce -instcombine -simplifycfg -early-cse -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -adce -instsimplify -simplifycfg -S | FileCheck %s
 
 ; Function Attrs: noinline norecurse nounwind uwtable
 define dso_local void @insertion_sort_inner(float* nocapture %array, i32 %i) local_unnamed_addr #0 {
@@ -52,20 +52,21 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 
 ; CHECK: land.rhs:                                         ; preds = %while.body, %land.rhs.preheader
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %while.body ], [ 0, %land.rhs.preheader ]
-; CHECK-NEXT:   %1 = sub i64 %0, %iv
-; CHECK-NEXT:   %indvars.iv.next = add nsw i64 %1, -1
+; CHECK-NEXT:   %1 = mul nuw nsw i64 %iv, -1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
+; CHECK-NEXT:   %[[a1:.+]] = add nuw nsw i64 %0, %1
+; CHECK-NEXT:   %indvars.iv.next = add nsw i64 %[[a1]], -1
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds float, float* %array, i64 %indvars.iv.next
-; CHECK-NEXT:   %2 = load float, float* %arrayidx, align 4
-; CHECK-NEXT:   %arrayidx2 = getelementptr inbounds float, float* %array, i64 %1
-; CHECK-NEXT:   %3 = load float, float* %arrayidx2, align 4
-; CHECK-NEXT:   %cmp3 = fcmp ogt float %2, %3
+; CHECK-NEXT:   %[[a2:.+]] = load float, float* %arrayidx, align 4
+; CHECK-NEXT:   %arrayidx2 = getelementptr inbounds float, float* %array, i64 %[[a1]]
+; CHECK-NEXT:   %[[a3:.+]] = load float, float* %arrayidx2, align 4
+; CHECK-NEXT:   %cmp3 = fcmp ogt float %[[a2]], %[[a3]]
 ; CHECK-NEXT:   br i1 %cmp3, label %while.body, label %invertwhile.end
 
 ; CHECK: while.body:                                       ; preds = %land.rhs
-; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   store float %2, float* %arrayidx2, align 4
-; CHECK-NEXT:   store float %3, float* %arrayidx, align 4
-; CHECK-NEXT:   %cmp = icmp sgt i64 %1, 1
+; CHECK-NEXT:   store float %[[a2]], float* %arrayidx2, align 4
+; CHECK-NEXT:   store float %[[a3]], float* %arrayidx, align 4
+; CHECK-NEXT:   %cmp = icmp sgt i64 %[[a1]], 1
 ; CHECK-NEXT:   br i1 %cmp, label %land.rhs, label %invertwhile.end
 
 ; CHECK: invertentry:                                      ; preds = %invertland.rhs, %invertwhile.end
@@ -76,11 +77,12 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK-NEXT:   %"'de.0" = phi float [ %[[pdein:.+]], %invertwhile.body ], [ 0.000000e+00, %invertwhile.end.loopexit ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %"iv'ac.1", %invertwhile.body ], [ %loopLimit_cache.0, %invertwhile.end.loopexit ]
 ; CHECK-NEXT:   %_unwrap = sext i32 %i to i64
-; CHECK-NEXT:   %[[_unwrap2:.+]] = sub i64 %_unwrap, %"iv'ac.0"
+; CHECK-NEXT:   %_unwrap1 = mul nuw nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[_unwrap2:.+]] = add nuw nsw i64 %_unwrap, %_unwrap1
 ; CHECK-NEXT:   %[[arrayidx2ipg:.+]] = getelementptr inbounds float, float* %"array'", i64 %[[_unwrap2]]
-; CHECK-NEXT:   %4 = load float, float* %[[arrayidx2ipg]], align 4
-; CHECK-NEXT:   %5 = fadd fast float %4, %"'de.0"
-; CHECK-NEXT:   store float %5, float* %[[arrayidx2ipg]], align 4
+; CHECK-NEXT:   %[[a4:.+]] = load float, float* %[[arrayidx2ipg]], align 4
+; CHECK-NEXT:   %[[a5:.+]] = fadd fast float %[[a4]], %"'de.0"
+; CHECK-NEXT:   store float %[[a5]], float* %[[arrayidx2ipg]], align 4
 ; CHECK-NEXT:   %indvars.iv.next_unwrap = add nsw i64 %[[_unwrap2]], -1
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds float, float* %"array'", i64 %indvars.iv.next_unwrap
 ; CHECK-NEXT:   %[[loade5:.+]] = load float, float* %[[arrayidxipg]], align 4
@@ -96,7 +98,8 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK: invertwhile.body:                                 ; preds = %invertwhile.end.loopexit, %incinvertland.rhs
 ; CHECK-NEXT:   %"iv'ac.1" = phi i64 [ %[[sub1h]], %incinvertland.rhs ], [ %loopLimit_cache.0, %invertwhile.end.loopexit ]
 ; CHECK-NEXT:   %_unwrap4 = sext i32 %i to i64
-; CHECK-NEXT:   %_unwrap6 = sub i64 %_unwrap4, %"iv'ac.1"
+; CHECK-NEXT:   %_unwrap5 = mul nuw nsw i64 %"iv'ac.1", -1
+; CHECK-NEXT:   %_unwrap6 = add nuw nsw i64 %_unwrap4, %_unwrap5
 ; CHECK-NEXT:   %[[indvarsivnext_unwrap7:.+]] = add nsw i64 %_unwrap6, -1
 ; CHECK-NEXT:   %[[arrayidxipg10:.+]] = getelementptr inbounds float, float* %"array'", i64 %[[indvarsivnext_unwrap7]]
 ; CHECK-NEXT:   %[[pdein]] = load float, float* %[[arrayidxipg10]], align 4
@@ -110,7 +113,7 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK-NEXT:   br i1 %[[cmp3_rev:.+]], label %invertwhile.body, label %invertland.rhs
 
 ; CHECK: invertwhile.end:                                  ; preds = %entry, %while.body, %land.rhs
-; CHECK-NEXT:   %[[cmp3_rev]] = phi i1 [ undef, %entry ], [ true, %while.body ], [ %cmp3, %land.rhs ]
+; CHECK-NEXT:   %[[cmp3_rev]] = phi i1 [ undef, %entry ], [ %cmp3, %while.body ], [ %cmp3, %land.rhs ]
 ; CHECK-NEXT:   %loopLimit_cache.0 = phi i64 [ undef, %entry ], [ %iv, %while.body ], [ %iv, %land.rhs ]
 ; CHECK-NEXT:   br i1 %cmp29, label %invertwhile.end.loopexit, label %invertentry
 ; CHECK-NEXT: }

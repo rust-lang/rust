@@ -157,7 +157,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %4 = udiv i32 %.lhs.trunc, %.rhs.trunc
 ; CHECK-NEXT:   %.zext = zext i32 %4 to i64
 ; CHECK-NEXT:   %5 = add nuw{{( nsw)?}} i64 %.zext, 1
-; CHECK-NEXT:   %mallocsize = mul i64 %5, 8
+; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %5, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   br label %for.body

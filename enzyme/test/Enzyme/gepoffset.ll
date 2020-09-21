@@ -40,7 +40,7 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   store i64 3, i64* %"inp'", align 4
 ; CHECK-NEXT:   store i64 3, i64* %inp, align 4, !tbaa !6
-; CHECK-NEXT:   call void @diffesub(i64* %inp, i64* %"inp'", i64 1)
+; CHECK-NEXT:   call void @diffesub(i64* {{(nonnull )?}}%inp, i64* {{(nonnull )?}}%"inp'", i64 1)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

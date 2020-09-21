@@ -59,7 +59,7 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 ; CHECK-NEXT:   ret double %[[val]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'", double)
+; CHECK: define internal void @diffesubf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'", double
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br i1 %z, label %invertif.then, label %invertentry
 

@@ -41,7 +41,7 @@ entry:
 
 ; CHECK: define internal { double } @diffe_Z6foobard(double %t, double %differeturn) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull i8* @malloc(i64 8)
+; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
 ; CHECK-NEXT:   %0 = bitcast i8* %"malloccall'mi" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %0, align 1
 ; CHECK-NEXT:   %[[xipc:.+]] = bitcast i8* %"malloccall'mi" to double*

@@ -57,7 +57,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK: define internal void @diffef(double* nocapture %x, double* nocapture %"x'", i64 %n, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[np1:.+]] = add nuw i64 %n, 1
-; CHECK-NEXT:   %mallocsize = mul i64 %[[np1]], 8
+; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[np1]], 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %call_malloccache = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   br label %for.cond3.preheader
@@ -66,7 +66,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond.cleanup6 ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
 ; CHECK-NEXT:   %[[mallocgep1:.+]] = getelementptr inbounds double*, double** %call_malloccache, i64 %iv
-; CHECK-NEXT:   %mallocsize3 = mul i64 %iv.next, 8
+; CHECK-NEXT:   %mallocsize3 = mul nuw nsw i64 %iv.next, 8
 ; CHECK-NEXT:   %malloccall4 = tail call noalias nonnull i8* @malloc(i64 %mallocsize3)
 ; CHECK-NEXT:   %call_malloccache5 = bitcast i8* %malloccall4 to double*
 ; CHECK-NEXT:   store double* %call_malloccache5, double** %[[mallocgep1]], align 8, !invariant.group !0

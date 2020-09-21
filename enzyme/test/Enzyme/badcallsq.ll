@@ -65,7 +65,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:  ret double %[[loadx]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}void @diffesubf(double* nocapture %x, double* nocapture %"x'", double)
+; CHECK: define internal {{(dso_local )?}}void @diffesubf(double* nocapture %x, double* nocapture %"x'", double
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @diffemetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[px:.+]] = load double, double* %"x'"

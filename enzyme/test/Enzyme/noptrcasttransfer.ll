@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instsimplify -adce -S | FileCheck %s
 
 define void @derivative(i64* %ptr, i64* %ptrp, i64* %ptr2, i64* %ptr2p) {
 entry:
@@ -21,15 +21,15 @@ declare double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'", i64* %ptr2, i64* %"ptr2'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %loadnotype12 = load i64, i64* %ptr, align 4
-; CHECK-NEXT:   store i64 %loadnotype12, i64* %ptr2, align 4
-; CHECK-NEXT:   %0 = bitcast i64* %"ptr2'" to double*
-; CHECK-NEXT:   %1 = load double, double* %0, align 8
-; CHECK-NEXT:   store i64 0, i64* %"ptr2'", align 4
-; CHECK-NEXT:   %2 = bitcast i64* %"ptr'" to double*
-; CHECK-NEXT:   %3 = load double, double* %2, align 8
-; CHECK-NEXT:   %4 = fadd fast double %3, %1
-; CHECK-NEXT:   %5 = bitcast i64* %"ptr'" to double*
-; CHECK-NEXT:   store double %4, double* %5, align 8
+; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr
+; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr2
+; CHECK-NEXT:   %0 = load i64, i64* %"ptr2'"
+; CHECK-NEXT:   store i64 0, i64* %"ptr2'"
+; CHECK-NEXT:   %1 = load i64, i64* %"ptr'"
+; CHECK-NEXT:   %2 = bitcast i64 %0 to double
+; CHECK-NEXT:   %3 = bitcast i64 %1 to double
+; CHECK-NEXT:   %4 = fadd fast double %3, %2
+; CHECK-NEXT:   %5 = bitcast double %4 to i64
+; CHECK-NEXT:   store i64 %5, i64* %"ptr'"
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -939,7 +939,12 @@ public:
 
   void visitLoadInst(llvm::LoadInst &LI) {
     bool constantval = gutils->isConstantValue(&LI);
+    #if LLVM_VERSION_MAJOR >= 10
+    auto alignment = LI.getAlign();
+    #else
     auto alignment = LI.getAlignment();
+    #endif
+
     BasicBlock* parent = LI.getParent();
     Type*  type = LI.getType();
 
@@ -1111,7 +1116,11 @@ public:
           ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
         } else {
           auto dif1 = Builder2.CreateLoad(gutils->invertPointerM(orig_ptr, Builder2));
+          #if LLVM_VERSION_MAJOR >= 10
+          dif1->setAlignment(SI.getAlign());
+          #else
           dif1->setAlignment(SI.getAlignment());
+          #endif
           ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
           addToDiffe(orig_val, dif1, Builder2, FT);
         }
@@ -1137,7 +1146,11 @@ public:
     }
 
     if (ts) {
+      #if LLVM_VERSION_MAJOR >= 10
+      ts->setAlignment(SI.getAlign());
+      #else
       ts->setAlignment(SI.getAlignment());
+      #endif
       ts->setVolatile(SI.isVolatile());
       ts->setOrdering(SI.getOrdering());
       ts->setSyncScopeID(SI.getSyncScopeID());
@@ -1575,7 +1588,11 @@ public:
           auto cal = Builder2.CreateCall(memsetIntr, args);
           cal->setCallingConv(memsetIntr->getCallingConv());
           if (dstalign != 0) {
+            #if LLVM_VERSION_MAJOR >= 10
+            cal->addParamAttr(0, Attribute::getWithAlignment(parent->getContext(), Align(dstalign)));
+            #else
             cal->addParamAttr(0, Attribute::getWithAlignment(parent->getContext(), dstalign));
+            #endif
           }
 
         } else {
@@ -1631,10 +1648,18 @@ public:
         cal->setTailCallKind(MTI.getTailCallKind());
 
         if (dstalign != 0) {
+          #if LLVM_VERSION_MAJOR >= 10
+          cal->addParamAttr(0, Attribute::getWithAlignment(parent->getContext(), Align(dstalign)));
+          #else
           cal->addParamAttr(0, Attribute::getWithAlignment(parent->getContext(), dstalign));
+          #endif
         }
-        if (srcalign != 0) {
+        if (srcalign != 0) {            
+          #if LLVM_VERSION_MAJOR >= 10
+          cal->addParamAttr(1, Attribute::getWithAlignment(parent->getContext(), Align(srcalign)));
+          #else
           cal->addParamAttr(1, Attribute::getWithAlignment(parent->getContext(), srcalign));
+          #endif
         }
       }
     }
@@ -1783,11 +1808,13 @@ public:
         case Intrinsic::lifetime_start:
         case Intrinsic::assume:
         case Intrinsic::fabs:
+        #if LLVM_VERSION_MAJOR < 10
         case Intrinsic::x86_sse_max_ss:
         case Intrinsic::x86_sse_max_ps:
-        case Intrinsic::maxnum:
         case Intrinsic::x86_sse_min_ss:
         case Intrinsic::x86_sse_min_ps:
+        #endif
+        case Intrinsic::maxnum:
         case Intrinsic::minnum:
         case Intrinsic::log:
         case Intrinsic::log2:
@@ -1887,8 +1914,10 @@ public:
           return;
         }
 
+        #if LLVM_VERSION_MAJOR < 10
         case Intrinsic::x86_sse_max_ss:
         case Intrinsic::x86_sse_max_ps:
+        #endif
         case Intrinsic::maxnum: {
           if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2), lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2));
@@ -1903,8 +1932,10 @@ public:
           return;
         }
 
+        #if LLVM_VERSION_MAJOR < 10
         case Intrinsic::x86_sse_min_ss:
         case Intrinsic::x86_sse_min_ps:
+        #endif
         case Intrinsic::minnum: {
           if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* cmp = Builder2.CreateFCmpOLT(lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2), lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2));
@@ -3323,10 +3354,11 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
     Value* tapeMemory;
     if (recursive) {
         auto i64 = Type::getInt64Ty(NewF->getContext());
+        ConstantInt* size;
         tapeMemory = CallInst::CreateMalloc(NewF->getEntryBlock().getFirstNonPHI(),
                       i64,
                       tapeType,
-                      ConstantInt::get(i64, NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(tapeType)/8),
+                      size=ConstantInt::get(i64, NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(tapeType)/8),
                       nullptr,
                       nullptr,
                       "tapemem"
@@ -3337,6 +3369,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
       }
       malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
       malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+      malloccall->addDereferenceableAttr(llvm::AttributeList::ReturnIndex, size->getLimitedValue());
+      malloccall->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex, size->getLimitedValue());
       std::vector<Value*> Idxs = {
           ib.getInt32(0),
           ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
@@ -3791,11 +3825,14 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
         if (NewF->hasFnAttribute(Attribute::NoInline)) {
             NewF->removeFnAttr(Attribute::NoInline);
         }
+        size_t argnum=0;
           for (Argument &Arg : NewF->args()) {
               if (Arg.hasAttribute(Attribute::Returned))
                   Arg.removeAttr(Attribute::Returned);
               if (Arg.hasAttribute(Attribute::StructRet))
                   Arg.removeAttr(Attribute::StructRet);
+              Arg.setName("arg"+std::to_string(argnum));
+              ++argnum;
           }
 
         BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);

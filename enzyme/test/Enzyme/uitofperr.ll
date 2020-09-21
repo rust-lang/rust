@@ -190,7 +190,7 @@ attributes #10 = { noreturn nounwind }
 
 ; CHECK: exit:                                             ; preds = %while
 ; CHECK-NEXT:   %a4 = zext i32 %nexti to i64
-; CHECK-NEXT:   %call2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double %add, double -2.000000e-01, i64 %a4)
+; CHECK-NEXT:   %call2 = tail call i32 (i8*, ...) @printf
 ; CHECK-NEXT:   br label %invertwhile
 
 ; CHECK: invertentry:                                      ; preds = %invertwhile

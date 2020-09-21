@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -gvn -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instsimplify -gvn -adce -S | FileCheck %s
 
 define void @derivative(i64* %ptr, i64* %ptrp) {
 entry:
@@ -34,24 +34,26 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[cptr2ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
 ; CHECK-NEXT:   %ptr2 = getelementptr inbounds i64, i64* %ptr, i64 2
-; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr2, align 4
+; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr2
 ; CHECK-NEXT:   %[[ptr3ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 3
 ; CHECK-NEXT:   %ptr3 = getelementptr inbounds i64, i64* %ptr, i64 3
-; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3, align 4
+; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3
 ; CHECK-NEXT:   %[[cptr4ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 4
 ; CHECK-NEXT:   %cptr4 = getelementptr inbounds i64, i64* %ptr, i64 4
-; CHECK-NEXT:   store i64 %loadnotype, i64* %cptr4, align 4, !tbaa !0
-; CHECK-NEXT:   %0 = bitcast i64* %[[cptr4ipge]] to double*
-; CHECK-NEXT:   %1 = load double, double* %0, align 8
-; CHECK-NEXT:   store i64 0, i64* %[[cptr4ipge]], align 4
-; CHECK-NEXT:   %2 = bitcast i64* %[[cptr2ipge]] to double*
-; CHECK-NEXT:   %3 = load double, double* %2, align 8
-; CHECK-NEXT:   %4 = fadd fast double %3, %1
-; CHECK-NEXT:   store double %4, double* %2, align 8
-; CHECK-NEXT:   %[[dptr3:.+]] = bitcast i64* %[[ptr3ipge]] to double*
-; CHECK-NEXT:   %[[dptr3load:.+]] = load double, double* %[[dptr3]], align 8
-; CHECK-NEXT:   store i64 0, i64* %[[ptr3ipge]], align 4
-; CHECK-NEXT:   %[[finalst:.+]] = fadd fast double %4, %[[dptr3load]]
-; CHECK-NEXT:   store double %[[finalst]], double* %2, align 8
+; CHECK-NEXT:   store i64 %loadnotype, i64* %cptr4, !tbaa !0
+; CHECK-NEXT:   %0 = load i64, i64* %"cptr4'ipg"
+; CHECK-NEXT:   store i64 0, i64* %"cptr4'ipg"
+; CHECK-NEXT:   %1 = load i64, i64* %"ptr2'ipg"
+; CHECK-NEXT:   %2 = bitcast i64 %0 to double
+; CHECK-NEXT:   %3 = bitcast i64 %1 to double
+; CHECK-NEXT:   %4 = fadd fast double %3, %2
+; CHECK-NEXT:   %5 = bitcast double %4 to i64
+; CHECK-NEXT:   store i64 %5, i64* %"ptr2'ipg"
+; CHECK-NEXT:   %6 = load i64, i64* %"ptr3'ipg"
+; CHECK-NEXT:   store i64 0, i64* %"ptr3'ipg"
+; CHECK-NEXT:   %7 = bitcast i64 %6 to double
+; CHECK-NEXT:   %8 = fadd fast double %4, %7
+; CHECK-NEXT:   %9 = bitcast double %8 to i64
+; CHECK-NEXT:   store i64 %9, i64* %"ptr2'ipg"
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

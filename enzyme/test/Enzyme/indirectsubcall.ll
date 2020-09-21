@@ -55,7 +55,7 @@ entry:
 
 ; CHECK: define internal i8* @augmented_indirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
 ; CHECK-NEXT:   %tapemem = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   %a1 = load double, double* %x, align 8
 ; CHECK-NEXT:   %call1_augmented = call { double*, double* } @augmented_bad(double* %dxdt, double* %"dxdt'")

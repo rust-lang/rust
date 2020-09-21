@@ -75,15 +75,29 @@ Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T, unsigned
 
     Value* dsti = B.CreateGEP(dst, { idx }, "dst.i");
     LoadInst* dstl = B.CreateLoad(dsti, "dst.i.l");
-    dstl->setAlignment(dstalign);
     StoreInst* dsts = B.CreateStore(Constant::getNullValue(elementType), dsti);
-    dsts->setAlignment(dstalign);
+    if (dstalign) {
+        #if LLVM_VERSION_MAJOR >= 10
+        dstl->setAlignment(Align(dstalign));
+        dsts->setAlignment(Align(dstalign));
+        #else
+        dstl->setAlignment(dstalign);
+        dsts->setAlignment(dstalign);
+        #endif
+    }
 
     Value* srci = B.CreateGEP(src, { idx }, "src.i");
     LoadInst* srcl = B.CreateLoad(srci, "src.i.l");
-    srcl->setAlignment(srcalign);
     StoreInst* srcs = B.CreateStore(B.CreateFAdd(srcl, dstl), srci);
-    srcs->setAlignment(srcalign);
+    if (srcalign) {
+        #if LLVM_VERSION_MAJOR >= 10
+        srcl->setAlignment(Align(srcalign));
+        srcs->setAlignment(Align(srcalign));
+        #else
+        srcl->setAlignment(srcalign);
+        srcs->setAlignment(srcalign);
+        #endif
+    }
 
     Value* next = B.CreateNUWAdd(idx, ConstantInt::get(num->getType(), 1), "idx.next");
     idx->addIncoming(next,  body);

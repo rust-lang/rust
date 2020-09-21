@@ -418,8 +418,22 @@ public:
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
 
+    unsigned derefBytes = 0;
+    if (orig->getCalledFunction()->getName() == "malloc" || orig->getCalledFunction()->getName() == "_Znwm") {
+      if (auto ci = dyn_cast<ConstantInt>(args[0])) {
+        derefBytes = ci->getLimitedValue();
+        cast<CallInst>(anti)->addDereferenceableAttr(llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
+        cast<CallInst>(anti)->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
+        CallInst* cal = cast<CallInst>(getNewFromOriginal(orig));
+        cal->addDereferenceableAttr(llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
+        cal->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
+        cal->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+        cal->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+      }
+    }
+
     invertedPointers[orig] = anti;
-    assert(placeholder != anti);
+    //assert(placeholder != anti);
     bb.SetInsertPoint(placeholder->getNextNode());
     replaceAWithB(placeholder, anti);
     erase(placeholder);
@@ -445,6 +459,10 @@ public:
         auto memset = cast<CallInst>(bb.CreateCall(Intrinsic::getDeclaration(newFunc->getParent(), Intrinsic::memset, tys), nargs));
         //memset->addParamAttr(0, Attribute::getWithAlignment(Context, inst->getAlignment()));
         memset->addParamAttr(0, Attribute::NonNull);
+        if (derefBytes) {
+          memset->addDereferenceableAttr(llvm::AttributeList::FirstArgIndex, derefBytes);
+          memset->addDereferenceableOrNullAttr(llvm::AttributeList::FirstArgIndex, derefBytes);
+        }
     }
 
     return anti;
@@ -1287,7 +1305,11 @@ public:
       assert(idx->getType() == load->getOperand(0)->getType());
       auto toreturn = BuilderM.CreateLoad(idx, load->getName()+"_unwrap");
       if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(load);
+      #if LLVM_VERSION_MAJOR >= 10
+      toreturn->setAlignment(load->getAlign());
+      #else
       toreturn->setAlignment(load->getAlignment());
+      #endif
       toreturn->setVolatile(load->isVolatile());
       toreturn->setOrdering(load->getOrdering());
       toreturn->setSyncScopeID(load->getSyncScopeID());
@@ -1519,7 +1541,11 @@ endCheck:
             ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(T->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(types.back())/8);
             unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
             if ((bsize & (bsize - 1)) == 0) {
+                #if LLVM_VERSION_MAJOR >= 10
+                alloc->setAlignment(Align(bsize));
+                #else
                 alloc->setAlignment(bsize);
+                #endif
             }
         }
 
@@ -1562,6 +1588,16 @@ endCheck:
                     CallInst* malloccall = dyn_cast<CallInst>(firstallocation);
                     if (malloccall == nullptr) {
                         malloccall = cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
+                    }
+                    if (auto bi = dyn_cast<BinaryOperator>(malloccall->getArgOperand(0))) {
+                      if ( (bi->getOperand(0) == byteSizeOfType && bi->getOperand(1) == size) || (bi->getOperand(1) == byteSizeOfType && bi->getOperand(0) == size))
+                      bi->setHasNoSignedWrap(true);
+                      bi->setHasNoUnsignedWrap(true);
+                    }
+                    if (auto ci = dyn_cast<ConstantInt>(size)) {
+                        malloccall->addDereferenceableAttr(llvm::AttributeList::ReturnIndex, ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
+                        malloccall->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex, ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
+                        //malloccall->removeAttribute(llvm::AttributeList::ReturnIndex, Attribute::DereferenceableOrNull);
                     }
                     malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
                     malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
@@ -1621,7 +1657,11 @@ endCheck:
                 storealloc->setMetadata(LLVMContext::MD_invariant_group, invariantGroups[std::make_pair((Value*)alloc, i)]);
                 unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
                 if ((bsize & (bsize - 1)) == 0) {
+                    #if LLVM_VERSION_MAJOR >= 10
+                    storealloc->setAlignment(Align(bsize));
+                    #else
                     storealloc->setAlignment(bsize);
+                    #endif
                 }
                 scopeStores[alloc].push_back(storealloc);
 
@@ -1653,7 +1693,11 @@ endCheck:
                 forfree->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(forfree->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
                 unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
                 if ((bsize & (bsize - 1)) == 0) {
+                    #if LLVM_VERSION_MAJOR >= 10
+                    forfree->setAlignment(Align(bsize));
+                    #else
                     forfree->setAlignment(bsize);
+                    #endif
                 }
                 //forfree->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(forfree->getContext(), {}));
                 auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(forfree, Type::getInt8PtrTy(oldFunc->getContext())), tbuild.GetInsertBlock()));
@@ -1737,7 +1781,11 @@ endCheck:
             cast<LoadInst>(next)->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(cache->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
             unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
             if ((bsize & (bsize - 1)) == 0) {
+                #if LLVM_VERSION_MAJOR >= 10
+                cast<LoadInst>(next)->setAlignment(Align(bsize));
+                #else
                 cast<LoadInst>(next)->setAlignment(bsize);
+                #endif
             }
 
             const auto& containedloops = sublimits[i].second;
@@ -1814,7 +1862,11 @@ endCheck:
         //result->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(cache->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
         if ((bsize & (bsize - 1)) == 0) {
+            #if LLVM_VERSION_MAJOR >= 10
+            result->setAlignment(Align(bsize));
+            #else
             result->setAlignment(bsize);
+            #endif
         }
         if (efficientBoolCache && isi1) {
           if (auto gep = dyn_cast<GetElementPtrInst>(cptr)) {
@@ -1889,7 +1941,11 @@ endCheck:
                         ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(val->getType())/8);
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
         if ((bsize & (bsize - 1)) == 0) {
+            #if LLVM_VERSION_MAJOR >= 10
+            storeinst->setAlignment(Align(bsize));
+            #else
             storeinst->setAlignment(bsize);
+            #endif
         }
         scopeStores[cache].push_back(storeinst);
     }
@@ -2260,7 +2316,11 @@ public:
   }
 
   //! align is the alignment that should be specified for load/store to pointer
+  #if LLVM_VERSION_MAJOR >= 10
+  void addToInvertedPtrDiffe(Value* ptr, Value* dif, IRBuilder<> &BuilderM, MaybeAlign align) {
+  #else
   void addToInvertedPtrDiffe(Value* ptr, Value* dif, IRBuilder<> &BuilderM, unsigned align) {
+  #endif
       if (!(ptr->getType()->isPointerTy()) || !(cast<PointerType>(ptr->getType())->getElementType() == dif->getType())) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
@@ -2275,7 +2335,12 @@ public:
 
       Value* res;
       LoadInst* old = BuilderM.CreateLoad(ptr);
+      #if LLVM_VERSION_MAJOR >= 10
+      if (align)
+        old->setAlignment(align.getValue());
+      #else
       old->setAlignment(align);
+      #endif
 
       if (old->getType()->isIntOrIntVectorTy()) {
         res = BuilderM.CreateFAdd(BuilderM.CreateBitCast(old, IntToFloatTy(old->getType())), BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType())));
@@ -2290,7 +2355,12 @@ public:
         report_fatal_error("cannot handle type");
       }
       StoreInst* st = BuilderM.CreateStore(res, ptr);
+      #if LLVM_VERSION_MAJOR >= 10
+      if (align)
+        st->setAlignment(align.getValue());
+      #else
       st->setAlignment(align);
+      #endif
   }
 
 };

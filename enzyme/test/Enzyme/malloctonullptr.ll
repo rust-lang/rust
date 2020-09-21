@@ -1089,7 +1089,7 @@ declare dso_local noalias i8* @malloc(i64) local_unnamed_addr #4
 ; Function Attrs: inlinehint nounwind uwtable
 define linkonce_odr dso_local void @subfn(float** %m_data.i.i, float* %K) unnamed_addr #6 align 2 {
 entry:
-  %call = tail call noalias i8* @malloc(i64 36) #7
+  %call = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
   %a0 = bitcast i8* %call to float*
   store float* %a0, float** %m_data.i.i, align 8, !tbaa !13
   br label %for
@@ -1187,17 +1187,17 @@ attributes #10 = { noreturn nounwind }
 
 ; CHECK: define internal i8* @augmented_subfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 36) #7
-; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull i8* @malloc(i64 36) #7
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call'mi", i8 0, i64 36, i1 false)
+; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
+; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 dereferenceable(36) dereferenceable_or_null(36) %"call'mi", i8 0, i64 36, i1 false)
 ; CHECK-NEXT:   %0 = bitcast float** %"m_data.i.i'" to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %0, align 8
 ; CHECK-NEXT:   %1 = bitcast float** %m_data.i.i to i8**
 ; CHECK-NEXT:   store i8* %call, i8** %1, align 8, !tbaa !13
 ; CHECK-NEXT:   %2 = bitcast float* %K to i32*
-; CHECK-NEXT:   %a41 = load i32, i32* %2, align 4, !tbaa !22
+; CHECK-NEXT:   %a41 = load i32, i32* %2, align 4, !tbaa !
 ; CHECK-NEXT:   %3 = bitcast i8* %call to i32*
-; CHECK-NEXT:   store i32 %a41, i32* %3, align 4, !tbaa !22
+; CHECK-NEXT:   store i32 %a41, i32* %3, align 4, !tbaa !
 ; CHECK-NEXT:   ret i8* %"call'mi"
 ; CHECK-NEXT: }
 

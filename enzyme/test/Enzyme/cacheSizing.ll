@@ -969,7 +969,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %"resi'ipg_unwrap" = getelementptr inbounds double, double* %".cast'ipa", i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[preres:.+]] = load double, double* %"resi'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"resi'ipg_unwrap", align 8
-; CHECK-NEXT:   %[[fneg:.+]] = fsub fast double 0.000000e+00, %[[preres]]
+; CHECK-NEXT:   %[[fneg:.+]] = {{(fsub fast double 0.000000e\+00,|fneg fast double)}} %[[preres]]
 ; CHECK-NEXT:   %"Mi'ipg_unwrap" = getelementptr inbounds double, double* %"M'", i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[prem:.+]] = load double, double* %"Mi'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[postm:.+]] = fadd fast double %[[prem]], %[[fneg]]

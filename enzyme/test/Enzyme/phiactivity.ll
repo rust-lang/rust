@@ -19,7 +19,7 @@ while:                              ; preds = %entry, %while.body.us.i.i.i
 exit:
   %phi = phi i32 [ %inc, %while ]
   %a3 = zext i32 %phi to i64
-  %call2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 3.141592e+00, double -2.000000e-01, i64 %a3)
+  %call2 = tail call i32 (i8*, ...) @printf(i8* nonnull dereferenceable(1) getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 3.141592e+00, double -2.000000e-01, i64 %a3)
   ret double %mul2
 }
 
@@ -59,7 +59,7 @@ declare double @__enzyme_autodiff(i8*, double)
 
 ; CHECK: exit:
 ; CHECK-NEXT:   %a3 = zext i32 %inc to i64
-; CHECK-NEXT:   %call2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
+; CHECK-NEXT:   %call2 = tail call i32 (i8*, ...) @printf(i8* nonnull dereferenceable(1) getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
 ; CHECK-NEXT:   br label %invertwhile
 
 ; CHECK: invertentry:                                      ; preds = %invertwhile

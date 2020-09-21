@@ -285,7 +285,6 @@ public:
   }
 
   bool runOnModule(Module &M) override {
-    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
     //auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
     auto &G_AA = getAnalysis<GlobalsAAWrapperPass>().getResult();
 
@@ -304,10 +303,17 @@ public:
     for(Function& F: M) {
         if (F.empty()) continue;
 
+        #if LLVM_VERSION_MAJOR >= 10
+        auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
+        #else
+        auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+        #endif
+        
         AAResults AA(TLI);
         //auto &B_AA = getAnalysis<BasicAAWrapperPass>().getResult();
         //AA.addAAResult(B_AA);
         AA.addAAResult(G_AA);
+
 
         //auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
         //auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();

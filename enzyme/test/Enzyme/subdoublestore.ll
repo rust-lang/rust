@@ -80,8 +80,8 @@ attributes #6 = { nounwind }
 
 ; CHECK: define internal { i8*, i64* } @augmented_substore(i64 %flt, i64 %integral)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull i8* @malloc(i64 16) #6
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call'mi", i8 0, i64 16, i1 false)
+; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16) #6
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"call'mi", i8 0, i64 16, i1 false)
 ; CHECK-NEXT:   %"'ipc" = bitcast i8* %"call'mi" to i64*
 ; TODO:   %"arrayidx1'ipg" = getelementptr inbounds i8, i8* %"call'mi", i64 8
 ; TODO:   %"'ipc1" = bitcast i8* %"arrayidx1'ipg" to i64*

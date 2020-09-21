@@ -87,7 +87,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   call void @augmented_submemcpy_float(double* %dst, double* %"dst'", double* %src, double* %"src'", i64 %num)
 ; CHECK-NEXT:   store double 0.000000e+00, double* %dst, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"dst'", align 8
-; CHECK-NEXT:   call void @diffesubmemcpy_float(double* %dst, double* %"dst'", double* %src, double* %"src'", i64 %num)
+; CHECK-NEXT:   call void @diffesubmemcpy_float(double* {{(nonnull )?}}%dst, double* {{(nonnull )?}}%"dst'", double* %src, double* %"src'", i64 %num)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

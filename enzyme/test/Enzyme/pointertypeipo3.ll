@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instsimplify -adce -S | FileCheck %s
 
 declare void @__enzyme_autodiff(...)
 
@@ -73,9 +73,9 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   %call4_augmented = call { { { i64, i64*, i64*, i8*, i8* }, i64 }, i64 } @augmented_sub(i64* %m_dims, i64* %"m_dims'")
 ; CHECK-NEXT:   %[[uw:.+]] = extractvalue { { { i64, i64*, i64*, i8*, i8* }, i64 }, i64 } %call4_augmented, 0
 ; CHECK-NEXT:   %call4 = extractvalue { { { i64, i64*, i64*, i8*, i8* }, i64 }, i64 } %call4_augmented, 1
-; CHECK-NEXT:   store i64 %call4, i64* %out, align 4
-; CHECK-NEXT:   %[[oout:.+]] = load i64, i64* %"out'", align 8
-; CHECK-NEXT:   store i64 0, i64* %"out'", align 4
+; CHECK-NEXT:   store i64 %call4, i64* %out
+; CHECK-NEXT:   %[[oout:.+]] = load i64, i64* %"out'"
+; CHECK-NEXT:   store i64 0, i64* %"out'"
 ; CHECK-NEXT:   call void @diffesub(i64* %m_dims, i64* %"m_dims'", i64 %[[oout]], { { i64, i64*, i64*, i8*, i8* }, i64 } %[[uw]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
@@ -89,17 +89,16 @@ attributes #22 = { readnone }
 
 ; CHECK: define internal { { i64, i64*, i64*, i8*, i8* }, i64 } @augmented_pop(i64 %arr.coerce0)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i64 8)
-; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull i8* @malloc(i64 8)
-; CHECK-NEXT:   %0 = bitcast i8* %"malloccall'mi" to i64*
-; CHECK-NEXT:   store i64 0, i64* %0, align 1
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
+; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %"malloccall'mi", i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   %"arr'ipc" = bitcast i8* %"malloccall'mi" to i64*
 ; CHECK-NEXT:   %arr = bitcast i8* %malloccall to i64*
-; CHECK-NEXT:   store i64 %arr.coerce0, i64* %arr, align 4
+; CHECK-NEXT:   store i64 %arr.coerce0, i64* %arr
 ; CHECK-NEXT:   %call.i_augmented = call { i64*, i64* } @augmented_cast(i64*{{( nonnull)?}} %arr, i64*{{( nonnull)?}} %"arr'ipc")
 ; CHECK-NEXT:   %call.i = extractvalue { i64*, i64* } %call.i_augmented, 0
 ; CHECK-NEXT:   %[[dcall:.+]] = extractvalue { i64*, i64* } %call.i_augmented, 1
-; CHECK-NEXT:   %a2 = load i64, i64* %call.i, align 4, !tbaa !2
+; CHECK-NEXT:   %a2 = load i64, i64* %call.i, !tbaa !2
 ; CHECK-NEXT:   %call2 = call i64 @mul(i64 %a2)
 ; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64, i64*, i64*, i8*, i8* }, i64 } undef, i64 %a2, 0, 0
 ; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i64, i64*, i64*, i8*, i8* }, i64 } %.fca.0.0.insert, i64* %call.i, 0, 1
@@ -112,7 +111,7 @@ attributes #22 = { readnone }
 
 ; CHECK: define internal { { { i64, i64*, i64*, i8*, i8* }, i64 }, i64 } @augmented_sub(i64* %this, i64* %"this'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %agg = load i64, i64* %this, align 4
+; CHECK-NEXT:   %agg = load i64, i64* %this
 ; CHECK-NEXT:   %call_augmented = call { { i64, i64*, i64*, i8*, i8* }, i64 } @augmented_pop(i64 %agg)
 ; CHECK-NEXT:   %subcache = extractvalue { { i64, i64*, i64*, i8*, i8* }, i64 } %call_augmented, 0
 ; CHECK-NEXT:   %subcache.fca.0.extract = extractvalue { i64, i64*, i64*, i8*, i8* } %subcache, 0
@@ -137,12 +136,12 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   %[[pret:.+]] = extractvalue { { i64, i64*, i64*, i8*, i8* }, i64 } %tapeArg, 0
 ; CHECK-NEXT:   %[[dpop:.+]] = call { i64 } @diffepop(i64 %[[agg]], i64 %differeturn, { i64, i64*, i64*, i8*, i8* } %[[pret]])
 ; CHECK-NEXT:   %[[ev:.+]] = extractvalue { i64 } %[[dpop]], 0
-; CHECK-NEXT:   %[[bcd:.+]] = bitcast i64* %"this'" to double*
-; CHECK-NEXT:   %[[lbcd:.+]] = load double, double* %[[bcd]], align 8
-; CHECK-NEXT:   %[[evd:.+]] = bitcast i64 %[[ev]] to double
-; CHECK-NEXT:   %[[fa:.+]] = fadd fast double %[[lbcd]], %[[evd]]
-; CHECK-NEXT:   %[[ts:.+]] = bitcast i64* %"this'" to double*
-; CHECK-NEXT:   store double %[[fa]], double* %[[ts]], align 8
+; CHECK-NEXT:   %2 = load i64, i64* %"this'"
+; CHECK-NEXT:   %3 = bitcast i64 %[[ev]] to double
+; CHECK-NEXT:   %4 = bitcast i64 %2 to double
+; CHECK-NEXT:   %5 = fadd fast double %4, %3
+; CHECK-NEXT:   %6 = bitcast double %5 to i64
+; CHECK-NEXT:   store i64 %6, i64* %"this'"
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -156,19 +155,18 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   %[[a2:.+]] = extractvalue { i64, i64*, i64*, i8*, i8* } %tapeArg, 0
 ; CHECK-NEXT:   %0 = call { i64 } @diffemul(i64 %[[a2]], i64 %differeturn)
 ; CHECK-NEXT:   %1 = extractvalue { i64 } %0, 0
-; CHECK-NEXT:   %2 = bitcast i64* %[[dcall]] to double*
-; CHECK-NEXT:   %3 = load double, double* %2, align 8
-; CHECK-NEXT:   %4 = bitcast i64 %1 to double
-; CHECK-NEXT:   %5 = fadd fast double %3, %4
-; CHECK-NEXT:   %6 = bitcast i64* %[[dcall]] to double*
-; CHECK-NEXT:   store double %5, double* %6, align 8
-; CHECK-NEXT:   call void @diffecast(i64* %[[arr]], i64* %[[darr]])
-; CHECK-NEXT:   %[[bc:.+]] = bitcast i8* %[[dmalloccall]] to i64*
-; CHECK-NEXT:   %[[ti:.+]] = load i64, i64* %[[bc]], align 8
-; CHECK-NEXT:   store i64 0, i64* %[[darr]], align 4
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[dmalloccall]])
-; CHECK-NEXT:   %[[res:.+]] = insertvalue { i64 } undef, i64 %[[ti]], 0
-; CHECK-NEXT:   ret { i64 } %[[res]]
+; CHECK-NEXT:   %2 = load i64, i64* %"call.i'ip_phi"
+; CHECK-NEXT:   %3 = bitcast i64 %1 to double
+; CHECK-NEXT:   %4 = bitcast i64 %2 to double
+; CHECK-NEXT:   %5 = fadd fast double %4, %3
+; CHECK-NEXT:   %6 = bitcast double %5 to i64
+; CHECK-NEXT:   store i64 %6, i64* %"call.i'ip_phi"
+; CHECK-NEXT:   call void @diffecast(i64* %arr, i64* %"arr'ipc")
+; CHECK-NEXT:   %7 = load i64, i64* %"arr'ipc"
+; CHECK-NEXT:   store i64 0, i64* %"arr'ipc"
+; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
+; CHECK-NEXT:   %8 = insertvalue { i64 } undef, i64 %7, 0
+; CHECK-NEXT:   ret { i64 } %8
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64 } @diffemul(i64 %a, i64 %differeturn)

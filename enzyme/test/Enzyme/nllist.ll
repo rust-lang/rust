@@ -209,7 +209,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %for.body.i
 
 ; CHECK: [[invertforcondcleanup:.+]]:                         ; preds = %for.cond.cleanup7.i
-; CHECK-NEXT:   call void @diffesum_list(%struct.n* %[[bccast:.+]], %struct.n* nonnull %[[ipci:.+]], i64 %times, double 1.000000e+00) #4
+; CHECK-NEXT:   call void @diffesum_list(%struct.n* nonnull %[[bccast:.+]], %struct.n* nonnull %[[ipci:.+]], i64 %times, double 1.000000e+00) #4
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup7.i
 
 ; CHECK: for.body.i:                                       ; preds = %for.cond.cleanup7.i, %entry
@@ -217,9 +217,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[dstruct:.+]] = phi %struct.n* [ %[[ipci]], %for.cond.cleanup7.i ], [ null, %entry ]
 ; CHECK-NEXT:   %list.029.i = phi %struct.n* [ %[[bccast]], %for.cond.cleanup7.i ], [ null, %entry ]
 ; CHECK-NEXT:   %[[nextvar]] = add nuw nsw i64 %[[iv]], 1
-; CHECK-NEXT:   %call.i = call noalias i8* @malloc(i64 16) #4
-; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
+; CHECK-NEXT:   %call.i = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16) #4
+; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16) #4
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}dereferenceable(16) dereferenceable_or_null(16) %"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:   %[[nextipgi:.+]] = getelementptr inbounds i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:   %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
 ; CHECK-NEXT:   %[[thisipc:.+]] = bitcast i8* %[[nextipgi]] to %struct.n**
