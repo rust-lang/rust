@@ -109,7 +109,7 @@ pub unsafe trait AllocRef {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr>;
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr>;
 
     /// Behaves like `alloc`, but also ensures that the returned memory is zero-initialized.
     ///
@@ -348,7 +348,7 @@ where
     A: AllocRef + ?Sized,
 {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         (**self).alloc(layout)
     }
 
