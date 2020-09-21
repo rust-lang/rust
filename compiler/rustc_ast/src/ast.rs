@@ -1152,6 +1152,7 @@ impl Expr {
         match self.kind {
             ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::Array(_) => ExprPrecedence::Array,
+            ExprKind::ConstBlock(_) => ExprPrecedence::ConstBlock,
             ExprKind::Call(..) => ExprPrecedence::Call,
             ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
             ExprKind::Tup(_) => ExprPrecedence::Tup,
@@ -1207,6 +1208,8 @@ pub enum ExprKind {
     Box(P<Expr>),
     /// An array (`[a, b, c, d]`)
     Array(Vec<P<Expr>>),
+    /// Allow anonymous constants from an inline `const` block
+    ConstBlock(AnonConst),
     /// A function call
     ///
     /// The first field resolves to the function itself,

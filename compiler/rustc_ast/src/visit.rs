@@ -717,6 +717,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Array(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
+        ExprKind::ConstBlock(ref anon_const) => visitor.visit_anon_const(anon_const),
         ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
             visitor.visit_anon_const(count)

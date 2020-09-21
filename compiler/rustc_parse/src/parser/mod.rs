@@ -18,8 +18,9 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_ast::DUMMY_NODE_ID;
-use rustc_ast::{self as ast, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
-use rustc_ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
+use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
+use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit};
+use rustc_ast::{Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
@@ -545,6 +546,11 @@ impl<'a> Parser<'a> {
         self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
     }
 
+    fn check_inline_const(&mut self) -> bool {
+        self.check_keyword(kw::Const)
+            && self.look_ahead(1, |t| t == &token::OpenDelim(DelimToken::Brace))
+    }
+
     /// Checks to see if the next token is either `+` or `+=`.
     /// Otherwise returns `false`.
     fn check_plus(&mut self) -> bool {
@@ -864,11 +870,26 @@ impl<'a> Parser<'a> {
 
     /// Parses constness: `const` or nothing.
     fn parse_constness(&mut self) -> Const {
-        if self.eat_keyword(kw::Const) {
+        // Avoid const blocks to be parsed as const items
+        if self.look_ahead(1, |t| t != &token::OpenDelim(DelimToken::Brace))
+            && self.eat_keyword(kw::Const)
+        {
             Const::Yes(self.prev_token.uninterpolated_span())
         } else {
             Const::No
         }
+    }
+
+    /// Parses inline const expressions.
+    fn parse_const_expr(&mut self, span: Span) -> PResult<'a, P<Expr>> {
+        self.sess.gated_spans.gate(sym::inline_const, span);
+        self.eat_keyword(kw::Const);
+        let blk = self.parse_block()?;
+        let anon_const = AnonConst {
+            id: DUMMY_NODE_ID,
+            value: self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()),
+        };
+        Ok(self.mk_expr(span, ExprKind::ConstBlock(anon_const), AttrVec::new()))
     }
 
     /// Parses mutability (`mut` or nothing).
