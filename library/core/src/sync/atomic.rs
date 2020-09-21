@@ -110,7 +110,6 @@ use self::Ordering::*;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::intrinsics;
-use crate::mem::align_of;
 
 use crate::hint::spin_loop;
 
@@ -326,27 +325,6 @@ impl AtomicBool {
     pub fn get_mut(&mut self) -> &mut bool {
         // SAFETY: the mutable reference guarantees unique ownership.
         unsafe { &mut *(self.v.get() as *mut bool) }
-    }
-
-    /// Get atomic access to a `&mut bool`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(atomic_from_mut)]
-    /// use std::sync::atomic::{AtomicBool, Ordering};
-    ///
-    /// let mut some_bool = true;
-    /// let a = AtomicBool::from_mut(&mut some_bool);
-    /// a.store(false, Ordering::Relaxed);
-    /// assert_eq!(some_bool, false);
-    /// ```
-    #[inline]
-    #[unstable(feature = "atomic_from_mut", issue = "76314")]
-    pub fn from_mut(v: &mut bool) -> &Self {
-        // SAFETY: the mutable reference guarantees unique ownership, and
-        // alignment of both `bool` and `Self` is 1.
-        unsafe { &*(v as *mut bool as *mut Self) }
     }
 
     /// Consumes the atomic and returns the contained value.
@@ -841,30 +819,6 @@ impl<T> AtomicPtr<T> {
         self.p.get_mut()
     }
 
-    /// Get atomic access to a pointer.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(atomic_from_mut)]
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
-    ///
-    /// let mut some_ptr = &mut 123 as *mut i32;
-    /// let a = AtomicPtr::from_mut(&mut some_ptr);
-    /// a.store(&mut 456, Ordering::Relaxed);
-    /// assert_eq!(unsafe { *some_ptr }, 456);
-    /// ```
-    #[inline]
-    #[unstable(feature = "atomic_from_mut", issue = "76314")]
-    pub fn from_mut(v: &mut *mut T) -> &Self {
-        let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
-        // SAFETY:
-        //  - the mutable reference guarantees unique ownership.
-        //  - the alignment of `*mut T` and `Self` is the same on all platforms
-        //    supported by rust, as verified above.
-        unsafe { &*(v as *mut *mut T as *mut Self) }
-    }
-
     /// Consumes the atomic and returns the contained value.
     ///
     /// This is safe because passing `self` by value guarantees that no other threads are
@@ -1167,7 +1121,6 @@ macro_rules! atomic_int {
      $stable_nand:meta,
      $const_stable:meta,
      $stable_init_const:meta,
-     $(from_mut: cfg($from_mut_cfg:meta),)?
      $s_int_type:literal, $int_ref:expr,
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
@@ -1275,45 +1228,6 @@ assert_eq!(some_var.load(Ordering::SeqCst), 5);
                 #[$stable_access]
                 pub fn get_mut(&mut self) -> &mut $int_type {
                     self.v.get_mut()
-                }
-            }
-
-            doc_comment! {
-                concat!("Get atomic access to a `&mut ", stringify!($int_type), "`.
-
-",
-if_not_8_bit! {
-    $int_type,
-    concat!(
-        "**Note:** This function is only available on targets where `",
-        stringify!($int_type), "` has an alignment of ", $align, " bytes."
-    )
-},
-"
-
-# Examples
-
-```
-#![feature(atomic_from_mut)]
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let mut some_int = 123;
-let a = ", stringify!($atomic_type), "::from_mut(&mut some_int);
-a.store(100, Ordering::Relaxed);
-assert_eq!(some_int, 100);
-```
-                "),
-                #[inline]
-                $(#[cfg($from_mut_cfg)])?
-                #[unstable(feature = "atomic_from_mut", issue = "76314")]
-                pub fn from_mut(v: &mut $int_type) -> &Self {
-                    let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
-                    // SAFETY:
-                    //  - the mutable reference guarantees unique ownership.
-                    //  - the alignment of `$int_type` and `Self` is the
-                    //    same on all platforms enabled by `$from_mut_cfg`
-                    //    as verified above.
-                    unsafe { &*(v as *mut $int_type as *mut Self) }
                 }
             }
 
@@ -2075,7 +1989,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    from_mut: cfg(not(target_arch = "x86")),
     "i64", "../../../std/primitive.i64.html",
     "",
     atomic_min, atomic_max,
@@ -2094,7 +2007,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    from_mut: cfg(not(target_arch = "x86")),
     "u64", "../../../std/primitive.u64.html",
     "",
     atomic_umin, atomic_umax,
@@ -2113,7 +2025,6 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    from_mut: cfg(not(target_arch = "x86_64")),
     "i128", "../../../std/primitive.i128.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -2132,7 +2043,6 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    from_mut: cfg(not(target_arch = "x86_64")),
     "u128", "../../../std/primitive.u128.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,

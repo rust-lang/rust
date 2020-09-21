@@ -1,29 +1,13 @@
 #![allow(missing_docs)]
 #![allow(deprecated)] // Float
 
-use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::mem;
 
 #[cfg(test)]
 mod tests;
 
-fn local_cmp(x: f64, y: f64) -> Ordering {
-    // arbitrarily decide that NaNs are larger than everything.
-    if y.is_nan() {
-        Less
-    } else if x.is_nan() {
-        Greater
-    } else if x < y {
-        Less
-    } else if x == y {
-        Equal
-    } else {
-        Greater
-    }
-}
-
 fn local_sort(v: &mut [f64]) {
-    v.sort_by(|x: &f64, y: &f64| local_cmp(*x, *y));
+    v.sort_by(|x: &f64, y: &f64| x.total_cmp(y));
 }
 
 /// Trait that provides simple descriptive statistics on a univariate set of numeric samples.
