@@ -161,10 +161,10 @@ bool isFunctionArgumentConstant(TypeResults &TR, CallInst *CI, Value *val,
   SmallPtrSet<Value *, 20> newconstants;
   SmallPtrSet<Value *, 20> newnonconstant;
 
-  NewFnTypeInfo nextTypeInfo(F);
+  FnTypeInfo nextTypeInfo(F);
   int argnum = 0;
   for (auto &arg : F->args()) {
-    nextTypeInfo.first.insert(std::pair<Argument *, ValueData>(
+    nextTypeInfo.first.insert(std::pair<Argument *, TypeTree>(
         &arg, TR.query(CI->getArgOperand(argnum))));
     argnum++;
   }
@@ -453,7 +453,7 @@ bool isconstantM(TypeResults &TR, Instruction *inst,
     auto q = TR.query(storeinst->getPointerOperand()).Data0();
     for (int i = -1; i < (int)storeSize; i++) {
       auto dt = q[{i}];
-      if (dt.isIntegral() || dt.typeEnum == IntType::Anything) {
+      if (dt.isIntegral() || dt.typeEnum == BaseType::Anything) {
         anIntegral = true;
       } else if (dt.isKnown()) {
         allIntegral = false;

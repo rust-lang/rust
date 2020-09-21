@@ -506,14 +506,14 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     //  not be able to lookup the augmenteddata/subdata (triggering an assertion
     //  failure, among much worse)
     std::map<Argument *, bool> uncacheable_args;
-    NewFnTypeInfo type_args(fn);
+    FnTypeInfo type_args(fn);
 
     // conservatively assume that we can only cache existing floating types
     // (i.e. that all args are uncacheable)
     std::vector<DIFFE_TYPE> types;
     for (auto &a : fn->args()) {
       uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
-      type_args.first.insert(std::pair<Argument *, ValueData>(&a, {}));
+      type_args.first.insert(std::pair<Argument *, TypeTree>(&a, {}));
       type_args.knownValues.insert(
           std::pair<Argument *, std::set<int64_t>>(&a, {}));
       DIFFE_TYPE typ;
@@ -1930,7 +1930,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                        7) /
                       8;
 
-      // this is guarded because havent told addMalloc how to move
+      // this is guarded because havent told cacheForReverse how to move
       if (mode == DerivativeMode::Both && false)
         if (!li->isVolatile()) {
           auto scev1 = SE.getSCEV(li->getPointerOperand());

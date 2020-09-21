@@ -39,7 +39,7 @@ using namespace llvm;
 #endif
 #define DEBUG_TYPE "type-analysis-results"
 
-llvm::cl::opt<std::string> ta_fn("type-analysis-func", cl::init(""), cl::Hidden,
+llvm::cl::opt<std::string> functionToAnalyzeTypes("type-analysis-func", cl::init(""), cl::Hidden,
                                  cl::desc("Which function to analyze/print"));
 
 namespace {
@@ -50,38 +50,26 @@ public:
   TypeAnalysisPrinter() : FunctionPass(ID) {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<TargetLibraryInfoWrapperPass>();
-    AU.addRequired<AAResultsWrapperPass>();
-    AU.addRequired<GlobalsAAWrapperPass>();
-    AU.addRequired<BasicAAWrapperPass>();
   }
 
   bool runOnFunction(Function &F) override {
-    if (F.getName() != ta_fn)
+    if (F.getName() != functionToAnalyzeTypes)
       return /*changed*/ false;
-#if LLVM_VERSION_MAJOR >= 10
-    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
-#else
-    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-#endif
 
-    // auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
-    auto &G_AA = getAnalysis<GlobalsAAWrapperPass>().getResult();
-
-    NewFnTypeInfo type_args(&F);
+    FnTypeInfo type_args(&F);
     for (auto &a : type_args.function->args()) {
-      ValueData dt;
+      TypeTree dt;
       if (a.getType()->isFPOrFPVectorTy()) {
-        dt = DataType(a.getType()->getScalarType());
+        dt = ConcreteType(a.getType()->getScalarType());
       } else if (a.getType()->isPointerTy()) {
         auto et = cast<PointerType>(a.getType())->getElementType();
         if (et->isFPOrFPVectorTy()) {
-          dt = ValueData(DataType(et->getScalarType())).Only({-1});
+          dt = TypeTree(ConcreteType(et->getScalarType())).Only({-1});
         } else if (et->isPointerTy()) {
-          dt = ValueData(DataType(IntType::Pointer)).Only({-1});
+          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only({-1});
         }
       }
-      type_args.first.insert(std::pair<Argument *, ValueData>(&a, dt.Only(-1)));
+      type_args.first.insert(std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
       // TODO note that here we do NOT propagate constants in type info (and
       // should consider whether we should)
       type_args.knownValues.insert(

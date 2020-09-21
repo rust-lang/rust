@@ -461,7 +461,7 @@ public:
     replaceAWithB(placeholder, anti);
     erase(placeholder);
 
-    anti = addMalloc(bb, anti, idx);
+    anti = cacheForReverse(bb, anti, idx);
     invertedPointers[orig] = anti;
 
     if (tape == nullptr) {
@@ -532,12 +532,12 @@ public:
     }
   }
 
-  Value *addMalloc(IRBuilder<> &BuilderQ, Value *malloc, int idx) {
+  Value *cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx) {
     assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
 
     if (tape) {
       if (idx >= 0 && !tape->getType()->isStructTy()) {
-        llvm::errs() << "addMalloc incorrect tape type: " << *tape
+        llvm::errs() << "cacheForReverse incorrect tape type: " << *tape
                      << " idx: " << idx << "\n";
       }
       assert(idx < 0 || tape->getType()->isStructTy());
@@ -901,7 +901,7 @@ public:
       addedMallocs.push_back(toadd);
       return malloc;
     }
-    llvm::errs() << "Fell through on addMalloc. This should never happen.\n";
+    llvm::errs() << "Fell through on cacheForReverse. This should never happen.\n";
     assert(false);
   }
 
@@ -1122,7 +1122,7 @@ public:
         isa<UndefValue>(val) || isa<MetadataAsValue>(val)) {
       // Note that not actually passing in type results here as (hopefully) it
       // shouldn't be needed
-      TypeResults TR(TA, NewFnTypeInfo(oldFunc));
+      TypeResults TR(TA, FnTypeInfo(oldFunc));
       return const_cast<GradientUtils *>(this)->isConstantValueInternal(val, AA,
                                                                         TR);
     }

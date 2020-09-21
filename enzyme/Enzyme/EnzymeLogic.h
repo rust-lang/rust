@@ -106,7 +106,7 @@ CreateAugmentedPrimal(llvm::Function *todiff, DIFFE_TYPE retType,
                       const std::vector<DIFFE_TYPE> &constant_args,
                       llvm::TargetLibraryInfo &TLI, TypeAnalysis &TA,
                       llvm::AAResults &global_AA, bool returnUsed,
-                      const NewFnTypeInfo &typeInfo,
+                      const FnTypeInfo &typeInfo,
                       const std::map<llvm::Argument *, bool> _uncacheable_args,
                       bool forceAnonymousTape);
 
@@ -115,7 +115,7 @@ llvm::Function *CreatePrimalAndGradient(
     const std::vector<DIFFE_TYPE> &constant_args, llvm::TargetLibraryInfo &TLI,
     TypeAnalysis &TA, llvm::AAResults &global_AA, bool returnValue,
     bool dretUsed, bool topLevel, llvm::Type *additionalArg,
-    const NewFnTypeInfo &typeInfo,
+    const FnTypeInfo &typeInfo,
     const std::map<llvm::Argument *, bool> _uncacheable_args,
     const AugmentedReturn *augmented);
 

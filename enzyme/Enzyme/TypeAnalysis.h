@@ -23,7 +23,7 @@
 
 #include "llvm/IR/Dominators.h"
 
-enum class IntType {
+enum class BaseType {
   // integral type
   Integer,
   // floating point
@@ -36,42 +36,42 @@ enum class IntType {
   Unknown
 };
 
-static inline std::string to_string(IntType t) {
+static inline std::string to_string(BaseType t) {
   switch (t) {
-  case IntType::Integer:
+  case BaseType::Integer:
     return "Integer";
-  case IntType::Float:
+  case BaseType::Float:
     return "Float";
-  case IntType::Pointer:
+  case BaseType::Pointer:
     return "Pointer";
-  case IntType::Anything:
+  case BaseType::Anything:
     return "Anything";
-  case IntType::Unknown:
+  case BaseType::Unknown:
     return "Unknown";
   }
   llvm_unreachable("unknown inttype");
 }
 
-static inline IntType parseIntType(std::string str) {
+static inline BaseType parseBaseType(std::string str) {
   if (str == "Integer")
-    return IntType::Integer;
+    return BaseType::Integer;
   if (str == "Float")
-    return IntType::Float;
+    return BaseType::Float;
   if (str == "Pointer")
-    return IntType::Pointer;
+    return BaseType::Pointer;
   if (str == "Anything")
-    return IntType::Anything;
+    return BaseType::Anything;
   if (str == "Unknown")
-    return IntType::Unknown;
+    return BaseType::Unknown;
   llvm_unreachable("unknown inttype str");
 }
 
-class DataType {
+class ConcreteType {
 public:
   llvm::Type *type;
-  IntType typeEnum;
+  BaseType typeEnum;
 
-  DataType(llvm::Type *type) : type(type), typeEnum(IntType::Float) {
+  ConcreteType(llvm::Type *type) : type(type), typeEnum(BaseType::Float) {
     assert(type != nullptr);
     assert(!llvm::isa<llvm::VectorType>(type));
     if (!type->isFloatingPointTy()) {
@@ -80,14 +80,14 @@ public:
     assert(type->isFloatingPointTy());
   }
 
-  DataType(IntType typeEnum) : type(nullptr), typeEnum(typeEnum) {
-    assert(typeEnum != IntType::Float);
+  ConcreteType(BaseType typeEnum) : type(nullptr), typeEnum(typeEnum) {
+    assert(typeEnum != BaseType::Float);
   }
 
-  DataType(std::string str, llvm::LLVMContext &C) {
+  ConcreteType(std::string str, llvm::LLVMContext &C) {
     auto fd = str.find('@');
     if (fd != std::string::npos) {
-      typeEnum = IntType::Float;
+      typeEnum = BaseType::Float;
       assert(str.substr(0, fd) == "Float");
       auto subt = str.substr(fd + 1);
       if (subt == "half") {
@@ -107,37 +107,37 @@ public:
       }
     } else {
       type = nullptr;
-      typeEnum = parseIntType(str);
+      typeEnum = parseBaseType(str);
     }
   }
 
   bool isIntegral() const {
-    return typeEnum == IntType::Integer || typeEnum == IntType::Anything;
+    return typeEnum == BaseType::Integer || typeEnum == BaseType::Anything;
   }
 
-  bool isKnown() const { return typeEnum != IntType::Unknown; }
+  bool isKnown() const { return typeEnum != BaseType::Unknown; }
 
   bool isPossiblePointer() const {
-    return !isKnown() || typeEnum == IntType::Pointer;
+    return !isKnown() || typeEnum == BaseType::Pointer;
   }
 
   bool isPossibleFloat() const {
-    return !isKnown() || typeEnum == IntType::Float;
+    return !isKnown() || typeEnum == BaseType::Float;
   }
 
   llvm::Type *isFloat() const { return type; }
 
-  bool operator==(const IntType dt) const { return typeEnum == dt; }
+  bool operator==(const BaseType dt) const { return typeEnum == dt; }
 
-  bool operator!=(const IntType dt) const { return typeEnum != dt; }
+  bool operator!=(const BaseType dt) const { return typeEnum != dt; }
 
-  bool operator==(const DataType dt) const {
+  bool operator==(const ConcreteType dt) const {
     return type == dt.type && typeEnum == dt.typeEnum;
   }
-  bool operator!=(const DataType dt) const { return !(*this == dt); }
+  bool operator!=(const ConcreteType dt) const { return !(*this == dt); }
 
   // returns whether changed
-  bool operator=(const DataType dt) {
+  bool operator=(const ConcreteType dt) {
     bool changed = false;
     if (typeEnum != dt.typeEnum)
       changed = true;
@@ -149,23 +149,23 @@ public:
   }
 
   // returns whether changed
-  bool legalMergeIn(const DataType dt, bool pointerIntSame, bool &legal) {
-    if (typeEnum == IntType::Anything) {
+  bool legalMergeIn(const ConcreteType dt, bool pointerIntSame, bool &legal) {
+    if (typeEnum == BaseType::Anything) {
       return false;
     }
-    if (dt.typeEnum == IntType::Anything) {
+    if (dt.typeEnum == BaseType::Anything) {
       return *this = dt;
     }
-    if (typeEnum == IntType::Unknown) {
+    if (typeEnum == BaseType::Unknown) {
       return *this = dt;
     }
-    if (dt.typeEnum == IntType::Unknown) {
+    if (dt.typeEnum == BaseType::Unknown) {
       return false;
     }
     if (dt.typeEnum != typeEnum) {
       if (pointerIntSame) {
-        if ((typeEnum == IntType::Pointer && dt.typeEnum == IntType::Integer) ||
-            (typeEnum == IntType::Integer && dt.typeEnum == IntType::Pointer)) {
+        if ((typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Integer) ||
+            (typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Pointer)) {
           return false;
         }
       }
@@ -182,7 +182,7 @@ public:
   }
 
   // returns whether changed
-  bool mergeIn(const DataType dt, bool pointerIntSame) {
+  bool mergeIn(const ConcreteType dt, bool pointerIntSame) {
     bool legal = true;
     bool res = legalMergeIn(dt, pointerIntSame, legal);
     if (!legal) {
@@ -193,51 +193,51 @@ public:
   }
 
   // returns whether changed
-  bool operator|=(const DataType dt) {
+  bool operator|=(const ConcreteType dt) {
     return mergeIn(dt, /*pointerIntSame*/ false);
   }
 
-  bool pointerIntMerge(const DataType dt, llvm::BinaryOperator::BinaryOps op) {
+  bool pointerIntMerge(const ConcreteType dt, llvm::BinaryOperator::BinaryOps op) {
     bool changed = false;
     using namespace llvm;
 
-    if (typeEnum == IntType::Anything && dt.typeEnum == IntType::Anything) {
+    if (typeEnum == BaseType::Anything && dt.typeEnum == BaseType::Anything) {
       return changed;
     }
 
     if (op == BinaryOperator::And &&
-        (((typeEnum == IntType::Anything || typeEnum == IntType::Integer) &&
+        (((typeEnum == BaseType::Anything || typeEnum == BaseType::Integer) &&
           dt.isFloat()) ||
-         (isFloat() && (dt.typeEnum == IntType::Anything ||
-                        dt.typeEnum == IntType::Integer)))) {
-      typeEnum = IntType::Unknown;
+         (isFloat() && (dt.typeEnum == BaseType::Anything ||
+                        dt.typeEnum == BaseType::Integer)))) {
+      typeEnum = BaseType::Unknown;
       type = nullptr;
       changed = true;
       return changed;
     }
 
-    if ((typeEnum == IntType::Unknown && dt.typeEnum == IntType::Anything) ||
-        (typeEnum == IntType::Anything && dt.typeEnum == IntType::Unknown)) {
-      if (typeEnum != IntType::Unknown) {
-        typeEnum = IntType::Unknown;
+    if ((typeEnum == BaseType::Unknown && dt.typeEnum == BaseType::Anything) ||
+        (typeEnum == BaseType::Anything && dt.typeEnum == BaseType::Unknown)) {
+      if (typeEnum != BaseType::Unknown) {
+        typeEnum = BaseType::Unknown;
         changed = true;
       }
       return changed;
     }
 
-    if ((typeEnum == IntType::Integer && dt.typeEnum == IntType::Integer) ||
-        (typeEnum == IntType::Unknown && dt.typeEnum == IntType::Integer) ||
-        (typeEnum == IntType::Integer && dt.typeEnum == IntType::Unknown) ||
-        (typeEnum == IntType::Anything && dt.typeEnum == IntType::Integer) ||
-        (typeEnum == IntType::Integer && dt.typeEnum == IntType::Anything)) {
+    if ((typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Integer) ||
+        (typeEnum == BaseType::Unknown && dt.typeEnum == BaseType::Integer) ||
+        (typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Unknown) ||
+        (typeEnum == BaseType::Anything && dt.typeEnum == BaseType::Integer) ||
+        (typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Anything)) {
       switch (op) {
       case BinaryOperator::Add:
       case BinaryOperator::Sub:
         // if one of these is unknown we cannot deduce the result
         // e.g. pointer + int = pointer and int + int = int
-        if (typeEnum == IntType::Unknown || dt.typeEnum == IntType::Unknown) {
-          if (typeEnum != IntType::Unknown) {
-            typeEnum = IntType::Unknown;
+        if (typeEnum == BaseType::Unknown || dt.typeEnum == BaseType::Unknown) {
+          if (typeEnum != BaseType::Unknown) {
+            typeEnum = BaseType::Unknown;
             changed = true;
           }
           return changed;
@@ -255,11 +255,11 @@ public:
       case BinaryOperator::AShr:
       case BinaryOperator::LShr:
         //! Anything << 16   ==> Anything
-        if (typeEnum == IntType::Anything) {
+        if (typeEnum == BaseType::Anything) {
           break;
         }
-        if (typeEnum != IntType::Integer) {
-          typeEnum = IntType::Integer;
+        if (typeEnum != BaseType::Integer) {
+          typeEnum = BaseType::Integer;
           changed = true;
         }
         break;
@@ -269,10 +269,10 @@ public:
       return changed;
     }
 
-    if (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Pointer) {
+    if (typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Pointer) {
       switch (op) {
       case BinaryOperator::Sub:
-        typeEnum = IntType::Integer;
+        typeEnum = BaseType::Integer;
         changed = true;
         break;
       case BinaryOperator::Add:
@@ -295,27 +295,27 @@ public:
       return changed;
     }
 
-    if ((typeEnum == IntType::Integer && dt.typeEnum == IntType::Pointer) ||
-        (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Integer) ||
-        (typeEnum == IntType::Integer && dt.typeEnum == IntType::Pointer) ||
-        (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Unknown) ||
-        (typeEnum == IntType::Unknown && dt.typeEnum == IntType::Pointer) ||
-        (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Anything) ||
-        (typeEnum == IntType::Anything && dt.typeEnum == IntType::Pointer)) {
+    if ((typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Pointer) ||
+        (typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Integer) ||
+        (typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Pointer) ||
+        (typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Unknown) ||
+        (typeEnum == BaseType::Unknown && dt.typeEnum == BaseType::Pointer) ||
+        (typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Anything) ||
+        (typeEnum == BaseType::Anything && dt.typeEnum == BaseType::Pointer)) {
 
       switch (op) {
       case BinaryOperator::Sub:
-        if (typeEnum == IntType::Anything || dt.typeEnum == IntType::Anything) {
-          if (typeEnum != IntType::Unknown) {
-            typeEnum = IntType::Unknown;
+        if (typeEnum == BaseType::Anything || dt.typeEnum == BaseType::Anything) {
+          if (typeEnum != BaseType::Unknown) {
+            typeEnum = BaseType::Unknown;
             changed = true;
           }
           break;
         }
       case BinaryOperator::Add:
       case BinaryOperator::Mul:
-        if (typeEnum != IntType::Pointer) {
-          typeEnum = IntType::Pointer;
+        if (typeEnum != BaseType::Pointer) {
+          typeEnum = BaseType::Pointer;
           changed = true;
         }
         break;
@@ -323,10 +323,10 @@ public:
       case BinaryOperator::SDiv:
       case BinaryOperator::URem:
       case BinaryOperator::SRem:
-        if (dt.typeEnum == IntType::Pointer) {
+        if (dt.typeEnum == BaseType::Pointer) {
           llvm_unreachable("cannot divide integer by pointer");
-        } else if (typeEnum != IntType::Unknown) {
-          typeEnum = IntType::Unknown;
+        } else if (typeEnum != BaseType::Unknown) {
+          typeEnum = BaseType::Unknown;
           changed = true;
         }
         break;
@@ -336,8 +336,8 @@ public:
       case BinaryOperator::Shl:
       case BinaryOperator::AShr:
       case BinaryOperator::LShr:
-        if (typeEnum != IntType::Unknown) {
-          typeEnum = IntType::Unknown;
+        if (typeEnum != BaseType::Unknown) {
+          typeEnum = BaseType::Unknown;
           changed = true;
         }
         break;
@@ -347,13 +347,13 @@ public:
       return changed;
     }
 
-    if (dt.typeEnum == IntType::Integer) {
+    if (dt.typeEnum == BaseType::Integer) {
       switch (op) {
       case BinaryOperator::Shl:
       case BinaryOperator::AShr:
       case BinaryOperator::LShr:
-        if (typeEnum != IntType::Unknown) {
-          typeEnum = IntType::Unknown;
+        if (typeEnum != BaseType::Unknown) {
+          typeEnum = BaseType::Unknown;
           changed = true;
           return changed;
         }
@@ -368,32 +368,32 @@ public:
     llvm_unreachable("unknown case");
   }
 
-  bool andIn(const DataType dt, bool assertIfIllegal = true) {
-    if (typeEnum == IntType::Anything) {
+  bool andIn(const ConcreteType dt, bool assertIfIllegal = true) {
+    if (typeEnum == BaseType::Anything) {
       return *this = dt;
     }
-    if (dt.typeEnum == IntType::Anything) {
+    if (dt.typeEnum == BaseType::Anything) {
       return false;
     }
-    if (typeEnum == IntType::Unknown) {
+    if (typeEnum == BaseType::Unknown) {
       return false;
     }
-    if (dt.typeEnum == IntType::Unknown) {
+    if (dt.typeEnum == BaseType::Unknown) {
       return *this = dt;
     }
 
     if (dt.typeEnum != typeEnum) {
       if (!assertIfIllegal) {
-        return *this = IntType::Unknown;
+        return *this = BaseType::Unknown;
       }
       llvm::errs() << "&= typeEnum: " << to_string(typeEnum)
                    << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
-      return *this = IntType::Unknown;
+      return *this = BaseType::Unknown;
     }
     assert(dt.typeEnum == typeEnum);
     if (dt.type != type) {
       if (!assertIfIllegal) {
-        return *this = IntType::Unknown;
+        return *this = BaseType::Unknown;
       }
       llvm::errs() << "type: " << *type << " dt.type: " << *dt.type << "\n";
     }
@@ -402,11 +402,11 @@ public:
   }
 
   // returns whether changed
-  bool operator&=(const DataType dt) {
+  bool operator&=(const ConcreteType dt) {
     return andIn(dt, /*assertIfIllegal*/ true);
   }
 
-  bool operator<(const DataType dt) const {
+  bool operator<(const ConcreteType dt) const {
     if (typeEnum == dt.typeEnum) {
       return type < dt.type;
     } else {
@@ -415,7 +415,7 @@ public:
   }
   std::string str() const {
     std::string res = to_string(typeEnum);
-    if (typeEnum == IntType::Float) {
+    if (typeEnum == BaseType::Float) {
       if (type->isHalfTy()) {
         res += "@half";
       } else if (type->isFloatTy()) {
@@ -436,7 +436,7 @@ public:
   }
 };
 
-static inline std::string to_string(const DataType dt) { return dt.str(); }
+static inline std::string to_string(const ConcreteType dt) { return dt.str(); }
 
 static inline std::string to_string(const std::vector<int> x) {
   std::string out = "[";
@@ -449,25 +449,25 @@ static inline std::string to_string(const std::vector<int> x) {
   return out;
 }
 
-class ValueData;
+class TypeTree;
 
-typedef std::shared_ptr<const ValueData> TypeResult;
-typedef std::map<const std::vector<int>, DataType> DataTypeMapType;
-typedef std::map<const std::vector<int>, const TypeResult> ValueDataMapType;
+typedef std::shared_ptr<const TypeTree> TypeResult;
+typedef std::map<const std::vector<int>, ConcreteType> ConcreteTypeMapType;
+typedef std::map<const std::vector<int>, const TypeResult> TypeTreeMapType;
 
-class ValueData : public std::enable_shared_from_this<ValueData> {
+class TypeTree : public std::enable_shared_from_this<TypeTree> {
 private:
   // mapping of known indices to type if one exists
-  DataTypeMapType mapping;
+  ConcreteTypeMapType mapping;
 
   // mapping of known indices to type if one exists
-  // ValueDataMapType recur_mapping;
+  // TypeTreeMapType recur_mapping;
 
-  static std::map<std::pair<DataTypeMapType, ValueDataMapType>, TypeResult>
+  static std::map<std::pair<ConcreteTypeMapType, TypeTreeMapType>, TypeResult>
       cache;
 
 public:
-  DataType operator[](const std::vector<int> v) const {
+  ConcreteType operator[](const std::vector<int> v) const {
     auto found = mapping.find(v);
     if (found != mapping.end()) {
       return found->second;
@@ -488,12 +488,12 @@ public:
         continue;
       return pair.second;
     }
-    return IntType::Unknown;
+    return BaseType::Unknown;
   }
 
   void erase(const std::vector<int> v) { mapping.erase(v); }
 
-  void insert(const std::vector<int> v, DataType d,
+  void insert(const std::vector<int> v, ConcreteType d,
               bool intsAreLegalSubPointer = false) {
     if (v.size() > 0) {
       // check pointer abilities from before
@@ -501,14 +501,14 @@ public:
         std::vector<int> tmp(v.begin(), v.end() - 1);
         auto found = mapping.find(tmp);
         if (found != mapping.end()) {
-          if (!(found->second == IntType::Pointer ||
-                found->second == IntType::Anything)) {
+          if (!(found->second == BaseType::Pointer ||
+                found->second == BaseType::Anything)) {
             llvm::errs() << "FAILED dt: " << str()
                          << " adding v: " << to_string(v) << ": " << d.str()
                          << "\n";
           }
-          assert(found->second == IntType::Pointer ||
-                 found->second == IntType::Anything);
+          assert(found->second == BaseType::Pointer ||
+                 found->second == BaseType::Anything);
         }
       }
 
@@ -520,7 +520,7 @@ public:
         if (found != mapping.end()) {
 
           if (found->second != d) {
-            if (d == IntType::Anything) {
+            if (d == BaseType::Anything) {
               found->second = d;
             } else {
               llvm::errs() << "FAILED dt: " << str()
@@ -540,7 +540,7 @@ public:
         auto found = mapping.find(tmp);
         if (found != mapping.end()) {
           if (found->second != d) {
-            if (d == IntType::Anything) {
+            if (d == BaseType::Anything) {
               found->second = d;
             } else {
               llvm::errs() << "FAILED dt: " << str()
@@ -569,8 +569,8 @@ public:
               continue;
 
             if (intsAreLegalSubPointer &&
-                pair.second.typeEnum == IntType::Integer &&
-                d.typeEnum == IntType::Pointer) {
+                pair.second.typeEnum == BaseType::Integer &&
+                d.typeEnum == BaseType::Pointer) {
 
             } else {
               if (pair.second != d) {
@@ -625,14 +625,14 @@ public:
         return;
       }
     }
-    mapping.insert(std::pair<const std::vector<int>, DataType>(v, d));
+    mapping.insert(std::pair<const std::vector<int>, ConcreteType>(v, d));
   }
 
-  bool operator<(const ValueData &vd) const { return mapping < vd.mapping; }
+  bool operator<(const TypeTree &vd) const { return mapping < vd.mapping; }
 
-  ValueData() {}
-  ValueData(DataType dat) {
-    if (dat != DataType(IntType::Unknown)) {
+  TypeTree() {}
+  TypeTree(ConcreteType dat) {
+    if (dat != ConcreteType(BaseType::Unknown)) {
       insert({}, dat);
     }
   }
@@ -652,7 +652,7 @@ public:
       // efficiency
       assert(pair.second.isKnown());
       if (pair.first.size() == 0) {
-        assert(pair.second == IntType::Pointer);
+        assert(pair.second == BaseType::Pointer);
         continue;
       }
       return true;
@@ -660,12 +660,12 @@ public:
     return false;
   }
 
-  static ValueData Unknown() { return ValueData(); }
+  static TypeTree Unknown() { return TypeTree(); }
 
-  ValueData JustInt() const {
-    ValueData vd;
+  TypeTree JustInt() const {
+    TypeTree vd;
     for (auto &pair : mapping) {
-      if (pair.second.typeEnum == IntType::Integer) {
+      if (pair.second.typeEnum == BaseType::Integer) {
         vd.insert(pair.first, pair.second);
       }
     }
@@ -677,7 +677,7 @@ public:
   // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
   // After a depth len into the index tree, prune any lookups that are not {0}
   // or {-1}
-  ValueData KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
+  TypeTree KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
                         llvm::Type *to) const;
 
   static std::vector<int> appendIndex(int off, const std::vector<int> &first) {
@@ -688,13 +688,13 @@ public:
     return out;
   }
 
-  ValueData Only(int off) const {
-    ValueData dat;
+  TypeTree Only(int off) const {
+    TypeTree dat;
 
     for (const auto &pair : mapping) {
       dat.insert(appendIndex(off, pair.first), pair.second);
       // if (pair.first.size() > 0) {
-      //    dat.insert(indices, DataType(IntType::Pointer));
+      //    dat.insert(indices, ConcreteType(BaseType::Pointer));
       //}
     }
 
@@ -720,8 +720,8 @@ public:
     return true;
   }
 
-  ValueData Data0() const {
-    ValueData dat;
+  TypeTree Data0() const {
+    TypeTree dat;
 
     for (const auto &pair : mapping) {
       assert(pair.first.size() != 0);
@@ -730,7 +730,7 @@ public:
         std::vector<int> next;
         for (size_t i = 1; i < pair.first.size(); i++)
           next.push_back(pair.first[i]);
-        ValueData dat2;
+        TypeTree dat2;
         dat2.insert(next, pair.second);
         dat |= dat2;
       }
@@ -739,14 +739,14 @@ public:
     return dat;
   }
 
-  ValueData Clear(size_t start, size_t end, size_t len) const {
-    ValueData dat;
+  TypeTree Clear(size_t start, size_t end, size_t len) const {
+    TypeTree dat;
 
     for (const auto &pair : mapping) {
       assert(pair.first.size() != 0);
 
       if (pair.first[0] == -1) {
-        ValueData dat2;
+        TypeTree dat2;
         auto next = pair.first;
         for (size_t i = 0; i < start; i++) {
           next[0] = i;
@@ -759,7 +759,7 @@ public:
         dat |= dat2;
       } else if ((size_t)pair.first[0] > start &&
                  (size_t)pair.first[0] >= end && (size_t)pair.first[0] < len) {
-        ValueData dat2;
+        TypeTree dat2;
         dat2.insert(pair.first, pair.second);
         dat |= dat2;
       }
@@ -769,10 +769,10 @@ public:
     return dat;
   }
 
-  ValueData Lookup(size_t len, const llvm::DataLayout &dl) const {
+  TypeTree Lookup(size_t len, const llvm::DataLayout &dl) const {
 
     // Map of indices[1:] => ( End => possible Index[0] )
-    std::map<std::vector<int>, std::map<DataType, std::set<int>>> staging;
+    std::map<std::vector<int>, std::map<ConcreteType, std::set<int>>> staging;
 
     for (const auto &pair : mapping) {
       assert(pair.first.size() != 0);
@@ -782,8 +782,8 @@ public:
         continue;
 
       if (pair.first.size() == 1) {
-        assert(pair.second == DataType(IntType::Pointer) ||
-               pair.second == DataType(IntType::Anything));
+        assert(pair.second == ConcreteType(BaseType::Pointer) ||
+               pair.second == ConcreteType(BaseType::Anything));
         continue;
       }
 
@@ -801,7 +801,7 @@ public:
       staging[next][pair.second].insert(pair.first[1]);
     }
 
-    ValueData dat;
+    TypeTree dat;
     for (auto &pair : staging) {
       auto &pnext = pair.first;
       for (auto &pair2 : pair.second) {
@@ -824,7 +824,7 @@ public:
               llvm::errs() << *flt << "\n";
               assert(0 && "unhandled float type");
             }
-          } else if (dt.typeEnum == IntType::Pointer) {
+          } else if (dt.typeEnum == BaseType::Pointer) {
             chunk = dl.getPointerSizeInBits() / 8;
           }
 
@@ -856,10 +856,10 @@ public:
     return dat;
   }
 
-  ValueData CanonicalizeValue(size_t len, const llvm::DataLayout &dl) const {
+  TypeTree CanonicalizeValue(size_t len, const llvm::DataLayout &dl) const {
 
     // Map of indices[1:] => ( End => possible Index[0] )
-    std::map<std::vector<int>, std::map<DataType, std::set<int>>> staging;
+    std::map<std::vector<int>, std::map<ConcreteType, std::set<int>>> staging;
 
     for (const auto &pair : mapping) {
       assert(pair.first.size() != 0);
@@ -872,7 +872,7 @@ public:
       staging[next][pair.second].insert(pair.first[0]);
     }
 
-    ValueData dat;
+    TypeTree dat;
     for (auto &pair : staging) {
       auto &pnext = pair.first;
       for (auto &pair2 : pair.second) {
@@ -895,7 +895,7 @@ public:
               llvm::errs() << *flt << "\n";
               assert(0 && "unhandled float type");
             }
-          } else if (dt.typeEnum == IntType::Pointer) {
+          } else if (dt.typeEnum == BaseType::Pointer) {
             chunk = dl.getPointerSizeInBits() / 8;
           }
 
@@ -927,8 +927,8 @@ public:
     return dat;
   }
 
-  ValueData KeepMinusOne() const {
-    ValueData dat;
+  TypeTree KeepMinusOne() const {
+    TypeTree dat;
 
     for (const auto &pair : mapping) {
 
@@ -939,8 +939,8 @@ public:
         continue;
 
       if (pair.first.size() == 1) {
-        if (pair.second == IntType::Pointer ||
-            pair.second == IntType::Anything) {
+        if (pair.second == BaseType::Pointer ||
+            pair.second == BaseType::Anything) {
           dat.insert(pair.first, pair.second);
           continue;
         }
@@ -957,14 +957,14 @@ public:
 
   //! Replace offsets in [offset, offset+maxSize] with [addOffset, addOffset +
   //! maxSize]
-  ValueData ShiftIndices(const llvm::DataLayout &dl, int offset, int maxSize,
+  TypeTree ShiftIndices(const llvm::DataLayout &dl, int offset, int maxSize,
                          size_t addOffset = 0) const {
-    ValueData dat;
+    TypeTree dat;
 
     for (const auto &pair : mapping) {
       if (pair.first.size() == 0) {
-        if (pair.second == IntType::Pointer ||
-            pair.second == IntType::Anything) {
+        if (pair.second == BaseType::Pointer ||
+            pair.second == BaseType::Anything) {
           dat.insert(pair.first, pair.second);
           continue;
         }
@@ -1003,7 +1003,7 @@ public:
         next[0] += addOffset;
       }
 
-      ValueData dat2;
+      TypeTree dat2;
       // llvm::errs() << "next: " << to_string(next) << " indices: " <<
       // to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
       if (next[0] == -1 && maxSize != -1) {
@@ -1020,7 +1020,7 @@ public:
             llvm::errs() << *flt << "\n";
             assert(0 && "unhandled float type");
           }
-        } else if (op.typeEnum == IntType::Pointer) {
+        } else if (op.typeEnum == BaseType::Pointer) {
           chunk = dl.getPointerSizeInBits() / 8;
         }
 
@@ -1038,10 +1038,10 @@ public:
   }
 
   // Removes any anything types
-  ValueData PurgeAnything() const {
-    ValueData dat;
+  TypeTree PurgeAnything() const {
+    TypeTree dat;
     for (const auto &pair : mapping) {
-      if (pair.second == DataType(IntType::Anything))
+      if (pair.second == ConcreteType(BaseType::Anything))
         continue;
       dat.insert(pair.first, pair.second);
     }
@@ -1049,9 +1049,9 @@ public:
   }
 
   // TODO note that this keeps -1's
-  ValueData AtMost(size_t max) const {
+  TypeTree AtMost(size_t max) const {
     assert(max > 0);
-    ValueData dat;
+    TypeTree dat;
     for (const auto &pair : mapping) {
       if (pair.first.size() == 0 || pair.first[0] == -1 ||
           (size_t)pair.first[0] < max) {
@@ -1061,28 +1061,28 @@ public:
     return dat;
   }
 
-  static ValueData Argument(DataType type, llvm::Value *v) {
+  static TypeTree Argument(ConcreteType type, llvm::Value *v) {
     if (v->getType()->isIntOrIntVectorTy())
-      return ValueData(type);
-    return ValueData(type).Only(0);
+      return TypeTree(type);
+    return TypeTree(type).Only(0);
   }
 
-  bool operator==(const ValueData &v) const { return mapping == v.mapping; }
+  bool operator==(const TypeTree &v) const { return mapping == v.mapping; }
 
   // Return if changed
-  bool operator=(const ValueData &v) {
+  bool operator=(const TypeTree &v) {
     if (*this == v)
       return false;
     mapping = v.mapping;
     return true;
   }
 
-  bool mergeIn(const ValueData &v, bool pointerIntSame) {
+  bool mergeIn(const TypeTree &v, bool pointerIntSame) {
     //! Todo detect recursive merge
 
     bool changed = false;
 
-    if (v[{-1}] != IntType::Unknown) {
+    if (v[{-1}] != BaseType::Unknown) {
       for (auto &pair : mapping) {
         if (pair.first.size() == 1 && pair.first[0] != -1) {
           pair.second.mergeIn(v[{-1}], pointerIntSame);
@@ -1092,27 +1092,27 @@ public:
     }
 
     for (auto &pair : v.mapping) {
-      assert(pair.second != IntType::Unknown);
-      DataType dt = operator[](pair.first);
+      assert(pair.second != BaseType::Unknown);
+      ConcreteType dt = operator[](pair.first);
       // llvm::errs() << "merging @ " << to_string(pair.first) << " old:" <<
       // dt.str() << " new:" << pair.second.str() << "\n";
       changed |= (dt.mergeIn(pair.second, pointerIntSame));
 
       /*
-      if (dt == IntType::Integer && pair.first.size() > 0 && pair.first.back()
+      if (dt == BaseType::Integer && pair.first.size() > 0 && pair.first.back()
       != -1) { auto p2(pair.first); for(unsigned i=max((int)pair.first.back()-4,
       0); i<(unsigned)pair.first.back(); i++) { p2[p2.size()-1] == i; if
-      (operator[](p2).typeEnum == IntType::Float) { llvm::errs() << " illegal
+      (operator[](p2).typeEnum == BaseType::Float) { llvm::errs() << " illegal
       merge of " << v.str() << " into " << str() << "\n"; assert(0 &&
       "badmerge"); exit(1);
               }
           }
       }
 
-      if (dt == IntType::Float && pair.first.size() > 0 && pair.first.back() !=
+      if (dt == BaseType::Float && pair.first.size() > 0 && pair.first.back() !=
       -1) { auto p2(pair.first); for(unsigned i=pair.first.back();
       i<(unsigned)pair.first.back()+4; i++) { p2[p2.size()-1] == i; if
-      (operator[](p2).typeEnum == IntType::Integer) { llvm::errs() << " illegal
+      (operator[](p2).typeEnum == BaseType::Integer) { llvm::errs() << " illegal
       merge of " << v.str() << " into " << str() << "\n"; assert(0 &&
       "badmerg2"); exit(1);
               }
@@ -1125,26 +1125,26 @@ public:
     return changed;
   }
 
-  bool operator|=(const ValueData &v) {
+  bool operator|=(const TypeTree &v) {
     return mergeIn(v, /*pointerIntSame*/ false);
   }
 
-  bool operator&=(const ValueData &v) {
+  bool operator&=(const TypeTree &v) {
     return andIn(v, /*assertIfIllegal*/ true);
   }
 
-  bool andIn(const ValueData &v, bool assertIfIllegal = true) {
+  bool andIn(const TypeTree &v, bool assertIfIllegal = true) {
     bool changed = false;
 
     std::vector<std::vector<int>> keystodelete;
     for (auto &pair : mapping) {
-      DataType other = IntType::Unknown;
+      ConcreteType other = BaseType::Unknown;
       auto fd = v.mapping.find(pair.first);
       if (fd != v.mapping.end()) {
         other = fd->second;
       }
       changed = (pair.second.andIn(other, assertIfIllegal));
-      if (pair.second == IntType::Unknown) {
+      if (pair.second == BaseType::Unknown) {
         keystodelete.push_back(pair.first);
       }
     }
@@ -1156,19 +1156,19 @@ public:
     return changed;
   }
 
-  bool pointerIntMerge(const ValueData &v, llvm::BinaryOperator::BinaryOps op) {
+  bool pointerIntMerge(const TypeTree &v, llvm::BinaryOperator::BinaryOps op) {
     bool changed = false;
 
     auto found = mapping.find({});
     if (found != mapping.end()) {
       changed |= (found->second.pointerIntMerge(v[{}], op));
-      if (found->second == IntType::Unknown) {
+      if (found->second == BaseType::Unknown) {
         mapping.erase(std::vector<int>({}));
       }
     } else if (v.mapping.find({}) != v.mapping.end()) {
-      DataType dt(IntType::Unknown);
+      ConcreteType dt(BaseType::Unknown);
       dt.pointerIntMerge(v[{}], op);
-      if (dt != IntType::Unknown) {
+      if (dt != BaseType::Unknown) {
         changed = true;
         mapping.emplace(std::vector<int>({}), dt);
       }
@@ -1210,31 +1210,28 @@ public:
   }
 };
 
-typedef std::map<llvm::Argument *, DataType> FnTypeInfo;
-
-// First is ; then ; then
-class NewFnTypeInfo {
+class FnTypeInfo {
 public:
   llvm::Function *function;
-  NewFnTypeInfo(llvm::Function *fn) : function(fn) {}
-  NewFnTypeInfo(const NewFnTypeInfo &) = default;
-  NewFnTypeInfo &operator=(NewFnTypeInfo &) = default;
-  NewFnTypeInfo &operator=(NewFnTypeInfo &&) = default;
+  FnTypeInfo(llvm::Function *fn) : function(fn) {}
+  FnTypeInfo(const FnTypeInfo &) = default;
+  FnTypeInfo &operator=(FnTypeInfo &) = default;
+  FnTypeInfo &operator=(FnTypeInfo &&) = default;
 
   // arguments:type
-  std::map<llvm::Argument *, ValueData> first;
+  std::map<llvm::Argument *, TypeTree> first;
   // return type
-  ValueData second;
+  TypeTree second;
   // the specific constant of an argument, if it is constant
   std::map<llvm::Argument *, std::set<int64_t>> knownValues;
 
   std::set<int64_t>
-  isConstantInt(llvm::Value *val, const llvm::DominatorTree &DT,
+  knownIntegralValues(llvm::Value *val, const llvm::DominatorTree &DT,
                 std::map<llvm::Value *, std::set<int64_t>> &intseen) const;
 };
 
-static inline bool operator<(const NewFnTypeInfo &lhs,
-                             const NewFnTypeInfo &rhs) {
+static inline bool operator<(const FnTypeInfo &lhs,
+                             const FnTypeInfo &rhs) {
 
   if (lhs.function < rhs.function)
     return true;
@@ -1258,23 +1255,23 @@ class TypeAnalysis;
 class TypeResults {
 public:
   TypeAnalysis &analysis;
-  const NewFnTypeInfo info;
+  const FnTypeInfo info;
 
 public:
-  TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo &fn);
-  DataType intType(llvm::Value *val, bool errIfNotFound = true);
+  TypeResults(TypeAnalysis &analysis, const FnTypeInfo &fn);
+  ConcreteType intType(llvm::Value *val, bool errIfNotFound = true);
 
   //! Returns whether in the first num bytes there is pointer, int, float, or
   //! none If pointerIntSame is set to true, then consider either as the same
   //! (and thus mergable)
-  DataType firstPointer(size_t num, llvm::Value *val, bool errIfNotFound = true,
+  ConcreteType firstPointer(size_t num, llvm::Value *val, bool errIfNotFound = true,
                         bool pointerIntSame = false);
 
-  ValueData query(llvm::Value *val);
-  NewFnTypeInfo getAnalyzedTypeInfo();
-  ValueData getReturnAnalysis();
+  TypeTree query(llvm::Value *val);
+  FnTypeInfo getAnalyzedTypeInfo();
+  TypeTree getReturnAnalysis();
   void dump();
-  std::set<int64_t> isConstantInt(llvm::Value *val) const;
+  std::set<int64_t> knownIntegralValues(llvm::Value *val) const;
 };
 
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
@@ -1288,21 +1285,21 @@ private:
 
 public:
   // Calling context
-  const NewFnTypeInfo fntypeinfo;
+  const FnTypeInfo fntypeinfo;
 
   TypeAnalysis &interprocedural;
 
-  std::map<llvm::Value *, ValueData> analysis;
+  std::map<llvm::Value *, TypeTree> analysis;
 
   llvm::DominatorTree DT;
 
-  TypeAnalyzer(const NewFnTypeInfo &fn, TypeAnalysis &TA);
+  TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA);
 
-  ValueData getAnalysis(llvm::Value *val);
+  TypeTree getAnalysis(llvm::Value *val);
 
-  void updateAnalysis(llvm::Value *val, IntType data, llvm::Value *origin);
-  void updateAnalysis(llvm::Value *val, DataType data, llvm::Value *origin);
-  void updateAnalysis(llvm::Value *val, ValueData data, llvm::Value *origin);
+  void updateAnalysis(llvm::Value *val, BaseType data, llvm::Value *origin);
+  void updateAnalysis(llvm::Value *val, ConcreteType data, llvm::Value *origin);
+  void updateAnalysis(llvm::Value *val, TypeTree data, llvm::Value *origin);
 
   void prepareArgs();
 
@@ -1372,27 +1369,27 @@ public:
 
   void visitIntrinsicInst(llvm::IntrinsicInst &II);
 
-  ValueData getReturnAnalysis();
+  TypeTree getReturnAnalysis();
 
   void dump();
 
-  std::set<int64_t> isConstantInt(llvm::Value *val);
+  std::set<int64_t> knownIntegralValues(llvm::Value *val);
 };
 
 class TypeAnalysis {
 public:
-  std::map<NewFnTypeInfo, TypeAnalyzer> analyzedFunctions;
+  std::map<FnTypeInfo, TypeAnalyzer> analyzedFunctions;
 
-  TypeResults analyzeFunction(const NewFnTypeInfo &fn);
+  TypeResults analyzeFunction(const FnTypeInfo &fn);
 
-  ValueData query(llvm::Value *val, const NewFnTypeInfo &fn);
+  TypeTree query(llvm::Value *val, const FnTypeInfo &fn);
 
-  DataType intType(llvm::Value *val, const NewFnTypeInfo &fn,
+  ConcreteType intType(llvm::Value *val, const FnTypeInfo &fn,
                    bool errIfNotFound = true);
-  DataType firstPointer(size_t num, llvm::Value *val, const NewFnTypeInfo &fn,
+  ConcreteType firstPointer(size_t num, llvm::Value *val, const FnTypeInfo &fn,
                         bool errIfNotFound = true, bool pointerIntSame = false);
 
-  inline ValueData getReturnAnalysis(const NewFnTypeInfo &fn) {
+  inline TypeTree getReturnAnalysis(const FnTypeInfo &fn) {
     analyzeFunction(fn);
     return analyzedFunctions.find(fn)->second.getReturnAnalysis();
   }

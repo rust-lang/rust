@@ -1195,7 +1195,7 @@ public:
 
           if (mode == DerivativeMode::Forward &&
               gutils->can_modref_map->find(&LI)->second) {
-            gutils->addMalloc(BuilderZ, newip,
+            gutils->cacheForReverse(BuilderZ, newip,
                               getIndex(&LI, CacheType::Shadow));
           }
           placeholder->replaceAllUsesWith(newip);
@@ -1207,7 +1207,7 @@ public:
         case DerivativeMode::Reverse: {
           // only make shadow where caching needed
           if (gutils->can_modref_map->find(&LI)->second) {
-            newip = gutils->addMalloc(BuilderZ, placeholder,
+            newip = gutils->cacheForReverse(BuilderZ, placeholder,
                                       getIndex(&LI, CacheType::Shadow));
             assert(newip->getType() == type);
             gutils->invertedPointers[&LI] = newip;
@@ -1244,7 +1244,7 @@ public:
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&LI)->getNextNode());
       // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
 
-      inst = gutils->addMalloc(BuilderZ, newi, getIndex(&LI, CacheType::Self));
+      inst = gutils->cacheForReverse(BuilderZ, newi, getIndex(&LI, CacheType::Self));
       assert(inst->getType() == type);
 
       if (mode == DerivativeMode::Reverse) {
@@ -1283,8 +1283,7 @@ public:
     if (!isfloat && type->isIntOrIntVectorTy()) {
       auto storeSize =
           gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-              type) /
-          8;
+              type) / 8;
       auto vd =
           TR.firstPointer(storeSize, LI.getPointerOperand(),
                           /*errifnotfound*/ false, /*pointerIntSame*/ true);
@@ -1736,7 +1735,7 @@ public:
     bool constantval1 = gutils->isConstantValue(orig_op1);
 
     if (BO.getType()->isIntOrIntVectorTy() &&
-        TR.intType(&BO, /*errifnotfound*/ false) == IntType::Pointer) {
+        TR.intType(&BO, /*errifnotfound*/ false) == BaseType::Pointer) {
       return;
     }
 
@@ -2050,7 +2049,7 @@ public:
     // copying into nullptr is invalid (not sure why it exists here), but we
     // shouldn't do it in reverse pass or shadow
     if (isa<ConstantPointerNull>(orig_op0) ||
-        TR.query(orig_op0).Data0()[{}] == IntType::Anything) {
+        TR.query(orig_op0).Data0()[{}] == BaseType::Anything) {
       eraseIfUnused(MTI);
       return;
     }
@@ -2079,7 +2078,7 @@ public:
             cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())
                 ->getElementType()
                 ->isFPOrFPVectorTy()) {
-          vd = ValueData(DataType(cast<PointerType>(
+          vd = TypeTree(ConcreteType(cast<PointerType>(
                                       cast<CastInst>(orig_op0)->getSrcTy())
                                       ->getElementType()
                                       ->getScalarType()))
@@ -2658,7 +2657,7 @@ public:
         if (is_value_needed_in_reverse(
                 TR, gutils, orig, /*topLevel*/ mode == DerivativeMode::Both)) {
 
-          gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self));
+          gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));
         } else if (mode != DerivativeMode::Forward) {
           // Note that here we cannot simply replace with null as users who try
           // to find the shadow pointer will use the shadow of null rather than
@@ -2721,7 +2720,7 @@ public:
       if (mode != DerivativeMode::Both && subretused &&
           !orig->doesNotAccessMemory()) {
         CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
-        gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self));
+        gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));
         return;
       }
 
@@ -2830,18 +2829,18 @@ public:
     CallInst *augmentcall = nullptr;
     Value *cachereplace = nullptr;
 
-    NewFnTypeInfo nextTypeInfo(called);
+    FnTypeInfo nextTypeInfo(called);
     int argnum = 0;
 
     if (called) {
       std::map<Value *, std::set<int64_t>> intseen;
 
       for (auto &arg : called->args()) {
-        nextTypeInfo.first.insert(std::pair<Argument *, ValueData>(
+        nextTypeInfo.first.insert(std::pair<Argument *, TypeTree>(
             &arg, TR.query(orig->getArgOperand(argnum))));
         nextTypeInfo.knownValues.insert(
             std::pair<Argument *, std::set<int64_t>>(
-                &arg, TR.isConstantInt(orig->getArgOperand(argnum))));
+                &arg, TR.knownIntegralValues(orig->getArgOperand(argnum))));
 
         argnum++;
       }
@@ -2995,7 +2994,7 @@ public:
             gutils->erase(cast<Instruction>(tape));
             tape = UndefValue::get(tt);
           }
-          tape = gutils->addMalloc(BuilderZ, tape,
+          tape = gutils->cacheForReverse(BuilderZ, tape,
                                    getIndex(orig, CacheType::Tape));
         }
 
@@ -3034,7 +3033,7 @@ public:
               is_value_needed_in_reverse(TR, gutils, orig,
                                          /*topLevel*/ mode ==
                                              DerivativeMode::Both)) {
-            gutils->addMalloc(BuilderZ, dcall, getIndex(orig, CacheType::Self));
+            gutils->cacheForReverse(BuilderZ, dcall, getIndex(orig, CacheType::Self));
           }
 
           BuilderZ.SetInsertPoint(op->getNextNode());
@@ -3059,7 +3058,7 @@ public:
                                       ->getElementType(tapeIdx.getValue()),
                 1, "tapeArg");
           }
-          tape = gutils->addMalloc(BuilderZ, tape,
+          tape = gutils->cacheForReverse(BuilderZ, tape,
                                    getIndex(orig, CacheType::Tape));
         }
 
@@ -3068,7 +3067,7 @@ public:
                                          mode == DerivativeMode::Both)) {
             cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                               orig->getName() + "_tmpcacheB");
-            cachereplace = gutils->addMalloc(BuilderZ, cachereplace,
+            cachereplace = gutils->cacheForReverse(BuilderZ, cachereplace,
                                              getIndex(orig, CacheType::Self));
           } else {
             auto pn = BuilderZ.CreatePHI(
@@ -3119,7 +3118,7 @@ public:
             newip = placeholder;
           }
 
-          newip = gutils->addMalloc(BuilderZ, newip,
+          newip = gutils->cacheForReverse(BuilderZ, newip,
                                     getIndex(orig, CacheType::Shadow));
 
           gutils->invertedPointers[orig] = newip;
@@ -3155,7 +3154,7 @@ public:
           assert(!replaceFunction);
           cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                             orig->getName() + "_cachereplace2");
-          cachereplace = gutils->addMalloc(BuilderZ, cachereplace,
+          cachereplace = gutils->cacheForReverse(BuilderZ, cachereplace,
                                            getIndex(orig, CacheType::Self));
         } else {
           auto pn = BuilderZ.CreatePHI(
@@ -3424,7 +3423,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
                       const std::vector<DIFFE_TYPE> &constant_args,
                       TargetLibraryInfo &TLI, TypeAnalysis &TA,
                       AAResults &global_AA, bool returnUsed,
-                      const NewFnTypeInfo &oldTypeInfo_,
+                      const FnTypeInfo &oldTypeInfo_,
                       const std::map<Argument *, bool> _uncacheable_args,
                       bool forceAnonymousTape) {
   if (returnUsed)
@@ -3434,7 +3433,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     assert(!todiff->getReturnType()->isEmptyTy() &&
            !todiff->getReturnType()->isVoidTy());
 
-  NewFnTypeInfo oldTypeInfo = oldTypeInfo_;
+  FnTypeInfo oldTypeInfo = oldTypeInfo_;
   for (auto &pair : oldTypeInfo.knownValues) {
     if (pair.second.size() != 0) {
       bool recursiveUse = false;
@@ -3461,19 +3460,19 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   static std::map<std::tuple<Function *, DIFFE_TYPE /*retType*/,
                              std::vector<DIFFE_TYPE> /*constant_args*/,
                              std::map<Argument *, bool> /*uncacheable_args*/,
-                             bool /*returnUsed*/, const NewFnTypeInfo>,
+                             bool /*returnUsed*/, const FnTypeInfo>,
                   AugmentedReturn>
       cachedfunctions;
   static std::map<std::tuple<Function *, DIFFE_TYPE /*retType*/,
                              std::vector<DIFFE_TYPE> /*constant_args*/,
                              std::map<Argument *, bool> /*uncacheable_args*/,
-                             bool /*returnUsed*/, const NewFnTypeInfo>,
+                             bool /*returnUsed*/, const FnTypeInfo>,
                   bool>
       cachedfinished;
   std::tuple<Function *, DIFFE_TYPE /*retType*/,
              std::vector<DIFFE_TYPE> /*constant_args*/,
              std::map<Argument *, bool> /*uncacheable_args*/,
-             bool /*returnUsed*/, const NewFnTypeInfo>
+             bool /*returnUsed*/, const FnTypeInfo>
       tup =
           std::make_tuple(todiff, retType, constant_args,
                           std::map<Argument *, bool>(_uncacheable_args.begin(),
@@ -3579,7 +3578,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
 
   gutils->forceContexts();
 
-  NewFnTypeInfo typeInfo(gutils->oldFunc);
+  FnTypeInfo typeInfo(gutils->oldFunc);
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
@@ -3589,7 +3588,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
         auto fd = oldTypeInfo.first.find(toarg);
         assert(fd != oldTypeInfo.first.end());
         typeInfo.first.insert(
-            std::pair<Argument *, ValueData>(olarg, fd->second));
+            std::pair<Argument *, TypeTree>(olarg, fd->second));
       }
 
       {
@@ -4317,7 +4316,7 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       auto PNtype = TR.intType(orig, /*necessary*/ false);
 
       // TODO remove explicit type check and only use PNtype
-      if (PNtype == IntType::Pointer || orig->getType()->isPointerTy())
+      if (PNtype == BaseType::Pointer || orig->getType()->isPointerTy())
         continue;
 
       auto prediff = gutils->diffe(orig, Builder);
@@ -4473,11 +4472,11 @@ Function *CreatePrimalAndGradient(
     Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, TargetLibraryInfo &TLI,
     TypeAnalysis &TA, AAResults &global_AA, bool returnUsed, bool dretPtr,
-    bool topLevel, llvm::Type *additionalArg, const NewFnTypeInfo &oldTypeInfo_,
+    bool topLevel, llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args,
     const AugmentedReturn *augmenteddata) {
 
-  NewFnTypeInfo oldTypeInfo = oldTypeInfo_;
+  FnTypeInfo oldTypeInfo = oldTypeInfo_;
   for (auto &pair : oldTypeInfo.knownValues) {
     if (pair.second.size() != 0) {
       bool recursiveUse = false;
@@ -4511,7 +4510,7 @@ Function *CreatePrimalAndGradient(
                  std::vector<DIFFE_TYPE> /*constant_args*/,
                  std::map<Argument *, bool> /*uncacheable_args*/,
                  bool /*retval*/, bool /*dretPtr*/, bool /*topLevel*/,
-                 llvm::Type *, const NewFnTypeInfo>,
+                 llvm::Type *, const FnTypeInfo>,
       Function *>
       cachedfunctions;
   auto tup = std::make_tuple(
@@ -4699,7 +4698,7 @@ Function *CreatePrimalAndGradient(
 
   gutils->forceContexts();
 
-  NewFnTypeInfo typeInfo(gutils->oldFunc);
+  FnTypeInfo typeInfo(gutils->oldFunc);
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
@@ -4709,7 +4708,7 @@ Function *CreatePrimalAndGradient(
         auto fd = oldTypeInfo.first.find(toarg);
         assert(fd != oldTypeInfo.first.end());
         typeInfo.first.insert(
-            std::pair<Argument *, ValueData>(olarg, fd->second));
+            std::pair<Argument *, TypeTree>(olarg, fd->second));
       }
 
       {
