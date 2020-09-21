@@ -6,7 +6,7 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{
-    self, BufReader, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, LineWriter, Result,
+    self, BufReader, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, LineWriter, Result, Write,
 };
 use crate::sync::{Arc, Mutex, MutexGuard, Once};
 use crate::sys::stdio;
