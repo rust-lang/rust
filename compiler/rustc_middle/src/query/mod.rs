@@ -716,6 +716,10 @@ rustc_queries! {
                 "const-evaluating + checking `{}`",
                 key.value.display(tcx)
             }
+            cache_on_disk_if(_, opt_result) {
+                // Only store results without errors
+                opt_result.map_or(true, |r| r.is_ok())
+            }
         }
 
         /// Evaluates const items or anonymous constants
