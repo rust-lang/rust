@@ -6,7 +6,9 @@ file(GLOB ENZYME_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     "*.cpp"
 )
 
-list(APPEND ENZYME_SRC SCEV/ScalarEvolutionExpander.cpp) # Attributor/Attributor.cpp)
+list(APPEND ENZYME_SRC SCEV/ScalarEvolutionExpander.cpp)
+
+list(APPEND ENZYME_SRC  TypeAnalysis/TypeTree.cpp TypeAnalysis/TypeAnalysis.cpp TypeAnalysis/TypeAnalysisPrinter.cpp)
 
 message("found enzyme sources " ${ENZYME_SRC})
 

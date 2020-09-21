@@ -24,7 +24,7 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
 #include "ActiveVariable.h"
-#include "TypeAnalysis.h"
+#include "TypeAnalysis/TypeAnalysis.h"
 #include "Utils.h"
 
 extern llvm::cl::opt<bool> enzyme_print;
@@ -119,4 +119,31 @@ llvm::Function *CreatePrimalAndGradient(
     const std::map<llvm::Argument *, bool> _uncacheable_args,
     const AugmentedReturn *augmented);
 
+extern llvm::cl::opt<bool> looseTypeAnalysis;
+
+extern llvm::cl::opt<bool> cache_reads_always;
+
+extern llvm::cl::opt<bool> cache_reads_never;
+
+extern llvm::cl::opt<bool> nonmarkedglobals_inactiveloads;
+
+class GradientUtils;
+bool shouldAugmentCall(llvm::CallInst *op, const GradientUtils *gutils,
+                                     TypeResults &TR);
+
+bool legalCombinedForwardReverse(
+    llvm::CallInst *origop,
+    const std::map<llvm::ReturnInst *, llvm::StoreInst *> &replacedReturns,
+    std::vector<llvm::Instruction *> &postCreate,
+    std::vector<llvm::Instruction *> &userReplace, GradientUtils *gutils,
+    TypeResults &TR,
+    const llvm::SmallPtrSetImpl<const llvm::Instruction *> &unnecessaryInstructions,
+    const bool subretused);
+
+std::pair<llvm::SmallVector<llvm::Type *, 4>, llvm::SmallVector<llvm::Type *, 4>>
+getDefaultFunctionTypeForAugmentation(llvm::FunctionType *called, bool returnUsed,
+                                      DIFFE_TYPE retType);
+
+std::pair<llvm::SmallVector<llvm::Type *, 4>, llvm::SmallVector<llvm::Type *, 4>>
+getDefaultFunctionTypeForGradient(llvm::FunctionType *called, DIFFE_TYPE retType);
 #endif

@@ -1,4 +1,20 @@
-//! Taken from TypeBasedAliasAnalysis.cpp
+/*
+ * TBAA.h
+ *
+ * Copyright (C) 2020 William S. Moses (enzyme@wsmoses.com) - All Rights
+ * Reserved
+ *
+ * For commercial use of this code please contact the author(s) above.
+ */
+#ifndef ENZYME_TYPE_ANALYSIS_TBAA_H
+#define ENZYME_TYPE_ANALYSIS_TBAA_H 1
+
+#include "BaseType.h"
+#include "ConcreteType.h"
+#include "TypeTree.h"
+
+//! First section taken from TypeBasedAliasAnalysis.cpp
+
 
 using namespace llvm;
 
@@ -323,3 +339,133 @@ getAccessNameTBAA(Instruction *Inst, const std::set<std::string> &legalnames) {
   }
   return "";
 }
+
+
+//! The following is new
+extern llvm::cl::opt<bool> printtype;
+
+static inline ConcreteType getTypeFromTBAAString(std::string typeNameStringRef,
+                               Instruction *inst) {
+  if (typeNameStringRef == "long long" || typeNameStringRef == "long" ||
+      typeNameStringRef == "int" || typeNameStringRef == "bool" ||
+      typeNameStringRef == "jtbaa_arraysize" ||
+      typeNameStringRef == "jtbaa_arraylen") {
+    if (printtype) {
+      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
+                   << "\n";
+    }
+    return ConcreteType(BaseType::Integer);
+  } else if (typeNameStringRef == "any pointer" ||
+             typeNameStringRef == "vtable pointer" ||
+             typeNameStringRef == "jtbaa_arrayptr" ||
+             typeNameStringRef == "jtbaa_tag") {
+    if (printtype) {
+      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
+                   << "\n";
+    }
+    return ConcreteType(BaseType::Pointer);
+  } else if (typeNameStringRef == "float") {
+    if (printtype)
+      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
+                   << "\n";
+    return Type::getFloatTy(inst->getContext());
+  } else if (typeNameStringRef == "double") {
+    if (printtype)
+      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
+                   << "\n";
+    return Type::getDoubleTy(inst->getContext());
+  } else if (typeNameStringRef == "jtbaa_arraybuf") {
+    if (printtype)
+      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
+                   << "\n";
+    if (isa<LoadInst>(inst)) {
+      if (inst->getType()->isFPOrFPVectorTy()) {
+        return inst->getType()->getScalarType();
+      }
+      if (inst->getType()->isIntOrIntVectorTy()) {
+        return BaseType::Integer;
+      }
+    }
+  }
+  return ConcreteType(BaseType::Unknown);
+}
+
+static inline TypeTree parseTBAA(TBAAStructTypeNode AccessType,
+                                  Instruction *inst,
+                                  const llvm::DataLayout &dl) {
+  // llvm::errs() << "AT: " << *AccessType.getNode() << "\n";
+
+  if (auto *Id = dyn_cast<MDString>(AccessType.getId())) {
+    // llvm::errs() << "cur access type: " << Id->getString() << "\n";
+    auto dt = getTypeFromTBAAString(Id->getString().str(), inst);
+    if (dt.isKnown()) {
+      return TypeTree(dt).Only(-1);
+    }
+  }
+
+  // llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
+
+  TypeTree dat(BaseType::Pointer);
+  for (unsigned i = 0; i < AccessType.getNumFields(); i++) {
+    auto at = AccessType.getFieldType(i);
+    auto start = AccessType.getFieldOffset(i);
+    // llvm::errs() << " f at i: " << i << " at: " << start << " fd: " <<
+    // *at.getNode() << "\n";
+    auto vd = parseTBAA(at, inst, dl);
+    // llvm::errs() << " _^ for f found " << vd.str() << "\n";
+    dat |= vd.ShiftIndices(dl, /*init offset*/ 0, /*max size*/ -1,
+                           /*addOffset*/ start);
+  }
+
+  return dat;
+}
+
+// Modified from MDNode::isTBAAVtableAccess()
+static inline TypeTree parseTBAA(const MDNode *M, Instruction *inst,
+                                  const llvm::DataLayout &dl) {
+  if (!isStructPathTBAA(M)) {
+    if (M->getNumOperands() < 1)
+      return TypeTree();
+    if (const MDString *Tag1 = dyn_cast<MDString>(M->getOperand(0))) {
+      return TypeTree(getTypeFromTBAAString(Tag1->getString().str(), inst))
+          .Only({0});
+    }
+    return TypeTree();
+  }
+
+  // For struct-path aware TBAA, we use the access type of the tag.
+  TBAAStructTagNode Tag(M);
+  TBAAStructTypeNode AccessType(Tag.getAccessType());
+  return parseTBAA(AccessType, inst, dl);
+}
+
+static inline TypeTree parseTBAA(Instruction *Inst,
+                                  const llvm::DataLayout &dl) {
+  TypeTree dat;
+  if (const MDNode *M = Inst->getMetadata(LLVMContext::MD_tbaa_struct)) {
+    for (unsigned i = 0; i < M->getNumOperands(); i += 3) {
+      if (const MDNode *M2 = dyn_cast<MDNode>(M->getOperand(i + 2))) {
+        auto vd = parseTBAA(M2, Inst, dl);
+        auto start = cast<ConstantInt>(
+                         cast<ConstantAsMetadata>(M->getOperand(i))->getValue())
+                         ->getLimitedValue();
+        auto len =
+            cast<ConstantInt>(
+                cast<ConstantAsMetadata>(M->getOperand(i + 1))->getValue())
+                ->getLimitedValue();
+        // llvm::errs() << "inst: " << *Inst << " vd " << vd.str() << " len: "
+        // << len << " start: " << start << "\n";
+        dat |= vd.ShiftIndices(dl, /*init offset*/ 0, /*max size*/ len,
+                               /*add offset*/ start);
+      }
+    }
+  }
+  if (const MDNode *M = Inst->getMetadata(LLVMContext::MD_tbaa)) {
+    dat |= parseTBAA(M, Inst, dl);
+  }
+  dat |= TypeTree(BaseType::Pointer);
+  // llvm::errs() << "overall parsed: " << *Inst << " " << dat.str() << "\n";
+  return dat;
+}
+
+#endif

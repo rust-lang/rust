@@ -31,7 +31,7 @@
 #include "llvm/Support/CommandLine.h"
 
 #include "TypeAnalysis.h"
-#include "Utils.h"
+#include "../Utils.h"
 
 using namespace llvm;
 #ifdef DEBUG_TYPE

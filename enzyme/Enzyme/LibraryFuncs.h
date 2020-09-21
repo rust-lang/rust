@@ -10,11 +10,14 @@
 #ifndef LIBRARYFUNCS_H_
 #define LIBRARYFUNCS_H_
 
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/IR/Instructions.h"
 
 // For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline bool isAllocationFunction(const llvm::Function &F,
                                         const llvm::TargetLibraryInfo &TLI) {
+  using namespace llvm;
   llvm::LibFunc libfunc;
   if (!TLI.getLibFunc(F, libfunc))
     return false;
@@ -79,6 +82,7 @@ static inline bool isAllocationFunction(const llvm::Function &F,
 // For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline bool isDeallocationFunction(const llvm::Function &F,
                                           const llvm::TargetLibraryInfo &TLI) {
+  using namespace llvm;
   llvm::LibFunc libfunc;
   if (!TLI.getLibFunc(F, libfunc)) {
     if (F.getName() == "free")
@@ -151,10 +155,11 @@ static inline bool isDeallocationFunction(const llvm::Function &F,
 }
 
 // For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
-static inline CallInst *
+static inline llvm::CallInst *
 freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
                     llvm::Function &allocationfn,
                     const llvm::TargetLibraryInfo &TLI) {
+  using namespace llvm;
   assert(isAllocationFunction(allocationfn, TLI));
 
   llvm::LibFunc libfunc;
@@ -252,8 +257,9 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   return freecall;
 }
 
-static inline bool writesToMemoryReadBy(AAResults &AA, Instruction *maybeReader,
-                                        Instruction *maybeWriter) {
+static inline bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
+                                        llvm::Instruction *maybeWriter) {
+  using namespace llvm;
   if (auto call = dyn_cast<CallInst>(maybeWriter)) {
     if (call->getCalledFunction() &&
         isCertainMallocOrFree(call->getCalledFunction())) {

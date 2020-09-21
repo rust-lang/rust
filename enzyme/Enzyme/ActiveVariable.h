@@ -23,7 +23,7 @@
 
 #include "llvm/IR/InstVisitor.h"
 
-#include "TypeAnalysis.h"
+#include "TypeAnalysis/TypeAnalysis.h"
 
 extern llvm::cl::opt<bool> printconst;
 extern llvm::cl::opt<bool> nonmarkedglobals_inactive;

@@ -28,232 +28,12 @@
 #include "llvm/IR/InlineAsm.h"
 
 #include "TypeAnalysis.h"
-#include "Utils.h"
+#include "../Utils.h"
 
 #include "TBAA.h"
 
-// TODO keep type information that is striated
-// e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
-// After a depth len into the index tree, prune any lookups that are not {0} or
-// {-1} Todo handle {double}** to double** where there is a 0 removed
-TypeTree TypeTree::KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
-                                 llvm::Type *to) const {
-  assert(from);
-  assert(to);
-
-  bool fromOpaque = isa<StructType>(from) && cast<StructType>(from)->isOpaque();
-  bool toOpaque = isa<StructType>(to) && cast<StructType>(to)->isOpaque();
-
-  TypeTree vd;
-
-  for (auto &pair : mapping) {
-
-    TypeTree vd2;
-
-    // llvm::errs() << " considering casting from " << *from << " to " << *to <<
-    // " fromidx: " << to_string(pair.first) << " dt:" << pair.second.str() << "
-    // fromsize: " << fromsize << " tosize: " << tosize << "\n";
-
-    if (pair.first.size() == 0) {
-      vd2.insert(pair.first, pair.second);
-      goto add;
-    }
-
-    if (!fromOpaque && !toOpaque) {
-      uint64_t fromsize = (dl.getTypeSizeInBits(from) + 7) / 8;
-      if (fromsize == 0)
-        llvm::errs() << "from: " << *from << "\n";
-      assert(fromsize > 0);
-      uint64_t tosize = (dl.getTypeSizeInBits(to) + 7) / 8;
-      assert(tosize > 0);
-
-      // If the sizes are the same, whatever the original one is okay [ since
-      // tomemory[ i*sizeof(from) ] indeed the start of an object of type to
-      // since tomemory is "aligned" to type to
-      if (fromsize == tosize) {
-        vd2.insert(pair.first, pair.second);
-        goto add;
-      }
-
-      // If the offset doesn't leak into a later element, we're fine to include
-      if (pair.first[0] != -1 && (uint64_t)pair.first[0] < tosize) {
-        vd2.insert(pair.first, pair.second);
-        goto add;
-      }
-
-      if (pair.first[0] != -1) {
-        vd.insert(pair.first, pair.second);
-        goto add;
-      } else {
-        // pair.first[0] == -1
-
-        if (fromsize < tosize) {
-          if (tosize % fromsize == 0) {
-            // TODO should really be at each offset do a -1
-            vd.insert(pair.first, pair.second);
-            goto add;
-          } else {
-            auto tmp(pair.first);
-            tmp[0] = 0;
-            vd.insert(tmp, pair.second);
-            goto add;
-          }
-        } else {
-          // fromsize > tosize
-          // TODO should really insert all indices which are multiples of
-          // fromsize
-          auto tmp(pair.first);
-          tmp[0] = 0;
-          vd.insert(tmp, pair.second);
-          goto add;
-        }
-      }
-    }
-
-    continue;
-  add:;
-    // llvm::errs() << " casting from " << *from << " to " << *to << " fromidx:
-    // " << to_string(pair.first) << " toidx: " << to_string(pair.first) << "
-    // dt:" << pair.second.str() << "\n";
-    vd |= vd2;
-  }
-  return vd;
-}
-
 llvm::cl::opt<bool> printtype("enzyme_printtype", cl::init(false), cl::Hidden,
                               cl::desc("Print type detection algorithm"));
-
-std::string validTBAA[] = {
-    "long long",      "long",           "int",
-    "bool",           "any pointer",    "vtable pointer",
-    "float",          "double",         "jtbaa_arraysize",
-    "jtbaa_arraylen", "jtbaa_arrayptr", "jtbaa_arraybuf"};
-
-ConcreteType getTypeFromTBAAString(std::string typeNameStringRef,
-                               Instruction *inst) {
-  if (typeNameStringRef == "long long" || typeNameStringRef == "long" ||
-      typeNameStringRef == "int" || typeNameStringRef == "bool" ||
-      typeNameStringRef == "jtbaa_arraysize" ||
-      typeNameStringRef ==
-          "jtbaa_arraylen") { // || typeNameStringRef == "omnipotent char") {
-    if (printtype) {
-      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
-                   << "\n";
-    }
-    return ConcreteType(BaseType::Integer);
-  } else if (typeNameStringRef == "any pointer" ||
-             typeNameStringRef == "vtable pointer" ||
-             typeNameStringRef == "jtbaa_arrayptr" ||
-             typeNameStringRef ==
-                 "jtbaa_tag") { // || typeNameStringRef == "omnipotent char") {
-    if (printtype) {
-      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
-                   << "\n";
-    }
-    return ConcreteType(BaseType::Pointer);
-  } else if (typeNameStringRef == "float") {
-    if (printtype)
-      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
-                   << "\n";
-    return Type::getFloatTy(inst->getContext());
-  } else if (typeNameStringRef == "double") {
-    if (printtype)
-      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
-                   << "\n";
-    return Type::getDoubleTy(inst->getContext());
-  } else if (typeNameStringRef == "jtbaa_arraybuf") {
-    if (printtype)
-      llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef
-                   << "\n";
-    if (isa<LoadInst>(inst)) {
-      if (inst->getType()->isFPOrFPVectorTy()) {
-        return inst->getType()->getScalarType();
-      }
-      if (inst->getType()->isIntOrIntVectorTy()) {
-        return BaseType::Integer;
-      }
-    }
-  }
-  return ConcreteType(BaseType::Unknown);
-}
-
-static inline TypeTree parseTBAA(TBAAStructTypeNode AccessType,
-                                  Instruction *inst,
-                                  const llvm::DataLayout &dl) {
-  // llvm::errs() << "AT: " << *AccessType.getNode() << "\n";
-
-  if (auto *Id = dyn_cast<MDString>(AccessType.getId())) {
-    // llvm::errs() << "cur access type: " << Id->getString() << "\n";
-    auto dt = getTypeFromTBAAString(Id->getString().str(), inst);
-    if (dt.isKnown()) {
-      return TypeTree(dt).Only(-1);
-    }
-  }
-
-  // llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
-
-  TypeTree dat(BaseType::Pointer);
-  for (unsigned i = 0; i < AccessType.getNumFields(); i++) {
-    auto at = AccessType.getFieldType(i);
-    auto start = AccessType.getFieldOffset(i);
-    // llvm::errs() << " f at i: " << i << " at: " << start << " fd: " <<
-    // *at.getNode() << "\n";
-    auto vd = parseTBAA(at, inst, dl);
-    // llvm::errs() << " _^ for f found " << vd.str() << "\n";
-    dat |= vd.ShiftIndices(dl, /*init offset*/ 0, /*max size*/ -1,
-                           /*addOffset*/ start);
-  }
-
-  return dat;
-}
-
-// Modified from MDNode::isTBAAVtableAccess()
-static inline TypeTree parseTBAA(const MDNode *M, Instruction *inst,
-                                  const llvm::DataLayout &dl) {
-  if (!isStructPathTBAA(M)) {
-    if (M->getNumOperands() < 1)
-      return TypeTree();
-    if (const MDString *Tag1 = dyn_cast<MDString>(M->getOperand(0))) {
-      return TypeTree(getTypeFromTBAAString(Tag1->getString().str(), inst))
-          .Only({0});
-    }
-    return TypeTree();
-  }
-
-  // For struct-path aware TBAA, we use the access type of the tag.
-  TBAAStructTagNode Tag(M);
-  TBAAStructTypeNode AccessType(Tag.getAccessType());
-  return parseTBAA(AccessType, inst, dl);
-}
-
-static inline TypeTree parseTBAA(Instruction *Inst,
-                                  const llvm::DataLayout &dl) {
-  TypeTree dat;
-  if (const MDNode *M = Inst->getMetadata(LLVMContext::MD_tbaa_struct)) {
-    for (unsigned i = 0; i < M->getNumOperands(); i += 3) {
-      if (const MDNode *M2 = dyn_cast<MDNode>(M->getOperand(i + 2))) {
-        auto vd = parseTBAA(M2, Inst, dl);
-        auto start = cast<ConstantInt>(
-                         cast<ConstantAsMetadata>(M->getOperand(i))->getValue())
-                         ->getLimitedValue();
-        auto len =
-            cast<ConstantInt>(
-                cast<ConstantAsMetadata>(M->getOperand(i + 1))->getValue())
-                ->getLimitedValue();
-        // llvm::errs() << "inst: " << *Inst << " vd " << vd.str() << " len: "
-        // << len << " start: " << start << "\n";
-        dat |= vd.ShiftIndices(dl, /*init offset*/ 0, /*max size*/ len,
-                               /*add offset*/ start);
-      }
-    }
-  }
-  if (const MDNode *M = Inst->getMetadata(LLVMContext::MD_tbaa)) {
-    dat |= parseTBAA(M, Inst, dl);
-  }
-  dat |= TypeTree(BaseType::Pointer);
-  // llvm::errs() << "overall parsed: " << *Inst << " " << dat.str() << "\n";
-  return dat;
-}
 
 TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA)
     : intseen(), fntypeinfo(fn), interprocedural(TA), DT(*fn.function) {
@@ -497,15 +277,6 @@ void TypeAnalyzer::updateAnalysis(Value *val, TypeTree data, Value *origin) {
     assert(0 && "illegal gep update");
   }
 
-  /*
-  dump();
-  if (origin)
-  llvm::errs() << "origin: " << *origin << "\n";
-  llvm::errs() << "val: " << *val << "\n";
-  llvm::errs() << " + old: " << analysis[val].str() << "\n";
-  llvm::errs() << " + tomerge: " << data.str() << "\n";
-  */
-
   if (analysis[val] |= data) {
     // Add val so it can explicitly propagate this new info, if able to
     if (val != origin)
@@ -582,17 +353,6 @@ void TypeAnalyzer::considerTBAA() {
           }
           auto update = vdptr.ShiftIndices(dl, /*init offset*/ 0,
                                            /*max size*/ sz, /*new offset*/ 0);
-
-          // llvm::errs() << "found: " << inst << " tbaa: " << vdptr.str() << "
-          // update: " << update.str() << "\n"; if (auto md =
-          // inst.getMetadata(LLVMContext::MD_tbaa)){
-          //    llvm::errs() << " ++ tbaa md: " << *md << "\n";
-          //    for(unsigned i=0; i<md->getNumOperands(); i++)
-          //    llvm::errs() << "    ++ " << i << ": " << *md->getOperand(i) <<
-          //    "\n";
-          //}
-          // if (auto md = inst.getMetadata(LLVMContext::MD_tbaa_struct))
-          //    llvm::errs() << " ++ tbaa.struct md: " << *md << "\n";
 
           updateAnalysis(call->getOperand(0), update.Only(-1), call);
           updateAnalysis(call->getOperand(1), update.Only(-1), call);
@@ -1067,7 +827,9 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     APInt ai(dl.getPointerSize(gep.getPointerAddressSpace()) * 8, 0);
 #endif
     g2->accumulateConstantOffset(dl, ai);
-    delete g2; //->eraseFromParent();
+    // Using destructor rather than eraseFromParent
+    //   as g2 has no parent
+    delete g2;
 
     int off = (int)ai.getLimitedValue();
 
@@ -1082,33 +844,10 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
                 8;
     }
 
-    /*
-    if (gep.getName() == "arrayidx.i132") {
-        llvm::errs() << "HERE: off:" << off << " maxSize: " << maxSize << " vec:
-    ["; for(auto v: vec) llvm::errs() << *v << ", "; llvm::errs() << "] " <<
-    "\n";
-    }
-    */
-
-    /*
-    if (gep.getName() == "arrayidx.i.i") {
-        dump();
-        llvm::errs() << *gep.getParent()->getParent() << "\n";
-        llvm::errs() << "GEP: " << gep << " - " << getAnalysis(&gep).str() << "
-    - off=" << off << "\n"; llvm::errs() << "  + pa: " <<
-    *gep.getPointerOperand() << " - " << pointerAnalysis.str() << "\n";
-        llvm::errs() << "  + pa unmerge: " <<
-    pointerAnalysis.UnmergeIndices(off, maxSize).str() << "\n";
-    }
-    */
-
     auto unmerged = pointerAnalysis.Data0()
                         .ShiftIndices(dl, /*init offset*/ off,
                                       /*max size*/ maxSize, /*newoffset*/ 0)
                         .Only(-1);
-
-    // llvm::errs() << "gep: " << gep << " prev:" << getAnalysis(&gep).str() <<
-    // " unmerged: " << unmerged.str() << "\n";
 
     updateAnalysis(&gep, unmerged, &gep);
 
@@ -1117,10 +856,6 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
                       .ShiftIndices(dl, /*init offset*/ 0, /*max size*/ -1,
                                     /*new offset*/ off)
                       .Only(-1);
-
-    // llvm::errs()  << " + prevanalysis: " <<
-    // getAnalysis(gep.getPointerOperand()).str() << " merged: " << merged.str()
-    // << " g2:\n";
 
     updateAnalysis(gep.getPointerOperand(), merged, &gep);
   }
@@ -1137,7 +872,6 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
   bool set = false;
 
   auto consider = [&](TypeTree &&newData, Value *v) {
-    // llvm::errs() << " seen nd: " << newData.str() << " from: " << *v << "\n";
     if (set) {
       vd.andIn(newData, /*assertIfIllegal*/ false);
     } else {
@@ -1145,8 +879,6 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
       vd = newData;
     }
   };
-
-  // llvm::errs() << "visting phi: " << phi << "\n";
 
   // TODO generalize this (and for recursive, etc)
   std::deque<Value *> vals;
@@ -1190,8 +922,6 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
       continue;
     }
 
-    // llvm::errs() << " + sub" << *todo << " ga: " << getAnalysis(todo).str()
-    // << "\n";
     consider(getAnalysis(todo), todo);
   }
 
@@ -1207,7 +937,6 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     vd.andIn(vd1.Only(bo->getType()->isIntegerTy() ? -1 : 0),
              /*assertIfIllegal*/ false);
   }
-  // llvm::errs() << " -- res" << vd.str() << "\n";
 
   updateAnalysis(&phi, vd, &phi);
 }
@@ -1283,12 +1012,6 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
     Type *et1 = cast<PointerType>(I.getType())->getElementType();
     Type *et2 = cast<PointerType>(I.getOperand(0)->getType())->getElementType();
 
-    // I.getParent()->getParent()->dump();
-    // dump();
-    // llvm::errs() << "I: " << I << "\n";
-    // llvm::errs() << " + keep for cast: " <<
-    // getAnalysis(I.getOperand(0)).KeepForCast(function->getParent()->getDataLayout(),
-    // et2, et1).str() << "\n";
     updateAnalysis(
         &I,
         getAnalysis(I.getOperand(0))
@@ -1309,43 +1032,22 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
 }
 
 void TypeAnalyzer::visitSelectInst(SelectInst &I) {
-  /*
-  llvm::errs() << *I.getParent()->getParent()->getParent() << "\n";
-  dump();
-  llvm::errs() << "SI: " << I << " analysis: " << getAnalysis(&I).str() << "\n";
-  llvm::errs() << " +  " << *I.getTrueValue() << " analysis: " <<
-  getAnalysis(I.getTrueValue()).str() << "\n"; llvm::errs() << " +  " <<
-  *I.getFalseValue() << " analysis: " << getAnalysis(I.getFalseValue()).str() <<
-  "\n";
-  */
   updateAnalysis(I.getTrueValue(), getAnalysis(&I), &I);
   updateAnalysis(I.getFalseValue(), getAnalysis(&I), &I);
 
   TypeTree vd = getAnalysis(I.getTrueValue());
   vd.andIn(getAnalysis(I.getFalseValue()), /*assertIfIllegal*/ false);
-  // llvm::errs() << " + new si " << vd.str() << "\n";
   updateAnalysis(&I, vd, &I);
 }
 
 void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
   updateAnalysis(I.getIndexOperand(), BaseType::Integer, &I);
-
-  // int idx = -1;
-  // if (auto ci = dyn_cast<ConstantInt>(I.getIndexOperand())) {
-  // 	idx = (int)ci->getLimitedValue();
-  //}
-
   updateAnalysis(I.getVectorOperand(), getAnalysis(&I), &I);
   updateAnalysis(&I, getAnalysis(I.getVectorOperand()), &I);
 }
 
 void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
   updateAnalysis(I.getOperand(2), BaseType::Integer, &I);
-
-  // int idx = -1;
-  // if (auto ci = dyn_cast<ConstantInt>(I.getOperand(2))) {
-  //	idx = (int)ci->getLimitedValue();
-  //}
 
   // if we are inserting into undef/etc the anything should not be propagated
   auto res = getAnalysis(I.getOperand(0)).PurgeAnything();
@@ -1384,7 +1086,9 @@ void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
   APInt ai(dl.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
 #endif
   g2->accumulateConstantOffset(dl, ai);
-  delete g2; //->eraseFromParent();
+  // Using destructor rather than eraseFromParent
+  //   as g2 has no parent
+  delete g2;
 
   int off = (int)ai.getLimitedValue();
 
@@ -1414,7 +1118,9 @@ void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
   APInt ai(dl.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
 #endif
   g2->accumulateConstantOffset(dl, ai);
-  delete g2; //->eraseFromParent();
+  // Using destructor rather than eraseFromParent
+  //   as g2 has no parent
+  delete g2;
 
   int off = (int)ai.getLimitedValue();
 
@@ -1494,10 +1200,6 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     updateAnalysis(I.getOperand(0), analysis.Only(-1), &I);
     updateAnalysis(I.getOperand(1), analysis.Only(-1), &I);
 
-    // llvm::errs() << "I: " << I << "\n";
-    // llvm::errs() << "op(0): " << getAnalysis(I.getOperand(0)).str() << "\n";
-    // llvm::errs() << "op(1): " << getAnalysis(I.getOperand(1)).str() << "\n";
-
     TypeTree vd = getAnalysis(I.getOperand(0)).Data0();
     vd.pointerIntMerge(getAnalysis(I.getOperand(1)).Data0(), I.getOpcode());
 
@@ -1506,10 +1208,6 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         for (auto andval :
              fntypeinfo.knownIntegralValues(I.getOperand(i), DT, intseen)) {
           if (andval <= 16 && andval >= 0) {
-
-            // I.getParent()->getParent()->dump();
-            // dump();
-            // llvm::errs() << "I: " << I << "\n";
 
             vd |= TypeTree(BaseType::Integer);
           }
@@ -1531,17 +1229,10 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
 
   TypeTree res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz).PurgeAnything();
   TypeTree res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz).PurgeAnything();
-  // llvm::errs() << " memcpy: " << MTI << " res1: " << res.str() << " res2: "
-  // << res2.str() << "\n";
   res |= res2;
 
   updateAnalysis(MTI.getArgOperand(0), res, &MTI);
   updateAnalysis(MTI.getArgOperand(1), res, &MTI);
-
-  // MTI.getParent()->getParent()->dump();
-  // dump();
-  // llvm::errs() << "call: " << MTI << "\n";
-
   for (unsigned i = 2; i < MTI.getNumArgOperands(); i++) {
     updateAnalysis(MTI.getArgOperand(i), TypeTree(BaseType::Integer).Only(-1),
                    &MTI);
@@ -1997,8 +1688,6 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           &call);
     }
 
-    // TODO we should handle calls interprocedurally, allowing better
-    // propagation of type information
     if (!ci->empty()) {
       visitIPOCall(call, *ci);
     }
@@ -2143,7 +1832,7 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
       }
     }
 
-    // TOOD note C++ doesnt guarantee behavior of >> being arithmetic or logical
+    // TODO note C++ doesnt guarantee behavior of >> being arithmetic or logical
     //     and should replace with llvm apint internal
     if (bo->getOpcode() == BinaryOperator::AShr ||
         bo->getOpcode() == BinaryOperator::LShr) {
@@ -2201,21 +1890,11 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
       llvm::errs() << " queryFunc: " << *fn.function << "\n";
       llvm::errs() << " analysisFunc: " << *analysis.fntypeinfo.function
                    << "\n";
-      // llvm::errs() << " eq: " << (fn == analysis.fntypeinfo) << "\n";
     }
     assert(analysis.fntypeinfo.function == fn.function);
 
     return TypeResults(*this, fn);
   }
-
-  /*
-  llvm::errs() << "analyzing: " << fn.function->getName() << " " <<
-  fn.second.str() << " ["; for(auto &pair : fn.first) { llvm::errs() <<
-  pair.second.str() << " - " <<
-  to_string(fn.knownValues.find(pair.first)->second) << " |";
-  }
-  llvm::errs() << "]\n";
-  */
 
   auto res = analyzedFunctions.emplace(fn, TypeAnalyzer(fn, *this));
   auto &analysis = res.first->second;
@@ -2261,7 +1940,6 @@ TypeTree TypeAnalysis::query(Value *val, const FnTypeInfo &fn) {
   assert(val);
   assert(val->getType());
 
-  // TODO more concrete constant that avoid global issues
   if (auto con = dyn_cast<Constant>(val)) {
     return getConstantAnalysis(con, fn, *this);
   }
@@ -2269,10 +1947,12 @@ TypeTree TypeAnalysis::query(Value *val, const FnTypeInfo &fn) {
   Function *func = nullptr;
   if (auto arg = dyn_cast<Argument>(val))
     func = arg->getParent();
-  if (auto inst = dyn_cast<Instruction>(val))
+  else if (auto inst = dyn_cast<Instruction>(val))
     func = inst->getParent()->getParent();
-
-  // if (func == nullptr) return TypeTree();
+  else {
+    llvm::errs() << "unknown value: " << *val << "\n";
+    assert(0 && "could not handle unknown value type");
+  }
 
   analyzeFunction(fn);
   auto &found = analyzedFunctions.find(fn)->second;
@@ -2288,7 +1968,6 @@ ConcreteType TypeAnalysis::intType(Value *val, const FnTypeInfo &fn,
                                bool errIfNotFound) {
   assert(val);
   assert(val->getType());
-  // assert(val->getType()->isIntOrIntVectorTy());
   auto q = query(val, fn).Data0();
   auto dt = q[{}];
   // dump();

@@ -29,7 +29,7 @@
 #include "ActiveVariable.h"
 #include "Utils.h"
 
-#include "TBAA.h"
+#include "TypeAnalysis/TBAA.h"
 
 using namespace llvm;
 
