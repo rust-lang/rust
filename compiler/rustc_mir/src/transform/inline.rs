@@ -246,11 +246,6 @@ impl Inliner<'tcx> {
 
         let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
 
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
-            debug!("`#[track_caller]` present - not inlining");
-            return false;
-        }
-
         let self_features = &self.codegen_fn_attrs.target_features;
         let callee_features = &codegen_fn_attrs.target_features;
         if callee_features.iter().any(|feature| !self_features.contains(feature)) {
@@ -441,11 +436,24 @@ impl Inliner<'tcx> {
 
                 for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
+                        let callsite_scope = &caller_body.source_scopes[callsite.source_info.scope];
+
+                        // Attach the outermost callee scope as a child of the callsite
+                        // scope, via the `parent_scope` and `inlined_parent_scope` chains.
                         scope.parent_scope = Some(callsite.source_info.scope);
+                        assert_eq!(scope.inlined_parent_scope, None);
+                        scope.inlined_parent_scope = if callsite_scope.inlined.is_some() {
+                            Some(callsite.source_info.scope)
+                        } else {
+                            callsite_scope.inlined_parent_scope
+                        };
 
                         // Mark the outermost callee scope as an inlined one.
                         assert_eq!(scope.inlined, None);
                         scope.inlined = Some((callsite.callee, callsite.source_info.span));
+                    } else if scope.inlined_parent_scope.is_none() {
+                        // Make it easy to find the scope with `inlined` set above.
+                        scope.inlined_parent_scope = Some(scope_map[OUTERMOST_SOURCE_SCOPE]);
                     }
 
                     let idx = caller_body.source_scopes.push(scope);

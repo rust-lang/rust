@@ -551,18 +551,31 @@ fn write_scope_tree(
         let child_data = &body.source_scopes[child];
         assert_eq!(child_data.parent_scope, Some(parent));
 
-        if let Some((callee, callsite_span)) = child_data.inlined {
-            let indented_header =
-                format!("{0:1$}scope {2} (inlined {3}) {{", "", indent, child.index(), callee);
+        let (special, span) = if let Some((callee, callsite_span)) = child_data.inlined {
+            (
+                format!(
+                    " (inlined {}{})",
+                    if callee.def.requires_caller_location(tcx) { "#[track_caller] " } else { "" },
+                    callee
+                ),
+                Some(callsite_span),
+            )
+        } else {
+            (String::new(), None)
+        };
+
+        let indented_header = format!("{0:1$}scope {2}{3} {{", "", indent, child.index(), special);
+
+        if let Some(span) = span {
             writeln!(
                 w,
                 "{0:1$} // at {2}",
                 indented_header,
                 ALIGN,
-                tcx.sess.source_map().span_to_string(callsite_span),
+                tcx.sess.source_map().span_to_string(span),
             )?;
         } else {
-            writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
+            writeln!(w, "{}", indented_header)?;
         }
 
         write_scope_tree(tcx, body, scope_tree, w, child, depth + 1)?;

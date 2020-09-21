@@ -1878,6 +1878,11 @@ pub struct SourceScopeData<'tcx> {
     /// `ty::Instance` is the callee, and the `Span` is the call site.
     pub inlined: Option<(ty::Instance<'tcx>, Span)>,
 
+    /// Nearest (transitive) parent scope (if any) which is inlined.
+    /// This is an optimization over walking up `parent_scope`
+    /// until a scope with `inlined: Some(...)` is found.
+    pub inlined_parent_scope: Option<SourceScope>,
+
     /// Crate-local information for this source scope, that can't (and
     /// needn't) be tracked across crates.
     pub local_data: ClearCrossCrate<SourceScopeLocalData>,
