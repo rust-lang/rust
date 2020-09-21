@@ -191,6 +191,12 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
                 Res::SelfTy(None, Some((did, _))) => {
                     if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
                         if cx.tcx.is_diagnostic_item(sym::Ty, adt.did) {
+                            // NOTE: This path is currently unreachable as `Ty<'tcx>` is
+                            // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
+                            // is not actually allowed.
+                            //
+                            // I(@lcnr) still kept this branch in so we don't miss this
+                            // if we ever change it in the future.
                             return Some(format!("Ty<{}>", substs[0]));
                         } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, adt.did) {
                             return Some(format!("TyCtxt<{}>", substs[0]));
