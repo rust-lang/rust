@@ -706,15 +706,15 @@ fn find_root(node: &SyntaxNode) -> SyntaxNode {
 /// so, but, generally, this is not something left after the analysis.
 ///
 /// However, we do very much need explicit scopes for IDE purposes --
-/// completion, at its core, lists the contents of the current scope. Notion of
-/// scope is also useful to answer question like "what would be the meaning of
-/// this piece of code if we insert into this position?".
+/// completion, at its core, lists the contents of the current scope. The notion
+/// of scope is also useful to answer questions like "what would be the meaning
+/// of this piece of code if we inserted it into this position?".
 ///
 /// So `SemanticsScope` is constructed from a specific program point (a syntax
 /// node or just a raw offset) and provides access to the set of visible names
-/// in on a somewhat best-effort basis.
+/// on a somewhat best-effort basis.
 ///
-/// Note that if you are wondering "what this specific existing name means?",
+/// Note that if you are wondering "what does this specific existing name mean?",
 /// you'd better use the `resolve_` family of methods.
 #[derive(Debug)]
 pub struct SemanticsScope<'a> {
