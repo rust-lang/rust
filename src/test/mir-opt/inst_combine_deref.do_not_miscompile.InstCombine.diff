@@ -1,0 +1,85 @@
+- // MIR for `do_not_miscompile` before InstCombine
++ // MIR for `do_not_miscompile` after InstCombine
+  
+  fn do_not_miscompile() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/inst_combine_deref.rs:54:24: 54:24
+      let _1: i32;                         // in scope 0 at $DIR/inst_combine_deref.rs:55:9: 55:10
+      let mut _5: &i32;                    // in scope 0 at $DIR/inst_combine_deref.rs:59:10: 59:12
+      let _6: &i32;                        // in scope 0 at $DIR/inst_combine_deref.rs:59:10: 59:12
+      let _7: ();                          // in scope 0 at $DIR/inst_combine_deref.rs:60:5: 60:23
+      let mut _8: bool;                    // in scope 0 at $DIR/inst_combine_deref.rs:60:5: 60:23
+      let mut _9: bool;                    // in scope 0 at $DIR/inst_combine_deref.rs:60:13: 60:21
+      let mut _10: i32;                    // in scope 0 at $DIR/inst_combine_deref.rs:60:13: 60:15
+      let mut _11: !;                      // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/inst_combine_deref.rs:55:9: 55:10
+          let _2: i32;                     // in scope 1 at $DIR/inst_combine_deref.rs:56:9: 56:10
+          scope 2 {
+              debug a => _2;               // in scope 2 at $DIR/inst_combine_deref.rs:56:9: 56:10
+              let mut _3: &i32;            // in scope 2 at $DIR/inst_combine_deref.rs:57:9: 57:14
+              scope 3 {
+                  debug y => _3;           // in scope 3 at $DIR/inst_combine_deref.rs:57:9: 57:14
+                  let _4: &mut &i32;       // in scope 3 at $DIR/inst_combine_deref.rs:58:9: 58:10
+                  scope 4 {
+                      debug z => _4;       // in scope 4 at $DIR/inst_combine_deref.rs:58:9: 58:10
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inst_combine_deref.rs:55:9: 55:10
+          _1 = const 42_i32;               // scope 0 at $DIR/inst_combine_deref.rs:55:13: 55:15
+          StorageLive(_2);                 // scope 1 at $DIR/inst_combine_deref.rs:56:9: 56:10
+          _2 = const 99_i32;               // scope 1 at $DIR/inst_combine_deref.rs:56:13: 56:15
+          StorageLive(_3);                 // scope 2 at $DIR/inst_combine_deref.rs:57:9: 57:14
+          _3 = &_1;                        // scope 2 at $DIR/inst_combine_deref.rs:57:17: 57:19
+          StorageLive(_4);                 // scope 3 at $DIR/inst_combine_deref.rs:58:9: 58:10
+          _4 = &mut _3;                    // scope 3 at $DIR/inst_combine_deref.rs:58:13: 58:19
+          StorageLive(_5);                 // scope 4 at $DIR/inst_combine_deref.rs:59:10: 59:12
+          StorageLive(_6);                 // scope 4 at $DIR/inst_combine_deref.rs:59:10: 59:12
+          _6 = &_2;                        // scope 4 at $DIR/inst_combine_deref.rs:59:10: 59:12
+-         _5 = &(*_6);                     // scope 4 at $DIR/inst_combine_deref.rs:59:10: 59:12
++         _5 = _6;                         // scope 4 at $DIR/inst_combine_deref.rs:59:10: 59:12
+          (*_4) = move _5;                 // scope 4 at $DIR/inst_combine_deref.rs:59:5: 59:12
+          StorageDead(_5);                 // scope 4 at $DIR/inst_combine_deref.rs:59:11: 59:12
+          StorageDead(_6);                 // scope 4 at $DIR/inst_combine_deref.rs:59:12: 59:13
+          StorageLive(_7);                 // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+          StorageLive(_8);                 // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+          StorageLive(_9);                 // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:21
+          StorageLive(_10);                // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:15
+          _10 = (*_3);                     // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:15
+          _9 = Eq(move _10, const 99_i32); // scope 4 at $DIR/inst_combine_deref.rs:60:13: 60:21
+          StorageDead(_10);                // scope 4 at $DIR/inst_combine_deref.rs:60:20: 60:21
+          _8 = Not(move _9);               // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+          StorageDead(_9);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
+          switchInt(_8) -> [false: bb1, otherwise: bb2]; // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+      }
+  
+      bb1: {
+          _7 = const ();                   // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+          StorageDead(_8);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
+          StorageDead(_7);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
+          _0 = const ();                   // scope 0 at $DIR/inst_combine_deref.rs:54:24: 61:2
+          StorageDead(_4);                 // scope 3 at $DIR/inst_combine_deref.rs:61:1: 61:2
+          StorageDead(_3);                 // scope 2 at $DIR/inst_combine_deref.rs:61:1: 61:2
+          StorageDead(_2);                 // scope 1 at $DIR/inst_combine_deref.rs:61:1: 61:2
+          StorageDead(_1);                 // scope 0 at $DIR/inst_combine_deref.rs:61:1: 61:2
+          return;                          // scope 0 at $DIR/inst_combine_deref.rs:61:2: 61:2
+      }
+  
+      bb2: {
+          StorageLive(_11);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+          begin_panic::<&str>(const "assertion failed: *y == 99"); // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
+                                           // ty::Const
+                                           // + ty: &str
+                                           // + val: Value(Slice { data: Allocation { bytes: [97, 115, 115, 101, 114, 116, 105, 111, 110, 32, 102, 97, 105, 108, 101, 100, 58, 32, 42, 121, 32, 61, 61, 32, 57, 57], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [67108863], len: Size { raw: 26 } }, size: Size { raw: 26 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 26 })
+                                           // mir::Constant
+                                           // + span: $DIR/inst_combine_deref.rs:1:1: 1:1
+                                           // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [97, 115, 115, 101, 114, 116, 105, 111, 110, 32, 102, 97, 105, 108, 101, 100, 58, 32, 42, 121, 32, 61, 61, 32, 57, 57], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [67108863], len: Size { raw: 26 } }, size: Size { raw: 26 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 26 }) }
+      }
+  }
+  

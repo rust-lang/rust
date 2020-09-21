@@ -4,9 +4,14 @@ use crate::transform::{MirPass, MirSource};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::Mutability;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
-    BinOp, Body, Constant, Local, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue,
+    visit::PlaceContext,
+    visit::{MutVisitor, Visitor},
+    Statement,
+};
+use rustc_middle::mir::{
+    BinOp, Body, BorrowKind, Constant, Local, Location, Operand, Place, PlaceRef, ProjectionElem,
+    Rvalue,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use std::mem;
@@ -71,7 +76,33 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
             *rvalue = Rvalue::Use(operand);
         }
 
+        if let Some(place) = self.optimizations.unneeded_deref.remove(&location) {
+            debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
+            *rvalue = Rvalue::Use(Operand::Copy(place));
+        }
+
         self.super_rvalue(rvalue, location)
+    }
+}
+
+struct MutatingUseVisitor {
+    has_mutating_use: bool,
+    local_to_look_for: Local,
+}
+
+impl MutatingUseVisitor {
+    fn has_mutating_use_in_stmt(local: Local, stmt: &Statement<'tcx>, location: Location) -> bool {
+        let mut _self = Self { has_mutating_use: false, local_to_look_for: local };
+        _self.visit_statement(stmt, location);
+        _self.has_mutating_use
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for MutatingUseVisitor {
+    fn visit_local(&mut self, local: &Local, context: PlaceContext, _: Location) {
+        if *local == self.local_to_look_for {
+            self.has_mutating_use |= context.is_mutating_use();
+        }
     }
 }
 
@@ -85,6 +116,85 @@ struct OptimizationFinder<'b, 'tcx> {
 impl OptimizationFinder<'b, 'tcx> {
     fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx>) -> OptimizationFinder<'b, 'tcx> {
         OptimizationFinder { body, tcx, optimizations: OptimizationList::default() }
+    }
+
+    fn find_deref_of_address(&mut self, rvalue: &Rvalue<'tcx>, location: Location) -> Option<()> {
+        // Look for the sequence
+        //
+        // _2 = &_1;
+        // ...
+        // _5 = (*_2);
+        //
+        // which we can replace the last statement with `_5 = _1;` to avoid the load of `_2`.
+        if let Rvalue::Use(op) = rvalue {
+            let local_being_derefed = match op.place()?.as_ref() {
+                PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
+                _ => None,
+            }?;
+
+            let stmt_index = location.statement_index;
+            // Look behind for statement that assigns the local from a address of operator.
+            // 6 is chosen as a heuristic determined by seeing the number of times
+            // the optimization kicked in compiling rust std.
+            let lower_index = stmt_index.saturating_sub(6);
+            let statements_to_look_in = self.body.basic_blocks()[location.block].statements
+                [lower_index..stmt_index]
+                .iter()
+                .rev();
+            for stmt in statements_to_look_in {
+                match &stmt.kind {
+                    // Exhaustive match on statements to detect conditions that warrant we bail out of the optimization.
+                    rustc_middle::mir::StatementKind::Assign(box (l, r))
+                        if l.local == local_being_derefed =>
+                    {
+                        match r {
+                            // Looking for immutable reference e.g _local_being_deref = &_1;
+                            Rvalue::Ref(
+                                _,
+                                // Only apply the optimization if it is an immutable borrow.
+                                BorrowKind::Shared,
+                                place_taken_address_of,
+                            ) => {
+                                self.optimizations
+                                    .unneeded_deref
+                                    .insert(location, *place_taken_address_of);
+                                return Some(());
+                            }
+
+                            // We found an assignment of `local_being_deref` that is not an immutable ref, e.g the following sequence
+                            // _2 = &_1;
+                            // _3 = &5
+                            // _2 = _3;  <-- this means it is no longer valid to replace the last statement with `_5 = _1;`
+                            // _5 = (*_2);
+                            _ => return None,
+                        }
+                    }
+
+                    // Inline asm can do anything, so bail out of the optimization.
+                    rustc_middle::mir::StatementKind::LlvmInlineAsm(_) => return None,
+
+                    // Check that `local_being_deref` is not being used in a mutating way which can cause misoptimization.
+                    rustc_middle::mir::StatementKind::Assign(box (_, _))
+                    | rustc_middle::mir::StatementKind::Coverage(_)
+                    | rustc_middle::mir::StatementKind::Nop
+                    | rustc_middle::mir::StatementKind::FakeRead(_, _)
+                    | rustc_middle::mir::StatementKind::StorageLive(_)
+                    | rustc_middle::mir::StatementKind::StorageDead(_)
+                    | rustc_middle::mir::StatementKind::Retag(_, _)
+                    | rustc_middle::mir::StatementKind::AscribeUserType(_, _)
+                    | rustc_middle::mir::StatementKind::SetDiscriminant { .. } => {
+                        if MutatingUseVisitor::has_mutating_use_in_stmt(
+                            local_being_derefed,
+                            stmt,
+                            location,
+                        ) {
+                            return None;
+                        }
+                    }
+                }
+            }
+        }
+        Some(())
     }
 
     fn find_unneeded_equality_comparison(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -153,6 +263,8 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             }
         }
 
+        let _ = self.find_deref_of_address(rvalue, location);
+
         self.find_unneeded_equality_comparison(rvalue, location);
 
         self.super_rvalue(rvalue, location)
@@ -164,4 +276,5 @@ struct OptimizationList<'tcx> {
     and_stars: FxHashSet<Location>,
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
     unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
+    unneeded_deref: FxHashMap<Location, Place<'tcx>>,
 }
