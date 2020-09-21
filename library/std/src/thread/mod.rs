@@ -144,6 +144,7 @@
 //! [`with`]: LocalKey::with
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
@@ -456,14 +457,23 @@ impl Builder {
                 imp::Thread::set_name(name);
             }
 
-            thread_info::set(imp::guard::current(), their_thread);
+            // SAFETY: the stack guard passed is the one for the current thread.
+            // This means the current thread's stack and the new thread's stack
+            // are properly set and protected from each other.
+            thread_info::set(unsafe { imp::guard::current() }, their_thread);
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
             }));
-            *their_packet.get() = Some(try_result);
+            // SAFETY: `their_packet` as been built just above and moved by the
+            // closure (it is an Arc<...>) and `my_packet` will be stored in the
+            // same `JoinInner` as this closure meaning the mutation will be
+            // safe (not modify it and affect a value far away).
+            unsafe { *their_packet.get() = Some(try_result) };
         };
 
         Ok(JoinHandle(JoinInner {
+            // SAFETY:
+            //
             // `imp::Thread::new` takes a closure with a `'static` lifetime, since it's passed
             // through FFI or otherwise used with low-level threading primitives that have no
             // notion of or way to enforce lifetimes.
@@ -475,12 +485,14 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: Some(imp::Thread::new(
-                stack_size,
-                mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(Box::new(
-                    main,
-                )),
-            )?),
+            native: unsafe {
+                Some(imp::Thread::new(
+                    stack_size,
+                    mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
+                        Box::new(main),
+                    ),
+                )?)
+            },
             thread: my_thread,
             packet: Packet(my_packet),
         }))
