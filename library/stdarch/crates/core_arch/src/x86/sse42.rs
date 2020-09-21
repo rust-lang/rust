@@ -261,20 +261,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// # }
 /// ```
 ///
-/// [`_SIDD_UBYTE_OPS`]: constant._SIDD_UBYTE_OPS.html
-/// [`_SIDD_UWORD_OPS`]: constant._SIDD_UWORD_OPS.html
-/// [`_SIDD_SBYTE_OPS`]: constant._SIDD_SBYTE_OPS.html
-/// [`_SIDD_SWORD_OPS`]: constant._SIDD_SWORD_OPS.html
-/// [`_SIDD_CMP_EQUAL_ANY`]: constant._SIDD_CMP_EQUAL_ANY.html
-/// [`_SIDD_CMP_RANGES`]: constant._SIDD_CMP_RANGES.html
-/// [`_SIDD_CMP_EQUAL_EACH`]: constant._SIDD_CMP_EQUAL_EACH.html
-/// [`_SIDD_CMP_EQUAL_ORDERED`]: constant._SIDD_CMP_EQUAL_ORDERED.html
-/// [`_SIDD_POSITIVE_POLARITY`]: constant._SIDD_POSITIVE_POLARITY.html
-/// [`_SIDD_NEGATIVE_POLARITY`]: constant._SIDD_NEGATIVE_POLARITY.html
-/// [`_SIDD_LEAST_SIGNIFICANT`]: constant._SIDD_LEAST_SIGNIFICANT.html
-/// [`_SIDD_MOST_SIGNIFICANT`]: constant._SIDD_MOST_SIGNIFICANT.html
-/// [`_mm_cmpestri`]: fn._mm_cmpestri.html
-///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistri)
 #[inline]
 #[target_feature(enable = "sse4.2")]
