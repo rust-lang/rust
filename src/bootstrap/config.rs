@@ -16,6 +16,7 @@ use crate::flags::Flags;
 pub use crate::flags::Subcommand;
 use crate::util::exe;
 use build_helper::t;
+use merge::Merge;
 use serde::Deserialize;
 
 macro_rules! check_ci_llvm {
@@ -278,10 +279,31 @@ struct TomlConfig {
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
+    profile: Option<String>,
+}
+
+impl Merge for TomlConfig {
+    fn merge(&mut self, TomlConfig { build, install, llvm, rust, dist, target, profile: _ }: Self) {
+        fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>) {
+            if let Some(new) = y {
+                if let Some(original) = x {
+                    original.merge(new);
+                } else {
+                    *x = Some(new);
+                }
+            }
+        };
+        do_merge(&mut self.build, build);
+        do_merge(&mut self.install, install);
+        do_merge(&mut self.llvm, llvm);
+        do_merge(&mut self.rust, rust);
+        do_merge(&mut self.dist, dist);
+        assert!(target.is_none(), "merging target-specific config is not currently supported");
+    }
 }
 
 /// TOML representation of various global build decisions.
-#[derive(Deserialize, Default, Clone)]
+#[derive(Deserialize, Default, Clone, Merge)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Build {
     build: Option<String>,
@@ -321,7 +343,7 @@ struct Build {
 }
 
 /// TOML representation of various global install decisions.
-#[derive(Deserialize, Default, Clone)]
+#[derive(Deserialize, Default, Clone, Merge)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Install {
     prefix: Option<String>,
@@ -338,7 +360,7 @@ struct Install {
 }
 
 /// TOML representation of how the LLVM build is configured.
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Merge)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
     skip_rebuild: Option<bool>,
@@ -365,7 +387,7 @@ struct Llvm {
     download_ci_llvm: Option<bool>,
 }
 
-#[derive(Deserialize, Default, Clone)]
+#[derive(Deserialize, Default, Clone, Merge)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Dist {
     sign_folder: Option<String>,
@@ -389,7 +411,7 @@ impl Default for StringOrBool {
 }
 
 /// TOML representation of how the Rust build is configured.
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Merge)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Rust {
     optimize: Option<bool>,
@@ -434,7 +456,7 @@ struct Rust {
 }
 
 /// TOML representation of how each build target is configured.
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Merge)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlTarget {
     cc: Option<String>,
@@ -524,27 +546,31 @@ impl Config {
         }
 
         #[cfg(test)]
-        let toml = TomlConfig::default();
+        let get_toml = |_| TomlConfig::default();
         #[cfg(not(test))]
-        let toml = flags
-            .config
-            .map(|file| {
-                use std::process;
+        let get_toml = |file: PathBuf| {
+            use std::process;
 
-                let contents = t!(fs::read_to_string(&file));
-                match toml::from_str(&contents) {
-                    Ok(table) => table,
-                    Err(err) => {
-                        println!(
-                            "failed to parse TOML configuration '{}': {}",
-                            file.display(),
-                            err
-                        );
-                        process::exit(2);
-                    }
+            let contents = t!(fs::read_to_string(&file), "configuration file did not exist");
+            match toml::from_str(&contents) {
+                Ok(table) => table,
+                Err(err) => {
+                    println!("failed to parse TOML configuration '{}': {}", file.display(), err);
+                    process::exit(2);
                 }
-            })
-            .unwrap_or_else(TomlConfig::default);
+            }
+        };
+
+        let mut toml = flags.config.map(get_toml).unwrap_or_else(TomlConfig::default);
+        if let Some(include) = &toml.profile {
+            let mut include_path = config.src.clone();
+            include_path.push("src");
+            include_path.push("bootstrap");
+            include_path.push("defaults");
+            include_path.push(format!("config.toml.{}", include));
+            let included_toml = get_toml(include_path);
+            toml.merge(included_toml);
+        }
 
         let build = toml.build.unwrap_or_default();
 

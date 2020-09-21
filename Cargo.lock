@@ -207,6 +207,7 @@ dependencies = [
  "ignore",
  "lazy_static",
  "libc",
+ "merge",
  "num_cpus",
  "opener",
  "pretty_assertions",
@@ -1907,6 +1908,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c198b026e1bbf08a937e94c6c60f9ec4a2267f5b0d2eec9c1b21b061ce2be55f"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "merge"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10bbef93abb1da61525bbc45eeaff6473a41907d19f8f9aa5168d214e10693e9"
+dependencies = [
+ "merge_derive",
+ "num-traits",
+]
+
+[[package]]
+name = "merge_derive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "209d075476da2e63b4b29e72a2ef627b840589588e71400a25e3565c4f849d07"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
