@@ -610,3 +610,15 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         Ok(())
     }
 }
+
+/// Returns the maximum size of return values to be passed by value in the Rust ABI.
+///
+/// Return values beyond this size will use an implicit out-pointer instead.
+pub fn max_ret_by_val<C: HasTargetSpec + HasDataLayout>(spec: &C) -> Size {
+    match spec.target_spec().arch.as_str() {
+        // System-V will pass return values up to 128 bits in RAX/RDX.
+        "x86_64" => Size::from_bits(128),
+
+        _ => spec.data_layout().pointer_size,
+    }
+}
