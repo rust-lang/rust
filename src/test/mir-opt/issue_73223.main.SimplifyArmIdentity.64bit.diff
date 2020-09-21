@@ -65,6 +65,8 @@
                           let mut _47: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
                           let mut _48: &core::fmt::Opaque; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
                           let mut _49: &&i32; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          scope 7 {
+                          }
                       }
                       scope 8 (inlined ArgumentV1::new::<&i32>) { // at $SRC_DIR/std/src/macros.rs:LL:COL
                           debug x => _42;  // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
@@ -73,6 +75,8 @@
                           let mut _51: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
                           let mut _52: &core::fmt::Opaque; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
                           let mut _53: &&i32; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          scope 9 {
+                          }
                       }
                   }
                   scope 10 (inlined Arguments::new_v1) { // at $SRC_DIR/std/src/macros.rs:LL:COL
@@ -87,10 +91,6 @@
       }
       scope 2 {
           debug v => _4;                   // in scope 2 at $DIR/issue-73223.rs:3:14: 3:15
-      }
-      scope 7 {
-      }
-      scope 9 {
       }
   
       bb0: {

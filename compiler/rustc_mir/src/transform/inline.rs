@@ -435,6 +435,11 @@ impl Inliner<'tcx> {
                 let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
 
                 for mut scope in callee_body.source_scopes.iter().cloned() {
+                    // Map the callee scopes into the caller.
+                    // FIXME(eddyb) this may ICE if the scopes are out of order.
+                    scope.parent_scope = scope.parent_scope.map(|s| scope_map[s]);
+                    scope.inlined_parent_scope = scope.inlined_parent_scope.map(|s| scope_map[s]);
+
                     if scope.parent_scope.is_none() {
                         let callsite_scope = &caller_body.source_scopes[callsite.source_info.scope];
 
