@@ -32,9 +32,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 ) -> Result<(), ErrorHandled> {
     debug!("is_const_evaluatable({:?}, {:?})", def, substs);
     if infcx.tcx.features().const_evaluatable_checked {
-        if let Some(ct) =
-            AbstractConst::new(infcx.tcx, def, substs).map_err(ErrorHandled::Reported)?
-        {
+        if let Some(ct) = AbstractConst::new(infcx.tcx, def, substs)? {
             for pred in param_env.caller_bounds() {
                 match pred.skip_binders() {
                     ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
@@ -42,8 +40,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                         if b_def == def && b_substs == substs {
                             debug!("is_const_evaluatable: caller_bound ~~> ok");
                             return Ok(());
-                        } else if AbstractConst::new(infcx.tcx, b_def, b_substs)
-                            .map_err(ErrorHandled::Reported)?
+                        } else if AbstractConst::new(infcx.tcx, b_def, b_substs)?
                             .map_or(false, |b_ct| try_unify(infcx.tcx, ct, b_ct))
                         {
                             debug!("is_const_evaluatable: abstract_const ~~> ok");
@@ -153,14 +150,12 @@ struct AbstractConstBuilder<'a, 'tcx> {
 
 impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
     fn error(&mut self, span: Option<Span>, msg: &str) -> Result<!, ErrorReported> {
-        let mut err =
-            self.tcx.sess.struct_span_err(self.body.span, "overly complex generic constant");
-        if let Some(span) = span {
-            err.span_note(span, msg);
-        } else {
-            err.note(msg);
-        }
-        err.help("consider moving this anonymous constant into a `const` function").emit();
+        self.tcx
+            .sess
+            .struct_span_err(self.body.span, "overly complex generic constant")
+            .span_label(span.unwrap_or(self.body.span), msg)
+            .help("consider moving this anonymous constant into a `const` function")
+            .emit();
 
         Err(ErrorReported)
     }
