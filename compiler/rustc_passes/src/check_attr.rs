@@ -13,7 +13,9 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
+use rustc_hir::{
+    self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID,
+};
 use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_session::parse::feature_err;
@@ -823,9 +825,13 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir()
         .visit_item_likes_in_module(module_def_id, &mut CheckAttrVisitor { tcx }.as_deep_visitor());
     if module_def_id.is_top_level_module() {
-        for attr in tcx.hir().krate_attrs() {
-            CheckAttrVisitor { tcx }.check_doc_alias(attr, CRATE_HIR_ID, Target::Mod);
-        }
+        CheckAttrVisitor { tcx }.check_attributes(
+            CRATE_HIR_ID,
+            tcx.hir().krate_attrs(),
+            &tcx.hir().span(CRATE_HIR_ID),
+            Target::Mod,
+            None,
+        );
     }
 }
 

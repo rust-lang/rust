@@ -7,9 +7,6 @@
 
 // ignore-tidy-linelength
 
-// Crate-level is accepted, though it is almost certainly unused?
-#![inline]
-
 #[inline]
 //~^ ERROR attribute should be applied to function or closure
 mod inline {
