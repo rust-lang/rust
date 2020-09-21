@@ -496,7 +496,7 @@ bench_in_place![
 ];
 
 #[bench]
-fn bench_in_place_recycle(b: &mut test::Bencher) {
+fn bench_in_place_recycle(b: &mut Bencher) {
     let mut data = vec![0; 1000];
 
     b.iter(|| {
@@ -513,7 +513,7 @@ fn bench_in_place_recycle(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_in_place_zip_recycle(b: &mut test::Bencher) {
+fn bench_in_place_zip_recycle(b: &mut Bencher) {
     let mut data = vec![0u8; 1000];
     let mut rng = rand::thread_rng();
     let mut subst = vec![0u8; 1000];
@@ -533,7 +533,7 @@ fn bench_in_place_zip_recycle(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_in_place_zip_iter_mut(b: &mut test::Bencher) {
+fn bench_in_place_zip_iter_mut(b: &mut Bencher) {
     let mut data = vec![0u8; 256];
     let mut rng = rand::thread_rng();
     let mut subst = vec![0u8; 1000];
@@ -558,7 +558,7 @@ impl Drop for Droppable {
 }
 
 #[bench]
-fn bench_in_place_collect_droppable(b: &mut test::Bencher) {
+fn bench_in_place_collect_droppable(b: &mut Bencher) {
     let v: Vec<Droppable> = std::iter::repeat_with(|| Droppable(0)).take(1000).collect();
     b.iter(|| {
         v.clone()
@@ -571,13 +571,13 @@ fn bench_in_place_collect_droppable(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_chain_collect(b: &mut test::Bencher) {
+fn bench_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| data.iter().cloned().chain([1].iter().cloned()).collect::<Vec<_>>());
 }
 
 #[bench]
-fn bench_chain_chain_collect(b: &mut test::Bencher) {
+fn bench_chain_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         data.iter()
@@ -589,7 +589,7 @@ fn bench_chain_chain_collect(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_nest_chain_chain_collect(b: &mut test::Bencher) {
+fn bench_nest_chain_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         data.iter().cloned().chain([1].iter().chain([2].iter()).cloned()).collect::<Vec<_>>()
@@ -616,12 +616,12 @@ pub fn map_fast(l: &[(u32, u32)]) -> Vec<u32> {
 const LEN: usize = 16384;
 
 #[bench]
-fn bench_range_map_collect(b: &mut test::Bencher) {
+fn bench_range_map_collect(b: &mut Bencher) {
     b.iter(|| (0..LEN).map(|_| u32::default()).collect::<Vec<_>>());
 }
 
 #[bench]
-fn bench_chain_extend_ref(b: &mut test::Bencher) {
+fn bench_chain_extend_ref(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         let mut v = Vec::<u32>::with_capacity(data.len() + 1);
@@ -631,7 +631,7 @@ fn bench_chain_extend_ref(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_chain_extend_value(b: &mut test::Bencher) {
+fn bench_chain_extend_value(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         let mut v = Vec::<u32>::with_capacity(data.len() + 1);
@@ -641,7 +641,7 @@ fn bench_chain_extend_value(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_rev_1(b: &mut test::Bencher) {
+fn bench_rev_1(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         let mut v = Vec::<u32>::new();
@@ -651,13 +651,13 @@ fn bench_rev_1(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_rev_2(b: &mut test::Bencher) {
+fn bench_rev_2(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| example_plain_slow(&data));
 }
 
 #[bench]
-fn bench_map_regular(b: &mut test::Bencher) {
+fn bench_map_regular(b: &mut Bencher) {
     let data = black_box([(0, 0); LEN]);
     b.iter(|| {
         let mut v = Vec::<u32>::new();
@@ -667,7 +667,7 @@ fn bench_map_regular(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_map_fast(b: &mut test::Bencher) {
+fn bench_map_fast(b: &mut Bencher) {
     let data = black_box([(0, 0); LEN]);
     b.iter(|| map_fast(&data));
 }
