@@ -663,11 +663,16 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
     let json_flag = "--json";
     while let Some(arg) = args.next() {
         if arg == extern_flag {
+            cmd.arg(extern_flag); // always forward flag, but adjust filename
             // `--extern` is always passed as a separate argument by cargo.
             let next_arg = args.next().expect("`--extern` should be followed by a filename");
-            let next_arg = next_arg.strip_suffix(".rlib").expect("all extern filenames should end in `.rlib`");
-            cmd.arg(extern_flag);
-            cmd.arg(format!("{}.rmeta", next_arg));
+            if let Some(next_lib) = next_arg.strip_suffix(".rlib") {
+                // If this is an rlib, make it an rmeta.
+                cmd.arg(format!("{}.rmeta", next_lib));
+            } else {
+                // Some other extern file (e.g., a `.so`). Forward unchanged.
+                cmd.arg(next_arg);
+            }
         } else if arg.starts_with(error_format_flag) {
             let suffix = &arg[error_format_flag.len()..];
             assert!(suffix.starts_with('='));
