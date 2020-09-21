@@ -431,49 +431,6 @@ impl Inliner<'tcx> {
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
                 debug!("inlined {:?} into {:?}", callsite.callee, caller_body.source);
 
-                let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
-                let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
-
-                for mut scope in callee_body.source_scopes.iter().cloned() {
-                    // Map the callee scopes into the caller.
-                    // FIXME(eddyb) this may ICE if the scopes are out of order.
-                    scope.parent_scope = scope.parent_scope.map(|s| scope_map[s]);
-                    scope.inlined_parent_scope = scope.inlined_parent_scope.map(|s| scope_map[s]);
-
-                    if scope.parent_scope.is_none() {
-                        let callsite_scope = &caller_body.source_scopes[callsite.source_info.scope];
-
-                        // Attach the outermost callee scope as a child of the callsite
-                        // scope, via the `parent_scope` and `inlined_parent_scope` chains.
-                        scope.parent_scope = Some(callsite.source_info.scope);
-                        assert_eq!(scope.inlined_parent_scope, None);
-                        scope.inlined_parent_scope = if callsite_scope.inlined.is_some() {
-                            Some(callsite.source_info.scope)
-                        } else {
-                            callsite_scope.inlined_parent_scope
-                        };
-
-                        // Mark the outermost callee scope as an inlined one.
-                        assert_eq!(scope.inlined, None);
-                        scope.inlined = Some((callsite.callee, callsite.source_info.span));
-                    } else if scope.inlined_parent_scope.is_none() {
-                        // Make it easy to find the scope with `inlined` set above.
-                        scope.inlined_parent_scope = Some(scope_map[OUTERMOST_SOURCE_SCOPE]);
-                    }
-
-                    let idx = caller_body.source_scopes.push(scope);
-                    scope_map.push(idx);
-                }
-
-                for loc in callee_body.vars_and_temps_iter() {
-                    let mut local = callee_body.local_decls[loc].clone();
-
-                    local.source_info.scope = scope_map[local.source_info.scope];
-
-                    let idx = caller_body.local_decls.push(local);
-                    local_map.push(idx);
-                }
-
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
                 // Place could result in two different locations if `f`
@@ -524,14 +481,56 @@ impl Inliner<'tcx> {
                 let mut integrator = Integrator {
                     block_idx: bb_len,
                     args: &args,
-                    local_map,
-                    scope_map,
+                    local_map: IndexVec::with_capacity(callee_body.local_decls.len()),
+                    scope_map: IndexVec::with_capacity(callee_body.source_scopes.len()),
                     destination: dest,
                     return_block,
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
                     tcx: self.tcx,
                 };
+
+                for mut scope in callee_body.source_scopes.iter().cloned() {
+                    // Map the callee scopes into the caller.
+                    // FIXME(eddyb) this may ICE if the scopes are out of order.
+                    scope.parent_scope = scope.parent_scope.map(|s| integrator.scope_map[s]);
+                    scope.inlined_parent_scope =
+                        scope.inlined_parent_scope.map(|s| integrator.scope_map[s]);
+
+                    if scope.parent_scope.is_none() {
+                        let callsite_scope = &caller_body.source_scopes[callsite.source_info.scope];
+
+                        // Attach the outermost callee scope as a child of the callsite
+                        // scope, via the `parent_scope` and `inlined_parent_scope` chains.
+                        scope.parent_scope = Some(callsite.source_info.scope);
+                        assert_eq!(scope.inlined_parent_scope, None);
+                        scope.inlined_parent_scope = if callsite_scope.inlined.is_some() {
+                            Some(callsite.source_info.scope)
+                        } else {
+                            callsite_scope.inlined_parent_scope
+                        };
+
+                        // Mark the outermost callee scope as an inlined one.
+                        assert_eq!(scope.inlined, None);
+                        scope.inlined = Some((callsite.callee, callsite.source_info.span));
+                    } else if scope.inlined_parent_scope.is_none() {
+                        // Make it easy to find the scope with `inlined` set above.
+                        scope.inlined_parent_scope =
+                            Some(integrator.scope_map[OUTERMOST_SOURCE_SCOPE]);
+                    }
+
+                    let idx = caller_body.source_scopes.push(scope);
+                    integrator.scope_map.push(idx);
+                }
+
+                for loc in callee_body.vars_and_temps_iter() {
+                    let mut local = callee_body.local_decls[loc].clone();
+
+                    local.source_info.scope = integrator.scope_map[local.source_info.scope];
+
+                    let idx = caller_body.local_decls.push(local);
+                    integrator.local_map.push(idx);
+                }
 
                 for mut var_debug_info in callee_body.var_debug_info.drain(..) {
                     integrator.visit_var_debug_info(&mut var_debug_info);
