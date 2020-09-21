@@ -613,8 +613,8 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-    /// Adds a key/value pair and an edge to go to the right of that pair to
-    /// the end of the node.
+    /// Adds a key/value pair, and an edge to go to the right of that pair,
+    /// to the end of the node.
     pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
 
@@ -630,8 +630,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         }
     }
 
-    /// Adds a key/value pair and an edge to go to the left of that pair to
-    /// the beginning of the node.
+    /// Adds a key/value pair, and an edge to go to the left of that pair,
+    /// to the beginning of the node.
     pub fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
         assert!(self.len() < CAPACITY);
@@ -1152,7 +1152,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     ///
     /// - The node is truncated to only contain the key/value pairs to the right of
     ///   this handle.
-    /// - The key and value pointed to by this handle and extracted.
+    /// - The key and value pointed to by this handle are extracted.
     /// - All the key/value pairs to the right of this handle are put into a newly
     ///   allocated node.
     pub fn split(mut self) -> (NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, K, V, Root<K, V>) {
@@ -1196,7 +1196,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     ///
     /// - The node is truncated to only contain the edges and key/value pairs to the
     ///   right of this handle.
-    /// - The key and value pointed to by this handle and extracted.
+    /// - The key and value pointed to by this handle are extracted.
     /// - All the edges and key/value pairs to the right of this handle are put into
     ///   a newly allocated node.
     pub fn split(mut self) -> (NodeRef<marker::Mut<'a>, K, V, marker::Internal>, K, V, Root<K, V>) {
