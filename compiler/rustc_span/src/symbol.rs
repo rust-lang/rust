@@ -679,7 +679,6 @@ symbols! {
         minnumf32,
         minnumf64,
         mips_target_feature,
-        mmx_target_feature,
         module,
         module_path,
         more_struct_aliases,

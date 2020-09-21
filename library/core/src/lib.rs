@@ -126,7 +126,6 @@
 #![feature(unwind_attributes)]
 #![feature(variant_count)]
 #![cfg_attr(bootstrap, feature(doc_alias))]
-#![feature(mmx_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(sse4a_target_feature)]
 #![feature(arm_target_feature)]

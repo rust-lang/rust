@@ -21,23 +21,8 @@ fn uncached_llvm_type<'a, 'tcx>(
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
         Abi::Vector { ref element, count } => {
-            // LLVM has a separate type for 64-bit SIMD vectors on X86 called
-            // `x86_mmx` which is needed for some SIMD operations. As a bit of a
-            // hack (all SIMD definitions are super unstable anyway) we
-            // recognize any one-element SIMD vector as "this should be an
-            // x86_mmx" type. In general there shouldn't be a need for other
-            // one-element SIMD vectors, so it's assumed this won't clash with
-            // much else.
-            let use_x86_mmx = count == 1
-                && layout.size.bits() == 64
-                && (cx.sess().target.target.arch == "x86"
-                    || cx.sess().target.target.arch == "x86_64");
-            if use_x86_mmx {
-                return cx.type_x86_mmx();
-            } else {
-                let element = layout.scalar_llvm_type_at(cx, element, Size::ZERO);
-                return cx.type_vector(element, count);
-            }
+            let element = layout.scalar_llvm_type_at(cx, element, Size::ZERO);
+            return cx.type_vector(element, count);
         }
         Abi::ScalarPair(..) => {
             return cx.type_struct(
