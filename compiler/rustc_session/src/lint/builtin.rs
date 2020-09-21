@@ -2208,6 +2208,8 @@ declare_lint! {
     /// }
     /// ```
     ///
+    /// {{produces}}
+    ///
     /// ### Explanation
     ///
     /// Previous versions of Rust allowed function pointers and wide raw pointers in patterns.
@@ -2256,6 +2258,8 @@ declare_lint! {
     ///     }
     /// }
     /// ```
+    ///
+    /// {{produces}}
     ///
     /// ### Explanation
     ///
