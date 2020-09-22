@@ -554,8 +554,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// a.clear();
     /// assert!(a.is_empty());
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.base.clear();
     }
@@ -746,8 +746,8 @@ where
     /// assert_eq!(map.get_key_value(&1), Some((&1, &"a")));
     /// assert_eq!(map.get_key_value(&2), None);
     /// ```
-    #[stable(feature = "map_get_key_value", since = "1.40.0")]
     #[inline]
+    #[stable(feature = "map_get_key_value", since = "1.40.0")]
     pub fn get_key_value<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
     where
         K: Borrow<Q>,
@@ -772,8 +772,8 @@ where
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
@@ -800,8 +800,8 @@ where
     /// }
     /// assert_eq!(map[&1], "b");
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
     where
         K: Borrow<Q>,
@@ -834,8 +834,8 @@ where
     /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[&37], "c");
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.base.insert(k, v)
     }
@@ -857,8 +857,8 @@ where
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
     where
         K: Borrow<Q>,
@@ -886,8 +886,8 @@ where
     /// assert_eq!(map.remove(&1), None);
     /// # }
     /// ```
-    #[stable(feature = "hash_map_remove_entry", since = "1.27.0")]
     #[inline]
+    #[stable(feature = "hash_map_remove_entry", since = "1.27.0")]
     pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q>,
@@ -909,8 +909,8 @@ where
     /// map.retain(|&k, _| k % 2 == 0);
     /// assert_eq!(map.len(), 4);
     /// ```
-    #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     #[inline]
+    #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&K, &mut V) -> bool,
@@ -1542,7 +1542,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
         self.base.get()
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
@@ -1571,7 +1571,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
         self.base.get_key_value_mut()
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the key and value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the key and value in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
@@ -1609,7 +1609,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
 }
 
 impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
@@ -2072,7 +2072,6 @@ where
 }
 
 impl<'a, K, V> Entry<'a, K, V> {
-    #[stable(feature = "rust1", since = "1.0.0")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -2090,6 +2089,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 6);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -2097,7 +2097,6 @@ impl<'a, K, V> Entry<'a, K, V> {
         }
     }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
     ///
@@ -2114,6 +2113,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -2121,7 +2121,6 @@ impl<'a, K, V> Entry<'a, K, V> {
         }
     }
 
-    #[unstable(feature = "or_insert_with_key", issue = "71024")]
     /// Ensures a value is in the entry by inserting, if empty, the result of the default function,
     /// which takes the key as its argument, and returns a mutable reference to the value in the
     /// entry.
@@ -2139,6 +2138,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 9);
     /// ```
     #[inline]
+    #[unstable(feature = "or_insert_with_key", issue = "71024")]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -2203,7 +2203,7 @@ impl<'a, K, V> Entry<'a, K, V> {
         }
     }
 
-    /// Sets the value of the entry, and returns an OccupiedEntry.
+    /// Sets the value of the entry, and returns an `OccupiedEntry`.
     ///
     /// # Examples
     ///
@@ -2230,7 +2230,6 @@ impl<'a, K, V> Entry<'a, K, V> {
 }
 
 impl<'a, K, V: Default> Entry<'a, K, V> {
-    #[stable(feature = "entry_or_default", since = "1.28.0")]
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
     ///
@@ -2247,6 +2246,7 @@ impl<'a, K, V: Default> Entry<'a, K, V> {
     /// # }
     /// ```
     #[inline]
+    #[stable(feature = "entry_or_default", since = "1.28.0")]
     pub fn or_default(self) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -2351,7 +2351,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         self.base.get_mut()
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     ///
     /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
@@ -2523,7 +2523,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
         self.base.into_key()
     }
 
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     ///
     /// # Examples
@@ -2545,8 +2545,8 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
         self.base.insert(value)
     }
 
-    /// Sets the value of the entry with the VacantEntry's key,
-    /// and returns an OccupiedEntry.
+    /// Sets the value of the entry with the `VacantEntry`'s key,
+    /// and returns an `OccupiedEntry`.
     ///
     /// # Examples
     ///
