@@ -36,19 +36,13 @@ bool is_value_needed_in_reverse(
 
       // TODO make this more aggressive and dont need to save loop latch
       if (isa<BranchInst>(use) || isa<SwitchInst>(use)) {
-        // llvm::errs() << " had to use in reverse since used in branch/switch "
-        // << *inst << " use: " << *use << "\n";
         return seen[idx] = true;
       }
 
       if (is_value_needed_in_reverse(TR, gutils, user, topLevel, seen)) {
-        // llvm::errs() << " had to use in reverse since used in " << *inst << "
-        // use: " << *use << "\n";
         return seen[idx] = true;
       }
     }
-    // llvm::errs() << " considering use : " << *user << " of " <<  *inst <<
-    // "\n";
 
     // The following are types we know we don't need to compute adjoints
 
@@ -70,8 +64,6 @@ bool is_value_needed_in_reverse(
 
         if (isa<LoadInst>(zu) || isa<CastInst>(zu) || isa<PHINode>(zu)) {
           if (is_value_needed_in_reverse(TR, gutils, zu, topLevel, seen)) {
-            // llvm::errs() << " had to use in reverse since sub use " << *zu <<
-            // " of " << *inst << "\n";
             return seen[idx] = true;
           }
           continue;
@@ -102,25 +94,7 @@ bool is_value_needed_in_reverse(
           continue;
         }
 
-        /*
-        if (auto gep = dyn_cast<GetElementPtrInst>(zu)) {
-            for(auto &idx : gep->indices()) {
-                if (idx == inst) {
-                    return seen[inst] = true;
-                }
-            }
-            if (gep->getPointerOperand() == inst &&
-        is_value_needed_in_reverse(gutils, gep, topLevel, seen)) {
-                //llvm::errs() << " had to use in reverse since sub gep use " <<
-        *zu << " of " << *inst << "\n"; return seen[inst] = true;
-            }
-            continue;
-        }
-        */
-
         // TODO add handling of call and allow interprocedural
-        // llvm::errs() << " unknown pointer use " << *zu << " of " << *inst <<
-        // "\n";
         unknown = true;
       }
       if (!unknown)
@@ -155,8 +129,6 @@ bool is_value_needed_in_reverse(
         if (op->getOperand(1) == inst &&
             !gutils->isConstantValue(op->getOperand(0)))
           needed = true;
-        // llvm::errs() << "needed " << *inst << " in mul " << *op << " -
-        // needed:" << needed << "\n";
         if (!needed)
           continue;
       } else if (op->getOpcode() == Instruction::FDiv) {
@@ -170,8 +142,6 @@ bool is_value_needed_in_reverse(
         if (op->getOperand(0) == inst &&
             !gutils->isConstantValue(op->getOperand(1)))
           needed = true;
-        // llvm::errs() << "needed " << *inst << " in div " << *op << " -
-        // needed:" << needed << "\n";
         if (!needed)
           continue;
       } else
@@ -243,8 +213,6 @@ bool is_value_needed_in_reverse(
       if (gutils->isConstantInstruction(const_cast<Instruction *>(inst)))
         continue;
 
-    // llvm::errs() << " + must have in reverse from considering use : " <<
-    // *user << " of " <<  *inst << "\n";
     return seen[idx] = true;
   }
   return false;

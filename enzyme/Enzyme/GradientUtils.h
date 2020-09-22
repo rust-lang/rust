@@ -233,7 +233,7 @@ public:
   }
 
 private:
-  SmallVector<Value *, 4> addedMallocs;
+  SmallVector<Value *, 4> addedTapeVals;
   unsigned tapeidx;
   Value *tape;
 
@@ -249,9 +249,9 @@ public:
                        const ValueToValueMapTy &available) const;
 
   void replaceAWithB(Value *A, Value *B) {
-    for (unsigned i = 0; i < addedMallocs.size(); i++) {
-      if (addedMallocs[i] == A) {
-        addedMallocs[i] = B;
+    for (unsigned i = 0; i < addedTapeVals.size(); i++) {
+      if (addedTapeVals[i] == A) {
+        addedTapeVals[i] = B;
       }
     }
 
@@ -391,7 +391,7 @@ public:
     assert(tape == nullptr);
     assert(newtape != nullptr);
     assert(tapeidx == 0);
-    assert(addedMallocs.size() == 0);
+    assert(addedTapeVals.size() == 0);
     tape = newtape;
   }
 
@@ -836,10 +836,10 @@ public:
       assert(malloc);
       // assert(!isa<PHINode>(malloc));
 
-      assert(idx >= 0 && (unsigned)idx == addedMallocs.size());
+      assert(idx >= 0 && (unsigned)idx == addedTapeVals.size());
 
       if (isa<UndefValue>(malloc)) {
-        addedMallocs.push_back(malloc);
+        addedTapeVals.push_back(malloc);
         return malloc;
       }
 
@@ -862,7 +862,7 @@ public:
       }
 
       if (!inLoop) {
-        addedMallocs.push_back(malloc);
+        addedTapeVals.push_back(malloc);
         return malloc;
       }
 
@@ -898,14 +898,14 @@ public:
         }
         assert(innerType == malloc->getType());
       }
-      addedMallocs.push_back(toadd);
+      addedTapeVals.push_back(toadd);
       return malloc;
     }
     llvm::errs() << "Fell through on cacheForReverse. This should never happen.\n";
     assert(false);
   }
 
-  const SmallVectorImpl<Value *> &getMallocs() const { return addedMallocs; }
+  const SmallVectorImpl<Value *> &getTapeValues() const { return addedTapeVals; }
 
 public:
   TargetLibraryInfo &TLI;

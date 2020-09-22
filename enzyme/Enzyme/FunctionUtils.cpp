@@ -164,8 +164,6 @@ remover:
                      << call->getCalledFunction()->getName() << "\n";
         continue;
       }
-      // llvm::errs() << "inlining " << call->getCalledFunction()->getName() <<
-      // "\n";
       InlineFunctionInfo IFI;
       #if LLVM_VERSION_MAJOR >= 11
       InlineFunction(*call, IFI);
@@ -253,7 +251,6 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   if (enzyme_preopt) {
 
     if (autodiff_inline) {
-      // llvm::errs() << "running inlining process\n";
       forceRecursiveInlining(NewF, F);
     }
   }
@@ -391,7 +388,6 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   }
 
   {
-    // llvm::errs() << "alias analysis run\n";
     // Alias analysis is necessary to ensure can query whether we can move a
     // forward pass function BasicAA ba; auto baa = new
     // BasicAAResult(ba.run(*NewF, AM));
@@ -412,13 +408,8 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
         PV
 #endif
     );
-    // cache_AA[F] = baa;
-    // llvm::errs() << " basicAA(f=" << F->getName() << ")=" << baa << "\n";
     AA.addAAResult(*baa);
     AA.addAAResult(*(new TypeBasedAAResult()));
-    // for(auto &a : AA.AAs) {
-    //   llvm::errs() << "&AA: " << &AA << " added baa &a: " << a.get() << "\n";
-    //}
     // ScopedNoAliasAA sa;
     // auto saa = new ScopedNoAliasAAResult(sa.run(*NewF, AM));
     // AA.addAAResult(*saa);

@@ -138,7 +138,6 @@ bool GradientUtils::legalRecompute(const Value *val,
 
   if (isa<Instruction>(val) &&
       cast<Instruction>(val)->getMetadata("enzyme_mustcache")) {
-    // llvm::errs() << "illegal recompute: " << *val << "\n";
     return false;
   }
 
@@ -160,13 +159,11 @@ bool GradientUtils::legalRecompute(const Value *val,
       orig = li;
     } else {
       orig = isOriginal(li);
-      // assert(0 && "why are we passing non original queries");
+      // todo consider when we pass non original queries
     }
 
     if (orig) {
       auto found = can_modref_map->find(const_cast<Instruction *>(orig));
-      // llvm::errs() << "legality of recomputing: " << *li << " is " <<
-      // !found->second << "\n";
       if (found == can_modref_map->end()) {
         llvm::errs() << "can_modref_map:\n";
         for (auto &pair : *can_modref_map) {
@@ -179,8 +176,6 @@ bool GradientUtils::legalRecompute(const Value *val,
                      << " in fn: " << orig->getParent()->getParent()->getName();
       }
       assert(found != can_modref_map->end());
-      // llvm::errs() << " legal [ " << legalRecompute << " ] recompute of " <<
-      // *inst << "\n";
       return !found->second;
     } else {
       if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(li))) {
@@ -210,7 +205,6 @@ bool GradientUtils::legalRecompute(const Value *val,
 
   if (auto inst = dyn_cast<Instruction>(val)) {
     if (inst->mayReadOrWriteMemory()) {
-      // llvm::errs() << "illegal recompute: " << *val << "\n";
       return false;
     }
   }
@@ -242,10 +236,8 @@ bool GradientUtils::shouldRecompute(const Value *val,
   const Instruction *inst = cast<Instruction>(val);
 
   // if this has operands that need to be loaded and haven't already been loaded
-  // (TODO), just cache this
+  // TODO, just cache this
   for (auto &op : inst->operands()) {
-    // llvm::errs() << "   + " << *op << " legalRecompute:" <<
-    // legalRecompute(op, available) << "\n";
     if (!legalRecompute(op, available)) {
 
       // If this is a load from cache already, dont force a cache of this
@@ -293,8 +285,6 @@ bool GradientUtils::shouldRecompute(const Value *val,
       }
 
     forceCache:;
-      // llvm::errs() << "choosing to cache " << *val << " because of " << *op
-      // << "\n";
       return false;
     }
   }
@@ -331,7 +321,6 @@ bool GradientUtils::shouldRecompute(const Value *val,
     return false;
   }
 
-  // llvm::errs() << "unknown inst " << *val << " unable to recompute\n";
   return true;
 }
 
@@ -384,11 +373,6 @@ GradientUtils *GradientUtils::CreateFromClone(
       constants, nonconstant, returnvals, /*returnValue*/ returnValue,
       "fakeaugmented_" + todiff->getName(), &originalToNew,
       /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
-  // llvm::errs() <<  "returnvals:" << todiff->getName() << " \n";
-  // for (auto a : returnvals ) {
-  //    llvm::errs() <<"   + " << *a << "\n";
-  //}
-  // llvm::errs() <<  "end returnvals:\n";
   SmallPtrSet<Value *, 4> constant_values;
   SmallPtrSet<Value *, 4> nonconstant_values;
 
@@ -430,10 +414,6 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
     }
   }
 
-  // llvm::errs() << "creating from clone: " << todiff->getName() << "
-  // differentialReturn: " << differentialReturn << " returnvals: " <<
-  // returnvals.size() << " nonconstant_values: " << nonconstant_values.size() <<
-  // "\n";
   auto res = new DiffeGradientUtils(
       newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant,
       constant_values, nonconstant_values, originalToNew,
@@ -846,8 +826,6 @@ void removeRedundantIVs(const Loop *L, BasicBlock *Header,
       if (SE.getCouldNotCompute() == S)
         continue;
       Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
-      // llvm::errs() << " pn: " << *PN << " scev: " << *S << " for NewIV: " <<
-      // *NewIV << "\n";
       if (NewIV == PN) {
         continue;
       }
@@ -1280,15 +1258,10 @@ MyScalarEvolution::computeExitLimitFromICmp(const Loop *L, ICmpInst *ExitCond,
   }
   PROP_PHI(LHS)
   PROP_PHI(RHS)
-  // llvm::errs() << "pLHS: " << *LHS << "\n";
-  // llvm::errs() << "pRHS: " << *RHS << "\n";
 
   // Try to evaluate any dependencies out of the loop.
   LHS = getSCEVAtScope(LHS, L);
   RHS = getSCEVAtScope(RHS, L);
-
-  // llvm::errs() << "LHS: " << *LHS << "\n";
-  // llvm::errs() << "RHS: " << *RHS << "\n";
 
   // At this point, we would like to compute how many iterations of the
   // loop the predicate will return true for these inputs.
@@ -1527,11 +1500,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext,
     loopContexts[L].latchMerge = nullptr;
 
     getExitBlocks(L, loopContexts[L].exitBlocks);
-    // if (loopContexts[L].exitBlocks.size() == 0) {
-    //    llvm::errs() << "newFunc: " << *BB->getParent() << "\n";
-    //    llvm::errs() << "L: " << *L << "\n";
-    //}
-    // assert(loopContexts[L].exitBlocks.size() > 0);
 
     auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
     PHINode *CanonicalIV = pair.first;
@@ -1566,9 +1534,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext,
       for (BasicBlock *ExitBB : ExitingBlocks) {
         assert(L->contains(ExitBB));
         auto EL = SE.computeExitLimit(L, ExitBB, /*AllowPredicates*/ true);
-
-        // llvm::errs() << "MaxNotTaken:" << *EL.MaxNotTaken << "\n";
-        // llvm::errs() << "ExactNotTaken:" << *EL.ExactNotTaken << "\n";
 
         if (MayExitMaxBECount != SE.getCouldNotCompute()) {
           if (!MayExitMaxBECount || EL.ExactNotTaken == SE.getCouldNotCompute())
@@ -1617,9 +1582,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext,
                                    loopContexts[L].preheader->getTerminator());
       loopContexts[L].dynamic = false;
     } else {
-      // for(auto B : L->blocks()) {
-      //   llvm::errs() << *B << "\n";
-      //}
       llvm::errs() << "SE could not compute loop limit of "
                    << L->getHeader()->getName() << " "
                    << L->getHeader()->getParent()->getName() << "\n";
@@ -1696,7 +1658,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
       while (isa<PHINode>(use))
         use = use->getNextNode();
       if (DT.dominates(inst, use)) {
-        // llvm::errs() << "allowed " << *inst << "from domination\n";
         return inst;
       } else {
         llvm::errs() << *BuilderM.GetInsertBlock()->getParent() << "\n";
@@ -1707,7 +1668,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     } else {
       if (inst->getParent() == BuilderM.GetInsertBlock() ||
           DT.dominates(inst, BuilderM.GetInsertBlock())) {
-        // llvm::errs() << "allowed " << *inst << "from block domination\n";
+        // allowed from block domination
         return inst;
       } else {
         llvm::errs() << *BuilderM.GetInsertBlock()->getParent() << "\n";
@@ -1811,15 +1772,10 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     return available[inst];
 
   // TODO consider call as part of
-  // llvm::errs() << " considering " << *inst << " legal: " <<
-  // legalRecompute(inst, available) << " should: " << shouldRecompute(inst,
-  // available) << "\n";
   if (legalRecompute(prelcssaInst, available)) {
     if (shouldRecompute(prelcssaInst, available)) {
       auto op = unwrapM(prelcssaInst, BuilderM, available,
                         UnwrapMode::AttemptSingleUnwrap);
-      // llvm::errs() << "for op " << *inst << " choosing to unwrap and found: "
-      // << op << "\n";
       if (op) {
         assert(op);
         assert(op->getType());
@@ -1839,11 +1795,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
       }
     } else {
       if (isa<LoadInst>(prelcssaInst)) {
-        // llvm::errs() << " + loading " << *inst << "\n";
       }
     }
   }
-  // llvm::errs() << "looking from cache: " << *inst << "\n";
 
   if (auto origInst = isOriginal(inst))
     if (auto li = dyn_cast<LoadInst>(inst)) {
@@ -1875,8 +1829,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
               allInstructionsBetween(
                   OrigLI, orig2, origInst, [&](Instruction *I) -> bool {
-                    // llvm::errs() << "examining instruction: " << *I << "
-                    // between: " << *li2 << " and " << *li << "\n";
                     if (I->mayWriteToMemory() &&
                         writesToMemoryReadBy(AA, /*maybeReader*/ origInst,
                                              /*maybeWriter*/ I)) {
@@ -2127,8 +2079,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     noSpeedCache:;
     }
 
-  // llvm::errs() << "looking from cache: " << *inst << "\n";
-
   ensureLookupCached(inst);
   bool isi1 = inst->getType()->isIntegerTy() &&
               cast<IntegerType>(inst->getType())->getBitWidth() == 1;
@@ -2212,11 +2162,7 @@ void GradientUtils::branchToCorrespondingTarget(
       Q.pop_front();
       auto edge = std::get<0>(trace);
       auto block = edge.first;
-      // auto blocksuc = edge.second;
       auto target = std::get<1>(trace);
-      // llvm::errs() << " seeing Q edge [" << block->getName() << "," <<
-      // blocksuc->getName() << "] " << " to target " << target->getName() <<
-      // "\n";
 
       if (done[edge].count(target))
         continue;
@@ -2225,8 +2171,6 @@ void GradientUtils::branchToCorrespondingTarget(
       Loop *blockLoop = LI.getLoopFor(block);
 
       for (BasicBlock *Pred : predecessors(block)) {
-        // llvm::errs() << " seeing in pred [" << Pred->getName() << "," <<
-        // block->getName() << "] to target " << target->getName() << "\n";
         // Don't go up the backedge as we can use the last value if desired via
         // lcssa
         if (blockLoop && blockLoop->getHeader() == block &&
@@ -2236,8 +2180,6 @@ void GradientUtils::branchToCorrespondingTarget(
         Q.push_back(
             std::tuple<std::pair<BasicBlock *, BasicBlock *>, BasicBlock *>(
                 std::make_pair(Pred, block), target));
-        // llvm::errs() << " adding to Q pred [" << Pred->getName() << "," <<
-        // block->getName() << "] to target " << target->getName() << "\n";
       }
     }
   }
@@ -2251,26 +2193,15 @@ void GradientUtils::branchToCorrespondingTarget(
   std::set<BasicBlock *> blocks;
   for (auto pair : done) {
     const auto &edge = pair.first;
-
-    /*
-    const auto& targets = pair.second;
-    llvm::errs() << " edge: (" << edge.first->getName() << "," <<
-    edge.second->getName() << ")\n"; llvm::errs() << "   targets: ["; for(auto t
-    : targets) llvm::errs() << t->getName() << ", "; llvm::errs() << "]\n";
-    */
-
     blocks.insert(edge.first);
   }
 
   if (targetToPreds.size() == 3) {
-    // llvm::errs() << "trying special 3pair\n";
     for (auto block : blocks) {
       std::set<BasicBlock *> foundtargets;
       std::set<BasicBlock *> uniqueTargets;
       for (BasicBlock *succ : successors(block)) {
         auto edge = std::make_pair(block, succ);
-        // llvm::errs() << " edge: " << edge.first->getName() << " | " <<
-        // edge.second->getName() << "\n";
         for (BasicBlock *target : done[edge]) {
           if (foundtargets.find(target) != foundtargets.end()) {
             goto rnextpair;
@@ -2285,21 +2216,11 @@ void GradientUtils::branchToCorrespondingTarget(
       if (uniqueTargets.size() != 1)
         goto rnextpair;
 
-      /*
-      llvm::errs() << " valid block1: " << block->getName() << " : targets:[";
-      for(auto a : foundtargets) llvm::errs() << a->getName() << ",";
-      llvm::errs() << "] uniqueTargets:[";
-      for(auto a : uniqueTargets) llvm::errs() << a->getName() << ",";
-      llvm::errs() << "]\n";
-      */
-
       {
         BasicBlock *subblock = nullptr;
         for (auto block2 : blocks) {
           std::set<BasicBlock *> seen2;
-          // llvm::errs() << " + trying block: " << block2->getName() << "\n";
           for (BasicBlock *succ : successors(block2)) {
-            // llvm::errs() << " + + trying succ: " << succ->getName() << "\n";
             auto edge = std::make_pair(block2, succ);
             if (done[edge].size() != 1) {
               // llvm::errs() << " -- failed from noonesize\n";
@@ -2332,8 +2253,6 @@ void GradientUtils::branchToCorrespondingTarget(
 
         if (subblock == nullptr)
           goto rnextpair;
-
-        // llvm::errs() << " valid block2: " << subblock->getName() << "\n";
 
         {
           auto bi1 = cast<BranchInst>(block->getTerminator());
@@ -2423,21 +2342,15 @@ void GradientUtils::branchToCorrespondingTarget(
     for (BasicBlock *succ : successors(block)) {
       auto edge = std::make_pair(block, succ);
       if (done[edge].size() != 1) {
-        // llvm::errs() << " | failed to use multisuccessor edge [" <<
-        // block->getName() << "," << succ->getName() << "\n";
         goto nextpair;
       }
       BasicBlock *target = *done[edge].begin();
       if (foundtargets.find(target) != foundtargets.end()) {
-        // llvm::errs() << " | double target for block edge [" <<
-        // block->getName() << "," << succ->getName() << "\n";
         goto nextpair;
       }
       foundtargets.insert(target);
     }
     if (foundtargets.size() != targetToPreds.size()) {
-      // llvm::errs() << " | failed to use " << block->getName() << " since
-      // noneq targets\n";
       goto nextpair;
     }
 
@@ -2596,8 +2509,6 @@ nofast:;
       BuilderM.CreateCondBr(which, /*true*/ targets[1], /*false*/ targets[0]);
     } else {
       assert(targets.size() > 0);
-      // llvm::errs() << "which: " << *which << "\n";
-      // llvm::errs() << "targets.back(): " << *targets.back() << "\n";
       auto swit =
           BuilderM.CreateSwitch(which, targets.back(), targets.size() - 1);
       for (unsigned i = 0; i < targets.size() - 1; i++) {

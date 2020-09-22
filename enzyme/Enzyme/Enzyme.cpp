@@ -39,10 +39,9 @@ using namespace llvm;
 #ifdef DEBUG_TYPE
 #undef DEBUG_TYPE
 #endif
-#define DEBUG_TYPE "lower-autodiff-intrinsic"
+#define DEBUG_TYPE "lower-enzyme-intrinsic"
 
-void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI,
-                    AAResults &AA) { //, LoopInfo& LI, DominatorTree& DT) {
+void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
 
   Value *fn = CI->getArgOperand(0);
 
@@ -117,9 +116,6 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI,
     } else
       ty = whatType(PTy);
 
-    // llvm::errs() << "considering arg " << *res << " argnum " << truei <<
-    // "\n";
-
     constants.push_back(ty);
 
     assert(truei < FT->getNumParams());
@@ -133,7 +129,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI,
             assert(res);
             assert(PTy);
             assert(FT);
-            llvm::errs() << "Warning cast(1) __builtin_autodiff argument " << i
+            llvm::errs() << "Warning cast(1) __enzyme_autodiff argument " << i
                          << " " << *res << "|" << *res->getType()
                          << " to argument " << truei << " " << *PTy << "\n"
                          << "orig: " << *FT << "\n";
@@ -141,7 +137,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI,
         }
       }
       if (!res->getType()->canLosslesslyBitCastTo(PTy)) {
-        llvm::errs() << "Cannot cast(1) __builtin_autodiff argument " << i
+        llvm::errs() << "Cannot cast(1) __enzyme_autodiff argument " << i
                      << " " << *res << "|" << *res->getType() << " to argument "
                      << truei << " " << *PTy << "\n"
                      << "orig: " << *FT << "\n";
@@ -191,10 +187,6 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI,
     truei++;
   }
 
-  // for(auto a : constants) {
-  //    llvm::errs() << "constant argnum: " << a << "\n";
-  //}
-
   bool differentialReturn =
       cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
@@ -229,8 +221,8 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI,
       cast<Function>(fn), retType, constants, TLI, TA, AA,
       /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ true,
       /*addedType*/ nullptr, type_args, volatile_args,
-      /*index mapping*/ nullptr); // llvm::Optional<std::map<std::pair<Instruction*,
-                                  // std::string>, unsigned>>({}));
+      /*index mapping*/ nullptr);
+                                  
 
   if (differentialReturn)
     args.push_back(ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
@@ -261,8 +253,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI,
 }
 
 static bool
-lowerEnzymeCalls(Function &F, TargetLibraryInfo &TLI,
-                 AAResults &AA) { //, LoopInfo& LI, DominatorTree& DT) {
+lowerEnzymeCalls(Function &F, TargetLibraryInfo &TLI, AAResults &AA) {
 
   bool Changed = false;
 

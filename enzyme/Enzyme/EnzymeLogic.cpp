@@ -74,8 +74,6 @@ bool is_value_mustcache_from_origin(
   // check if the argument
   //   received from the caller is uncacheable.
   if (isa<UndefValue>(obj)) {
-    // llvm::errs() << " + ocs undef (safe=" << init_safe << ") " <<
-    // *callsite_op << " object: " << *obj << "\n";
   } else if (auto arg = dyn_cast<Argument>(obj)) {
     auto found = uncacheable_args.find(arg);
     if (found == uncacheable_args.end()) {
@@ -90,11 +88,8 @@ bool is_value_mustcache_from_origin(
     }
     assert(found != uncacheable_args.end());
     if (found->second) {
-      // llvm::errs() << "OP is uncacheable arg: " << li << "\n";
       mustcache = true;
     }
-    // llvm::errs() << " + argument (mustcache=" << mustcache << ") " << "
-    // object: " << *obj << " arg: " << *arg << "e\n";
   } else {
 
     // Pointer operands originating from call instructions that are not
@@ -116,10 +111,8 @@ bool is_value_mustcache_from_origin(
         }
       }
       if (called && isCertainMallocOrFree(called)) {
-        // llvm::errs() << "OP is certain malloc or free: " << *op << "\n";
       } else {
-        // llvm::errs() << "OP is a non malloc/free call so we need to cache "
-        // << *op << "\n";
+        // OP is a non malloc/free call so we need to cache
         mustcache = true;
       }
     } else if (isa<AllocaInst>(obj)) {
@@ -127,14 +120,11 @@ bool is_value_mustcache_from_origin(
     } else if (auto sli = dyn_cast<LoadInst>(obj)) {
       // If obj is from a load instruction conservatively consider it
       // uncacheable if that load itself cannot be cached
-      // llvm::errs() << "OP is from a load, needing to cache " << *op << "\n";
       mustcache = is_load_uncacheable(
           *sli, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args);
     } else {
       // In absence of more information, assume that the underlying object for
       // pointer operand is uncacheable in caller.
-      // llvm::errs() << "OP is an unknown instruction, needing to cache obj:"
-      // << *obj << "\n";
       mustcache = true;
     }
   }
@@ -154,9 +144,6 @@ bool is_load_uncacheable(
 
   bool can_modref = is_value_mustcache_from_origin(
       obj, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args);
-
-  // llvm::errs() << "underlying object for load " << li << " is " << *obj << "
-  // fromorigin: " << can_modref << "\n";
 
   if (!can_modref) {
     allFollowersOf(&li, [&](Instruction *inst2) {
@@ -232,8 +219,6 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
   std::vector<Value *> args;
   std::vector<bool> args_safe;
 
-  // llvm::errs() << "CallInst: " << *callsite_op<< "CALL ARGUMENT INFO: \n";
-
   // First, we need to propagate the uncacheable status from the parent function
   // to the callee.
   //   because memory location x modified after parent returns => x modified
@@ -246,13 +231,9 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
     Value *obj = GetUnderlyingObject(
         callsite_op->getArgOperand(i),
         callsite_op->getParent()->getModule()->getDataLayout(), 100);
-    // llvm::errs() << "ocs underlying object for callsite " << *callsite_op <<
-    // " idx: " << i << " is " << *obj << "\n";
 
     bool init_safe = !is_value_mustcache_from_origin(
         obj, AA, gutils, TLI, unnecessaryInstructions, parent_uncacheable_args);
-    // llvm::errs() << " +++ safety " << init_safe << " of underlying object for
-    // callsite " << *callsite_op << " idx: " << i << " is " << *obj << "\n";
     args_safe.push_back(init_safe);
   }
 
@@ -289,8 +270,6 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
       if (llvm::isModSet(AA.getModRefInfo(
               inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
         args_safe[i] = false;
-        // llvm::errs() << "Instruction " << *inst2 << " is maybe ModRef with
-        // call argument " << *args[i] << "\n";
       }
     }
     return false;
@@ -301,8 +280,6 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
   auto arg = callsite_op->getCalledFunction()->arg_begin();
   for (unsigned i = 0; i < args.size(); i++) {
     uncacheable_args[arg] = !args_safe[i];
-    // llvm::errs() << "callArg: " << *args[i] << " arg:" << *arg << "
-    // uncacheable: " << uncacheable_args[arg] << "\n";
     arg++;
     if (arg == callsite_op->getCalledFunction()->arg_end()) {
       break;
@@ -336,22 +313,6 @@ compute_uncacheable_args_for_callsites(
       if (isa<IntrinsicInst>(&inst)) {
         continue;
       }
-
-      /*
-      // We do not need uncacheable args for memory allocation functions. So
-      skip such callsites. Function* called = op->getCalledFunction(); if (auto
-      castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) { if
-      (castinst->isCast()) { if (auto fn =
-      dyn_cast<Function>(castinst->getOperand(0))) { if
-      (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
-              called = fn;
-            }
-          }
-        }
-      }
-      if (isCertainMallocOrFree(called)) {
-        continue;
-      }*/
 
       // For all other calls, we compute the uncacheable args for this callsite.
       uncacheable_args_map.insert(
@@ -435,21 +396,16 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
                   if (unnecessaryInstructions.count(I))
                     return /*earlyBreak*/ false;
 
-                  // if (I == &MTI) return;
                   if (writesToMemoryReadBy(
                           gutils->AA,
                           /*maybeReader*/ const_cast<MemTransferInst *>(mti),
                           /*maybeWriter*/ I)) {
-                    // llvm::errs() << " mti: - " << *mti << " stored into by "
-                    // << *I << "\n";
                     foundStore = true;
                     return /*earlyBreak*/ true;
                   }
                   return /*earlyBreak*/ false;
                 });
             if (!foundStore) {
-              // llvm::errs() << "warning - performing a memcpy out of
-              // unitialized memory: " << *mti << "\n";
               return false;
             }
           }
@@ -473,8 +429,6 @@ void calculateUnusedStoresInFunction(Function& func, llvm::SmallPtrSetImpl<const
           auto at = GetUnderlyingObject(
               mti->getArgOperand(1),
               func.getParent()->getDataLayout(), 100);
-          // llvm::errs() << "origop for mti: " << *mti << " at:" << *at <<
-          // "\n";
           if (auto ai = dyn_cast<AllocaInst>(at)) {
             bool foundStore = false;
             allInstructionsBetween(
@@ -490,16 +444,13 @@ void calculateUnusedStoresInFunction(Function& func, llvm::SmallPtrSetImpl<const
                           gutils->AA,
                           /*maybeReader*/ const_cast<MemTransferInst *>(mti),
                           /*maybeWriter*/ I)) {
-                    // llvm::errs() << " mti: - " << *mti << " stored into by "
-                    // << *I << "\n";
                     foundStore = true;
                     return /*earlyBreak*/ true;
                   }
                   return /*earlyBreak*/ false;
                 });
             if (!foundStore) {
-              // llvm::errs() << "warning - performing a memcpy out of
-              // unitialized memory: " << *mti << "\n";
+              // performing a memcpy out of unitialized memory
               return false;
             }
           }
@@ -826,8 +777,6 @@ bool legalCombinedForwardReverse(
           return false;
         if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/ user,
                                  /*maybeWriter*/ inst)) {
-          // llvm::errs() << " memory deduced need follower of " << *inst << " -
-          // " << *user << "\n";
           propagate(user);
           // Fast return if not legal
           if (!legal)
@@ -845,10 +794,6 @@ bool legalCombinedForwardReverse(
       return false;
   }
 
-  // llvm::errs() << " found usetree for: " << ci << "\n";
-  // for(auto u : usetree)
-  //  llvm::errs() << " + " << *u << "\n";
-
   // Check if any of the unmoved operations will make it illegal to move the
   // instruction
 
@@ -860,8 +805,6 @@ bool legalCombinedForwardReverse(
         return false;
       if (!post->mayWriteToMemory())
         return false;
-      // llvm::errs() << " checking if illegal move of " << *inst << " due to "
-      // << *post << "\n";
       if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/ inst,
                                /*maybeWriter*/ post)) {
         if (called)
@@ -1002,10 +945,6 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
                                                      _uncacheable_args.end()),
                           returnUsed, oldTypeInfo);
   auto found = cachedfunctions.find(tup);
-  // llvm::errs() << "augmenting function " << todiff->getName() << " constant
-  // args " << to_string(constant_args) << " uncacheable_args: " <<
-  // to_string(_uncacheable_args) << " retType:" << retType << " returnUsed: " <<
-  // returnUsed << " found==" << (found != cachedfunctions.end()) << "\n";
   if (found != cachedfunctions.end()) {
     return found->second;
   }
@@ -1329,7 +1268,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
 
   std::vector<Type *> MallocTypes;
 
-  for (auto a : gutils->getMallocs()) {
+  for (auto a : gutils->getTapeValues()) {
     MallocTypes.push_back(a->getType());
   }
 
@@ -1486,9 +1425,8 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     }
 
     unsigned i = 0;
-    for (auto v : gutils->getMallocs()) {
+    for (auto v : gutils->getTapeValues()) {
       if (!isa<UndefValue>(v)) {
-        // llvm::errs() << "v: " << *v << "VMap[v]: " << *VMap[v] << "\n";
         IRBuilder<> ib(cast<Instruction>(VMap[v])->getNextNode());
         std::vector<Value *> Idxs = {ib.getInt32(0), ib.getInt32(i)};
         Value *gep = tapeMemory;
@@ -1747,8 +1685,6 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
           SelectInst *dif = cast<SelectInst>(
               Builder.CreateSelect(replacePHIs[pred], prediff,
                                    Constant::getNullValue(prediff->getType())));
-          // llvm::errs() << "creating prediff " << *dif << " for value incoming
-          // " << PN->getIncomingValueForBlock(pred) << " for " << *PN << "\n";
           auto addedSelects =
               gutils->addToDiffe(oval, dif, Builder, PNfloatType);
           
@@ -1831,7 +1767,6 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
   for (SelectInst *select : selects) {
     if (BinaryOperator *bo = dyn_cast<BinaryOperator>(select->getCondition())) {
       if (bo->getOpcode() == BinaryOperator::Xor) {
-        // llvm::errs() << " considering " << *select << " " << *bo << "\n";
         if (isa<ConstantInt>(bo->getOperand(0)) &&
             cast<ConstantInt>(bo->getOperand(0))->isOne()) {
           select->setCondition(bo->getOperand(1));
