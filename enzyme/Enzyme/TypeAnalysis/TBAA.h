@@ -428,7 +428,7 @@ static inline TypeTree parseTBAA(const MDNode *M, Instruction *inst,
       return TypeTree();
     if (const MDString *Tag1 = dyn_cast<MDString>(M->getOperand(0))) {
       return TypeTree(getTypeFromTBAAString(Tag1->getString().str(), inst))
-          .Only({0});
+          .Only(0);
     }
     return TypeTree();
   }

@@ -579,7 +579,7 @@ bool isconstantM(TypeResults &TR, Instruction *inst,
       SmallPtrSet<Value *, 20> retvals2;
       retvals2.insert(retvals.begin(), retvals.end());
       nonconstant2.insert(inst);
-      for (const auto &a : inst->users()) {
+      for (const auto a : inst->users()) {
         if (isa<LoadInst>(a)) {
           if (!isconstantValueM(TR, a, constants2, nonconstant2, constantvals2,
                                 retvals2, AA, directions & DOWN)) {
@@ -595,7 +595,7 @@ bool isconstantM(TypeResults &TR, Instruction *inst,
       }
     }
 
-    for (const auto &a : inst->users()) {
+    for (const auto a : inst->users()) {
       if (auto store = dyn_cast<StoreInst>(a)) {
 
         if (inst == store->getPointerOperand() &&
@@ -865,7 +865,7 @@ bool isconstantM(TypeResults &TR, Instruction *inst,
     assert(!inst->mayWriteToMemory());
     assert(!isa<StoreInst>(inst));
     bool seenuse = false;
-    for (const auto &a : inst->users()) {
+    for (const auto a : inst->users()) {
       if (auto gep = dyn_cast<GetElementPtrInst>(a)) {
         assert(inst != gep->getPointerOperand());
         continue;
@@ -1107,7 +1107,7 @@ bool isconstantValueM(TypeResults &TR, Value *val,
 
     bool seenuse = false;
 
-    for (const auto &a : val->users()) {
+    for (const auto a : val->users()) {
 
       if (printconst)
         llvm::errs() << "      considering use of " << *val << " - " << *a

@@ -605,7 +605,7 @@ public:
                               tape, {(unsigned)idx}));
 
         Type *innerType = ret->getType();
-        for (const auto unused : getSubLimits(BuilderQ.GetInsertBlock())) {
+        for (size_t i=0, limit=getSubLimits(BuilderQ.GetInsertBlock()).size(); i<limit; ++i) {
           if (!isa<PointerType>(innerType)) {
             llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
                          << "\n";
@@ -880,7 +880,7 @@ public:
       // llvm::errs() << " malloc: " << *malloc << "\n";
       // llvm::errs() << " toadd: " << *toadd << "\n";
       Type *innerType = toadd->getType();
-      for (const auto unused : getSubLimits(BuilderQ.GetInsertBlock())) {
+      for (size_t i=0, limit=getSubLimits(BuilderQ.GetInsertBlock()).size(); i<limit; ++i) {
         innerType = cast<PointerType>(innerType)->getElementType();
       }
 
@@ -1733,7 +1733,7 @@ public:
     bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
     if (efficientBoolCache && isi1 && sublimits.size() != 0)
       types[0] = Type::getInt8Ty(T->getContext());
-    for (const auto sublimit : sublimits) {
+    for (size_t i=0; i<sublimits.size(); ++i) {
       types.push_back(PointerType::getUnqual(types.back()));
     }
 

@@ -218,7 +218,7 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg,
 }
 
 static inline bool isReturned(llvm::Instruction *inst) {
-  for (const auto &a : inst->users()) {
+  for (const auto a : inst->users()) {
     if (llvm::isa<llvm::ReturnInst>(a))
       return true;
   }
@@ -357,32 +357,26 @@ llvm::Function *getOrInsertDifferentialFloatMemmove(llvm::Module &M,
                                                     unsigned dstalign,
                                                     unsigned srcalign);
 
-template <typename K, typename V, typename K2>
+template <typename K, typename V>
 static inline typename std::map<K, V>::iterator
-insert_or_assign(std::map<K, V> &map, K2 key, V &&val) {
+insert_or_assign(std::map<K, V> &map, K& key, V &&val) {
   // map.insert_or_assign(key, val);
   auto found = map.find(key);
-  if (found == map.end()) {
+  if (found != map.end()) {
+    map.erase(found);
   }
   return map.emplace(key, val).first;
-
-  map.at(key) = val;
-  // map->second = val;
-  return map.find(key);
 }
 
-template <typename K, typename V, typename K2>
+template <typename K, typename V>
 static inline typename std::map<K, V>::iterator
-insert_or_assign(std::map<K, V> &map, K2 key, const V &val) {
+insert_or_assign2(std::map<K, V> &map, K key, V val) {
   // map.insert_or_assign(key, val);
   auto found = map.find(key);
-  if (found == map.end()) {
+  if (found != map.end()) {
+    map.erase(found);
   }
   return map.emplace(key, val).first;
-
-  map.at(key) = val;
-  // map->second = val;
-  return map.find(key);
 }
 
 #include "llvm/IR/CFG.h"

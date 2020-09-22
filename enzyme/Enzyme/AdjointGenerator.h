@@ -1075,7 +1075,7 @@ public:
                                       cast<CastInst>(orig_op0)->getSrcTy())
                                       ->getElementType()
                                       ->getScalarType()))
-                   .Only({0});
+                   .Only(0);
           goto known;
         }
       }
@@ -1960,7 +1960,7 @@ public:
             auto subaugmentations =
                 (std::map<const llvm::CallInst *, AugmentedReturn *>
                      *)&augmentedReturn->subaugmentations;
-            insert_or_assign(*subaugmentations, orig,
+            insert_or_assign2<const llvm::CallInst*, AugmentedReturn*>(*subaugmentations, orig,
                              (AugmentedReturn *)subdata);
           }
         }

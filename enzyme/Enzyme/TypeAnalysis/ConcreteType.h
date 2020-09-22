@@ -23,6 +23,7 @@ public:
   BaseType typeEnum;
 
   ConcreteType(const ConcreteType&) = default;
+  ConcreteType(ConcreteType&&) = default;
   ConcreteType(llvm::Type *type) : type(type), typeEnum(BaseType::Float) {
     assert(type != nullptr);
     assert(!llvm::isa<llvm::VectorType>(type));
@@ -88,8 +89,31 @@ public:
   }
   bool operator!=(const ConcreteType dt) const { return !(*this == dt); }
 
+
+  bool operator=(const BaseType bt) {
+    assert(bt != BaseType::Float);
+    bool changed = false;
+    if (typeEnum != bt)
+      changed = true;
+    typeEnum = bt;
+    if (type != nullptr)
+      changed = true;
+    type = nullptr;
+    return changed;
+  }
+
   // returns whether changed
   bool operator=(const ConcreteType dt) {
+    bool changed = false;
+    if (typeEnum != dt.typeEnum)
+      changed = true;
+    typeEnum = dt.typeEnum;
+    if (type != dt.type)
+      changed = true;
+    type = dt.type;
+    return changed;
+  }
+  bool operator=(ConcreteType&& dt) {
     bool changed = false;
     if (typeEnum != dt.typeEnum)
       changed = true;

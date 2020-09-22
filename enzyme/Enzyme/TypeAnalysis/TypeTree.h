@@ -654,7 +654,11 @@ public:
   bool operator=(const TypeTree &v) {
     if (*this == v)
       return false;
-    mapping = v.mapping;
+    mapping.clear();
+    for(const auto& elems : v.mapping) {
+      mapping.emplace(elems);
+    }
+    //mapping = v.mapping;
     return true;
   }
 

@@ -923,23 +923,15 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     }
   }
 
-  static std::map<std::tuple<Function *, DIFFE_TYPE /*retType*/,
+  using CacheKey = std::tuple<Function *, DIFFE_TYPE /*retType*/,
                              std::vector<DIFFE_TYPE> /*constant_args*/,
                              std::map<Argument *, bool> /*uncacheable_args*/,
-                             bool /*returnUsed*/, const FnTypeInfo>,
-                  AugmentedReturn>
+                             bool /*returnUsed*/, const FnTypeInfo>;
+  static std::map<CacheKey, AugmentedReturn>
       cachedfunctions;
-  static std::map<std::tuple<Function *, DIFFE_TYPE /*retType*/,
-                             std::vector<DIFFE_TYPE> /*constant_args*/,
-                             std::map<Argument *, bool> /*uncacheable_args*/,
-                             bool /*returnUsed*/, const FnTypeInfo>,
-                  bool>
+  static std::map<CacheKey, bool>
       cachedfinished;
-  std::tuple<Function *, DIFFE_TYPE /*retType*/,
-             std::vector<DIFFE_TYPE> /*constant_args*/,
-             std::map<Argument *, bool> /*uncacheable_args*/,
-             bool /*returnUsed*/, const FnTypeInfo>
-      tup =
+  CacheKey tup =
           std::make_tuple(todiff, retType, constant_args,
                           std::map<Argument *, bool>(_uncacheable_args.begin(),
                                                      _uncacheable_args.end()),
@@ -1010,14 +1002,14 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       auto ut = UndefValue::get(NewF->getReturnType());
       auto val = bb.CreateInsertValue(ut, cal, {1u});
       bb.CreateRet(val);
-      return insert_or_assign(
+      return insert_or_assign<CacheKey, AugmentedReturn>(
                  cachedfunctions, tup,
                  AugmentedReturn(NewF, nullptr, {}, returnMapping, {}, {}))
           ->second;
     }
 
     // assert(st->getNumElements() > 0);
-    return insert_or_assign(
+    return insert_or_assign<CacheKey, AugmentedReturn>(
                cachedfunctions, tup,
                AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {}, {}))
         ->second; // dyn_cast<StructType>(st->getElementType(0)));
@@ -1687,7 +1679,7 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
                                    Constant::getNullValue(prediff->getType())));
           auto addedSelects =
               gutils->addToDiffe(oval, dif, Builder, PNfloatType);
-          
+
           for (auto select : addedSelects)
             selects.emplace_back(select);
         }
@@ -1823,15 +1815,14 @@ Function *CreatePrimalAndGradient(
 
   if (retType != DIFFE_TYPE::CONSTANT)
     assert(!todiff->getReturnType()->isVoidTy());
-  static std::map<
-      std::tuple<Function *, DIFFE_TYPE /*retType*/,
+
+  using CacheKey = std::tuple<Function *, DIFFE_TYPE /*retType*/,
                  std::vector<DIFFE_TYPE> /*constant_args*/,
                  std::map<Argument *, bool> /*uncacheable_args*/,
                  bool /*retval*/, bool /*dretPtr*/, bool /*topLevel*/,
-                 llvm::Type *, const FnTypeInfo>,
-      Function *>
-      cachedfunctions;
-  auto tup = std::make_tuple(
+                 llvm::Type *, const FnTypeInfo>;
+  static std::map<CacheKey, Function *> cachedfunctions;
+  CacheKey tup = std::make_tuple(
       todiff, retType, constant_args,
       std::map<Argument *, bool>(_uncacheable_args.begin(),
                                  _uncacheable_args.end()),
@@ -1945,7 +1936,7 @@ Function *CreatePrimalAndGradient(
       bb.CreateRet(val);
       foundcalled = NewF;
     }
-    return insert_or_assign(cachedfunctions, tup, foundcalled)->second;
+    return insert_or_assign2<CacheKey, Function*>(cachedfunctions, tup, foundcalled)->second;
   }
 
   assert(!todiff->empty());
@@ -1959,7 +1950,7 @@ Function *CreatePrimalAndGradient(
                              : ReturnType::ArgsWithReturn)
                   : ReturnType::Args,
       additionalArg);
-  insert_or_assign(cachedfunctions, tup, gutils->newFunc);
+  insert_or_assign2<CacheKey, Function*>(cachedfunctions, tup, gutils->newFunc);
 
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
