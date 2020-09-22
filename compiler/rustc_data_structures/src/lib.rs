@@ -88,24 +88,26 @@ pub mod sorted_map;
 pub mod stable_set;
 #[macro_use]
 pub mod stable_hasher;
+mod atomic_ref;
+pub mod fingerprint;
+pub mod profiling;
 pub mod sharded;
 pub mod stack;
 pub mod sync;
 pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
-pub use ena::undo_log;
-pub use ena::unify;
-mod atomic_ref;
-pub mod fingerprint;
-pub mod profiling;
 pub mod vec_linked_list;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod frozen;
+pub mod mini_map;
 pub mod tagged_ptr;
 pub mod temp_dir;
 pub mod unhash;
+
+pub use ena::undo_log;
+pub use ena::unify;
 
 pub struct OnDrop<F: Fn()>(pub F);
 

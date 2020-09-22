@@ -8,6 +8,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+arrayvec = { version = "0.5.1", default-features = false }
 ena = "0.14"
 indexmap = "1.5.1"
 tracing = "0.1"
