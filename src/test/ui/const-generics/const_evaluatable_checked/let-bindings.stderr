@@ -1,10 +1,8 @@
-error: overly complex generic constant
+error: constant expression depends on a generic parameter
   --> $DIR/let-bindings.rs:6:68
    |
 LL | fn test<const N: usize>() -> [u8; { let x = N; N + 1 }] where [u8; { let x = N; N + 1 }]: Default {
-   |                                                                    ^^^^^^-^^^^^^^^^^^^^
-   |                                                                          |
-   |                                                                          unsupported statement
+   |                                                                    ^^^^^^^^^^^^^^^^^^^^ required by this bound in `test::{{constant}}#0`
    |
    = help: consider moving this anonymous constant into a `const` function
 
