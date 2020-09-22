@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["7", "8", "9", "10"]
+        llvm: ["7", "8", "9", "10", "11"]
         build: ["Release", "Debug"] # "RelWithDebInfo"
         os: [self-hosted]
     
@@ -19,6 +19,8 @@ jobs:
     - name: add llvm 
       run: |
           #sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+          sudo apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-${{ matrix.llvm }} main"
           sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
           sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
     - uses: actions/checkout@v1
