@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::impl_stable_hash_via_hash;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
+use rustc_target::abi::{Align, TargetDataLayout};
 use rustc_target::spec::{Target, TargetTriple};
 
 use crate::parse::CrateConfig;
@@ -748,6 +749,9 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     let min_atomic_width = sess.target.target.min_atomic_width();
     let max_atomic_width = sess.target.target.max_atomic_width();
     let atomic_cas = sess.target.target.options.atomic_cas;
+    let layout = TargetDataLayout::parse(&sess.target.target).unwrap_or_else(|err| {
+        sess.fatal(&err);
+    });
 
     let mut ret = FxHashSet::default();
     ret.reserve(6); // the minimum number of insertions
@@ -769,18 +773,27 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     if sess.target.target.options.has_elf_tls {
         ret.insert((sym::target_thread_local, None));
     }
-    for &i in &[8, 16, 32, 64, 128] {
+    for &(i, align) in &[
+        (8, layout.i8_align.abi),
+        (16, layout.i16_align.abi),
+        (32, layout.i32_align.abi),
+        (64, layout.i64_align.abi),
+        (128, layout.i128_align.abi),
+    ] {
         if i >= min_atomic_width && i <= max_atomic_width {
-            let mut insert_atomic = |s| {
+            let mut insert_atomic = |s, align: Align| {
                 ret.insert((sym::target_has_atomic_load_store, Some(Symbol::intern(s))));
                 if atomic_cas {
                     ret.insert((sym::target_has_atomic, Some(Symbol::intern(s))));
                 }
+                if align.bits() == i {
+                    ret.insert((sym::target_has_atomic_equal_alignment, Some(Symbol::intern(s))));
+                }
             };
             let s = i.to_string();
-            insert_atomic(&s);
+            insert_atomic(&s, align);
             if &s == wordsz {
-                insert_atomic("ptr");
+                insert_atomic("ptr", layout.pointer_align.abi);
             }
         }
     }
