@@ -71,7 +71,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
     /// Pushes a member constraint into the set.
     ///
     /// The input member constraint `m_c` is in the form produced by
-    /// the the `rustc_middle::infer` code.
+    /// the `rustc_middle::infer` code.
     ///
     /// The `to_region_vid` callback fn is used to convert the regions
     /// within into `RegionVid` format -- it typically consults the
