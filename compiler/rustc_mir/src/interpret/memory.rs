@@ -285,9 +285,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             None => {
                 // Deallocating global memory -- always an error
                 return Err(match self.tcx.get_global_alloc(ptr.alloc_id) {
-                    Some(GlobalAlloc::Function(..)) => err_ub_format!("deallocating a function"),
+                    Some(GlobalAlloc::Function(..)) => {
+                        err_ub_format!("deallocating {}, which is a function", ptr.alloc_id)
+                    }
                     Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
-                        err_ub_format!("deallocating static memory")
+                        err_ub_format!("deallocating {}, which is static memory", ptr.alloc_id)
                     }
                     None => err_ub!(PointerUseAfterFree(ptr.alloc_id)),
                 }
@@ -297,7 +299,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         if alloc_kind != kind {
             throw_ub_format!(
-                "deallocating {} memory using {} deallocation operation",
+                "deallocating {}, which is {} memory, using {} deallocation operation",
+                ptr.alloc_id,
                 alloc_kind,
                 kind
             );
@@ -305,7 +308,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if let Some((size, align)) = old_size_and_align {
             if size != alloc.size || align != alloc.align {
                 throw_ub_format!(
-                    "incorrect layout on deallocation: allocation has size {} and alignment {}, but gave size {} and alignment {}",
+                    "incorrect layout on deallocation: {} has size {} and alignment {}, but gave size {} and alignment {}",
+                    ptr.alloc_id,
                     alloc.size.bytes(),
                     alloc.align.bytes(),
                     size.bytes(),
