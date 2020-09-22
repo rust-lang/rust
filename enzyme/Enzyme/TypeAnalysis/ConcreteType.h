@@ -22,6 +22,7 @@ public:
   llvm::Type *type;
   BaseType typeEnum;
 
+  ConcreteType(const ConcreteType&) = default;
   ConcreteType(llvm::Type *type) : type(type), typeEnum(BaseType::Float) {
     assert(type != nullptr);
     assert(!llvm::isa<llvm::VectorType>(type));

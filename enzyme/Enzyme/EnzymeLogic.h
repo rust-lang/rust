@@ -99,6 +99,8 @@ public:
       : fn(fn), tapeType(tapeType), tapeIndices(tapeIndices), returns(returns),
         uncacheable_args_map(uncacheable_args_map),
         can_modref_map(can_modref_map) {}
+  AugmentedReturn(const AugmentedReturn &) = default;
+  AugmentedReturn& operator=(const AugmentedReturn&) = default;
 };
 
 const AugmentedReturn &
