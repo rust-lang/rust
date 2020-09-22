@@ -11,8 +11,7 @@ note: the lint level is defined here
    |
 LL | #![deny(temporary_cstring_as_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement...
-   = note: ...because nothing is referencing it as far as the type system is concerned
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: aborting due to previous error

@@ -6,6 +6,25 @@ use rustc_middle::ty;
 use rustc_span::{symbol::sym, ExpnKind, Span};
 
 declare_lint! {
+    /// The `temporary_cstring_as_ptr` lint detects getting the inner pointer of
+    /// a temporary `CString`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// let c_str = CString::new("foo").unwrap().as_ptr();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The inner pointer of a `CString` lives only as long as the `CString` it
+    /// points to. Getting the inner pointer of a *temporary* `CString` allows the `CString`
+    /// to be dropped at the end of the statement, as it is not being referenced as far as the typesystem
+    /// is concerned. This means outside of the statement the pointer will point to freed memory, which
+    /// causes undefined behavior if the pointer is later dereferenced.
     pub TEMPORARY_CSTRING_AS_PTR,
     Warn,
     "detects getting the inner pointer of a temporary `CString`"
@@ -75,8 +94,7 @@ fn lint_cstring_as_ptr(
                             unwrap.span,
                             "this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime",
                         );
-                        diag.note("pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement...");
-                        diag.note("...because nothing is referencing it as far as the type system is concerned");
+                        diag.note("pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned");
                         diag.help("for more information, see https://doc.rust-lang.org/reference/destructors.html");
                         diag.emit();
                     });
