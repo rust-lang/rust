@@ -54,6 +54,7 @@ fn main() {
 
     issue5504();
     issue6067();
+    issue6065();
 
     let _ = if let Ok(_) = gen_res() {
         1
@@ -89,6 +90,17 @@ fn issue5504() {
 
     if let Some(_) = m!() {}
     while let Some(_) = m!() {}
+}
+
+fn issue6065() {
+    macro_rules! if_let_in_macro {
+        ($pat:pat, $x:expr) => {
+            if let Some($pat) = $x {}
+        };
+    }
+
+    // shouldn't be linted
+    if_let_in_macro!(_, Some(42));
 }
 
 // Methods that are unstable const should not be suggested within a const context, see issue #5697.
