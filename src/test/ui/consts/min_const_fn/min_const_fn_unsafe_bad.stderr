@@ -25,16 +25,15 @@ LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static u
    = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
    = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
-error[E0723]: accessing union fields is unstable
+error[E0658]: unions in const fn are unstable
   --> $DIR/min_const_fn_unsafe_bad.rs:14:5
    |
 LL |     Foo { x: () }.y
    |     ^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #51909 <https://github.com/rust-lang/rust/issues/51909> for more information
+   = help: add `#![feature(const_fn_union)]` to the crate attributes to enable
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0658, E0723.
-For more information about an error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0658`.

@@ -94,7 +94,7 @@ LL | const fn foo19_2(f: f32) -> f32 { 2.0 - f }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: only int and `bool` operations are stable in const fn
+error[E0723]: only int, `bool` and `char` operations are stable in const fn
   --> $DIR/min_const_fn.rs:84:35
    |
 LL | const fn foo19_3(f: f32) -> f32 { -f }
@@ -112,59 +112,57 @@ LL | const fn foo19_4(f: f32, g: f32) -> f32 { f / g }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: cannot access `static` items in const fn
+error[E0013]: constant functions cannot refer to statics
   --> $DIR/min_const_fn.rs:90:27
    |
 LL | const fn foo25() -> u32 { BAR }
    |                           ^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
 
-error[E0723]: cannot access `static` items in const fn
+error[E0013]: constant functions cannot refer to statics
   --> $DIR/min_const_fn.rs:91:37
    |
 LL | const fn foo26() -> &'static u32 { &BAR }
    |                                     ^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
 
-error[E0723]: casting pointers to ints is unstable in const fn
+error[E0658]: casting pointers to integers in constant functions is unstable
   --> $DIR/min_const_fn.rs:92:42
    |
 LL | const fn foo30(x: *const u32) -> usize { x as usize }
    |                                          ^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-error[E0723]: casting pointers to ints is unstable in const fn
+error[E0658]: casting pointers to integers in constant functions is unstable
   --> $DIR/min_const_fn.rs:94:63
    |
 LL | const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } }
    |                                                               ^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-error[E0723]: casting pointers to ints is unstable in const fn
+error[E0658]: casting pointers to integers in constant functions is unstable
   --> $DIR/min_const_fn.rs:96:42
    |
 LL | const fn foo30_2(x: *mut u32) -> usize { x as usize }
    |                                          ^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-error[E0723]: casting pointers to ints is unstable in const fn
+error[E0658]: casting pointers to integers in constant functions is unstable
   --> $DIR/min_const_fn.rs:98:63
    |
 LL | const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }
    |                                                               ^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
 error[E0723]: mutable references in const fn are unstable
   --> $DIR/min_const_fn.rs:101:14
@@ -267,5 +265,5 @@ LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
 
 error: aborting due to 30 previous errors
 
-Some errors have detailed explanations: E0493, E0723.
-For more information about an error, try `rustc --explain E0493`.
+Some errors have detailed explanations: E0013, E0493, E0658, E0723.
+For more information about an error, try `rustc --explain E0013`.
