@@ -23,7 +23,7 @@ unsafe impl alloc::GlobalAlloc for A {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         HITS.fetch_add(1, Ordering::SeqCst);
-        System.dealloc(ptr, layout)
+        AllocRef::dealloc(&System, ptr, layout)
     }
 }
 
