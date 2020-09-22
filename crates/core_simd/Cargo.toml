@@ -1,0 +1,5 @@
+[package]
+name = "core_simd"
+version = "0.1.0"
+authors = ["Caleb Zulawski <caleb.zulawski@gmail.com>"]
+edition = "2018"
