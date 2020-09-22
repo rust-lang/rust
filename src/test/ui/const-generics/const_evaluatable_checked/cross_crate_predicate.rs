@@ -8,6 +8,7 @@ fn user<T>() {
     //~^ ERROR constant expression depends
     //~| ERROR constant expression depends
     //~| ERROR constant expression depends
+    //~| ERROR constant expression depends
 }
 
 fn main() {}

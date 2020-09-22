@@ -1678,8 +1678,10 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
 
     if tcx.features().const_evaluatable_checked {
         let const_evaluatable = const_evaluatable_predicates_of(tcx, def_id, &result);
-        result.predicates =
-            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(const_evaluatable));
+        if !const_evaluatable.is_empty() {
+            result.predicates =
+                tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(const_evaluatable));
+        }
     }
 
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
@@ -1690,7 +1692,7 @@ pub fn const_evaluatable_predicates_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     predicates: &ty::GenericPredicates<'tcx>,
-) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> {
+) -> Vec<(ty::Predicate<'tcx>, Span)> {
     #[derive(Default)]
     struct ConstCollector<'tcx> {
         ct: SmallVec<[(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>, Span); 4]>,
@@ -1711,10 +1713,21 @@ pub fn const_evaluatable_predicates_of<'tcx>(
         collector.curr_span = span;
         pred.visit_with(&mut collector);
     }
-    warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.ct);
+
+    match tcx.def_kind(def_id) {
+        DefKind::Fn | DefKind::AssocFn => {
+            tcx.fn_sig(def_id).visit_with(&mut collector);
+        }
+        _ => (),
+    }
+    debug!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.ct);
+
+    // We only want unique const evaluatable predicates.
+    collector.ct.sort();
+    collector.ct.dedup();
     collector.ct.into_iter().map(move |(def_id, subst, span)| {
         (ty::PredicateAtom::ConstEvaluatable(def_id, subst).to_predicate(tcx), span)
-    })
+    }).collect()
 }
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
