@@ -357,6 +357,7 @@ pub trait OpenOptionsExt {
     ///
     /// ```no_run
     /// # #![feature(rustc_private)]
+    /// #![feature(open_options_ext_as_flags)]
     /// extern crate libc;
     /// use std::ffi::CString;
     /// use std::fs::OpenOptions;
