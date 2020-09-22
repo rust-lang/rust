@@ -94,6 +94,54 @@ mod defaults {
     }
 
     #[test]
+    fn build_cross_compile() {
+        let config = Config { stage: 1, ..configure("build", &["B"], &["B"]) };
+        let build = Build::new(config);
+        let mut builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
+
+        let a = TargetSelection::from_user("A");
+        let b = TargetSelection::from_user("B");
+
+        // Ideally, this build wouldn't actually have `target: a`
+        // rustdoc/rustcc/std here (the user only requested a host=B build, so
+        // there's not really a need for us to build for target A in this case
+        // (since we're producing stage 1 libraries/binaries).  But currently
+        // rustbuild is just a bit buggy here; this should be fixed though.
+        assert_eq!(
+            first(builder.cache.all::<compile::Std>()),
+            &[
+                compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 0 }, target: b },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+            ]
+        );
+        assert_eq!(
+            first(builder.cache.all::<compile::Assemble>()),
+            &[
+                compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
+                compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
+                compile::Assemble { target_compiler: Compiler { host: b, stage: 1 } },
+            ]
+        );
+        assert_eq!(
+            first(builder.cache.all::<tool::Rustdoc>()),
+            &[
+                tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } },
+                tool::Rustdoc { compiler: Compiler { host: b, stage: 1 } },
+            ],
+        );
+        assert_eq!(
+            first(builder.cache.all::<compile::Rustc>()),
+            &[
+                compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
+                compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: b },
+            ]
+        );
+    }
+
+    #[test]
     fn doc_default() {
         let mut config = configure("doc", &[], &[]);
         config.compiler_docs = true;
