@@ -2118,27 +2118,3 @@ take_tests! {
     ty: &mut [()], slice: &mut [], method: take_last_mut,
     (take_last_mut_empty, (), None, &mut []),
 }
-
-const EMPTY_MAX: &'static [()] = &[(); std::usize::MAX];
-
-// can't be a constant due to const mutability rules
-// see https://github.com/rust-lang/rust/issues/57349#issuecomment-597395059
-macro_rules! empty_max_mut {
-    () => {
-        &mut [(); std::usize::MAX] as _
-    };
-}
-
-take_tests! {
-    slice: &[(); ::std::usize::MAX], method: take,
-    (take_in_bounds_max_range_to, (..::std::usize::MAX), Some(EMPTY_MAX), &[(); 0]),
-    (take_oob_max_range_to_inclusive, (..=::std::usize::MAX), None, EMPTY_MAX),
-    (take_in_bounds_max_range_from, (::std::usize::MAX..), Some(&[] as _), EMPTY_MAX),
-}
-
-take_tests! {
-    slice: &mut [(); ::std::usize::MAX], method: take_mut,
-    (take_mut_in_bounds_max_range_to, (..::std::usize::MAX), Some(empty_max_mut!()), &mut [(); 0]),
-    (take_mut_oob_max_range_to_inclusive, (..=::std::usize::MAX), None, empty_max_mut!()),
-    (take_mut_in_bounds_max_range_from, (::std::usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
-}
