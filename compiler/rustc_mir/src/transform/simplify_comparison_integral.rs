@@ -61,26 +61,6 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                 _ => unreachable!(),
             }
 
-            let terminator = bb.terminator_mut();
-
-            // add StorageDead for the place switched on at the top of each target
-            for bb_idx in new_targets.iter() {
-                storage_deads_to_insert.push((
-                    *bb_idx,
-                    Statement {
-                        source_info: terminator.source_info,
-                        kind: StatementKind::StorageDead(opt.to_switch_on.local),
-                    },
-                ));
-            }
-
-            terminator.kind = TerminatorKind::SwitchInt {
-                discr: Operand::Move(opt.to_switch_on),
-                switch_ty: opt.branch_value_ty,
-                values: vec![new_value].into(),
-                targets: new_targets,
-            };
-
             // delete comparison statement if it the value being switched on was moved, which means it can not be user later on
             if opt.can_remove_bin_op_stmt {
                 bb.statements[opt.bin_op_stmt_idx].make_nop();
@@ -106,14 +86,35 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                 }
             }
 
+            let terminator = bb.terminator();
+
             // remove StorageDead (if it exists) being used in the assign of the comparison
             for (stmt_idx, stmt) in bb.statements.iter().enumerate() {
                 if !matches!(stmt.kind, StatementKind::StorageDead(local) if local == opt.to_switch_on.local)
                 {
                     continue;
                 }
-                storage_deads_to_remove.push((stmt_idx, opt.bb_idx))
+                storage_deads_to_remove.push((stmt_idx, opt.bb_idx));
+                // if we have StorageDeads to remove then make sure to insert them at the top of each target
+                for bb_idx in new_targets.iter() {
+                    storage_deads_to_insert.push((
+                        *bb_idx,
+                        Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::StorageDead(opt.to_switch_on.local),
+                        },
+                    ));
+                }
             }
+
+            let terminator = bb.terminator_mut();
+
+            terminator.kind = TerminatorKind::SwitchInt {
+                discr: Operand::Move(opt.to_switch_on),
+                switch_ty: opt.branch_value_ty,
+                values: vec![new_value].into(),
+                targets: new_targets,
+            };
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {
