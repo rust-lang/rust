@@ -4,7 +4,7 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::{hir::map::Map, ty::subst::GenericArgKind};
@@ -71,57 +71,31 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
             }
         }
 
-        if let ExprKind::Block(ref block, ..) = body.value.kind {
-            let path = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(option_type)) {
-                &paths::OPTION_SOME
-            } else if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type)) {
-                &paths::RESULT_OK
-            } else {
-                return;
-            };
+        let path = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(option_type)) {
+            &paths::OPTION_SOME
+        } else if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type)) {
+            &paths::RESULT_OK
+        } else {
+            return;
+        };
 
-            let mut visitor = UnnecessaryWrapVisitor { result: Vec::new() };
-            visitor.visit_block(block);
-            let result = visitor.result;
-
-            if result.iter().any(|expr| {
-                if_chain! {
-                    if let ExprKind::Call(ref func, ref args) = expr.kind;
-                    if let ExprKind::Path(ref qpath) = func.kind;
-                    if match_qpath(qpath, path);
-                    if args.len() == 1;
-                    then {
-                        false
-                    } else {
-                        true
-                    }
+        let mut suggs = Vec::new();
+        let can_sugg = find_all_ret_expressions(cx, &body.value, |ret_expr| {
+            if_chain! {
+                if let ExprKind::Call(ref func, ref args) = ret_expr.kind;
+                if let ExprKind::Path(ref qpath) = func.kind;
+                if match_qpath(qpath, path);
+                if args.len() == 1;
+                then {
+                    suggs.push((ret_expr.span, snippet(cx, args[0].span.source_callsite(), "..").to_string()));
+                    true
+                } else {
+                    false
                 }
-            }) {
-                return;
             }
+        });
 
-            let suggs = result
-                .iter()
-                .filter_map(|expr| {
-                    let snippet = if let ExprKind::Call(_, ref args) = expr.kind {
-                        Some(snippet(cx, args[0].span, "..").to_string())
-                    } else {
-                        None
-                    };
-                    snippet.map(|snip| (expr.span, snip))
-                })
-                .chain({
-                    let inner_ty = return_ty(cx, hir_id)
-                        .walk()
-                        .skip(1) // skip `std::option::Option` or `std::result::Result`
-                        .take(1) // first outermost inner type is needed
-                        .filter_map(|inner| match inner.unpack() {
-                            GenericArgKind::Type(inner_ty) => Some(inner_ty.to_string()),
-                            _ => None,
-                        });
-                    inner_ty.map(|inner_ty| (fn_decl.output.span(), inner_ty))
-                });
-
+        if can_sugg {
             span_lint_and_then(
                 cx,
                 UNNECESSARY_WRAP,
@@ -132,7 +106,17 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
                         diag,
                         "factor this out to",
                         Applicability::MachineApplicable,
-                        suggs,
+                        suggs.into_iter().chain({
+                            let inner_ty = return_ty(cx, hir_id)
+                                .walk()
+                                .skip(1) // skip `std::option::Option` or `std::result::Result`
+                                .take(1) // take the first outermost inner type
+                                .filter_map(|inner| match inner.unpack() {
+                                    GenericArgKind::Type(inner_ty) => Some(inner_ty.to_string()),
+                                    _ => None,
+                                });
+                            inner_ty.map(|inner_ty| (fn_decl.output.span(), inner_ty))
+                        }),
                     );
                 },
             );
@@ -140,51 +124,125 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
     }
 }
 
-struct UnnecessaryWrapVisitor<'tcx> {
-    result: Vec<&'tcx Expr<'tcx>>,
+// code below is copied from `bind_instead_of_map`
+
+fn find_all_ret_expressions<'hir, F>(_cx: &LateContext<'_>, expr: &'hir Expr<'hir>, callback: F) -> bool
+where
+    F: FnMut(&'hir Expr<'hir>) -> bool,
+{
+    struct RetFinder<F> {
+        in_stmt: bool,
+        failed: bool,
+        cb: F,
+    }
+
+    struct WithStmtGuarg<'a, F> {
+        val: &'a mut RetFinder<F>,
+        prev_in_stmt: bool,
+    }
+
+    impl<F> RetFinder<F> {
+        fn inside_stmt(&mut self, in_stmt: bool) -> WithStmtGuarg<'_, F> {
+            let prev_in_stmt = std::mem::replace(&mut self.in_stmt, in_stmt);
+            WithStmtGuarg {
+                val: self,
+                prev_in_stmt,
+            }
+        }
+    }
+
+    impl<F> std::ops::Deref for WithStmtGuarg<'_, F> {
+        type Target = RetFinder<F>;
+
+        fn deref(&self) -> &Self::Target {
+            self.val
+        }
+    }
+
+    impl<F> std::ops::DerefMut for WithStmtGuarg<'_, F> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            self.val
+        }
+    }
+
+    impl<F> Drop for WithStmtGuarg<'_, F> {
+        fn drop(&mut self) {
+            self.val.in_stmt = self.prev_in_stmt;
+        }
+    }
+
+    impl<'hir, F: FnMut(&'hir Expr<'hir>) -> bool> intravisit::Visitor<'hir> for RetFinder<F> {
+        type Map = Map<'hir>;
+
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+            intravisit::NestedVisitorMap::None
+        }
+
+        fn visit_stmt(&mut self, stmt: &'hir Stmt<'_>) {
+            intravisit::walk_stmt(&mut *self.inside_stmt(true), stmt)
+        }
+
+        fn visit_expr(&mut self, expr: &'hir Expr<'_>) {
+            if self.failed {
+                return;
+            }
+            if self.in_stmt {
+                match expr.kind {
+                    ExprKind::Ret(Some(expr)) => self.inside_stmt(false).visit_expr(expr),
+                    _ => intravisit::walk_expr(self, expr),
+                }
+            } else {
+                match expr.kind {
+                    ExprKind::Match(cond, arms, _) => {
+                        self.inside_stmt(true).visit_expr(cond);
+                        for arm in arms {
+                            self.visit_expr(arm.body);
+                        }
+                    },
+                    ExprKind::Block(..) => intravisit::walk_expr(self, expr),
+                    ExprKind::Ret(Some(expr)) => self.visit_expr(expr),
+                    _ => self.failed |= !(self.cb)(expr),
+                }
+            }
+        }
+    }
+
+    !contains_try(expr) && {
+        let mut ret_finder = RetFinder {
+            in_stmt: false,
+            failed: false,
+            cb: callback,
+        };
+        ret_finder.visit_expr(expr);
+        !ret_finder.failed
+    }
 }
 
-impl<'tcx> Visitor<'tcx> for UnnecessaryWrapVisitor<'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_block(&mut self, block: &'tcx Block<'tcx>) {
-        for stmt in block.stmts {
-            self.visit_stmt(stmt);
-        }
-        if let Some(expr) = block.expr {
-            self.visit_expr(expr)
-        }
+/// returns `true` if expr contains match expr desugared from try
+fn contains_try(expr: &Expr<'_>) -> bool {
+    struct TryFinder {
+        found: bool,
     }
 
-    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'tcx>) {
-        match stmt.kind {
-            StmtKind::Semi(ref expr) => {
-                if let ExprKind::Ret(Some(value)) = expr.kind {
-                    self.result.push(value);
-                }
-            },
-            StmtKind::Expr(ref expr) => self.visit_expr(expr),
-            _ => (),
-        }
-    }
+    impl<'hir> intravisit::Visitor<'hir> for TryFinder {
+        type Map = Map<'hir>;
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        match expr.kind {
-            ExprKind::Ret(Some(value)) => self.result.push(value),
-            ExprKind::Call(..) | ExprKind::Path(..) => self.result.push(expr),
-            ExprKind::Block(ref block, _) | ExprKind::Loop(ref block, ..) => {
-                self.visit_block(block);
-            },
-            ExprKind::Match(_, arms, _) => {
-                for arm in arms {
-                    self.visit_expr(arm.body);
-                }
-            },
-            _ => intravisit::walk_expr(self, expr),
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+            intravisit::NestedVisitorMap::None
+        }
+
+        fn visit_expr(&mut self, expr: &'hir Expr<'hir>) {
+            if self.found {
+                return;
+            }
+            match expr.kind {
+                ExprKind::Match(_, _, MatchSource::TryDesugar) => self.found = true,
+                _ => intravisit::walk_expr(self, expr),
+            }
         }
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
+    let mut visitor = TryFinder { found: false };
+    visitor.visit_expr(expr);
+    visitor.found
 }
