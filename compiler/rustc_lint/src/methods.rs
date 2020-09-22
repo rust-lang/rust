@@ -13,6 +13,7 @@ declare_lint! {
     ///
     /// ```rust
     /// # #![allow(unused)]
+    /// # use std::ffi::CString;
     /// let c_str = CString::new("foo").unwrap().as_ptr();
     /// ```
     ///
