@@ -3188,10 +3188,11 @@ impl<T> [T] {
         left
     }
 
-    /// Removes and returns the portion of the slice specified by `range`.
+    /// Returns the subslice corresponding to the given range,
+    /// and modifies the slice to no longer include this subslice.
     ///
-    /// If the provided `range` starts or ends outside of the slice,
-    /// `None` is returned and the slice is not modified.
+    /// Returns `None` and does not modify the slice if the given
+    /// range is out of bounds.
     ///
     /// # Examples
     ///
@@ -3250,10 +3251,11 @@ impl<T> [T] {
         }
     }
 
-    /// Removes and returns the portion of the mutable slice specified by `range`.
+    /// Returns the mutable subslice corresponding to the given range,
+    /// and modifies the slice to no longer include this subslice.
     ///
-    /// If the provided `range` starts or ends outside of the slice,
-    /// `None` is returned and the slice is not modified.
+    /// Returns `None` and does not modify the slice if the given
+    /// range is out of bounds.
     ///
     /// # Examples
     ///
@@ -3315,9 +3317,8 @@ impl<T> [T] {
         }
     }
 
-    /// Takes the first element out of the slice.
-    ///
-    /// Returns a reference pointing to the first element of the old slice.
+    /// Returns a reference to the first element of the slice,
+    /// and modifies the slice to no longer include this element.
     ///
     /// Returns `None` if the slice is empty.
     ///
@@ -3338,9 +3339,8 @@ impl<T> [T] {
         self.take(..=0).map(|res| &res[0])
     }
 
-    /// Takes the first element out of the mutable slice.
-    ///
-    /// Returns a mutable reference pointing to the first element of the old slice.
+    /// Returns a mutable reference to the first element of the slice,
+    /// and modifies the slice to no longer include this element.
     ///
     /// Returns `None` if the slice is empty.
     ///
@@ -3362,9 +3362,8 @@ impl<T> [T] {
         self.take_mut(..=0).map(|res| &mut res[0])
     }
 
-    /// Takes the last element out of the slice.
-    ///
-    /// Returns a reference pointing to the last element of the old slice.
+    /// Returns a reference to the last element of the slice,
+    /// and modifies the slice to no longer include this element.
     ///
     /// Returns `None` if the slice is empty.
     ///
@@ -3385,9 +3384,8 @@ impl<T> [T] {
         self.take((self.len() - 1)..).map(|res| &res[0])
     }
 
-    /// Takes the last element out of the mutable slice.
-    ///
-    /// Returns a mutable reference pointing to the last element of the old slice.
+    /// Returns a mutable reference to the last element of the slice,
+    /// and modifies the slice to no longer include this element.
     ///
     /// Returns `None` if the slice is empty.
     ///
