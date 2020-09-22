@@ -613,6 +613,19 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         );
     }
 
+    fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'_>) {
+        let def_id = cx.tcx.hir().local_def_id(foreign_item.hir_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        self.check_missing_docs_attrs(
+            cx,
+            Some(foreign_item.hir_id),
+            &foreign_item.attrs,
+            foreign_item.span,
+            article,
+            desc,
+        );
+    }
+
     fn check_struct_field(&mut self, cx: &LateContext<'_>, sf: &hir::StructField<'_>) {
         if !sf.is_positional() {
             self.check_missing_docs_attrs(
