@@ -348,6 +348,31 @@ pub trait OpenOptionsExt {
     /// ```
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn custom_flags(&mut self, flags: i32) -> &mut Self;
+
+    /// Get the flags as [`libc::c_int`].
+    ///
+    /// This method allows the reuse of the OpenOptions as flags argument for [`libc::open`].
+    ///
+    /// [`libc::c_int`]: https://docs.rs/libc/*/libc/type.c_int.html
+    /// [`libc::open`]: https://docs.rs/libc/*/libc/fn.open.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(rustc_private)]
+    /// #![feature(open_options_ext_as_flags)]
+    /// extern crate libc;
+    /// use std::ffi::CString;
+    /// use std::fs::OpenOptions;
+    /// use std::os::unix::fs::OpenOptionsExt;
+    ///
+    /// let mut options = OpenOptions::new();
+    /// options.write(true).read(true);
+    /// let file_name = CString::new("foo.txt").unwrap();
+    /// let file = unsafe { libc::open(file_name.as_c_str().as_ptr(), options.as_flags().unwrap()) };
+    /// ```
+    #[unstable(feature = "open_options_ext_as_flags", issue = "76801")]
+    fn as_flags(&self) -> io::Result<libc::c_int>;
 }
 
 #[stable(feature = "fs_ext", since = "1.1.0")]
@@ -360,6 +385,10 @@ impl OpenOptionsExt for OpenOptions {
     fn custom_flags(&mut self, flags: i32) -> &mut OpenOptions {
         self.as_inner_mut().custom_flags(flags);
         self
+    }
+
+    fn as_flags(&self) -> io::Result<libc::c_int> {
+        self.as_inner().as_flags()
     }
 }
 
