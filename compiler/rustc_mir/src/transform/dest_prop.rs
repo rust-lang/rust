@@ -905,7 +905,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindAssignments<'a, 'tcx> {
             // FIXME: This can be smarter and take `StorageDead` into account (which
             // invalidates borrows).
             if self.ever_borrowed_locals.contains(dest.local)
-                && self.ever_borrowed_locals.contains(src.local)
+                || self.ever_borrowed_locals.contains(src.local)
             {
                 return;
             }
