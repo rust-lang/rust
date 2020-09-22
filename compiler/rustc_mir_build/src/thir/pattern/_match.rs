@@ -416,7 +416,7 @@ impl<'tcx> Pat<'tcx> {
 
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 crate struct PatStack<'p, 'tcx>(SmallVec<[&'p Pat<'tcx>; 2]>);
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
@@ -506,7 +506,7 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
 
 /// Depending on the match patterns, the specialization process might be able to use a fast path.
 /// Tracks whether we can use the fast path and the lookup table needed in those cases.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum SpecializationCache {
     /// Patterns consist of only enum variants.
     /// Variant patterns does not intersect with each other (in contrast to range patterns),
@@ -523,7 +523,7 @@ enum SpecializationCache {
 }
 
 /// A 2D matrix.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 crate struct Matrix<'p, 'tcx> {
     patterns: Vec<PatStack<'p, 'tcx>>,
     cache: SpecializationCache,
@@ -622,7 +622,19 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn specialize_wildcard(&self) -> Self {
         match &self.cache {
             SpecializationCache::Variants { wilds, .. } => {
-                wilds.iter().filter_map(|&i| self.patterns[i].specialize_wildcard()).collect()
+                let result =
+                    wilds.iter().filter_map(|&i| self.patterns[i].specialize_wildcard()).collect();
+                // When debug assertions are enabled, check the results against the "slow path"
+                // result.
+                debug_assert_eq!(
+                    result,
+                    Self {
+                        patterns: self.patterns.clone(),
+                        cache: SpecializationCache::Incompatible
+                    }
+                    .specialize_wildcard()
+                );
+                result
             }
             SpecializationCache::Incompatible => {
                 self.patterns.iter().filter_map(|r| r.specialize_wildcard()).collect()
@@ -639,7 +651,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     ) -> Matrix<'p, 'tcx> {
         match &self.cache {
             SpecializationCache::Variants { lookup, wilds } => {
-                if let Constructor::Variant(id) = constructor {
+                let result: Self = if let Constructor::Variant(id) = constructor {
                     lookup
                         .get(id)
                         // Default to `wilds` for absent keys. See `update_cache` for an explanation.
@@ -655,7 +667,22 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                         .collect()
                 } else {
                     unreachable!()
-                }
+                };
+                // When debug assertions are enabled, check the results against the "slow path"
+                // result.
+                debug_assert_eq!(
+                    result,
+                    Matrix {
+                        patterns: self.patterns.clone(),
+                        cache: SpecializationCache::Incompatible
+                    }
+                    .specialize_constructor(
+                        cx,
+                        constructor,
+                        ctor_wild_subpatterns
+                    )
+                );
+                result
             }
             SpecializationCache::Incompatible => self
                 .patterns
