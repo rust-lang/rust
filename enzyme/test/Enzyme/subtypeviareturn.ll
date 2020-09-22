@@ -36,7 +36,7 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK: define internal void @diffefoo(i64* %inp, i64* %"inp'", i64* %out, i64* %"out'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = call i64 @augmented_subload(i64* %inp, i64* %"inp'")
-; CHECK-NEXT:   store i64 %call, i64* %out, !tbaa !
+; CHECK-NEXT:   store i64 %call, i64* %out{{(, align 4)?}}, !tbaa !
 ; CHECK-NEXT:   %0 = load i64, i64* %"out'"
 ; CHECK-NEXT:   store i64 0, i64* %"out'"
 ; CHECK-NEXT:   call void @diffesubload(i64* %inp, i64* %"inp'", i64 %0)

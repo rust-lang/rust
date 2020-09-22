@@ -48,7 +48,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %loadtype = load i64, i64* %cptr2
 ; CHECK-NEXT:   %"cptr4'ipg" = getelementptr inbounds %sub, %sub* %"cast'ipc", i64 0, i32 0, i32 4
 ; CHECK-NEXT:   %cptr4 = getelementptr inbounds %sub, %sub* %cast, i64 0, i32 0, i32 4
-; CHECK-NEXT:   store i64 %loadtype, i64* %cptr4, !tbaa !0
+; CHECK-NEXT:   store i64 %loadtype, i64* %cptr4{{(, align 4)?}}, !tbaa !0
 ; CHECK-NEXT:   %0 = load i64, i64* %"cptr4'ipg"
 ; CHECK-NEXT:   store i64 0, i64* %"cptr4'ipg"
 ; CHECK-NEXT:   %1 = load i64, i64* %"cptr2'ipg"

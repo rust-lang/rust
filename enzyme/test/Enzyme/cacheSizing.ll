@@ -922,7 +922,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %m_rows.i1 = getelementptr inbounds { double*, i64 }, { double*, i64 }* %diff, i64 0, i32 1
 ; CHECK-NEXT:   %".cast'ipa" = alloca double, i64 16
 ; CHECK-NEXT:   %0 = bitcast double* %".cast'ipa" to i8*
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %0, i8 0, i64 128, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull{{( align 8)?}} %0, i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %.cast = alloca double, i64 16
 ; CHECK-NEXT:   store double* %".cast'ipa", double** %"diffptr'ipc", align 8
 ; CHECK-NEXT:   store double* %.cast, double** %diffptr, align 8, !tbaa !19
@@ -965,7 +965,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertsubfor:
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[ivsub:.+]], %incinvertsubfor ], [ 15, %invertmatfor1 ] 
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[ivsub:.+]], %incinvertsubfor ], [ 15, %invertmatfor1 ]
 ; CHECK-NEXT:   %"resi'ipg_unwrap" = getelementptr inbounds double, double* %".cast'ipa", i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[preres:.+]] = load double, double* %"resi'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"resi'ipg_unwrap", align 8

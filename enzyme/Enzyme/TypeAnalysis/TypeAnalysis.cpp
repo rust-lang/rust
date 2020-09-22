@@ -1523,6 +1523,21 @@ template <> struct TypeHandler<long long int *> {
   }
 };
 
+template <> struct TypeHandler<long long unsigned int> {
+  static void analyzeType(Value *val, CallInst &call, TypeAnalyzer &TA) {
+    TypeTree vd = TypeTree(BaseType::Integer);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
+  }
+};
+
+template <> struct TypeHandler<long long unsigned int *> {
+  static void analyzeType(Value *val, CallInst &call, TypeAnalyzer &TA) {
+    TypeTree vd = TypeTree(BaseType::Integer).Only(0);
+    vd |= TypeTree(BaseType::Pointer);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
+  }
+};
+
 template <typename... Arg0> struct FunctionArgumentIterator {
   static void analyzeFuncTypesHelper(unsigned idx, CallInst &call,
                                      TypeAnalyzer &TA) {}

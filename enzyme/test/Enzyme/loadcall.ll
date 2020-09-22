@@ -71,7 +71,7 @@ attributes #4 = { nounwind }
 ; CHECK: define internal void @diffebad(double* %a, double* %"a'", double %differeturn, i8* %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to double**
-; CHECK-NEXT:   %[[callp:.+]] = load double*, double** %0, !enzyme_mustcache !6
+; CHECK-NEXT:   %[[callp:.+]] = load double*, double** %0{{(, align 8)?}}, !enzyme_mustcache !
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %"loaded'de" = alloca double
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"loaded'de"

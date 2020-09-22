@@ -74,7 +74,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store i64 %call4, i64* %out
 ; CHECK-NEXT:   %[[oold:.+]] = load i64, i64* %"out'"
 ; CHECK-NEXT:   store i64 0, i64* %"out'"
-; CHECK-NEXT:   call void @diffesub(i64* %m_dims, i64* %"m_dims'", i64 %[[oold]], { { i64, i64*, i64*, i8*, i8* }, i64 } %[[tape]]) 
+; CHECK-NEXT:   call void @diffesub(i64* %m_dims, i64* %"m_dims'", i64 %[[oold]], { { i64, i64*, i64*, i8*, i8* }, i64 } %[[tape]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -101,7 +101,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %call.i_augmented = call { i64*, i64* } @augmented_cast(i64*{{( nonnull)?}} %arr, i64*{{( nonnull)?}} %"arr'ipc")
 ; CHECK-NEXT:   %call.i = extractvalue { i64*, i64* } %call.i_augmented, 0
 ; CHECK-NEXT:   %[[dcall:.+]] = extractvalue { i64*, i64* } %call.i_augmented, 1
-; CHECK-NEXT:   %a2 = load i64, i64* %call.i, !tbaa !2
+; CHECK-NEXT:   %a2 = load i64, i64* %call.i{{(, align 4)?}}, !tbaa !2
 ; CHECK-NEXT:   %call2 = call i64 @augmented_mul(i64 %a2)
 ; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64, i64*, i64*, i8*, i8* }, i64 } undef, i64 %a2, 0, 0
 ; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i64, i64*, i64*, i8*, i8* }, i64 } %.fca.0.0.insert, i64* %call.i, 0, 1

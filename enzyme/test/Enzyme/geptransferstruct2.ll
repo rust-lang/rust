@@ -40,7 +40,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr2
 ; CHECK-NEXT:   %"ptr3'ipg" = getelementptr inbounds i64, i64* %"ptr'", i64 3
 ; CHECK-NEXT:   %ptr3 = getelementptr inbounds i64, i64* %ptr, i64 3
-; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3, !tbaa !0
+; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3{{(, align 4)?}}, !tbaa !0
 ; CHECK-NEXT:   %"cast'ipc" = bitcast i64* %"ptr'" to %sub*
 ; CHECK-NEXT:   %cast = bitcast i64* %ptr to %sub*
 ; CHECK-NEXT:   %"cptr2'ipg" = getelementptr inbounds %sub, %sub* %"cast'ipc", i64 0, i32 0, i32 2

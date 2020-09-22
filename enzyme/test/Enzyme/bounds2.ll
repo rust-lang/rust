@@ -270,7 +270,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   br i1 %cmp, label %if.then, label %if.end
 
 ; CHECK: if.then:                                          ; preds = %entry
-; CHECK-NEXT:   tail call void @exit(i32 1) #9
+; CHECK-NEXT:   tail call void @exit(i32 1)
 ; CHECK-NEXT:   unreachable
 
 ; CHECK: if.end:                                           ; preds = %entry

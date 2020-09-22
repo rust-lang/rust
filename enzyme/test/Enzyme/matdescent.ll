@@ -265,8 +265,8 @@ attributes #19 = { builtin nounwind }
 
 ; CHECK: define internal void @diffe_Z11matvec_realPdS_(double* nocapture readonly %mat, double* nocapture %"mat'", double* nocapture readonly %vec)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(16000) dereferenceable_or_null(16000) i8* @malloc(i64 16000) #3
-; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(16000) dereferenceable_or_null(16000) i8* @malloc(i64 16000) #3
+; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(16000) dereferenceable_or_null(16000) i8* @malloc(i64 16000)
+; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(16000) dereferenceable_or_null(16000) i8* @malloc(i64 16000)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(16000) dereferenceable_or_null(16000) %"call'mi", i8 0, i64 16000, i1 false)
 ; CHECK-NEXT:   %[[outipc:.+]] = bitcast i8* %"call'mi" to double*
 ; CHECK-NEXT:   %out = bitcast i8* %call to double*
