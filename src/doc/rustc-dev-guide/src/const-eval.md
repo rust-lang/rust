@@ -28,7 +28,7 @@ in which the constant is evaluated (e.g. the function within which the constant 
 and a [`GlobalId`]. The `GlobalId` is made up of an `Instance` referring to a constant
 or static or of an `Instance` of a function and an index into the function's `Promoted` table.
 
-Constant evaluation returns a [`ConstEvalResult`] with either the error, or the a
+Constant evaluation returns a [`EvalToConstValueResult`] with either the error, or a
 representation of the constant. `static` initializers are always represented as
 [`miri`](./miri.html) virtual memory allocations (via [`ConstValue::ByRef`]).
 Other constants get represented as [`ConstValue::Scalar`]
@@ -41,5 +41,5 @@ If you need the value of a constant inside Miri, you need to directly work with
 [`ConstValue::Scalar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/value/enum.ConstValue.html#variant.Scalar
 [`ConstValue::Slice`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/value/enum.ConstValue.html#variant.Slice
 [`ConstValue::ByRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/value/enum.ConstValue.html#variant.ByRef
-[`ConstEvalResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/error/type.ConstEvalResult.html
+[`EvalToConstValueResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/error/type.EvalToConstValueResult.html
 [`eval_const_to_op`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/struct.InterpCx.html#method.eval_const_to_op
