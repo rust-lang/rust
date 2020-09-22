@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** It is not meaningful to wrap values when no `None` or `Err` is returned.
     ///
     /// **Known problems:** Since this lint changes function type signature, you may need to
-    /// adjust some codes at callee side.
+    /// adjust some code at callee side.
     ///
     /// **Example:**
     ///
