@@ -1,5 +1,5 @@
 use crate::utils::{
-    is_type_diagnostic_item, match_qpath, multispan_sugg_with_applicability, paths, return_ty, snippet,
+    is_type_diagnostic_item, match_qpath, paths, return_ty, snippet,
     span_lint_and_then,
 };
 use if_chain::if_chain;
@@ -102,10 +102,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
                 span,
                 "this function returns unnecessarily wrapping data",
                 move |diag| {
-                    multispan_sugg_with_applicability(
-                        diag,
+                    diag.multipart_suggestion(
                         "factor this out to",
-                        Applicability::MachineApplicable,
                         suggs.into_iter().chain({
                             let inner_ty = return_ty(cx, hir_id)
                                 .walk()
@@ -116,7 +114,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
                                     _ => None,
                                 });
                             inner_ty.map(|inner_ty| (fn_decl.output.span(), inner_ty))
-                        }),
+                        }).collect(),
+                        Applicability::MachineApplicable,
                     );
                 },
             );
