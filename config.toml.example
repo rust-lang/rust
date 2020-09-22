@@ -9,6 +9,12 @@
 # a custom configuration file can also be specified with `--config` to the build
 # system.
 
+# Keeps track of the last version of `x.py` used.
+# If it does not match the version that is currently running,
+# `x.py` will prompt you to update it and read the changelog.
+# See `src/bootstrap/CHANGELOG.md` for more information.
+changelog-seen = 1
+
 # =============================================================================
 # Global Settings
 # =============================================================================
