@@ -1,0 +1,29 @@
+The `ffi_const` attribute was used on something other than a foreign function
+declaration.
+
+Erroneous code example:
+
+```compile_fail,E0756
+#![feature(ffi_const)]
+
+#[ffi_const] // error!
+pub fn foo() {}
+# fn main() {}
+```
+
+The `ffi_const` attribute can only be used on foreign function declarations
+which have no side effects except for their return value:
+
+```
+#![feature(ffi_const)]
+
+extern "C" {
+    #[ffi_const] // ok!
+    pub fn strlen(s: *const i8) -> i32;
+}
+# fn main() {}
+```
+
+You can get more information about it in the [unstable Rust Book].
+
+[unstable Rust Book]: https://doc.rust-lang.org/nightly/unstable-book/language-features/ffi-const.html
