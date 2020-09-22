@@ -15,7 +15,7 @@
 /// }
 ///
 /// impl Not for Answer {
-///     type Output = Answer;
+///     type Output = Self;
 ///
 ///     fn not(self) -> Self::Output {
 ///         match self {
@@ -85,7 +85,7 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///
 ///     // rhs is the "right-hand side" of the expression `a & b`
 ///     fn bitand(self, rhs: Self) -> Self::Output {
-///         Scalar(self.0 & rhs.0)
+///         Self(self.0 & rhs.0)
 ///     }
 /// }
 ///
@@ -106,10 +106,13 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitAnd for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitand(self, BooleanVector(rhs): Self) -> Self::Output {
-///         let BooleanVector(lhs) = self;
+///     fn bitand(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         BooleanVector(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x && *y).collect())
+///         Self(lhs.iter()
+///                 .zip(rhs.iter())
+///                 .map(|(x, y)| *x && *y)
+///                 .collect())
 ///     }
 /// }
 ///
@@ -179,8 +182,8 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     type Output = Self;
 ///
 ///     // rhs is the "right-hand side" of the expression `a | b`
-///     fn bitor(self, rhs: Self) -> Self {
-///         Scalar(self.0 | rhs.0)
+///     fn bitor(self, rhs: Self) -> Self::Output {
+///         Self(self.0 | rhs.0)
 ///     }
 /// }
 ///
@@ -201,10 +204,10 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitOr for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitor(self, BooleanVector(rhs): Self) -> Self::Output {
-///         let BooleanVector(lhs) = self;
+///     fn bitor(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         BooleanVector(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x || *y).collect())
+///         Self(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x || *y).collect())
 ///     }
 /// }
 ///
@@ -275,7 +278,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///
 ///     // rhs is the "right-hand side" of the expression `a ^ b`
 ///     fn bitxor(self, rhs: Self) -> Self::Output {
-///         Scalar(self.0 ^ rhs.0)
+///         Self(self.0 ^ rhs.0)
 ///     }
 /// }
 ///
@@ -296,13 +299,13 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitXor for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitxor(self, BooleanVector(rhs): Self) -> Self::Output {
-///         let BooleanVector(lhs) = self;
+///     fn bitxor(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         BooleanVector(lhs.iter()
-///                          .zip(rhs.iter())
-///                          .map(|(x, y)| (*x || *y) && !(*x && *y))
-///                          .collect())
+///         Self(lhs.iter()
+///                 .zip(rhs.iter())
+///                 .map(|(x, y)| (*x || *y) && !(*x && *y))
+///                 .collect())
 ///     }
 /// }
 ///
@@ -375,9 +378,9 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl Shl<Scalar> for Scalar {
 ///     type Output = Self;
 ///
-///     fn shl(self, Scalar(rhs): Self) -> Scalar {
-///         let Scalar(lhs) = self;
-///         Scalar(lhs << rhs)
+///     fn shl(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
+///         Self(lhs << rhs)
 ///     }
 /// }
 ///
@@ -400,10 +403,10 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     fn shl(self, rhs: usize) -> Self::Output {
 ///         // Rotate the vector by `rhs` places.
 ///         let (a, b) = self.vec.split_at(rhs);
-///         let mut spun_vector: Vec<T> = vec![];
+///         let mut spun_vector = vec![];
 ///         spun_vector.extend_from_slice(b);
 ///         spun_vector.extend_from_slice(a);
-///         SpinVector { vec: spun_vector }
+///         Self { vec: spun_vector }
 ///     }
 /// }
 ///
@@ -493,9 +496,9 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 /// impl Shr<Scalar> for Scalar {
 ///     type Output = Self;
 ///
-///     fn shr(self, Scalar(rhs): Self) -> Scalar {
-///         let Scalar(lhs) = self;
-///         Scalar(lhs >> rhs)
+///     fn shr(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
+///         Self(lhs >> rhs)
 ///     }
 /// }
 ///
@@ -518,10 +521,10 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 ///     fn shr(self, rhs: usize) -> Self::Output {
 ///         // Rotate the vector by `rhs` places.
 ///         let (a, b) = self.vec.split_at(self.vec.len() - rhs);
-///         let mut spun_vector: Vec<T> = vec![];
+///         let mut spun_vector = vec![];
 ///         spun_vector.extend_from_slice(b);
 ///         spun_vector.extend_from_slice(a);
-///         SpinVector { vec: spun_vector }
+///         Self { vec: spun_vector }
 ///     }
 /// }
 ///
@@ -606,7 +609,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 /// impl BitAndAssign for Scalar {
 ///     // rhs is the "right-hand side" of the expression `a &= b`
 ///     fn bitand_assign(&mut self, rhs: Self) {
-///         *self = Scalar(self.0 & rhs.0)
+///         *self = Self(self.0 & rhs.0)
 ///     }
 /// }
 ///
@@ -640,11 +643,11 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 ///     // `rhs` is the "right-hand side" of the expression `a &= b`.
 ///     fn bitand_assign(&mut self, rhs: Self) {
 ///         assert_eq!(self.0.len(), rhs.0.len());
-///         *self = BooleanVector(self.0
-///                                   .iter()
-///                                   .zip(rhs.0.iter())
-///                                   .map(|(x, y)| *x && *y)
-///                                   .collect());
+///         *self = Self(self.0
+///                          .iter()
+///                          .zip(rhs.0.iter())
+///                          .map(|(x, y)| *x && *y)
+///                          .collect());
 ///     }
 /// }
 ///
