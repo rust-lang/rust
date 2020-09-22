@@ -2400,14 +2400,11 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
         return;
     }
 
-    // On macOS for some reason the llvm-config binary behaves differently and
-    // and fails on missing .a files if run without --link-shared. If run with
-    // that option, it still fails, but because we only ship a libLLVM.dylib
-    // rather than libLLVM-11-rust-....dylib file.
-    //
-    // For now just don't use llvm-config here on macOS; that will fail to
-    // support CI-built LLVM, but until we work out the different behavior that
-    // is fine as it is off by default.
+    // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
+    // instead of libLLVM-11-rust-....dylib, as on linux. It's not entirely
+    // clear why this is the case, though. llvm-config will emit the versioned
+    // paths and we don't want those in the sysroot (as we're expecting
+    // unversioned paths).
     if target.contains("apple-darwin") {
         let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");

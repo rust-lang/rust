@@ -128,8 +128,10 @@ impl Step for Llvm {
                 Err(m) => m,
             };
 
-        if builder.config.llvm_link_shared && target.contains("windows") {
-            panic!("shared linking to LLVM is not currently supported on Windows");
+        if builder.config.llvm_link_shared
+            && (target.contains("windows") || target.contains("apple-darwin"))
+        {
+            panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
         builder.info(&format!("Building LLVM for {}", target));
@@ -208,7 +210,10 @@ impl Step for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
-        if builder.llvm_link_tools_dynamically(target) {
+        //
+        // If we're not linking rustc to a dynamic LLVM, though, then don't link
+        // tools to it.
+        if builder.llvm_link_tools_dynamically(target) && builder.config.llvm_link_shared {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 

@@ -75,13 +75,6 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"
 
-  # If we're distributing binaries, we want a shared LLVM link. We're already
-  # going to link LLVM to the LLVM tools dynamically, so we need to ship a
-  # libLLVM library anyway.
-  if !isWindows; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.link-shared=true"
-  fi
-
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   elif [ "$DEPLOY_ALT" != "" ]; then
