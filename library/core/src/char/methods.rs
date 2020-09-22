@@ -1544,13 +1544,18 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_whitespace(&self) -> bool {
-        #[cfg(target_pointer_width = "64")]
+        #[cfg(not(target_pointer_width = "16"))]
         {
             // Inspired from https://pdimov.github.io/blog/2020/07/19/llvm-and-memchr/
-            const MASK: u64 = 1 << b'\t' | 1 << b'\n' | 1 << b'\x0C' | 1 << b'\r' | 1 << b' ';
-            *self <= ' ' && 1u64 << (*self as u8) & MASK != 0
+            const MASK: u32 = 1 << (b'\t' - 1)
+                | 1 << (b'\n' - 1)
+                | 1 << (b'\x0C' - 1)
+                | 1 << (b'\r' - 1)
+                | 1 << (b' ' - 1);
+            let ch = (*self as u32).wrapping_sub(1);
+            ch < (' ' as u32) && 1 << (ch as u8) & MASK != 0
         }
-        #[cfg(not(target_pointer_width = "64"))]
+        #[cfg(target_pointer_width = "16")]
         {
             match *self {
                 '\t' | '\n' | '\x0C' | '\r' | ' ' => true,
