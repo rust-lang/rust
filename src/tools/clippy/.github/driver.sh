@@ -22,9 +22,9 @@ unset CARGO_MANIFEST_DIR
 
 # Run a lint and make sure it produces the expected output. It's also expected to exit with code 1
 # FIXME: How to match the clippy invocation in compile-test.rs?
-./target/debug/clippy-driver -Dwarnings -Aunused -Zui-testing --emit metadata --crate-type bin tests/ui/cstring.rs 2> cstring.stderr && exit 1
-sed -e "s,tests/ui,\$DIR," -e "/= help/d" cstring.stderr > normalized.stderr
-diff normalized.stderr tests/ui/cstring.stderr
+./target/debug/clippy-driver -Dwarnings -Aunused -Zui-testing --emit metadata --crate-type bin tests/ui/cast.rs 2> cast.stderr && exit 1
+sed -e "s,tests/ui,\$DIR," -e "/= help/d" cast.stderr > normalized.stderr
+diff normalized.stderr tests/ui/cast.stderr
 
 
 # make sure "clippy-driver --rustc --arg" and "rustc --arg" behave the same
