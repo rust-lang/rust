@@ -149,12 +149,9 @@ impl<'a> TokenTreesReader<'a> {
                             }
                         }
 
-                        match (open_brace, delim) {
-                            //only add braces
-                            (DelimToken::Brace, DelimToken::Brace) => {
-                                self.matching_block_spans.push((open_brace_span, close_brace_span));
-                            }
-                            _ => {}
+                        //only add braces
+                        if let (DelimToken::Brace, DelimToken::Brace) = (open_brace, delim) {
+                            self.matching_block_spans.push((open_brace_span, close_brace_span));
                         }
 
                         if self.open_braces.is_empty() {
