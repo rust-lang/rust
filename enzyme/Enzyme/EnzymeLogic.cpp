@@ -1268,6 +1268,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       Arg.removeAttr(Attribute::StructRet);
   }
 
+
   if (gutils->newFunc->hasFnAttribute(Attribute::OptimizeNone))
     gutils->newFunc->removeFnAttr(Attribute::OptimizeNone);
 
@@ -1278,10 +1279,21 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
   }
 
+  // TODO could keep nonnull if returning value -1
+  if (gutils->newFunc->getAttributes().getRetAlignment()) {
+    AttrBuilder ab;
+    ab.addAlignmentAttr(gutils->newFunc->getAttributes().getRetAlignment());
+    gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+  }
   if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
                                     llvm::Attribute::NoAlias)) {
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
                                      llvm::Attribute::NoAlias);
+  }
+  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
+                                    llvm::Attribute::NonNull)) {
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
+                                     llvm::Attribute::NonNull);
   }
   if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
                                     llvm::Attribute::ZExt)) {
@@ -1596,12 +1608,17 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       rep->setCallingConv(user->getCallingConv());
       rep->setTailCallKind(user->getTailCallKind());
       rep->setDebugLoc(user->getDebugLoc());
-
+      assert(user);
+      std::vector<ExtractValueInst*> torep;
       for (auto u : user->users()) {
+        assert(u);
         if (auto ei = dyn_cast<ExtractValueInst>(u)) {
-          ei->replaceAllUsesWith(rep);
-          ei->eraseFromParent();
+          torep.push_back(ei);
         }
+      }
+      for(auto ei : torep) {
+        ei->replaceAllUsesWith(rep);
+        ei->eraseFromParent();
       }
       user->eraseFromParent();
     } else {
@@ -2235,17 +2252,22 @@ Function *CreatePrimalAndGradient(
   for (BasicBlock &oBB : *gutils->oldFunc) {
     // Don't create derivatives for code that results in termination
     if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
+      auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
+      std::vector<BasicBlock*> toRemove;
+      for (auto next : successors(&oBB)) {
+        auto sucBB = cast<BasicBlock>(gutils->getNewFromOriginal(next));
+        toRemove.push_back(sucBB);
+      }
+      for(auto sucBB : toRemove) {
+        sucBB->removePredecessor(newBB);
+      }
+
       std::vector<Instruction *> toerase;
       for (auto &I : oBB) {
         toerase.push_back(&I);
       }
       for (auto I : toerase) {
         maker.eraseIfUnused(*I, /*erase*/ true, /*check*/ topLevel == true);
-      }
-      auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
-      for (auto next : successors(&oBB)) {
-        auto sucBB = cast<BasicBlock>(gutils->getNewFromOriginal(next));
-        sucBB->removePredecessor(newBB);
       }
       if (newBB->getTerminator())
         newBB->getTerminator()->eraseFromParent();
@@ -2352,10 +2374,21 @@ Function *CreatePrimalAndGradient(
     ab.addDereferenceableAttr(bytes);
     gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
   }
+
+  if (gutils->newFunc->getAttributes().getRetAlignment()) {
+    AttrBuilder ab;
+    ab.addAlignmentAttr(gutils->newFunc->getAttributes().getRetAlignment());
+    gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+  }
   if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
                                     llvm::Attribute::NoAlias)) {
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
                                      llvm::Attribute::NoAlias);
+  }
+  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
+                                    llvm::Attribute::NonNull)) {
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
+                                     llvm::Attribute::NonNull);
   }
   if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
                                     llvm::Attribute::ZExt)) {

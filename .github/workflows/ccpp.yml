@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["7"] #8 and 9 not done because of gvn issues
+        llvm: ["7", "8", "9", "10"]
         build: ["Release"] # "RelWithDebInfo"
         os: [self-hosted]
     

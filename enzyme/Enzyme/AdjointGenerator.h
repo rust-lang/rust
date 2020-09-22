@@ -123,6 +123,32 @@ public:
     if (mode == DerivativeMode::Forward)
       return;
 
+    #if LLVM_VERSION_MAJOR >= 10
+    if (auto *FPMO = dyn_cast<FPMathOperator>(&inst)) {
+     if (FPMO->getOpcode() == Instruction::FNeg) {
+      eraseIfUnused(inst);
+      if (gutils->isConstantValue(&inst))
+        return;
+      if (mode != DerivativeMode::Reverse && mode != DerivativeMode::Both)
+        return;
+
+      Value *orig_op1 = FPMO->getOperand(0);
+      bool constantval1 = gutils->isConstantValue(orig_op1);
+
+      IRBuilder<> Builder2(inst.getParent()); getReverseBuilder(Builder2);
+
+      Value *idiff = diffe(FPMO, Builder2);
+
+      if (!constantval1) {
+        Value* dif1 = Builder2.CreateFNeg(idiff);
+        setDiffe(FPMO, Constant::getNullValue(FPMO->getType()), Builder2);
+        addToDiffe(orig_op1, dif1, Builder2, dif1->getType()->getScalarType());
+      }
+       return ;
+     }
+    }
+    #endif
+
     llvm::errs() << *gutils->oldFunc << "\n";
     llvm::errs() << *gutils->newFunc << "\n";
     llvm::errs() << "in mode: " << to_string(mode) << "\n";
@@ -1172,6 +1198,10 @@ public:
       case Intrinsic::exp:
       case Intrinsic::exp2:
       case Intrinsic::pow:
+      case Intrinsic::powi:
+      #if LLVM_VERSION_MAJOR >= 9
+      case Intrinsic::experimental_vector_reduce_v2_fadd:
+      #endif
       case Intrinsic::sin:
       case Intrinsic::cos:
       case Intrinsic::floor:
@@ -1220,6 +1250,29 @@ public:
       case Intrinsic::round:
         // Derivative of these is zero and requires no modification
         return;
+
+      #if LLVM_VERSION_MAJOR >= 9
+      case Intrinsic::experimental_vector_reduce_v2_fadd:{
+        if (gutils->isConstantInstruction(&II))
+          return;
+
+        if (!gutils->isConstantValue(orig_ops[0])) {
+          addToDiffe(orig_ops[0], vdiff, Builder2, orig_ops[0]->getType());
+        }
+        if (!gutils->isConstantValue(orig_ops[1])) {
+          auto und = UndefValue::get(orig_ops[1]->getType());
+          auto mask = ConstantAggregateZero::get(VectorType::get(Type::getInt32Ty(und->getContext()), cast<VectorType>(und->getType())->getNumElements()
+          #if LLVM_VERSION_MAJOR >= 11
+          ,false));
+          #else
+          ));
+          #endif
+          auto vec = Builder2.CreateShuffleVector(Builder2.CreateInsertElement(und, vdiff, (uint64_t)0), und, mask);
+          addToDiffe(orig_ops[1], vec, Builder2, orig_ops[0]->getType());
+        }
+        return;
+      }
+      #endif
 
       case Intrinsic::lifetime_start: {
         if (gutils->isConstantInstruction(&II))
@@ -1397,6 +1450,29 @@ public:
         }
         return;
       }
+      case Intrinsic::powi: {
+        if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
+
+          Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
+          Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
+          SmallVector<Value *, 2> args = {
+              lookup(op0, Builder2),
+              Builder2.CreateSub(lookup(op1, Builder2),
+                                  ConstantInt::get(op1->getType(), 1))};
+          Type *tys[] = {orig_ops[0]->getType()};
+          auto cal = cast<CallInst>(Builder2.CreateCall(
+              Intrinsic::getDeclaration(M, Intrinsic::powi, tys), args));
+          cal->copyIRFlags(&II);
+          cal->setAttributes(II.getAttributes());
+          cal->setCallingConv(II.getCallingConv());
+          cal->setTailCallKind(II.getTailCallKind());
+          cal->setDebugLoc(II.getDebugLoc());
+          Value *dif0 = Builder2.CreateFMul(Builder2.CreateFMul(vdiff, cal),
+                                            Builder2.CreateSIToFP(lookup(op1, Builder2), op0->getType()));
+          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+        }
+        return;
+      }
       case Intrinsic::pow: {
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
 
@@ -1489,8 +1565,8 @@ public:
           return;
         llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << *gutils->newFunc << "\n";
-        llvm::errs() << "cannot handle (augmented) unknown intrinsic\n" << II;
-        report_fatal_error("(augmented) unknown intrinsic");
+        llvm::errs() << "cannot handle (reverse) unknown intrinsic\n" << II;
+        report_fatal_error("(reverse) unknown intrinsic");
       }
     }
 

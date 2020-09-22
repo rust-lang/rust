@@ -189,6 +189,8 @@ public:
   void dump();
 
   std::set<int64_t> knownIntegralValues(llvm::Value *val);
+
+  //TODO handle fneg on LLVM 10+
 };
 
 class TypeAnalysis {

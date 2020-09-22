@@ -1265,11 +1265,29 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         &I);
     return;
 
+  case Intrinsic::powi:
+    updateAnalysis(
+        &I, TypeTree(ConcreteType(I.getType()->getScalarType())).Only(-1), &I);
+    updateAnalysis(
+        I.getOperand(0),
+        TypeTree(ConcreteType(I.getOperand(0)->getType()->getScalarType()))
+            .Only(-1),
+        &I);
+    updateAnalysis(
+        I.getOperand(1),
+        TypeTree(BaseType::Integer)
+            .Only(-1),
+        &I);
+    return;
+
 #if LLVM_VERSION_MAJOR < 10
   case Intrinsic::x86_sse_max_ss:
   case Intrinsic::x86_sse_max_ps:
   case Intrinsic::x86_sse_min_ss:
   case Intrinsic::x86_sse_min_ps:
+#endif
+#if LLVM_VERSION_MAJOR >= 9
+  case Intrinsic::experimental_vector_reduce_v2_fadd:
 #endif
   case Intrinsic::maxnum:
   case Intrinsic::minnum:
