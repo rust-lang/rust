@@ -21,7 +21,6 @@ pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
 pub const CMP_MAX: [&str; 3] = ["core", "cmp", "max"];
 pub const CMP_MIN: [&str; 3] = ["core", "cmp", "min"];
 pub const COW: [&str; 3] = ["alloc", "borrow", "Cow"];
-pub const CSTRING: [&str; 4] = ["std", "ffi", "c_str", "CString"];
 pub const CSTRING_AS_C_STR: [&str; 5] = ["std", "ffi", "c_str", "CString", "as_c_str"];
 pub const DEFAULT_TRAIT: [&str; 3] = ["core", "default", "Default"];
 pub const DEFAULT_TRAIT_METHOD: [&str; 4] = ["core", "default", "Default", "default"];
