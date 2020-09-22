@@ -2259,13 +2259,6 @@ vec![
         module: "temporary_assignment",
     },
     Lint {
-        name: "temporary_cstring_as_ptr",
-        group: "correctness",
-        desc: "getting the inner pointer of a temporary `CString`",
-        deprecation: None,
-        module: "methods",
-    },
-    Lint {
         name: "to_digit_is_some",
         group: "style",
         desc: "`char.is_digit()` is clearer",

@@ -799,40 +799,6 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for getting the inner pointer of a temporary
-    /// `CString`.
-    ///
-    /// **Why is this bad?** The inner pointer of a `CString` is only valid as long
-    /// as the `CString` is alive.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// # use std::ffi::CString;
-    /// # fn call_some_ffi_func(_: *const i8) {}
-    /// #
-    /// let c_str = CString::new("foo").unwrap().as_ptr();
-    /// unsafe {
-    ///     call_some_ffi_func(c_str);
-    /// }
-    /// ```
-    /// Here `c_str` points to a freed address. The correct use would be:
-    /// ```rust
-    /// # use std::ffi::CString;
-    /// # fn call_some_ffi_func(_: *const i8) {}
-    /// #
-    /// let c_str = CString::new("foo").unwrap();
-    /// unsafe {
-    ///     call_some_ffi_func(c_str.as_ptr());
-    /// }
-    /// ```
-    pub TEMPORARY_CSTRING_AS_PTR,
-    correctness,
-    "getting the inner pointer of a temporary `CString`"
-}
-
-declare_clippy_lint! {
     /// **What it does:** Checks for calling `.step_by(0)` on iterators which panics.
     ///
     /// **Why is this bad?** This very much looks like an oversight. Use `panic!()` instead if you
@@ -1406,7 +1372,6 @@ declare_lint_pass!(Methods => [
     SINGLE_CHAR_PATTERN,
     SINGLE_CHAR_PUSH_STR,
     SEARCH_IS_SOME,
-    TEMPORARY_CSTRING_AS_PTR,
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
     FILTER_MAP,
@@ -1490,7 +1455,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
-            ["as_ptr", "unwrap" | "expect"] => lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0]),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
@@ -2204,26 +2168,6 @@ fn lint_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>
     let obj_ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
     if is_type_diagnostic_item(cx, obj_ty, sym!(string_type)) {
         lint_string_extend(cx, expr, args);
-    }
-}
-
-fn lint_cstring_as_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, source: &hir::Expr<'_>, unwrap: &hir::Expr<'_>) {
-    if_chain! {
-        let source_type = cx.typeck_results().expr_ty(source);
-        if let ty::Adt(def, substs) = source_type.kind();
-        if cx.tcx.is_diagnostic_item(sym!(result_type), def.did);
-        if match_type(cx, substs.type_at(0), &paths::CSTRING);
-        then {
-            span_lint_and_then(
-                cx,
-                TEMPORARY_CSTRING_AS_PTR,
-                expr.span,
-                "you are getting the inner pointer of a temporary `CString`",
-                |diag| {
-                    diag.note("that pointer will be invalid outside this expression");
-                    diag.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
-                });
-        }
     }
 }
 
