@@ -1,5 +1,5 @@
 error: this function returns unnecessarily wrapping data
-  --> $DIR/unnecessary_wrap.rs:10:1
+  --> $DIR/unnecessary_wrap.rs:8:1
    |
 LL | / fn func1(a: bool, b: bool) -> Option<i32> {
 LL | |     if a && b {
@@ -22,7 +22,7 @@ LL |         Some(-1);
  ...
 
 error: this function returns unnecessarily wrapping data
-  --> $DIR/unnecessary_wrap.rs:41:1
+  --> $DIR/unnecessary_wrap.rs:39:1
    |
 LL | / fn func4() -> Option<i32> {
 LL | |     Some(1)
@@ -36,7 +36,7 @@ LL |     1
    |
 
 error: this function returns unnecessarily wrapping data
-  --> $DIR/unnecessary_wrap.rs:51:1
+  --> $DIR/unnecessary_wrap.rs:49:1
    |
 LL | / fn func6() -> Result<i32, ()> {
 LL | |     Ok(1)

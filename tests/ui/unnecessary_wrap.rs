@@ -1,5 +1,3 @@
-// run-rustfix
-
 #![warn(clippy::unnecessary_wrap)]
 #![allow(clippy::no_effect)]
 #![allow(clippy::needless_return)]
