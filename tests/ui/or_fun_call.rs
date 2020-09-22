@@ -116,12 +116,4 @@ fn f() -> Option<()> {
     Some(())
 }
 
-// Issue 5886 - const fn (with no arguments)
-pub fn skip_const_fn_with_no_args() {
-    const fn foo() -> Option<i32> {
-        Some(42)
-    }
-    let _ = None.or(foo());
-}
-
 fn main() {}
