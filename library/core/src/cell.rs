@@ -697,6 +697,7 @@ impl<T> RefCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "refcell_replace", since = "1.24.0")]
+    #[track_caller]
     pub fn replace(&self, t: T) -> T {
         mem::replace(&mut *self.borrow_mut(), t)
     }
@@ -719,6 +720,7 @@ impl<T> RefCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "refcell_replace_swap", since = "1.35.0")]
+    #[track_caller]
     pub fn replace_with<F: FnOnce(&mut T) -> T>(&self, f: F) -> T {
         let mut_borrow = &mut *self.borrow_mut();
         let replacement = f(mut_borrow);
@@ -1052,6 +1054,7 @@ impl<T: Clone> Clone for RefCell<T> {
     ///
     /// Panics if the value is currently mutably borrowed.
     #[inline]
+    #[track_caller]
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
     }
