@@ -301,7 +301,7 @@ where
                                                 .emit();
                                             };
                                             match issue.parse() {
-                                                Ok(num) if num == 0 => {
+                                                Ok(0) => {
                                                     emit_diag(
                                                         "`issue` must not be \"0\", \
                                                         use \"none\" instead",
