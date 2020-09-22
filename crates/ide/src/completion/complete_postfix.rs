@@ -179,6 +179,16 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         ctx,
         cap,
         &dot_receiver,
+        "ok",
+        "Ok(expr)",
+        &format!("Ok({})", receiver_text),
+    )
+    .add_to(acc);
+
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
         "dbg",
         "dbg!(expr)",
         &format!("dbg!({})", receiver_text),
@@ -266,6 +276,7 @@ fn main() {
                 sn if    if expr {}
                 sn match match expr {}
                 sn not   !expr
+                sn ok    Ok(expr)
                 sn ref   &expr
                 sn refm  &mut expr
                 sn while while expr {}
@@ -287,6 +298,7 @@ fn main() {
                 sn call  function(expr)
                 sn dbg   dbg!(expr)
                 sn match match expr {}
+                sn ok    Ok(expr)
                 sn ref   &expr
                 sn refm  &mut expr
             "#]],
