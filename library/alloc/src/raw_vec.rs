@@ -148,6 +148,8 @@ impl<T> RawVec<T, Global> {
 }
 
 impl<T, A: AllocRef> RawVec<T, A> {
+    const ELEMENT_SIZE: usize = mem::size_of::<T>();
+
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     pub const fn new_in(alloc: A) -> Self {
@@ -170,7 +172,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 
     fn allocate_in(capacity: usize, init: AllocInit, mut alloc: A) -> Self {
-        if mem::size_of::<T>() == 0 {
+        if Self::ELEMENT_SIZE == 0 {
             Self::new_in(alloc)
         } else {
             // We avoid `unwrap_or_else` here because it bloats the amount of
@@ -227,7 +229,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        if mem::size_of::<T>() == 0 { usize::MAX } else { self.cap }
+        if Self::ELEMENT_SIZE == 0 { usize::MAX } else { self.cap }
     }
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
@@ -241,14 +243,14 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 
     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
-        if mem::size_of::<T>() == 0 || self.cap == 0 {
+        if Self::ELEMENT_SIZE == 0 || self.cap == 0 {
             None
         } else {
             // We have an allocated chunk of memory, so we can bypass runtime
             // checks to get our current layout.
             unsafe {
                 let align = mem::align_of::<T>();
-                let size = mem::size_of::<T>() * self.cap;
+                let size = Self::ELEMENT_SIZE * self.cap;
                 let layout = Layout::from_size_align_unchecked(size, align);
                 Some((self.ptr.cast().into(), layout))
             }
@@ -383,14 +385,27 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 
     fn capacity_from_bytes(excess: usize) -> usize {
-        debug_assert_ne!(mem::size_of::<T>(), 0);
-        excess / mem::size_of::<T>()
+        debug_assert_ne!(Self::ELEMENT_SIZE, 0);
+        excess / Self::ELEMENT_SIZE
     }
 
     fn set_ptr(&mut self, ptr: NonNull<[u8]>) {
         self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
         self.cap = Self::capacity_from_bytes(ptr.len());
     }
+
+    // Tiny Vecs are dumb. Skip to:
+    // - 8 if the element size is 1, because any heap allocators is likely
+    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 4 if elements are moderate-sized (<= 1 KiB).
+    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
+    const MIN_NON_ZERO_CAP: usize = if Self::ELEMENT_SIZE == 1 {
+        8
+    } else if Self::ELEMENT_SIZE <= 1024 {
+        4
+    } else {
+        1
+    };
 
     // This method is usually instantiated many times. So we want it to be as
     // small as possible, to improve compile times. But we also want as much of
@@ -403,7 +418,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         // This is ensured by the calling contexts.
         debug_assert!(additional > 0);
 
-        if mem::size_of::<T>() == 0 {
+        if Self::ELEMENT_SIZE == 0 {
             // Since we return a capacity of `usize::MAX` when `elem_size` is
             // 0, getting to here necessarily means the `RawVec` is overfull.
             return Err(CapacityOverflow);
@@ -416,21 +431,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
         let cap = cmp::max(self.cap * 2, required_cap);
 
-        // Tiny Vecs are dumb. Skip to:
-        // - 8 if the element size is 1, because any heap allocators is likely
-        //   to round up a request of less than 8 bytes to at least 8 bytes.
-        // - 4 if elements are moderate-sized (<= 1 KiB).
-        // - 1 otherwise, to avoid wasting too much space for very short Vecs.
-        // Note that `min_non_zero_cap` is computed statically.
-        let elem_size = mem::size_of::<T>();
-        let min_non_zero_cap = if elem_size == 1 {
-            8
-        } else if elem_size <= 1024 {
-            4
-        } else {
-            1
-        };
-        let cap = cmp::max(min_non_zero_cap, cap);
+        let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
         let new_layout = Layout::array::<T>(cap);
 
@@ -444,7 +445,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     // `grow_amortized`, but this method is usually instantiated less often so
     // it's less critical.
     fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        if mem::size_of::<T>() == 0 {
+        if Self::ELEMENT_SIZE == 0 {
             // Since we return a capacity of `usize::MAX` when the type size is
             // 0, getting to here necessarily means the `RawVec` is overfull.
             return Err(CapacityOverflow);
@@ -463,7 +464,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         assert!(amount <= self.capacity(), "Tried to shrink to a larger capacity");
 
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
-        let new_size = amount * mem::size_of::<T>();
+        let new_size = amount * Self::ELEMENT_SIZE;
 
         let ptr = unsafe {
             let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
