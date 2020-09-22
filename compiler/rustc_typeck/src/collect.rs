@@ -1679,8 +1679,9 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
     if tcx.features().const_evaluatable_checked {
         let const_evaluatable = const_evaluatable_predicates_of(tcx, def_id, &result);
         if !const_evaluatable.is_empty() {
-            result.predicates =
-                tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(const_evaluatable));
+            result.predicates = tcx
+                .arena
+                .alloc_from_iter(result.predicates.iter().copied().chain(const_evaluatable));
         }
     }
 
@@ -1725,9 +1726,13 @@ pub fn const_evaluatable_predicates_of<'tcx>(
     // We only want unique const evaluatable predicates.
     collector.ct.sort();
     collector.ct.dedup();
-    collector.ct.into_iter().map(move |(def_id, subst, span)| {
-        (ty::PredicateAtom::ConstEvaluatable(def_id, subst).to_predicate(tcx), span)
-    }).collect()
+    collector
+        .ct
+        .into_iter()
+        .map(move |(def_id, subst, span)| {
+            (ty::PredicateAtom::ConstEvaluatable(def_id, subst).to_predicate(tcx), span)
+        })
+        .collect()
 }
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
@@ -1767,29 +1772,6 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     debug!("explicit_predicates_of(def_id={:?})", def_id);
 
-    /// A data structure with unique elements, which preserves order of insertion.
-    /// Preserving the order of insertion is important here so as not to break
-    /// compile-fail UI tests.
-    struct UniquePredicates<'tcx> {
-        predicates: FxIndexSet<(ty::Predicate<'tcx>, Span)>,
-    }
-
-    impl<'tcx> UniquePredicates<'tcx> {
-        fn new() -> Self {
-            UniquePredicates { predicates: FxIndexSet::default() }
-        }
-
-        fn push(&mut self, value: (ty::Predicate<'tcx>, Span)) {
-            self.predicates.insert(value);
-        }
-
-        fn extend<I: IntoIterator<Item = (ty::Predicate<'tcx>, Span)>>(&mut self, iter: I) {
-            for value in iter {
-                self.push(value);
-            }
-        }
-    }
-
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let node = tcx.hir().get(hir_id);
 
@@ -1802,7 +1784,10 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
 
-    let mut predicates = UniquePredicates::new();
+    // We use an `IndexSet` to preserves order of insertion.
+    // Preserving the order of insertion is important here so as not to break
+    // compile-fail UI tests.
+    let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
     let ast_generics = match node {
         Node::TraitItem(item) => {
@@ -1904,7 +1889,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
-        predicates.push((
+        predicates.insert((
             trait_ref.to_poly_trait_ref().without_const().to_predicate(tcx),
             tcx.def_span(def_id),
         ));
@@ -1928,7 +1913,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                     hir::GenericBound::Outlives(lt) => {
                         let bound = AstConv::ast_region_to_region(&icx, &lt, None);
                         let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
-                        predicates.push((outlives.to_predicate(tcx), lt.span));
+                        predicates.insert((outlives.to_predicate(tcx), lt.span));
                     }
                     _ => bug!(),
                 });
@@ -1983,7 +1968,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         let span = bound_pred.bounded_ty.span;
                         let re_root_empty = tcx.lifetimes.re_root_empty;
                         let predicate = ty::OutlivesPredicate(ty, re_root_empty);
-                        predicates.push((
+                        predicates.insert((
                             ty::PredicateAtom::TypeOutlives(predicate)
                                 .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                             span,
@@ -2027,11 +2012,11 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
                         &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
-                            predicates.push((
+                            predicates.insert((
                                 ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, region))
                                     .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                                 lifetime.span,
-                            ))
+                            ));
                         }
                     }
                 }
@@ -2076,7 +2061,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         }))
     }
 
-    let mut predicates: Vec<_> = predicates.predicates.into_iter().collect();
+    let mut predicates: Vec<_> = predicates.into_iter().collect();
 
     // Subtle: before we store the predicates into the tcx, we
     // sort them so that predicates like `T: Foo<Item=U>` come
