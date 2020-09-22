@@ -1,3 +1,12 @@
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
 use crate::io::IoSliceMut;
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
