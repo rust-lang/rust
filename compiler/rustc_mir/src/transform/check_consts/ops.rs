@@ -523,11 +523,7 @@ impl NonConstOp for UnionAccess {
 pub struct UnsizingCast;
 impl NonConstOp for UnsizingCast {
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        if ccx.const_kind() != hir::ConstContext::ConstFn {
-            Status::Allowed
-        } else {
-            Status::Unstable(sym::const_fn_transmute)
-        }
+        mcf_status_in_item(ccx)
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
