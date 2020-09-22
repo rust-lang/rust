@@ -369,7 +369,7 @@ fn has_allow_dead_code_or_lang_attr(
 //         - This is because lang items are always callable from elsewhere.
 //   or
 //   2) We are not sure to be live or not
-//     * Implementation of a trait method
+//     * Implementations of traits and trait methods
 struct LifeSeeder<'k, 'tcx> {
     worklist: Vec<hir::HirId>,
     krate: &'k hir::Crate<'k>,
@@ -415,6 +415,9 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                 }
             }
             hir::ItemKind::Impl { ref of_trait, items, .. } => {
+                if of_trait.is_some() {
+                    self.worklist.push(item.hir_id);
+                }
                 for impl_item_ref in items {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if of_trait.is_some()
