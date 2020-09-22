@@ -3,6 +3,7 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(bindings_after_at)]
+#![feature(iter_order_by)]
 #![feature(or_patterns)]
 
 use rustc_ast as ast;
@@ -459,14 +460,10 @@ pub fn tokenstream_probably_equal_for_proc_macro(
 
     // Break tokens after we expand any nonterminals, so that we break tokens
     // that are produced as a result of nonterminal expansion.
-    let mut t1 = first.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
-    let mut t2 = other.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
-    for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
-        if !tokentree_probably_equal_for_proc_macro(&t1, &t2, sess) {
-            return false;
-        }
-    }
-    t1.next().is_none() && t2.next().is_none()
+    let t1 = first.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
+    let t2 = other.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
+
+    t1.eq_by(t2, |t1, t2| tokentree_probably_equal_for_proc_macro(&t1, &t2, sess))
 }
 
 // See comments in `Nonterminal::to_tokenstream` for why we care about

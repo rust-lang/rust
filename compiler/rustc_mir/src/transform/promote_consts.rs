@@ -242,11 +242,8 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             }
             TerminatorKind::InlineAsm { ref operands, .. } => {
                 for (index, op) in operands.iter().enumerate() {
-                    match op {
-                        InlineAsmOperand::Const { .. } => {
-                            self.candidates.push(Candidate::InlineAsm { bb: location.block, index })
-                        }
-                        _ => {}
+                    if let InlineAsmOperand::Const { .. } = op {
+                        self.candidates.push(Candidate::InlineAsm { bb: location.block, index })
                     }
                 }
             }
@@ -612,12 +609,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let operand_ty = operand.ty(self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                match (cast_in, cast_out) {
-                    (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
-                        // ptr-to-int casts are not possible in consts and thus not promotable
-                        return Err(Unpromotable);
-                    }
-                    _ => {}
+                if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
+                    // ptr-to-int casts are not possible in consts and thus not promotable
+                    return Err(Unpromotable);
                 }
             }
 

@@ -834,14 +834,11 @@ fn foo(&self) -> Self::T { String::new() }
                 kind: hir::ItemKind::Impl { items, .. }, ..
             })) => {
                 for item in &items[..] {
-                    match item.kind {
-                        hir::AssocItemKind::Type => {
-                            if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
-                                db.span_label(item.span, "expected this associated type");
-                                return true;
-                            }
+                    if let hir::AssocItemKind::Type = item.kind {
+                        if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                            db.span_label(item.span, "expected this associated type");
+                            return true;
                         }
-                        _ => {}
                     }
                 }
             }
@@ -853,7 +850,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// Given a slice of `hir::GenericBound`s, if any of them corresponds to the `trait_ref`
     /// requirement, provide a strucuted suggestion to constrain it to a given type `ty`.
     fn constrain_generic_bound_associated_type_structured_suggestion(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
@@ -877,7 +874,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// Given a span corresponding to a bound, provide a structured suggestion to set an
     /// associated type to a given type `ty`.
     fn constrain_associated_type_structured_suggestion(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         span: Span,
         assoc: &ty::AssocItem,

@@ -5,7 +5,9 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast::{Item, ItemKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -177,11 +179,31 @@ fn lint_ty_kind_usage(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> bool {
 fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
     if let TyKind::Path(qpath) = &ty.kind {
         if let QPath::Resolved(_, path) = qpath {
-            let did = path.res.opt_def_id()?;
-            if cx.tcx.is_diagnostic_item(sym::Ty, did) {
-                return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
-            } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, did) {
-                return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
+            match path.res {
+                Res::Def(_, did) => {
+                    if cx.tcx.is_diagnostic_item(sym::Ty, did) {
+                        return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
+                    } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, did) {
+                        return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
+                    }
+                }
+                // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
+                Res::SelfTy(None, Some((did, _))) => {
+                    if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
+                        if cx.tcx.is_diagnostic_item(sym::Ty, adt.did) {
+                            // NOTE: This path is currently unreachable as `Ty<'tcx>` is
+                            // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
+                            // is not actually allowed.
+                            //
+                            // I(@lcnr) still kept this branch in so we don't miss this
+                            // if we ever change it in the future.
+                            return Some(format!("Ty<{}>", substs[0]));
+                        } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, adt.did) {
+                            return Some(format!("TyCtxt<{}>", substs[0]));
+                        }
+                    }
+                }
+                _ => (),
             }
         }
     }

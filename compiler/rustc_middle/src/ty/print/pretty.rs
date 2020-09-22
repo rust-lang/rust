@@ -2125,15 +2125,8 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
     // Iterate all local crate items no matter where they are defined.
     let hir = tcx.hir();
     for item in hir.krate().items.values() {
-        if item.ident.name.as_str().is_empty() {
+        if item.ident.name.as_str().is_empty() || matches!(item.kind, ItemKind::Use(_, _)) {
             continue;
-        }
-
-        match item.kind {
-            ItemKind::Use(_, _) => {
-                continue;
-            }
-            _ => {}
         }
 
         if let Some(local_def_id) = hir.definitions().opt_hir_id_to_local_def_id(item.hir_id) {

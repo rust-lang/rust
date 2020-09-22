@@ -549,15 +549,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         // Early-return cases.
         let val_val = match val.val {
-            ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
+            ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(_) => throw_inval!(TypeckError(ErrorReported)),
             ty::ConstKind::Unevaluated(def, substs, promoted) => {
                 let instance = self.resolve(def, substs)?;
                 return Ok(self.eval_to_allocation(GlobalId { instance, promoted })?.into());
             }
-            ty::ConstKind::Infer(..)
-            | ty::ConstKind::Bound(..)
-            | ty::ConstKind::Placeholder(..) => {
+            ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
                 span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
             }
             ty::ConstKind::Value(val_val) => val_val,
