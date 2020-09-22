@@ -45,16 +45,22 @@ impl Level {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct Rustc<'a> {
+    pub path: &'a Path,
+    pub target: &'a str,
+}
+
 /// Collects all lints, and writes the markdown documentation at the given directory.
 pub fn extract_lint_docs(
     src_path: &Path,
     out_path: &Path,
-    rustc_path: &Path,
+    rustc: Rustc<'_>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     let mut lints = gather_lints(src_path)?;
     for lint in &mut lints {
-        generate_output_example(lint, rustc_path, verbose).map_err(|e| {
+        generate_output_example(lint, rustc, verbose).map_err(|e| {
             format!(
                 "failed to test example in lint docs for `{}` in {}:{}: {}",
                 lint.name,
@@ -65,7 +71,7 @@ pub fn extract_lint_docs(
         })?;
     }
     save_lints_markdown(&lints, &out_path.join("listing"))?;
-    groups::generate_group_docs(&lints, rustc_path, out_path)?;
+    groups::generate_group_docs(&lints, rustc, out_path)?;
     Ok(())
 }
 
@@ -208,7 +214,7 @@ fn lint_name(line: &str) -> Result<String, &'static str> {
 /// actual output from the compiler.
 fn generate_output_example(
     lint: &mut Lint,
-    rustc_path: &Path,
+    rustc: Rustc<'_>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     // Explicit list of lints that are allowed to not have an example. Please
@@ -230,7 +236,7 @@ fn generate_output_example(
     // separate test suite, and use an include mechanism such as mdbook's
     // `{{#rustdoc_include}}`.
     if !lint.is_ignored() {
-        replace_produces(lint, rustc_path, verbose)?;
+        replace_produces(lint, rustc, verbose)?;
     }
     Ok(())
 }
@@ -261,7 +267,7 @@ fn check_style(lint: &Lint) -> Result<(), Box<dyn Error>> {
 /// output from the compiler.
 fn replace_produces(
     lint: &mut Lint,
-    rustc_path: &Path,
+    rustc: Rustc<'_>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     let mut lines = lint.doc.iter_mut();
@@ -302,7 +308,7 @@ fn replace_produces(
                 Some(line) if line.is_empty() => {}
                 Some(line) if line == "{{produces}}" => {
                     let output =
-                        generate_lint_output(&lint.name, &example, &options, rustc_path, verbose)?;
+                        generate_lint_output(&lint.name, &example, &options, rustc, verbose)?;
                     line.replace_range(
                         ..,
                         &format!(
@@ -329,7 +335,7 @@ fn generate_lint_output(
     name: &str,
     example: &[&mut String],
     options: &[&str],
-    rustc_path: &Path,
+    rustc: Rustc<'_>,
     verbose: bool,
 ) -> Result<String, Box<dyn Error>> {
     if verbose {
@@ -364,13 +370,14 @@ fn generate_lint_output(
     }
     fs::write(&tempfile, source)
         .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
-    let mut cmd = Command::new(rustc_path);
+    let mut cmd = Command::new(rustc.path);
     if options.contains(&"edition2015") {
         cmd.arg("--edition=2015");
     } else {
         cmd.arg("--edition=2018");
     }
     cmd.arg("--error-format=json");
+    cmd.arg("--target").arg(rustc.target);
     if options.contains(&"test") {
         cmd.arg("--test");
     }
