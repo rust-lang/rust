@@ -1,7 +1,4 @@
-use crate::utils::{
-    is_type_diagnostic_item, match_qpath, paths, return_ty, snippet,
-    span_lint_and_then,
-};
+use crate::utils::{is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor};
@@ -104,17 +101,20 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
                 move |diag| {
                     diag.multipart_suggestion(
                         "factor this out to",
-                        suggs.into_iter().chain({
-                            let inner_ty = return_ty(cx, hir_id)
-                                .walk()
-                                .skip(1) // skip `std::option::Option` or `std::result::Result`
-                                .take(1) // take the first outermost inner type
-                                .filter_map(|inner| match inner.unpack() {
-                                    GenericArgKind::Type(inner_ty) => Some(inner_ty.to_string()),
-                                    _ => None,
-                                });
-                            inner_ty.map(|inner_ty| (fn_decl.output.span(), inner_ty))
-                        }).collect(),
+                        suggs
+                            .into_iter()
+                            .chain({
+                                let inner_ty = return_ty(cx, hir_id)
+                                    .walk()
+                                    .skip(1) // skip `std::option::Option` or `std::result::Result`
+                                    .take(1) // take the first outermost inner type
+                                    .filter_map(|inner| match inner.unpack() {
+                                        GenericArgKind::Type(inner_ty) => Some(inner_ty.to_string()),
+                                        _ => None,
+                                    });
+                                inner_ty.map(|inner_ty| (fn_decl.output.span(), inner_ty))
+                            })
+                            .collect(),
                         Applicability::MachineApplicable,
                     );
                 },
