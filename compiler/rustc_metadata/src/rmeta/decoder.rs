@@ -11,6 +11,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, OnceCell};
+use rustc_errors::ErrorReported;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
@@ -1201,13 +1202,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self,
         tcx: TyCtxt<'tcx>,
         id: DefIndex,
-    ) -> Option<&'tcx [mir::abstract_const::Node<'tcx>]> {
+    ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
         self.root
             .tables
             .mir_abstract_consts
             .get(self, id)
             .filter(|_| !self.is_proc_macro(id))
-            .map_or(None, |v| Some(v.decode((self, tcx))))
+            .map_or(Ok(None), |v| Ok(Some(v.decode((self, tcx)))))
     }
 
     fn get_unused_generic_params(&self, id: DefIndex) -> FiniteBitSet<u32> {
