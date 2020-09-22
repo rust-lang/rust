@@ -250,6 +250,25 @@ pub struct ChildStdin {
 #[stable(feature = "process", since = "1.0.0")]
 impl Write for ChildStdin {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&*self).write(buf)
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        (&*self).write_vectored(bufs)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        io::Write::is_write_vectored(&&*self)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        (&*self).flush()
+    }
+}
+
+#[stable(feature = "write_mt", since = "1.48.0")]
+impl Write for &ChildStdin {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
 
