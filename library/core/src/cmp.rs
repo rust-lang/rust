@@ -726,19 +726,19 @@ impl PartialOrd for Ordering {
 /// }
 ///
 /// impl PartialOrd for Person {
-///     fn partial_cmp(&self, other: &Person) -> Option<Ordering> {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 ///         Some(self.cmp(other))
 ///     }
 /// }
 ///
 /// impl Ord for Person {
-///     fn cmp(&self, other: &Person) -> Ordering {
+///     fn cmp(&self, other: &Self) -> Ordering {
 ///         self.height.cmp(&other.height)
 ///     }
 /// }
 ///
 /// impl PartialEq for Person {
-///     fn eq(&self, other: &Person) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.height == other.height
 ///     }
 /// }
