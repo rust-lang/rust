@@ -834,14 +834,11 @@ fn foo(&self) -> Self::T { String::new() }
                 kind: hir::ItemKind::Impl { items, .. }, ..
             })) => {
                 for item in &items[..] {
-                    match item.kind {
-                        hir::AssocItemKind::Type => {
-                            if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
-                                db.span_label(item.span, "expected this associated type");
-                                return true;
-                            }
+                    if let hir::AssocItemKind::Type = item.kind {
+                        if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                            db.span_label(item.span, "expected this associated type");
+                            return true;
                         }
-                        _ => {}
                     }
                 }
             }
