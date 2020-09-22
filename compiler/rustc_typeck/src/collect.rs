@@ -2098,6 +2098,18 @@ fn const_evaluatable_predicates_of<'tcx>(
     let node = tcx.hir().get(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
+    if let hir::Node::Item(item) = node {
+        if let hir::ItemKind::Impl { ref of_trait, ref self_ty, .. } = item.kind {
+            if let Some(of_trait) = of_trait {
+                warn!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
+                collector.visit_trait_ref(of_trait);
+            }
+
+            warn!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
+            collector.visit_ty(self_ty);
+        }
+    }
+
     if let Some(generics) = node.generics() {
         warn!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
         collector.visit_generics(generics);
