@@ -313,6 +313,20 @@ are:
   `Config` struct.
 * Adding a sanity check? Take a look at `bootstrap/sanity.rs`.
 
+If you make a major change, please remember to:
+
++ Update `VERSION` in `src/bootstrap/main.rs`.
+* Update `changelog-seen = N` in `config.toml.example`.
+* Add an entry in `src/bootstrap/CHANGELOG.md`.
+
+A 'major change' includes
+
+* A new option or
+* A change in the default options.
+
+Changes that do not affect contributors to the compiler or users
+building rustc from source don't need an update to `VERSION`.
+
 If you have any questions feel free to reach out on the `#t-infra` channel in
 the [Rust Zulip server][rust-zulip] or ask on internals.rust-lang.org. When
 you encounter bugs, please file issues on the rust-lang/rust issue tracker.

@@ -42,6 +42,7 @@ macro_rules! check_ci_llvm {
 /// `config.toml.example`.
 #[derive(Default)]
 pub struct Config {
+    pub changelog_seen: Option<usize>,
     pub ccache: Option<String>,
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
@@ -273,6 +274,7 @@ impl Target {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlConfig {
+    changelog_seen: Option<usize>,
     build: Option<Build>,
     install: Option<Install>,
     llvm: Option<Llvm>,
@@ -283,7 +285,10 @@ struct TomlConfig {
 }
 
 impl Merge for TomlConfig {
-    fn merge(&mut self, TomlConfig { build, install, llvm, rust, dist, target, profile: _ }: Self) {
+    fn merge(
+        &mut self,
+        TomlConfig { build, install, llvm, rust, dist, target, profile: _, changelog_seen: _ }: Self,
+    ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>) {
             if let Some(new) = y {
                 if let Some(original) = x {
@@ -571,6 +576,8 @@ impl Config {
             let included_toml = get_toml(include_path);
             toml.merge(included_toml);
         }
+
+        config.changelog_seen = toml.changelog_seen;
 
         let build = toml.build.unwrap_or_default();
 
