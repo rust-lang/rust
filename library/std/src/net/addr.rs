@@ -747,7 +747,7 @@ impl hash::Hash for SocketAddrV6 {
 ///
 ///  * `(`[`&str`]`, `[`u16`]`)`: the string should be either a string representation
 ///    of an [`IpAddr`] address as expected by [`FromStr`] implementation or a host
-///    name. The second [`u16`] value of the tuple represents a port.
+///    name. [`u16`] is the port number.
 ///
 ///  * [`&str`]: the string should be either a string representation of a
 ///    [`SocketAddr`] as expected by its [`FromStr`] implementation or a string like
