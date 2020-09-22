@@ -1644,9 +1644,32 @@ impl<'tcx> IntRange<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         pat: &Pat<'tcx>,
     ) -> Option<IntRange<'tcx>> {
-        match pat_constructor(tcx, param_env, pat)? {
-            IntRange(range) => Some(range),
-            _ => None,
+        // This MUST be kept in sync with `pat_constructor`.
+        match *pat.kind {
+            PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
+            PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
+
+            PatKind::Binding { .. }
+            | PatKind::Wild
+            | PatKind::Leaf { .. }
+            | PatKind::Deref { .. }
+            | PatKind::Variant { .. }
+            | PatKind::Array { .. }
+            | PatKind::Slice { .. } => None,
+
+            PatKind::Constant { value } => Self::from_const(tcx, param_env, value, pat.span),
+
+            PatKind::Range(PatRange { lo, hi, end }) => {
+                let ty = lo.ty;
+                Self::from_range(
+                    tcx,
+                    lo.eval_bits(tcx, param_env, lo.ty),
+                    hi.eval_bits(tcx, param_env, hi.ty),
+                    ty,
+                    &end,
+                    pat.span,
+                )
+            }
         }
     }
 
@@ -2053,6 +2076,7 @@ fn pat_constructor<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     pat: &Pat<'tcx>,
 ) -> Option<Constructor<'tcx>> {
+    // This MUST be kept in sync with `IntRange::from_pat`.
     match *pat.kind {
         PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
         PatKind::Binding { .. } | PatKind::Wild => None,
