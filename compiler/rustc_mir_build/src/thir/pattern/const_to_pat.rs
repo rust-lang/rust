@@ -409,25 +409,43 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // reference. This makes the rest of the matching logic simpler as it doesn't have
                 // to figure out how to get a reference again.
                 ty::Adt(adt_def, _) if !self.type_marked_structural(pointee_ty) => {
-                    if self.include_lint_checks
-                        && !self.saw_const_match_error.get()
-                        && !self.saw_const_match_lint.get()
-                    {
-                        self.saw_const_match_lint.set(true);
-                        let path = self.tcx().def_path_str(adt_def.did);
-                        let msg = format!(
-                            "to use a constant of type `{}` in a pattern, \
-                             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                            path, path,
-                        );
-                        self.tcx().struct_span_lint_hir(
-                            lint::builtin::INDIRECT_STRUCTURAL_MATCH,
-                            self.id,
-                            self.span,
-                            |lint| lint.build(&msg).emit(),
-                        );
+                    if self.behind_reference.get() {
+                        if self.include_lint_checks
+                            && !self.saw_const_match_error.get()
+                            && !self.saw_const_match_lint.get()
+                        {
+                            self.saw_const_match_lint.set(true);
+                            let path = self.tcx().def_path_str(adt_def.did);
+                            let msg = format!(
+                                "to use a constant of type `{}` in a pattern, \
+                                `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                                path, path,
+                            );
+                            self.tcx().struct_span_lint_hir(
+                                lint::builtin::INDIRECT_STRUCTURAL_MATCH,
+                                self.id,
+                                self.span,
+                                |lint| lint.build(&msg).emit(),
+                            );
+                        }
+                        PatKind::Constant { value: cv }
+                    } else {
+                        if !self.saw_const_match_error.get() {
+                            self.saw_const_match_error.set(true);
+                            let path = self.tcx().def_path_str(adt_def.did);
+                            let msg = format!(
+                                "to use a constant of type `{}` in a pattern, \
+                                `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                                path, path,
+                            );
+                            if self.include_lint_checks {
+                                tcx.sess.span_err(span, &msg);
+                            } else {
+                                tcx.sess.delay_span_bug(span, &msg)
+                            }
+                        }
+                        PatKind::Wild
                     }
-                    PatKind::Constant { value: cv }
                 }
                 // All other references are converted into deref patterns and then recursively
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the

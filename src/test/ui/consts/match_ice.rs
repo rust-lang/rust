@@ -10,8 +10,6 @@ fn main() {
     match C {
         C => {}
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| WARN must be annotated
-        //~| WARN previously accepted
     }
     const K: &T = &T;
     match K {
