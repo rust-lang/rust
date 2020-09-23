@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{Applicability, struct_span_err};
 use rustc_hir::{self as hir, LangItem};
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -11,13 +11,13 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
 };
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, TraitEngine};
 
 use std::ops::Deref;
 
-use super::ops::{self, NonConstOp};
+use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, Qualif};
@@ -179,7 +179,12 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
-    const_checking_stopped: bool,
+    /// True if we shouldn't emit errors when we find them.
+    ///
+    /// This allows items to be speculatively const-checked.
+    silence_errors: bool,
+
+    passes_checks_without_unstable_features: bool,
 }
 
 impl Deref for Validator<'mir, 'tcx> {
@@ -196,7 +201,8 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
-            const_checking_stopped: false,
+            passes_checks_without_unstable_features: true,
+            silence_errors: false,
         }
     }
 
@@ -266,15 +272,48 @@ impl Validator<'mir, 'tcx> {
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context.
     pub fn check_op_spanned<O: NonConstOp>(&mut self, op: O, span: Span) {
-        // HACK: This is for strict equivalence with the old `qualify_min_const_fn` pass, which
-        // only emitted one error per function. It should be removed and the test output updated.
-        if self.const_checking_stopped {
+        debug!("illegal_op: op={:?}", op);
+
+        let ccx = self.ccx;
+
+        let gate = match op.status_in_item(ccx) {
+            Status::Allowed => return,
+            Status::Unstable(gate) => Some(gate),
+            Status::Forbidden => None,
+        };
+
+        self.passes_checks_without_unstable_features = false;
+
+        if self.silence_errors {
             return;
         }
 
-        let err_emitted = ops::non_const(self.ccx, op, span);
-        if err_emitted && O::STOPS_CONST_CHECKING {
-            self.const_checking_stopped = true;
+        // Unless we are const-checking a const-stable function, return before emitting an error if
+        // the user has enabled the requisite feature gate.
+        if let Some(gate) = gate {
+            if ccx.tcx.features().enabled(gate) {
+                let unstable_in_stable = ccx.is_const_stable_const_fn()
+                    && !super::allow_internal_unstable(ccx.tcx, ccx.def_id.to_def_id(), gate);
+
+                if unstable_in_stable {
+                    error_unstable_in_stable(ccx, gate, span);
+                }
+
+                return;
+            }
+        }
+
+        if ccx.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+            ccx.tcx.sess.miri_unleashed_feature(span, gate);
+            return;
+        }
+
+        op.emit_error(ccx, span);
+
+        // HACK: This is for strict equivalence with the old `qualify_min_const_fn` pass, which
+        // only emitted one error per function. It should be removed and the test output updated.
+        if O::STOPS_CONST_CHECKING {
+            self.silence_errors = true;
         }
     }
 
@@ -865,4 +904,21 @@ fn place_as_reborrow(
             _ => None,
         }
     })
+}
+
+fn error_unstable_in_stable(ccx: &ConstCx<'_, '_>, gate: Symbol, span: Span) {
+    ccx.tcx
+        .sess
+        .struct_span_err(
+            span,
+            &format!("const-stable function cannot use `#[feature({})]`", gate.as_str()),
+        )
+        .span_suggestion(
+            ccx.body.span,
+            "if it is not part of the public API, make this function unstably const",
+            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
+            Applicability::HasPlaceholders,
+        )
+        .note("otherwise `#[allow_internal_unstable]` can be used to bypass stability checks")
+        .emit();
 }
