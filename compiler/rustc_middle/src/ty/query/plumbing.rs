@@ -170,7 +170,11 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         });
 
-        eprintln!("end of query stack");
+        if num_frames != None {
+            eprintln!("we're just showing a limited slice of the query stack");
+        } else {
+            eprintln!("end of query stack");
+        }
     }
 }
 
