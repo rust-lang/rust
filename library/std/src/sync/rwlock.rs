@@ -6,6 +6,7 @@ use crate::fmt;
 use crate::mem;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
+use crate::sync::Arc;
 use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 use crate::sys_common::rwlock as sys;
 
@@ -133,6 +134,22 @@ impl<T> RwLock<T> {
             data: UnsafeCell::new(t),
         }
     }
+
+    /// Creates a new instance of an `RwLock<T>` which is unlocked, and wraps it in an [`Arc`].
+    ///
+    /// [`Arc`]: ../../std/sync/struct.Arc.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::RwLock;
+    ///
+    /// let lock = RwLock::arc(5);
+    /// ```
+    #[unstable(feature = "mutex_arc", issue = "74866")]
+    pub fn arc(t: T) -> Arc<RwLock<T>> {
+        Arc::new(RwLock::new(t))
+    }
 }
 
 impl<T: ?Sized> RwLock<T> {
@@ -164,7 +181,7 @@ impl<T: ?Sized> RwLock<T> {
     /// use std::sync::{Arc, RwLock};
     /// use std::thread;
     ///
-    /// let lock = Arc::new(RwLock::new(1));
+    /// let lock = RwLock::arc(1);
     /// let c_lock = Arc::clone(&lock);
     ///
     /// let n = lock.read().unwrap();
@@ -320,7 +337,7 @@ impl<T: ?Sized> RwLock<T> {
     /// use std::sync::{Arc, RwLock};
     /// use std::thread;
     ///
-    /// let lock = Arc::new(RwLock::new(0));
+    /// let lock = RwLock::arc(0);
     /// let c_lock = Arc::clone(&lock);
     ///
     /// let _ = thread::spawn(move || {

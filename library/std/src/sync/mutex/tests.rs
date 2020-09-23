@@ -83,7 +83,7 @@ fn test_into_inner_drop() {
 
 #[test]
 fn test_into_inner_poison() {
-    let m = Arc::new(Mutex::new(NonCopy(10)));
+    let m = Mutex::arc(NonCopy(10));
     let m2 = m.clone();
     let _ = thread::spawn(move || {
         let _lock = m2.lock().unwrap();
@@ -107,7 +107,7 @@ fn test_get_mut() {
 
 #[test]
 fn test_get_mut_poison() {
-    let m = Arc::new(Mutex::new(NonCopy(10)));
+    let m = Mutex::arc(NonCopy(10));
     let m2 = m.clone();
     let _ = thread::spawn(move || {
         let _lock = m2.lock().unwrap();

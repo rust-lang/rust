@@ -21,7 +21,7 @@ fn frob() {
     const N: u32 = 10;
     const M: usize = 1000;
 
-    let r = Arc::new(RwLock::new(()));
+    let r = RwLock::arc(());
 
     let (tx, rx) = channel::<()>();
     for _ in 0..N {

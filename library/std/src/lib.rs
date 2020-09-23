@@ -320,6 +320,7 @@
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
 #![feature(wake_trait)]
+#![feature(mutex_arc)]
 // NB: the above list is sorted to minimize merge conflicts.
 #![default_lib_allocator]
 
