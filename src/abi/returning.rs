@@ -10,9 +10,9 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(
     dest_layout: TyAndLayout<'tcx>,
 ) -> bool {
     match get_pass_mode(tcx, dest_layout) {
-        PassMode::NoPass | PassMode::ByVal(_) => true,
-        // FIXME Make it possible to return ByValPair and ByRef to an ssa var.
-        PassMode::ByValPair(_, _) | PassMode::ByRef { size: _ } => false,
+        PassMode::NoPass | PassMode::ByVal(_) | PassMode::ByValPair(_, _) => true,
+        // FIXME Make it possible to return ByRef to an ssa var.
+        PassMode::ByRef { size: _ } => false,
     }
 }
 
