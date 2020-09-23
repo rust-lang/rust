@@ -1,13 +1,12 @@
-use crate::utils::{fn_has_unsatisfiable_preds, has_drop, is_entrypoint_fn, span_lint, trait_ref_of_method};
+use crate::utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, span_lint, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
+use rustc_middle::ty::WithOptConstParam;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
-use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -108,7 +107,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             FnKind::Method(_, sig, ..) => {
                 if trait_ref_of_method(cx, hir_id).is_some()
                     || already_const(sig.header)
-                    || method_accepts_dropable(cx, sig.decl.inputs)
                 {
                     return;
                 }
@@ -116,26 +114,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             FnKind::Closure(..) => return,
         }
 
-        let mir = cx.tcx.optimized_mir(def_id);
+        let mir = cx.tcx.mir_const(WithOptConstParam::unknown(def_id)).borrow();
 
-        if let Err((span, err)) = is_min_const_fn(cx.tcx, def_id.to_def_id(), &mir) {
-            if rustc_mir::const_eval::is_min_const_fn(cx.tcx, def_id.to_def_id()) {
-                cx.tcx.sess.span_err(span, &err);
-            }
-        } else {
+        if rustc_mir::transform::check_consts::non_const_fn_could_be_made_stable_const_fn(cx.tcx, def_id, &mir) {
             span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`");
         }
     }
-}
-
-/// Returns true if any of the method parameters is a type that implements `Drop`. The method
-/// can't be made const then, because `drop` can't be const-evaluated.
-fn method_accepts_dropable(cx: &LateContext<'_>, param_tys: &[hir::Ty<'_>]) -> bool {
-    // If any of the params are droppable, return true
-    param_tys.iter().any(|hir_ty| {
-        let ty_ty = hir_ty_to_ty(cx.tcx, hir_ty);
-        has_drop(cx, ty_ty)
-    })
 }
 
 // We don't have to lint on something that's already `const`
