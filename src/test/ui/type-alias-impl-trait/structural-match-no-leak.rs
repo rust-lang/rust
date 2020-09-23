@@ -13,7 +13,6 @@ fn leak_free_test() {
     match todo!() {
         LEAK_FREE => (),
         //~^ `impl Send` cannot be used in patterns
-        //~| `impl Send` cannot be used in patterns
         _ => (),
     }
 }

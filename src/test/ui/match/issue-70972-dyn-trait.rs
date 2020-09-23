@@ -5,7 +5,6 @@ fn main() {
     match a {
         F => panic!(),
         //~^ ERROR `&dyn Send` cannot be used in patterns
-        //~| ERROR `&dyn Send` cannot be used in patterns
         _ => {}
     }
 }

@@ -252,7 +252,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             ty::Adt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
                 self.saw_const_match_error.set(true);
-                tcx.sess.span_err(span, "cannot use unions in constant patterns");
+                let msg = "cannot use unions in constant patterns";
+                if self.include_lint_checks {
+                    tcx.sess.span_err(span, msg);
+                } else {
+                    tcx.sess.delay_span_bug(span, msg)
+                }
                 PatKind::Wild
             }
             ty::Adt(..)
@@ -267,7 +272,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     cv.ty, cv.ty,
                 );
                 self.saw_const_match_error.set(true);
-                self.tcx().sess.span_err(self.span, &msg);
+                if self.include_lint_checks {
+                    tcx.sess.span_err(self.span, &msg);
+                } else {
+                    tcx.sess.delay_span_bug(self.span, &msg)
+                }
                 PatKind::Wild
             }
             // If the type is not structurally comparable, just emit the constant directly,
@@ -308,7 +317,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     path, path,
                 );
                 self.saw_const_match_error.set(true);
-                tcx.sess.span_err(span, &msg);
+                if self.include_lint_checks {
+                    tcx.sess.span_err(span, &msg);
+                } else {
+                    tcx.sess.delay_span_bug(span, &msg)
+                }
                 PatKind::Wild
             }
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
@@ -340,7 +353,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // These are not allowed and will error elsewhere anyway.
                 ty::Dynamic(..) => {
                     self.saw_const_match_error.set(true);
-                    tcx.sess.span_err(span, &format!("`{}` cannot be used in patterns", cv.ty));
+                    let msg = format!("`{}` cannot be used in patterns", cv.ty);
+                    if self.include_lint_checks {
+                        tcx.sess.span_err(span, &msg);
+                    } else {
+                        tcx.sess.delay_span_bug(span, &msg)
+                    }
                     PatKind::Wild
                 }
                 // `&str` and `&[u8]` are represented as `ConstValue::Slice`, let's keep using this
@@ -427,7 +445,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             }
             _ => {
                 self.saw_const_match_error.set(true);
-                tcx.sess.span_err(span, &format!("`{}` cannot be used in patterns", cv.ty));
+                let msg = format!("`{}` cannot be used in patterns", cv.ty);
+                if self.include_lint_checks {
+                    tcx.sess.span_err(span, &msg);
+                } else {
+                    tcx.sess.delay_span_bug(span, &msg)
+                }
                 PatKind::Wild
             }
         };

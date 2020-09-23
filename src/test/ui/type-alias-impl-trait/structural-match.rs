@@ -14,7 +14,6 @@ fn test() {
     match todo!() {
         VALUE => (),
         //~^ `impl Send` cannot be used in patterns
-        //~| `impl Send` cannot be used in patterns
         _ => (),
     }
 }
