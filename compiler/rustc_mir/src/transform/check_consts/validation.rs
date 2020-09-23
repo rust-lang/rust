@@ -813,12 +813,6 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             // projections that cannot be `NeedsDrop`.
             TerminatorKind::Drop { place: dropped_place, .. }
             | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
-                // If we are checking live drops after drop-elaboration, don't emit duplicate
-                // errors here.
-                if super::post_drop_elaboration::checking_enabled(self.ccx) {
-                    return;
-                }
-
                 let mut err_span = self.span;
 
                 // Check to see if the type of this place can ever have a drop impl. If not, this
@@ -830,7 +824,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     return;
                 }
 
-                let needs_drop = if let Some(local) = dropped_place.as_local() {
+                let local_needs_drop = if let Some(local) = dropped_place.as_local() {
                     // Use the span where the local was declared as the span of the drop error.
                     err_span = self.body.local_decls[local].source_info.span;
                     self.qualifs.needs_drop(self.ccx, local, location)
@@ -838,12 +832,22 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     true
                 };
 
-                if needs_drop {
-                    self.check_op_spanned(
-                        ops::LiveDrop { dropped_at: Some(terminator.source_info.span) },
-                        err_span,
-                    );
+                if !local_needs_drop {
+                    return;
                 }
+
+                self.passes_checks_without_unstable_features = false;
+
+                // If we are checking live drops after drop-elaboration, don't emit duplicate
+                // errors here.
+                if super::post_drop_elaboration::checking_enabled(self.ccx) {
+                    return;
+                }
+
+                self.check_op_spanned(
+                    ops::LiveDrop { dropped_at: Some(terminator.source_info.span) },
+                    err_span,
+                );
             }
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
