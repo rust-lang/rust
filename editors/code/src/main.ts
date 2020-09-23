@@ -177,7 +177,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         if (!shouldCheckForNewNightly) return;
     }
 
-    const release = await performDownloadWithRetryDialog(state, async () => {
+    const release = await downloadWithRetryDialog(state, async () => {
         return await fetchRelease("nightly", state.githubToken);
     }).catch((e) => {
         log.error(e);
@@ -199,7 +199,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
 
     const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
 
-    await performDownloadWithRetryDialog(state, async () => {
+    await downloadWithRetryDialog(state, async () => {
         // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
         await fs.unlink(dest).catch(err => {
             if (err.code !== "ENOENT") throw err;
@@ -323,13 +323,13 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     }
 
     const releaseTag = config.package.releaseTag;
-    const release = await performDownloadWithRetryDialog(state, async () => {
+    const release = await downloadWithRetryDialog(state, async () => {
         return await fetchRelease(releaseTag, state.githubToken);
     });
     const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
-    await performDownloadWithRetryDialog(state, async () => {
+    await downloadWithRetryDialog(state, async () => {
         // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
         await fs.unlink(dest).catch(err => {
             if (err.code !== "ENOENT") throw err;
@@ -353,7 +353,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     return dest;
 }
 
-async function performDownloadWithRetryDialog<T>(state: PersistentState, downloadFunc: () => Promise<T>): Promise<T> {
+async function downloadWithRetryDialog<T>(state: PersistentState, downloadFunc: () => Promise<T>): Promise<T> {
     while (true) {
         try {
             return await downloadFunc();
