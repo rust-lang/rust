@@ -177,9 +177,9 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         if (!shouldCheckForNewNightly) return;
     }
 
-    const release = await performDownloadWithRetryDialog(async () => {
+    const release = await performDownloadWithRetryDialog(state, async () => {
         return await fetchRelease("nightly", state.githubToken);
-    }, state).catch((e) => {
+    }).catch((e) => {
         log.error(e);
         if (state.releaseId === undefined) { // Show error only for the initial download
             vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`);
@@ -199,7 +199,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
 
     const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
 
-    await performDownloadWithRetryDialog(async () => {
+    await performDownloadWithRetryDialog(state, async () => {
         // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
         await fs.unlink(dest).catch(err => {
             if (err.code !== "ENOENT") throw err;
@@ -210,7 +210,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
             dest,
             progressTitle: "Downloading rust-analyzer extension",
         });
-    }, state);
+    });
 
     await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(dest));
     await fs.unlink(dest);
@@ -323,13 +323,13 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     }
 
     const releaseTag = config.package.releaseTag;
-    const release = await performDownloadWithRetryDialog(async () => {
+    const release = await performDownloadWithRetryDialog(state, async () => {
         return await fetchRelease(releaseTag, state.githubToken);
-    }, state);
+    });
     const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
-    await performDownloadWithRetryDialog(async () => {
+    await performDownloadWithRetryDialog(state, async () => {
         // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
         await fs.unlink(dest).catch(err => {
             if (err.code !== "ENOENT") throw err;
@@ -342,7 +342,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
             gunzip: true,
             mode: 0o755
         });
-    }, state);
+    });
 
     // Patching executable if that's NixOS.
     if (await fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
@@ -353,7 +353,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     return dest;
 }
 
-async function performDownloadWithRetryDialog<T>(downloadFunc: () => Promise<T>, state: PersistentState): Promise<T> {
+async function performDownloadWithRetryDialog<T>(state: PersistentState, downloadFunc: () => Promise<T>): Promise<T> {
     while (true) {
         try {
             return await downloadFunc();
@@ -392,13 +392,16 @@ async function queryForGithubToken(state: PersistentState): Promise<void> {
     };
 
     const newToken = await vscode.window.showInputBox(githubTokenOptions);
-    if (newToken !== undefined) {
-        if (newToken === "") {
-            log.info("Clearing github token");
-            await state.updateGithubToken(undefined);
-        } else {
-            log.info("Storing new github token");
-            await state.updateGithubToken(newToken);
-        }
+    if (newToken === undefined) {
+        // The user aborted the dialog => Do not update the stored token
+        return;
+    }
+
+    if (newToken === "") {
+        log.info("Clearing github token");
+        await state.updateGithubToken(undefined);
+    } else {
+        log.info("Storing new github token");
+        await state.updateGithubToken(newToken);
     }
 }
