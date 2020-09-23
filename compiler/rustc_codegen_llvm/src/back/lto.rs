@@ -728,7 +728,7 @@ pub unsafe fn optimize_thin_module(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
-    let tm = (cgcx.tm_factory.0)().map_err(|e| write::llvm_err(&diag_handler, &e))?;
+    let tm = (cgcx.tm_factory)().map_err(|e| write::llvm_err(&diag_handler, &e))?;
 
     // Right now the implementation we've got only works over serialized
     // modules, so we create a fresh new LLVM context and parse the module

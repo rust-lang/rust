@@ -11,7 +11,9 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
+use rustc_codegen_ssa::back::write::{
+    BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryFn,
+};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -129,7 +131,7 @@ fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
 pub fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
-) -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
+) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
