@@ -168,7 +168,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     }
                 });
 
-                if !self.type_has_partial_eq_impl(cv.ty) {
+                if !self.type_may_have_partial_eq_impl(cv.ty) {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
                     self.tcx().sess.span_fatal(self.span, &msg);
                 } else if mir_structural_match_violation && !self.saw_const_match_lint.get() {
@@ -190,7 +190,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         inlined_const_as_pat
     }
 
-    fn type_has_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
+    fn type_may_have_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
         // double-check there even *is* a semantic `PartialEq` to dispatch to.
         //
         // (If there isn't, then we can safely issue a hard
@@ -267,7 +267,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 PatKind::Wild
             }
             ty::Adt(..)
-                if !self.type_has_partial_eq_impl(cv.ty)
+                if !self.type_may_have_partial_eq_impl(cv.ty)
                     // FIXME(#73448): Find a way to bring const qualification into parity with
                     // `search_for_structural_match_violation` and then remove this condition.
                     && self.search_for_structural_match_violation(cv.ty).is_some() =>
