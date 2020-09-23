@@ -145,7 +145,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 
 impl Global {
     #[inline]
-    fn alloc_impl(&mut self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocErr> {
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
             // SAFETY: `layout` is non-zero in size,
@@ -160,7 +160,7 @@ impl Global {
     // SAFETY: Same as `AllocRef::grow`
     #[inline]
     unsafe fn grow_impl(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -208,17 +208,17 @@ impl Global {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for Global {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         self.alloc_impl(layout, false)
     }
 
     #[inline]
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         self.alloc_impl(layout, true)
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: NonNull<u8>, layout: Layout) {
         if layout.size() != 0 {
             // SAFETY: `layout` is non-zero in size,
             // other conditions must be upheld by the caller
@@ -228,7 +228,7 @@ unsafe impl AllocRef for Global {
 
     #[inline]
     unsafe fn grow(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -239,7 +239,7 @@ unsafe impl AllocRef for Global {
 
     #[inline]
     unsafe fn grow_zeroed(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -250,7 +250,7 @@ unsafe impl AllocRef for Global {
 
     #[inline]
     unsafe fn shrink(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,

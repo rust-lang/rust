@@ -109,7 +109,7 @@ pub unsafe trait AllocRef {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr>;
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr>;
 
     /// Behaves like `alloc`, but also ensures that the returned memory is zero-initialized.
     ///
@@ -126,7 +126,7 @@ pub unsafe trait AllocRef {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         let ptr = self.alloc(layout)?;
         // SAFETY: `alloc` returns a valid memory block
         unsafe { ptr.as_non_null_ptr().as_ptr().write_bytes(0, ptr.len()) }
@@ -142,7 +142,7 @@ pub unsafe trait AllocRef {
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout);
+    unsafe fn dealloc(&self, ptr: NonNull<u8>, layout: Layout);
 
     /// Attempts to extend the memory block.
     ///
@@ -183,7 +183,7 @@ pub unsafe trait AllocRef {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn grow(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -244,7 +244,7 @@ pub unsafe trait AllocRef {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn grow_zeroed(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -308,7 +308,7 @@ pub unsafe trait AllocRef {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn shrink(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -337,35 +337,35 @@ pub unsafe trait AllocRef {
     ///
     /// The returned adaptor also implements `AllocRef` and will simply borrow this.
     #[inline(always)]
-    fn by_ref(&mut self) -> &mut Self {
+    fn by_ref(&mut self) -> &Self {
         self
     }
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A> AllocRef for &mut A
+unsafe impl<A> AllocRef for &A
 where
     A: AllocRef + ?Sized,
 {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         (**self).alloc(layout)
     }
 
     #[inline]
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         (**self).alloc_zeroed(layout)
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: NonNull<u8>, layout: Layout) {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).dealloc(ptr, layout) }
     }
 
     #[inline]
     unsafe fn grow(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -376,7 +376,7 @@ where
 
     #[inline]
     unsafe fn grow_zeroed(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -387,7 +387,7 @@ where
 
     #[inline]
     unsafe fn shrink(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
