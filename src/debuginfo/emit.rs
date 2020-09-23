@@ -46,6 +46,7 @@ pub(crate) struct DebugReloc {
     pub(crate) size: u8,
     pub(crate) name: DebugRelocName,
     pub(crate) addend: i64,
+    pub(crate) kind: object::RelocationKind,
 }
 
 #[derive(Clone)]
@@ -122,13 +123,12 @@ impl Writer for WriterRelocate {
                     size,
                     name: DebugRelocName::Symbol(symbol),
                     addend: addend as i64,
+                    kind: object::RelocationKind::Absolute,
                 });
                 self.write_udata(0, size)
             }
         }
     }
-
-    // TODO: implement write_eh_pointer
 
     fn write_offset(&mut self, val: usize, section: SectionId, size: u8) -> Result<()> {
         let offset = self.len() as u32;
@@ -137,6 +137,7 @@ impl Writer for WriterRelocate {
             size,
             name: DebugRelocName::Section(section),
             addend: val as i64,
+            kind: object::RelocationKind::Absolute,
         });
         self.write_udata(0, size)
     }
@@ -153,7 +154,55 @@ impl Writer for WriterRelocate {
             size,
             name: DebugRelocName::Section(section),
             addend: val as i64,
+            kind: object::RelocationKind::Absolute,
         });
         self.write_udata_at(offset, 0, size)
+    }
+
+    fn write_eh_pointer(
+        &mut self,
+        address: Address,
+        eh_pe: gimli::DwEhPe,
+        size: u8,
+    ) -> Result<()> {
+        match address {
+            // Address::Constant arm copied from gimli
+            Address::Constant(val) => {
+                // Indirect doesn't matter here.
+                let val = match eh_pe.application() {
+                    gimli::DW_EH_PE_absptr => val,
+                    gimli::DW_EH_PE_pcrel => {
+                        // TODO: better handling of sign
+                        let offset = self.len() as u64;
+                        offset.wrapping_sub(val)
+                    }
+                    _ => {
+                        return Err(gimli::write::Error::UnsupportedPointerEncoding(eh_pe));
+                    }
+                };
+                self.write_eh_pointer_data(val, eh_pe.format(), size)
+            }
+            Address::Symbol { symbol, addend } => {
+                match eh_pe.application() {
+                    gimli::DW_EH_PE_pcrel => {
+                        let size = match eh_pe.format() {
+                            gimli::DW_EH_PE_sdata4 => 4,
+                            _ => return Err(gimli::write::Error::UnsupportedPointerEncoding(eh_pe)),
+                        };
+                        self.relocs.push(DebugReloc {
+                            offset: self.len() as u32,
+                            size,
+                            name: DebugRelocName::Symbol(symbol),
+                            addend,
+                            kind: object::RelocationKind::Relative,
+                        });
+                        self.write_udata(0, size)
+                    }
+                    _ => {
+                        return Err(gimli::write::Error::UnsupportedPointerEncoding(eh_pe));
+                    }
+                }
+            }
+        }
     }
 }

@@ -274,7 +274,7 @@ fn data_id_for_alloc_id<B: Backend>(
 ) -> DataId {
     module
         .declare_data(
-            &format!("__alloc_{}", alloc_id.0),
+            &format!("__alloc_{:x}", alloc_id.0),
             Linkage::Local,
             mutability == rustc_hir::Mutability::Mut,
             false,
