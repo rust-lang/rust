@@ -309,7 +309,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         );
                     }
 
-                    Some(origin.span).filter(|s| !s.is_dummy())
+                    debug_assert!(!origin.span.is_dummy());
+                    Some(origin.span)
                 } else {
                     bug!("unexpect const: {:?}", ct);
                 };
