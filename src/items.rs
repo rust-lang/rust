@@ -6,7 +6,7 @@ use std::cmp::{max, min, Ordering};
 use regex::Regex;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
-use rustc_span::{source_map, symbol, BytePos, Span, DUMMY_SP};
+use rustc_span::{symbol, BytePos, Span, DUMMY_SP};
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{
@@ -31,9 +31,10 @@ use crate::utils::*;
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
 
-const DEFAULT_VISIBILITY: ast::Visibility = source_map::Spanned {
-    node: ast::VisibilityKind::Inherited,
+const DEFAULT_VISIBILITY: ast::Visibility = ast::Visibility {
+    kind: ast::VisibilityKind::Inherited,
     span: DUMMY_SP,
+    tokens: None,
 };
 
 fn type_annotation_separator(config: &Config) -> &str {
@@ -125,7 +126,7 @@ impl Rewrite for ast::Local {
 // FIXME format modules in this style
 #[allow(dead_code)]
 struct Item<'a> {
-    keyword: &'static str,
+    unsafety: ast::Unsafe,
     abi: Cow<'static, str>,
     vis: Option<&'a ast::Visibility>,
     body: Vec<BodyElement<'a>>,
@@ -135,7 +136,7 @@ struct Item<'a> {
 impl<'a> Item<'a> {
     fn from_foreign_mod(fm: &'a ast::ForeignMod, span: Span, config: &Config) -> Item<'a> {
         Item {
-            keyword: "",
+            unsafety: fm.unsafety,
             abi: format_extern(
                 ast::Extern::from_abi(fm.abi),
                 config.force_explicit_abi(),
@@ -254,6 +255,7 @@ impl<'a> FnSig<'a> {
 
 impl<'a> FmtVisitor<'a> {
     fn format_item(&mut self, item: &Item<'_>) {
+        self.buffer.push_str(format_unsafety(item.unsafety));
         self.buffer.push_str(&item.abi);
 
         let snippet = self.snippet(item.span);
@@ -1367,7 +1369,7 @@ pub(crate) fn format_struct_struct(
 }
 
 fn get_bytepos_after_visibility(vis: &ast::Visibility, default_span: Span) -> BytePos {
-    match vis.node {
+    match vis.kind {
         ast::VisibilityKind::Crate(..) | ast::VisibilityKind::Restricted { .. } => vis.span.hi(),
         _ => default_span.lo(),
     }

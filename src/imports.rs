@@ -4,7 +4,6 @@ use std::fmt;
 
 use rustc_ast::ast::{self, UseTreeKind};
 use rustc_span::{
-    source_map,
     symbol::{self, sym},
     BytePos, Span, DUMMY_SP,
 };
@@ -509,16 +508,16 @@ impl UseTree {
     fn same_visibility(&self, other: &UseTree) -> bool {
         match (&self.visibility, &other.visibility) {
             (
-                Some(source_map::Spanned {
-                    node: ast::VisibilityKind::Inherited,
+                Some(ast::Visibility {
+                    kind: ast::VisibilityKind::Inherited,
                     ..
                 }),
                 None,
             )
             | (
                 None,
-                Some(source_map::Spanned {
-                    node: ast::VisibilityKind::Inherited,
+                Some(ast::Visibility {
+                    kind: ast::VisibilityKind::Inherited,
                     ..
                 }),
             )

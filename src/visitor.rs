@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use rustc_ast::{ast, attr::HasAttrs, token::DelimToken, visit};
-use rustc_span::{symbol, BytePos, Pos, Span};
+use rustc_span::{symbol, BytePos, Pos, Span, DUMMY_SP};
 
 use crate::attr::*;
 use crate::comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
@@ -25,8 +25,8 @@ use crate::spanned::Spanned;
 use crate::stmt::Stmt;
 use crate::syntux::session::ParseSess;
 use crate::utils::{
-    self, contains_skip, count_newlines, depr_skip_annotation, inner_attributes, last_line_width,
-    mk_sp, ptr_vec_to_ref_vec, rewrite_ident, stmt_expr,
+    self, contains_skip, count_newlines, depr_skip_annotation, format_unsafety, inner_attributes,
+    last_line_width, mk_sp, ptr_vec_to_ref_vec, rewrite_ident, stmt_expr,
 };
 use crate::{ErrorKind, FormatReport, FormattingError};
 
@@ -603,7 +603,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
             ast::AssocItemKind::Fn(defaultness, ref sig, ref generics, Some(ref body)) => {
                 let inner_attrs = inner_attributes(&ti.attrs);
-                let vis = rustc_span::source_map::dummy_spanned(ast::VisibilityKind::Inherited);
+                let vis = ast::Visibility {
+                    kind: ast::VisibilityKind::Inherited,
+                    span: DUMMY_SP,
+                    tokens: None,
+                };
                 let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Trait);
                 self.visit_fn(
                     visit::FnKind::Fn(fn_ctxt, ti.ident, sig, &vis, Some(body)),
@@ -902,6 +906,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     ) {
         let vis_str = utils::format_visibility(&self.get_context(), vis);
         self.push_str(&*vis_str);
+        self.push_str(format_unsafety(m.unsafety));
         self.push_str("mod ");
         // Calling `to_owned()` to work around borrow checker.
         let ident_str = rewrite_ident(&self.get_context(), ident).to_owned();

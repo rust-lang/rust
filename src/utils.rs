@@ -38,11 +38,11 @@ pub(crate) fn extra_offset(text: &str, shape: Shape) -> usize {
 }
 
 pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
-    match (&a.node, &b.node) {
+    match (&a.kind, &b.kind) {
         (
             VisibilityKind::Restricted { path: p, .. },
             VisibilityKind::Restricted { path: q, .. },
-        ) => pprust::path_to_string(p) == pprust::path_to_string(q),
+        ) => pprust::path_to_string(&p) == pprust::path_to_string(&q),
         (VisibilityKind::Public, VisibilityKind::Public)
         | (VisibilityKind::Inherited, VisibilityKind::Inherited)
         | (
@@ -62,7 +62,7 @@ pub(crate) fn format_visibility(
     context: &RewriteContext<'_>,
     vis: &Visibility,
 ) -> Cow<'static, str> {
-    match vis.node {
+    match vis.kind {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
         VisibilityKind::Crate(CrateSugar::PubCrate) => Cow::from("pub(crate) "),

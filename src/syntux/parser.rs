@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
     ) -> Result<(ast::Mod, Vec<ast::Attribute>), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = new_parser_from_file(sess.inner(), &path, Some(span));
-            match parser.parse_mod(&TokenKind::Eof) {
+            match parser.parse_mod(&TokenKind::Eof, ast::Unsafe::No) {
                 Ok(result) => Some(result),
                 Err(mut e) => {
                     e.cancel();
