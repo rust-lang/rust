@@ -221,6 +221,23 @@ pub enum DebugInfo {
     Full,
 }
 
+/// Some debuginfo requires link-time relocation and some does not. LLVM can partition the debuginfo
+/// into sections depending on whether or not it requires link-time relocation. Split DWARF
+/// provides a mechanism which allows the linker to skip the sections which don't require link-time
+/// relocation - either by putting those sections into DWARF object files, or keeping them in the
+/// object file in such a way that the linker will skip them.
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum SplitDwarfKind {
+    /// Disabled.
+    None,
+    /// Sections which do not require relocation are written into the object file but ignored
+    /// by the linker.
+    Single,
+    /// Sections which do not require relocation are written into a DWARF object (`.dwo`) file,
+    /// which is skipped by the linker by virtue of being a different file.
+    Split,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 #[derive(Encodable, Decodable)]
 pub enum OutputType {
