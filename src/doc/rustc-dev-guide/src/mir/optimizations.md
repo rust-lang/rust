@@ -36,7 +36,7 @@ implemented in its own submodule of the [`rustc_mir::transform`][trans] module.
 
 [rop]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.run_optimization_passes.html
 [`MirPass`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/trait.MirPass.html
-[trans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html 
+[trans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html
 
 Some examples of passes are:
 - `CleanupNonCodegenStatements`: remove some of the info that is only needed for
@@ -47,3 +47,16 @@ You can see the ["Implementors" section of the `MirPass` rustdocs][impl] for mor
 
 [impl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/trait.MirPass.html#implementors
 [constprop]: https://en.wikipedia.org/wiki/Constant_folding#Constant_propagation
+
+## MIR optimization levels
+
+MIR optimizations can come in various levels of readiness. Experimental
+optimizations may cause miscompilations, or slow down compile times.
+These passes are still included in nightly builds to gather feedback and make it easier to modify
+the pass. To enable working with slow or otherwise experimental optimization passes,
+you can specify the `-Z mir-opt-level` debug flag. You can find the
+definitions of the levels in the [compiler MCP]. If you are developing a MIR pass and
+want to query whether your optimization pass should run, you can check the
+current level using `tcx.sess.opts.debugging_opts.mir_opt_level`.
+
+[compiler MCP]: https://github.com/rust-lang/compiler-team/issues/319
