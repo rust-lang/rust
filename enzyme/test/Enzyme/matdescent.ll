@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -ipconstprop -deadargelim -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -adce -S | FileCheck %s
 
 define dso_local double @_Z11matvec_realPdS_(double* nocapture readonly %mat, double* nocapture readonly %vec) #4 {
 entry:
@@ -263,7 +263,7 @@ attributes #19 = { builtin nounwind }
 !167 = !{!164, !15, i64 8}
 !168 = !{!43, !15, i64 40}
 
-; CHECK: define internal void @diffe_Z11matvec_realPdS_(double* nocapture readonly %mat, double* nocapture %"mat'", double* nocapture readonly %vec)
+; CHECK: define internal void @diffe_Z11matvec_realPdS_(double* nocapture readonly %mat, double* nocapture %"mat'", double* nocapture readonly %vec, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(16000) dereferenceable_or_null(16000) i8* @malloc(i64 16000)
 ; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(16000) dereferenceable_or_null(16000) i8* @malloc(i64 16000)
@@ -345,8 +345,8 @@ attributes #19 = { builtin nounwind }
 ; CHECK-NEXT:   %"iv3'ac.0" = phi i64 [ %[[iv3sub1:.+]], %incinvertfor.body20 ], [ 1999, %for.cond.cleanup3 ]
 ; CHECK-NEXT:   %arrayidx22_unwrap = getelementptr inbounds double, double* %out, i64 %"iv3'ac.0"
 ; CHECK-NEXT:   %a6_unwrap = load double, double* %arrayidx22_unwrap
-; CHECK-NEXT:   %m0diffea6 = fmul fast double 1.000000e+00, %a6_unwrap
-; CHECK-NEXT:   %m1diffea6 = fmul fast double 1.000000e+00, %a6_unwrap
+; CHECK-NEXT:   %m0diffea6 = fmul fast double %differeturn, %a6_unwrap
+; CHECK-NEXT:   %m1diffea6 = fmul fast double %differeturn, %a6_unwrap
 ; CHECK-NEXT:   %[[da6:.+]] = fadd fast double %m0diffea6, %m1diffea6
 ; CHECK-NEXT:   %[[arrayidx22ipg:.+]] = getelementptr inbounds double, double* %[[outipc]], i64 %"iv3'ac.0"
 ; CHECK-NEXT:   %[[l22:.+]] = load double, double* %[[arrayidx22ipg]], align 8

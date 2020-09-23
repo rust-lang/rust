@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -simplifycfg -adce -constprop -deadargelim -instsimplify -inline -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -simplifycfg -adce -instsimplify -S | FileCheck %s
 
 define double @tester(double %x) {
 entry:
@@ -15,7 +15,8 @@ entry:
 
 declare double @__enzyme_autodiff(double (double)*, ...)
 
-; CHECK: define double @test_derivative(double %x)
+; CHECK: define internal { double } @diffetester(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret double 1.000000e+00
+; CHECK-NEXT:   %0 = insertvalue { double } undef, double %differeturn, 0
+; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }

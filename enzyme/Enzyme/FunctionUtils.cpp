@@ -362,10 +362,14 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
       // DCEPass().run(*NewF, AM);
       // DSEPass().run(*NewF, AM);
       // MemCpyOptPass().run(*NewF, AM);
+      #if LLVM_VERSION_MAJOR >= 12
+      SimplifyCFGOptions scfgo;
+      #else
       SimplifyCFGOptions scfgo(
           /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
           /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
           /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
+      #endif
       SimplifyCFGPass(scfgo).run(*NewF, AM);
     }
   }
@@ -686,10 +690,15 @@ void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
 
   createFunctionToLoopPassAdaptor(LoopDeletionPass()).run(*F, AM);
 
+  #if LLVM_VERSION_MAJOR >= 12
+  SimplifyCFGOptions scfgo = SimplifyCFGOptions();
+  #else
   SimplifyCFGOptions scfgo(
       /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
       /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
       /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
+
+  #endif
   SimplifyCFGPass(scfgo).run(*F, AM);
   // LCSSAPass().run(*NewF, AM);
 }

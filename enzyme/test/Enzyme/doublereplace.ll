@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instsimplify -adce -S | FileCheck %s
 
 ; this check is done to ensure that we cannot do forward/reverse for f since it is used by g
 
@@ -33,9 +33,7 @@ entry:
 ; CHECK-NEXT:   %0 = call { double } @diffeg(double %call, double %differeturn)
 ; CHECK-NEXT:   %1 = extractvalue { double } %0, 0
 ; CHECK-NEXT:   %2 = call { double } @diffef(double %lhs, double %1)
-; CHECK-NEXT:   %3 = extractvalue { double } %2, 0
-; CHECK-NEXT:   %4 = insertvalue { double } undef, double %3, 0
-; CHECK-NEXT:   ret { double } %4
+; CHECK-NEXT:   ret { double } %2
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double } @diffeg(double %this, double %differeturn) {

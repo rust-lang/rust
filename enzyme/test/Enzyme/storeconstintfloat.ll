@@ -119,7 +119,7 @@ entry:
 ; CHECK-NEXT:   %m0diffeload.i1 = fmul fast double %m0diffe, 0xBFF3333333333332
 ; CHECK-NEXT:   %[[a14:.+]] = fadd fast double %"add10.i.i.i'de.0", %m0diffeload.i1
 ; CHECK-NEXT:   %[[a15:.+]] = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %[[p14]] = select fast i1 %[[a15]], double 0.000000e+00, double %[[a14]]
+; CHECK-NEXT:   %[[p14]] = select{{( fast)?}} i1 %[[a15]], double 0.000000e+00, double %[[a14]]
 ; CHECK-NEXT:   %[[a16:.+]] = fadd fast double %"x.promoted'de.0", %[[a14]]
 ; CHECK-NEXT:   %[[a17]] = select{{( fast)?}} i1 %[[a15]], double %[[a16]], double %"x.promoted'de.0"
 ; CHECK-NEXT:   br i1 %15, label %invertentry, label %incinvertwhile.body.i.i.i

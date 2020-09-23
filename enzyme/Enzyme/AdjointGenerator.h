@@ -1821,9 +1821,14 @@ public:
           TR.query(orig->getArgOperand(i)).Data0()[{}].isPossiblePointer()) {
         DIFFE_TYPE ty = DIFFE_TYPE::DUP_ARG;
         if (argType->isPointerTy()) {
+          #if LLVM_VERSION_MAJOR >= 12
+          auto at = getUnderlyingObject(
+              orig->getArgOperand(i), 100);
+          #else
           auto at = GetUnderlyingObject(
               orig->getArgOperand(i),
               gutils->oldFunc->getParent()->getDataLayout(), 100);
+          #endif
           if (auto arg = dyn_cast<Argument>(at)) {
             if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
               ty = DIFFE_TYPE::DUP_NONEED;

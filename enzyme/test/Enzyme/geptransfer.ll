@@ -44,7 +44,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %cast2 = bitcast <2 x float>* %cast to i64*
 ; CHECK-NEXT:   %"cptr2'ipg" = getelementptr inbounds i64, i64* %"cast2'ipc", i64 2
 ; CHECK-NEXT:   %cptr2 = getelementptr inbounds i64, i64* %cast2, i64 2
-; CHECK-NEXT:   %loadtype = load i64, i64* %cptr2, align 4
+; CHECK-NEXT:   %loadtype = load i64, i64* %cptr2
 ; CHECK-NEXT:   %[[cptr4ipge:.+]] = getelementptr inbounds i64, i64* %"cast2'ipc", i64 4
 ; CHECK-NEXT:   %cptr4 = getelementptr inbounds i64, i64* %cast2, i64 4
 ; CHECK-NEXT:   store i64 %loadtype, i64* %cptr4{{(, align 4)?}}, !tbaa !0
@@ -57,8 +57,8 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %[[backlcptr4:.+]] = bitcast double %[[same]] to i64
 
 ; CHECK-NEXT:   %[[lcptr2:.+]] = load i64, i64* %"cptr2'ipg"
-; CHECK-NEXT:   %[[bcptr2:.+]] = bitcast i64 %[[lcptr2]] to double
-; CHECK-NEXT:   %[[bcptr4:.+]] = bitcast i64 %[[backlcptr4]] to double
+; CHECK-DAG:    %[[bcptr2:.+]] = bitcast i64 %[[lcptr2]] to double
+; CHECK-DAG:    %[[bcptr4:.+]] = bitcast i64 %[[backlcptr4]] to double
 ; CHECK-NEXT:   %[[mmadd:.+]] = fadd fast double %[[bcptr2]], %[[bcptr4]]
 ; CHECK-NEXT:   %[[cbadd:.+]] = bitcast double %[[mmadd]] to i64
 ; CHECK-NEXT:   store i64 %[[cbadd]], i64* %"cptr2'ipg"
@@ -71,8 +71,8 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:  %[[nlptr3:.+]] = bitcast double %[[fasd]] to i64
 
 ; CHECK-NEXT:   %[[lptr2:.+]] = load i64, i64* %"ptr2'ipg"
-; CHECK-NEXT:   %[[dptr2:.+]] = bitcast i64 %[[lptr2]] to double
-; CHECK-NEXT:   %[[dptr3:.+]] = bitcast i64 %[[nlptr3]] to double
+; CHECK-DAG:    %[[dptr2:.+]] = bitcast i64 %[[lptr2]] to double
+; CHECK-DAG:    %[[dptr3:.+]] = bitcast i64 %[[nlptr3]] to double
 ; CHECK-NEXT:   %[[ladd:.+]] = fadd fast double %[[dptr2]], %[[dptr3]]
 ; CHECK-NEXT:   %[[fs:.+]] = bitcast double %[[ladd]] to i64
 ; CHECK-NEXT:   store i64 %[[fs]], i64* %"ptr2'ipg"

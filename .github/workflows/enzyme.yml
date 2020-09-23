@@ -20,7 +20,7 @@ jobs:
       run: |
           #sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-          sudo apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-${{ matrix.llvm }} main"
+          sudo apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-${{ matrix.llvm }} main" || true
           sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
           sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
     - uses: actions/checkout@v1

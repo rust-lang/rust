@@ -99,12 +99,13 @@ attributes #8 = { noreturn nounwind }
 
 ; CHECK: define internal { double } @diffetaylorlog(double %x, i64 %SINCOSN, double %differeturn) #2 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = icmp eq i64 1, %SINCOSN
-; CHECK-NEXT:   %1 = icmp eq i64 0, %SINCOSN
-; CHECK-NEXT:   %2 = icmp eq i64 1, %SINCOSN
-; CHECK-NEXT:   %3 = or i1 %1, %2
-; CHECK-NEXT:   %4 = select{{( fast)?}} i1 %3, double 0.000000e+00, double %differeturn
-; CHECK-NEXT:   %5 = select{{( fast)?}} i1 %0, double %differeturn, double 0.000000e+00
+; CHECK-DAG:    %[[zcmp:.+]] = icmp eq i64 1, %SINCOSN
+; CHECK-DAG:    %[[or1:.+]] = icmp eq i64 0, %SINCOSN
+; CHECK-DAG:    %[[or2:.+]] = icmp eq i64 1, %SINCOSN
+; todo note both * chars should be one of the 1 == SINCOS
+; CHECK-DAG:    %[[orcmp:.+]] = or i1 %[[or1]], %{{.+}}
+; CHECK-NEXT:   %4 = select{{( fast)?}} i1 %[[orcmp]], double 0.000000e+00, double %differeturn
+; CHECK-NEXT:   %5 = select{{( fast)?}} i1 %{{.+}}, double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   %switch = icmp ult i64 %SINCOSN, 2
 ; CHECK-NEXT:   br i1 %switch, label %invertentry, label %invertfor.cond.cleanup.loopexit
 

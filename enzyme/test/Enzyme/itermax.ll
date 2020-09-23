@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -correlated-propagation -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -ipconstprop -deadargelim -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -correlated-propagation -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
 
 ; #include <math.h>
 ; #include <stdio.h>
@@ -68,7 +68,7 @@ attributes #2 = { nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define internal {{(dso_local )?}}void @diffeiterA(double* noalias nocapture readonly %x, double* nocapture %"x'", i64 %n)
+; CHECK: define internal {{(dso_local )?}}void @diffeiterA(double* noalias nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %exitcond11 = icmp eq i64 %n, 0
 ; CHECK-NEXT:   br i1 %exitcond11, label %invertentry, label %for.body.for.body_crit_edge.preheader
@@ -94,7 +94,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[exitcond]], label %[[thelabel:.+]], label %for.body.for.body_crit_edge
 
 ; CHECK: invertentry:
-; CHECK-NEXT:   %[[ientryde:.+]] = phi double [ %[[diffecond:.+]], %[[thelabel2:.+]] ], [ 1.000000e+00, %entry ]
+; CHECK-NEXT:   %[[ientryde:.+]] = phi double [ %[[diffecond:.+]], %[[thelabel2:.+]] ], [ %differeturn, %entry ]
 ; CHECK-NEXT:   %[[xppre:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   %[[xpstore:.+]] = fadd fast double %[[xppre]], %[[ientryde]]
 ; CHECK-NEXT:   store double %[[xpstore]], double* %"x'"
@@ -105,7 +105,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: [[thelabel]]:
-; CHECK-NEXT:   %[[iforde:.+]] = phi double [ %[[diffecond]], %[[thelabel]] ], [ 1.000000e+00, %for.body.for.body_crit_edge ]
+; CHECK-NEXT:   %[[iforde:.+]] = phi double [ %[[diffecond]], %[[thelabel]] ], [ %differeturn, %for.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[iin:.+]] = phi i64 [ %[[isub:.+]], %[[thelabel]] ], [ %n, %for.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[iin]], -1
 ; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr inbounds i1, i1* %cmp.i_malloccache, i64 %[[isub]]

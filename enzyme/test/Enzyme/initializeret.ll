@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -ipconstprop -deadargelim -sroa -early-cse -adce -deadargelim -instcombine -adce -deadargelim -adce -simplifycfg -S -instcombine -dse | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -sroa -early-cse -adce -instsimplify -adce -simplifycfg -S -instsimplify -dse | FileCheck %s
 
 ; #include <math.h>
 ;
@@ -141,20 +141,23 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %[[ai8:.+]] = bitcast double** %array.i to i8*
 ; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8*{{( nonnull)?}} %[[ai8]])
 ; CHECK-NEXT:   store double* null, double** %"array'ipa.i", align 8
-; CHECK-NEXT:   %[[aug_aas:.+]] = call i8* @augmented_allocateAndSet(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
+; CHECK-NEXT:   %[[aug_aas:.+]] = call i8* @augmented_allocateAndSet(double**{{( nonnull)?}} %array.i, double**{{( nonnull)?}} %"array'ipa.i", double %x, i32 %n)
 ; CHECK-NEXT:   %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
-; CHECK-NEXT:   call void @diffeget(double* %"'ipl.i")
-; CHECK-NEXT:   %[[result:.+]] = call double @diffeallocateAndSet(i8* %[[aug_aas]])
+; CHECK-NEXT:   %[[primal:.+]] = load double*, double** %array.i, align 8
+; CHECK-NEXT:   call void @diffeget(double* %[[primal]], double* %"'ipl.i", i32 3, double 1.000000e+00)
+; CHECK-NEXT:   %[[result:.+]] = call { double } @diffeallocateAndSet(double**{{( nonnull)?}} %array.i, double**{{( nonnull)?}} %"array'ipa.i", double %x, i32 %n, double 1.000000e+00, i8* %[[aug_aas]])
 ; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 8, i8*{{( nonnull)?}} %[[api8]])
 ; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 8, i8*{{( nonnull)?}} %[[ai8]])
-; CHECK-NEXT:   ret double %[[result]]
+; CHECK-NEXT:   %[[ext:.+]] = extractvalue { double } %[[result]], 0
+; CHECK-NEXT:   ret double %[[ext]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}void @diffeget(double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffeget(double* nocapture readonly %x, double* nocapture %"x'", i32 %i, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds double, double* %"x'", i64 3
+; CHECK-NEXT:   %[[prom:.+]] = zext i32 %i to i64
+; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[prom]]
 ; CHECK-NEXT:   %0 = load double, double* %[[arrayidx]], align 8
-; CHECK-NEXT:   %1 = fadd fast double %0, 1.000000e+00
+; CHECK-NEXT:   %1 = fadd fast double %0, %differeturn
 ; CHECK-NEXT:   store double %1, double* %[[arrayidx]], align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
@@ -176,12 +179,13 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret i8* %"call'mi"
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}double @diffeallocateAndSet(i8* %[[callp:.+]])
+; CHECK: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n, double %differeturn, i8* %[[callp:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[callp]], i64 24
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast i8* %[[arrayidx]] to double*
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %[[ipc]], align 8
-; CHECK-NEXT:   %[[result:.+]] = fadd fast double %[[loaded]], 1.000000e+00
+; CHECK-NEXT:   %[[result:.+]] = fadd fast double %differeturn, %[[loaded]]
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[callp]])
-; CHECK-NEXT:   ret double %[[result]]
+; CHECK-NEXT:   %[[ins:.+]] = insertvalue { double } undef, double %[[result]], 0
+; CHECK-NEXT:   ret { double } %[[ins]]
 ; CHECK-NEXT: }

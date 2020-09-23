@@ -112,7 +112,7 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %"'ipc1" = bitcast i8* %"arrayidx'ipg" to double*
 ; CHECK-NEXT:   %1 = bitcast i8* %arrayidx to double*
 ; CHECK-NEXT:   store double %x, double* %1, align 8, !tbaa !2
-; CHECK-NEXT:   call void @diffecopy(double* %0, double* %"'ipc", double* null, i64 3)
+; CHECK-NEXT:   call void @diffecopy(double*{{( nonnull)?}} %0, double* %"'ipc", double* null, i64 3)
 ; CHECK-NEXT:   %2 = load double, double* %"'ipc1", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"'ipc1", align 8
 ; CHECK-NEXT:   %3 = insertvalue { double } undef, double %2, 0

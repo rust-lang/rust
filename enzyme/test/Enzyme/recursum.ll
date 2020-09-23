@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -ipconstprop -deadargelim -S -early-cse -instcombine -jump-threading | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S -early-cse -instcombine -jump-threading | FileCheck %s
 
 ; #include <stdio.h>
 ; #include <stdlib.h>
@@ -64,7 +64,7 @@ attributes #2 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}void @differecsum.1(double* %x, double* %"x'", i32 %n)
+; CHECK: define internal {{(dso_local )?}}void @differecsum.1(double* %x, double* %"x'", i32 %n, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   switch i32 %n, label %invertif.end3 [
 ; CHECK-NEXT:     i32 0, label %invertentry
@@ -76,7 +76,7 @@ attributes #2 = { nounwind }
 
 ; CHECK: invertif.then2:
 ; CHECK-NEXT:   %[[predx:.+]] = load double, double* %"x'", align 8
-; CHECK-NEXT:   %[[postdx:.+]] = fadd fast double %[[predx]], 1.000000e+00
+; CHECK-NEXT:   %[[postdx:.+]] = fadd fast double %[[predx]], %differeturn
 ; CHECK-NEXT:   store double %[[postdx]], double* %"x'", align 8
 ; CHECK-NEXT:   br label %invertentry
 
@@ -86,7 +86,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[addptr:.+]] = getelementptr inbounds double, double* %x, i64 %[[idxext]]
 ; CHECK-NEXT:   %[[addptripg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[idxext]]
 ; CHECK-NEXT:   %[[sub:.+]] = sub i32 %n, %[[div]]
-; CHECK-NEXT:   call void @differecsum.1(double* %[[addptr]], double* %[[addptripg]], i32 %[[sub]])
-; CHECK-NEXT:   call void @differecsum.1(double* %x, double* %"x'", i32 %[[div]])
+; CHECK-NEXT:   call void @differecsum.1(double* %[[addptr]], double* %[[addptripg]], i32 %[[sub]], double %differeturn)
+; CHECK-NEXT:   call void @differecsum.1(double* %x, double* %"x'", i32 %[[div]], double %differeturn)
 ; CHECK-NEXT:   br label %invertentry
 ; CHECK-NEXT: }

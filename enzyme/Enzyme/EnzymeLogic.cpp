@@ -139,8 +139,12 @@ bool is_load_uncacheable(
 
   // Find the underlying object for the pointer operand of the load instruction.
   auto obj =
+  #if LLVM_VERSION_MAJOR >= 12
+      getUnderlyingObject(li.getPointerOperand(), 100);
+  #else
       GetUnderlyingObject(li.getPointerOperand(),
                           gutils->oldFunc->getParent()->getDataLayout(), 100);
+  #endif
 
   bool can_modref = is_value_mustcache_from_origin(
       obj, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args);
@@ -228,9 +232,14 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
 
     // If the UnderlyingObject is from one of this function's arguments, then we
     // need to propagate the volatility.
+    #if LLVM_VERSION_MAJOR >= 12
+    Value *obj = getUnderlyingObject(
+        callsite_op->getArgOperand(i), 100);
+    #else
     Value *obj = GetUnderlyingObject(
         callsite_op->getArgOperand(i),
         callsite_op->getParent()->getModule()->getDataLayout(), 100);
+    #endif
 
     bool init_safe = !is_value_mustcache_from_origin(
         obj, AA, gutils, TLI, unnecessaryInstructions, parent_uncacheable_args);
@@ -367,9 +376,14 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
         if (auto si = dyn_cast<StoreInst>(inst)) {
           if (isa<UndefValue>(si->getValueOperand()))
             return false;
+          #if LLVM_VERSION_MAJOR >= 12
+          auto at = getUnderlyingObject(
+              si->getPointerOperand(), 100);
+          #else
           auto at = GetUnderlyingObject(
               si->getPointerOperand(),
               gutils->oldFunc->getParent()->getDataLayout(), 100);
+          #endif
           if (auto arg = dyn_cast<Argument>(at)) {
             if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
               return false;
@@ -378,9 +392,14 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
         }
 
         if (auto mti = dyn_cast<MemTransferInst>(inst)) {
+          #if LLVM_VERSION_MAJOR >= 12
+          auto at = getUnderlyingObject(
+              mti->getArgOperand(1), 100);
+          #else
           auto at = GetUnderlyingObject(
               mti->getArgOperand(1),
               gutils->oldFunc->getParent()->getDataLayout(), 100);
+          #endif
           if (auto arg = dyn_cast<Argument>(at)) {
             if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
               return false;
@@ -426,9 +445,14 @@ void calculateUnusedStoresInFunction(Function& func, llvm::SmallPtrSetImpl<const
         }
 
         if (auto mti = dyn_cast<MemTransferInst>(inst)) {
+          #if LLVM_VERSION_MAJOR >= 12
+          auto at = getUnderlyingObject(
+              mti->getArgOperand(1), 100);
+          #else
           auto at = GetUnderlyingObject(
               mti->getArgOperand(1),
               func.getParent()->getDataLayout(), 100);
+          #endif
           if (auto ai = dyn_cast<AllocaInst>(at)) {
             bool foundStore = false;
             allInstructionsBetween(

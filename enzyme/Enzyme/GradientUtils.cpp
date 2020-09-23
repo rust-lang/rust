@@ -1801,16 +1801,26 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
   if (auto origInst = isOriginal(inst))
     if (auto li = dyn_cast<LoadInst>(inst)) {
+      #if LLVM_VERSION_MAJOR >= 12
+      auto liobj = getUnderlyingObject(
+          li->getPointerOperand(), 100);
+      #else
       auto liobj = GetUnderlyingObject(
           li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
+      #endif
 
       if (scopeMap.find(inst) == scopeMap.end()) {
         for (auto pair : scopeMap) {
           if (auto li2 = dyn_cast<LoadInst>(const_cast<Value *>(pair.first))) {
 
+            #if LLVM_VERSION_MAJOR >= 12
+            auto li2obj =
+                getUnderlyingObject(li2->getPointerOperand(), 100);
+            #else
             auto li2obj =
                 GetUnderlyingObject(li2->getPointerOperand(),
                                     oldFunc->getParent()->getDataLayout(), 100);
+            #endif
 
             if (liobj == li2obj && DT.dominates(li2, li)) {
               auto orig2 = isOriginal(li2);
