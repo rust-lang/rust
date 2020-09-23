@@ -67,7 +67,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
   unsigned truei = 0;
   IRBuilder<> Builder(CI);
 
-  for (unsigned i = 1; i < CI->getNumArgOperands(); i++) {
+  for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
     Value *res = CI->getArgOperand(i);
 
     assert(truei < FT->getNumParams());
@@ -88,7 +88,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
       } else {
         assert(0 && "illegal diffe metadata string");
       }
-      i++;
+      ++i;
       res = CI->getArgOperand(i);
     } else if (isa<LoadInst>(res) &&
                isa<GlobalVariable>(cast<LoadInst>(res)->getOperand(0))) {
@@ -96,20 +96,20 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
       auto MS = gv->getName();
       if (MS == "diffe_dup") {
         ty = DIFFE_TYPE::DUP_ARG;
-        i++;
+        ++i;
         res = CI->getArgOperand(i);
       } else if (MS == "diffe_dupnoneed") {
         ty = DIFFE_TYPE::DUP_NONEED;
-        i++;
+        ++i;
         res = CI->getArgOperand(i);
       } else if (MS == "diffe_out") {
         llvm::errs() << "saw metadata for diffe_out\n";
         ty = DIFFE_TYPE::OUT_DIFF;
-        i++;
+        ++i;
         res = CI->getArgOperand(i);
       } else if (MS == "diffe_const") {
         ty = DIFFE_TYPE::CONSTANT;
-        i++;
+        ++i;
         res = CI->getArgOperand(i);
       } else {
         ty = whatType(PTy);
@@ -149,7 +149,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
 
     args.push_back(res);
     if (ty == DIFFE_TYPE::DUP_ARG || ty == DIFFE_TYPE::DUP_NONEED) {
-      i++;
+      ++i;
 
       Value *res = CI->getArgOperand(i);
       if (PTy != res->getType()) {
@@ -185,7 +185,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
       args.push_back(res);
     }
 
-    truei++;
+    ++truei;
   }
 
   bool differentialReturn =
@@ -261,7 +261,7 @@ lowerEnzymeCalls(Function &F, TargetLibraryInfo &TLI, AAResults &AA) {
 reset:
   for (BasicBlock &BB : F) {
 
-    for (auto BI = BB.rbegin(), BE = BB.rend(); BI != BE; BI++) {
+    for (auto BI = BB.rbegin(), BE = BB.rend(); BI != BE; ++BI) {
       CallInst *CI = dyn_cast<CallInst>(&*BI);
       if (!CI)
         continue;

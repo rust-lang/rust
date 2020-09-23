@@ -166,17 +166,17 @@ bool isFunctionArgumentConstant(TypeResults &TR, CallInst *CI, Value *val,
   for (auto &arg : F->args()) {
     nextTypeInfo.first.insert(std::pair<Argument *, TypeTree>(
         &arg, TR.query(CI->getArgOperand(argnum))));
-    argnum++;
+    ++argnum;
   }
   nextTypeInfo.second = TR.query(CI);
   TypeResults TR2 = TR.analysis.analyzeFunction(nextTypeInfo);
 
-  for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
+  for (unsigned i = 0; i < CI->getNumArgOperands(); ++i) {
     if (CI->getArgOperand(i) == val) {
       arg_findifactive.insert(a);
       idx_findifactive.insert(i);
       newnonconstant.insert(a);
-      a++;
+      ++a;
       continue;
     }
 
@@ -188,7 +188,7 @@ bool isFunctionArgumentConstant(TypeResults &TR, CallInst *CI, Value *val,
     } else {
       newnonconstant.insert(a);
     }
-    a++;
+    ++a;
   }
 
   bool constret;
@@ -455,7 +455,7 @@ bool isconstantM(TypeResults &TR, Instruction *inst,
     bool allIntegral = true;
     bool anIntegral = false;
     auto q = TR.query(storeinst->getPointerOperand()).Data0();
-    for (int i = -1; i < (int)storeSize; i++) {
+    for (int i = -1; i < (int)storeSize; ++i) {
       auto dt = q[{i}];
       if (dt.isIntegral() || dt.typeEnum == BaseType::Anything) {
         anIntegral = true;

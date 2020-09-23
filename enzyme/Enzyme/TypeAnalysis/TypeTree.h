@@ -21,7 +21,7 @@
 
 static inline std::string to_string(const std::vector<int> x) {
   std::string out = "[";
-  for (unsigned i = 0; i < x.size(); i++) {
+  for (unsigned i = 0; i < x.size(); ++i) {
     if (i != 0)
       out += ",";
     out += std::to_string(x[i]);
@@ -57,7 +57,7 @@ public:
       if (pair.first.size() != v.size())
         continue;
       bool match = true;
-      for (unsigned i = 0; i < pair.first.size(); i++) {
+      for (unsigned i = 0; i < pair.first.size(); ++i) {
         if (pair.first[i] == -1)
           continue;
         if (pair.first[i] != v[i]) {
@@ -140,7 +140,7 @@ public:
         for (const auto &pair : mapping) {
           if (pair.first.size() == v.size()) {
             bool matches = true;
-            for (unsigned i = 0; i < pair.first.size() - 1; i++) {
+            for (unsigned i = 0; i < pair.first.size() - 1; ++i) {
               if (pair.first[i] != v[i]) {
                 matches = false;
                 break;
@@ -175,7 +175,7 @@ public:
         for (const auto &pair : mapping) {
           if (pair.first.size() == v.size()) {
             bool matches = true;
-            for (unsigned i = 1; i < pair.first.size(); i++) {
+            for (unsigned i = 1; i < pair.first.size(); ++i) {
               if (pair.first[i] != v[i]) {
                 matches = false;
                 break;
@@ -295,7 +295,7 @@ public:
       return false;
     }
 
-    for (size_t i = 1; i < second.size(); i++) {
+    for (size_t i = 1; i < second.size(); ++i) {
       first.push_back(second[i]);
     }
     return true;
@@ -309,7 +309,7 @@ public:
 
       if (pair.first[0] == 0 || pair.first[0] == -1) {
         std::vector<int> next;
-        for (size_t i = 1; i < pair.first.size(); i++)
+        for (size_t i = 1; i < pair.first.size(); ++i)
           next.push_back(pair.first[i]);
         TypeTree dat2;
         dat2.insert(next, pair.second);
@@ -329,11 +329,11 @@ public:
       if (pair.first[0] == -1) {
         TypeTree dat2;
         auto next = pair.first;
-        for (size_t i = 0; i < start; i++) {
+        for (size_t i = 0; i < start; ++i) {
           next[0] = i;
           dat2.insert(next, pair.second);
         }
-        for (size_t i = end; i < len; i++) {
+        for (size_t i = end; i < len; ++i) {
           next[0] = i;
           dat2.insert(next, pair.second);
         }
@@ -375,7 +375,7 @@ public:
       }
 
       std::vector<int> next;
-      for (size_t i = 2; i < pair.first.size(); i++) {
+      for (size_t i = 2; i < pair.first.size(); ++i) {
         next.push_back(pair.first[i]);
       }
 
@@ -446,7 +446,7 @@ public:
       assert(pair.first.size() != 0);
 
       std::vector<int> next;
-      for (size_t i = 1; i < pair.first.size(); i++) {
+      for (size_t i = 1; i < pair.first.size(); ++i) {
         next.push_back(pair.first[i]);
       }
 
@@ -759,7 +759,7 @@ public:
         out += ", ";
       }
       out += "[";
-      for (unsigned i = 0; i < pair.first.size(); i++) {
+      for (unsigned i = 0; i < pair.first.size(); ++i) {
         if (i != 0)
           out += ",";
         out += std::to_string(pair.first[i]);

@@ -339,7 +339,7 @@ GradientUtils *GradientUtils::CreateFromClone(
     assert(!todiff->getReturnType()->isEmptyTy());
     assert(!todiff->getReturnType()->isVoidTy());
     returnMapping[AugmentedStruct::Return] = returnCount + 1;
-    returnCount++;
+    ++returnCount;
   }
 
   // We don't need to differentially return something that we know is not a
@@ -349,7 +349,7 @@ GradientUtils *GradientUtils::CreateFromClone(
     assert(!todiff->getReturnType()->isVoidTy());
     assert(!todiff->getReturnType()->isFPOrFPVectorTy());
     returnMapping[AugmentedStruct::DifferentialReturn] = returnCount + 1;
-    returnCount++;
+    ++returnCount;
   }
 
   ReturnType returnValue;
@@ -626,7 +626,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
   } else if (auto arg = dyn_cast<GetElementPtrInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     SmallVector<Value *, 4> invertargs;
-    for (unsigned i = 0; i < arg->getNumIndices(); i++) {
+    for (unsigned i = 0; i < arg->getNumIndices(); ++i) {
       Value *b = getNewFromOriginal(arg->getOperand(1 + i));
       invertargs.push_back(b);
     }
@@ -710,7 +710,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
       assert(0 && "illegal iv of phi");
     }
     std::map<Value *, std::set<BasicBlock *>> mapped;
-    for (unsigned int i = 0; i < phi->getNumIncomingValues(); i++) {
+    for (unsigned int i = 0; i < phi->getNumIncomingValues(); ++i) {
       mapped[phi->getIncomingValue(i)].insert(phi->getIncomingBlock(i));
     }
 
@@ -731,7 +731,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
             for (auto b : v.second) {
                 which->addIncoming(ConstantInt::get(which->getType(), cnt), b);
             }
-            cnt++;
+            ++cnt;
          }
 
          auto which2 = lookupM(which, BuilderM);
@@ -745,7 +745,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
       auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
       invertedPointers[phi] = which;
 
-      for (unsigned int i = 0; i < phi->getNumIncomingValues(); i++) {
+      for (unsigned int i = 0; i < phi->getNumIncomingValues(); ++i) {
         IRBuilder<> pre(
             cast<BasicBlock>(getNewFromOriginal(phi->getIncomingBlock(i)))
                 ->getTerminator());
@@ -835,7 +835,7 @@ void removeRedundantIVs(const Loop *L, BasicBlock *Header,
           BO->setHasNoSignedWrap(true);
           BO->setHasNoUnsignedWrap(true);
         }
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 2; ++i) {
           if (auto BO2 = dyn_cast<BinaryOperator>(BO->getOperand(i))) {
             if (BO2->getOpcode() == BinaryOperator::Add ||
                 BO2->getOpcode() == BinaryOperator::Mul) {
@@ -2291,7 +2291,7 @@ void GradientUtils::branchToCorrespondingTarget(
                 *done[std::make_pair(subblock, bi2->getSuccessor(1))].begin());
           } else {
             Value *otherBranch = nullptr;
-            for (unsigned i = 0; i < 2; i++) {
+            for (unsigned i = 0; i < 2; ++i) {
               Value *val = cond1;
               if (i == 1)
                 val = BuilderM.CreateNot(val, "anot1_");
@@ -2313,7 +2313,7 @@ void GradientUtils::branchToCorrespondingTarget(
               }
             }
 
-            for (unsigned i = 0; i < 2; i++) {
+            for (unsigned i = 0; i < 2; ++i) {
               auto edge = std::make_pair(subblock, bi2->getSuccessor(i));
               auto found = replacePHIs->find(*done[edge].begin());
               if (found == replacePHIs->end())
@@ -2480,7 +2480,7 @@ nofast:;
         storing[pred.first][ConstantInt::get(T, idx)].push_back(pred.second);
       }
       targets.push_back(pair.first);
-      idx++;
+      ++idx;
     }
     assert(targets.size() > 0);
 
@@ -2521,12 +2521,12 @@ nofast:;
       assert(targets.size() > 0);
       auto swit =
           BuilderM.CreateSwitch(which, targets.back(), targets.size() - 1);
-      for (unsigned i = 0; i < targets.size() - 1; i++) {
+      for (unsigned i = 0; i < targets.size() - 1; ++i) {
         swit->addCase(ConstantInt::get(T, i), targets[i]);
       }
     }
   } else {
-    for (unsigned i = 0; i < targets.size(); i++) {
+    for (unsigned i = 0; i < targets.size(); ++i) {
       auto found = replacePHIs->find(targets[i]);
       if (found == replacePHIs->end())
         continue;

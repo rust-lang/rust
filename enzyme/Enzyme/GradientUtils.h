@@ -249,7 +249,7 @@ public:
                        const ValueToValueMapTy &available) const;
 
   void replaceAWithB(Value *A, Value *B) {
-    for (unsigned i = 0; i < addedTapeVals.size(); i++) {
+    for (unsigned i = 0; i < addedTapeVals.size(); ++i) {
       if (addedTapeVals[i] == A) {
         addedTapeVals[i] = B;
       }
@@ -422,7 +422,7 @@ public:
     IRBuilder<> bb(placeholder);
 
     SmallVector<Value *, 8> args;
-    for (unsigned i = 0; i < orig->getNumArgOperands(); i++) {
+    for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
       args.push_back(getNewFromOriginal(orig->getArgOperand(i)));
     }
     Value *anti =
@@ -523,11 +523,8 @@ public:
       if (mapping.find(idx) != mapping.end()) {
         return mapping[idx];
       }
-      // llvm::errs() << "adding to map: ";
-      //    llvm::errs() << "idx: " << *idx.first << ", " << idx.second << "
-      //    pos= " << tapeidx << "\n";
       mapping[idx] = tapeidx;
-      tapeidx++;
+      ++tapeidx;
       return mapping[idx];
     }
   }
@@ -782,7 +779,7 @@ public:
                 auto z = dyn_cast<Instruction>(ops[0]);
                 ops.pop_front();
                 if (z && z->getNumUses() == 0) {
-                  for (unsigned i = 0; i < z->getNumOperands(); i++) {
+                  for (unsigned i = 0; i < z->getNumOperands(); ++i) {
                     ops.push_back(z->getOperand(i));
                   }
                   erase(z);
@@ -1035,7 +1032,7 @@ public:
   std::map<const llvm::Instruction *, bool> internal_isConstantInstruction;
 
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
-    for (auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); a++) {
+    for (auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); ++a) {
       if (constants.find(a) == constants.end() &&
           nonconstant.find(a) == nonconstant.end())
         continue;
@@ -1073,25 +1070,6 @@ public:
         internal_isConstantInstruction[&I] = const_inst;
       }
     }
-  }
-
-  void cleanupActiveDetection() {
-    // llvm::errs() << "pre cleanup: " << *newFunc << "\n";
-    /*
-    for(auto a = newFunc->arg_begin(); a != newFunc->arg_end(); a++) {
-      a->getParent()->removeParamAttr(a->getArgNo(), "enzyme_activity_value");
-      //a->getParent()->getAttributes().removeParamAttribute(a->getContext(),
-    a->getArgNo(), "enzyme_activity_value");
-    }
-
-    for(BasicBlock& BB: *newFunc) {
-        for(Instruction &I : BB) {
-            I.setMetadata("enzyme_activity_inst", nullptr);
-            I.setMetadata("enzyme_activity_value", nullptr);
-        }
-    }
-    */
-    // llvm::errs() << "post cleanup: " << *newFunc << "\n";
   }
 
   llvm::StringRef getAttribute(Argument *arg, std::string attr) const {
@@ -1424,7 +1402,7 @@ public:
         goto endCheck;
       SmallVector<Value *, 4> ind;
       // llvm::errs() << "inst: " << *inst << "\n";
-      for (unsigned i = 0; i < inst->getNumIndices(); i++) {
+      for (unsigned i = 0; i < inst->getNumIndices(); ++i) {
         Value *a = SAFE(inst, getOperand(1 + i));
         assert(a->getName() != "<badref>");
         auto op = getOp(a);
@@ -1503,7 +1481,7 @@ public:
         return nullptr;
 
       std::vector<Value *> args;
-      for (unsigned i = 0; i < op->getNumArgOperands(); i++) {
+      for (unsigned i = 0; i < op->getNumArgOperands(); ++i) {
         args.emplace_back(getOp(SAFE(op, getArgOperand(i))));
         if (args[i] == nullptr)
           return nullptr;
@@ -1688,7 +1666,7 @@ public:
 
     Value *size = nullptr;
     std::vector<std::pair<LoopContext, Value *>> lims;
-    for (unsigned i = 0; i < contexts.size(); i++) {
+    for (unsigned i = 0; i < contexts.size(); ++i) {
       IRBuilder<> allocationBuilder(&allocationPreheaders[i]->back());
       lims.push_back(std::make_pair(contexts[i], limits[i]));
       if (size == nullptr) {
@@ -1935,7 +1913,7 @@ public:
           auto &innercontainedloops = sublimits[j].second;
           for (auto riter = innercontainedloops.rbegin(),
                     rend = innercontainedloops.rend();
-               riter != rend; riter++) {
+               riter != rend; ++riter) {
             const auto &idx = riter->first;
             if (idx.var)
               antimap[idx.var] = tbuild.CreateLoad(idx.antivaralloc);
@@ -1979,7 +1957,7 @@ public:
         SmallVector<Value *, 3> limits;
         ValueToValueMapTy available;
         for (auto riter = containedloops.rbegin(), rend = containedloops.rend();
-             riter != rend; riter++) {
+             riter != rend; ++riter) {
           // Only include dynamic index on last iteration (== skip dynamic index
           // on non-last iterations)
           // if (i != 0 && riter+1 == rend) break;
@@ -2006,7 +1984,7 @@ public:
         assert(indices.size() > 0);
 
         Value *idx = indices[0];
-        for (unsigned ind = 1; ind < indices.size(); ind++) {
+        for (unsigned ind = 1; ind < indices.size(); ++ind) {
           idx = v.CreateAdd(idx,
                             v.CreateMul(indices[ind], limits[ind - 1], "",
                                         /*NUW*/ true, /*NSW*/ true),
@@ -2078,7 +2056,7 @@ public:
       SmallVector<Value *, 3> indices;
       SmallVector<Value *, 3> limits;
       for (auto riter = containedloops.begin(), rend = containedloops.end();
-           riter != rend; riter++) {
+           riter != rend; ++riter) {
         // Only include dynamic index on last iteration (== skip dynamic index
         // on non-last iterations)
         // if (i != 0 && riter+1 == rend) break;
@@ -2118,7 +2096,7 @@ public:
 
       if (indices.size() > 0) {
         Value *idx = indices[0];
-        for (unsigned ind = 1; ind < indices.size(); ind++) {
+        for (unsigned ind = 1; ind < indices.size(); ++ind) {
           idx = BuilderM.CreateAdd(
               idx,
               BuilderM.CreateMul(indices[ind], limits[ind - 1], "",
@@ -2216,7 +2194,7 @@ public:
     if (BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end())
       for (auto I = BuilderM.GetInsertBlock()->rbegin(),
                 E = BuilderM.GetInsertBlock()->rend();
-           I != E; I++) {
+           I != E; ++I) {
         if (&*I == &*BuilderM.GetInsertPoint())
           break;
         if (auto si = dyn_cast<StoreInst>(&*I)) {
@@ -2622,7 +2600,7 @@ public:
       return addedSelects;
     } else if (val->getType()->isStructTy()) {
       auto st = cast<StructType>(val->getType());
-      for (unsigned i = 0; i < st->getNumElements(); i++) {
+      for (unsigned i = 0; i < st->getNumElements(); ++i) {
         Value *v = ConstantInt::get(Type::getInt32Ty(st->getContext()), i);
         SelectInst *addedSelect = addToDiffeIndexed(
             val, BuilderM.CreateExtractValue(dif, {i}), {v}, BuilderM);

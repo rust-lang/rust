@@ -227,7 +227,7 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
   // to the callee.
   //   because memory location x modified after parent returns => x modified
   //   after callee returns.
-  for (unsigned i = 0; i < callsite_op->getNumArgOperands(); i++) {
+  for (unsigned i = 0; i < callsite_op->getNumArgOperands(); ++i) {
     args.push_back(callsite_op->getArgOperand(i));
 
     // If the UnderlyingObject is from one of this function's arguments, then we
@@ -275,7 +275,7 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
     if (unnecessaryInstructions.count(inst2))
       return false;
 
-    for (unsigned i = 0; i < args.size(); i++) {
+    for (unsigned i = 0; i < args.size(); ++i) {
       if (llvm::isModSet(AA.getModRefInfo(
               inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
         args_safe[i] = false;
@@ -287,9 +287,9 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
   std::map<Argument *, bool> uncacheable_args;
 
   auto arg = callsite_op->getCalledFunction()->arg_begin();
-  for (unsigned i = 0; i < args.size(); i++) {
+  for (unsigned i = 0; i < args.size(); ++i) {
     uncacheable_args[arg] = !args_safe[i];
-    arg++;
+    ++arg;
     if (arg == callsite_op->getCalledFunction()->arg_end()) {
       break;
     }
@@ -585,7 +585,7 @@ bool shouldAugmentCall(CallInst *op, const GradientUtils *gutils,
   if (!called || called->empty())
     modifyPrimal = true;
 
-  for (unsigned i = 0; i < op->getNumArgOperands(); i++) {
+  for (unsigned i = 0; i < op->getNumArgOperands(); ++i) {
     if (gutils->isConstantValue(op->getArgOperand(i)) && called &&
         !called->empty()) {
       continue;
@@ -1013,8 +1013,8 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
           j->removeAttr(Attribute::Returned);
         if (j->hasAttribute(Attribute::StructRet))
           j->removeAttr(Attribute::StructRet);
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
       BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
       IRBuilder<> bb(BB);
@@ -1060,7 +1060,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
-    for (; toarg != todiff->arg_end(); toarg++, olarg++) {
+    for (; toarg != todiff->arg_end(); ++toarg, ++olarg) {
 
       {
         auto fd = oldTypeInfo.first.find(toarg);
@@ -1092,8 +1092,8 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     auto pp_arg = gutils->oldFunc->arg_begin();
     for (; pp_arg != gutils->oldFunc->arg_end();) {
       _uncacheable_argsPP[pp_arg] = _uncacheable_args.find(in_arg)->second;
-      pp_arg++;
-      in_arg++;
+      ++pp_arg;
+      ++in_arg;
     }
   }
 
@@ -1199,8 +1199,8 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     }
 
     BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
-    I++;
-    for (; I != E; I++) {
+    ++I;
+    for (; I != E; ++I) {
       maker.visit(&*I);
       assert(oBB.rend() == E);
     }
@@ -1270,7 +1270,6 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     }
   }
 
-  gutils->cleanupActiveDetection();
   gutils->eraseFictiousPHIs();
 
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
@@ -1378,11 +1377,10 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     }
 
     j->setName(i->getName());
-    j++;
-    jj++;
-
-    i++;
-    ii++;
+    ++j;
+    ++jj;
+    ++i;
+    ++ii;
   }
 
   SmallVector<ReturnInst *, 4> Returns;
@@ -1452,7 +1450,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
         }
         ib.CreateStore(VMap[v], gep);
       }
-      i++;
+      ++i;
     }
   }
 
@@ -1642,7 +1640,7 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
     }
 
     Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
-    for (unsigned i = 0; i < retargs.size(); i++) {
+    for (unsigned i = 0; i < retargs.size(); ++i) {
       unsigned idx[] = {i};
       toret = Builder.CreateInsertValue(toret, retargs[i], idx);
     }
@@ -1659,7 +1657,7 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
   bool setphi = false;
 
   // Ensure phi values have their derivatives propagated
-  for (auto I = oBB->begin(), E = oBB->end(); I != E; I++) {
+  for (auto I = oBB->begin(), E = oBB->end(); I != E; ++I) {
     if (PHINode *orig = dyn_cast<PHINode>(&*I)) {
       if (gutils->isConstantValue(orig))
         continue;
@@ -2025,7 +2023,7 @@ Function *CreatePrimalAndGradient(
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
-    for (; toarg != todiff->arg_end(); toarg++, olarg++) {
+    for (; toarg != todiff->arg_end(); ++toarg, ++olarg) {
 
       {
         auto fd = oldTypeInfo.first.find(toarg);
@@ -2066,8 +2064,8 @@ Function *CreatePrimalAndGradient(
     auto pp_arg = gutils->oldFunc->arg_begin();
     for (; pp_arg != gutils->oldFunc->arg_end();) {
       _uncacheable_argsPP[pp_arg] = _uncacheable_args.find(in_arg)->second;
-      pp_arg++;
-      in_arg++;
+      ++pp_arg;
+      ++in_arg;
     }
   }
 
@@ -2236,8 +2234,8 @@ Function *CreatePrimalAndGradient(
     }
 
     BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
-    I++;
-    for (; I != E; I++) {
+    ++I;
+    for (; I != E; ++I) {
       maker.visit(&*I);
       assert(oBB.rend() == E);
     }
@@ -2351,8 +2349,6 @@ Function *CreatePrimalAndGradient(
     llvm::errs() << *gutils->newFunc << "\n";
     report_fatal_error("function failed verification (4)");
   }
-
-  gutils->cleanupActiveDetection();
 
   optimizeIntermediate(gutils, topLevel, gutils->newFunc);
 

@@ -170,7 +170,7 @@ remover:
       #else
       InlineFunction(call, IFI);
       #endif
-      count++;
+      ++count;
       if (count >= autodiff_inline_count)
         break;
       else
@@ -239,8 +239,8 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   for (auto i = F->arg_begin(), j = NewF->arg_begin(); i != F->arg_end();) {
     VMap[i] = j;
     j->setName(i->getName());
-    i++;
-    j++;
+    ++i;
+    ++j;
   }
 
   SmallVector<ReturnInst *, 4> Returns;
@@ -500,7 +500,7 @@ Function *CloneFunctionWithReturns(
     } else if (constant_args[argno] == DIFFE_TYPE::OUT_DIFF) {
       RetTypes.push_back(I.getType());
     }
-    argno++;
+    ++argno;
   }
 
   for (BasicBlock &BB : *F) {
@@ -562,13 +562,13 @@ Function *CloneFunctionWithReturns(
     unsigned ii = 0;
     for (auto i = F->arg_begin(), j = NewF->arg_begin(); i != F->arg_end();) {
       VMap[i] = j;
-      j++;
-      i++;
+      ++j;
+      ++i;
       if (constant_args[ii] == DIFFE_TYPE::DUP_ARG ||
           constant_args[ii] == DIFFE_TYPE::DUP_NONEED) {
-        j++;
+        ++j;
       }
-      ii++;
+      ++ii;
     }
   }
 
@@ -610,21 +610,21 @@ Function *CloneFunctionWithReturns(
       }
 
       j->setName(i->getName());
-      j++;
+      ++j;
       j->setName(i->getName() + "'");
       nonconstant.insert(j);
-      j++;
+      ++j;
       jj += 2;
 
-      i++;
+      ++i;
 
     } else {
       j->setName(i->getName());
-      j++;
-      jj++;
-      i++;
+      ++j;
+      ++jj;
+      ++i;
     }
-    ii++;
+    ++ii;
   }
 
   if (hasPtrInput) {

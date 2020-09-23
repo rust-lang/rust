@@ -76,7 +76,7 @@ TypeTree getConstantAnalysis(Constant *val, const FnTypeInfo &nfti,
   if (auto ca = dyn_cast<ConstantAggregate>(val)) {
     TypeTree res;
     int off = 0;
-    for (unsigned i = 0; i < ca->getNumOperands(); i++) {
+    for (unsigned i = 0; i < ca->getNumOperands(); ++i) {
       assert(nfti.function);
       auto op = ca->getOperand(i);
       // TODO check this for i1 constant aggregates packing/etc
@@ -96,7 +96,7 @@ TypeTree getConstantAnalysis(Constant *val, const FnTypeInfo &nfti,
   if (auto ca = dyn_cast<ConstantDataSequential>(val)) {
     TypeTree res;
     int off = 0;
-    for (unsigned i = 0; i < ca->getNumElements(); i++) {
+    for (unsigned i = 0; i < ca->getNumElements(); ++i) {
       assert(nfti.function);
       auto op = ca->getElementAsConstant(0);
       // TODO check this for i1 constant aggregates packing/etc
@@ -438,13 +438,13 @@ bool hasAnyUse(TypeAnalyzer &TAZ,
 
           bool shouldHandleReturn = false;
 
-          for (size_t i = 0; i < call->getNumArgOperands(); i++) {
+          for (size_t i = 0; i < call->getNumArgOperands(); ++i) {
             if (call->getArgOperand(i) == val) {
               if (hasAnyUse(TAZ, a, intseen, &shouldHandleReturn)) {
                 return intseen[val] = unknownUse = true;
               }
             }
-            a++;
+            ++a;
           }
 
           if (shouldHandleReturn) {
@@ -544,13 +544,13 @@ bool hasNonIntegralUse(TypeAnalyzer &TAZ,
 
           bool shouldHandleReturn = false;
 
-          for (size_t i = 0; i < call->getNumArgOperands(); i++) {
+          for (size_t i = 0; i < call->getNumArgOperands(); ++i) {
             if (call->getArgOperand(i) == val) {
               if (hasNonIntegralUse(TAZ, a, intseen, &shouldHandleReturn)) {
                 return intseen[val] = unknownUse = true;
               }
             }
-            a++;
+            ++a;
           }
 
           if (shouldHandleReturn) {
@@ -1204,7 +1204,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     vd.pointerIntMerge(getAnalysis(I.getOperand(1)).Data0(), I.getOpcode());
 
     if (I.getOpcode() == BinaryOperator::And) {
-      for (int i = 0; i < 2; i++) {
+      for (int i = 0; i < 2; ++i) {
         for (auto andval :
              fntypeinfo.knownIntegralValues(I.getOperand(i), DT, intseen)) {
           if (andval <= 16 && andval >= 0) {
@@ -1233,7 +1233,7 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
 
   updateAnalysis(MTI.getArgOperand(0), res, &MTI);
   updateAnalysis(MTI.getArgOperand(1), res, &MTI);
-  for (unsigned i = 2; i < MTI.getNumArgOperands(); i++) {
+  for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i) {
     updateAnalysis(MTI.getArgOperand(i), TypeTree(BaseType::Integer).Only(-1),
                    &MTI);
   }
@@ -1569,7 +1569,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
   #endif
     if (iasm->getAsmString() == "cpuid") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
-      for (unsigned i = 0; i < call.getNumArgOperands(); i++) {
+      for (unsigned i = 0; i < call.getNumArgOperands(); ++i) {
         updateAnalysis(call.getArgOperand(i),
                        TypeTree(BaseType::Integer).Only(-1), &call);
       }
@@ -1794,7 +1794,7 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
   };
 
   if (auto pn = dyn_cast<PHINode>(val)) {
-    for (unsigned i = 0; i < pn->getNumIncomingValues(); i++) {
+    for (unsigned i = 0; i < pn->getNumIncomingValues(); ++i) {
       auto a = pn->getIncomingValue(i);
       auto b = pn->getIncomingBlock(i);
 
@@ -1904,7 +1904,7 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
     typeInfo.knownValues.insert(std::pair<Argument *, std::set<int64_t>>(
         &arg,
         fntypeinfo.knownIntegralValues(call.getArgOperand(argnum), DT, intseen)));
-    argnum++;
+    ++argnum;
   }
 
   typeInfo.second = getAnalysis(&call);
@@ -1913,10 +1913,10 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
     llvm::errs() << " starting IPO of " << call << "\n";
 
   auto a = fn.arg_begin();
-  for (size_t i = 0; i < call.getNumArgOperands(); i++) {
+  for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
     auto dt = interprocedural.query(a, typeInfo);
     updateAnalysis(call.getArgOperand(i), dt, &call);
-    a++;
+    ++a;
   }
 
   TypeTree vd = interprocedural.getReturnAnalysis(typeInfo);
@@ -2037,7 +2037,7 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
   auto q = query(val, fn).Data0();
   auto dt = q[{0}];
   dt.mergeIn(q[{-1}], pointerIntSame);
-  for (size_t i = 1; i < num; i++) {
+  for (size_t i = 1; i < num; ++i) {
     dt.mergeIn(q[{(int)i}], pointerIntSame);
   }
 

@@ -170,7 +170,7 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg,
       return DIFFE_TYPE::CONSTANT;
 
     auto ty = DIFFE_TYPE::CONSTANT;
-    for (unsigned i = 0; i < st->getNumElements(); i++) {
+    for (unsigned i = 0; i < st->getNumElements(); ++i) {
       switch (whatType(st->getElementType(i), seen)) {
       case DIFFE_TYPE::OUT_DIFF:
         switch (ty) {
@@ -442,7 +442,7 @@ allPredecessorsOf(llvm::Instruction *inst,
     done.insert(BB);
 
     llvm::BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend();
-    for (; I != E; I++) {
+    for (; I != E; ++I) {
       if (f(&*I))
         return;
       if (&*I == inst)

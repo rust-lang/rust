@@ -406,7 +406,7 @@ static inline TypeTree parseTBAA(TBAAStructTypeNode AccessType,
   // llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
 
   TypeTree dat(BaseType::Pointer);
-  for (unsigned i = 0; i < AccessType.getNumFields(); i++) {
+  for (unsigned i = 0; i < AccessType.getNumFields(); ++i) {
     auto at = AccessType.getFieldType(i);
     auto start = AccessType.getFieldOffset(i);
     // llvm::errs() << " f at i: " << i << " at: " << start << " fd: " <<

@@ -101,7 +101,7 @@ public:
         if (erased.count(inst_orig))
           continue;
         auto inst = gutils->getNewFromOriginal(inst_orig);
-        for (unsigned i = 0; i < inst->getNumOperands(); i++) {
+        for (unsigned i = 0; i < inst->getNumOperands(); ++i) {
           if (inst->getOperand(i) == iload) {
             inst->setOperand(i, pn);
           }
@@ -574,7 +574,7 @@ public:
             ->addToDiffeIndexed(SVI.getOperand(opnum),
                                 Builder2.CreateExtractElement(loaded, instidx),
                                 sv, Builder2);
-      instidx++;
+      ++instidx;
     }
     setDiffe(&SVI, Constant::getNullValue(SVI.getType()), Builder2);
   }
@@ -617,7 +617,7 @@ public:
 
     auto st = cast<StructType>(IVI.getType());
     bool hasNonPointer = false;
-    for (unsigned i = 0; i < st->getNumElements(); i++) {
+    for (unsigned i = 0; i < st->getNumElements(); ++i) {
       if (!st->getElementType(i)->isPointerTy()) {
         hasNonPointer = true;
       }
@@ -1104,7 +1104,7 @@ public:
       unsigned nextStart = size;
 
       auto dt = vd[{-1}];
-      for (size_t i = start; i < size; i++) {
+      for (size_t i = start; i < size; ++i) {
         bool legal = true;
         dt.legalMergeIn(vd[{(int)i}], /*pointerIntSame*/ true, legal);
         if (!legal) {
@@ -1168,7 +1168,7 @@ public:
     eraseIfUnused(II);
     Value *orig_ops[II.getNumOperands()];
 
-    for (unsigned i = 0; i < II.getNumOperands(); i++) {
+    for (unsigned i = 0; i < II.getNumOperands(); ++i) {
       orig_ops[i] = II.getOperand(i);
     }
 
@@ -1799,7 +1799,7 @@ public:
     std::vector<Instruction *> postCreate;
     std::vector<Instruction *> userReplace;
 
-    for (unsigned i = 0; i < orig->getNumArgOperands(); i++) {
+    for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
 
       auto argi = gutils->getNewFromOriginal(orig->getArgOperand(i));
 
@@ -1894,7 +1894,7 @@ public:
             std::pair<Argument *, std::set<int64_t>>(
                 &arg, TR.knownIntegralValues(orig->getArgOperand(argnum))));
 
-        argnum++;
+        ++argnum;
       }
       nextTypeInfo.second = TR.query(orig);
     }
@@ -2016,7 +2016,7 @@ public:
             llvm::errs() << " trying to call " << *newcalled << " " << *FT
                          << "\n";
 
-          for (unsigned i = 0; i < pre_args.size(); i++) {
+          for (unsigned i = 0; i < pre_args.size(); ++i) {
             assert(pre_args[i]);
             assert(pre_args[i]->getType());
             llvm::errs() << "args[" << i << "] = " << *pre_args[i]
@@ -2029,7 +2029,7 @@ public:
         if (pre_args.size() != FT->getNumParams())
           goto badaugmentedfn;
 
-        for (unsigned i = 0; i < pre_args.size(); i++) {
+        for (unsigned i = 0; i < pre_args.size(); ++i) {
           if (pre_args[i]->getType() != FT->getParamType(i))
             goto badaugmentedfn;
         }
@@ -2308,7 +2308,7 @@ public:
       else
         llvm::errs() << " trying to call " << *newcalled << " " << *FT << "\n";
 
-      for (unsigned i = 0; i < args.size(); i++) {
+      for (unsigned i = 0; i < args.size(); ++i) {
         assert(args[i]);
         assert(args[i]->getType());
         llvm::errs() << "args[" << i << "] = " << *args[i]
@@ -2321,7 +2321,7 @@ public:
     if (args.size() != FT->getNumParams())
       goto badfn;
 
-    for (unsigned i = 0; i < args.size(); i++) {
+    for (unsigned i = 0; i < args.size(); ++i) {
       if (args[i]->getType() != FT->getParamType(i))
         goto badfn;
     }
@@ -2332,12 +2332,12 @@ public:
 
     unsigned structidx = retUsed ? 1 : 0;
     if (subdretptr)
-      structidx++;
+      ++structidx;
 
-    for (unsigned i = 0; i < orig->getNumArgOperands(); i++) {
+    for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
       if (argsInverted[i] == DIFFE_TYPE::OUT_DIFF) {
         Value *diffeadd = Builder2.CreateExtractValue(diffes, {structidx});
-        structidx++;
+        ++structidx;
         addToDiffe(orig->getArgOperand(i), diffeadd, Builder2,
                    TR.intType(orig->getArgOperand(i), false).isFloat());
       }
@@ -2405,7 +2405,7 @@ public:
         bool fromStore = false;
         for (auto &pair : *replacedReturns) {
           if (pair.second == a) {
-            for (unsigned i = 0; i < a->getNumOperands(); i++) {
+            for (unsigned i = 0; i < a->getNumOperands(); ++i) {
               a->setOperand(i, gutils->unwrapM(a->getOperand(i), Builder2, mapp,
                                                UnwrapMode::LegalFullUnwrap));
             }
@@ -2420,7 +2420,7 @@ public:
 
         auto orig_a = gutils->isOriginal(a);
         if (orig_a) {
-          for (unsigned i = 0; i < a->getNumOperands(); i++) {
+          for (unsigned i = 0; i < a->getNumOperands(); ++i) {
             a->setOperand(i,
                           gutils->unwrapM(
                               gutils->getNewFromOriginal(orig_a->getOperand(i)),
