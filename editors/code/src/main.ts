@@ -377,7 +377,6 @@ async function performDownloadWithRetryDialog<T>(downloadFunc: () => Promise<T>,
             throw e;
         };
     }
-
 }
 
 async function queryForGithubToken(state: PersistentState): Promise<void> {
