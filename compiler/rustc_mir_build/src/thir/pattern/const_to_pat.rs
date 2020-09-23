@@ -408,7 +408,25 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // this pattern to a `PartialEq::eq` comparison and `PartialEq::eq` takes a
                 // reference. This makes the rest of the matching logic simpler as it doesn't have
                 // to figure out how to get a reference again.
-                ty::Adt(..) if !self.type_marked_structural(pointee_ty) => {
+                ty::Adt(adt_def, _) if !self.type_marked_structural(pointee_ty) => {
+                    if self.include_lint_checks
+                        && !self.saw_const_match_error.get()
+                        && !self.saw_const_match_lint.get()
+                    {
+                        self.saw_const_match_lint.set(true);
+                        let path = self.tcx().def_path_str(adt_def.did);
+                        let msg = format!(
+                            "to use a constant of type `{}` in a pattern, \
+                             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                            path, path,
+                        );
+                        self.tcx().struct_span_lint_hir(
+                            lint::builtin::INDIRECT_STRUCTURAL_MATCH,
+                            self.id,
+                            self.span,
+                            |lint| lint.build(&msg).emit(),
+                        );
+                    }
                     PatKind::Constant { value: cv }
                 }
                 // All other references are converted into deref patterns and then recursively

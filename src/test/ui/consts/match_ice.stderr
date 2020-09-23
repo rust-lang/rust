@@ -1,12 +1,12 @@
-warning: to use a constant of type `&S` in a pattern, the constant's initializer must be trivial or all types in the constant must be annotated with `#[derive(PartialEq, Eq)]`
+warning: to use a constant of type `S` in a pattern, `S` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/match_ice.rs:11:9
    |
 LL |         C => {}
    |         ^
    |
-   = note: `#[warn(nontrivial_structural_match)]` on by default
+   = note: `#[warn(indirect_structural_match)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 
 error: to use a constant of type `S` in a pattern, `S` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/match_ice.rs:11:9
