@@ -288,8 +288,21 @@ impl OptimizationFinder<'b, 'tcx> {
                                         }
                                     }
 
-                                    // We need to make sure that the Ne we are going to insert comes before the
-                                    // StorageDeads so we want to swap the StorageDead closest to Eq with Ne.
+                                    // Recall that we are optimizing a sequence that looks like
+                                    // this:
+                                    // _4 = Eq(move _5, move _6);
+                                    // StorageDead(_5);
+                                    // StorageDead(_6);
+                                    // _3 = Not(move _4);
+                                    //
+                                    // If we do a naive replace of Not -> Ne, we up with this:
+                                    // StorageDead(_5);
+                                    // StorageDead(_6);
+                                    // _3 = Ne(move _5, move _6);
+                                    //
+                                    // Notice that `_5` and `_6` are marked dead before being used.
+                                    // To combat this we want to swap Ne with the StorageDead
+                                    // closest to Eq, i.e `StorageDead(_5)` in this example.
                                     let storage_dead_to_swap =
                                         seen_storage_deads.last().map(|(_, idx)| *idx);
 
