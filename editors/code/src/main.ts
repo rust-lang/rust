@@ -393,8 +393,13 @@ async function queryForGithubToken(state: PersistentState): Promise<void> {
     };
 
     const newToken = await vscode.window.showInputBox(githubTokenOptions);
-    if (newToken) {
-        log.info("Storing new github token");
-        await state.updateGithubToken(newToken);
+    if (newToken !== undefined) {
+        if (newToken === "") {
+            log.info("Clearing github token");
+            await state.updateGithubToken(undefined);
+        } else {
+            log.info("Storing new github token");
+            await state.updateGithubToken(newToken);
+        }
     }
 }
