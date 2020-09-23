@@ -59,7 +59,7 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
         libc::abort();
     }
 
-    #[cfg(any(unix, target_os = "switch"))]
+    #[cfg(target_os = "switch")]
     unsafe fn abort() -> ! {
         #[link_name = "\u{1}_ZN2nn2os11SleepThreadENS_8TimeSpanE"]
         extern "C" { fn sleep(amt: TimeSpan); }

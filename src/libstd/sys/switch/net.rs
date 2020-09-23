@@ -72,7 +72,6 @@ impl Socket {
         unsafe {
             let mut fds = [0, 0];
 
-            // Like above, see if we can set cloexec atomically
             cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr()))?;
             let a = FileDesc::new(fds[0]);
             let b = FileDesc::new(fds[1]);
@@ -150,7 +149,6 @@ impl Socket {
     }
 
     pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t) -> io::Result<Socket> {
-
         let fd = cvt_r(|| unsafe { libc::accept(self.0.raw(), storage, len) })?;
         let fd = FileDesc::new(fd);
         fd.set_cloexec()?;
@@ -232,7 +230,6 @@ impl Socket {
                 } else {
                     dur.as_secs() as libc::time_t
                 };
-
                 let mut timeout = libc::timeval {
                     tv_sec: secs,
                     tv_usec: dur.subsec_micros() as libc::suseconds_t,

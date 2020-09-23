@@ -150,41 +150,8 @@ impl FileDesc {
         unsafe { Ok((cvt(libc::fcntl(self.fd, libc::F_GETFD))? & libc::FD_CLOEXEC) != 0) }
     }
 
-    #[cfg(not(any(
-        target_env = "newlib",
-        target_os = "solaris",
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        target_os = "l4re",
-        target_os = "linux",
-        target_os = "haiku",
-        target_os = "redox"
-    )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
-        unsafe {
-            cvt(libc::ioctl(self.fd, libc::FIOCLEX))?;
-            Ok(())
-        }
-    }
-    #[cfg(any(
-        target_env = "newlib",
-        target_os = "solaris",
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        target_os = "l4re",
-        target_os = "linux",
-        target_os = "haiku",
-        target_os = "redox"
-    ))]
-    pub fn set_cloexec(&self) -> io::Result<()> {
-        unsafe {
-            let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;
-            let new = previous | libc::FD_CLOEXEC;
-            if new != previous {
-                cvt(libc::fcntl(self.fd, libc::F_SETFD, new))?;
-            }
-            Ok(())
-        }
+        Ok(())
     }
 
     #[cfg(target_os = "linux")]
