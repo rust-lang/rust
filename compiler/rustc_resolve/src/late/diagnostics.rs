@@ -19,7 +19,7 @@ use rustc_session::config::nightly_options;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 
 use tracing::debug;
 
@@ -446,12 +446,58 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             err.span_label(base_span, fallback_label);
 
             if let PathSource::Trait(AliasPossibility::Maybe) = source {
-                if let Some([start, .., end]) = self.diagnostic_metadata.current_trait_object {
-                    err.span_help(
-                        start.span().to(end.span()),
-                        "`+` can be used to constrain a \"trait object\" type with lifetimes or \
-                         auto-traits, structs and enums can't be bound in that way",
+                if let Some(bounds @ [_, .., _]) = self.diagnostic_metadata.current_trait_object {
+                    let spans: Vec<Span> = bounds
+                        .iter()
+                        .map(|bound| bound.span())
+                        .filter(|&sp| sp != base_span)
+                        .collect();
+
+                    let start_span = bounds.iter().map(|bound| bound.span()).next().unwrap();
+                    // `end_span` is the end of the poly trait ref (Foo + 'baz + Bar><)
+                    let end_span = bounds.iter().map(|bound| bound.span()).last().unwrap();
+                    // `last_bound_span` is the last bound of the poly trait ref (Foo + >'baz< + Bar)
+                    let last_bound_span = spans.last().cloned().unwrap();
+                    let mut multi_span: MultiSpan = spans.clone().into();
+                    for sp in spans {
+                        let msg = if sp == last_bound_span {
+                            format!(
+                                "...because of {} bound{}",
+                                if bounds.len() <= 2 { "this" } else { "these" },
+                                if bounds.len() <= 2 { "" } else { "s" },
+                            )
+                        } else {
+                            String::new()
+                        };
+                        multi_span.push_span_label(sp, msg);
+                    }
+                    multi_span.push_span_label(
+                        base_span,
+                        "expected this type to be a trait...".to_string(),
                     );
+                    err.span_help(
+                        multi_span,
+                        "`+` is used to constrain a \"trait object\" type with lifetimes or \
+                         auto-traits; structs and enums can't be bound in that way",
+                    );
+                    if bounds.iter().all(|bound| match bound {
+                        ast::GenericBound::Outlives(_) => true,
+                        ast::GenericBound::Trait(tr, _) => tr.span == base_span,
+                    }) {
+                        let mut sugg = vec![];
+                        if base_span != start_span {
+                            sugg.push((start_span.until(base_span), String::new()));
+                        }
+                        if base_span != end_span {
+                            sugg.push((base_span.shrink_to_hi().to(end_span), String::new()));
+                        }
+
+                        err.multipart_suggestion(
+                            "if you meant to use a type and not a trait here, remove the bounds",
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
             }
             match self.diagnostic_metadata.current_let_binding {
