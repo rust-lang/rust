@@ -53,7 +53,14 @@ pub fn write_output_file(
 ) -> Result<(), FatalError> {
     unsafe {
         let output_c = path_to_c_string(output);
-        let result = llvm::LLVMRustWriteOutputFile(target, pm, m, output_c.as_ptr(), file_type);
+        let result = llvm::LLVMRustWriteOutputFile(
+            target,
+            pm,
+            m,
+            output_c.as_ptr(),
+            std::ptr::null(),
+            file_type,
+        );
         result.into_result().map_err(|()| {
             let msg = format!("could not write output to {}", output.display());
             llvm_err(handler, &msg)
@@ -164,6 +171,7 @@ pub fn target_machine_factory(
         !sess.opts.debugging_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
 
     Arc::new(move || {
+        let split_dwarf_file = std::ptr::null();
         let tm = unsafe {
             llvm::LLVMRustCreateTargetMachine(
                 triple.as_ptr(),
@@ -182,6 +190,7 @@ pub fn target_machine_factory(
                 emit_stack_size_section,
                 relax_elf_relocations,
                 use_init_array,
+                split_dwarf_file,
             )
         };
 

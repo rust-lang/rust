@@ -1039,6 +1039,8 @@ pub fn compile_unit_metadata(
             split_name.as_ptr().cast(),
             split_name.len(),
             kind,
+            0,
+            true,
         );
 
         if tcx.sess.opts.debugging_opts.profile {
