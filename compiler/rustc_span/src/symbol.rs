@@ -1071,6 +1071,7 @@ symbols! {
         target_feature,
         target_feature_11,
         target_has_atomic,
+        target_has_atomic_equal_alignment,
         target_has_atomic_load_store,
         target_os,
         target_pointer_width,
