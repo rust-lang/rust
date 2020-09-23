@@ -1,11 +1,28 @@
-/*
- * GradientUtils.h - Gradient Utility data structures and functions
- *
- * Copyright (C) 2020 William S. Moses (enzyme@wsmoses.com) - All Rights
- * Reserved
- *
- * For commercial use of this code please contact the author(s) above.
- */
+//===- GradientUtils.h - Helper class and utilities for AD       ---------===//
+//
+//                             Enzyme Project
+//
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// If using this code in an academic setting, please cite the following:
+// @misc{enzymeGithub,
+//  author = {William S. Moses and Valentin Churavy},
+//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
+//  year = {2020},
+//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
+//  note = {commit xxxxxxx}
+// }
+//
+//===----------------------------------------------------------------------===//
+//
+// This file declares two helper classes GradientUtils and subclass
+// DiffeGradientUtils. These classes contain utilities for managing the cache,
+// recomputing statements, and in the case of DiffeGradientUtils, managing
+// adjoint values and shadow pointers.
+//
+//===----------------------------------------------------------------------===//
 
 #ifndef ENZYME_GUTILS_H_
 #define ENZYME_GUTILS_H_

@@ -1,12 +1,31 @@
-/*
- * EnzymeLogic.cpp
- *
- * Copyright (C) 2020 William S. Moses (enzyme@wsmoses.com) - All Rights
- * Reserved
- *
- * For commercial use of this code please contact the author(s) above.
- */
-
+//===- EnzymeLogic.cpp - Implementation of forward and reverse pass generation//
+//
+//                             Enzyme Project
+//
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// If using this code in an academic setting, please cite the following:
+// @misc{enzymeGithub,
+//  author = {William S. Moses and Valentin Churavy},
+//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
+//  year = {2020},
+//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
+//  note = {commit xxxxxxx}
+// }
+//
+//===----------------------------------------------------------------------===//
+//
+// This file defines two functions CreatePrimalAndGradient and
+// CreateAugmentedPrimal. CreatePrimalAndGradient takes a function, known
+// TypeResults of the calling context, known activity analysis of the
+// arguments and a bool `topLevel`. It creates a corresponding gradient
+// function, computing the forward pass as well if at `topLevel`.
+// CreateAugmentedPrimal takes similar arguments and creates an augmented
+// forward pass.
+//
+//===----------------------------------------------------------------------===//
 #include "AdjointGenerator.h"
 
 #include "SCEV/ScalarEvolutionExpander.h"

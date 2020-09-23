@@ -1,11 +1,32 @@
-/*
- * TypeTree.h - Mapping of memory offsets to underlying type
- *
- * Copyright (C) 2020 William S. Moses (enzyme@wsmoses.com) - All Rights
- * Reserved
- *
- * For commercial use of this code please contact the author(s) above.
- */
+//===- TypeTree.cpp - Declaration of Type Analysis Type Trees   -----------===//
+//
+//                             Enzyme Project
+//
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// If using this code in an academic setting, please cite the following:
+// @misc{enzymeGithub,
+//  author = {William S. Moses and Valentin Churavy},
+//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
+//  year = {2020},
+//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
+//  note = {commit xxxxxxx}
+// }
+//
+//===----------------------------------------------------------------------===//
+//
+// This file contains the declaration of TypeTrees -- a class
+// representing all of the underlying types of a particular LLVM value. This
+// consists of a map of memory offsets to an underlying ConcreteType. This
+// permits TypeTrees to represent distinct underlying types at different
+// locations. Presently, TypeTree's have both a fixed depth of memory lookups
+// and a maximum offset to ensure that Type Analysis eventually terminates.
+// In the future this should be modified to better represent recursive types
+// rather than limiting the depth.
+//
+//===----------------------------------------------------------------------===//
 #ifndef ENZYME_TYPE_ANALYSIS_TYPE_TREE_H
 #define ENZYME_TYPE_ANALYSIS_TYPE_TREE_H 1
 

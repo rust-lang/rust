@@ -1,12 +1,26 @@
-/*
- * TypeAnalysisPrinter.cpp - Lower Enzyme calls
- *
- * Copyright (C) 2020 William S. Moses (enzyme@wsmoses.com) - All Rights
- * Reserved
- *
- * For commercial use of this code please contact the author(s) above.
- */
-
+//===- TypeAnalysisPrinter.cpp - Printer utility pass for Type Analysis ----===//
+//
+//                             Enzyme Project
+//
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// If using this code in an academic setting, please cite the following:
+// @misc{enzymeGithub,
+//  author = {William S. Moses and Valentin Churavy},
+//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
+//  year = {2020},
+//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
+//  note = {commit xxxxxxx}
+// }
+//
+//===----------------------------------------------------------------------===//
+//
+// This file contains a utility LLVM pass for printing derived Type Analysis
+// results of a given function.
+//
+//===----------------------------------------------------------------------===//
 #include <llvm/Config/llvm-config.h>
 
 #include "llvm/ADT/SmallVector.h"

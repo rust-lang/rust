@@ -1,12 +1,26 @@
-/*
- * Utils.cpp
- *
- * Copyright (C) 2020 William S. Moses (enzyme@wsmoses.com) - All Rights
- * Reserved
- *
- * For commercial use of this code please contact the author(s) above.
- */
-
+//===- Utils.cpp - Definition of miscellaneous utilities ------------------===//
+//
+//                             Enzyme Project
+//
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// If using this code in an academic setting, please cite the following:
+// @misc{enzymeGithub,
+//  author = {William S. Moses and Valentin Churavy},
+//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
+//  year = {2020},
+//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
+//  note = {commit xxxxxxx}
+// }
+//
+//===----------------------------------------------------------------------===//
+//
+// This file defines miscellaneous utilities that are used as part of the
+// AD process.
+//
+//===----------------------------------------------------------------------===//
 #include "Utils.h"
 
 #include "llvm/IR/BasicBlock.h"

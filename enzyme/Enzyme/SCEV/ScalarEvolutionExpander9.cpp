@@ -5,6 +5,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+// This file has been modified for Enzyme
+//===----------------------------------------------------------------------===//
 //
 // This file contains the implementation of the scalar evolution expander,
 // which is used to generate the code corresponding to a given scalar evolution

@@ -1,3 +1,27 @@
+//===- DifferentialUseAnalysis.h - Determine values needed in reverse pass-===//
+//
+//                             Enzyme Project
+//
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// If using this code in an academic setting, please cite the following:
+// @misc{enzymeGithub,
+//  author = {William S. Moses and Valentin Churavy},
+//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
+//  year = {2020},
+//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
+//  note = {commit xxxxxxx}
+// }
+//
+//===----------------------------------------------------------------------===//
+//
+// This file contains the declaration of Differential USe Analysis -- an
+// AD-specific analysis that deduces if a given value is needed in the reverse
+// pass.
+//
+//===----------------------------------------------------------------------===//
 #include "GradientUtils.h"
 
 // Determine if a value is needed in the reverse pass. We only use this logic in
