@@ -316,7 +316,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     printer.region_highlight_mode = highlight;
                 }
                 let _ = ct.print(printer);
-                (s, None, "<TODO>".into(), None, None)
+                (s, None, "value".into(), None, None)
             }
             GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
         }
