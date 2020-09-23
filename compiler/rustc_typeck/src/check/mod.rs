@@ -672,7 +672,7 @@ fn binding_opaque_type_cycle_error(
 ) {
     let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
     err.span_label(span, "cannot resolve opaque type");
-    // Find the the owner that declared this `impl Trait` type.
+    // Find the owner that declared this `impl Trait` type.
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let mut prev_hir_id = hir_id;
     let mut hir_id = tcx.hir().get_parent_node(hir_id);
