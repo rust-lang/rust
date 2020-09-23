@@ -313,6 +313,9 @@ impl<'a> Parser<'a> {
             let pat = self.parse_pat_with_range_pat(false, None)?;
             self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_token.span));
             PatKind::Box(pat)
+        } else if self.check_inline_const() {
+            // Parse `const pat`
+            PatKind::Lit(self.parse_const_expr(lo.to(self.token.span))?)
         } else if self.can_be_ident_pat() {
             // Parse `ident @ pat`
             // This can give false positives and parse nullary enums,
