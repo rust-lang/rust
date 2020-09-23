@@ -745,9 +745,9 @@ impl hash::Hash for SocketAddrV6 {
 ///    `(`[`Ipv4Addr`]`, `[`u16`]`)`, `(`[`Ipv6Addr`]`, `[`u16`]`)`:
 ///    [`to_socket_addrs`] constructs a [`SocketAddr`] trivially.
 ///
-///  * `(`[`&str`]`, `[`u16`]`)`: the string should be either a string representation
+///  * `(`[`&str`]`, `[`u16`]`)`: [`&str`] should be either a string representation
 ///    of an [`IpAddr`] address as expected by [`FromStr`] implementation or a host
-///    name.
+///    name. [`u16`] is the port number.
 ///
 ///  * [`&str`]: the string should be either a string representation of a
 ///    [`SocketAddr`] as expected by its [`FromStr`] implementation or a string like
