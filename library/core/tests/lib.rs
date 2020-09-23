@@ -26,7 +26,7 @@
 #![feature(pattern)]
 #![feature(raw)]
 #![feature(sort_internals)]
-#![feature(slice_partition_at_index)]
+#![feature(slice_select_nth_unstable)]
 #![feature(min_specialization)]
 #![feature(step_trait)]
 #![feature(step_trait_ext)]

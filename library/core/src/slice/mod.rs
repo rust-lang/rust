@@ -2055,12 +2055,12 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_partition_at_index)]
+    /// #![feature(slice_select_nth_unstable)]
     ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// // Find the median
-    /// v.partition_at_index(2);
+    /// v.select_nth_unstable(2);
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
@@ -2069,14 +2069,14 @@ impl<T> [T] {
     ///         v == [-3, -5, 1, 4, 2] ||
     ///         v == [-5, -3, 1, 4, 2]);
     /// ```
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[unstable(feature = "slice_select_nth_unstable", issue = "55300")]
     #[inline]
-    pub fn partition_at_index(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
+    pub fn select_nth_unstable(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
     where
         T: Ord,
     {
         let mut f = |a: &T, b: &T| a.lt(b);
-        sort::partition_at_index(self, index, &mut f)
+        sort::select_nth_unstable(self, index, &mut f)
     }
 
     /// Reorder the slice with a comparator function such that the element at `index` is at its
@@ -2105,12 +2105,12 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_partition_at_index)]
+    /// #![feature(slice_select_nth_unstable)]
     ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// // Find the median as if the slice were sorted in descending order.
-    /// v.partition_at_index_by(2, |a, b| b.cmp(a));
+    /// v.select_nth_unstable_by(2, |a, b| b.cmp(a));
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
@@ -2119,9 +2119,9 @@ impl<T> [T] {
     ///         v == [4, 2, 1, -5, -3] ||
     ///         v == [4, 2, 1, -3, -5]);
     /// ```
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[unstable(feature = "slice_select_nth_unstable", issue = "55300")]
     #[inline]
-    pub fn partition_at_index_by<F>(
+    pub fn select_nth_unstable_by<F>(
         &mut self,
         index: usize,
         mut compare: F,
@@ -2130,7 +2130,7 @@ impl<T> [T] {
         F: FnMut(&T, &T) -> Ordering,
     {
         let mut f = |a: &T, b: &T| compare(a, b) == Less;
-        sort::partition_at_index(self, index, &mut f)
+        sort::select_nth_unstable(self, index, &mut f)
     }
 
     /// Reorder the slice with a key extraction function such that the element at `index` is at its
@@ -2159,12 +2159,12 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_partition_at_index)]
+    /// #![feature(slice_select_nth_unstable)]
     ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// // Return the median as if the array were sorted according to absolute value.
-    /// v.partition_at_index_by_key(2, |a| a.abs());
+    /// v.select_nth_unstable_by_key(2, |a| a.abs());
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
@@ -2173,9 +2173,9 @@ impl<T> [T] {
     ///         v == [2, 1, -3, 4, -5] ||
     ///         v == [2, 1, -3, -5, 4]);
     /// ```
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[unstable(feature = "slice_select_nth_unstable", issue = "55300")]
     #[inline]
-    pub fn partition_at_index_by_key<K, F>(
+    pub fn select_nth_unstable_by_key<K, F>(
         &mut self,
         index: usize,
         mut f: F,
@@ -2185,7 +2185,7 @@ impl<T> [T] {
         K: Ord,
     {
         let mut g = |a: &T, b: &T| f(a).lt(&f(b));
-        sort::partition_at_index(self, index, &mut g)
+        sort::select_nth_unstable(self, index, &mut g)
     }
 
     /// Moves all consecutive repeated elements to the end of the slice according to the

@@ -768,7 +768,7 @@ where
     recurse(v, &mut is_less, None, limit);
 }
 
-fn partition_at_index_loop<'a, T, F>(
+fn select_nth_unstable_loop<'a, T, F>(
     mut v: &'a mut [T],
     mut index: usize,
     is_less: &mut F,
@@ -828,7 +828,7 @@ fn partition_at_index_loop<'a, T, F>(
     }
 }
 
-pub fn partition_at_index<T, F>(
+pub fn select_nth_unstable<T, F>(
     v: &mut [T],
     index: usize,
     mut is_less: F,
@@ -840,7 +840,7 @@ where
     use cmp::Ordering::Less;
 
     if index >= v.len() {
-        panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
+        panic!("select_nth_unstable index {} greater than length of slice {}", index, v.len());
     }
 
     if mem::size_of::<T>() == 0 {
@@ -864,7 +864,7 @@ where
             .unwrap();
         v.swap(min_index, index);
     } else {
-        partition_at_index_loop(v, index, &mut is_less, None);
+        select_nth_unstable_loop(v, index, &mut is_less, None);
     }
 
     let (left, right) = v.split_at_mut(index);
