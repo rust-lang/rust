@@ -3,6 +3,12 @@ error[E0404]: expected trait, found struct `Foo`
    |
 LL | fn foo(_x: Box<Foo + Send>) { }
    |                ^^^ not a trait
+   |
+help: `+` can be used to constrain a "trait object" type with lifetimes or auto-traits, structs and enums can't be bound in that way
+  --> $DIR/trait-bounds-not-on-struct.rs:5:16
+   |
+LL | fn foo(_x: Box<Foo + Send>) { }
+   |                ^^^^^^^^^^
 
 error[E0404]: expected trait, found struct `Vec`
   --> $DIR/trait-bounds-not-on-struct.rs:7:21

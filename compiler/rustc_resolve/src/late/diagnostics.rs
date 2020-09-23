@@ -1,6 +1,6 @@
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::lifetimes::{ElisionFailureInfo, LifetimeContext};
-use crate::late::{LateResolutionVisitor, RibKind};
+use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
 use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
@@ -445,6 +445,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Fallback label.
             err.span_label(base_span, fallback_label);
 
+            if let PathSource::Trait(AliasPossibility::Maybe) = source {
+                if let Some([start, .., end]) = self.diagnostic_metadata.current_trait_object {
+                    err.span_help(
+                        start.span().to(end.span()),
+                        "`+` can be used to constrain a \"trait object\" type with lifetimes or \
+                         auto-traits, structs and enums can't be bound in that way",
+                    );
+                }
+            }
             match self.diagnostic_metadata.current_let_binding {
                 Some((pat_sp, Some(ty_sp), None)) if ty_sp.contains(base_span) && could_be_expr => {
                     err.span_suggestion_short(
