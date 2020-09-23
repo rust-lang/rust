@@ -95,6 +95,10 @@ async function tryActivate(context: vscode.ExtensionContext) {
         await activate(context).catch(log.error);
     });
 
+    ctx.registerCommand('updateGithubToken', ctx => async () => {
+        await queryForGithubToken(new PersistentState(ctx.globalState));
+    });
+
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('memoryUsage', commands.memoryUsage);
     ctx.registerCommand('reloadWorkspace', commands.reloadWorkspace);
