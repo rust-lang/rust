@@ -475,10 +475,6 @@ impl Step for Rustc {
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old librustc. This may not behave well.");
             builder.info("Warning: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
-            builder.info(
-                "Warning: Please file a GitHub issue if `--keep-stage-std` doesn't work for you.",
-            );
-            builder.info("Warning: It may replace `--keep-stage` in the future");
             builder.ensure(RustcLink { compiler, target_compiler: compiler, target });
             return;
         }
