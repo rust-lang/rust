@@ -995,7 +995,11 @@ pub fn compile_unit_metadata(
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let work_dir = tcx.sess.working_dir.0.to_string_lossy();
     let flags = "\0";
-    let split_name = "";
+    let split_name = tcx
+        .output_filenames(LOCAL_CRATE)
+        .split_dwarf_file(tcx.sess.opts.debugging_opts.split_dwarf, Some(codegen_unit_name))
+        .unwrap_or_default();
+    let split_name = split_name.to_str().unwrap();
 
     // FIXME(#60020):
     //
@@ -1040,7 +1044,7 @@ pub fn compile_unit_metadata(
             split_name.len(),
             kind,
             0,
-            true,
+            tcx.sess.opts.debugging_opts.split_dwarf_inlining,
         );
 
         if tcx.sess.opts.debugging_opts.profile {

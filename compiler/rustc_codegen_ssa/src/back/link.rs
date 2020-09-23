@@ -21,7 +21,9 @@ use super::archive::ArchiveBuilder;
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::rpath::{self, RPathConfig};
-use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILENAME};
+use crate::{
+    looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, METADATA_FILENAME,
+};
 
 use cc::windows_registry;
 use tempfile::Builder as TempFileBuilder;
@@ -96,6 +98,9 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                         path.as_ref(),
                         target_cpu,
                     );
+                    if sess.opts.debugging_opts.split_dwarf == config::SplitDwarfKind::Split {
+                        link_dwarf_object(sess, &out_filename);
+                    }
                 }
             }
             if sess.opts.json_artifact_notifications {
@@ -107,22 +112,30 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     // Remove the temporary object file and metadata if we aren't saving temps
     sess.time("link_binary_remove_temps", || {
         if !sess.opts.cg.save_temps {
+            let remove_temps_from_module = |module: &CompiledModule| {
+                if let Some(ref obj) = module.object {
+                    remove(sess, obj);
+                }
+
+                if let Some(ref obj) = module.dwarf_object {
+                    remove(sess, obj);
+                }
+            };
+
             if sess.opts.output_types.should_codegen()
                 && !preserve_objects_for_their_debuginfo(sess)
             {
-                for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
-                    remove(sess, obj);
+                for module in &codegen_results.modules {
+                    remove_temps_from_module(module);
                 }
             }
+
             if let Some(ref metadata_module) = codegen_results.metadata_module {
-                if let Some(ref obj) = metadata_module.object {
-                    remove(sess, obj);
-                }
+                remove_temps_from_module(metadata_module);
             }
+
             if let Some(ref allocator_module) = codegen_results.allocator_module {
-                if let Some(ref obj) = allocator_module.object {
-                    remove(sess, obj);
-                }
+                remove_temps_from_module(allocator_module);
             }
         }
     });
@@ -446,6 +459,69 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     }
 }
 
+fn escape_stdout_stderr_string(s: &[u8]) -> String {
+    str::from_utf8(s).map(|s| s.to_owned()).unwrap_or_else(|_| {
+        let mut x = "Non-UTF-8 output: ".to_string();
+        x.extend(s.iter().flat_map(|&b| ascii::escape_default(b)).map(char::from));
+        x
+    })
+}
+
+const LLVM_DWP_EXECUTABLE: &'static str = "rust-llvm-dwp";
+
+/// Invoke `llvm-dwp` (shipped alongside rustc) to link `dwo` files from Split DWARF into a `dwp`
+/// file.
+fn link_dwarf_object<'a>(sess: &'a Session, executable_out_filename: &Path) {
+    info!("preparing dwp to {}.dwp", executable_out_filename.to_str().unwrap());
+
+    let dwp_out_filename = executable_out_filename.with_extension("dwp");
+    let mut cmd = Command::new(LLVM_DWP_EXECUTABLE);
+    cmd.arg("-e");
+    cmd.arg(executable_out_filename);
+    cmd.arg("-o");
+    cmd.arg(&dwp_out_filename);
+
+    let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths(false);
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
+    }
+    let new_path = env::join_paths(new_path).unwrap();
+    cmd.env("PATH", new_path);
+
+    info!("{:?}", &cmd);
+    match sess.time("run_dwp", || cmd.output()) {
+        Ok(prog) if !prog.status.success() => {
+            sess.struct_err(&format!(
+                "linking dwarf objects with `{}` failed: {}",
+                LLVM_DWP_EXECUTABLE, prog.status
+            ))
+            .note(&format!("{:?}", &cmd))
+            .note(&escape_stdout_stderr_string(&prog.stdout))
+            .note(&escape_stdout_stderr_string(&prog.stderr))
+            .emit();
+            info!("linker stderr:\n{}", escape_stdout_stderr_string(&prog.stderr));
+            info!("linker stdout:\n{}", escape_stdout_stderr_string(&prog.stdout));
+        }
+        Ok(_) => {}
+        Err(e) => {
+            let dwp_not_found = e.kind() == io::ErrorKind::NotFound;
+            let mut err = if dwp_not_found {
+                sess.struct_err(&format!("linker `{}` not found", LLVM_DWP_EXECUTABLE))
+            } else {
+                sess.struct_err(&format!("could not exec the linker `{}`", LLVM_DWP_EXECUTABLE))
+            };
+
+            err.note(&e.to_string());
+
+            if !dwp_not_found {
+                err.note(&format!("{:?}", &cmd));
+            }
+
+            err.emit();
+        }
+    }
+}
+
 /// Create a dynamic library or executable.
 ///
 /// This will invoke the system linker/cc to create the resulting file. This links to all upstream
@@ -661,7 +737,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
                     prog.status
                 ))
                 .note(&format!("{:?}", &cmd))
-                .note(&escape_string(&output))
+                .note(&escape_stdout_stderr_string(&output))
                 .emit();
 
                 // If MSVC's `link.exe` was expected but the return code
@@ -714,8 +790,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
                 sess.abort_if_errors();
             }
-            info!("linker stderr:\n{}", escape_string(&prog.stderr));
-            info!("linker stdout:\n{}", escape_string(&prog.stdout));
+            info!("linker stderr:\n{}", escape_stdout_stderr_string(&prog.stderr));
+            info!("linker stdout:\n{}", escape_stdout_stderr_string(&prog.stdout));
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
