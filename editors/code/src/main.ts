@@ -194,11 +194,19 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
-    await download({
-        url: artifact.browser_download_url,
-        dest,
-        progressTitle: "Downloading rust-analyzer extension",
-    });
+
+    await performDownloadWithRetryDialog(async () => {
+        // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
+        await fs.unlink(dest).catch(err => {
+            if (err.code !== "ENOENT") throw err;
+        });
+
+        await download({
+            url: artifact.browser_download_url,
+            dest,
+            progressTitle: "Downloading rust-analyzer extension",
+        });
+    }, state);
 
     await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(dest));
     await fs.unlink(dest);
@@ -317,18 +325,20 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
-    // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
-    await fs.unlink(dest).catch(err => {
-        if (err.code !== "ENOENT") throw err;
-    });
+    await performDownloadWithRetryDialog(async () => {
+        // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
+        await fs.unlink(dest).catch(err => {
+            if (err.code !== "ENOENT") throw err;
+        });
 
-    await download({
-        url: artifact.browser_download_url,
-        dest,
-        progressTitle: "Downloading rust-analyzer server",
-        gunzip: true,
-        mode: 0o755
-    });
+        await download({
+            url: artifact.browser_download_url,
+            dest,
+            progressTitle: "Downloading rust-analyzer server",
+            gunzip: true,
+            mode: 0o755
+        });
+    }, state);
 
     // Patching executable if that's NixOS.
     if (await fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
@@ -372,10 +382,10 @@ async function queryForGithubToken(state: PersistentState): Promise<void> {
         password: true,
         prompt: `
             This dialog allows to store a Github authorization token.
-            The usage of an authorization token allows will increase the rate
+            The usage of an authorization token will increase the rate
             limit on the use of Github APIs and can thereby prevent getting
             throttled.
-            Auth tokens can be obtained at https://github.com/settings/tokens`,
+            Auth tokens can be created at https://github.com/settings/tokens`,
     };
 
     const newToken = await vscode.window.showInputBox(githubTokenOptions);
