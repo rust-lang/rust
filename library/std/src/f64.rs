@@ -742,12 +742,13 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f64::consts::E - 1.0;
+    /// let x = 1e-16_f64;
     ///
-    /// // ln(1 + (e - 1)) == ln(e) == 1
-    /// let abs_difference = (x.ln_1p() - 1.0).abs();
+    /// // for very small x, ln(1 + x) is approximately x - x^2 / 2
+    /// let approx = x - x * x / 2.0;
+    /// let abs_difference = (x.ln_1p() - approx).abs();
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert!(abs_difference < 1e-20);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
