@@ -110,7 +110,7 @@ symbols! {
     // called `sym::proc_macro` because then it's easy to mistakenly think it
     // represents "proc_macro".
     //
-    // As well as the symbols listed, there are symbols for the the strings
+    // As well as the symbols listed, there are symbols for the strings
     // "0", "1", ..., "9", which are accessible via `sym::integer`.
     //
     // The proc macro will abort if symbols are not in alphabetical order (as
@@ -1071,6 +1071,7 @@ symbols! {
         target_feature,
         target_feature_11,
         target_has_atomic,
+        target_has_atomic_equal_alignment,
         target_has_atomic_load_store,
         target_os,
         target_pointer_width,

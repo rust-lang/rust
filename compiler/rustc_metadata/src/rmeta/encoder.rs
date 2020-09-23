@@ -1117,7 +1117,7 @@ impl EncodeContext<'a, 'tcx> {
             }
 
             let abstract_const = self.tcx.mir_abstract_const(def_id);
-            if let Some(abstract_const) = abstract_const {
+            if let Ok(Some(abstract_const)) = abstract_const {
                 record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
             }
         }
@@ -1300,7 +1300,7 @@ impl EncodeContext<'a, 'tcx> {
         });
         record!(self.tables.visibility[def_id] <-
             ty::Visibility::from_hir(&item.vis, item.hir_id, tcx));
-        record!(self.tables.span[def_id] <- item.span);
+        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id] <- item.attrs);
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {

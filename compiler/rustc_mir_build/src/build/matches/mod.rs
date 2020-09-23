@@ -321,7 +321,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let target_block = self.cfg.start_new_block();
             let mut schedule_drops = true;
             // We keep a stack of all of the bindings and type asciptions
-            // from the the parent candidates that we visit, that also need to
+            // from the parent candidates that we visit, that also need to
             // be bound for each candidate.
             traverse_candidate(
                 candidate,

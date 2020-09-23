@@ -170,7 +170,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         Self::allocate_in(capacity, AllocInit::Zeroed, alloc)
     }
 
-    fn allocate_in(capacity: usize, init: AllocInit, mut alloc: A) -> Self {
+    fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
         if mem::size_of::<T>() == 0 {
             Self::new_in(alloc)
         } else {
