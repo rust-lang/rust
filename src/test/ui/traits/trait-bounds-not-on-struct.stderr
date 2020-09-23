@@ -144,7 +144,23 @@ error[E0404]: expected trait, found struct `Traitor`
 LL | trait Trait {}
    | ----------- similarly named trait `Trait` defined here
 LL | fn g() -> Traitor + 'static {
-   |           ^^^^^^^ help: a trait with a similar name exists: `Trait`
+   |           ^^^^^^^ not a trait
+   |
+help: `+` is used to constrain a "trait object" type with lifetimes or auto-traits; structs and enums can't be bound in that way
+  --> $DIR/trait-bounds-not-on-struct.rs:35:21
+   |
+LL | fn g() -> Traitor + 'static {
+   |           -------   ^^^^^^^ ...because of this bound
+   |           |
+   |           expected this type to be a trait...
+help: if you meant to use a type and not a trait here, remove the bounds
+   |
+LL | fn g() -> Traitor {
+   |                 --
+help: a trait with a similar name exists
+   |
+LL | fn g() -> Trait + 'static {
+   |           ^^^^^
 
 error: aborting due to 11 previous errors
 

@@ -439,14 +439,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
 
-        if !self.type_ascription_suggestion(&mut err, base_span)
-            && !self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span)
-        {
-            // Fallback label.
-            err.span_label(base_span, fallback_label);
-
+        if !self.type_ascription_suggestion(&mut err, base_span) {
+            let mut fallback = false;
             if let PathSource::Trait(AliasPossibility::Maybe) = source {
                 if let Some(bounds @ [_, .., _]) = self.diagnostic_metadata.current_trait_object {
+                    fallback = true;
                     let spans: Vec<Span> = bounds
                         .iter()
                         .map(|bound| bound.span())
@@ -500,16 +497,25 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                 }
             }
-            match self.diagnostic_metadata.current_let_binding {
-                Some((pat_sp, Some(ty_sp), None)) if ty_sp.contains(base_span) && could_be_expr => {
-                    err.span_suggestion_short(
-                        pat_sp.between(ty_sp),
-                        "use `=` if you meant to assign",
-                        " = ".to_string(),
-                        Applicability::MaybeIncorrect,
-                    );
+            if !self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span) {
+                fallback = true;
+                match self.diagnostic_metadata.current_let_binding {
+                    Some((pat_sp, Some(ty_sp), None))
+                        if ty_sp.contains(base_span) && could_be_expr =>
+                    {
+                        err.span_suggestion_short(
+                            pat_sp.between(ty_sp),
+                            "use `=` if you meant to assign",
+                            " = ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    _ => {}
                 }
-                _ => {}
+            }
+            if fallback {
+                // Fallback label.
+                err.span_label(base_span, fallback_label);
             }
         }
         (err, candidates)
