@@ -82,30 +82,30 @@ fn main() {
 
     let _ = STRUCT4;
     let _: Struct4<isize> = Struct4 { field: 1 };
-    //~^ use of deprecated item 'unstable_generic_param::Struct4': test [deprecated]
-    //~^^ use of deprecated item 'unstable_generic_param::Struct4': test [deprecated]
-    //~^^^ use of deprecated item 'unstable_generic_param::Struct4::field': test [deprecated]
+    //~^ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    //~^^ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    //~^^^ use of deprecated field `unstable_generic_param::Struct4::field`: test [deprecated]
     let _ = STRUCT4;
-    let _: Struct4 = STRUCT4; //~ use of deprecated item 'unstable_generic_param::Struct4': test [deprecated]
-    let _: Struct4<usize> = STRUCT4; //~ use of deprecated item 'unstable_generic_param::Struct4': test [deprecated]
+    let _: Struct4 = STRUCT4; //~ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    let _: Struct4<usize> = STRUCT4; //~ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
     let _: Struct4<isize> = Struct4 { field: 0 };
-    //~^ use of deprecated item 'unstable_generic_param::Struct4': test [deprecated]
-    //~^^ use of deprecated item 'unstable_generic_param::Struct4': test [deprecated]
-    //~^^^ use of deprecated item 'unstable_generic_param::Struct4::field': test [deprecated]
+    //~^ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    //~^^ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    //~^^^ use of deprecated field `unstable_generic_param::Struct4::field`: test [deprecated]
 
     let _ = STRUCT5;
     let _: Struct5<isize> = Struct5 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
-    //~^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
-    //~^^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
-    //~^^^ use of deprecated item 'unstable_generic_param::Struct5::field': test [deprecated]
+    //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^^^ use of deprecated field `unstable_generic_param::Struct5::field`: test [deprecated]
     let _ = STRUCT5;
-    let _: Struct5 = STRUCT5; //~ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
+    let _: Struct5 = STRUCT5; //~ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
     let _: Struct5<usize> = STRUCT5; //~ ERROR use of unstable library feature 'unstable_default'
-    //~^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
+    //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
     let _: Struct5<isize> = Struct5 { field: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
-    //~^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
-    //~^^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
-    //~^^^ use of deprecated item 'unstable_generic_param::Struct5::field': test [deprecated]
+    //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^^^ use of deprecated field `unstable_generic_param::Struct5::field`: test [deprecated]
 
     let _: Struct6<isize> = Struct6 { field: 1 }; // ok
     let _: Struct6<isize> = Struct6 { field: 0 }; // ok

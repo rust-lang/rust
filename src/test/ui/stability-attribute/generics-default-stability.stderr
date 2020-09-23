@@ -22,7 +22,7 @@ LL | impl Trait2<usize> for S {
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
-warning: use of deprecated item 'unstable_generic_param::Struct4': test
+warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:84:29
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 1 };
@@ -30,67 +30,67 @@ LL |     let _: Struct4<isize> = Struct4 { field: 1 };
    |
    = note: `#[warn(deprecated)]` on by default
 
-warning: use of deprecated item 'unstable_generic_param::Struct4': test
+warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:84:12
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 1 };
    |            ^^^^^^^^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct4': test
+warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:89:12
    |
 LL |     let _: Struct4 = STRUCT4;
    |            ^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct4': test
+warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:90:12
    |
 LL |     let _: Struct4<usize> = STRUCT4;
    |            ^^^^^^^^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct4': test
+warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:91:29
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 0 };
    |                             ^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct4': test
+warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:91:12
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 0 };
    |            ^^^^^^^^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct5': test
+warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:97:29
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |                             ^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct5': test
+warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:97:12
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |            ^^^^^^^^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct5': test
+warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:102:12
    |
 LL |     let _: Struct5 = STRUCT5;
    |            ^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct5': test
+warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:103:12
    |
 LL |     let _: Struct5<usize> = STRUCT5;
    |            ^^^^^^^^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct5': test
+warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:105:29
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |                             ^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct5': test
+warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:105:12
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
@@ -176,25 +176,25 @@ LL |     let _: Box1<isize, System> = Box1::new(1);
    |
    = help: add `#![feature(box_alloc_param)]` to the crate attributes to enable
 
-warning: use of deprecated item 'unstable_generic_param::Struct4::field': test
+warning: use of deprecated field `unstable_generic_param::Struct4::field`: test
   --> $DIR/generics-default-stability.rs:84:39
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 1 };
    |                                       ^^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct4::field': test
+warning: use of deprecated field `unstable_generic_param::Struct4::field`: test
   --> $DIR/generics-default-stability.rs:91:39
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 0 };
    |                                       ^^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct5::field': test
+warning: use of deprecated field `unstable_generic_param::Struct5::field`: test
   --> $DIR/generics-default-stability.rs:97:39
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |                                       ^^^^^^^^
 
-warning: use of deprecated item 'unstable_generic_param::Struct5::field': test
+warning: use of deprecated field `unstable_generic_param::Struct5::field`: test
   --> $DIR/generics-default-stability.rs:105:39
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };

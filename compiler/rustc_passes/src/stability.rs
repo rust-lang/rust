@@ -43,6 +43,7 @@ enum AnnotationKind {
 /// have separate deprecation attributes from their parents, so we do not wish to inherit
 /// deprecation in this case. For example, inheriting deprecation for `T` in `Foo<T>`
 /// would cause a duplicate warning arising from both `Foo` and `T` being deprecated.
+#[derive(Clone)]
 enum InheritDeprecation {
     Yes,
     No,
@@ -81,7 +82,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         debug!("annotate(id = {:?}, attrs = {:?})", hir_id, attrs);
         let mut did_error = false;
         if !self.tcx.features().staged_api {
-            did_error = self.forbid_staged_api_attrs(hir_id, attrs, inherit_deprecation);
+            did_error = self.forbid_staged_api_attrs(hir_id, attrs, inherit_deprecation.clone());
         }
 
         let depr =
@@ -257,7 +258,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     }
 
     // returns true if an error occurred, used to suppress some spurious errors
-    fn forbid_staged_api_attrs(&mut self, hir_id: HirId, attrs: &[Attribute], inherit_deprecation: InheritDeprecation) -> bool {
+    fn forbid_staged_api_attrs(
+        &mut self,
+        hir_id: HirId,
+        attrs: &[Attribute],
+        inherit_deprecation: InheritDeprecation,
+    ) -> bool {
         // Emit errors for non-staged-api crates.
         let unstable_attrs = [
             sym::unstable,
