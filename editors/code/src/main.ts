@@ -200,15 +200,11 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
 
     await downloadWithRetryDialog(state, async () => {
-        // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
-        await fs.unlink(dest).catch(err => {
-            if (err.code !== "ENOENT") throw err;
-        });
-
         await download({
             url: artifact.browser_download_url,
             dest,
             progressTitle: "Downloading rust-analyzer extension",
+            overwrite: true,
         });
     });
 
@@ -330,17 +326,13 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     await downloadWithRetryDialog(state, async () => {
-        // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
-        await fs.unlink(dest).catch(err => {
-            if (err.code !== "ENOENT") throw err;
-        });
-
         await download({
             url: artifact.browser_download_url,
             dest,
             progressTitle: "Downloading rust-analyzer server",
             gunzip: true,
-            mode: 0o755
+            mode: 0o755,
+            overwrite: true,
         });
     });
 

@@ -76,6 +76,7 @@ interface DownloadOpts {
     dest: string;
     mode?: number;
     gunzip?: boolean;
+    overwrite?: boolean,
 }
 
 export async function download(opts: DownloadOpts) {
@@ -84,6 +85,13 @@ export async function download(opts: DownloadOpts) {
     const dest = path.parse(opts.dest);
     const randomHex = crypto.randomBytes(5).toString("hex");
     const tempFile = path.join(dest.dir, `${dest.name}${randomHex}`);
+
+    if (opts.overwrite) {
+        // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
+        await fs.promises.unlink(opts.dest).catch(err => {
+            if (err.code !== "ENOENT") throw err;
+        });
+    }
 
     await vscode.window.withProgress(
         {
