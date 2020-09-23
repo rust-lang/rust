@@ -4,6 +4,7 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify::{
     self, EqUnifyValue, InPlace, NoError, UnificationTable, UnifyKey, UnifyValue,
 };
+use rustc_span::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -124,8 +125,7 @@ pub struct ConstVariableOrigin {
 pub enum ConstVariableOriginKind {
     MiscVariable,
     ConstInference,
-    // FIXME(const_generics): Consider storing the `DefId` of the param here.
-    ConstParameterDefinition(Symbol),
+    ConstParameterDefinition(Symbol, DefId),
     SubstitutionPlaceholder,
 }
 
