@@ -716,17 +716,11 @@ pub mod shell {
     }
 
     fn is_ident_head(c: char) -> bool {
-        match c {
-            'a'..='z' | 'A'..='Z' | '_' => true,
-            _ => false,
-        }
+        c.is_ascii_alphabetic() || c == '_'
     }
 
     fn is_ident_tail(c: char) -> bool {
-        match c {
-            '0'..='9' => true,
-            c => is_ident_head(c),
-        }
+        c.is_ascii_alphanumeric() || c == '_'
     }
 
     #[cfg(test)]
