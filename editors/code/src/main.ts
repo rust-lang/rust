@@ -173,7 +173,9 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         if (!shouldCheckForNewNightly) return;
     }
 
-    const release = await fetchRelease("nightly").catch((e) => {
+    const release = await performDownloadWithRetryDialog(async () => {
+        return await fetchRelease("nightly", state.githubToken);
+    }, state).catch((e) => {
         log.error(e);
         if (state.releaseId === undefined) { // Show error only for the initial download
             vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`);
@@ -308,7 +310,10 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         if (userResponse !== "Download now") return dest;
     }
 
-    const release = await fetchRelease(config.package.releaseTag);
+    const releaseTag = config.package.releaseTag;
+    const release = await performDownloadWithRetryDialog(async () => {
+        return await fetchRelease(releaseTag, state.githubToken);
+    }, state);
     const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
@@ -332,4 +337,50 @@ async function getServer(config: Config, state: PersistentState): Promise<string
 
     await state.updateServerVersion(config.package.version);
     return dest;
+}
+
+async function performDownloadWithRetryDialog<T>(downloadFunc: () => Promise<T>, state: PersistentState): Promise<T> {
+    while (true) {
+        try {
+            return await downloadFunc();
+        } catch (e) {
+            let selected = await vscode.window.showErrorMessage("Failed perform download: " + e.message, {}, {
+                title: "Update Github Auth Token",
+                updateToken: true,
+            }, {
+                title: "Retry download",
+                retry: true,
+            }, {
+                title: "Dismiss",
+            });
+    
+            if (selected?.updateToken) {
+                await queryForGithubToken(state);
+                continue;
+            } else if (selected?.retry) {
+                continue;
+            }
+            throw e;
+        };
+    }
+
+}
+
+async function queryForGithubToken(state: PersistentState): Promise<void> {
+    const githubTokenOptions: vscode.InputBoxOptions = {
+        value: state.githubToken,
+        password: true,
+        prompt: `
+            This dialog allows to store a Github authorization token.
+            The usage of an authorization token allows will increase the rate
+            limit on the use of Github APIs and can thereby prevent getting
+            throttled.
+            Auth tokens can be obtained at https://github.com/settings/tokens`,
+    };
+
+    const newToken = await vscode.window.showInputBox(githubTokenOptions);
+    if (newToken) {
+        log.info("Storing new github token");
+        await state.updateGithubToken(newToken);
+    }
 }

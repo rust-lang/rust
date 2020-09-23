@@ -18,7 +18,8 @@ const OWNER = "rust-analyzer";
 const REPO = "rust-analyzer";
 
 export async function fetchRelease(
-    releaseTag: string
+    releaseTag: string,
+    githubToken: string | null | undefined,
 ): Promise<GithubRelease> {
 
     const apiEndpointPath = `/repos/${OWNER}/${REPO}/releases/tags/${releaseTag}`;
@@ -27,7 +28,12 @@ export async function fetchRelease(
 
     log.debug("Issuing request for released artifacts metadata to", requestUrl);
 
-    const response = await fetch(requestUrl, { headers: { Accept: "application/vnd.github.v3+json" } });
+    var headers: any = { Accept: "application/vnd.github.v3+json" };
+    if (githubToken != null) {
+        headers.Authorization = "token " + githubToken;
+    }
+
+    const response = await fetch(requestUrl, { headers: headers });
 
     if (!response.ok) {
         log.error("Error fetching artifact release info", {
