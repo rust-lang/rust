@@ -275,6 +275,7 @@ impl OptimizationFinder<'b, 'tcx> {
                     rustc_middle::mir::StatementKind::Assign(box (l, r)) => {
                         if *l == place {
                             match r {
+                                // FIXME(simonvandel): extend for Ne-Not pair
                                 Rvalue::BinaryOp(BinOp::Eq, op1, op2) => {
                                     // We need to make sure that the StorageDeads we saw are for
                                     // either `op1`or `op2` of Eq. Else we bail the optimization.
