@@ -23,8 +23,8 @@ declare double @__enzyme_autodiff(double (double, i32)*, ...)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[ym1:.+]] = sub i32 %y, 1
 ; CHECK-NEXT:   %[[newpow:.+]] = tail call fast double @llvm.powi.f64(double %x, i32 %[[ym1]])
-; CHECK-NEXT:   %[[sitofp:.+]] = sitofp i32 %y to double
-; CHECK-NEXT:   %[[newpowdret:.+]] = fmul fast double %differeturn, %[[newpow]]
+; CHECK-DAG:    %[[sitofp:.+]] = sitofp i32 %y to double
+; CHECK-DAG:    %[[newpowdret:.+]] = fmul fast double %differeturn, %[[newpow]]
 ; CHECK-NEXT:   %[[dx:.+]] = fmul fast double %[[newpowdret]], %[[sitofp]]
 ; CHECK-NEXT:   %[[interres:.+]] = insertvalue { double } undef, double %[[dx:.+]], 0
 ; CHECK-NEXT:   ret { double } %[[interres]]

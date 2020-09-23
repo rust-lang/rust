@@ -140,9 +140,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[dpop:.+]] = call { i64 } @diffepop(i64 %[[agg]], i64 %differeturn, { i64, i64*, i64*, i8*, i8* } %[[pret]])
 ; CHECK-NEXT:   %[[ev:.+]] = extractvalue { i64 } %[[dpop]], 0
 ; CHECK-NEXT:   %2 = load i64, i64* %"this'"
-; CHECK-NEXT:   %3 = bitcast i64 %[[ev]] to double
-; CHECK-NEXT:   %4 = bitcast i64 %2 to double
-; CHECK-NEXT:   %5 = fadd fast double %4, %3
+; CHECK-DAG:    %[[add1:.+]] = bitcast i64 %[[ev]] to double
+; CHECK-DAG:    %[[add2:.+]] = bitcast i64 %2 to double
+; CHECK-NEXT:   %5 = fadd fast double %[[add2]], %[[add1]]
 ; CHECK-NEXT:   %6 = bitcast double %5 to i64
 ; CHECK-NEXT:   store i64 %6, i64* %"this'"
 ; CHECK-NEXT:   ret void
@@ -159,9 +159,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %0 = call { i64 } @diffemul(i64 %[[a2]], i64 %differeturn)
 ; CHECK-NEXT:   %1 = extractvalue { i64 } %0, 0
 ; CHECK-NEXT:   %2 = load i64, i64* %"call.i'ip_phi"
-; CHECK-NEXT:   %3 = bitcast i64 %1 to double
-; CHECK-NEXT:   %4 = bitcast i64 %2 to double
-; CHECK-NEXT:   %5 = fadd fast double %4, %3
+; CHECK-DAG:    %[[sadd1:.+]] = bitcast i64 %1 to double
+; CHECK-DAG:    %[[sadd2:.+]] = bitcast i64 %2 to double
+; CHECK-NEXT:   %5 = fadd fast double %[[sadd2]], %[[sadd1]]
 ; CHECK-NEXT:   %6 = bitcast double %5 to i64
 ; CHECK-NEXT:   store i64 %6, i64* %"call.i'ip_phi"
 ; CHECK-NEXT:   call void @diffecast(i64* %arr, i64* %"arr'ipc")

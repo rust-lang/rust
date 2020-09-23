@@ -56,23 +56,23 @@ attributes #6 = { nounwind }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"double", !4, i64 0}
 
-; CHECK: foo - {} |{[-1]:Float@double}:{} 
+; CHECK: foo - {} |{[-1]:Float@double}:{}
 ; CHECK-NEXT: double %inp: {[-1]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %conv = bitcast double %inp to i64: {[-1]:Float@double}
 ; CHECK-NEXT:   %call = tail call i64* @substore(i64 %conv, i64 3): {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Integer, [-1,9]:Integer, [-1,10]:Integer, [-1,11]:Integer, [-1,12]:Integer, [-1,13]:Integer, [-1,14]:Integer, [-1,15]:Integer}
 ; CHECK-NEXT:   %0 = bitcast i64* %call to double*: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Integer, [-1,9]:Integer, [-1,10]:Integer, [-1,11]:Integer, [-1,12]:Integer, [-1,13]:Integer, [-1,14]:Integer, [-1,15]:Integer}
-; CHECK-NEXT:   %1 = load double, double* %0: {[-1]:Float@double}
+; CHECK-NEXT:   %1 = load double, double* %0{{(, align 8)?}}: {[-1]:Float@double}
 ; CHECK-NEXT:   ret double %1: {}
 
-; CHECK: substore - {[-1]:Pointer} |{[-1]:Float@double}:{} {[-1]:Integer}:{3,} 
+; CHECK: substore - {[-1]:Pointer} |{[-1]:Float@double}:{} {[-1]:Integer}:{3,}
 ; CHECK-NEXT: i64 %flt: {[-1]:Float@double}
 ; CHECK-NEXT: i64 %integral: {[-1]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 16) #5: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Integer, [-1,9]:Integer, [-1,10]:Integer, [-1,11]:Integer, [-1,12]:Integer, [-1,13]:Integer, [-1,14]:Integer, [-1,15]:Integer}
 ; CHECK-NEXT:   %0 = bitcast i8* %call to i64*: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Integer, [-1,9]:Integer, [-1,10]:Integer, [-1,11]:Integer, [-1,12]:Integer, [-1,13]:Integer, [-1,14]:Integer, [-1,15]:Integer}
-; CHECK-NEXT:   store i64 %flt, i64* %0: {}
+; CHECK-NEXT:   store i64 %flt, i64* %0{{(, align 8)?}}: {}
 ; CHECK-NEXT:   %arrayidx1 = getelementptr inbounds i8, i8* %call, i64 8: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT:   %1 = bitcast i8* %arrayidx1 to i64*: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
-; CHECK-NEXT:   store i64 %integral, i64* %1: {}
+; CHECK-NEXT:   store i64 %integral, i64* %1{{(, align 8)?}}: {}
 ; CHECK-NEXT:   ret i64* %0: {}

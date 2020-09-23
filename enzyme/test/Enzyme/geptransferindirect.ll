@@ -55,18 +55,18 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %0 = load i64, i64* %"cptr4'ipg"
 ; CHECK-NEXT:   store i64 0, i64* %"cptr4'ipg"
 ; CHECK-NEXT:   %1 = load i64, i64* %"cptr2'ipg"
-; CHECK-NEXT:   %2 = bitcast i64 %0 to double
-; CHECK-NEXT:   %3 = bitcast i64 %1 to double
-; CHECK-NEXT:   %4 = fadd fast double %3, %2
+; CHECK-DAG:    %[[add1:.+]] = bitcast i64 %0 to double
+; CHECK-DAG:    %[[add2:.+]] = bitcast i64 %1 to double
+; CHECK-NEXT:   %4 = fadd fast double %[[add2]], %[[add1]]
 ; CHECK-NEXT:   %5 = bitcast double %4 to i64
 ; CHECK-NEXT:   store i64 %5, i64* %"cptr2'ipg"
 ; CHECK-NEXT:   %6 = load i64, i64* %"ptr3'ac"
 ; CHECK-NEXT:   store i64 0, i64* %"ptr3'ac"
 ; CHECK-NEXT:   call void @diffegep(i64* %ptr, i64* %"ptr'", i64 3)
 ; CHECK-NEXT:   %7 = load i64, i64* %"ptr2'ac"
-; CHECK-NEXT:   %8 = bitcast i64 %6 to double
-; CHECK-NEXT:   %9 = bitcast i64 %7 to double
-; CHECK-NEXT:   %10 = fadd fast double %9, %8
+; CHECK-DAG:    %[[sadd1:.+]] = bitcast i64 %6 to double
+; CHECK-DAG:    %[[sadd2:.+]] = bitcast i64 %7 to double
+; CHECK-NEXT:   %10 = fadd fast double %[[sadd2]], %[[sadd1]]
 ; CHECK-NEXT:   %11 = bitcast double %10 to i64
 ; CHECK-NEXT:   store i64 %11, i64* %"ptr2'ac"
 ; CHECK-NEXT:   call void @diffegep.2(i64* %ptr, i64* %"ptr'", i64 2)
