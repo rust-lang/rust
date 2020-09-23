@@ -1,6 +1,6 @@
 //! Support for serializing the dep-graph and reloading it.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly-rustc/")]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![recursion_limit = "256"]
