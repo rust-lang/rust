@@ -1272,7 +1272,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // Don't print the whole crate disambiguator. That's just
             // annoying in debug output.
             &(crate_disambiguator.to_fingerprint().to_hex())[..4],
-            self.def_path(def_id).to_string_no_crate()
+            self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
 

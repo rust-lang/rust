@@ -162,10 +162,10 @@ impl DisambiguatedDefPathData {
                 if Ident::with_dummy_span(name).is_raw_guess() {
                     writer.write_str("r#")?;
                 }
-                if self.disambiguator == 0 || !verbose {
-                    writer.write_str(&name.as_str())
-                } else {
+                if verbose && self.disambiguator != 0 {
                     write!(writer, "{}#{}", name, self.disambiguator)
+                } else {
+                    writer.write_str(&name.as_str())
                 }
             }
             DefPathDataName::Anon { namespace } => {
@@ -224,7 +224,7 @@ impl DefPath {
     /// Returns a string representation of the `DefPath` without
     /// the crate-prefix. This method is useful if you don't have
     /// a `TyCtxt` available.
-    pub fn to_string_no_crate(&self) -> String {
+    pub fn to_string_no_crate_verbose(&self) -> String {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
@@ -466,6 +466,7 @@ impl fmt::Display for DefPathData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.name() {
             DefPathDataName::Named(name) => f.write_str(&name.as_str()),
+            // FIXME(#70334): this will generate legacy {{closure}}, {{impl}}, etc
             DefPathDataName::Anon { namespace } => write!(f, "{{{{{}}}}}", namespace),
         }
     }

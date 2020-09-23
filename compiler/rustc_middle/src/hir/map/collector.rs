@@ -244,7 +244,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         if cfg!(debug_assertions) {
             if hir_id.owner != self.current_dep_node_owner {
                 let node_str = match self.definitions.opt_hir_id_to_local_def_id(hir_id) {
-                    Some(def_id) => self.definitions.def_path(def_id).to_string_no_crate(),
+                    Some(def_id) => self.definitions.def_path(def_id).to_string_no_crate_verbose(),
                     None => format!("{:?}", node),
                 };
 
@@ -254,9 +254,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_string(span),
                     node_str,
-                    self.definitions.def_path(self.current_dep_node_owner).to_string_no_crate(),
+                    self.definitions
+                        .def_path(self.current_dep_node_owner)
+                        .to_string_no_crate_verbose(),
                     self.current_dep_node_owner,
-                    self.definitions.def_path(hir_id.owner).to_string_no_crate(),
+                    self.definitions.def_path(hir_id.owner).to_string_no_crate_verbose(),
                     hir_id.owner,
                 )
             }

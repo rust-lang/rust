@@ -7,7 +7,6 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, 
 use rustc_hir::definitions::DefPathData;
 use rustc_query_system::query::QueryCache;
 use rustc_query_system::query::QueryState;
-use rustc_span::symbol::Symbol;
 use std::fmt::Debug;
 use std::io::Write;
 
@@ -56,18 +55,22 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
         };
 
         let dis_buffer = &mut [0u8; 16];
+        let crate_name;
+        let other_name;
         let name;
         let dis;
         let end_index;
 
         match def_key.disambiguated_data.data {
             DefPathData::CrateRoot => {
-                name = self.tcx.original_crate_name(def_id.krate);
+                crate_name = self.tcx.original_crate_name(def_id.krate).as_str();
+                name = &*crate_name;
                 dis = "";
                 end_index = 3;
             }
             other => {
-                name = Symbol::intern(&other.to_string());
+                other_name = other.to_string();
+                name = other_name.as_str();
                 if def_key.disambiguated_data.disambiguator == 0 {
                     dis = "";
                     end_index = 3;
@@ -81,7 +84,6 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
             }
         }
 
-        let name = &*name.as_str();
         let components = [
             StringComponent::Ref(parent_string_id),
             StringComponent::Value("::"),

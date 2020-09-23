@@ -8,7 +8,6 @@ use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathData;
-use rustc_span::symbol::Symbol;
 
 pub fn mangled_name_of_instance<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
@@ -28,11 +27,18 @@ pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
         .parent
         .map(|parent| item_namespace(cx, DefId { krate: def_id.krate, index: parent }));
 
+    let crate_name_as_str;
+    let name_to_string;
     let namespace_name = match def_key.disambiguated_data.data {
-        DefPathData::CrateRoot => cx.tcx.crate_name(def_id.krate),
-        data => Symbol::intern(&data.to_string()),
+        DefPathData::CrateRoot => {
+            crate_name_as_str = cx.tcx.crate_name(def_id.krate).as_str();
+            &*crate_name_as_str
+        }
+        data => {
+            name_to_string = data.to_string();
+            &*name_to_string
+        }
     };
-    let namespace_name = namespace_name.as_str();
 
     let scope = unsafe {
         llvm::LLVMRustDIBuilderCreateNameSpace(
