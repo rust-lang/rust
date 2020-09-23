@@ -10,6 +10,7 @@ extern crate helper;
 
 use std::alloc::{self, AllocRef, Global, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::ptr::NonNull;
 
 static HITS: AtomicUsize = AtomicUsize::new(0);
 
@@ -23,7 +24,7 @@ unsafe impl alloc::GlobalAlloc for A {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         HITS.fetch_add(1, Ordering::SeqCst);
-        AllocRef::dealloc(&System, ptr, layout)
+        AllocRef::dealloc(&System, NonNull::new(ptr).unwrap(), layout)
     }
 }
 
