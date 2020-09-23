@@ -117,12 +117,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
         });
 
         if found_it {
-            self.def_use_result = match def_use::categorize(context) {
-                Some(DefUse::Def) => Some(DefUseResult::Def),
-                Some(DefUse::Use) => Some(DefUseResult::UseLive { local }),
-                Some(DefUse::Drop) => Some(DefUseResult::UseDrop { local }),
-                None => None,
-            };
+            self.def_use_result = def_use::categorize(context).map(|def_use|
+                match def_use {
+                    DefUse::Def => DefUseResult::Def,
+                    DefUse::Use => DefUseResult::UseLive { local },
+                    DefUse::Drop => DefUseResult::UseDrop { local },
+                }
+            );
         }
     }
 }
