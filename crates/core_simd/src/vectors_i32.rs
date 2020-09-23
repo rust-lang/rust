@@ -18,22 +18,6 @@ define_type! {
     struct i32x16([i32; 16]);
 }
 
-#[cfg(target_arch = "x86")]
-from_aligned! { unsafe i32x4 |bidirectional| core::arch::x86::__m128i }
-
-#[cfg(target_arch = "x86_64")]
-from_aligned! { unsafe i32x4 |bidirectional| core::arch::x86_64::__m128i }
-
-#[cfg(target_arch = "x86")]
-from_aligned! { unsafe i32x8 |bidirectional| core::arch::x86::__m256i }
-
-#[cfg(target_arch = "x86_64")]
-from_aligned! { unsafe i32x8 |bidirectional| core::arch::x86_64::__m256i }
-
-/*
-#[cfg(target_arch = "x86")]
-from_aligned! { unsafe u32x16 |bidirectional| core::arch::x86::__m512i }
-
-#[cfg(target_arch = "x86_64")]
-from_aligned! { unsafe u32x16 |bidirectional| core::arch::x86_64::__m512i }
-*/
+from_transmute_x86! { unsafe i32x4 => __m128i }
+from_transmute_x86! { unsafe i32x8 => __m256i }
+//from_transmute_x86! { unsafe i32x16 => __m512i }

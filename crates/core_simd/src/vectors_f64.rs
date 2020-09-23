@@ -13,22 +13,6 @@ define_type! {
     struct f64x8([f64; 8]);
 }
 
-#[cfg(target_arch = "x86")]
-from_aligned! { unsafe f64x2 |bidirectional| core::arch::x86::__m128d }
-
-#[cfg(target_arch = "x86_64")]
-from_aligned! { unsafe f64x2 |bidirectional| core::arch::x86_64::__m128d }
-
-#[cfg(target_arch = "x86")]
-from_aligned! { unsafe f64x4 |bidirectional| core::arch::x86::__m256d }
-
-#[cfg(target_arch = "x86_64")]
-from_aligned! { unsafe f64x4 |bidirectional| core::arch::x86_64::__m256d }
-
-/*
-#[cfg(target_arch = "x86")]
-from_aligned! { unsafe f64x8 |bidirectional| core::arch::x86::__m512d }
-
-#[cfg(target_arch = "x86_64")]
-from_aligned! { unsafe f64x8 |bidirectional| core::arch::x86_64::__m512d }
-*/
+from_transmute_x86! { unsafe f64x2 => __m128d }
+from_transmute_x86! { unsafe f64x4 => __m256d }
+//from_transmute_x86! { unsafe f64x8 => __m512d }

@@ -1,29 +1,25 @@
-macro_rules! from_aligned {
-    { unsafe $from:ty => $to:ty } => {
+macro_rules! from_transmute {
+    { unsafe $a:ty => $b:ty } => {
+        from_transmute!{ @impl $a => $b }
+        from_transmute!{ @impl $b => $a }
+    };
+    { @impl $from:ty => $to:ty } => {
         impl core::convert::From<$from> for $to {
             #[inline]
             fn from(value: $from) -> $to {
-                assert_eq!(core::mem::size_of::<$from>(), core::mem::size_of::<$to>());
-                assert!(core::mem::align_of::<$from>() >= core::mem::align_of::<$to>());
                 unsafe { core::mem::transmute(value) }
             }
         }
     };
-    { unsafe $a:ty |bidirectional| $b:ty } => {
-        from_aligned!{ unsafe $a => $b }
-        from_aligned!{ unsafe $b => $a }
-    }
 }
 
-macro_rules! from_unaligned {
-    { unsafe $from:ty => $to:ty } => {
-        impl core::convert::From<$from> for $to {
-            #[inline]
-            fn from(value: $from) -> $to {
-                assert_eq!(core::mem::size_of::<$from>(), core::mem::size_of::<$to>());
-                unsafe { (&value as *const $from as *const $to).read_unaligned() }
-            }
-        }
+macro_rules! from_transmute_x86 {
+    { unsafe $generic:ty => $intel:ident } => {
+        #[cfg(target_arch = "x86")]
+        from_transmute! { unsafe $generic => core::arch::x86::$intel }
+
+        #[cfg(target_arch = "x86_64")]
+        from_transmute! { unsafe $generic => core::arch::x86_64::$intel }
     }
 }
 
@@ -61,11 +57,8 @@ macro_rules! define_type {
             }
         }
 
-        // vector to array
-        from_aligned! { unsafe $name => [$type; $lanes] }
-
-        // array to vector
-        from_unaligned! { unsafe [$type; $lanes] => $name }
+        // vector/array conversion
+        from_transmute! { unsafe $name => [$type; $lanes] }
 
         // splat
         impl From<$type> for $name {

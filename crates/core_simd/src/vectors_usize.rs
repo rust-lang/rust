@@ -13,34 +13,14 @@ define_type! {
     struct usizex8([usize; 8]);
 }
 
-#[cfg(all(target_arch = "x86", target_pointer_width = "32"))]
-from_aligned! { unsafe usizex4 |bidirectional| core::arch::x86::__m128i }
+#[cfg(target_pointer_width = "32")]
+from_transmute_x86! { unsafe usizex4 => __m128i }
+#[cfg(target_pointer_width = "32")]
+from_transmute_x86! { unsafe usizex8 => __m256i }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "32"))]
-from_aligned! { unsafe usizex4 |bidirectional| core::arch::x86_64::__m128i }
-
-#[cfg(all(target_arch = "x86", target_pointer_width = "32"))]
-from_aligned! { unsafe usizex8 |bidirectional| core::arch::x86::__m256i }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "32"))]
-from_aligned! { unsafe usizex8 |bidirectional| core::arch::x86_64::__m256i }
-
-#[cfg(all(target_arch = "x86", target_pointer_width = "64"))]
-from_aligned! { unsafe usizex2 |bidirectional| core::arch::x86::__m128i }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-from_aligned! { unsafe usizex2 |bidirectional| core::arch::x86_64::__m128i }
-
-#[cfg(all(target_arch = "x86", target_pointer_width = "64"))]
-from_aligned! { unsafe usizex4 |bidirectional| core::arch::x86::__m256i }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-from_aligned! { unsafe usizex4 |bidirectional| core::arch::x86_64::__m256i }
-
-/*
-#[cfg(all(target_arch = "x86", target_pointer_width = "64"))]
-from_aligned! { unsafe usizex8 |bidirectional| core::arch::x86::__m512i }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-from_aligned! { unsafe usizex8 |bidirectional| core::arch::x86_64::__m512i }
-*/
+#[cfg(target_pointer_width = "64")]
+from_transmute_x86! { unsafe usizex2 => __m128i }
+#[cfg(target_pointer_width = "64")]
+from_transmute_x86! { unsafe usizex4 => __m256i }
+//#[cfg(target_pointer_width = "64")]
+//from_transmute_x86! { unsafe usizex8 => __m512i }
