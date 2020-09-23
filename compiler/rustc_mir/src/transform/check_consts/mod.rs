@@ -12,6 +12,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
 pub use self::qualifs::Qualif;
+pub use self::validation::non_const_fn_could_be_made_stable_const_fn;
 
 mod ops;
 pub mod post_drop_elaboration;

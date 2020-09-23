@@ -1,8 +1,8 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{Applicability, struct_span_err};
-use rustc_hir::{self as hir, LangItem};
-use rustc_hir::{def_id::DefId, HirId};
+use rustc_errors::{struct_span_err, Applicability};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -24,6 +24,34 @@ use super::{is_lang_panic_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
 use crate::dataflow::impls::MaybeMutBorrowedLocals;
 use crate::dataflow::{self, Analysis};
+
+/// Returns `true` if the given `fn` could be made into a `const fn` without depending on any
+/// unstable features.
+///
+/// This is used by clippy. Do not use it for const-checking.
+pub fn non_const_fn_could_be_made_stable_const_fn(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    body: &Body<'tcx>,
+) -> bool {
+    let const_kind = tcx.hir().body_const_context(def_id);
+
+    // Only run this on non-const `fn`s.
+    assert!(const_kind.is_none());
+
+    let ccx = ConstCx {
+        body,
+        tcx,
+        def_id,
+        const_kind: Some(hir::ConstContext::ConstFn),
+        param_env: tcx.param_env(def_id),
+    };
+
+    let mut checker = Validator::new(&ccx);
+    checker.silence_errors = true;
+    checker.check_body();
+    checker.passes_checks_without_unstable_features
+}
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
 // through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
