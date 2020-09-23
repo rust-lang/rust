@@ -183,7 +183,7 @@ pub unsafe trait AllocRef {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn grow(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -244,7 +244,7 @@ pub unsafe trait AllocRef {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn grow_zeroed(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -308,7 +308,7 @@ pub unsafe trait AllocRef {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn shrink(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -337,13 +337,13 @@ pub unsafe trait AllocRef {
     ///
     /// The returned adaptor also implements `AllocRef` and will simply borrow this.
     #[inline(always)]
-    fn by_ref(&mut self) -> &mut Self {
+    fn by_ref(&mut self) -> &Self {
         self
     }
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A> AllocRef for &mut A
+unsafe impl<A> AllocRef for &A
 where
     A: AllocRef + ?Sized,
 {
@@ -365,7 +365,7 @@ where
 
     #[inline]
     unsafe fn grow(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -376,7 +376,7 @@ where
 
     #[inline]
     unsafe fn grow_zeroed(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -387,7 +387,7 @@ where
 
     #[inline]
     unsafe fn shrink(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,

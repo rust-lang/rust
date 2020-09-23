@@ -152,7 +152,7 @@ impl System {
     // SAFETY: Same as `AllocRef::grow`
     #[inline]
     unsafe fn grow_impl(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -190,7 +190,7 @@ impl System {
             old_size => unsafe {
                 let new_ptr = self.alloc_impl(new_layout, zeroed)?;
                 ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_size);
-                self.dealloc(ptr, old_layout);
+                AllocRef::dealloc(&self, ptr, old_layout);
                 Ok(new_ptr)
             },
         }
@@ -222,7 +222,7 @@ unsafe impl AllocRef for System {
 
     #[inline]
     unsafe fn grow(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -233,7 +233,7 @@ unsafe impl AllocRef for System {
 
     #[inline]
     unsafe fn grow_zeroed(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -244,7 +244,7 @@ unsafe impl AllocRef for System {
 
     #[inline]
     unsafe fn shrink(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -257,7 +257,7 @@ unsafe impl AllocRef for System {
         match new_layout.size() {
             // SAFETY: conditions must be upheld by the caller
             0 => unsafe {
-                self.dealloc(ptr, old_layout);
+                AllocRef::dealloc(&self, ptr, old_layout);
                 Ok(NonNull::slice_from_raw_parts(new_layout.dangling(), 0))
             },
 
@@ -277,9 +277,9 @@ unsafe impl AllocRef for System {
             // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
             // for `dealloc` must be upheld by the caller.
             new_size => unsafe {
-                let new_ptr = self.alloc(new_layout)?;
+                let new_ptr = AllocRef::alloc(&self, new_layout)?;
                 ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_size);
-                self.dealloc(ptr, old_layout);
+                AllocRef::dealloc(&self, ptr, old_layout);
                 Ok(new_ptr)
             },
         }

@@ -19,7 +19,7 @@ struct A;
 unsafe impl alloc::GlobalAlloc for A {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         HITS.fetch_add(1, Ordering::SeqCst);
-        AllocRef::alloc(&System, layout).unwrap().as_mut_ptr()
+        alloc::GlobalAlloc::alloc(&System, layout)
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {

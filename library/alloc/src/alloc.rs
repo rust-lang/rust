@@ -160,7 +160,7 @@ impl Global {
     // SAFETY: Same as `AllocRef::grow`
     #[inline]
     unsafe fn grow_impl(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -228,7 +228,7 @@ unsafe impl AllocRef for Global {
 
     #[inline]
     unsafe fn grow(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -239,7 +239,7 @@ unsafe impl AllocRef for Global {
 
     #[inline]
     unsafe fn grow_zeroed(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
@@ -250,7 +250,7 @@ unsafe impl AllocRef for Global {
 
     #[inline]
     unsafe fn shrink(
-        &mut self,
+        &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
