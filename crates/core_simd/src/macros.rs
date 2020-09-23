@@ -69,6 +69,7 @@ macro_rules! define_type {
 
         // splat
         impl From<$type> for $name {
+            #[inline]
             fn from(value: $type) -> Self {
                 Self::splat(value)
             }
@@ -126,16 +127,16 @@ macro_rules! define_type {
         pub struct $name($($itype),*);
 
         impl $name {
-            /// Construct a vector by setting each lane to a single value.
+            /// Construct a vector by setting all lanes to the given value.
             #[inline]
-            pub fn splat(value: $type) -> Self {
+            pub const fn splat(value: $type) -> Self {
                 Self($(value as $itype),*)
             }
 
-            /// Construct a vector by setting each lane.
+            /// Construct a vector by setting each lane to the given values.
             #[allow(clippy::too_many_arguments)]
             #[inline]
-            pub fn new($($ivar: $itype),*) -> Self {
+            pub const fn new($($ivar: $itype),*) -> Self {
                 Self($($ivar),*)
             }
         }
