@@ -28,97 +28,68 @@ error: unresolved link to `std::io::not::here`
 LL | /// [std::io::not::here]
    |      ^^^^^^^^^^^^^^^^^^ the module `io` contains no item named `not`
 
-<<<<<<< HEAD
 error: unresolved link to `std::io::not::here`
-  --> $DIR/intra-link-errors.rs:23:6
-=======
-error: unresolved link to `std::io::Error::x`
   --> $DIR/intra-link-errors.rs:24:6
->>>>>>> Add `unclosed_html_tags` lint
    |
 LL | /// [type@std::io::not::here]
    |      ^^^^^^^^^^^^^^^^^^^^^^^ the module `io` contains no item named `not`
 
 error: unresolved link to `std::io::Error::x`
-  --> $DIR/intra-link-errors.rs:27:6
+  --> $DIR/intra-link-errors.rs:28:6
    |
 LL | /// [std::io::Error::x]
    |      ^^^^^^^^^^^^^^^^^ the struct `Error` has no field or associated item named `x`
 
 error: unresolved link to `std::io::ErrorKind::x`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:31:6
-=======
-  --> $DIR/intra-link-errors.rs:28:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:32:6
    |
 LL | /// [std::io::ErrorKind::x]
    |      ^^^^^^^^^^^^^^^^^^^^^ the enum `ErrorKind` has no variant or associated item named `x`
 
 error: unresolved link to `f::A`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:35:6
-=======
-  --> $DIR/intra-link-errors.rs:32:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:36:6
    |
 LL | /// [f::A]
    |      ^^^^ `f` is a function, not a module or type, and cannot have associated items
 
 error: unresolved link to `f::A`
-  --> $DIR/intra-link-errors.rs:39:6
+  --> $DIR/intra-link-errors.rs:40:6
    |
 LL | /// [f::A!]
    |      ^^^^^ `f` is a function, not a module or type, and cannot have associated items
 
 error: unresolved link to `S::A`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:43:6
-=======
-  --> $DIR/intra-link-errors.rs:36:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:44:6
    |
 LL | /// [S::A]
    |      ^^^^ the struct `S` has no field or associated item named `A`
 
 error: unresolved link to `S::fmt`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:47:6
-=======
-  --> $DIR/intra-link-errors.rs:40:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:48:6
    |
 LL | /// [S::fmt]
    |      ^^^^^^ the struct `S` has no field or associated item named `fmt`
 
 error: unresolved link to `E::D`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:51:6
-=======
-  --> $DIR/intra-link-errors.rs:44:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:52:6
    |
 LL | /// [E::D]
    |      ^^^^ the enum `E` has no variant or associated item named `D`
 
 error: unresolved link to `u8::not_found`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:55:6
-=======
-  --> $DIR/intra-link-errors.rs:48:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:56:6
    |
 LL | /// [u8::not_found]
    |      ^^^^^^^^^^^^^ the builtin type `u8` has no associated item named `not_found`
 
 error: unresolved link to `std::primitive::u8::not_found`
-  --> $DIR/intra-link-errors.rs:59:6
+  --> $DIR/intra-link-errors.rs:60:6
    |
 LL | /// [std::primitive::u8::not_found]
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the builtin type `u8` has no associated item named `not_found`
 
 error: unresolved link to `Vec::into_iter`
-  --> $DIR/intra-link-errors.rs:63:6
+  --> $DIR/intra-link-errors.rs:64:6
    |
 LL | /// [type@Vec::into_iter]
    |      ^^^^^^^^^^^^^^^^^^^
@@ -127,11 +98,7 @@ LL | /// [type@Vec::into_iter]
    |      help: to link to the associated function, add parentheses: `Vec::into_iter()`
 
 error: unresolved link to `S`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:68:6
-=======
-  --> $DIR/intra-link-errors.rs:52:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:69:6
    |
 LL | /// [S!]
    |      ^^
@@ -140,11 +107,7 @@ LL | /// [S!]
    |      help: to link to the struct, prefix with `struct@`: `struct@S`
 
 error: unresolved link to `T::g`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:86:6
-=======
-  --> $DIR/intra-link-errors.rs:70:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:87:6
    |
 LL | /// [type@T::g]
    |      ^^^^^^^^^
@@ -153,21 +116,13 @@ LL | /// [type@T::g]
    |      help: to link to the associated function, add parentheses: `T::g()`
 
 error: unresolved link to `T::h`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:91:6
-=======
-  --> $DIR/intra-link-errors.rs:75:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:92:6
    |
 LL | /// [T::h!]
    |      ^^^^^ the trait `T` has no macro named `h`
 
 error: unresolved link to `S::h`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:78:6
-=======
-  --> $DIR/intra-link-errors.rs:62:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:79:6
    |
 LL | /// [type@S::h]
    |      ^^^^^^^^^
@@ -176,11 +131,7 @@ LL | /// [type@S::h]
    |      help: to link to the associated function, add parentheses: `S::h()`
 
 error: unresolved link to `m`
-<<<<<<< HEAD
-  --> $DIR/intra-link-errors.rs:98:6
-=======
-  --> $DIR/intra-link-errors.rs:82:6
->>>>>>> Add `unclosed_html_tags` lint
+  --> $DIR/intra-link-errors.rs:99:6
    |
 LL | /// [m()]
    |      ^^^
