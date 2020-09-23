@@ -186,13 +186,17 @@ pub(crate) type Backend =
     impl cranelift_module::Backend<Product: AddConstructor + Emit + WriteDebugInfo>;
 
 pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
+    let mut builder = ObjectBuilder::new(
+        crate::build_isa(sess, true),
+        name + ".o",
+        cranelift_module::default_libcall_names(),
+    )
+    .unwrap();
+    if std::env::var("CG_CLIF_FUNCTION_SECTIONS").is_ok() {
+        builder.per_function_section(true);
+    }
     let module: Module<ObjectBackend> = Module::new(
-        ObjectBuilder::new(
-            crate::build_isa(sess, true),
-            name + ".o",
-            cranelift_module::default_libcall_names(),
-        )
-        .unwrap(),
+        builder,
     );
     module
 }
