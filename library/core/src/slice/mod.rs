@@ -433,8 +433,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[3, 4, 6]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
+    pub const fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T
     }
 
@@ -469,8 +470,9 @@ impl<T> [T] {
     ///
     /// [`as_ptr`]: #method.as_ptr
     #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub fn as_ptr_range(&self) -> Range<*const T> {
+    pub const fn as_ptr_range(&self) -> Range<*const T> {
         let start = self.as_ptr();
         // SAFETY: The `add` here is safe, because:
         //
@@ -510,8 +512,9 @@ impl<T> [T] {
     ///
     /// [`as_mut_ptr`]: #method.as_mut_ptr
     #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
+    pub const fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
         let start = self.as_mut_ptr();
         // SAFETY: See as_ptr_range() above for why `add` here is safe.
         let end = unsafe { start.add(self.len()) };
