@@ -26,7 +26,7 @@ $RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib,dylib --targ
 echo "[BUILD] example"
 $RUSTC example/example.rs --crate-type lib --target $TARGET_TRIPLE
 
-if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
+if [[ "$JIT_SUPPORTED" = "1" ]]; then
     echo "[JIT] mini_core_hello_world"
     CG_CLIF_JIT=1 CG_CLIF_JIT_ARGS="abc bcd" $RUSTC --crate-type bin -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target $HOST_TRIPLE
 else
@@ -49,7 +49,7 @@ echo "[AOT] alloc_example"
 $RUSTC example/alloc_example.rs --crate-type bin --target $TARGET_TRIPLE
 $RUN_WRAPPER ./target/out/alloc_example
 
-if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
+if [[ "$JIT_SUPPORTED" = "1" ]]; then
     echo "[JIT] std_example"
     CG_CLIF_JIT=1 $RUSTC --crate-type bin -Cprefer-dynamic example/std_example.rs --target $HOST_TRIPLE
 else

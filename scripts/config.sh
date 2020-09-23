@@ -17,7 +17,9 @@ TARGET_TRIPLE=$HOST_TRIPLE
 
 linker=''
 RUN_WRAPPER=''
+export JIT_SUPPORTED=1
 if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
+   export JIT_SUPPORTED=0
    if [[ "$TARGET_TRIPLE" == "aarch64-unknown-linux-gnu" ]]; then
       # We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
       linker='-Clinker=aarch64-linux-gnu-gcc'
