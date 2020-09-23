@@ -1,4 +1,4 @@
-warning: function pointers and unsized pointers in patterns do not behave deterministically. See https://github.com/rust-lang/rust/issues/70861 for details.
+warning: function pointers and unsized pointers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
   --> $DIR/issue-63479-match-fnptr.rs:35:7
    |
 LL |     B(TEST) => println!("matched"),

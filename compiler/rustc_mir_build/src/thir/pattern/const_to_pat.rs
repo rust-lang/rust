@@ -413,8 +413,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             ty::FnPtr(..) | ty::RawPtr(..) => {
                 if self.include_lint_checks && !self.saw_const_match_error.get() {
                     self.saw_const_match_error.set(true);
-                    let msg = "function pointers and unsized pointers in patterns do not behave \
-                        deterministically. \
+                    let msg = "function pointers and unsized pointers in patterns behave \
+                        unpredictably and should not be relied upon. \
                         See https://github.com/rust-lang/rust/issues/70861 for details.";
                     tcx.struct_span_lint_hir(
                         lint::builtin::POINTER_STRUCTURAL_MATCH,
