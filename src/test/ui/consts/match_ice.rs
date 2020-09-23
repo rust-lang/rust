@@ -8,10 +8,10 @@ struct T;
 fn main() {
     const C: &S = &S;
     match C {
-        //~^ non-exhaustive patterns: `&S` not covered
         C => {}
-        //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| WARN was previously accepted by the compiler
+        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~| WARN must be annotated
+        //~| WARN previously accepted
     }
     const K: &T = &T;
     match K {

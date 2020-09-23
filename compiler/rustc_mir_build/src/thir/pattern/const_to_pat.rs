@@ -43,10 +43,15 @@ struct ConstToPat<'a, 'tcx> {
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
 
-    // This tracks if we saw some error or lint for a given const value, so that
+    // This tracks if we emitted some hard error for a given const value, so that
     // we will not subsequently issue an irrelevant lint for the same const
     // value.
     saw_const_match_error: Cell<bool>,
+
+    // This tracks if we emitted some diagnostic for a given const value, so that
+    // we will not subsequently issue an irrelevant lint for the same const
+    // value.
+    saw_const_match_lint: Cell<bool>,
 
     // For backcompat we need to keep allowing non-structurally-eq types behind references.
     // See also all the `cant-hide-behind` tests.
@@ -75,6 +80,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             param_env: pat_ctxt.param_env,
             include_lint_checks: pat_ctxt.include_lint_checks,
             saw_const_match_error: Cell::new(false),
+            saw_const_match_lint: Cell::new(false),
             behind_reference: Cell::new(false),
         }
     }
@@ -165,7 +171,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 if !self.type_has_partial_eq_impl(cv.ty) {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
                     self.tcx().sess.span_fatal(self.span, &msg);
-                } else if mir_structural_match_violation {
+                } else if mir_structural_match_violation && !self.saw_const_match_lint.get() {
                     self.tcx().struct_span_lint_hir(
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
@@ -289,8 +295,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             // Backwards compatibility hack because we can't cause hard errors on these
             // types, so we compare them via `PartialEq::eq` at runtime.
             ty::Adt(..) if !self.type_marked_structural(cv.ty) && self.behind_reference.get() => {
-                if self.include_lint_checks && !self.saw_const_match_error.get() {
-                    self.saw_const_match_error.set(true);
+                if self.include_lint_checks
+                    && !self.saw_const_match_error.get()
+                    && !self.saw_const_match_lint.get()
+                {
+                    self.saw_const_match_lint.set(true);
                     let msg = format!(
                         "to use a constant of type `{}` in a pattern, \
                         `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
@@ -429,8 +438,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             // compilation choices change the runtime behaviour of the match.
             // See https://github.com/rust-lang/rust/issues/70861 for examples.
             ty::FnPtr(..) | ty::RawPtr(..) => {
-                if self.include_lint_checks && !self.saw_const_match_error.get() {
-                    self.saw_const_match_error.set(true);
+                if self.include_lint_checks
+                    && !self.saw_const_match_error.get()
+                    && !self.saw_const_match_lint.get()
+                {
+                    self.saw_const_match_lint.set(true);
                     let msg = "function pointers and unsized pointers in patterns behave \
                         unpredictably and should not be relied upon. \
                         See https://github.com/rust-lang/rust/issues/70861 for details.";
@@ -457,12 +469,13 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
         if self.include_lint_checks
             && !self.saw_const_match_error.get()
+            && !self.saw_const_match_lint.get()
             && mir_structural_match_violation
             // FIXME(#73448): Find a way to bring const qualification into parity with
             // `search_for_structural_match_violation` and then remove this condition.
             && self.search_for_structural_match_violation(cv.ty).is_some()
         {
-            self.saw_const_match_error.set(true);
+            self.saw_const_match_lint.set(true);
             let msg = format!(
                 "to use a constant of type `{}` in a pattern, \
                  the constant's initializer must be trivial or all types \
