@@ -2,7 +2,7 @@
 
 > ⚠⚠⚠ Certain kinds of FFI don't work yet. ⚠⚠⚠
 
-The goal of this project is to create an alternative codegen backend for the rust compiler based on [Cranelift](https://github.com/bytecodealliance/wasmtime/blob/master/cranelift). This has the potential to improve compilation times in debug mode. If your project doesn't use any of the things listed under "Not yet supported", it should probably work fine. If not please open an issue.
+The goal of this project is to create an alternative codegen backend for the rust compiler based on [Cranelift](https://github.com/bytecodealliance/wasmtime/blob/master/cranelift). This has the potential to improve compilation times in debug mode. If your project doesn't use any of the things listed under "Not yet supported", it should work fine. If not please open an issue.
 
 ## Building
 
@@ -59,21 +59,7 @@ function jit_calc() {
 
 ## Env vars
 
-<dl>
-    <dt>CG_CLIF_JIT</dt>
-    <dd>Enable JIT mode to immediately run a program instead of writing an executable file.</dd>
-    <dt>CG_CLIF_JIT_ARGS</dt>
-    <dd>When JIT mode is enable pass these arguments to the program.</dd>
-    <dt>CG_CLIF_INCR_CACHE_DISABLED</dt>
-    <dd>Don't cache object files in the incremental cache. Useful during development of cg_clif
-    to make it possible to use incremental mode for all analyses performed by rustc without caching
-    object files when their content should have been changed by a change to cg_clif.</dd>
-    <dt>CG_CLIF_DISPLAY_CG_TIME</dt>
-    <dd>If "1", display the time it took to perform codegen for a crate</dd>
-    <dt>CG_CLIF_FUNCTION_SECTIONS</dt>
-    <dd>Use a single section for each function. This will often reduce the executable size at the
-        cost of making linking significantly slower.</dd>
-</dl>
+[see env_vars.md](docs/env_vars.md)
 
 ## Not yet supported
 
