@@ -2,9 +2,9 @@ use crate::ty::subst::{GenericArg, Subst};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::mini_set::MiniSet;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::ty::walk::MiniSet;
 
 // `pretty` is a separate module only for organization.
 mod pretty;
