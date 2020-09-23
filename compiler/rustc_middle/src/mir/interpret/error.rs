@@ -23,6 +23,12 @@ pub enum ErrorHandled {
     TooGeneric,
 }
 
+impl From<ErrorReported> for ErrorHandled {
+    fn from(err: ErrorReported) -> ErrorHandled {
+        ErrorHandled::Reported(err)
+    }
+}
+
 CloneTypeFoldableAndLiftImpls! {
     ErrorHandled,
 }
