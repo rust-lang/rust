@@ -47,7 +47,9 @@ fn eq_not_post_visitor_mutations<'tcx>(
     for (location, eq_not_opt_info) in eq_not_opts.iter() {
         let statements = &mut body.basic_blocks_mut()[location.block].statements;
         // We have to make sure that Ne is before any StorageDead as the operand being killed is used in the Ne
-        if let Some(storage_dead_idx_to_swap_with) = eq_not_opt_info.storage_dead_to_swap_with_ne {
+        if let Some(storage_dead_idx_to_swap_with) =
+            eq_not_opt_info.storage_dead_idx_to_swap_with_ne
+        {
             statements.swap(location.statement_index, storage_dead_idx_to_swap_with);
         }
         if let Some(eq_stmt_idx) = eq_not_opt_info.can_remove_eq {
@@ -320,7 +322,7 @@ impl OptimizationFinder<'b, 'tcx> {
                                         EqNotOptInfo {
                                             op1: op1.clone(),
                                             op2: op2.clone(),
-                                            storage_dead_to_swap_with_ne: storage_dead_to_swap,
+                                            storage_dead_idx_to_swap_with_ne: storage_dead_to_swap,
                                             can_remove_eq,
                                         },
                                     );
@@ -395,9 +397,14 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
 #[derive(Clone)]
 struct EqNotOptInfo<'tcx> {
+    /// First operand of the Eq in the Eq-Not pair
     op1: Operand<'tcx>,
+    /// Second operand of the Eq in the Eq-Not pair
     op2: Operand<'tcx>,
-    storage_dead_to_swap_with_ne: Option<usize>,
+    /// Statement index of the `StorageDead` we want to swap with Ne.
+    /// None if no `StorageDead` exists between Eq and Not pair)
+    storage_dead_idx_to_swap_with_ne: Option<usize>,
+    // Statement index of the Eq. None if it can not be removed
     can_remove_eq: Option<usize>,
 }
 
