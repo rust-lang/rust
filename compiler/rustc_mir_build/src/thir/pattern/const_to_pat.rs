@@ -58,6 +58,9 @@ struct ConstToPat<'a, 'tcx> {
     include_lint_checks: bool,
 }
 
+#[derive(Debug)]
+struct FallbackToConstRef;
+
 impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     fn new(
         pat_ctxt: &PatCtxt<'_, 'tcx>,
@@ -103,7 +106,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         // once indirect_structural_match is a full fledged error, this
         // level of indirection can be eliminated
 
-        let inlined_const_as_pat = self.recur(cv, mir_structural_match_violation);
+        let inlined_const_as_pat = self.recur(cv, mir_structural_match_violation).unwrap();
 
         if self.include_lint_checks && !self.saw_const_match_error.get() {
             // If we were able to successfully convert the const to some pat,
@@ -216,18 +219,22 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
-    fn recur(&self, cv: &'tcx ty::Const<'tcx>, mir_structural_match_violation: bool) -> Pat<'tcx> {
+    fn recur(
+        &self,
+        cv: &'tcx ty::Const<'tcx>,
+        mir_structural_match_violation: bool,
+    ) -> Result<Pat<'tcx>, FallbackToConstRef> {
         let id = self.id;
         let span = self.span;
         let tcx = self.tcx();
         let param_env = self.param_env;
 
-        let field_pats = |vals: &[&'tcx ty::Const<'tcx>]| {
+        let field_pats = |vals: &[&'tcx ty::Const<'tcx>]| -> Result<_, _> {
             vals.iter()
                 .enumerate()
                 .map(|(idx, val)| {
                     let field = Field::new(idx);
-                    FieldPat { field, pattern: self.recur(val, false) }
+                    Ok(FieldPat { field, pattern: self.recur(val, false)? })
                 })
                 .collect()
         };
@@ -287,7 +294,10 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         |lint| lint.build(&msg).emit(),
                     );
                 }
-                PatKind::Constant { value: cv }
+                // Since we are behind a reference, we can just bubble the error up so we get a
+                // constant at reference type, making it easy to let the fallback call
+                // `PartialEq::eq` on it.
+                return Err(FallbackToConstRef);
             }
             ty::Adt(adt_def, _) if !self.type_marked_structural(cv.ty) => {
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, cv.ty);
@@ -309,12 +319,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     variant_index: destructured
                         .variant
                         .expect("destructed const of adt without variant id"),
-                    subpatterns: field_pats(destructured.fields),
+                    subpatterns: field_pats(destructured.fields)?,
                 }
             }
             ty::Tuple(_) | ty::Adt(_, _) => {
                 let destructured = tcx.destructure_const(param_env.and(cv));
-                PatKind::Leaf { subpatterns: field_pats(destructured.fields) }
+                PatKind::Leaf { subpatterns: field_pats(destructured.fields)? }
             }
             ty::Array(..) => PatKind::Array {
                 prefix: tcx
@@ -322,7 +332,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     .fields
                     .iter()
                     .map(|val| self.recur(val, false))
-                    .collect(),
+                    .collect::<Result<_, _>>()?,
                 slice: None,
                 suffix: Vec::new(),
             },
@@ -355,7 +365,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                     .fields
                                     .iter()
                                     .map(|val| self.recur(val, false))
-                                    .collect(),
+                                    .collect::<Result<_, _>>()?,
                                 slice: None,
                                 suffix: vec![],
                             }),
@@ -379,8 +389,13 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // deref pattern.
                 _ => {
                     let old = self.behind_reference.replace(true);
-                    let val = PatKind::Deref {
-                        subpattern: self.recur(tcx.deref_const(self.param_env.and(cv)), false),
+                    // In case there are structural-match violations somewhere in this subpattern,
+                    // we fall back to a const pattern. If we do not do this, we may end up with
+                    // a !structural-match constant that is not of reference type, which makes it
+                    // very hard to invoke `PartialEq::eq` on it as a fallback.
+                    let val = match self.recur(tcx.deref_const(self.param_env.and(cv)), false) {
+                        Ok(subpattern) => PatKind::Deref { subpattern },
+                        Err(FallbackToConstRef) => PatKind::Constant { value: cv },
                     };
                     self.behind_reference.set(old);
                     val
@@ -439,6 +454,6 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             );
         }
 
-        Pat { span, ty: cv.ty, kind: Box::new(kind) }
+        Ok(Pat { span, ty: cv.ty, kind: Box::new(kind) })
     }
 }

@@ -409,40 +409,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let deref_ty = match *ty.kind() {
             ty::Ref(_, deref_ty, _) => deref_ty,
-            _ => {
-                trace!("non_scalar_compare called on non-reference type: {}", ty);
-                // Backcompat hack: due to non-structural matches not being a hard error, we can
-                // reach this for types that have manual `Eq` or `PartialEq` impls.
-                assert!(!ty.is_structural_eq_shallow(self.hir.tcx()));
-                let ref_ty = self.hir.tcx().mk_imm_ref(self.hir.tcx().lifetimes.re_erased, ty);
-                // let y = &place;
-                let y = self.temp(ref_ty, source_info.span);
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    y,
-                    Rvalue::Ref(self.hir.tcx().lifetimes.re_erased, BorrowKind::Shared, place),
-                );
-                val = Operand::Move(y);
-                // let temp = expect;
-                let temp = self.temp(ty, source_info.span);
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    temp,
-                    Rvalue::Use(expect),
-                );
-                // reftemp = &temp;
-                let reftemp = self.temp(ref_ty, source_info.span);
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    reftemp,
-                    Rvalue::Ref(self.hir.tcx().lifetimes.re_erased, BorrowKind::Shared, temp),
-                );
-                expect = Operand::Move(reftemp);
-                ty
-            },
+            _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
         };
 
         let eq_def_id = self.hir.tcx().require_lang_item(LangItem::PartialEq, None);
