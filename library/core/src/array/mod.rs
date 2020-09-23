@@ -436,3 +436,21 @@ impl<T, const N: usize> [T; N] {
         self
     }
 }
+
+/// Converts a reference to T into a reference to an array of length 1 (without copying).
+#[unstable(feature = "array_from_ref", issue = "none")]
+pub fn from_ref<T>(elem: &T) -> &[T; 1] {
+    // SAFETY: a reference is guaranteed to be valid for reads. The returned
+    // reference cannot be mutated as it is an immutable reference.
+    let ptr = elem as *const T as *const [T; 1];
+    unsafe { &*ptr }
+}
+
+/// Converts a reference to T into a reference to an array of length 1 (without copying).
+#[unstable(feature = "array_from_ref", issue = "none")]
+pub fn from_mut<T>(elem: &mut T) -> &mut [T; 1] {
+    // SAFETY: a mutable reference is guaranteed to be valid for writes.
+    // The reference cannot be accessed by another pointer as it is an mutable reference.
+    let ptr = elem as *mut T as *mut [T; 1];
+    unsafe { &mut *ptr }
+}
