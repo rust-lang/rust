@@ -275,7 +275,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (s, None, ty.prefix_string(), None, None)
             }
             GenericArgKind::Const(ct) => {
-                if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val {
+                let span = if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val {
                     let origin =
                         self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
@@ -308,15 +308,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             parent_descr,
                         );
                     }
-                }
+
+                    Some(origin.span).filter(|s| !s.is_dummy())
+                } else {
+                    bug!("unexpect const: {:?}", ct);
+                };
 
                 let mut s = String::new();
-                let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
+                let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::ValueNS);
                 if let Some(highlight) = highlight {
                     printer.region_highlight_mode = highlight;
                 }
                 let _ = ct.print(printer);
-                (s, None, "value".into(), None, None)
+                (s, span, "the constant".into(), None, None)
             }
             GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
         }
@@ -705,7 +709,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 "".to_string()
             };
 
-            let preposition = if "value" == kind_str { "of" } else { "for" };
+            let preposition = if "the value" == kind_str { "of" } else { "for" };
             // For example: "cannot infer type for type parameter `T`"
             format!(
                 "cannot infer {} {} {} `{}`{}",
