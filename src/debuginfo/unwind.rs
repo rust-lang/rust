@@ -16,7 +16,10 @@ impl<'tcx> UnwindContext<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa) -> Self {
         let mut frame_table = FrameTable::default();
 
-        let cie_id = if let Some(cie) = isa.create_systemv_cie() {
+        let cie_id = if let Some(mut cie) = isa.create_systemv_cie() {
+            if isa.flags().is_pic() {
+                cie.fde_address_encoding = gimli::DwEhPe(gimli::DW_EH_PE_pcrel.0 | gimli::DW_EH_PE_sdata4.0);
+            }
             Some(frame_table.add_cie(cie))
         } else {
             None

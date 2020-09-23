@@ -68,8 +68,17 @@ impl WriteDebugInfo for ObjectProduct {
         .into_bytes();
 
         let segment = self.object.segment_name(StandardSegment::Debug).to_vec();
-        let section_id = self.object.add_section(segment, name, SectionKind::Debug);
-        self.object.section_mut(section_id).set_data(data, 1);
+        // FIXME use SHT_X86_64_UNWIND for .eh_frame
+        let section_id = self.object.add_section(segment, name.clone(), if id == SectionId::EhFrame {
+            SectionKind::ReadOnlyData
+        } else {
+            SectionKind::Debug
+        });
+        self.object.section_mut(section_id).set_data(data, if id == SectionId::EhFrame {
+            8
+        } else {
+            1
+        });
         let symbol_id = self.object.section_symbol(section_id);
         (section_id, symbol_id)
     }
@@ -95,7 +104,7 @@ impl WriteDebugInfo for ObjectProduct {
                 Relocation {
                     offset: u64::from(reloc.offset),
                     symbol,
-                    kind: RelocationKind::Absolute,
+                    kind: reloc.kind,
                     encoding: RelocationEncoding::Generic,
                     size: reloc.size * 8,
                     addend: i64::try_from(symbol_offset).unwrap() + reloc.addend,
