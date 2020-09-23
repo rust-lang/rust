@@ -344,7 +344,7 @@ async function performDownloadWithRetryDialog<T>(downloadFunc: () => Promise<T>,
         try {
             return await downloadFunc();
         } catch (e) {
-            let selected = await vscode.window.showErrorMessage("Failed perform download: " + e.message, {}, {
+            const selected = await vscode.window.showErrorMessage("Failed perform download: " + e.message, {}, {
                 title: "Update Github Auth Token",
                 updateToken: true,
             }, {
@@ -353,7 +353,7 @@ async function performDownloadWithRetryDialog<T>(downloadFunc: () => Promise<T>,
             }, {
                 title: "Dismiss",
             });
-    
+
             if (selected?.updateToken) {
                 await queryForGithubToken(state);
                 continue;
