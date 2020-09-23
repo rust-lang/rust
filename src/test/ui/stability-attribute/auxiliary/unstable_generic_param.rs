@@ -76,6 +76,112 @@ pub const STRUCT4: Struct4 = Struct4 { field: 1 };
 pub const STRUCT5: Struct5 = Struct5 { field: 1 };
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub enum Enum1<#[unstable(feature = "unstable_default", issue = "none")] T = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    Some(#[stable(feature = "stable_test_feature", since = "1.0.0")] T),
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    None,
+}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub enum Enum2<T = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    Some(#[stable(feature = "stable_test_feature", since = "1.0.0")] T),
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    None,
+}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub enum Enum3<T = isize, #[unstable(feature = "unstable_default", issue = "none")] E = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    Ok(#[stable(feature = "stable_test_feature", since = "1.0.0")] T),
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    Err(#[stable(feature = "stable_test_feature", since = "1.0.0")] E),
+}
+
+#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub enum Enum4<T = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    Some(#[stable(feature = "stable_test_feature", since = "1.0.0")] T),
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    None,
+}
+
+#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub enum Enum5<#[unstable(feature = "unstable_default", issue = "none")] T = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    Some(#[stable(feature = "stable_test_feature", since = "1.0.0")] T),
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    None,
+}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub enum Enum6<#[unstable(feature = "unstable_default6", issue = "none")] T = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    Some(#[stable(feature = "stable_test_feature", since = "1.0.0")] T),
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    None,
+}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ENUM1: Enum1 = Enum1::Some(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ENUM2: Enum2 = Enum2::Some(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ENUM3: Enum3 = Enum3::Ok(1);
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ENUM3B: Enum3 = Enum3::Err(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ENUM4: Enum4 = Enum4::Some(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ENUM5: Enum5 = Enum5::Some(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub type Alias1<#[unstable(feature = "unstable_default", issue = "none")] T = usize> = Option<T>;
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub type Alias2<T = usize> = Option<T>;
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub type Alias3<T = isize, #[unstable(feature = "unstable_default", issue = "none")] E = usize> =
+    Result<T, E>;
+
+#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub type Alias4<T = usize> = Option<T>;
+
+#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub type Alias5<#[unstable(feature = "unstable_default", issue = "none")] T = usize> = Option<T>;
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub type Alias6<#[unstable(feature = "unstable_default6", issue = "none")] T = usize> = Option<T>;
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ALIAS1: Alias1 = Alias1::Some(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ALIAS2: Alias2 = Alias2::Some(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ALIAS3: Alias3 = Alias3::Ok(1);
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ALIAS3B: Alias3 = Alias3::Err(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ALIAS4: Alias4 = Alias4::Some(1);
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const ALIAS5: Alias5 = Alias5::Some(1);
+
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub trait Alloc {}
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
