@@ -1,4 +1,7 @@
-define_type! { struct u64x2([u64; 2]); }
+define_type! {
+    #[doc = "Vector of two `u64` types"]
+    struct u64x2([u64; 2]);
+}
 
 #[cfg(target_arch = "x86")]
 from_aligned! { unsafe u64x2 |bidirectional| core::arch::x86::__m128i }

@@ -1,4 +1,7 @@
-define_type! { struct isizex4([isize; 4]); }
+define_type! {
+    #[doc = "Vector of four `isize` types"]
+    struct isizex4([isize; 4]);
+}
 
 #[cfg(all(target_arch = "x86", target_pointer_width = "32"))]
 from_aligned! { unsafe isizex4 |bidirectional| core::arch::x86::__m128i }

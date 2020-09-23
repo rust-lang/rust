@@ -1,4 +1,7 @@
-define_type! { struct i8x16([i8; 16]); }
+define_type! {
+    #[doc = "Vector of 16 `i8` types"]
+    struct i8x16([i8; 16]);
+}
 
 #[cfg(target_arch = "x86")]
 from_aligned! { unsafe i8x16 |bidirectional| core::arch::x86::__m128i }

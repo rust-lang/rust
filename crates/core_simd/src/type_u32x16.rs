@@ -1,4 +1,7 @@
-define_type! { struct u32x16([u32; 16]); }
+define_type! {
+    #[doc = "Vector of 16 `u32` types"]
+    struct u32x16([u32; 16]);
+}
 
 /*
 #[cfg(target_arch = "x86")]

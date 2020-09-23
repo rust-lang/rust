@@ -1,4 +1,7 @@
-define_type! { struct f32x8([f32; 8]); }
+define_type! {
+    #[doc = "Vector of eight `f32` types"]
+    struct f32x8([f32; 8]);
+}
 
 #[cfg(target_arch = "x86")]
 from_aligned! { unsafe f32x8 |bidirectional| core::arch::x86::__m256 }

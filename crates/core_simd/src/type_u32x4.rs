@@ -1,4 +1,7 @@
-define_type! { struct u32x4([u32; 4]); }
+define_type! {
+    #[doc = "Vector of four `u32` types"]
+    struct u32x4([u32; 4]);
+}
 
 #[cfg(target_arch = "x86")]
 from_aligned! { unsafe u32x4 |bidirectional| core::arch::x86::__m128i }

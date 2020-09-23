@@ -28,8 +28,8 @@ macro_rules! from_unaligned {
 }
 
 macro_rules! define_type {
-    { struct $name:ident([$type:ty; $lanes:tt]); } => {
-        define_type! { @impl $name [$type; $lanes] }
+    { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); } => {
+        define_type! { @impl $(#[$attr])* | $name [$type; $lanes] }
 
         // array references
         impl AsRef<[$type; $lanes]> for $name {
@@ -74,40 +74,40 @@ macro_rules! define_type {
             }
         }
     };
-    { @impl $name:ident [$type:ty; 1] } => {
-        define_type! { @impl $name | $type | $type, | v0, }
+    { @impl $(#[$attr:meta])* | $name:ident [$type:ty; 1] } => {
+        define_type! { @def $(#[$attr])* | $name | $type | $type, | v0, }
     };
-    { @impl $name:ident [$type:ty; 2] } => {
-        define_type! { @impl $name | $type | $type, $type, | v0, v1, }
+    { @impl $(#[$attr:meta])* | $name:ident [$type:ty; 2] } => {
+        define_type! { @def $(#[$attr])* | $name | $type | $type, $type, | v0, v1, }
     };
-    { @impl $name:ident [$type:ty; 4] } => {
-        define_type! { @impl $name | $type |
+    { @impl $(#[$attr:meta])* | $name:ident [$type:ty; 4] } => {
+        define_type! { @def $(#[$attr])* | $name | $type |
             $type, $type, $type, $type, |
             v0, v1, v2, v3,
         }
     };
-    { @impl $name:ident [$type:ty; 8] } => {
-        define_type! { @impl $name | $type |
+    { @impl $(#[$attr:meta])* | $name:ident [$type:ty; 8] } => {
+        define_type! { @def $(#[$attr])* | $name | $type |
             $type, $type, $type, $type, $type, $type, $type, $type, |
             v0, v1, v2, v3, v4, v5, v6, v7,
         }
     };
-    { @impl $name:ident [$type:ty; 16] } => {
-        define_type! { @impl $name | $type |
+    { @impl $(#[$attr:meta])* | $name:ident [$type:ty; 16] } => {
+        define_type! { @def $(#[$attr])* | $name | $type |
             $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, |
             v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15,
         }
     };
-    { @impl $name:ident [$type:ty; 32] } => {
-        define_type! { @impl $name | $type |
+    { @impl $(#[$attr:meta])* | $name:ident [$type:ty; 32] } => {
+        define_type! { @def $(#[$attr])* | $name | $type |
             $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type,
             $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, |
             v0,  v1,  v2,  v3,  v4,  v5,  v6,  v7,  v8,  v9,  v10, v11, v12, v13, v14, v15,
             v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31,
         }
     };
-    { @impl $name:ident [$type:ty; 64] } => {
-        define_type! { @impl $name | $type |
+    { @impl $(#[$attr:meta])* | $name:ident [$type:ty; 64] } => {
+        define_type! { @def $(#[$attr])* | $name | $type |
             $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type,
             $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type,
             $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type, $type,
@@ -118,18 +118,21 @@ macro_rules! define_type {
             v48, v49, v50, v51, v52, v53, v54, v55, v56, v57, v58, v59, v60, v61, v62, v63,
         }
     };
-    { @impl $name:ident | $type:ty | $($itype:ty,)* | $($ivar:ident,)* } => {
+    { @def $(#[$attr:meta])* | $name:ident | $type:ty | $($itype:ty,)* | $($ivar:ident,)* } => {
+        $(#[$attr])*
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
         #[repr(simd)]
         pub struct $name($($itype),*);
 
         impl $name {
+            /// Construct a vector by setting each lane to a single value.
             #[inline]
             pub fn splat(value: $type) -> Self {
                 Self($(value as $itype),*)
             }
 
+            /// Construct a vector by setting each lane.
             #[allow(clippy::too_many_arguments)]
             #[inline]
             pub fn new($($ivar: $itype),*) -> Self {

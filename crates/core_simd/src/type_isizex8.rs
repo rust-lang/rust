@@ -1,4 +1,7 @@
-define_type! { struct isizex8([isize; 8]); }
+define_type! {
+    #[doc = "Vector of eight `isize` types"]
+    struct isizex8([isize; 8]);
+}
 
 #[cfg(all(target_arch = "x86", target_pointer_width = "32"))]
 from_aligned! { unsafe isizex8 |bidirectional| core::arch::x86::__m256i }

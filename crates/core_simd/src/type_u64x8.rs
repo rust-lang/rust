@@ -1,4 +1,7 @@
-define_type! { struct u64x8([u64; 8]); }
+define_type! {
+    #[doc = "Vector of eight `u64` types"]
+    struct u64x8([u64; 8]);
+}
 
 /*
 #[cfg(target_arch = "x86")]
