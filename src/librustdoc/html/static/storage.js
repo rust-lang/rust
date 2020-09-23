@@ -5,8 +5,30 @@ var darkThemes = ["dark", "ayu"];
 var currentTheme = document.getElementById("themeStyle");
 var mainTheme = document.getElementById("mainThemeStyle");
 
+var settingsDataset = (function () {
+    var settingsElement = document.getElementById("default-settings");
+    if (settingsElement === null) {
+        return null;
+    }
+    var dataset = settingsElement.dataset;
+    if (dataset === undefined) {
+        return null;
+    }
+    return dataset;
+})();
+
 function getSettingValue(settingName) {
-    return getCurrentValue('rustdoc-' + settingName);
+    var current = getCurrentValue('rustdoc-' + settingName);
+    if (current !== null) {
+        return current;
+    }
+    if (settingsDataset !== null) {
+        var def = settingsDataset[settingName.replace(/-/g,'_')];
+        if (def !== undefined) {
+            return def;
+        }
+    }
+    return null;
 }
 
 var localStoredTheme = getSettingValue("theme");

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::fmt;
@@ -216,6 +216,9 @@ pub struct RenderOptions {
     pub extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
     pub extern_html_root_urls: BTreeMap<String, String>,
+    /// A map of the default settings (values are as for DOM storage API).  Keys should lack the
+    /// `rustdoc-` prefix.
+    pub default_settings: HashMap<String, String>,
     /// If present, suffix added to CSS/JavaScript files when referencing them in generated pages.
     pub resource_suffix: String,
     /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
@@ -596,6 +599,7 @@ impl Options {
                 themes,
                 extension_css,
                 extern_html_root_urls,
+                default_settings: Default::default(),
                 resource_suffix,
                 enable_minification,
                 enable_index_page,
