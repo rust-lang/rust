@@ -76,7 +76,7 @@ interface DownloadOpts {
     dest: string;
     mode?: number;
     gunzip?: boolean;
-    overwrite?: boolean,
+    overwrite?: boolean;
 }
 
 export async function download(opts: DownloadOpts) {
