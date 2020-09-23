@@ -1,9 +1,13 @@
+//! Defines [`Pointer`] which is used to improve the quality of the generated clif ir for pointer
+//! operations.
+
 use crate::prelude::*;
 
 use rustc_target::abi::Align;
 
 use cranelift_codegen::ir::immediates::Offset32;
 
+/// A pointer pointing either to a certain address, a certain stack slot or nothing.
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Pointer {
     base: PointerBase,

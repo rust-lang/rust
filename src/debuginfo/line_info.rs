@@ -1,3 +1,5 @@
+//! Line info generation (`.debug_line`)
+
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 

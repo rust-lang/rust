@@ -1,3 +1,6 @@
+//! The JIT driver uses [`cranelift_simplejit`] to JIT execute programs without writing any object
+//! files.
+
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 

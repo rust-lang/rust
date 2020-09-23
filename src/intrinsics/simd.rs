@@ -1,3 +1,5 @@
+//! Codegen `extern "platform-intrinsic"` intrinsics.
+
 use super::*;
 use crate::prelude::*;
 

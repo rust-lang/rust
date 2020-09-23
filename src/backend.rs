@@ -1,3 +1,5 @@
+//! Abstraction around the object writing crate
+
 use std::convert::{TryFrom, TryInto};
 
 use rustc_data_structures::fx::FxHashMap;

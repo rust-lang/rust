@@ -1,3 +1,6 @@
+//! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
+//! standalone executable.
+
 use std::path::PathBuf;
 
 use rustc_codegen_ssa::back::linker::LinkerInfo;

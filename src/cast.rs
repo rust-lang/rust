@@ -1,3 +1,5 @@
+//! Various number casting functions
+
 use crate::prelude::*;
 
 pub(crate) fn clif_intcast(

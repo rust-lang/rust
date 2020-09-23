@@ -1,3 +1,5 @@
+//! Write the debuginfo into an object file.
+
 use rustc_data_structures::fx::FxHashMap;
 
 use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer};
@@ -55,6 +57,7 @@ pub(crate) enum DebugRelocName {
     Symbol(usize),
 }
 
+/// A [`Writer`] that collects all necessary relocations.
 #[derive(Clone)]
 pub(super) struct WriterRelocate {
     pub(super) relocs: Vec<DebugReloc>,
@@ -69,6 +72,7 @@ impl WriterRelocate {
         }
     }
 
+    /// Perform the collected relocations to be usable for JIT usage.
     #[cfg(feature = "jit")]
     pub(super) fn relocate_for_jit(
         mut self,

@@ -1,3 +1,6 @@
+//! Drivers are responsible for calling [`codegen_mono_items`] and performing any further actions
+//! like JIT executing or writing object files.
+
 use std::any::Any;
 
 use rustc_middle::middle::cstore::EncodedMetadata;

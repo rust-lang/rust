@@ -1,3 +1,5 @@
+//! Return value handling
+
 use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
@@ -5,6 +7,7 @@ fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> TyAnd
     fx.layout_of(fx.monomorphize(&fx.mir.local_decls[RETURN_PLACE].ty))
 }
 
+/// Can the given type be returned into an ssa var or does it need to be returned on the stack.
 pub(crate) fn can_return_to_ssa_var<'tcx>(
     tcx: TyCtxt<'tcx>,
     dest_layout: TyAndLayout<'tcx>,
@@ -16,6 +19,8 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(
     }
 }
 
+/// Return a place where the return value of the current function can be written to. If necessary
+/// this adds an extra parameter pointing to where the return value needs to be stored.
 pub(super) fn codegen_return_param<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
@@ -59,6 +64,8 @@ pub(super) fn codegen_return_param<'tcx>(
     ret_place
 }
 
+/// Invokes the closure with if necessary a value representing the return pointer. When the closure
+/// returns the call return value(s) if any are written to the correct place.
 pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     fx: &mut FunctionCx<'_, 'tcx, B>,
     fn_sig: FnSig<'tcx>,
@@ -102,6 +109,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     (call_inst, meta)
 }
 
+/// Codegen a return instruction with the right return value(s) if any.
 pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     match get_pass_mode(fx.tcx, return_layout(fx)) {
         PassMode::NoPass | PassMode::ByRef { size: Some(_) } => {

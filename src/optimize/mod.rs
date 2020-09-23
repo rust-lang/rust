@@ -1,3 +1,5 @@
+//! Various optimizations specific to cg_clif
+
 use crate::prelude::*;
 
 mod code_layout;

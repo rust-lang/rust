@@ -1,3 +1,5 @@
+//! Reading and writing of the rustc metadata for rlibs and dylibs
+
 use std::convert::TryFrom;
 use std::fs::File;
 use std::path::Path;

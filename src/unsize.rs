@@ -1,3 +1,7 @@
+//! Codegen of the [`PointerCast::Unsize`] operation.
+//!
+//! [`PointerCast::Unsize`]: `rustc_middle::ty::adjustment::PointerCast::Unsize`
+
 use crate::prelude::*;
 
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/base.rs#L159-L307

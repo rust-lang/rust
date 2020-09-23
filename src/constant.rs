@@ -1,3 +1,5 @@
+//! Handling of `static`s, `const`s and promoted allocations
+
 use rustc_span::DUMMY_SP;
 
 use rustc_data_structures::fx::FxHashSet;

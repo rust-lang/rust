@@ -1,3 +1,5 @@
+//! Argument passing
+
 use crate::prelude::*;
 
 pub(super) use EmptySinglePair::*;
@@ -118,6 +120,7 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
     }
 }
 
+/// Get a set of values to be passed as function arguments.
 pub(super) fn adjust_arg_for_abi<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
@@ -136,6 +139,8 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
     }
 }
 
+/// Create a [`CValue`] containing the value of a function parameter adding clif function parameters
+/// as necessary.
 pub(super) fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     start_block: Block,

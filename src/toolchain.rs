@@ -1,3 +1,5 @@
+//! Locating various executables part of a C toolchain.
+
 use std::path::PathBuf;
 
 use rustc_middle::bug;

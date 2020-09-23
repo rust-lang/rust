@@ -1,3 +1,5 @@
+//! SSA analysis
+
 use crate::prelude::*;
 
 use rustc_index::vec::IndexVec;

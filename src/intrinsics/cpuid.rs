@@ -1,6 +1,8 @@
+//! Emulation of a subset of the cpuid x86 instruction.
+
 use crate::prelude::*;
 
-/// Emulates a subset of the cpuid call.
+/// Emulates a subset of the cpuid x86 instruction.
 ///
 /// This emulates an intel cpu with sse and sse2 support, but which doesn't support anything else.
 pub(crate) fn codegen_cpuid_call<'tcx>(

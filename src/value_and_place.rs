@@ -1,3 +1,5 @@
+//! Definition of [`CValue`] and [`CPlace`]
+
 use crate::prelude::*;
 
 use cranelift_codegen::entity::EntityRef;

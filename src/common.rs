@@ -302,7 +302,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
     pub(crate) caller_location: Option<CValue<'tcx>>,
 
-    /// See [crate::optimize::code_layout] for more information.
+    /// See [`crate::optimize::code_layout`] for more information.
     pub(crate) cold_blocks: EntitySet<Block>,
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,

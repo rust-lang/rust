@@ -1,4 +1,4 @@
-//! Replaces 128-bit operators with lang item calls
+//! Replaces 128-bit operators with lang item calls where necessary
 
 use crate::prelude::*;
 

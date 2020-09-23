@@ -1,3 +1,5 @@
+//! Helpers used to print a message and abort in case of certain panics and some detected UB.
+
 use crate::prelude::*;
 
 fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, msg: &str) {

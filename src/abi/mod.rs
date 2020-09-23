@@ -1,3 +1,5 @@
+//! Handling of everything related to the calling convention. Also fills `fx.local_map`.
+
 #[cfg(debug_assertions)]
 mod comments;
 mod pass_mode;
@@ -325,6 +327,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 }
 
+/// Make a [`CPlace`] capable of holding value of the specified type.
 fn make_local_place<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     local: Local,

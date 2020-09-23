@@ -1,3 +1,6 @@
+//! Codegen of intrinsics. This includes `extern "rust-intrinsic"`, `extern "platform-intrinsic"`
+//! and LLVM intrinsics that have symbol names starting with `llvm.`.
+
 mod cpuid;
 mod llvm;
 mod simd;

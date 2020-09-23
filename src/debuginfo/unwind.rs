@@ -1,3 +1,5 @@
+//! Unwind info generation (`.eh_frame`)
+
 use crate::prelude::*;
 
 use cranelift_codegen::isa::{unwind::UnwindInfo, TargetIsa};

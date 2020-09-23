@@ -1,3 +1,5 @@
+//! Emulate LLVM intrinsics
+
 use crate::intrinsics::*;
 use crate::prelude::*;
 

@@ -1,3 +1,5 @@
+//! Handling of everything related to debuginfo.
+
 mod emit;
 mod line_info;
 mod unwind;

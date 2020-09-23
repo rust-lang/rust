@@ -1,3 +1,5 @@
+//! Various operations on integer and floating-point numbers
+
 use crate::prelude::*;
 
 pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {

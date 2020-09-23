@@ -1,3 +1,5 @@
+//! Codegen of a single function
+
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 

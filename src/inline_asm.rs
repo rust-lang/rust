@@ -1,3 +1,5 @@
+//! Codegen of [`asm!`] invocations.
+
 use crate::prelude::*;
 
 use std::fmt::Write;
