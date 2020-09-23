@@ -1866,6 +1866,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "ranges",
     },
     Lint {
+        name: "rc_buffer",
+        group: "perf",
+        desc: "shared ownership of a buffer type",
+        deprecation: None,
+        module: "types",
+    },
+    Lint {
         name: "redundant_allocation",
         group: "perf",
         desc: "redundant allocation",
