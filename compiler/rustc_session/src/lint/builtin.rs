@@ -2239,23 +2239,13 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(nontrivial_structural_match)]
     ///
-    /// struct Plus(i32, i32);
-    /// const ONE_PLUS_TWO: &&Plus = &&Plus(1, 2);
-    ///
-    /// impl PartialEq for Plus {
-    ///     fn eq(&self, other: &Self) -> bool {
-    ///         self.0 + self.1 == other.0 + other.1
-    ///     }
-    /// }
-    ///
-    /// impl Eq for Plus {}
-    ///
+    /// #[derive(Copy, Clone, Debug)]
+    /// struct NoDerive(u32);
+    /// impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
+    /// impl Eq for NoDerive { }
     /// fn main() {
-    ///     if let ONE_PLUS_TWO = &&Plus(3, 0) {
-    ///         println!("semantic!");
-    ///     } else {
-    ///         println!("structural!");
-    ///     }
+    ///     const INDEX: Option<NoDerive> = [None, Some(NoDerive(10))][0];
+    ///     match None { Some(_) => panic!("whoops"), INDEX => dbg!(INDEX), };
     /// }
     /// ```
     ///
