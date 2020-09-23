@@ -20,6 +20,7 @@
 )]
 #![feature(nll)]
 #![feature(staged_api)]
+#![feature(const_fn)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
 #![feature(extern_types)]

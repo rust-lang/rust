@@ -1,6 +1,6 @@
 // Test that we can't call random fns in a const fn or do other bad things.
 
-#![feature(const_fn, const_transmute)]
+#![feature(const_fn, const_fn_transmute)]
 
 use std::mem::transmute;
 

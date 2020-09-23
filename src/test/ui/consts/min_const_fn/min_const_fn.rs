@@ -78,25 +78,25 @@ const fn foo11<T: std::fmt::Display>(t: T) -> T { t }
 const fn foo11_2<T: Send>(t: T) -> T { t }
 //~^ ERROR trait bounds other than `Sized` on const fn parameters are unstable
 const fn foo19(f: f32) -> f32 { f * 2.0 }
-//~^ ERROR only int, `bool` and `char` operations are stable in const fn
+//~^ ERROR int, `bool` and `char` operations
 const fn foo19_2(f: f32) -> f32 { 2.0 - f }
-//~^ ERROR only int, `bool` and `char` operations are stable in const fn
+//~^ ERROR int, `bool` and `char` operations
 const fn foo19_3(f: f32) -> f32 { -f }
-//~^ ERROR only int and `bool` operations are stable in const fn
+//~^ ERROR int, `bool` and `char` operations
 const fn foo19_4(f: f32, g: f32) -> f32 { f / g }
-//~^ ERROR only int, `bool` and `char` operations are stable in const fn
+//~^ ERROR int, `bool` and `char` operations
 
 static BAR: u32 = 42;
-const fn foo25() -> u32 { BAR } //~ ERROR cannot access `static` items in const fn
-const fn foo26() -> &'static u32 { &BAR } //~ ERROR cannot access `static` items
+const fn foo25() -> u32 { BAR } //~ ERROR cannot refer to statics
+const fn foo26() -> &'static u32 { &BAR } //~ ERROR cannot refer to statics
 const fn foo30(x: *const u32) -> usize { x as usize }
-//~^ ERROR casting pointers to ints is unstable
+//~^ ERROR casting pointers to integers
 const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } }
-//~^ ERROR casting pointers to ints is unstable
+//~^ ERROR casting pointers to integers
 const fn foo30_2(x: *mut u32) -> usize { x as usize }
-//~^ ERROR casting pointers to ints is unstable
+//~^ ERROR casting pointers to integers
 const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }
-//~^ ERROR casting pointers to ints is unstable
+//~^ ERROR casting pointers to integers
 const fn foo30_6() -> bool { let x = true; x }
 const fn inc(x: &mut i32) { *x += 1 }
 //~^ ERROR mutable references in const fn are unstable
