@@ -476,7 +476,6 @@ fn run_optimization_passes<'tcx>(
         &copy_prop::CopyPropagation,
         &simplify_branches::SimplifyBranches::new("after-copy-prop"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
         &simplify::SimplifyLocals,
