@@ -1,12 +1,14 @@
-error[E0723]: function pointers in const fn are unstable
-  --> $DIR/allow_const_fn_ptr.rs:5:16
+error: const-stable function cannot use `#[feature(const_fn_fn_ptr_basics)]`
+  --> $DIR/allow_const_fn_ptr.rs:6:16
    |
 LL | const fn error(_: fn()) {}
    |                ^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: otherwise `#[allow_internal_unstable]` can be used to bypass stability checks
+help: if it is not part of the public API, make this function unstably const
+   |
+LL | #[rustc_const_unstable(feature = "...", issue = "...")]
+   |
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0723`.
