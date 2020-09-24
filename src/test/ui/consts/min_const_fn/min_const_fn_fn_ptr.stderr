@@ -1,5 +1,5 @@
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/min_const_fn_fn_ptr.rs:11:5
+  --> $DIR/min_const_fn_fn_ptr.rs:13:5
    |
 LL |     x.0.field;
    |     ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     x.0.field;
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/min_const_fn_fn_ptr.rs:14:59
+  --> $DIR/min_const_fn_fn_ptr.rs:16:59
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasPtr { field }) }
    |                                                           ^^^^^
