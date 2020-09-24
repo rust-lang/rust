@@ -42,7 +42,7 @@ fn main() {
     let f = Foo;
     let c = ImplStruct;
     let n = NormalStruct;
-    let a = AttrStruct{ bad_method: 5 };
+    let a = AttrStruct { bad_method: 5 };
 
     // lint these
     b.bad_method();

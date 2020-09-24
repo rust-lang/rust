@@ -1,9 +1,9 @@
 use crate::utils::span_lint;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::{LateLintPass, LateContext};
-use rustc_session::{impl_lint_pass, declare_tool_lint};
 use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Symbol;
 
 declare_clippy_lint! {
@@ -38,10 +38,9 @@ pub struct DisallowedMethod {
 impl DisallowedMethod {
     pub fn new(disallowed: FxHashSet<String>) -> Self {
         Self {
-            disallowed: disallowed.iter()
-                .map(|s| {
-                    s.split("::").map(|seg| Symbol::intern(seg)).collect::<Vec<_>>()
-                })
+            disallowed: disallowed
+                .iter()
+                .map(|s| s.split("::").map(|seg| Symbol::intern(seg)).collect::<Vec<_>>())
                 .collect(),
         }
     }
@@ -49,7 +48,7 @@ impl DisallowedMethod {
 
 impl_lint_pass!(DisallowedMethod => [DISALLOWED_METHOD]);
 
-impl <'tcx> LateLintPass<'tcx> for DisallowedMethod {
+impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(_path, _, _args, _) = &expr.kind {
             let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
@@ -67,7 +66,7 @@ impl <'tcx> LateLintPass<'tcx> for DisallowedMethod {
                             .map(|s| s.to_ident_string())
                             .collect::<Vec<_>>()
                             .join("::"),
-                    )
+                    ),
                 );
             }
         }
