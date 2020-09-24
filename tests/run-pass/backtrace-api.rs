@@ -3,7 +3,7 @@
 
 extern "Rust" {
     fn miri_get_backtrace() -> Box<[*mut ()]>;
-    fn miri_resolve_frame(version: u8, ptr: *mut ()) -> MiriFrame;
+    fn miri_resolve_frame(ptr: *mut (), flags: u64) -> MiriFrame;
 }
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ struct MiriFrame {
 fn main() {
     let frames = unsafe { miri_get_backtrace() };
     for frame in frames.into_iter() {
-        let miri_frame = unsafe { miri_resolve_frame(0, *frame) };
+        let miri_frame = unsafe { miri_resolve_frame(*frame, 0) };
         let name = String::from_utf8(miri_frame.name.into()).unwrap();
         let filename = String::from_utf8(miri_frame.filename.into()).unwrap();
         eprintln!("{}:{}:{} ({})", filename, miri_frame.lineno, miri_frame.colno, name);

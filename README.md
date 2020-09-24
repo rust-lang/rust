@@ -290,7 +290,7 @@ extern "Rust" {
     ///
     /// The fields must be declared in exactly the same order as they appear in `MiriFrame` above.
     /// This function can be called on any thread (not just the one which obtained `frame`)
-    fn miri_resolve_frame(version: u8, frame: *mut ()) -> MiriFrame;
+    fn miri_resolve_frame(frame: *mut (), flags: u64) -> MiriFrame;
 
     /// Miri-provided extern function to begin unwinding with the given payload.
     ///

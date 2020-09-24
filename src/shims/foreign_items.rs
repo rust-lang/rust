@@ -251,11 +251,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
                 let tcx = this.tcx;
-                let &[version, ptr] = check_arg_count(args)?;
+                let &[ptr, flags] = check_arg_count(args)?;
 
-                let version = this.read_scalar(version)?.to_u8()?;
-                if version != 0 {
-                    throw_ub_format!("Unknown `miri_resolve_frame` version {}", version);
+                let flags = this.read_scalar(flags)?.to_u64()?;
+                if flags != 0 {
+                    throw_ub_format!("Unknown `miri_resolve_frame` flags {}", flags);
                 }
 
                 let ptr = match this.read_scalar(ptr)?.check_init()? {
