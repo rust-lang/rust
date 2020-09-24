@@ -42,48 +42,48 @@ rustc_queries! {
     }
 
     Other {
-        // Represents crate as a whole (as distinct from the top-level crate module).
-        // If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
-        // we will have to assume that any change means that you need to be recompiled.
-        // This is because the `hir_crate` query gives you access to all other items.
-        // To avoid this fate, do not call `tcx.hir().krate()`; instead,
-        // prefer wrappers like `tcx.visit_all_items_in_krate()`.
+        /// Represents crate as a whole (as distinct from the top-level crate module).
+        /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
+        /// we will have to assume that any change means that you need to be recompiled.
+        /// This is because the `hir_crate` query gives you access to all other items.
+        /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
+        /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
         query hir_crate(key: CrateNum) -> &'tcx Crate<'tcx> {
             eval_always
             no_hash
             desc { "get the crate HIR" }
         }
 
-        // The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
-        // Avoid calling this query directly.
+        /// The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
+        /// Avoid calling this query directly.
         query index_hir(_: CrateNum) -> &'tcx map::IndexedHir<'tcx> {
             eval_always
             no_hash
             desc { "index HIR" }
         }
 
-        // The items in a module.
-        //
-        // This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
-        // Avoid calling this query directly.
+        /// The items in a module.
+        ///
+        /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
+        /// Avoid calling this query directly.
         query hir_module_items(key: LocalDefId) -> &'tcx hir::ModuleItems {
             eval_always
             desc { |tcx| "HIR module items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
-        // Gives access to the HIR node for the HIR owner `key`.
-        //
-        // This can be conveniently accessed by methods on `tcx.hir()`.
-        // Avoid calling this query directly.
+        /// Gives access to the HIR node for the HIR owner `key`.
+        ///
+        /// This can be conveniently accessed by methods on `tcx.hir()`.
+        /// Avoid calling this query directly.
         query hir_owner(key: LocalDefId) -> Option<&'tcx crate::hir::Owner<'tcx>> {
             eval_always
             desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
-        // Gives access to the HIR nodes and bodies inside the HIR owner `key`.
-        //
-        // This can be conveniently accessed by methods on `tcx.hir()`.
-        // Avoid calling this query directly.
+        /// Gives access to the HIR nodes and bodies inside the HIR owner `key`.
+        ///
+        /// This can be conveniently accessed by methods on `tcx.hir()`.
+        /// Avoid calling this query directly.
         query hir_owner_nodes(key: LocalDefId) -> Option<&'tcx crate::hir::OwnerNodes<'tcx>> {
             eval_always
             desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
@@ -334,9 +334,9 @@ rustc_queries! {
     }
 
     TypeChecking {
-        // Erases regions from `ty` to yield a new type.
-        // Normally you would just use `tcx.erase_regions(&value)`,
-        // however, which uses this query as a kind of cache.
+        /// Erases regions from `ty` to yield a new type.
+        /// Normally you would just use `tcx.erase_regions(&value)`,
+        /// however, which uses this query as a kind of cache.
         query erase_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
             // This query is not expected to have input -- as a result, it
             // is not a good candidates for "replay" because it is essentially a
@@ -1538,7 +1538,7 @@ rustc_queries! {
             desc { "looking up supported target features" }
         }
 
-        // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
+        /// Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
         query instance_def_size_estimate(def: ty::InstanceDef<'tcx>)
             -> usize {
             desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }

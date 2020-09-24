@@ -5,8 +5,8 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    braced, parenthesized, parse_macro_input, Attribute, Block, Error, Expr, Ident, ReturnType,
-    Token, Type,
+    braced, parenthesized, parse_macro_input, AttrStyle, Attribute, Block, Error, Expr, Ident,
+    ReturnType, Token, Type,
 };
 
 #[allow(non_camel_case_types)]
@@ -128,17 +128,25 @@ impl Parse for QueryModifier {
 }
 
 /// Ensures only doc comment attributes are used
-fn check_attributes(attrs: Vec<Attribute>) -> Result<()> {
-    for attr in attrs {
+fn check_attributes(attrs: Vec<Attribute>) -> Result<Vec<Attribute>> {
+    let inner = |attr: Attribute| {
         if !attr.path.is_ident("doc") {
-            return Err(Error::new(attr.span(), "attributes not supported on queries"));
+            Err(Error::new(attr.span(), "attributes not supported on queries"))
+        } else if attr.style != AttrStyle::Outer {
+            Err(Error::new(
+                attr.span(),
+                "attributes must be outer attributes (`///`), not inner attributes",
+            ))
+        } else {
+            Ok(attr)
         }
-    }
-    Ok(())
+    };
+    attrs.into_iter().map(inner).collect()
 }
 
 /// A compiler query. `query ... { ... }`
 struct Query {
+    doc_comments: Vec<Attribute>,
     modifiers: List<QueryModifier>,
     name: Ident,
     key: IdentOrWild,
@@ -148,7 +156,7 @@ struct Query {
 
 impl Parse for Query {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        check_attributes(input.call(Attribute::parse_outer)?)?;
+        let doc_comments = check_attributes(input.call(Attribute::parse_outer)?)?;
 
         // Parse the query declaration. Like `query type_of(key: DefId) -> Ty<'tcx>`
         input.parse::<kw::query>()?;
@@ -165,7 +173,7 @@ impl Parse for Query {
         braced!(content in input);
         let modifiers = content.parse()?;
 
-        Ok(Query { modifiers, name, key, arg, result })
+        Ok(Query { doc_comments, modifiers, name, key, arg, result })
     }
 }
 
@@ -476,9 +484,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             };
 
             let attribute_stream = quote! {#(#attributes),*};
-
+            let doc_comments = query.doc_comments.iter();
             // Add the query to the group
             group_stream.extend(quote! {
+                #(#doc_comments)*
                 [#attribute_stream] fn #name: #name(#arg) #result,
             });
 
