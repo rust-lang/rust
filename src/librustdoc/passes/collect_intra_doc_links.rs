@@ -964,7 +964,7 @@ impl LinkCollector<'_, '_> {
         ) && !matches!(res, Res::PrimTy(_))
         {
             if let Some((path, prim)) = is_primitive(path_str, TypeNS) {
-                // `prim@char`
+                // `primitive@char`
                 if matches!(disambiguator, Some(Disambiguator::Primitive)) {
                     if fragment.is_some() {
                         anchor_failure(
@@ -1299,7 +1299,7 @@ impl Disambiguator {
                 "type" => NS(Namespace::TypeNS),
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
-                "prim" | "primitive" => Primitive,
+                "primitive" => Primitive,
                 _ => return find_suffix(),
             };
             Ok((d, &rest[1..]))
@@ -1319,7 +1319,7 @@ impl Disambiguator {
 
     fn suggestion(self) -> Suggestion {
         let kind = match self {
-            Disambiguator::Primitive => return Suggestion::Prefix("prim"),
+            Disambiguator::Primitive => return Suggestion::Prefix("primitive"),
             Disambiguator::Kind(kind) => kind,
             Disambiguator::Namespace(_) => panic!("display_for cannot be used on namespaces"),
         };

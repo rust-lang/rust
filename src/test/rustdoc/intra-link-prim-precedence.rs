@@ -7,7 +7,7 @@ pub mod char {
     pub struct Inner;
 }
 
-/// See [prim@char]
+/// See [primitive@char]
 // @has intra_link_prim_precedence/struct.MyString.html '//a/@href' 'https://doc.rust-lang.org/nightly/std/primitive.char.html'
 pub struct MyString;
 

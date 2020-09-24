@@ -298,7 +298,7 @@ impl From<String> for Box<dyn Error> {
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
-    /// [`str`]: prim@str
+    /// [`str`]: primitive@str
     ///
     /// # Examples
     ///
@@ -321,7 +321,7 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
 impl From<&str> for Box<dyn Error> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
-    /// [`str`]: prim@str
+    /// [`str`]: primitive@str
     ///
     /// # Examples
     ///

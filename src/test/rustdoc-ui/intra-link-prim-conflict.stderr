@@ -13,10 +13,10 @@ help: to link to the module, prefix with `mod@`
    |
 LL | /// [mod@char]
    |      ^^^^^^^^
-help: to link to the builtin type, prefix with `prim@`
+help: to link to the builtin type, prefix with `primitive@`
    |
-LL | /// [prim@char]
-   |      ^^^^^^^^^
+LL | /// [primitive@char]
+   |      ^^^^^^^^^^^^^^
 
 error: `char` is both a module and a builtin type
   --> $DIR/intra-link-prim-conflict.rs:10:6
@@ -28,10 +28,10 @@ help: to link to the module, prefix with `mod@`
    |
 LL | /// [mod@char]
    |      ^^^^^^^^
-help: to link to the builtin type, prefix with `prim@`
+help: to link to the builtin type, prefix with `primitive@`
    |
-LL | /// [prim@char]
-   |      ^^^^^^^^^
+LL | /// [primitive@char]
+   |      ^^^^^^^^^^^^^^
 
 error: incompatible link kind for `char`
   --> $DIR/intra-link-prim-conflict.rs:19:6
@@ -45,7 +45,7 @@ error: incompatible link kind for `char`
   --> $DIR/intra-link-prim-conflict.rs:26:10
    |
 LL |     //! [struct@char]
-   |          ^^^^^^^^^^^ help: to link to the builtin type, prefix with `prim@`: `prim@char`
+   |          ^^^^^^^^^^^ help: to link to the builtin type, prefix with `primitive@`: `primitive@char`
    |
    = note: this link resolved to a builtin type, which is not a struct
 

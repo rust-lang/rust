@@ -73,7 +73,7 @@ use crate::sys;
 /// extern functions. See the documentation for that function for a
 /// discussion on ensuring the lifetime of the raw pointer.
 ///
-/// [`&str`]: prim@str
+/// [`&str`]: primitive@str
 /// [slice.as_ptr]: ../primitive.slice.html#method.as_ptr
 /// [slice.len]: ../primitive.slice.html#method.len
 /// [`Deref`]: ops::Deref
@@ -184,7 +184,7 @@ pub struct CString {
 /// println!("string: {}", my_string_safe());
 /// ```
 ///
-/// [`&str`]: prim@str
+/// [`&str`]: primitive@str
 #[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
@@ -1355,7 +1355,7 @@ impl CStr {
     /// function will return the corresponding [`&str`] slice. Otherwise,
     /// it will return an error with details of where UTF-8 validation failed.
     ///
-    /// [`&str`]: prim@str
+    /// [`&str`]: primitive@str
     ///
     /// # Examples
     ///
@@ -1383,7 +1383,7 @@ impl CStr {
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
     /// [`Cow`]`::`[`Owned`]`(`[`String`]`)` with the result.
     ///
-    /// [`str`]: prim@str
+    /// [`str`]: primitive@str
     /// [`Borrowed`]: Cow::Borrowed
     /// [`Owned`]: Cow::Owned
     /// [U+FFFD]: crate::char::REPLACEMENT_CHARACTER

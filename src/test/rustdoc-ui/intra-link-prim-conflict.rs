@@ -14,7 +14,7 @@
 //~| HELP to link to the builtin type
 
 /// [mod@char] // ok
-/// [prim@char] // ok
+/// [primitive@char] // ok
 
 /// [struct@char]
 //~^ ERROR incompatible link
@@ -25,6 +25,6 @@ pub mod char {}
 pub mod inner {
     //! [struct@char]
     //~^ ERROR incompatible link
-    //~| HELP prefix with `prim@`
+    //~| HELP prefix with `primitive@`
     //~| NOTE resolved to a builtin type
 }
