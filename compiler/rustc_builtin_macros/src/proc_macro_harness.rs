@@ -177,6 +177,18 @@ impl<'a> CollectProcMacros<'a> {
                         );
                     }
 
+                    let name = ident.name.as_str();
+                    if name == "derive_skip"
+                        || name == "ignore"
+                        || name == "partialeq"
+                        || name == "partialord"
+                        || name == "hash"
+                        || name == "debug"
+                    {
+                        self.handler
+                            .span_err(attr.span, &format!("`{}` is a reserved helper name", ident));
+                    }
+
                     Some(ident.name)
                 })
                 .collect()
