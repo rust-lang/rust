@@ -1,7 +1,7 @@
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath};
 use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
-use super::{SemiColonMode, SeqSep, SupportsCustomAttr, TokenExpectType};
+use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use rustc_ast::ptr::P;
@@ -445,43 +445,41 @@ impl<'a> Parser<'a> {
             _ => RangeLimits::Closed,
         };
         let op = AssocOp::from_token(&self.token);
-        let (mut expr, tokens) =
-            self.parse_or_use_outer_attributes(attrs, SupportsCustomAttr::Yes, |this, attrs| {
-                let lo = this.token.span;
-                this.bump();
-                let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
-                    // RHS must be parsed with more associativity than the dots.
-                    this.parse_assoc_expr_with(op.unwrap().precedence() + 1, LhsExpr::NotYetParsed)
-                        .map(|x| (lo.to(x.span), Some(x)))?
-                } else {
-                    (lo, None)
-                };
-                Ok(this.mk_expr(span, this.mk_range(None, opt_end, limits)?, attrs))
-            })?;
+        let (mut expr, tokens) = self.parse_or_use_outer_attributes(attrs, |this, attrs| {
+            let lo = this.token.span;
+            this.bump();
+            let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
+                // RHS must be parsed with more associativity than the dots.
+                this.parse_assoc_expr_with(op.unwrap().precedence() + 1, LhsExpr::NotYetParsed)
+                    .map(|x| (lo.to(x.span), Some(x)))?
+            } else {
+                (lo, None)
+            };
+            Ok(this.mk_expr(span, this.mk_range(None, opt_end, limits)?, attrs))
+        })?;
         expr.tokens = tokens;
         Ok(expr)
     }
 
     /// Parses a prefix-unary-operator expr.
     fn parse_prefix_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
-        let (mut expr, tokens) =
-            self.parse_or_use_outer_attributes(attrs, SupportsCustomAttr::Yes, |this, attrs| {
-                let lo = this.token.span;
-                // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
-                let (hi, ex) = match this.token.uninterpolate().kind {
-                    token::Not => this.parse_unary_expr(lo, UnOp::Not), // `!expr`
-                    token::Tilde => this.recover_tilde_expr(lo),        // `~expr`
-                    token::BinOp(token::Minus) => this.parse_unary_expr(lo, UnOp::Neg), // `-expr`
-                    token::BinOp(token::Star) => this.parse_unary_expr(lo, UnOp::Deref), // `*expr`
-                    token::BinOp(token::And) | token::AndAnd => this.parse_borrow_expr(lo),
-                    token::Ident(..) if this.token.is_keyword(kw::Box) => this.parse_box_expr(lo),
-                    token::Ident(..) if this.is_mistaken_not_ident_negation() => {
-                        this.recover_not_expr(lo)
-                    }
-                    _ => return this.parse_dot_or_call_expr(attrs),
-                }?;
-                Ok(this.mk_expr(lo.to(hi), ex, attrs))
-            })?;
+        let (mut expr, tokens) = self.parse_or_use_outer_attributes(attrs, |this, attrs| {
+            let lo = this.token.span;
+            // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
+            let (hi, ex) = match this.token.uninterpolate().kind {
+                token::Not => this.parse_unary_expr(lo, UnOp::Not), // `!expr`
+                token::Tilde => this.recover_tilde_expr(lo),        // `~expr`
+                token::BinOp(token::Minus) => this.parse_unary_expr(lo, UnOp::Neg), // `-expr`
+                token::BinOp(token::Star) => this.parse_unary_expr(lo, UnOp::Deref), // `*expr`
+                token::BinOp(token::And) | token::AndAnd => this.parse_borrow_expr(lo),
+                token::Ident(..) if this.token.is_keyword(kw::Box) => this.parse_box_expr(lo),
+                token::Ident(..) if this.is_mistaken_not_ident_negation() => {
+                    this.recover_not_expr(lo)
+                }
+                _ => return this.parse_dot_or_call_expr(attrs),
+            }?;
+            Ok(this.mk_expr(lo.to(hi), ex, attrs))
+        })?;
         expr.tokens = tokens;
         Ok(expr)
     }
@@ -1600,7 +1598,7 @@ impl<'a> Parser<'a> {
     /// Parses a parameter in a closure header (e.g., `|arg, arg|`).
     fn parse_fn_block_param(&mut self) -> PResult<'a, Param> {
         let lo = self.token.span;
-        self.parse_outer_attributes(SupportsCustomAttr::No, |this, attrs| {
+        self.parse_outer_attributes(|this, attrs| {
             let pat = this.parse_pat(PARAM_EXPECTED)?;
             let ty = if this.eat(&token::Colon) {
                 this.parse_ty()?
@@ -1631,8 +1629,7 @@ impl<'a> Parser<'a> {
             self.error_missing_if_cond(lo, cond.span)
         } else {
             // For recovery.
-            let attrs =
-                self.parse_outer_attributes(SupportsCustomAttr::No, |_this, attrs| Ok(attrs))?;
+            let attrs = self.parse_outer_attributes(|_this, attrs| Ok(attrs))?;
             let not_block = self.token != token::OpenDelim(token::Brace);
             let block = self.parse_block().map_err(|mut err| {
                 if not_block {
@@ -1689,7 +1686,7 @@ impl<'a> Parser<'a> {
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         let ctx_span = self.prev_token.span; // `else`
-        self.parse_outer_attributes(SupportsCustomAttr::No, |this, attrs| {
+        self.parse_outer_attributes(|this, attrs| {
             let expr = if this.eat_keyword(kw::If) {
                 this.parse_if_expr(AttrVec::new())?
             } else {
@@ -1848,7 +1845,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
-        self.parse_outer_attributes(SupportsCustomAttr::No, |this, attrs| {
+        self.parse_outer_attributes(|this, attrs| {
             let lo = this.token.span;
             let pat = this.parse_top_pat(GateOr::No)?;
             let guard = if this.eat_keyword(kw::If) {
@@ -2164,7 +2161,7 @@ impl<'a> Parser<'a> {
 
     /// Parses `ident (COLON expr)?`.
     fn parse_field(&mut self) -> PResult<'a, Field> {
-        self.parse_outer_attributes(SupportsCustomAttr::No, |this, attrs| {
+        self.parse_outer_attributes(|this, attrs| {
             let attrs = attrs.into();
             let lo = this.token.span;
 

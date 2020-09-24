@@ -1,4 +1,4 @@
-use super::{Parser, PathStyle, SupportsCustomAttr};
+use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -831,7 +831,7 @@ impl<'a> Parser<'a> {
         let mut etc_span = None;
 
         while self.token != token::CloseDelim(token::Brace) {
-            let field_pat = self.parse_outer_attributes(SupportsCustomAttr::No, |this, attrs| {
+            let field_pat = self.parse_outer_attributes(|this, attrs| {
                 let lo = this.token.span;
 
                 // check that a comma comes after every field

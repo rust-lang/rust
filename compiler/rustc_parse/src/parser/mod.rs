@@ -10,7 +10,6 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedBrace;
-pub use attr::SupportsCustomAttr;
 use diagnostics::Error;
 pub use path::PathStyle;
 
@@ -28,8 +27,9 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use std::{cmp, mem, slice};
 use tracing::debug;
+
+use std::{cmp, mem, slice};
 
 bitflags::bitflags! {
     struct Restrictions: u8 {
