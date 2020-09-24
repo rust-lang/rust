@@ -16,14 +16,14 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// // example code where clippy issues a warning
     /// foo.bad_method(); // Foo is disallowed
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```rust,ignore
     /// // example code which does not raise clippy warning
-    /// GoodStruct.bad_method(); // not disallowed
+    /// goodStruct.bad_method(); // not disallowed
     /// ```
     pub DISALLOWED_METHOD,
     nursery,
