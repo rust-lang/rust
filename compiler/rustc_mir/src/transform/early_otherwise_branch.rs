@@ -240,6 +240,39 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         if is_switch(terminator) {
             let this_bb_discr_info = self.find_switch_discriminant_info(bb, terminator)?;
 
+            // The otherwise branch of the two switches have to point to the same bb
+            if discr_info.otherwise_bb != this_bb_discr_info.otherwise_bb {
+                trace!("NO: otherwise target is not the same");
+                return None;
+            }
+
+            // Only allow optimization if the left and right of the tuple being matched
+            // are the same variants. So the following should not optimize
+            //  ```rust
+            // let x: Option<()>;
+            // let y: Option<()>;
+            // match (x,y) {
+            //     (Some(_), None) => {},
+            //     _ => {}
+            // }
+            //  ```
+            // We check this by seeing that the value of the first discriminant is the only
+            // other discriminant value being used as a target in the second switch
+            if !(this_bb_discr_info.targets_with_values.len() == 1
+                && this_bb_discr_info.targets_with_values[0].1 == value)
+            {
+                trace!(
+                    "NO: The second switch did not have only 1 target (besides otherwise) that had the same value as the value from the first switch that got us here"
+                );
+                return None;
+            }
+
+            // check that the value being matched on is the same. The
+            if this_bb_discr_info.targets_with_values.iter().find(|x| x.1 == value).is_none() {
+                trace!("NO: values being matched on are not the same");
+                return None;
+            }
+
             // The layouts of the two ADTs have to be equal for this optimization to apply
             let layout_of_adt =
                 |ty: Ty<'tcx>| self.tcx.layout_of(self.param_env.and(ty)).ok().map(|x| x.layout);
@@ -250,39 +283,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 return None;
             }
 
-            // the otherwise branch of the two switches have to point to the same bb
-            if discr_info.otherwise_bb != this_bb_discr_info.otherwise_bb {
-                trace!("NO: otherwise target is not the same");
-                return None;
-            }
-
-            // check that the value being matched on is the same. The
-            if this_bb_discr_info.targets_with_values.iter().find(|x| x.1 == value).is_none() {
-                trace!("NO: values being matched on are not the same");
-                return None;
-            }
-
-            // only allow optimization if the left and right of the tuple being matched are the same variants.
-            // so the following should not optimize
-            //  ```rust
-            // let x: Option<()>;
-            // let y: Option<()>;
-            // match (x,y) {
-            //     (Some(_), None) => {},
-            //     _ => {}
-            // }
-            //  ```
-            // We check this by seeing that the value of the first discriminant is the only other discriminant value being used as a target in the second switch
-            if !(this_bb_discr_info.targets_with_values.len() == 1
-                && this_bb_discr_info.targets_with_values[0].1 == value)
-            {
-                trace!(
-                    "NO: The second switch did not have only 1 target (besides otherwise) that had the same value as the value from the first switch that got us here"
-                );
-                return None;
-            }
-
-            // if we reach this point, the optimization applies, and we should be able to optimize this case
+            // If we reach this point, the optimization applies, and we should be able to optimize this case
             // store the info that is needed to apply the optimization
 
             Some(OptimizationInfo {
