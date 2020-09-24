@@ -38,8 +38,7 @@ keep things to 80.
 
 **Ignoring the line length limit.** Sometimes – in particular for
 tests – it can be necessary to exempt yourself from this limit. In
-that case, you can add a comment towards the top of the file (after
-the copyright notice) like so:
+that case, you can add a comment towards the top of the file like so:
 
 ```rust
 // ignore-tidy-linelength
