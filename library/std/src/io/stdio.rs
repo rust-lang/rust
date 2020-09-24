@@ -548,7 +548,9 @@ pub fn stdout() -> Stdout {
                     }
                 }
             });
-            ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())))
+            let r = ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())));
+            r.init();
+            r
         }),
     }
 }
