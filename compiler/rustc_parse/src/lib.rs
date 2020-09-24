@@ -8,7 +8,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
@@ -435,31 +435,42 @@ pub fn tokenstream_probably_equal_for_proc_macro(
         token_trees.into_iter()
     }
 
-    let expand_nt = |tree: TokenTree| {
-        if let TokenTree::Token(Token { kind: TokenKind::Interpolated(nt), span }) = &tree {
-            // When checking tokenstreams for 'probable equality', we are comparing
-            // a captured (from parsing) `TokenStream` to a reparsed tokenstream.
-            // The reparsed Tokenstream will never have `None`-delimited groups,
-            // since they are only ever inserted as a result of macro expansion.
-            // Therefore, inserting a `None`-delimtied group here (when we
-            // convert a nested `Nonterminal` to a tokenstream) would cause
-            // a mismatch with the reparsed tokenstream.
-            //
-            // Note that we currently do not handle the case where the
-            // reparsed stream has a `Parenthesis`-delimited group
-            // inserted. This will cause a spurious mismatch:
-            // issue #75734 tracks resolving this.
-            nt_to_tokenstream(nt, sess, *span).into_trees()
-        } else {
-            TokenStream::new(vec![(tree, Spacing::Alone)]).into_trees()
-        }
-    };
+    fn expand_token(tree: TokenTree, sess: &ParseSess) -> impl Iterator<Item = TokenTree> {
+        // When checking tokenstreams for 'probable equality', we are comparing
+        // a captured (from parsing) `TokenStream` to a reparsed tokenstream.
+        // The reparsed Tokenstream will never have `None`-delimited groups,
+        // since they are only ever inserted as a result of macro expansion.
+        // Therefore, inserting a `None`-delimtied group here (when we
+        // convert a nested `Nonterminal` to a tokenstream) would cause
+        // a mismatch with the reparsed tokenstream.
+        //
+        // Note that we currently do not handle the case where the
+        // reparsed stream has a `Parenthesis`-delimited group
+        // inserted. This will cause a spurious mismatch:
+        // issue #75734 tracks resolving this.
+
+        let expanded: SmallVec<[_; 1]> =
+            if let TokenTree::Token(Token { kind: TokenKind::Interpolated(nt), span }) = &tree {
+                nt_to_tokenstream(nt, sess, *span)
+                    .into_trees()
+                    .flat_map(|t| expand_token(t, sess))
+                    .collect()
+            } else {
+                // Filter before and after breaking tokens,
+                // since we may want to ignore both glued and unglued tokens.
+                std::iter::once(tree)
+                    .filter(semantic_tree)
+                    .flat_map(break_tokens)
+                    .filter(semantic_tree)
+                    .collect()
+            };
+        expanded.into_iter()
+    }
 
     // Break tokens after we expand any nonterminals, so that we break tokens
     // that are produced as a result of nonterminal expansion.
-    let tokens = tokens.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
-    let reparsed_tokens =
-        reparsed_tokens.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
+    let tokens = tokens.trees().flat_map(|t| expand_token(t, sess));
+    let reparsed_tokens = reparsed_tokens.trees().flat_map(|t| expand_token(t, sess));
 
     tokens.eq_by(reparsed_tokens, |t, rt| tokentree_probably_equal_for_proc_macro(&t, &rt, sess))
 }
