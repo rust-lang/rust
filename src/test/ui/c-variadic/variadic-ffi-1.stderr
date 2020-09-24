@@ -7,24 +7,30 @@ LL |     fn printf(_: *const u8, ...);
 error[E0060]: this function takes at least 2 arguments but 0 arguments were supplied
   --> $DIR/variadic-ffi-1.rs:17:9
    |
-LL |     fn foo(f: isize, x: u8, ...);
-   |     ----------------------------- defined here
-...
 LL |         foo();
    |         ^^^-- supplied 0 arguments
    |         |
    |         expected at least 2 arguments
+   |
+note: function defined here
+  --> $DIR/variadic-ffi-1.rs:10:8
+   |
+LL |     fn foo(f: isize, x: u8, ...);
+   |        ^^^
 
 error[E0060]: this function takes at least 2 arguments but 1 argument was supplied
   --> $DIR/variadic-ffi-1.rs:18:9
    |
-LL |     fn foo(f: isize, x: u8, ...);
-   |     ----------------------------- defined here
-...
 LL |         foo(1);
    |         ^^^ - supplied 1 argument
    |         |
    |         expected at least 2 arguments
+   |
+note: function defined here
+  --> $DIR/variadic-ffi-1.rs:10:8
+   |
+LL |     fn foo(f: isize, x: u8, ...);
+   |        ^^^
 
 error[E0308]: mismatched types
   --> $DIR/variadic-ffi-1.rs:20:56
