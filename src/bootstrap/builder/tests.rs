@@ -342,31 +342,29 @@ mod dist {
     }
 
     #[test]
-    fn dist_with_target_flag() {
-        let mut config = configure(&["B"], &["C"]);
-        config.skip_only_host_steps = true; // as-if --target=C was passed
+    fn dist_with_empty_host() {
+        let mut config = configure(&[], &["C"]);
+        config.skip_only_host_steps = true;
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
         let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
         let c = TargetSelection::from_user("C");
 
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
-            &[dist::Docs { host: a }, dist::Docs { host: b }, dist::Docs { host: c },]
+            &[dist::Docs { host: a }, dist::Docs { host: c },]
         );
         assert_eq!(
             first(builder.cache.all::<dist::Mingw>()),
-            &[dist::Mingw { host: a }, dist::Mingw { host: b }, dist::Mingw { host: c },]
+            &[dist::Mingw { host: a }, dist::Mingw { host: c },]
         );
         assert_eq!(first(builder.cache.all::<dist::Rustc>()), &[]);
         assert_eq!(
             first(builder.cache.all::<dist::Std>()),
             &[
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
-                dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
                 dist::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
             ]
         );
@@ -464,15 +462,14 @@ mod dist {
     }
 
     #[test]
-    fn build_with_target_flag() {
-        let mut config = configure(&["B"], &["C"]);
+    fn build_with_empty_host() {
+        let mut config = configure(&[], &["C"]);
         config.skip_only_host_steps = true;
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
         let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
         let c = TargetSelection::from_user("C");
 
         assert_eq!(
@@ -481,8 +478,6 @@ mod dist {
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
-                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
-                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
             ]
         );

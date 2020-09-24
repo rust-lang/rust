@@ -586,11 +586,6 @@ impl Config {
 
         let build = toml.build.unwrap_or_default();
 
-        // If --target was specified but --host wasn't specified, don't run any host-only tests.
-        let has_hosts = build.host.is_some() || flags.host.is_some();
-        let has_targets = build.target.is_some() || flags.target.is_some();
-        config.skip_only_host_steps = !has_hosts && has_targets;
-
         config.hosts = if let Some(arg_host) = flags.host {
             arg_host
         } else if let Some(file_host) = build.host {
@@ -598,6 +593,8 @@ impl Config {
         } else {
             vec![config.build]
         };
+        // If host was explicitly given an empty list, don't run any host-only steps.
+        config.skip_only_host_steps = config.hosts.is_empty();
         config.targets = if let Some(arg_target) = flags.target {
             arg_target
         } else if let Some(file_target) = build.target {
