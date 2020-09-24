@@ -37,12 +37,11 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
-use rustc_middle::ty::{TypeFoldable, TypeVisitor};
 use rustc_session::config::SanitizerSet;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -50,8 +49,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
-
-use smallvec::SmallVec;
 
 mod type_of;
 
@@ -1676,45 +1673,8 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
         }
     }
 
-    if tcx.features().const_evaluatable_checked {
-        let const_evaluatable = const_evaluatable_predicates_of(tcx, def_id, &result);
-        result.predicates =
-            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(const_evaluatable));
-    }
-
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
-}
-
-pub fn const_evaluatable_predicates_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    predicates: &ty::GenericPredicates<'tcx>,
-) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> {
-    #[derive(Default)]
-    struct ConstCollector<'tcx> {
-        ct: SmallVec<[(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>, Span); 4]>,
-        curr_span: Span,
-    }
-
-    impl<'tcx> TypeVisitor<'tcx> for ConstCollector<'tcx> {
-        fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> bool {
-            if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
-                self.ct.push((def, substs, self.curr_span));
-            }
-            false
-        }
-    }
-
-    let mut collector = ConstCollector::default();
-    for &(pred, span) in predicates.predicates.iter() {
-        collector.curr_span = span;
-        pred.visit_with(&mut collector);
-    }
-    warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.ct);
-    collector.ct.into_iter().map(move |(def_id, subst, span)| {
-        (ty::PredicateAtom::ConstEvaluatable(def_id, subst).to_predicate(tcx), span)
-    })
 }
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
@@ -1754,29 +1714,6 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     debug!("explicit_predicates_of(def_id={:?})", def_id);
 
-    /// A data structure with unique elements, which preserves order of insertion.
-    /// Preserving the order of insertion is important here so as not to break
-    /// compile-fail UI tests.
-    struct UniquePredicates<'tcx> {
-        predicates: FxIndexSet<(ty::Predicate<'tcx>, Span)>,
-    }
-
-    impl<'tcx> UniquePredicates<'tcx> {
-        fn new() -> Self {
-            UniquePredicates { predicates: FxIndexSet::default() }
-        }
-
-        fn push(&mut self, value: (ty::Predicate<'tcx>, Span)) {
-            self.predicates.insert(value);
-        }
-
-        fn extend<I: IntoIterator<Item = (ty::Predicate<'tcx>, Span)>>(&mut self, iter: I) {
-            for value in iter {
-                self.push(value);
-            }
-        }
-    }
-
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let node = tcx.hir().get(hir_id);
 
@@ -1789,7 +1726,10 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
 
-    let mut predicates = UniquePredicates::new();
+    // We use an `IndexSet` to preserves order of insertion.
+    // Preserving the order of insertion is important here so as not to break
+    // compile-fail UI tests.
+    let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
     let ast_generics = match node {
         Node::TraitItem(item) => {
@@ -1891,7 +1831,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
-        predicates.push((
+        predicates.insert((
             trait_ref.to_poly_trait_ref().without_const().to_predicate(tcx),
             tcx.def_span(def_id),
         ));
@@ -1915,7 +1855,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                     hir::GenericBound::Outlives(lt) => {
                         let bound = AstConv::ast_region_to_region(&icx, &lt, None);
                         let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
-                        predicates.push((outlives.to_predicate(tcx), lt.span));
+                        predicates.insert((outlives.to_predicate(tcx), lt.span));
                     }
                     _ => bug!(),
                 });
@@ -1970,7 +1910,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         let span = bound_pred.bounded_ty.span;
                         let re_root_empty = tcx.lifetimes.re_root_empty;
                         let predicate = ty::OutlivesPredicate(ty, re_root_empty);
-                        predicates.push((
+                        predicates.insert((
                             ty::PredicateAtom::TypeOutlives(predicate)
                                 .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                             span,
@@ -2014,11 +1954,11 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
                         &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
-                            predicates.push((
+                            predicates.insert((
                                 ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, region))
                                     .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                                 lifetime.span,
-                            ))
+                            ));
                         }
                     }
                 }
@@ -2063,7 +2003,11 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         }))
     }
 
-    let mut predicates: Vec<_> = predicates.predicates.into_iter().collect();
+    if tcx.features().const_evaluatable_checked {
+        predicates.extend(const_evaluatable_predicates_of(tcx, def_id.expect_local()));
+    }
+
+    let mut predicates: Vec<_> = predicates.into_iter().collect();
 
     // Subtle: before we store the predicates into the tcx, we
     // sort them so that predicates like `T: Foo<Item=U>` come
@@ -2087,6 +2031,97 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     };
     debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
+}
+
+fn const_evaluatable_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> FxIndexSet<(ty::Predicate<'tcx>, Span)> {
+    struct ConstCollector<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        preds: FxIndexSet<(ty::Predicate<'tcx>, Span)>,
+    }
+
+    impl<'tcx> intravisit::Visitor<'tcx> for ConstCollector<'tcx> {
+        type Map = Map<'tcx>;
+
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+            intravisit::NestedVisitorMap::None
+        }
+
+        fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+            let def_id = self.tcx.hir().local_def_id(c.hir_id);
+            let ct = ty::Const::from_anon_const(self.tcx, def_id);
+            if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
+                let span = self.tcx.hir().span(c.hir_id);
+                self.preds.insert((
+                    ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),
+                    span,
+                ));
+            }
+        }
+
+        // Look into `TyAlias`.
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+            use ty::fold::{TypeFoldable, TypeVisitor};
+            struct TyAliasVisitor<'a, 'tcx> {
+                tcx: TyCtxt<'tcx>,
+                preds: &'a mut FxIndexSet<(ty::Predicate<'tcx>, Span)>,
+                span: Span,
+            }
+
+            impl<'a, 'tcx> TypeVisitor<'tcx> for TyAliasVisitor<'a, 'tcx> {
+                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> bool {
+                    if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
+                        self.preds.insert((
+                            ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),
+                            self.span,
+                        ));
+                    }
+                    false
+                }
+            }
+
+            if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind {
+                if let Res::Def(DefKind::TyAlias, def_id) = path.res {
+                    let mut visitor =
+                        TyAliasVisitor { tcx: self.tcx, preds: &mut self.preds, span: path.span };
+                    self.tcx.type_of(def_id).visit_with(&mut visitor);
+                }
+            }
+
+            intravisit::walk_ty(self, ty)
+        }
+    }
+
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let node = tcx.hir().get(hir_id);
+
+    let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
+    if let hir::Node::Item(item) = node {
+        if let hir::ItemKind::Impl { ref of_trait, ref self_ty, .. } = item.kind {
+            if let Some(of_trait) = of_trait {
+                warn!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
+                collector.visit_trait_ref(of_trait);
+            }
+
+            warn!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
+            collector.visit_ty(self_ty);
+        }
+    }
+
+    if let Some(generics) = node.generics() {
+        warn!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
+        collector.visit_generics(generics);
+    }
+
+    if let Some(fn_sig) = tcx.hir().fn_sig_by_hir_id(hir_id) {
+        warn!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
+        collector.visit_fn_decl(fn_sig.decl);
+    }
+    warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
+
+    collector.preds
 }
 
 fn projection_ty_from_predicates(

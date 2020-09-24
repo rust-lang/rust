@@ -7,8 +7,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::Span;
-use std::rc::Rc;
 
+use std::iter;
+use std::rc::Rc;
 /// Returns the set of obligations needed to make `arg` well-formed.
 /// If `arg` contains unresolved inference variables, this may include
 /// further WF obligations. However, if `arg` IS an unresolved
@@ -616,13 +617,24 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Vec<traits::PredicateObligation<'tcx>> {
-        let predicates = self.infcx.tcx.predicates_of(def_id).instantiate(self.infcx.tcx, substs);
+        let predicates = self.infcx.tcx.predicates_of(def_id);
+        let mut origins = vec![def_id; predicates.predicates.len()];
+        let mut head = predicates;
+        while let Some(parent) = head.parent {
+            head = self.infcx.tcx.predicates_of(parent);
+            origins.extend(iter::repeat(parent).take(head.predicates.len()));
+        }
+
+        let predicates = predicates.instantiate(self.infcx.tcx, substs);
+        debug_assert_eq!(predicates.predicates.len(), origins.len());
+
         predicates
             .predicates
             .into_iter()
             .zip(predicates.spans.into_iter())
-            .map(|(pred, span)| {
-                let cause = self.cause(traits::BindingObligation(def_id, span));
+            .zip(origins.into_iter().rev())
+            .map(|((pred, span), origin_def_id)| {
+                let cause = self.cause(traits::BindingObligation(origin_def_id, span));
                 traits::Obligation::new(cause, self.param_env, pred)
             })
             .filter(|pred| !pred.has_escaping_bound_vars())

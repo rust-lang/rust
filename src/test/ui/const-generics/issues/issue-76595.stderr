@@ -8,7 +8,7 @@ error: constant expression depends on a generic parameter
   --> $DIR/issue-76595.rs:15:5
    |
 LL | fn test<T, const P: usize>() where Bool<{core::mem::size_of::<T>() > 4}>: True {
-   |                                                                           ---- required by this bound in `test`
+   |                                         ------------------------------- required by this bound in `test`
 ...
 LL |     test::<2>();
    |     ^^^^^^^^^
