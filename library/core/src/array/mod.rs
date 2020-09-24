@@ -227,13 +227,13 @@ impl<T, const N: usize> FillError<T, N> {
     /// Returns an immutable slice of all initialized elements.
     pub fn as_slice(&self) -> &[T] {
         // SAFETY: We know that all elements from 0 to len are properly initialized.
-        unsafe { MaybeUninit::slice_get_ref(&self.array[0..self.len]) }
+        unsafe { MaybeUninit::slice_assume_init_ref(&self.array[0..self.len]) }
     }
 
     /// Returns a mutable slice of all initialized elements.
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: We know that all elements from 0 to len are properly initialized.
-        unsafe { MaybeUninit::slice_get_mut(&mut self.array[0..self.len]) }
+        unsafe { MaybeUninit::slice_assume_init_mut(&mut self.array[0..self.len]) }
     }
 
     /// Tries to initialize the left-over elements using `iter`.

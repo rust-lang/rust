@@ -819,7 +819,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub unsafe fn slice_assume_init_mut(slice: &mut [Self]) -> &mut [T] {
-        // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
+        // SAFETY: similar to safety notes for `slice_assume_init_ref`, but we have a
         // mutable reference which is also guaranteed to be valid for writes.
         unsafe { &mut *(slice as *mut [Self] as *mut [T]) }
     }
