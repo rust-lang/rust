@@ -385,6 +385,8 @@ struct DiagnosticMetadata<'ast> {
     /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
     in_if_condition: Option<&'ast Expr>,
 
+    /// If we are currently in a trait object definition. Used to point at the bounds when
+    /// encountering a struct or enum.
     current_trait_object: Option<&'ast [ast::GenericBound]>,
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
