@@ -4,7 +4,7 @@ use std::ptr::NonNull;
 use std::alloc::{Global, AllocRef, Layout, System};
 use std::slice;
 
-fn check_alloc<T: AllocRef>(mut allocator: T) { unsafe {
+fn check_alloc<T: AllocRef>(allocator: T) { unsafe {
     for &align in &[4, 8, 16, 32] {
         let layout_20 = Layout::from_size_align(20, align).unwrap();
         let layout_40 = Layout::from_size_align(40, 4*align).unwrap();
@@ -42,7 +42,7 @@ fn check_alloc<T: AllocRef>(mut allocator: T) { unsafe {
     }
 } }
 
-fn check_align_requests<T: AllocRef>(mut allocator: T) {
+fn check_align_requests<T: AllocRef>(allocator: T) {
     for &size in &[2, 8, 64] { // size less than and bigger than alignment
         for &align in &[4, 8, 16, 32] { // Be sure to cover less than and bigger than `MIN_ALIGN` for all architectures
             let iterations = 32;

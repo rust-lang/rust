@@ -1,6 +1,6 @@
 use std::alloc::{alloc, realloc, Layout};
 
-// error-pattern: allocation has size 1 and alignment 1, but gave size 2 and alignment 1
+// error-pattern: has size 1 and alignment 1, but gave size 2 and alignment 1
 
 fn main() {
     unsafe {
