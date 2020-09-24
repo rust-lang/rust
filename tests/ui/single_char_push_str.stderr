@@ -30,5 +30,11 @@ error: calling `push_str()` using a single-character string literal
 LL |     string.push_str(r##"a"##);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('a')`
 
-error: aborting due to 5 previous errors
+error: calling `push_str()` using a single-character string literal
+  --> $DIR/single_char_push_str.rs:22:5
+   |
+LL |     get_string!().push_str("ö");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `get_string!().push('ö')`
+
+error: aborting due to 6 previous errors
 

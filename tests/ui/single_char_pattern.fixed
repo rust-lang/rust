@@ -18,9 +18,9 @@ fn main() {
     //
     // We may not want to suggest changing these anyway
     // See: https://github.com/rust-lang/rust-clippy/issues/650#issuecomment-184328984
-    x.split("ß");
-    x.split("ℝ");
-    x.split("💣");
+    x.split('ß');
+    x.split('ℝ');
+    x.split('💣');
     // Can't use this lint for unicode code points which don't fit in a char
     x.split("❤️");
     x.contains('x');

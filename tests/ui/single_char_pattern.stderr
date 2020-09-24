@@ -7,6 +7,24 @@ LL |     x.split("x");
    = note: `-D clippy::single-char-pattern` implied by `-D warnings`
 
 error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:21:13
+   |
+LL |     x.split("ß");
+   |             ^^^ help: try using a `char` instead: `'ß'`
+
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:22:13
+   |
+LL |     x.split("ℝ");
+   |             ^^^ help: try using a `char` instead: `'ℝ'`
+
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:23:13
+   |
+LL |     x.split("💣");
+   |             ^^^^ help: try using a `char` instead: `'💣'`
+
+error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:26:16
    |
 LL |     x.contains("x");
@@ -162,5 +180,5 @@ error: single-character string constant used as pattern
 LL |     x.split(r###"#"###);
    |             ^^^^^^^^^^ help: try using a `char` instead: `'#'`
 
-error: aborting due to 27 previous errors
+error: aborting due to 30 previous errors
 

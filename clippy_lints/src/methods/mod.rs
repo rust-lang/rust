@@ -3204,7 +3204,7 @@ fn get_hint_if_single_char_arg(
         if let hir::ExprKind::Lit(lit) = &arg.kind;
         if let ast::LitKind::Str(r, style) = lit.node;
         let string = r.as_str();
-        if string.len() == 1;
+        if string.chars().count() == 1;
         then {
             let snip = snippet_with_applicability(cx, arg.span, &string, applicability);
             let ch = if let ast::StrStyle::Raw(nhash) = style {
