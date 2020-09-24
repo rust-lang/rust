@@ -269,10 +269,11 @@ extern "Rust" {
     /// Miri-provided extern function to obtain a backtrace of the current call stack.
     /// This returns a boxed slice of pointers - each pointer is an opaque value
     /// that is only useful when passed to `miri_resolve_frame`
-    fn miri_get_backtrace() -> Box<[*mut ()]>;
+    /// The `flags` argument must be `0`.
+    fn miri_get_backtrace(flags: u64) -> Box<[*mut ()]>;
 
     /// Miri-provided extern function to resolve a frame pointer obtained
-    /// from `miri_get_backtrace`. The `version` argument must be `0`,
+    /// from `miri_get_backtrace`. The `flags` argument must be `0`,
     /// and `MiriFrame` should be declared as follows:
     ///
     /// ```rust
