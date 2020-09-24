@@ -8,25 +8,21 @@ can be incorporated into the compiler.
 
 The goal of this page is to cover some of the more common questions and
 problems new contributors face. Although some git basics will be covered here,
-if you have never used git or GitHub before you may find that this is still a
-little too fast for you. In that case, it would make sense to first read some
-introductions to git, such as the Beginner and Getting started sections of
-[this tutorial from Atlassian][atlassian-git]. GitHub also provides
-[documentation] and [guides] for beginners.
+if you  find that this is still a little too fast for you, it might make sense
+to first read some introductions to git, such as the Beginner and Getting
+started sections of [this tutorial from Atlassian][atlassian-git]. GitHub also
+provides [documentation] and [guides] for beginners, or you can consult the
+more in depth [book from git].
 
+[book from git]: https://git-scm.com/book/en/v2/
 [atlassian-git]: https://www.atlassian.com/git/tutorials/what-is-version-control
 [documentation]: https://docs.github.com/en/github/getting-started-with-github/set-up-git
 [guides]: https://guides.github.com/introduction/git-handbook/
 
-Although this page should get you to a point where you can start contributing,
-learning more git is almost certainly a good use of your time if you want to
-keep contributing. There are many tutorials online for those folks that are
-newer which combine excellently with man pages and official documentation.
-
 ## Prequisites
 
 We'll assume that you've installed git, forked [rust-lang/rust], and cloned the
-forked repo to your PC. We'll also use the command line interface to interact
+forked repo to your PC. We'll use the command line interface to interact
 with git; there are also a number of GUIs and IDE integrations that can
 generally do the same things.
 
@@ -80,34 +76,27 @@ the same, with some steps skipped:
 ## Conflicts
 
 When you edit your code locally, you are making changes to the version of
-rust-lang/rust that existed the last time you ran `git pull rust master` on
-your master branch. As such, when you submit your PR it is possible that some
-of the changes that have been made to rust-lang/rust since then are in conflict
-with the changes you've made; maybe someone else changed the same lines of
-code, or git cannot figure out how to merge your changes with the others for
-another reason.
+rust-lang/rust that existed when you created your feature branch. As such, when
+you submit your PR it is possible that some of the changes that have been made
+to rust-lang/rust since then are in conflict with the changes you've made.
 
 When this happens, you need to resolve the conflicts before your changes can be
-merged. First, get a local copy of the conflicting changes. Checkout your local
-master branch with `git checkout master`. Then, `git pull rust master` to
+merged. First, get a local copy of the conflicting changes: Checkout your local
+master branch with `git checkout master`, then `git pull rust master` to
 update it with the most recent changes.
 
 ### Rebasing
 
 You're now ready to start the rebasing process. Check out the branch with your
-changes, and then execute `git rebase master`.
+changes and execute `git rebase master`.
 
-First, a little background: In git, commits are stored as "diffs" which are a
-record of all the changes that a commit made to its parent. When you rebase a
-branch, all the changes in the commits on that branch are reapplied on the
-branch you are rebasing on top of (in this case master). In other words, git
-tries to pretend that the changes you made to the old version of master were
-instead made to the new version of master.
-
-During rebasing, you should expect to encounter at least one "rebase conflict."
-This happens when git's attempt to reapply the changes onto the more recent
-version of master fails because your changes conflicted with other changes that
-have been made since then. You can tell that this happened because you'll see
+When you rebase a branch on master, all the changes on your branch are
+reapplied to the most recent version of master. In other words, git tries to
+pretend that the changes you made to the old version of master were instead
+made to the new version of master. During this process, you should expect to
+encounter at least one "rebase conflict." This happens when git's attempt to
+reapply the changes fails because your changes conflicted with other changes
+that have been made. You can tell that this happened because you'll see
 lines in the output that look like
 
 ```
@@ -140,8 +129,8 @@ around too!
 Once you're all done fixing the conflicts, you need to stage the files that had
 conflicts in them via `git add`. Afterwards, run `git rebase --continue` to let
 git know that you've resolved the conflicts and it should finish the rebase.
-Finally, once the rebase has succeeded, you'll want to update the associated
-branch on your fork with `git push -f`.
+Once the rebase has succeeded, you'll want to update the associated branch on
+your fork with `git push -f`.
 
 Note that `git push` will not work properly and say something like this:
 
@@ -173,17 +162,13 @@ edit the commits that you do not skip, or change the order in which they are
 applied.
 
 The other common scenario is if you are asked to or want to "squash" multiple
-commits into each other. The most common example of this is likely if you
-forgot to run `x.py tidy` before committing. Your PR will need to be revised,
-but a single commit at the end with message "fixup tidy issue" is usually
-unhelpful, and it is easier for everyone else if you combine that commit with
-another that has a more meaningful commit message. In this case, you'll want to
-run `git rebase -i HEAD~2` to edit the last two commits and merge them
-together. Essentially, this reapplies the last two commits on top of your
-current branch; this is of course a no-op, since that is where they are
-already. However, by selecting the `-i` option, you give yourself the
-opportunity to edit the rebase first, just like before. This way you can
-request to have the most recent commit squashed into its parent.
+commits into each other. If you PR needs only a minor revision, a single commit
+at the end with message "fixup small issue" is usually unhelpful, and it is
+easier for everyone if you combine that commit with another that has a more
+meaningful commit message. Run `git rebase -i HEAD~2` to edit the last two
+commits so you can merge them together. By selecting the `-i` option, you give
+yourself the opportunity to edit the rebase, similarly to above. This way you
+can request to have the most recent commit squashed into its parent.
 
 ## No-Merge Policy
 
@@ -193,11 +178,10 @@ that merge commits in PRs are not accepted. As a result, if you are running
 course, this is not always true; if your merge will just be a fast-forward,
 like the merges that `git pull` usually performs, then no merge commit is
 created and you have nothing to worry about. Running `git config merge.ff only`
-once will prevent the creation of merge commits will help ensure you don't make
-a mistake here.
+once will ensure that all the merges you perform are of this type, so that you
+cannot make a mistake.
 
 There are a number of reasons for this decision and like all others, it is a
-tradeoff. The main advantage is the (mostly) linear commit history. This
-greatly simplifies bisecting. TODO: There are other advantages to a rebase
-workflow, but I would like to focus on the ones that people in the Rust project
-consider most relevant, so I'm going to leave this unfinished for now.
+tradeoff. The main advantage is the generally linear commit history. This
+greatly simplifies bisecting and makes the history and commit log much easier
+to follow and understand.
