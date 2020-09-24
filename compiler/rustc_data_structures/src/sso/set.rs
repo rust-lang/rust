@@ -5,15 +5,15 @@ use std::hash::Hash;
 ///
 /// Stores elements in a small array up to a certain length
 /// and switches to `HashSet` when that length is exceeded.
-pub enum MiniSet<T> {
+pub enum SsoHashSet<T> {
     Array(ArrayVec<[T; 8]>),
     Set(FxHashSet<T>),
 }
 
-impl<T: Eq + Hash> MiniSet<T> {
-    /// Creates an empty `MiniSet`.
+impl<T: Eq + Hash> SsoHashSet<T> {
+    /// Creates an empty `SsoHashSet`.
     pub fn new() -> Self {
-        MiniSet::Array(ArrayVec::new())
+        SsoHashSet::Array(ArrayVec::new())
     }
 
     /// Adds a value to the set.
@@ -23,19 +23,19 @@ impl<T: Eq + Hash> MiniSet<T> {
     /// If the set did have this value present, false is returned.
     pub fn insert(&mut self, elem: T) -> bool {
         match self {
-            MiniSet::Array(array) => {
+            SsoHashSet::Array(array) => {
                 if array.iter().any(|e| *e == elem) {
                     false
                 } else {
                     if let Err(error) = array.try_push(elem) {
                         let mut set: FxHashSet<T> = array.drain(..).collect();
                         set.insert(error.element());
-                        *self = MiniSet::Set(set);
+                        *self = SsoHashSet::Set(set);
                     }
                     true
                 }
             }
-            MiniSet::Set(set) => set.insert(elem),
+            SsoHashSet::Set(set) => set.insert(elem),
         }
     }
 }

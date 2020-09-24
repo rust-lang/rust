@@ -7,7 +7,7 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
-use rustc_data_structures::mini_map::MiniMap;
+use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
@@ -58,7 +58,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             param_env: self.param_env,
             obligations: vec![],
             error: false,
-            cache: MiniMap::new(),
+            cache: SsoHashMap::new(),
             anon_depth: 0,
         };
 
@@ -87,7 +87,7 @@ struct QueryNormalizer<'cx, 'tcx> {
     cause: &'cx ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
-    cache: MiniMap<Ty<'tcx>, Ty<'tcx>>,
+    cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
     error: bool,
     anon_depth: usize,
 }

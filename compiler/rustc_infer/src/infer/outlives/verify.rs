@@ -1,7 +1,7 @@
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::mini_set::MiniSet;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -32,7 +32,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// Returns a "verify bound" that encodes what we know about
     /// `generic` and the regions it outlives.
     pub fn generic_bound(&self, generic: GenericKind<'tcx>) -> VerifyBound<'tcx> {
-        let mut visited = MiniSet::new();
+        let mut visited = SsoHashSet::new();
         match generic {
             GenericKind::Param(param_ty) => self.param_bound(param_ty),
             GenericKind::Projection(projection_ty) => {
@@ -44,7 +44,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn type_bound(
         &self,
         ty: Ty<'tcx>,
-        visited: &mut MiniSet<GenericArg<'tcx>>,
+        visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
         match *ty.kind() {
             ty::Param(p) => self.param_bound(p),
@@ -148,7 +148,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     pub fn projection_bound(
         &self,
         projection_ty: ty::ProjectionTy<'tcx>,
-        visited: &mut MiniSet<GenericArg<'tcx>>,
+        visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
         debug!("projection_bound(projection_ty={:?})", projection_ty);
 
@@ -186,7 +186,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn recursive_bound(
         &self,
         parent: GenericArg<'tcx>,
-        visited: &mut MiniSet<GenericArg<'tcx>>,
+        visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
         let mut bounds = parent
             .walk_shallow(visited)
