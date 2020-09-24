@@ -215,11 +215,41 @@ declare_clippy_lint! {
     "redundant allocation"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for Rc<T> and Arc<T> when T is a mutable buffer type such as String or Vec
+    ///
+    /// **Why is this bad?** Expressions such as Rc<String> have no advantage over Rc<str>, since
+    /// it is larger and involves an extra level of indirection, and doesn't implement Borrow<str>.
+    ///
+    /// While mutating a buffer type would still be possible with Rc::get_mut(), it only
+    /// works if there are no additional references yet, which defeats the purpose of
+    /// enclosing it in a shared ownership type. Instead, additionally wrapping the inner
+    /// type with an interior mutable container (such as RefCell or Mutex) would normally
+    /// be used.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// # use std::rc::Rc;
+    /// fn foo(interned: Rc<String>) { ... }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust,ignore
+    /// fn foo(interned: Rc<str>) { ... }
+    /// ```
+    pub RC_BUFFER,
+    perf,
+    "shared ownership of a buffer type"
+}
+
 pub struct Types {
     vec_box_size_threshold: u64,
 }
 
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION]);
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
@@ -268,6 +298,19 @@ fn match_type_parameter(cx: &LateContext<'_>, qpath: &QPath<'_>, path: &[&str]) 
         then {
             return Some(ty.span);
         }
+    }
+    None
+}
+
+fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
+    if match_type_parameter(cx, qpath, &paths::STRING).is_some() {
+        return Some("str");
+    }
+    if match_type_parameter(cx, qpath, &paths::OS_STRING).is_some() {
+        return Some("std::ffi::OsStr");
+    }
+    if match_type_parameter(cx, qpath, &paths::PATH_BUF).is_some() {
+        return Some("std::path::Path");
     }
     None
 }
@@ -321,14 +364,15 @@ impl Types {
                 if let Some(def_id) = res.opt_def_id() {
                     if Some(def_id) == cx.tcx.lang_items().owned_box() {
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Box<&T>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
-                                Applicability::MachineApplicable,
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
                             );
                             return; // don't recurse into the type
                         }
@@ -345,14 +389,15 @@ impl Types {
                         }
                     } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
                         if let Some(span) = match_type_parameter(cx, qpath, &paths::RC) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<Rc<T>>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
-                                Applicability::MachineApplicable,
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
                             );
                             return; // don't recurse into the type
                         }
@@ -368,25 +413,109 @@ impl Types {
                                 GenericArg::Type(ty) => ty.span,
                                 _ => return,
                             };
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<Box<T>>`",
                                 "try",
-                                format!("Rc<{}>", snippet(cx, inner_span, "..")),
+                                format!(
+                                    "Rc<{}>",
+                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
+                                ),
+                                applicability,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if let Some(alternate) = match_buffer_type(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Rc<T>` when T is a buffer type",
+                                "try",
+                                format!("Rc<{}>", alternate),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
+                            let vec_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => match &ty.kind {
+                                    TyKind::Path(qpath) => qpath,
+                                    _ => return,
+                                },
+                                _ => return,
+                            };
+                            let inner_span = match &last_path_segment(&vec_ty).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => ty.span,
+                                _ => return,
+                            };
+                            let mut applicability = Applicability::MachineApplicable;
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Rc<T>` when T is a buffer type",
+                                "try",
+                                format!(
+                                    "Rc<[{}]>",
+                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
+                                ),
                                 Applicability::MachineApplicable,
                             );
                             return; // don't recurse into the type
                         }
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<&T>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
+                            );
+                            return; // don't recurse into the type
+                        }
+                    } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
+                        if let Some(alternate) = match_buffer_type(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Arc<T>` when T is a buffer type",
+                                "try",
+                                format!("Arc<{}>", alternate),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
+                            let vec_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => match &ty.kind {
+                                    TyKind::Path(qpath) => qpath,
+                                    _ => return,
+                                },
+                                _ => return,
+                            };
+                            let inner_span = match &last_path_segment(&vec_ty).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => ty.span,
+                                _ => return,
+                            };
+                            let mut applicability = Applicability::MachineApplicable;
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Arc<T>` when T is a buffer type",
+                                "try",
+                                format!(
+                                    "Arc<[{}]>",
+                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
+                                ),
                                 Applicability::MachineApplicable,
                             );
                             return; // don't recurse into the type
@@ -546,7 +675,6 @@ impl Types {
                             // details.
                             return;
                         }
-                        let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
                             BORROWED_BOX,
@@ -556,8 +684,12 @@ impl Types {
                             format!(
                                 "&{}{}",
                                 ltopt,
-                                &snippet_with_applicability(cx, inner.span, "..", &mut applicability)
+                                &snippet(cx, inner.span, "..")
                             ),
+                            // To make this `MachineApplicable`, at least one needs to check if it isn't a trait item
+                            // because the trait impls of it will break otherwise;
+                            // and there may be other cases that result in invalid code.
+                            // For example, type coercion doesn't work nicely.
                             Applicability::Unspecified,
                         );
                         return; // don't recurse into the type

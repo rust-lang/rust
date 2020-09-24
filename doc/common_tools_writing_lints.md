@@ -60,7 +60,7 @@ impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             // Check our expr is calling a method
-            if let hir::ExprKind::MethodCall(path, _, _args) = &expr.kind;
+            if let hir::ExprKind::MethodCall(path, _, _args, _) = &expr.kind;
             // Check the name of this method is `some_method`
             if path.ident.name == sym!(some_method);
             then {

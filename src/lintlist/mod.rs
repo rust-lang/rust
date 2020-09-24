@@ -930,7 +930,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "invalid_atomic_ordering",
         group: "correctness",
-        desc: "usage of invalid atomic ordering in atomic loads/stores and memory fences",
+        desc: "usage of invalid atomic ordering in atomic operations and memory fences",
         deprecation: None,
         module: "atomic_ordering",
     },
@@ -1145,6 +1145,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "manual_strip",
+        group: "complexity",
+        desc: "suggests using `strip_{prefix,suffix}` over `str::{starts,ends}_with` and slicing",
+        deprecation: None,
+        module: "manual_strip",
+    },
+    Lint {
         name: "manual_swap",
         group: "complexity",
         desc: "manual swap of two variables",
@@ -1171,6 +1178,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`",
         deprecation: None,
         module: "entry",
+    },
+    Lint {
+        name: "map_err_ignore",
+        group: "pedantic",
+        desc: "`map_err` should not ignore the original error",
+        deprecation: None,
+        module: "map_err_ignore",
     },
     Lint {
         name: "map_flatten",
@@ -1719,6 +1733,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "panic_unimplemented",
     },
     Lint {
+        name: "panic_in_result_fn",
+        group: "restriction",
+        desc: "functions of type `Result<..>` that contain `panic!()`, `todo!()` or `unreachable()` or `unimplemented()` ",
+        deprecation: None,
+        module: "panic_in_result_fn",
+    },
+    Lint {
         name: "panic_params",
         group: "style",
         desc: "missing parameters in `panic!` calls",
@@ -1843,6 +1864,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "zipping iterator with a range when `enumerate()` would do",
         deprecation: None,
         module: "ranges",
+    },
+    Lint {
+        name: "rc_buffer",
+        group: "perf",
+        desc: "shared ownership of a buffer type",
+        deprecation: None,
+        module: "types",
     },
     Lint {
         name: "redundant_allocation",
@@ -2630,7 +2658,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "verbose_bit_mask",
-        group: "style",
+        group: "pedantic",
         desc: "expressions where a bit mask is less readable than the corresponding method call",
         deprecation: None,
         module: "bit_mask",

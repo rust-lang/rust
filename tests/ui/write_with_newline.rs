@@ -14,6 +14,7 @@ fn main() {
     write!(&mut v, "Hello {}\n", "world");
     write!(&mut v, "Hello {} {}\n", "world", "#2");
     write!(&mut v, "{}\n", 1265);
+    write!(&mut v, "\n");
 
     // These should be fine
     write!(&mut v, "");
