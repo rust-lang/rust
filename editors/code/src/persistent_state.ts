@@ -38,4 +38,15 @@ export class PersistentState {
     async updateServerVersion(value: string | undefined) {
         await this.globalState.update("serverVersion", value);
     }
+
+    /**
+     * Github authorization token.
+     * This is used for API requests against the Github API.
+     */
+    get githubToken(): string | undefined {
+        return this.globalState.get("githubToken");
+    }
+    async updateGithubToken(value: string | undefined) {
+        await this.globalState.update("githubToken", value);
+    }
 }

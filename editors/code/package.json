@@ -159,6 +159,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.updateGithubToken",
+                "title": "Update Github API token",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.onEnter",
                 "title": "Enhanced enter key",
                 "category": "Rust Analyzer"
@@ -982,6 +987,10 @@
                 },
                 {
                     "command": "rust-analyzer.reload",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.updateGithubToken",
                     "when": "inRustProject"
                 },
                 {

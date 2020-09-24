@@ -95,6 +95,10 @@ async function tryActivate(context: vscode.ExtensionContext) {
         await activate(context).catch(log.error);
     });
 
+    ctx.registerCommand('updateGithubToken', ctx => async () => {
+        await queryForGithubToken(new PersistentState(ctx.globalState));
+    });
+
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('memoryUsage', commands.memoryUsage);
     ctx.registerCommand('reloadWorkspace', commands.reloadWorkspace);
@@ -173,7 +177,9 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         if (!shouldCheckForNewNightly) return;
     }
 
-    const release = await fetchRelease("nightly").catch((e) => {
+    const release = await downloadWithRetryDialog(state, async () => {
+        return await fetchRelease("nightly", state.githubToken);
+    }).catch((e) => {
         log.error(e);
         if (state.releaseId === undefined) { // Show error only for the initial download
             vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`);
@@ -192,10 +198,14 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
-    await download({
-        url: artifact.browser_download_url,
-        dest,
-        progressTitle: "Downloading rust-analyzer extension",
+
+    await downloadWithRetryDialog(state, async () => {
+        await download({
+            url: artifact.browser_download_url,
+            dest,
+            progressTitle: "Downloading rust-analyzer extension",
+            overwrite: true,
+        });
     });
 
     await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(dest));
@@ -308,21 +318,22 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         if (userResponse !== "Download now") return dest;
     }
 
-    const release = await fetchRelease(config.package.releaseTag);
+    const releaseTag = config.package.releaseTag;
+    const release = await downloadWithRetryDialog(state, async () => {
+        return await fetchRelease(releaseTag, state.githubToken);
+    });
     const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
-    // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
-    await fs.unlink(dest).catch(err => {
-        if (err.code !== "ENOENT") throw err;
-    });
-
-    await download({
-        url: artifact.browser_download_url,
-        dest,
-        progressTitle: "Downloading rust-analyzer server",
-        gunzip: true,
-        mode: 0o755
+    await downloadWithRetryDialog(state, async () => {
+        await download({
+            url: artifact.browser_download_url,
+            dest,
+            progressTitle: "Downloading rust-analyzer server",
+            gunzip: true,
+            mode: 0o755,
+            overwrite: true,
+        });
     });
 
     // Patching executable if that's NixOS.
@@ -332,4 +343,57 @@ async function getServer(config: Config, state: PersistentState): Promise<string
 
     await state.updateServerVersion(config.package.version);
     return dest;
+}
+
+async function downloadWithRetryDialog<T>(state: PersistentState, downloadFunc: () => Promise<T>): Promise<T> {
+    while (true) {
+        try {
+            return await downloadFunc();
+        } catch (e) {
+            const selected = await vscode.window.showErrorMessage("Failed to download: " + e.message, {}, {
+                title: "Update Github Auth Token",
+                updateToken: true,
+            }, {
+                title: "Retry download",
+                retry: true,
+            }, {
+                title: "Dismiss",
+            });
+
+            if (selected?.updateToken) {
+                await queryForGithubToken(state);
+                continue;
+            } else if (selected?.retry) {
+                continue;
+            }
+            throw e;
+        };
+    }
+}
+
+async function queryForGithubToken(state: PersistentState): Promise<void> {
+    const githubTokenOptions: vscode.InputBoxOptions = {
+        value: state.githubToken,
+        password: true,
+        prompt: `
+            This dialog allows to store a Github authorization token.
+            The usage of an authorization token will increase the rate
+            limit on the use of Github APIs and can thereby prevent getting
+            throttled.
+            Auth tokens can be created at https://github.com/settings/tokens`,
+    };
+
+    const newToken = await vscode.window.showInputBox(githubTokenOptions);
+    if (newToken === undefined) {
+        // The user aborted the dialog => Do not update the stored token
+        return;
+    }
+
+    if (newToken === "") {
+        log.info("Clearing github token");
+        await state.updateGithubToken(undefined);
+    } else {
+        log.info("Storing new github token");
+        await state.updateGithubToken(newToken);
+    }
 }

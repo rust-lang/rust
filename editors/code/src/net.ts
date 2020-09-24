@@ -18,7 +18,8 @@ const OWNER = "rust-analyzer";
 const REPO = "rust-analyzer";
 
 export async function fetchRelease(
-    releaseTag: string
+    releaseTag: string,
+    githubToken: string | null | undefined,
 ): Promise<GithubRelease> {
 
     const apiEndpointPath = `/repos/${OWNER}/${REPO}/releases/tags/${releaseTag}`;
@@ -27,7 +28,12 @@ export async function fetchRelease(
 
     log.debug("Issuing request for released artifacts metadata to", requestUrl);
 
-    const response = await fetch(requestUrl, { headers: { Accept: "application/vnd.github.v3+json" } });
+    const headers: Record<string, string> = { Accept: "application/vnd.github.v3+json" };
+    if (githubToken != null) {
+        headers.Authorization = "token " + githubToken;
+    }
+
+    const response = await fetch(requestUrl, { headers: headers });
 
     if (!response.ok) {
         log.error("Error fetching artifact release info", {
@@ -70,6 +76,7 @@ interface DownloadOpts {
     dest: string;
     mode?: number;
     gunzip?: boolean;
+    overwrite?: boolean;
 }
 
 export async function download(opts: DownloadOpts) {
@@ -78,6 +85,13 @@ export async function download(opts: DownloadOpts) {
     const dest = path.parse(opts.dest);
     const randomHex = crypto.randomBytes(5).toString("hex");
     const tempFile = path.join(dest.dir, `${dest.name}${randomHex}`);
+
+    if (opts.overwrite) {
+        // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
+        await fs.promises.unlink(opts.dest).catch(err => {
+            if (err.code !== "ENOENT") throw err;
+        });
+    }
 
     await vscode.window.withProgress(
         {
