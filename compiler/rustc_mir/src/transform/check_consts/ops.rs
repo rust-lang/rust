@@ -489,7 +489,14 @@ impl NonConstOp for Transmute {
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        mcf_emit_error(ccx, span, "can only call `transmute` from const items, not `const fn`");
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_fn_transmute,
+            span,
+            &format!("`transmute` is not allowed in {}s", ccx.const_kind()),
+        )
+        .note("`transmute` is only allowed in constants and statics for now")
+        .emit();
     }
 }
 
