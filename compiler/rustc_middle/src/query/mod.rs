@@ -716,6 +716,7 @@ rustc_queries! {
                 "const-evaluating + checking `{}`",
                 key.value.display(tcx)
             }
+            cache_on_disk_if { true }
         }
 
         /// Evaluates const items or anonymous constants
@@ -730,10 +731,7 @@ rustc_queries! {
                 "simplifying constant for the type system `{}`",
                 key.value.display(tcx)
             }
-            cache_on_disk_if(_, opt_result) {
-                // Only store results without errors
-                opt_result.map_or(true, |r| r.is_ok())
-            }
+            cache_on_disk_if { true }
         }
 
         /// Destructure a constant ADT or array into its variant index and its
