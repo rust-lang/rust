@@ -1,4 +1,4 @@
-warning: to use a constant of type `Foo` in a pattern, the constant's initializer must be trivial or all types in the constant must be annotated with `#[derive(PartialEq, Eq)]`
+warning: to use a constant of type `CustomEq` in a pattern, the constant's initializer must be trivial or `CustomEq` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/custom-eq-branch-warn.rs:29:9
    |
 LL |         BAR_BAZ => panic!(),

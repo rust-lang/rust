@@ -89,11 +89,42 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn search_for_structural_match_violation(
-        &self,
-        ty: Ty<'tcx>,
-    ) -> Option<traits::NonStructuralMatchTy<'tcx>> {
-        traits::search_for_structural_match_violation(self.id, self.span, self.tcx(), ty)
+    fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
+        traits::search_for_structural_match_violation(self.id, self.span, self.tcx(), ty).map(
+            |non_sm_ty| {
+                with_no_trimmed_paths(|| match non_sm_ty {
+                    traits::NonStructuralMatchTy::Adt(adt_def) => {
+                        let path = self.tcx().def_path_str(adt_def.did);
+                        format!(
+                            "to use a constant of type `{}` in a pattern, \
+                         `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                            path, path,
+                        )
+                    }
+                    traits::NonStructuralMatchTy::Dynamic => {
+                        "trait objects cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTy::Opaque => {
+                        "opaque types cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTy::Generator => {
+                        "generators cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTy::Closure => {
+                        "closures cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTy::Param => {
+                        bug!("use of a constant whose type is a parameter inside a pattern")
+                    }
+                    traits::NonStructuralMatchTy::Projection => {
+                        bug!("use of a constant whose type is a projection inside a pattern")
+                    }
+                    traits::NonStructuralMatchTy::Foreign => {
+                        bug!("use of a value of a foreign type inside a pattern")
+                    }
+                })
+            },
+        )
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
@@ -135,39 +166,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 return inlined_const_as_pat;
             }
 
-            if let Some(non_sm_ty) = structural {
-                let msg = with_no_trimmed_paths(|| match non_sm_ty {
-                    traits::NonStructuralMatchTy::Adt(adt_def) => {
-                        let path = self.tcx().def_path_str(adt_def.did);
-                        format!(
-                            "to use a constant of type `{}` in a pattern, \
-                             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                            path, path,
-                        )
-                    }
-                    traits::NonStructuralMatchTy::Dynamic => {
-                        "trait objects cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Opaque => {
-                        "opaque types cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Generator => {
-                        "generators cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Closure => {
-                        "closures cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Param => {
-                        bug!("use of a constant whose type is a parameter inside a pattern")
-                    }
-                    traits::NonStructuralMatchTy::Projection => {
-                        bug!("use of a constant whose type is a projection inside a pattern")
-                    }
-                    traits::NonStructuralMatchTy::Foreign => {
-                        bug!("use of a value of a foreign type inside a pattern")
-                    }
-                });
-
+            if let Some(msg) = structural {
                 if !self.type_may_have_partial_eq_impl(cv.ty) {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
                     self.tcx().sess.span_fatal(self.span, &msg);
@@ -272,11 +271,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     // `search_for_structural_match_violation` and then remove this condition.
                     && self.search_for_structural_match_violation(cv.ty).is_some() =>
             {
-                let msg = format!(
-                    "to use a constant of type `{}` in a pattern, \
-                    `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                    cv.ty, cv.ty,
-                );
+                // Obtain the actual type that isn't annotated. If we just looked at `cv.ty` we
+                // could get `Option<NonStructEq>`, even though `Option` is annotated with derive.
+                let msg = self.search_for_structural_match_violation(cv.ty).unwrap();
                 self.saw_const_match_error.set(true);
                 if self.include_lint_checks {
                     tcx.sess.span_err(self.span, &msg);
@@ -512,11 +509,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             && self.search_for_structural_match_violation(cv.ty).is_some()
         {
             self.saw_const_match_lint.set(true);
-            let msg = format!(
-                "to use a constant of type `{}` in a pattern, \
-                 the constant's initializer must be trivial or all types \
-                 in the constant must be annotated with `#[derive(PartialEq, Eq)]`",
-                cv.ty,
+            // Obtain the actual type that isn't annotated. If we just looked at `cv.ty` we
+            // could get `Option<NonStructEq>`, even though `Option` is annotated with derive.
+            let msg = self.search_for_structural_match_violation(cv.ty).unwrap().replace(
+                "in a pattern,",
+                "in a pattern, the constant's initializer must be trivial or",
             );
             tcx.struct_span_lint_hir(
                 lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH,
