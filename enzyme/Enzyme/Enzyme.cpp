@@ -210,7 +210,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
 
   std::map<Argument *, bool> volatile_args;
   FnTypeInfo type_args(cast<Function>(fn));
-  for (auto &a : type_args.function->args()) {
+  for (auto &a : type_args.Function->args()) {
     volatile_args[&a] = false;
     TypeTree dt;
     if (a.getType()->isFPOrFPVectorTy()) {
@@ -223,10 +223,10 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
         dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
       }
     }
-    type_args.first.insert(std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
+    type_args.Arguments.insert(std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
     // TODO note that here we do NOT propagate constants in type info (and
     // should consider whether we should)
-    type_args.knownValues.insert(
+    type_args.KnownValues.insert(
         std::pair<Argument *, std::set<int64_t>>(&a, {}));
   }
 

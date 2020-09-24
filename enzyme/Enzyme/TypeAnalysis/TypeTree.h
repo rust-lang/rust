@@ -40,6 +40,7 @@
 #include "BaseType.h"
 #include "ConcreteType.h"
 
+/// Helper function to print a vector of ints to a string
 static inline std::string to_string(const std::vector<int> x) {
   std::string out = "[";
   for (unsigned i = 0; i < x.size(); ++i) {
@@ -57,56 +58,63 @@ typedef std::shared_ptr<const TypeTree> TypeResult;
 typedef std::map<const std::vector<int>, ConcreteType> ConcreteTypeMapType;
 typedef std::map<const std::vector<int>, const TypeResult> TypeTreeMapType;
 
+/// Class representing the underlying types of values as 
+/// sequences of offsets to a ConcreteType
 class TypeTree : public std::enable_shared_from_this<TypeTree> {
 private:
   // mapping of known indices to type if one exists
   ConcreteTypeMapType mapping;
 
-  // mapping of known indices to type if one exists
-  // TypeTreeMapType recur_mapping;
-
-  static std::map<std::pair<ConcreteTypeMapType, TypeTreeMapType>, TypeResult>
-      cache;
-
 public:
-  ConcreteType operator[](const std::vector<int> v) const {
-    auto found = mapping.find(v);
-    if (found != mapping.end()) {
-      return found->second;
+
+  TypeTree() {}
+  TypeTree(ConcreteType dat) {
+    if (dat != ConcreteType(BaseType::Unknown)) {
+      insert({}, dat);
+    }
+  }
+
+  /// Lookup the underlying ConcreteType at a given offset sequence
+  /// or Unknown if none exists
+  ConcreteType operator[](const std::vector<int> Seq) const {
+    auto Found = mapping.find(Seq);
+    if (Found != mapping.end()) {
+      return Found->second;
     }
     for (const auto &pair : mapping) {
-      if (pair.first.size() != v.size())
+      if (pair.first.size() != Seq.size())
         continue;
-      bool match = true;
-      for (unsigned i = 0; i < pair.first.size(); ++i) {
+      bool Match = true;
+      for (unsigned i = 0, size = pair.first.size(); i < size; ++i) {
         if (pair.first[i] == -1)
           continue;
-        if (pair.first[i] != v[i]) {
-          match = false;
+        if (pair.first[i] != Seq[i]) {
+          Match = false;
           break;
         }
       }
-      if (!match)
+      if (!Match)
         continue;
       return pair.second;
     }
     return BaseType::Unknown;
   }
 
-  void erase(const std::vector<int> v) { mapping.erase(v); }
+  /// Remove a given offset sequence
+  void erase(const std::vector<int> Seq) { mapping.erase(Seq); }
 
-  void insert(const std::vector<int> v, ConcreteType d,
+  void insert(const std::vector<int> Seq, ConcreteType CT,
               bool intsAreLegalSubPointer = false) {
-    if (v.size() > 0) {
+    if (Seq.size() > 0) {
       // check pointer abilities from before
       {
-        std::vector<int> tmp(v.begin(), v.end() - 1);
+        std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
         auto found = mapping.find(tmp);
         if (found != mapping.end()) {
           if (!(found->second == BaseType::Pointer ||
                 found->second == BaseType::Anything)) {
-            llvm::errs() << "FAILED dt: " << str()
-                         << " adding v: " << to_string(v) << ": " << d.str()
+            llvm::errs() << "FAILED CT: " << str()
+                         << " adding Seq: " << to_string(Seq) << ": " << CT.str()
                          << "\n";
           }
           assert(found->second == BaseType::Pointer ||
@@ -116,53 +124,53 @@ public:
 
       // don't insert if there's an existing ending -1
       {
-        std::vector<int> tmp(v.begin(), v.end() - 1);
+        std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
         tmp.push_back(-1);
         auto found = mapping.find(tmp);
         if (found != mapping.end()) {
 
-          if (found->second != d) {
-            if (d == BaseType::Anything) {
-              found->second = d;
+          if (found->second != CT) {
+            if (CT == BaseType::Anything) {
+              found->second = CT;
             } else {
               llvm::errs() << "FAILED dt: " << str()
-                           << " adding v: " << to_string(v) << ": " << d.str()
+                           << " adding v: " << to_string(Seq) << ": " << CT.str()
                            << "\n";
             }
           }
-          assert(found->second == d);
+          assert(found->second == CT);
           return;
         }
       }
 
       // don't insert if there's an existing starting -1
       {
-        std::vector<int> tmp(v.begin(), v.end());
+        std::vector<int> tmp(Seq.begin(), Seq.end());
         tmp[0] = -1;
         auto found = mapping.find(tmp);
         if (found != mapping.end()) {
-          if (found->second != d) {
-            if (d == BaseType::Anything) {
-              found->second = d;
+          if (found->second != CT) {
+            if (CT == BaseType::Anything) {
+              found->second = CT;
             } else {
               llvm::errs() << "FAILED dt: " << str()
-                           << " adding v: " << to_string(v) << ": " << d.str()
+                           << " adding v: " << to_string(Seq) << ": " << CT.str()
                            << "\n";
             }
           }
-          assert(found->second == d);
+          assert(found->second == CT);
           return;
         }
       }
 
       // if this is a ending -1, remove other -1's
-      if (v.back() == -1) {
+      if (Seq.back() == -1) {
         std::set<std::vector<int>> toremove;
         for (const auto &pair : mapping) {
-          if (pair.first.size() == v.size()) {
+          if (pair.first.size() == Seq.size()) {
             bool matches = true;
             for (unsigned i = 0; i < pair.first.size() - 1; ++i) {
-              if (pair.first[i] != v[i]) {
+              if (pair.first[i] != Seq[i]) {
                 matches = false;
                 break;
               }
@@ -171,15 +179,15 @@ public:
               continue;
 
             if (intsAreLegalSubPointer &&
-                pair.second.typeEnum == BaseType::Integer &&
-                d.typeEnum == BaseType::Pointer) {
+                pair.second == BaseType::Integer &&
+                CT == BaseType::Pointer) {
 
             } else {
-              if (pair.second != d) {
+              if (pair.second != CT) {
                 llvm::errs() << "inserting into : " << str() << " with "
-                             << to_string(v) << " of " << d.str() << "\n";
+                             << to_string(Seq) << " of " << CT.str() << "\n";
               }
-              assert(pair.second == d);
+              assert(pair.second == CT);
             }
             toremove.insert(pair.first);
           }
@@ -191,20 +199,20 @@ public:
       }
 
       // if this is a starting -1, remove other -1's
-      if (v[0] == -1) {
+      if (Seq[0] == -1) {
         std::set<std::vector<int>> toremove;
         for (const auto &pair : mapping) {
-          if (pair.first.size() == v.size()) {
+          if (pair.first.size() == Seq.size()) {
             bool matches = true;
             for (unsigned i = 1; i < pair.first.size(); ++i) {
-              if (pair.first[i] != v[i]) {
+              if (pair.first[i] != Seq[i]) {
                 matches = false;
                 break;
               }
             }
             if (!matches)
               continue;
-            assert(pair.second == d);
+            assert(pair.second == CT);
             toremove.insert(pair.first);
           }
         }
@@ -214,31 +222,25 @@ public:
         }
       }
     }
-    if (v.size() > 6) {
+    if (Seq.size() > 6) {
       llvm::errs() << "not handling more than 6 pointer lookups deep dt:"
-                   << str() << " adding v: " << to_string(v) << ": " << d.str()
+                   << str() << " adding v: " << to_string(Seq) << ": " << CT.str()
                    << "\n";
       return;
     }
-    for (auto a : v) {
-      if (a > 1000) {
-        // llvm::errs() << "not handling more than 1000B offset pointer dt:" <<
-        // str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+    for (auto Off : Seq) {
+      if (Off > 1000) {
+        // TODO perhaps issue warning for too large an offset
         return;
       }
     }
-    mapping.insert(std::pair<const std::vector<int>, ConcreteType>(v, d));
+    mapping.insert(std::pair<const std::vector<int>, ConcreteType>(Seq, CT));
   }
 
+  /// How this TypeTree compares with another
   bool operator<(const TypeTree &vd) const { return mapping < vd.mapping; }
 
-  TypeTree() {}
-  TypeTree(ConcreteType dat) {
-    if (dat != ConcreteType(BaseType::Unknown)) {
-      insert({}, dat);
-    }
-  }
-
+  /// Whether this TypeTree contains any information
   bool isKnown() {
     for (auto &pair : mapping) {
       // we should assert here as we shouldn't keep any unknown maps for
@@ -248,6 +250,7 @@ public:
     return mapping.size() != 0;
   }
 
+  /// Whether this TypeTree knows any non-pointer information
   bool isKnownPastPointer() {
     for (auto &pair : mapping) {
       // we should assert here as we shouldn't keep any unknown maps for
@@ -262,12 +265,11 @@ public:
     return false;
   }
 
-  static TypeTree Unknown() { return TypeTree(); }
-
+  /// Select only the Integer ConcreteTypes 
   TypeTree JustInt() const {
     TypeTree vd;
     for (auto &pair : mapping) {
-      if (pair.second.typeEnum == BaseType::Integer) {
+      if (pair.second == BaseType::Integer) {
         vd.insert(pair.first, pair.second);
       }
     }
@@ -282,48 +284,27 @@ public:
   TypeTree KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
                         llvm::Type *to) const;
 
-  static std::vector<int> appendIndex(int off, const std::vector<int> &first) {
-    std::vector<int> out;
-    out.push_back(off);
-    for (auto a : first)
-      out.push_back(a);
-    return out;
+  /// Helper function to prepend an offset
+  static std::vector<int> prependIndex(int Off, const std::vector<int> &Array) {
+    std::vector<int> Result;
+    Result.push_back(Off);
+    for (auto Val : Array)
+      Result.push_back(Val);
+    return Result;
   }
 
-  TypeTree Only(int off) const {
-    TypeTree dat;
-
+  /// Prepend an offset to all mappings
+  TypeTree Only(int Off) const {
+    TypeTree Result;
     for (const auto &pair : mapping) {
-      dat.insert(appendIndex(off, pair.first), pair.second);
-      // if (pair.first.size() > 0) {
-      //    dat.insert(indices, ConcreteType(BaseType::Pointer));
-      //}
+      Result.insert(prependIndex(Off, pair.first), pair.second);
     }
-
-    return dat;
+    return Result;
   }
 
-  static bool lookupIndices(std::vector<int> &first, int idx,
-                            const std::vector<int> &second) {
-    if (second.size() == 0)
-      return false;
-
-    assert(first.size() == 0);
-
-    if (idx == -1) {
-    } else if (second[0] == -1) {
-    } else if (idx != second[0]) {
-      return false;
-    }
-
-    for (size_t i = 1; i < second.size(); ++i) {
-      first.push_back(second[i]);
-    }
-    return true;
-  }
-
+  /// Peel off the outermost index at offset 0
   TypeTree Data0() const {
-    TypeTree dat;
+    TypeTree Result;
 
     for (const auto &pair : mapping) {
       assert(pair.first.size() != 0);
@@ -332,45 +313,60 @@ public:
         std::vector<int> next;
         for (size_t i = 1; i < pair.first.size(); ++i)
           next.push_back(pair.first[i]);
-        TypeTree dat2;
-        dat2.insert(next, pair.second);
-        dat |= dat2;
+        // We do insertion like this to force an error
+        // on the |= operation if there is an incompatible
+        // merge. The insert operation does not error.
+        TypeTree SubResult;
+        SubResult.insert(next, pair.second);
+        Result |= SubResult;
       }
     }
 
-    return dat;
+    return Result;
   }
 
+  /// Remove any mappings in the range [start, end) or [len, inf)
+  /// This function has special handling for -1's
   TypeTree Clear(size_t start, size_t end, size_t len) const {
-    TypeTree dat;
+    TypeTree Result;
+
+    // Note that below do insertion with the |= operator
+    // to force an error if there is an incompatible
+    // merge. The insert operation does not error.
 
     for (const auto &pair : mapping) {
       assert(pair.first.size() != 0);
 
       if (pair.first[0] == -1) {
-        TypeTree dat2;
+        // For "all index" calculations, explicitly
+        // add mappings for regions in range
+        TypeTree SubResult;
         auto next = pair.first;
         for (size_t i = 0; i < start; ++i) {
           next[0] = i;
-          dat2.insert(next, pair.second);
+          SubResult.insert(next, pair.second);
         }
         for (size_t i = end; i < len; ++i) {
           next[0] = i;
-          dat2.insert(next, pair.second);
+          SubResult.insert(next, pair.second);
         }
-        dat |= dat2;
+        Result |= SubResult;
       } else if ((size_t)pair.first[0] > start &&
                  (size_t)pair.first[0] >= end && (size_t)pair.first[0] < len) {
-        TypeTree dat2;
-        dat2.insert(pair.first, pair.second);
-        dat |= dat2;
+        // Otherwise simply check that the given offset is in range
+        
+        TypeTree SubResult;
+        SubResult.insert(pair.first, pair.second);
+        Result |= SubResult;
       }
     }
 
     // TODO canonicalize this
-    return dat;
+    return Result;
   }
 
+  /// Select all submappings whose first index is in range [0, len) and remove
+  /// the first index. This is the inverse of the `Only` operation
   TypeTree Lookup(size_t len, const llvm::DataLayout &dl) const {
 
     // Map of indices[1:] => ( End => possible Index[0] )
@@ -403,7 +399,7 @@ public:
       staging[next][pair.second].insert(pair.first[1]);
     }
 
-    TypeTree dat;
+    TypeTree Result;
     for (auto &pair : staging) {
       auto &pnext = pair.first;
       for (auto &pair2 : pair.second) {
@@ -426,7 +422,7 @@ public:
               llvm::errs() << *flt << "\n";
               assert(0 && "unhandled float type");
             }
-          } else if (dt.typeEnum == BaseType::Pointer) {
+          } else if (dt == BaseType::Pointer) {
             chunk = dl.getPointerSizeInBits() / 8;
           }
 
@@ -445,19 +441,21 @@ public:
           next.push_back(v);
 
         if (legalCombine) {
-          dat.insert(next, dt, /*intsAreLegalPointerSub*/ true);
+          Result.insert(next, dt, /*intsAreLegalPointerSub*/ true);
         } else {
           for (auto e : set) {
             next[0] = e;
-            dat.insert(next, dt);
+            Result.insert(next, dt);
           }
         }
       }
     }
 
-    return dat;
+    return Result;
   }
 
+  /// Given that this tree represents something of at most size len, canonicalize
+  /// this, creating -1's where possible
   TypeTree CanonicalizeValue(size_t len, const llvm::DataLayout &dl) const {
 
     // Map of indices[1:] => ( End => possible Index[0] )
@@ -497,7 +495,7 @@ public:
               llvm::errs() << *flt << "\n";
               assert(0 && "unhandled float type");
             }
-          } else if (dt.typeEnum == BaseType::Pointer) {
+          } else if (dt == BaseType::Pointer) {
             chunk = dl.getPointerSizeInBits() / 8;
           }
 
@@ -529,6 +527,7 @@ public:
     return dat;
   }
 
+  /// Keep only pointers (or anything's) to a repeated value (represented by -1)
   TypeTree KeepMinusOne() const {
     TypeTree dat;
 
@@ -557,23 +556,25 @@ public:
     return dat;
   }
 
-  //! Replace offsets in [offset, offset+maxSize] with [addOffset, addOffset +
-  //! maxSize]
+  /// Replace mappings in the range in [offset, offset+maxSize] with those in
+  // [addOffset, addOffset + maxSize]. In other worse, select all mappings in
+  // [offset, offset+maxSize] then add `addOffset` 
   TypeTree ShiftIndices(const llvm::DataLayout &dl, int offset, int maxSize,
                          size_t addOffset = 0) const {
-    TypeTree dat;
+    TypeTree Result;
 
     for (const auto &pair : mapping) {
       if (pair.first.size() == 0) {
         if (pair.second == BaseType::Pointer ||
             pair.second == BaseType::Anything) {
-          dat.insert(pair.first, pair.second);
+          Result.insert(pair.first, pair.second);
           continue;
         }
 
         llvm::errs() << "could not unmerge " << str() << "\n";
+        assert(0 && "ShiftIndices called on a nonpointer/anything");
+        llvm_unreachable("ShiftIndices called on a nonpointer/anything");
       }
-      assert(pair.first.size() > 0);
 
       std::vector<int> next(pair.first);
 
@@ -606,8 +607,6 @@ public:
       }
 
       TypeTree dat2;
-      // llvm::errs() << "next: " << to_string(next) << " indices: " <<
-      // to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
       if (next[0] == -1 && maxSize != -1) {
         size_t chunk = 1;
         auto op = operator[]({pair.first[0]});
@@ -622,7 +621,7 @@ public:
             llvm::errs() << *flt << "\n";
             assert(0 && "unhandled float type");
           }
-        } else if (op.typeEnum == BaseType::Pointer) {
+        } else if (op == BaseType::Pointer) {
           chunk = dl.getPointerSizeInBits() / 8;
         }
 
@@ -633,13 +632,13 @@ public:
       } else {
         dat2.insert(next, pair.second);
       }
-      dat |= dat2;
+      Result |= dat2;
     }
 
-    return dat;
+    return Result;
   }
 
-  // Removes any anything types
+  /// Keep only mappings where the type is not an `Anything`
   TypeTree PurgeAnything() const {
     TypeTree dat;
     for (const auto &pair : mapping) {
@@ -650,7 +649,7 @@ public:
     return dat;
   }
 
-  // TODO note that this keeps -1's
+  /// Select mappings in range [0, max), preserving -1's
   TypeTree AtMost(size_t max) const {
     assert(max > 0);
     TypeTree dat;
@@ -663,70 +662,66 @@ public:
     return dat;
   }
 
-  static TypeTree Argument(ConcreteType type, llvm::Value *v) {
-    if (v->getType()->isIntOrIntVectorTy())
-      return TypeTree(type);
-    return TypeTree(type).Only(0);
-  }
+  /// Chceck equality of two TypeTrees
+  bool operator==(const TypeTree &RHS) const { return mapping == RHS.mapping; }
 
-  bool operator==(const TypeTree &v) const { return mapping == v.mapping; }
-
-  // Return if changed
-  bool operator=(const TypeTree &v) {
-    if (*this == v)
+  /// Set this to another TypeTree, returning if this was changed
+  bool operator=(const TypeTree &RHS) {
+    if (*this == RHS)
       return false;
     mapping.clear();
-    for(const auto& elems : v.mapping) {
+    for(const auto& elems : RHS.mapping) {
       mapping.emplace(elems);
     }
-    //mapping = v.mapping;
     return true;
   }
 
-  bool mergeIn(const TypeTree &v, bool pointerIntSame) {
-    //! Todo detect recursive merge
+  /// Set this to the logical or of itself and RHS, returning whether this value changed
+  /// Setting `PointerIntSame` considers pointers and integers as equivalent
+  /// This function will error if doing an illegal Operation
+  bool orIn(const TypeTree &RHS, bool PointerIntSame) {
+    // TODO detect recursive merge and simplify
 
     bool changed = false;
 
-    if (v[{-1}] != BaseType::Unknown) {
+    if (RHS[{-1}] != BaseType::Unknown) {
       for (auto &pair : mapping) {
         if (pair.first.size() == 1 && pair.first[0] != -1) {
-          pair.second.mergeIn(v[{-1}], pointerIntSame);
+          pair.second.orIn(RHS[{-1}], PointerIntSame);
           // if (pair.second == ) // NOTE DELETE the non -1
         }
       }
     }
 
-    for (auto &pair : v.mapping) {
+    for (auto &pair : RHS.mapping) {
       assert(pair.second != BaseType::Unknown);
-      ConcreteType dt = operator[](pair.first);
-      // llvm::errs() << "merging @ " << to_string(pair.first) << " old:" <<
-      // dt.str() << " new:" << pair.second.str() << "\n";
-      changed |= (dt.mergeIn(pair.second, pointerIntSame));
-      insert(pair.first, dt);
+      ConcreteType CT = operator[](pair.first);
+      changed |= (CT.orIn(pair.second, PointerIntSame));
+      insert(pair.first, CT);
     }
     return changed;
   }
 
-  bool operator|=(const TypeTree &v) {
-    return mergeIn(v, /*pointerIntSame*/ false);
+  /// Set this to the logical or of itself and RHS, returning whether this value changed
+  /// This assumes that pointers and integers are distinct
+  /// This function will error if doing an illegal Operation
+  bool operator|=(const TypeTree &RHS) {
+    return orIn(RHS, /*PointerIntSame*/ false);
   }
 
-  bool operator&=(const TypeTree &v) {
-    return andIn(v, /*assertIfIllegal*/ true);
-  }
-
-  bool andIn(const TypeTree &v, bool assertIfIllegal = true) {
+  /// Set this to the logical and of itself and RHS, returning whether this value changed
+  /// If this and RHS are incompatible at an index, the result will be BaseType::Unknown
+  bool andIn(const TypeTree &RHS) {
     bool changed = false;
 
     std::vector<std::vector<int>> keystodelete;
     for (auto &pair : mapping) {
       ConcreteType other = BaseType::Unknown;
-      auto fd = v.mapping.find(pair.first);
-      if (fd != v.mapping.end()) {
+      auto fd = RHS.mapping.find(pair.first);
+      if (fd != RHS.mapping.end()) {
         other = fd->second;
       }
-      changed = (pair.second.andIn(other, assertIfIllegal));
+      changed = (pair.second &= other);
       if (pair.second == BaseType::Unknown) {
         keystodelete.push_back(pair.first);
       }
@@ -739,21 +734,30 @@ public:
     return changed;
   }
 
-  bool pointerIntMerge(const TypeTree &v, llvm::BinaryOperator::BinaryOps op) {
+  /// Set this to the logical and of itself and RHS, returning whether this value changed
+  /// If this and RHS are incompatible at an index, the result will be BaseType::Unknown
+  bool operator&=(const TypeTree &RHS) {
+    return andIn(RHS);
+  }
+
+  /// Set this to the logical `binop` of itself and RHS, using the Binop Op,
+  /// returning true if this was changed.
+  /// This function will error on an invalid type combination
+  bool binopIn(const TypeTree &RHS, llvm::BinaryOperator::BinaryOps Op) {
     bool changed = false;
 
     auto found = mapping.find({});
     if (found != mapping.end()) {
-      changed |= (found->second.pointerIntMerge(v[{}], op));
+      changed |= (found->second.binopIn(RHS[{}], Op));
       if (found->second == BaseType::Unknown) {
         mapping.erase(std::vector<int>({}));
       }
-    } else if (v.mapping.find({}) != v.mapping.end()) {
-      ConcreteType dt(BaseType::Unknown);
-      dt.pointerIntMerge(v[{}], op);
-      if (dt != BaseType::Unknown) {
+    } else if (RHS.mapping.find({}) != RHS.mapping.end()) {
+      ConcreteType CT(BaseType::Unknown);
+      CT.binopIn(RHS[{}], Op);
+      if (CT != BaseType::Unknown) {
         changed = true;
-        mapping.emplace(std::vector<int>({}), dt);
+        mapping.emplace(std::vector<int>({}), CT);
       }
     }
 
@@ -772,6 +776,7 @@ public:
     return changed;
   }
 
+  /// Returns a string representation of this TypeTree
   std::string str() const {
     std::string out = "{";
     bool first = true;

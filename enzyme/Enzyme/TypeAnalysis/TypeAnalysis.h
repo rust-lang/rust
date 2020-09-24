@@ -39,21 +39,27 @@
 
 #include "TypeTree.h"
 
-class FnTypeInfo {
-public:
-  llvm::Function *function;
-  FnTypeInfo(llvm::Function *fn) : function(fn) {}
+/// Struct containing all contextual type information for a
+/// particular function call
+struct FnTypeInfo {
+  /// Function being analyzed
+  llvm::Function *Function;
+  
+  FnTypeInfo(llvm::Function *fn) : Function(fn) {}
   FnTypeInfo(const FnTypeInfo &) = default;
   FnTypeInfo &operator=(FnTypeInfo &) = default;
   FnTypeInfo &operator=(FnTypeInfo &&) = default;
 
-  // arguments:type
-  std::map<llvm::Argument *, TypeTree> first;
-  // return type
-  TypeTree second;
-  // the specific constant of an argument, if it is constant
-  std::map<llvm::Argument *, std::set<int64_t>> knownValues;
+  /// Types of arguments
+  std::map<llvm::Argument *, TypeTree> Arguments;
 
+  /// Type of return
+  TypeTree Return;
+
+  /// The specific constant(s) known to represented by an argument, if constant
+  std::map<llvm::Argument *, std::set<int64_t>> KnownValues;
+
+  /// The set of known values val will take
   std::set<int64_t>
   knownIntegralValues(llvm::Value *val, const llvm::DominatorTree &DT,
                 std::map<llvm::Value *, std::set<int64_t>> &intseen) const;
@@ -62,25 +68,27 @@ public:
 static inline bool operator<(const FnTypeInfo &lhs,
                              const FnTypeInfo &rhs) {
 
-  if (lhs.function < rhs.function)
+  if (lhs.Function < rhs.Function)
     return true;
-  if (rhs.function < lhs.function)
+  if (rhs.Function < lhs.Function)
     return false;
 
-  if (lhs.first < rhs.first)
+  if (lhs.Arguments < rhs.Arguments)
     return true;
-  if (rhs.first < lhs.first)
+  if (rhs.Arguments < lhs.Arguments)
     return false;
-  if (lhs.second < rhs.second)
+  if (lhs.Return < rhs.Return)
     return true;
-  if (rhs.second < lhs.second)
+  if (rhs.Return < lhs.Return)
     return false;
-  return lhs.knownValues < rhs.knownValues;
+  return lhs.KnownValues < rhs.KnownValues;
 }
 
 class TypeAnalyzer;
 class TypeAnalysis;
 
+/// A holder class representing the results of running TypeAnalysis
+/// on a given function
 class TypeResults {
 public:
   TypeAnalysis &analysis;
@@ -90,34 +98,50 @@ public:
   TypeResults(TypeAnalysis &analysis, const FnTypeInfo &fn);
   ConcreteType intType(llvm::Value *val, bool errIfNotFound = true);
 
-  //! Returns whether in the first num bytes there is pointer, int, float, or
-  //! none If pointerIntSame is set to true, then consider either as the same
-  //! (and thus mergable)
+  /// Returns whether in the first num bytes there is pointer, int, float, or
+  /// none If pointerIntSame is set to true, then consider either as the same
+  /// (and thus mergable)
   ConcreteType firstPointer(size_t num, llvm::Value *val, bool errIfNotFound = true,
                         bool pointerIntSame = false);
 
+  /// The TypeTree of a particular Value
   TypeTree query(llvm::Value *val);
+
+  /// The TypeInfo calling convention
   FnTypeInfo getAnalyzedTypeInfo();
+
+  /// The Type of the return
   TypeTree getReturnAnalysis();
+
+  /// Prints all known information
   void dump();
+
+  ///The set of values val will take on during this program
   std::set<int64_t> knownIntegralValues(llvm::Value *val) const;
 };
 
+/// Helper class that computes the fixed-point type results of a given function
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
 public:
-  // List of value's which should be re-analyzed now with new information
+  /// List of value's which should be re-analyzed now with new information
   std::deque<llvm::Value *> workList;
 
 private:
+  /// Tell TypeAnalyzer to reanalyze this value
   void addToWorkList(llvm::Value *val);
+
+  /// Map of Value to known integer constants that it will take on
   std::map<llvm::Value *, std::set<int64_t>> intseen;
 
 public:
-  // Calling context
+  /// Calling context
   const FnTypeInfo fntypeinfo;
 
+  /// Calling TypeAnalysis to be used in the case of calls to other
+  /// functions
   TypeAnalysis &interprocedural;
 
+  /// Intermediate conservative, but correct Type analysis results
   std::map<llvm::Value *, TypeTree> analysis;
 
   llvm::DominatorTree DT;
@@ -126,16 +150,22 @@ public:
 
   TypeTree getAnalysis(llvm::Value *val);
 
+  /// Add additional information to the Type info of val, readding it to the
+  /// work queue as necessary
   void updateAnalysis(llvm::Value *val, BaseType data, llvm::Value *origin);
   void updateAnalysis(llvm::Value *val, ConcreteType data, llvm::Value *origin);
   void updateAnalysis(llvm::Value *val, TypeTree data, llvm::Value *origin);
 
+  /// Analyze type info given by the arguments, possibly adding to work queue
   void prepareArgs();
 
+  /// Analyze type info given by the TBAA, possibly adding to work queue
   void considerTBAA();
 
+  /// Run the interprocedural type analysis starting from this function
   void run();
 
+  /// Set any unused values to a particular type
   bool runUnusedChecks();
 
   void visitValue(llvm::Value &val);
@@ -207,19 +237,30 @@ public:
   //TODO handle fneg on LLVM 10+
 };
 
+/// Full interprocedural TypeAnalysis
 class TypeAnalysis {
 public:
+  /// Map of possible query states to TypeAnalyzer intermediate results
   std::map<FnTypeInfo, TypeAnalyzer> analyzedFunctions;
 
+  /// Analyze a particular function, returning the results
   TypeResults analyzeFunction(const FnTypeInfo &fn);
 
+  /// Get the TypeTree of a given value from a given function context
   TypeTree query(llvm::Value *val, const FnTypeInfo &fn);
 
+  /// Get the underlying data type of value val given a particular context
+  /// If the type is not known err if errIfNotFound
   ConcreteType intType(llvm::Value *val, const FnTypeInfo &fn,
                    bool errIfNotFound = true);
+
+  /// Get the underlying data type of first num bytes of val given a particular context
+  /// If the type is not known err if errIfNotFound. Consider ints and pointers
+  /// the same if pointerIntSame.
   ConcreteType firstPointer(size_t num, llvm::Value *val, const FnTypeInfo &fn,
                         bool errIfNotFound = true, bool pointerIntSame = false);
 
+  /// Get the TyeTree of the returned value of a given function and context
   inline TypeTree getReturnAnalysis(const FnTypeInfo &fn) {
     analyzeFunction(fn);
     return analyzedFunctions.find(fn)->second.getReturnAnalysis();

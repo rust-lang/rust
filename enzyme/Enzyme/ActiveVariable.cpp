@@ -67,6 +67,10 @@ cl::opt<bool> emptyfnconst("enzyme_emptyfnconst", cl::init(false), cl::Hidden,
 #include <set>
 #include <unordered_map>
 
+
+constexpr uint8_t UP = 1;
+constexpr uint8_t DOWN = 2;
+
 bool isFunctionArgumentConstant(TypeResults &TR, CallInst *CI, Value *val,
                                 SmallPtrSetImpl<Value *> &constants,
                                 SmallPtrSetImpl<Value *> &nonconstant,
@@ -180,11 +184,11 @@ bool isFunctionArgumentConstant(TypeResults &TR, CallInst *CI, Value *val,
   FnTypeInfo nextTypeInfo(F);
   int argnum = 0;
   for (auto &arg : F->args()) {
-    nextTypeInfo.first.insert(std::pair<Argument *, TypeTree>(
+    nextTypeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(
         &arg, TR.query(CI->getArgOperand(argnum))));
     ++argnum;
   }
-  nextTypeInfo.second = TR.query(CI);
+  nextTypeInfo.Return = TR.query(CI);
   TypeResults TR2 = TR.analysis.analyzeFunction(nextTypeInfo);
 
   for (unsigned i = 0; i < CI->getNumArgOperands(); ++i) {
@@ -352,9 +356,7 @@ bool isconstantM(TypeResults &TR, Instruction *inst,
                  SmallPtrSetImpl<Value *> &retvals, AAResults &AA,
                  uint8_t directions) {
   assert(inst);
-  assert(TR.info.function == inst->getParent()->getParent());
-  constexpr uint8_t UP = 1;
-  constexpr uint8_t DOWN = 2;
+  assert(TR.info.Function == inst->getParent()->getParent());
   // assert(directions >= 0);
   assert(directions <= 3);
   if (isa<ReturnInst>(inst))
@@ -473,7 +475,7 @@ bool isconstantM(TypeResults &TR, Instruction *inst,
     auto q = TR.query(storeinst->getPointerOperand()).Data0();
     for (int i = -1; i < (int)storeSize; ++i) {
       auto dt = q[{i}];
-      if (dt.isIntegral() || dt.typeEnum == BaseType::Anything) {
+      if (dt.isIntegral() || dt == BaseType::Anything) {
         anIntegral = true;
       } else if (dt.isKnown()) {
         allIntegral = false;
@@ -964,13 +966,11 @@ bool isconstantValueM(TypeResults &TR, Value *val,
                       uint8_t directions) {
   assert(val);
   if (auto inst = dyn_cast<Instruction>(val)) {
-    assert(TR.info.function == inst->getParent()->getParent());
+    assert(TR.info.Function == inst->getParent()->getParent());
   }
   if (auto arg = dyn_cast<Argument>(val)) {
-    assert(TR.info.function == arg->getParent());
+    assert(TR.info.Function == arg->getParent());
   }
-  // constexpr uint8_t UP = 1;
-  constexpr uint8_t DOWN = 2;
   // assert(directions >= 0);
   assert(directions <= 3);
 
@@ -1017,8 +1017,8 @@ bool isconstantValueM(TypeResults &TR, Value *val,
     assert(0 && "must've put arguments in constant/nonconstant");
   }
 
-  //! This value is certainly an integer (and only and integer, not a pointer or
-  //! float). Therefore its value is constant
+  // This value is certainly an integer (and only and integer, not a pointer or
+  // float). Therefore its value is constant
   if (TR.intType(val, /*errIfNotFound*/ false).isIntegral()) {
     if (printconst)
       llvm::errs() << " Value const as integral " << (int)directions << " "
@@ -1028,8 +1028,8 @@ bool isconstantValueM(TypeResults &TR, Value *val,
     return true;
   }
 
-  //! This value is certainly a pointer to an integer (and only and integer, not
-  //! a pointer or float). Therefore its value is constant
+  // This value is certainly a pointer to an integer (and only and integer, not
+  // a pointer or float). Therefore its value is constant
   // TODO use typeInfo for more aggressive activity analysis
   if (val->getType()->isPointerTy() &&
       cast<PointerType>(val->getType())->isIntOrIntVectorTy() &&

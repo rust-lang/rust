@@ -1,4 +1,4 @@
-//===- ConcreteType.h - Underlying type used in Type Analysis   ------------===//
+//===- ConcreteType.h - Underlying SubType used in Type Analysis   ------------===//
 //
 //                             Enzyme Project
 //
@@ -18,8 +18,8 @@
 //===----------------------------------------------------------------------===//
 //
 // This file contains the implementation of an a class representing all potential
-// end types used in Type Analysis. This ``ConcreteType`` contains an the type
-// category ``BaseType`` as well as the type of float, if relevant. This also
+// end SubTypes used in Type Analysis. This ``ConcreteType`` contains an the SubType
+// category ``BaseType`` as well as the SubType of float, if relevant. This also
 // contains several helper utility functions.
 //
 //===----------------------------------------------------------------------===//
@@ -34,239 +34,306 @@
 
 #include "BaseType.h"
 
+/// Concrete SubType of a given value. Consists of a category `BaseType` and the
+/// particular floating point value, if relevant.
 class ConcreteType {
 public:
-  llvm::Type *type;
-  BaseType typeEnum;
+  /// Category of underlying type
+  BaseType SubTypeEnum;
+  /// Floating point type, if relevant, otherwise nullptr
+  llvm::Type *SubType;
 
-  ConcreteType(const ConcreteType&) = default;
-  ConcreteType(ConcreteType&&) = default;
-  ConcreteType(llvm::Type *type) : type(type), typeEnum(BaseType::Float) {
-    assert(type != nullptr);
-    assert(!llvm::isa<llvm::VectorType>(type));
-    if (!type->isFloatingPointTy()) {
-      llvm::errs() << " passing in non FP type: " << *type << "\n";
+  /// Construct a ConcreteType from an existing FloatingPoint Type
+  ConcreteType(llvm::Type *SubType) : SubTypeEnum(BaseType::Float), SubType(SubType)  {
+    assert(SubType != nullptr);
+    assert(!llvm::isa<llvm::VectorType>(SubType));
+    if (!SubType->isFloatingPointTy()) {
+      llvm::errs() << " passing in non FP SubType: " << *SubType << "\n";
     }
-    assert(type->isFloatingPointTy());
+    assert(SubType->isFloatingPointTy());
   }
 
-  ConcreteType(BaseType typeEnum) : type(nullptr), typeEnum(typeEnum) {
-    assert(typeEnum != BaseType::Float);
+  /// Construct a non-floating Concrete type from a BaseType
+  ConcreteType(BaseType SubTypeEnum) : SubTypeEnum(SubTypeEnum), SubType(nullptr) {
+    assert(SubTypeEnum != BaseType::Float);
   }
 
-  ConcreteType(std::string str, llvm::LLVMContext &C) {
-    auto fd = str.find('@');
-    if (fd != std::string::npos) {
-      typeEnum = BaseType::Float;
-      assert(str.substr(0, fd) == "Float");
-      auto subt = str.substr(fd + 1);
-      if (subt == "half") {
-        type = llvm::Type::getHalfTy(C);
-      } else if (subt == "float") {
-        type = llvm::Type::getFloatTy(C);
-      } else if (subt == "double") {
-        type = llvm::Type::getDoubleTy(C);
-      } else if (subt == "fp80") {
-        type = llvm::Type::getX86_FP80Ty(C);
-      } else if (subt == "fp128") {
-        type = llvm::Type::getFP128Ty(C);
-      } else if (subt == "ppc128") {
-        type = llvm::Type::getPPC_FP128Ty(C);
+  /// Construct a ConcreteType from a string
+  ///  A Concrete Type's string representation is given by the string of the enum
+  ///  If it is a floating point it is given by Float@<specific_type>
+  ConcreteType(std::string Str, llvm::LLVMContext &C) {
+    auto Sep = Str.find('@');
+    if (Sep != std::string::npos) {
+      SubTypeEnum = BaseType::Float;
+      assert(Str.substr(0, Sep) == "Float");
+      auto SubName = Str.substr(Sep + 1);
+      if (SubName == "half") {
+        SubType = llvm::Type::getHalfTy(C);
+      } else if (SubName == "float") {
+        SubType = llvm::Type::getFloatTy(C);
+      } else if (SubName == "double") {
+        SubType = llvm::Type::getDoubleTy(C);
+      } else if (SubName == "fp80") {
+        SubType = llvm::Type::getX86_FP80Ty(C);
+      } else if (SubName == "fp128") {
+        SubType = llvm::Type::getFP128Ty(C);
+      } else if (SubName == "ppc128") {
+        SubType = llvm::Type::getPPC_FP128Ty(C);
       } else {
-        llvm_unreachable("unknown data type");
+        llvm_unreachable("unknown data SubType");
       }
     } else {
-      type = nullptr;
-      typeEnum = parseBaseType(str);
+      SubType = nullptr;
+      SubTypeEnum = parseBaseType(Str);
     }
   }
 
+  /// Convert the ConcreteType to a string
+  std::string str() const {
+    std::string Result = to_string(SubTypeEnum);
+    if (SubTypeEnum == BaseType::Float) {
+      if (SubType->isHalfTy()) {
+        Result += "@half";
+      } else if (SubType->isFloatTy()) {
+        Result += "@float";
+      } else if (SubType->isDoubleTy()) {
+        Result += "@double";
+      } else if (SubType->isX86_FP80Ty()) {
+        Result += "@fp80";
+      } else if (SubType->isFP128Ty()) {
+        Result += "@fp128";
+      } else if (SubType->isPPC_FP128Ty()) {
+        Result += "@ppc128";
+      } else {
+        llvm_unreachable("unknown data SubType");
+      }
+    }
+    return Result;
+  }
+
+  /// Whether this ConcreteType has information (is not unknown)
+  bool isKnown() const { return SubTypeEnum != BaseType::Unknown; }
+
+  /// Whether this ConcreteType can be used as an integer (SubTypeEnum is Integer or Anything)
   bool isIntegral() const {
-    return typeEnum == BaseType::Integer || typeEnum == BaseType::Anything;
+    return SubTypeEnum == BaseType::Integer || SubTypeEnum == BaseType::Anything;
   }
 
-  bool isKnown() const { return typeEnum != BaseType::Unknown; }
-
+  /// Whether this ConcreteType could be a pointer (SubTypeEnum is unknown or a pointer)
   bool isPossiblePointer() const {
-    return !isKnown() || typeEnum == BaseType::Pointer;
+    return !isKnown() || SubTypeEnum == BaseType::Pointer;
   }
 
+  /// Whether this ConcreteType could be a float (SubTypeEnum is unknown or a float)
   bool isPossibleFloat() const {
-    return !isKnown() || typeEnum == BaseType::Float;
+    return !isKnown() || SubTypeEnum == BaseType::Float;
   }
 
-  llvm::Type *isFloat() const { return type; }
+  /// Return the floating point type, if this is a float
+  llvm::Type *isFloat() const { return SubType; }
 
-  bool operator==(const BaseType dt) const { return typeEnum == dt; }
-
-  bool operator!=(const BaseType dt) const { return typeEnum != dt; }
-
-  bool operator==(const ConcreteType dt) const {
-    return type == dt.type && typeEnum == dt.typeEnum;
+  /// Return if this is known to be the BaseType BT
+  /// This cannot be called with BaseType::Float as it lacks information
+  bool operator==(const BaseType BT) const { 
+    if (BT == BaseType::Float) {
+      assert(0 && "Cannot do comparision between ConcreteType and BaseType::Float");
+      llvm_unreachable("Cannot do comparision between ConcreteType and BaseType::Float");
+    }
+    return SubTypeEnum == BT;
   }
-  bool operator!=(const ConcreteType dt) const { return !(*this == dt); }
 
+  /// Return if this is known not to be the BaseType BT
+  /// This cannot be called with BaseType::Float as it lacks information
+  bool operator!=(const BaseType BT) const { 
+    if (BT == BaseType::Float) {
+      assert(0 && "Cannot do comparision between ConcreteType and BaseType::Float");
+      llvm_unreachable("Cannot do comparision between ConcreteType and BaseType::Float");
+    }
+    return SubTypeEnum != BT;
+  }
 
-  bool operator=(const BaseType bt) {
-    assert(bt != BaseType::Float);
+  /// Return if this is known to be the ConcreteType CT
+  bool operator==(const ConcreteType CT) const {
+    return SubType == CT.SubType && SubTypeEnum == CT.SubTypeEnum;
+  }
+
+  /// Return if this is known not to be the ConcreteType CT
+  bool operator!=(const ConcreteType CT) const { return !(*this == CT); }
+
+  /// Set this to the given ConcreteType, returning true if
+  /// this ConcreteType has changed
+  bool operator=(const ConcreteType CT) {
     bool changed = false;
-    if (typeEnum != bt)
+    if (SubTypeEnum != CT.SubTypeEnum)
       changed = true;
-    typeEnum = bt;
-    if (type != nullptr)
+    SubTypeEnum = CT.SubTypeEnum;
+    if (SubType != CT.SubType)
       changed = true;
-    type = nullptr;
+    SubType = CT.SubType;
     return changed;
   }
 
-  // returns whether changed
-  bool operator=(const ConcreteType dt) {
-    bool changed = false;
-    if (typeEnum != dt.typeEnum)
-      changed = true;
-    typeEnum = dt.typeEnum;
-    if (type != dt.type)
-      changed = true;
-    type = dt.type;
-    return changed;
-  }
-  bool operator=(ConcreteType&& dt) {
-    bool changed = false;
-    if (typeEnum != dt.typeEnum)
-      changed = true;
-    typeEnum = dt.typeEnum;
-    if (type != dt.type)
-      changed = true;
-    type = dt.type;
-    return changed;
+  /// Set this to the given BaseType, returning true if
+  /// this ConcreteType has changed
+  bool operator=(const BaseType BT) {
+    assert(BT != BaseType::Float);
+    return ConcreteType::operator=(ConcreteType(BT));
   }
 
-  // returns whether changed
-  bool legalMergeIn(const ConcreteType dt, bool pointerIntSame, bool &legal) {
-    if (typeEnum == BaseType::Anything) {
+  /// Set this to the logical or of itself and CT, returning whether this value changed
+  /// Setting `PointerIntSame` considers pointers and integers as equivalent
+  /// If this is an illegal operation, `LegalOr` will be set to false
+  bool checkedOrIn(const ConcreteType CT, bool PointerIntSame, bool &LegalOr) {
+    LegalOr = true;
+    if (SubTypeEnum == BaseType::Anything) {
       return false;
     }
-    if (dt.typeEnum == BaseType::Anything) {
-      return *this = dt;
+    if (CT.SubTypeEnum == BaseType::Anything) {
+      return *this = CT;
     }
-    if (typeEnum == BaseType::Unknown) {
-      return *this = dt;
+    if (SubTypeEnum == BaseType::Unknown) {
+      return *this = CT;
     }
-    if (dt.typeEnum == BaseType::Unknown) {
+    if (CT.SubTypeEnum == BaseType::Unknown) {
       return false;
     }
-    if (dt.typeEnum != typeEnum) {
-      if (pointerIntSame) {
-        if ((typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Integer) ||
-            (typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Pointer)) {
+    if (CT.SubTypeEnum != SubTypeEnum) {
+      if (PointerIntSame) {
+        if ((SubTypeEnum == BaseType::Pointer && CT.SubTypeEnum == BaseType::Integer) ||
+            (SubTypeEnum == BaseType::Integer && CT.SubTypeEnum == BaseType::Pointer)) {
           return false;
         }
       }
-      legal = false;
+      LegalOr = false;
       return false;
     }
-    assert(dt.typeEnum == typeEnum);
-    if (dt.type != type) {
-      legal = false;
+    assert(CT.SubTypeEnum == SubTypeEnum);
+    if (CT.SubType != SubType) {
+      LegalOr = false;
       return false;
     }
-    assert(dt.type == type);
+    assert(CT.SubType == SubType);
     return false;
   }
 
-  // returns whether changed
-  bool mergeIn(const ConcreteType dt, bool pointerIntSame) {
-    bool legal = true;
-    bool res = legalMergeIn(dt, pointerIntSame, legal);
-    if (!legal) {
-      llvm::errs() << "me: " << str() << " right: " << dt.str() << "\n";
+  /// Set this to the logical or of itself and CT, returning whether this value changed
+  /// Setting `PointerIntSame` considers pointers and integers as equivalent
+  /// This function will error if doing an illegal Operation
+  bool orIn(const ConcreteType CT, bool PointerIntSame) {
+    bool Legal = true;
+    bool Result = checkedOrIn(CT, PointerIntSame, Legal);
+    if (!Legal) {
+      llvm::errs() << "Illegal orIn: " << str() << " right: " << CT.str() << " PointerIntSame=" << PointerIntSame << "\n";
+      assert(0 && "Performed illegal ConcreteType::orIn");
+      llvm_unreachable("Performed illegal ConcreteType::orIn");
     }
-    assert(legal);
-    return res;
+    return Result;
   }
 
-  // returns whether changed
-  bool operator|=(const ConcreteType dt) {
-    return mergeIn(dt, /*pointerIntSame*/ false);
+  /// Set this to the logical or of itself and CT, returning whether this value changed
+  /// This assumes that pointers and integers are distinct
+  /// This function will error if doing an illegal Operation
+  bool operator|=(const ConcreteType CT) {
+    return orIn(CT, /*pointerIntSame*/ false);
   }
 
-  bool pointerIntMerge(const ConcreteType dt, llvm::BinaryOperator::BinaryOps op) {
-    bool changed = false;
+  /// Set this to the logical and of itself and CT, returning whether this value changed
+  /// If this and CT are incompatible, the result will be BaseType::Unknown
+  bool andIn(const ConcreteType CT) {
+    if (SubTypeEnum == BaseType::Anything) {
+      return *this = CT;
+    }
+    if (CT.SubTypeEnum == BaseType::Anything) {
+      return false;
+    }
+    if (SubTypeEnum == BaseType::Unknown) {
+      return false;
+    }
+    if (CT.SubTypeEnum == BaseType::Unknown) {
+      return *this = CT;
+    }
+
+    if (CT.SubTypeEnum != SubTypeEnum) {
+      return *this = BaseType::Unknown;
+    }
+    if (CT.SubType != SubType) {
+      return *this = BaseType::Unknown;
+    }
+    return false;
+  }
+
+  /// Set this to the logical and of itself and CT, returning whether this value changed
+  /// If this and CT are incompatible, the result will be BaseType::Unknown
+  bool operator&=(const ConcreteType CT) {
+    return andIn(CT);
+  }
+
+  /// Set this to the logical `binop` of itself and RHS, using the Binop Op,
+  /// returning true if this was changed.
+  /// This function will error on an invalid type combination
+  bool binopIn(const ConcreteType RHS, llvm::BinaryOperator::BinaryOps Op) {
+    bool Changed = false;
     using namespace llvm;
 
-    if (typeEnum == BaseType::Anything && dt.typeEnum == BaseType::Anything) {
-      return changed;
+    // Anything op Anyhting => Anything
+    if (SubTypeEnum == BaseType::Anything && RHS.SubTypeEnum == BaseType::Anything) {
+      return Changed;
     }
 
-    if (op == BinaryOperator::And &&
-        (((typeEnum == BaseType::Anything || typeEnum == BaseType::Integer) &&
-          dt.isFloat()) ||
-         (isFloat() && (dt.typeEnum == BaseType::Anything ||
-                        dt.typeEnum == BaseType::Integer)))) {
-      typeEnum = BaseType::Unknown;
-      type = nullptr;
-      changed = true;
-      return changed;
+    // Constant & float => Unknown
+    if (Op == BinaryOperator::And &&
+        (((SubTypeEnum == BaseType::Anything || SubTypeEnum == BaseType::Integer) &&
+          RHS.isFloat()) ||
+         (isFloat() && (RHS.SubTypeEnum == BaseType::Anything ||
+                        RHS.SubTypeEnum == BaseType::Integer)))) {
+      SubTypeEnum = BaseType::Unknown;
+      SubType = nullptr;
+      Changed = true;
+      return Changed;
     }
 
-    if ((typeEnum == BaseType::Unknown && dt.typeEnum == BaseType::Anything) ||
-        (typeEnum == BaseType::Anything && dt.typeEnum == BaseType::Unknown)) {
-      if (typeEnum != BaseType::Unknown) {
-        typeEnum = BaseType::Unknown;
-        changed = true;
+    // Unknown op Anything => Unknown
+    if ((SubTypeEnum == BaseType::Unknown && RHS.SubTypeEnum == BaseType::Anything) ||
+        (SubTypeEnum == BaseType::Anything && RHS.SubTypeEnum == BaseType::Unknown)) {
+      if (SubTypeEnum != BaseType::Unknown) {
+        SubTypeEnum = BaseType::Unknown;
+        Changed = true;
       }
-      return changed;
+      return Changed;
     }
 
-    if ((typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Integer) ||
-        (typeEnum == BaseType::Unknown && dt.typeEnum == BaseType::Integer) ||
-        (typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Unknown) ||
-        (typeEnum == BaseType::Anything && dt.typeEnum == BaseType::Integer) ||
-        (typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Anything)) {
-      switch (op) {
-      case BinaryOperator::Add:
-      case BinaryOperator::Sub:
-        // if one of these is unknown we cannot deduce the result
-        // e.g. pointer + int = pointer and int + int = int
-        if (typeEnum == BaseType::Unknown || dt.typeEnum == BaseType::Unknown) {
-          if (typeEnum != BaseType::Unknown) {
-            typeEnum = BaseType::Unknown;
-            changed = true;
-          }
-          return changed;
-        }
+    // Integer op Integer => Integer
+    if (SubTypeEnum == BaseType::Integer && RHS.SubTypeEnum == BaseType::Integer) {
+      return Changed;
+    }
 
-      case BinaryOperator::Mul:
-      case BinaryOperator::UDiv:
-      case BinaryOperator::SDiv:
-      case BinaryOperator::URem:
-      case BinaryOperator::SRem:
-      case BinaryOperator::And:
-      case BinaryOperator::Or:
-      case BinaryOperator::Xor:
-      case BinaryOperator::Shl:
-      case BinaryOperator::AShr:
-      case BinaryOperator::LShr:
-        //! Anything << 16   ==> Anything
-        if (typeEnum == BaseType::Anything) {
-          break;
-        }
-        if (typeEnum != BaseType::Integer) {
-          typeEnum = BaseType::Integer;
-          changed = true;
-        }
-        break;
-      default:
-        llvm_unreachable("unknown binary operator");
+    // Integer op Anything => Anything
+    if ((SubTypeEnum == BaseType::Anything && RHS.SubTypeEnum == BaseType::Integer) ||
+        (SubTypeEnum == BaseType::Integer && RHS.SubTypeEnum == BaseType::Anything)) {
+      if (SubTypeEnum != BaseType::Anything) {
+        SubTypeEnum = BaseType::Anything;
+        Changed = true;
       }
-      return changed;
+      return Changed;
     }
 
-    if (typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Pointer) {
-      switch (op) {
+    // Integer op Unknown => Unknown
+    // e.g. pointer + int = pointer and int + int = int
+    if ((SubTypeEnum == BaseType::Unknown && RHS.SubTypeEnum == BaseType::Integer) ||
+        (SubTypeEnum == BaseType::Integer && RHS.SubTypeEnum == BaseType::Unknown)) {
+      if (SubTypeEnum != BaseType::Unknown) {
+        SubTypeEnum = BaseType::Unknown;
+        Changed = true;
+      }
+      return Changed;
+    }
+
+    // Pointer op Pointer => {Integer, Illegal}
+    if (SubTypeEnum == BaseType::Pointer && RHS.SubTypeEnum == BaseType::Pointer) {
+      switch (Op) {
       case BinaryOperator::Sub:
-        typeEnum = BaseType::Integer;
-        changed = true;
+        SubTypeEnum = BaseType::Integer;
+        Changed = true;
         break;
       case BinaryOperator::Add:
       case BinaryOperator::Mul:
@@ -285,42 +352,43 @@ public:
       default:
         llvm_unreachable("unknown binary operator");
       }
-      return changed;
+      return Changed;
     }
 
-    if ((typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Pointer) ||
-        (typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Integer) ||
-        (typeEnum == BaseType::Integer && dt.typeEnum == BaseType::Pointer) ||
-        (typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Unknown) ||
-        (typeEnum == BaseType::Unknown && dt.typeEnum == BaseType::Pointer) ||
-        (typeEnum == BaseType::Pointer && dt.typeEnum == BaseType::Anything) ||
-        (typeEnum == BaseType::Anything && dt.typeEnum == BaseType::Pointer)) {
+    // Pointer op ? => {Pointer, Unknown}
+    if ((SubTypeEnum == BaseType::Integer && RHS.SubTypeEnum == BaseType::Pointer) ||
+        (SubTypeEnum == BaseType::Pointer && RHS.SubTypeEnum == BaseType::Integer) ||
+        (SubTypeEnum == BaseType::Integer && RHS.SubTypeEnum == BaseType::Pointer) ||
+        (SubTypeEnum == BaseType::Pointer && RHS.SubTypeEnum == BaseType::Unknown) ||
+        (SubTypeEnum == BaseType::Unknown && RHS.SubTypeEnum == BaseType::Pointer) ||
+        (SubTypeEnum == BaseType::Pointer && RHS.SubTypeEnum == BaseType::Anything) ||
+        (SubTypeEnum == BaseType::Anything && RHS.SubTypeEnum == BaseType::Pointer)) {
 
-      switch (op) {
+      switch (Op) {
       case BinaryOperator::Sub:
-        if (typeEnum == BaseType::Anything || dt.typeEnum == BaseType::Anything) {
-          if (typeEnum != BaseType::Unknown) {
-            typeEnum = BaseType::Unknown;
-            changed = true;
+        if (SubTypeEnum == BaseType::Anything || RHS.SubTypeEnum == BaseType::Anything) {
+          if (SubTypeEnum != BaseType::Unknown) {
+            SubTypeEnum = BaseType::Unknown;
+            Changed = true;
           }
           break;
         }
       case BinaryOperator::Add:
       case BinaryOperator::Mul:
-        if (typeEnum != BaseType::Pointer) {
-          typeEnum = BaseType::Pointer;
-          changed = true;
+        if (SubTypeEnum != BaseType::Pointer) {
+          SubTypeEnum = BaseType::Pointer;
+          Changed = true;
         }
         break;
       case BinaryOperator::UDiv:
       case BinaryOperator::SDiv:
       case BinaryOperator::URem:
       case BinaryOperator::SRem:
-        if (dt.typeEnum == BaseType::Pointer) {
+        if (RHS.SubTypeEnum == BaseType::Pointer) {
           llvm_unreachable("cannot divide integer by pointer");
-        } else if (typeEnum != BaseType::Unknown) {
-          typeEnum = BaseType::Unknown;
-          changed = true;
+        } else if (SubTypeEnum != BaseType::Unknown) {
+          SubTypeEnum = BaseType::Unknown;
+          Changed = true;
         }
         break;
       case BinaryOperator::And:
@@ -329,106 +397,33 @@ public:
       case BinaryOperator::Shl:
       case BinaryOperator::AShr:
       case BinaryOperator::LShr:
-        if (typeEnum != BaseType::Unknown) {
-          typeEnum = BaseType::Unknown;
-          changed = true;
+        if (SubTypeEnum != BaseType::Unknown) {
+          SubTypeEnum = BaseType::Unknown;
+          Changed = true;
         }
         break;
       default:
         llvm_unreachable("unknown binary operator");
       }
-      return changed;
+      return Changed;
     }
 
-    if (dt.typeEnum == BaseType::Integer) {
-      switch (op) {
-      case BinaryOperator::Shl:
-      case BinaryOperator::AShr:
-      case BinaryOperator::LShr:
-        if (typeEnum != BaseType::Unknown) {
-          typeEnum = BaseType::Unknown;
-          changed = true;
-          return changed;
-        }
-        break;
-      default:
-        break;
-      }
-    }
-
-    llvm::errs() << "self: " << str() << " other: " << dt.str() << " op: " << op
+    llvm::errs() << "self: " << str() << " RHS: " << RHS.str() << " Op: " << Op
                  << "\n";
-    llvm_unreachable("unknown case");
+    llvm_unreachable("Unknown ConcreteType::binopIn");
   }
 
-  bool andIn(const ConcreteType dt, bool assertIfIllegal = true) {
-    if (typeEnum == BaseType::Anything) {
-      return *this = dt;
-    }
-    if (dt.typeEnum == BaseType::Anything) {
-      return false;
-    }
-    if (typeEnum == BaseType::Unknown) {
-      return false;
-    }
-    if (dt.typeEnum == BaseType::Unknown) {
-      return *this = dt;
-    }
-
-    if (dt.typeEnum != typeEnum) {
-      if (!assertIfIllegal) {
-        return *this = BaseType::Unknown;
-      }
-      llvm::errs() << "&= typeEnum: " << to_string(typeEnum)
-                   << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
-      return *this = BaseType::Unknown;
-    }
-    assert(dt.typeEnum == typeEnum);
-    if (dt.type != type) {
-      if (!assertIfIllegal) {
-        return *this = BaseType::Unknown;
-      }
-      llvm::errs() << "type: " << *type << " dt.type: " << *dt.type << "\n";
-    }
-    assert(dt.type == type);
-    return false;
-  }
-
-  // returns whether changed
-  bool operator&=(const ConcreteType dt) {
-    return andIn(dt, /*assertIfIllegal*/ true);
-  }
-
+  /// Compare concrete types for use in map's
   bool operator<(const ConcreteType dt) const {
-    if (typeEnum == dt.typeEnum) {
-      return type < dt.type;
+    if (SubTypeEnum == dt.SubTypeEnum) {
+      return SubType < dt.SubType;
     } else {
-      return typeEnum < dt.typeEnum;
+      return SubTypeEnum < dt.SubTypeEnum;
     }
-  }
-  std::string str() const {
-    std::string res = to_string(typeEnum);
-    if (typeEnum == BaseType::Float) {
-      if (type->isHalfTy()) {
-        res += "@half";
-      } else if (type->isFloatTy()) {
-        res += "@float";
-      } else if (type->isDoubleTy()) {
-        res += "@double";
-      } else if (type->isX86_FP80Ty()) {
-        res += "@fp80";
-      } else if (type->isFP128Ty()) {
-        res += "@fp128";
-      } else if (type->isPPC_FP128Ty()) {
-        res += "@ppc128";
-      } else {
-        llvm_unreachable("unknown data type");
-      }
-    }
-    return res;
   }
 };
 
+// Convert ConcreteType to string
 static inline std::string to_string(const ConcreteType dt) { return dt.str(); }
 
 #endif

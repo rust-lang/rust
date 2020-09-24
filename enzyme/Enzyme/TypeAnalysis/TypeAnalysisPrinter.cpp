@@ -53,7 +53,8 @@ using namespace llvm;
 #endif
 #define DEBUG_TYPE "type-analysis-results"
 
-llvm::cl::opt<std::string> functionToAnalyzeTypes("type-analysis-func", cl::init(""), cl::Hidden,
+/// Function TypeAnalysis will be starting its run from
+llvm::cl::opt<std::string> FunctionToAnalyze("type-analysis-func", cl::init(""), cl::Hidden,
                                  cl::desc("Which function to analyze/print"));
 
 namespace {
@@ -67,11 +68,11 @@ public:
   }
 
   bool runOnFunction(Function &F) override {
-    if (F.getName() != functionToAnalyzeTypes)
+    if (F.getName() != FunctionToAnalyze)
       return /*changed*/ false;
 
     FnTypeInfo type_args(&F);
-    for (auto &a : type_args.function->args()) {
+    for (auto &a : type_args.Function->args()) {
       TypeTree dt;
       if (a.getType()->isFPOrFPVectorTy()) {
         dt = ConcreteType(a.getType()->getScalarType());
@@ -83,10 +84,10 @@ public:
           dt = TypeTree(ConcreteType(BaseType::Pointer)).Only({-1});
         }
       }
-      type_args.first.insert(std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
+      type_args.Arguments.insert(std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
       // TODO note that here we do NOT propagate constants in type info (and
       // should consider whether we should)
-      type_args.knownValues.insert(
+      type_args.KnownValues.insert(
           std::pair<Argument *, std::set<int64_t>>(&a, {}));
     }
 
@@ -95,15 +96,15 @@ public:
     for (Function &f : *F.getParent()) {
 
       for (auto &analysis : TA.analyzedFunctions) {
-        if (analysis.first.function != &f)
+        if (analysis.first.Function != &f)
           continue;
         auto &ta = analysis.second;
-        llvm::outs() << f.getName() << " - " << analysis.first.second.str()
+        llvm::outs() << f.getName() << " - " << analysis.first.Return.str()
                      << " |";
 
         for (auto &a : f.args()) {
-          llvm::outs() << analysis.first.first.find(&a)->second.str() << ":"
-                       << to_string(analysis.first.knownValues.find(&a)->second)
+          llvm::outs() << analysis.first.Arguments.find(&a)->second.str() << ":"
+                       << to_string(analysis.first.KnownValues.find(&a)->second)
                        << " ";
         }
         llvm::outs() << "\n";

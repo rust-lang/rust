@@ -943,7 +943,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
            !todiff->getReturnType()->isVoidTy());
 
   FnTypeInfo oldTypeInfo = oldTypeInfo_;
-  for (auto &pair : oldTypeInfo.knownValues) {
+  for (auto &pair : oldTypeInfo.KnownValues) {
     if (pair.second.size() != 0) {
       bool recursiveUse = false;
       for (auto user : pair.first->users()) {
@@ -1082,23 +1082,23 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     for (; toarg != todiff->arg_end(); ++toarg, ++olarg) {
 
       {
-        auto fd = oldTypeInfo.first.find(toarg);
-        assert(fd != oldTypeInfo.first.end());
-        typeInfo.first.insert(
+        auto fd = oldTypeInfo.Arguments.find(toarg);
+        assert(fd != oldTypeInfo.Arguments.end());
+        typeInfo.Arguments.insert(
             std::pair<Argument *, TypeTree>(olarg, fd->second));
       }
 
       {
-        auto cfd = oldTypeInfo.knownValues.find(toarg);
-        assert(cfd != oldTypeInfo.knownValues.end());
-        typeInfo.knownValues.insert(
+        auto cfd = oldTypeInfo.KnownValues.find(toarg);
+        assert(cfd != oldTypeInfo.KnownValues.end());
+        typeInfo.KnownValues.insert(
             std::pair<Argument *, std::set<int64_t>>(olarg, cfd->second));
       }
     }
-    typeInfo.second = oldTypeInfo.second;
+    typeInfo.Return = oldTypeInfo.Return;
   }
   TypeResults TR = TA.analyzeFunction(typeInfo);
-  assert(TR.info.function == gutils->oldFunc);
+  assert(TR.info.Function == gutils->oldFunc);
   gutils->forceActiveDetection(AA, TR);
 
   gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
@@ -1831,7 +1831,7 @@ Function *CreatePrimalAndGradient(
     const AugmentedReturn *augmenteddata) {
 
   FnTypeInfo oldTypeInfo = oldTypeInfo_;
-  for (auto &pair : oldTypeInfo.knownValues) {
+  for (auto &pair : oldTypeInfo.KnownValues) {
     if (pair.second.size() != 0) {
       bool recursiveUse = false;
       for (auto user : pair.first->users()) {
@@ -2045,24 +2045,24 @@ Function *CreatePrimalAndGradient(
     for (; toarg != todiff->arg_end(); ++toarg, ++olarg) {
 
       {
-        auto fd = oldTypeInfo.first.find(toarg);
-        assert(fd != oldTypeInfo.first.end());
-        typeInfo.first.insert(
+        auto fd = oldTypeInfo.Arguments.find(toarg);
+        assert(fd != oldTypeInfo.Arguments.end());
+        typeInfo.Arguments.insert(
             std::pair<Argument *, TypeTree>(olarg, fd->second));
       }
 
       {
-        auto cfd = oldTypeInfo.knownValues.find(toarg);
-        assert(cfd != oldTypeInfo.knownValues.end());
-        typeInfo.knownValues.insert(
+        auto cfd = oldTypeInfo.KnownValues.find(toarg);
+        assert(cfd != oldTypeInfo.KnownValues.end());
+        typeInfo.KnownValues.insert(
             std::pair<Argument *, std::set<int64_t>>(olarg, cfd->second));
       }
     }
-    typeInfo.second = oldTypeInfo.second;
+    typeInfo.Return = oldTypeInfo.Return;
   }
 
   TypeResults TR = TA.analyzeFunction(typeInfo);
-  assert(TR.info.function == gutils->oldFunc);
+  assert(TR.info.Function == gutils->oldFunc);
 
   gutils->forceActiveDetection(AA, TR);
   gutils->forceAugmentedReturns(TR, guaranteedUnreachable);

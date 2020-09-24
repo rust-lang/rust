@@ -358,15 +358,15 @@ static inline bool isCertainPrintMallocOrFree(llvm::Function *called) {
   return false;
 }
 
-//! Create function for type that performs the derivative memcpy on floating
-//! point memory
+/// Create function for type that performs the derivative memcpy on floating
+/// point memory
 llvm::Function *getOrInsertDifferentialFloatMemcpy(llvm::Module &M,
                                                    llvm::PointerType *T,
                                                    unsigned dstalign,
                                                    unsigned srcalign);
 
-//! Create function for type that performs the derivative memmove on floating
-//! point memory
+/// Create function for type that performs the derivative memmove on floating
+/// point memory
 llvm::Function *getOrInsertDifferentialFloatMemmove(llvm::Module &M,
                                                     llvm::PointerType *T,
                                                     unsigned dstalign,
@@ -375,7 +375,6 @@ llvm::Function *getOrInsertDifferentialFloatMemmove(llvm::Module &M,
 template <typename K, typename V>
 static inline typename std::map<K, V>::iterator
 insert_or_assign(std::map<K, V> &map, K& key, V &&val) {
-  // map.insert_or_assign(key, val);
   auto found = map.find(key);
   if (found != map.end()) {
     map.erase(found);
@@ -386,7 +385,6 @@ insert_or_assign(std::map<K, V> &map, K& key, V &&val) {
 template <typename K, typename V>
 static inline typename std::map<K, V>::iterator
 insert_or_assign2(std::map<K, V> &map, K key, V val) {
-  // map.insert_or_assign(key, val);
   auto found = map.find(key);
   if (found != map.end()) {
     map.erase(found);
@@ -401,10 +399,8 @@ insert_or_assign2(std::map<K, V> &map, K key, V val) {
 static inline void allFollowersOf(llvm::Instruction *inst,
                                   std::function<bool(llvm::Instruction *)> f) {
 
-  // llvm::errs() << "all followers of: " << *inst << "\n";
   for (auto uinst = inst->getNextNode(); uinst != nullptr;
        uinst = uinst->getNextNode()) {
-    // llvm::errs() << " + bb1: " << *uinst << "\n";
     if (f(uinst))
       return;
   }
@@ -436,10 +432,8 @@ static inline void
 allPredecessorsOf(llvm::Instruction *inst,
                   std::function<bool(llvm::Instruction *)> f) {
 
-  // llvm::errs() << "all followers of: " << *inst << "\n";
   for (auto uinst = inst->getPrevNode(); uinst != nullptr;
        uinst = uinst->getPrevNode()) {
-    // llvm::errs() << " + bb1: " << *uinst << "\n";
     if (f(uinst))
       return;
   }
@@ -476,7 +470,6 @@ allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction *inst1,
                        std::function<bool(llvm::Instruction *)> f) {
   for (auto uinst = inst1->getNextNode(); uinst != nullptr;
        uinst = uinst->getNextNode()) {
-    // llvm::errs() << " + bb1: " << *uinst << "\n";
     if (f(uinst))
       return;
     if (uinst == inst2)
@@ -488,11 +481,6 @@ allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction *inst1,
   llvm::Loop *l1 = LI.getLoopFor(inst1->getParent());
   while (l1 && !l1->contains(inst2->getParent()))
     l1 = l1->getParentLoop();
-  /*
-  llvm::errs() << " l1: " << l1;
-  if (l1) llvm::errs() << " " << *l1;
-  llvm::errs() << "\n";
-  */
 
   // Do all instructions from inst1 up to first instance of inst2's start block
   {
@@ -508,7 +496,6 @@ allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction *inst1,
         continue;
       done.insert(BB);
 
-      // llvm::errs() << " block: " << BB->getName() << "\n";
       for (auto &ni : *BB) {
         instructions.insert(&ni);
       }

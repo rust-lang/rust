@@ -27,19 +27,21 @@
 #include <string>
 #include "llvm/Support/ErrorHandling.h"
 
+/// Categories of potential types
 enum class BaseType {
-  // integral type
+  // integral type which doesn't represent a pointer
   Integer,
   // floating point
   Float,
   // pointer
   Pointer,
-  // can be anything of users choosing [usually result of a constant]
+  // can be anything of users choosing [usually result of a constant such as 0]
   Anything,
   // insufficient information
   Unknown
 };
 
+/// Convert Basetype to string
 static inline std::string to_string(BaseType t) {
   switch (t) {
   case BaseType::Integer:
@@ -56,6 +58,7 @@ static inline std::string to_string(BaseType t) {
   llvm_unreachable("unknown inttype");
 }
 
+/// Convert string to BaseType
 static inline BaseType parseBaseType(std::string str) {
   if (str == "Integer")
     return BaseType::Integer;

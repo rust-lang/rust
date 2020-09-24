@@ -74,7 +74,7 @@ public:
         unnecessaryInstructions(unnecessaryInstructions),
         unnecessaryStores(unnecessaryStores), dretAlloca(dretAlloca) {
 
-    assert(TR.info.function == gutils->oldFunc);
+    assert(TR.info.Function == gutils->oldFunc);
     for (auto &pair :
          TR.analysis.analyzedFunctions.find(TR.info)->second.analysis) {
       if (auto in = dyn_cast<Instruction>(pair.first)) {
@@ -1129,9 +1129,9 @@ public:
 
       auto dt = vd[{-1}];
       for (size_t i = start; i < size; ++i) {
-        bool legal = true;
-        dt.legalMergeIn(vd[{(int)i}], /*pointerIntSame*/ true, legal);
-        if (!legal) {
+        bool Legal = true;
+        dt.checkedOrIn(vd[{(int)i}], /*PointerIntSame*/ true, Legal);
+        if (!Legal) {
           nextStart = i;
           break;
         }
@@ -1912,15 +1912,15 @@ public:
       std::map<Value *, std::set<int64_t>> intseen;
 
       for (auto &arg : called->args()) {
-        nextTypeInfo.first.insert(std::pair<Argument *, TypeTree>(
+        nextTypeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(
             &arg, TR.query(orig->getArgOperand(argnum))));
-        nextTypeInfo.knownValues.insert(
+        nextTypeInfo.KnownValues.insert(
             std::pair<Argument *, std::set<int64_t>>(
                 &arg, TR.knownIntegralValues(orig->getArgOperand(argnum))));
 
         ++argnum;
       }
-      nextTypeInfo.second = TR.query(orig);
+      nextTypeInfo.Return = TR.query(orig);
     }
 
     // llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>
