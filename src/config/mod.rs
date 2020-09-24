@@ -91,6 +91,8 @@ create_config! {
         "Align enum variants discrims, if their diffs fit within threshold";
     match_arm_blocks: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
         the same line with the pattern of arms";
+    match_arm_leading_pipes: MatchArmLeadingPipe, MatchArmLeadingPipe::Never, true,
+        "Determines whether leading pipes are emitted on match arms";
     force_multiline_blocks: bool, false, false,
         "Force multiline closure bodies and match arms to be wrapped in a block";
     fn_args_layout: Density, Density::Tall, true,
@@ -528,6 +530,7 @@ overflow_delimited_expr = false
 struct_field_align_threshold = 0
 enum_discrim_align_threshold = 0
 match_arm_blocks = true
+match_arm_leading_pipes = "Never"
 force_multiline_blocks = false
 fn_args_layout = "Tall"
 brace_style = "SameLineWhere"

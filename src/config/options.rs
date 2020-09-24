@@ -392,3 +392,14 @@ impl Edition {
         }
     }
 }
+
+/// Controls how rustfmt should handle leading pipes on match arms.
+#[config_type]
+pub enum MatchArmLeadingPipe {
+    /// Place leading pipes on all match arms
+    Always,
+    /// Never emit leading pipes on match arms
+    Never,
+    /// Preserve any existing leading pipes
+    Preserve,
+}

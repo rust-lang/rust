@@ -7,7 +7,7 @@ use rustc_span::{BytePos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, rewrite_comment};
 use crate::config::lists::*;
-use crate::config::{Config, ControlBraceStyle, IndentStyle, Version};
+use crate::config::{Config, ControlBraceStyle, IndentStyle, MatchArmLeadingPipe, Version};
 use crate::expr::{
     format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line, rewrite_cond,
     ExprType, RhsTactics,
@@ -55,7 +55,13 @@ impl<'a> Spanned for ArmWrapper<'a> {
 
 impl<'a> Rewrite for ArmWrapper<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        rewrite_match_arm(context, self.arm, shape, self.is_last)
+        rewrite_match_arm(
+            context,
+            self.arm,
+            shape,
+            self.is_last,
+            self.beginning_vert.is_some(),
+        )
     }
 }
 
@@ -215,6 +221,7 @@ fn rewrite_match_arm(
     arm: &ast::Arm,
     shape: Shape,
     is_last: bool,
+    has_leading_pipe: bool,
 ) -> Option<String> {
     let (missing_span, attrs_str) = if !arm.attrs.is_empty() {
         if contains_skip(&arm.attrs) {
@@ -232,9 +239,17 @@ fn rewrite_match_arm(
         (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
     };
 
+    // Leading pipe offset
+    // 2 = `| `
+    let (pipe_offset, pipe_str) = match context.config.match_arm_leading_pipes() {
+        MatchArmLeadingPipe::Never => (0, ""),
+        MatchArmLeadingPipe::Preserve if !has_leading_pipe => (0, ""),
+        MatchArmLeadingPipe::Preserve | MatchArmLeadingPipe::Always => (2, "| "),
+    };
+
     // Patterns
     // 5 = ` => {`
-    let pat_shape = shape.sub_width(5)?;
+    let pat_shape = shape.sub_width(5)?.offset_left(pipe_offset)?;
     let pats_str = arm.pat.rewrite(context, pat_shape)?;
 
     // Guard
@@ -251,7 +266,7 @@ fn rewrite_match_arm(
     let lhs_str = combine_strs_with_missing_comments(
         context,
         &attrs_str,
-        &format!("{}{}", pats_str, guard_str),
+        &format!("{}{}{}", pipe_str, pats_str, guard_str),
         missing_span,
         shape,
         false,
