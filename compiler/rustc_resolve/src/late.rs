@@ -386,6 +386,9 @@ struct DiagnosticMetadata<'ast> {
     in_if_condition: Option<&'ast Expr>,
 
     current_trait_object: Option<&'ast [ast::GenericBound]>,
+
+    /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
+    current_where_predicate: Option<&'ast WherePredicate>,
 }
 
 struct LateResolutionVisitor<'a, 'b, 'ast> {
@@ -666,6 +669,14 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             GenericArg::Const(ct) => self.visit_anon_const(ct),
         }
         self.diagnostic_metadata.currently_processing_generics = prev;
+    }
+
+    fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
+        debug!("visit_where_predicate {:?}", p);
+        let previous_value =
+            replace(&mut self.diagnostic_metadata.current_where_predicate, Some(p));
+        visit::walk_where_predicate(self, p);
+        self.diagnostic_metadata.current_where_predicate = previous_value;
     }
 }
 

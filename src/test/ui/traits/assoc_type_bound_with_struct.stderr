@@ -1,0 +1,23 @@
+error[E0404]: expected trait, found struct `String`
+  --> $DIR/assoc_type_bound_with_struct.rs:5:46
+   |
+LL | struct Foo<T> where T: Bar, <T as Bar>::Baz: String {
+   |                                              ^^^^^^ not a trait
+   | 
+  ::: $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+LL | pub trait ToString {
+   | ------------------ similarly named trait `ToString` defined here
+   |
+help: constrain the associated type to `String`
+   |
+LL | struct Foo<T> where T: Bar, T: Bar<Baz = String> {
+   |                             ^^^^^^^^^^^^^^^^^^^^
+help: a trait with a similar name exists
+   |
+LL | struct Foo<T> where T: Bar, <T as Bar>::Baz: ToString {
+   |                                              ^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0404`.

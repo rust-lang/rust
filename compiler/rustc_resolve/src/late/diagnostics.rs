@@ -8,6 +8,7 @@ use crate::{PathResult, PathSource, Segment};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::visit::FnKind;
 use rustc_ast::{self as ast, Expr, ExprKind, Item, ItemKind, NodeId, Path, Ty, TyKind};
+use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -497,6 +498,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                 }
             }
+
+            fallback |= self.restrict_assoc_type_in_where_clause(span, &mut err);
+
             if !self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span) {
                 fallback = true;
                 match self.diagnostic_metadata.current_let_binding {
@@ -519,6 +523,120 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
         (err, candidates)
+    }
+
+    /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
+    fn restrict_assoc_type_in_where_clause(
+        &mut self,
+        span: Span,
+        err: &mut DiagnosticBuilder<'_>,
+    ) -> bool {
+        // Detect that we are actually in a `where` predicate.
+        let (bounded_ty, bounds, where_span) =
+            if let Some(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                bounded_ty,
+                bound_generic_params,
+                bounds,
+                span,
+            })) = self.diagnostic_metadata.current_where_predicate
+            {
+                if !bound_generic_params.is_empty() {
+                    return false;
+                }
+                (bounded_ty, bounds, span)
+            } else {
+                return false;
+            };
+
+        // Confirm that the target is an associated type.
+        let (ty, position, path) = if let ast::TyKind::Path(
+            Some(ast::QSelf { ty, position, .. }),
+            path,
+        ) = &bounded_ty.kind
+        {
+            // use this to verify that ident is a type param.
+            let partial_res = if let Ok(Some(partial_res)) = self.resolve_qpath_anywhere(
+                bounded_ty.id,
+                None,
+                &Segment::from_path(path),
+                Namespace::TypeNS,
+                span,
+                true,
+                CrateLint::No,
+            ) {
+                partial_res
+            } else {
+                return false;
+            };
+            if !(matches!(
+                partial_res.base_res(),
+                hir::def::Res::Def(hir::def::DefKind::AssocTy, _)
+            ) && partial_res.unresolved_segments() == 0)
+            {
+                return false;
+            }
+            (ty, position, path)
+        } else {
+            return false;
+        };
+
+        if let ast::TyKind::Path(None, type_param_path) = &ty.kind {
+            // Confirm that the `SelfTy` is a type parameter.
+            let partial_res = if let Ok(Some(partial_res)) = self.resolve_qpath_anywhere(
+                bounded_ty.id,
+                None,
+                &Segment::from_path(type_param_path),
+                Namespace::TypeNS,
+                span,
+                true,
+                CrateLint::No,
+            ) {
+                partial_res
+            } else {
+                return false;
+            };
+            if !(matches!(
+                partial_res.base_res(),
+                hir::def::Res::Def(hir::def::DefKind::TyParam, _)
+            ) && partial_res.unresolved_segments() == 0)
+            {
+                return false;
+            }
+            if let (
+                [ast::PathSegment { ident, args: None, .. }],
+                [ast::GenericBound::Trait(poly_trait_ref, ast::TraitBoundModifier::None)],
+            ) = (&type_param_path.segments[..], &bounds[..])
+            {
+                if let [ast::PathSegment { ident: bound_ident, args: None, .. }] =
+                    &poly_trait_ref.trait_ref.path.segments[..]
+                {
+                    if bound_ident.span == span {
+                        err.span_suggestion_verbose(
+                            *where_span,
+                            &format!("constrain the associated type to `{}`", bound_ident),
+                            format!(
+                                "{}: {}<{} = {}>",
+                                ident,
+                                path.segments[..*position]
+                                    .iter()
+                                    .map(|segment| path_segment_to_string(segment))
+                                    .collect::<Vec<_>>()
+                                    .join("::"),
+                                path.segments[*position..]
+                                    .iter()
+                                    .map(|segment| path_segment_to_string(segment))
+                                    .collect::<Vec<_>>()
+                                    .join("::"),
+                                bound_ident,
+                            ),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Check if the source is call expression and the first argument is `self`. If true,
