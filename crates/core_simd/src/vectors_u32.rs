@@ -1,19 +1,19 @@
-define_type! {
+define_vector! {
     #[doc = "Vector of two `u32` values"]
     struct u32x2([u32; 2]);
 }
 
-define_type! {
+define_vector! {
     #[doc = "Vector of four `u32` values"]
     struct u32x4([u32; 4]);
 }
 
-define_type! {
+define_vector! {
     #[doc = "Vector of eight `u32` values"]
     struct u32x8([u32; 8]);
 }
 
-define_type! {
+define_vector! {
     #[doc = "Vector of 16 `u32` values"]
     struct u32x16([u32; 16]);
 }

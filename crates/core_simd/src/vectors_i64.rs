@@ -1,14 +1,14 @@
-define_type! {
+define_vector! {
     #[doc = "Vector of two `i64` values"]
     struct i64x2([i64; 2]);
 }
 
-define_type! {
+define_vector! {
     #[doc = "Vector of four `i64` values"]
     struct i64x4([i64; 4]);
 }
 
-define_type! {
+define_vector! {
     #[doc = "Vector of eight `i64` values"]
     struct i64x8([i64; 8]);
 }

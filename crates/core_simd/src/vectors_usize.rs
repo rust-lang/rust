@@ -1,14 +1,14 @@
-define_type! {
+define_vector! {
     #[doc = "Vector of two `usize` values"]
     struct usizex2([usize; 2]);
 }
 
-define_type! {
+define_vector! {
     #[doc = "Vector of four `usize` values"]
     struct usizex4([usize; 4]);
 }
 
-define_type! {
+define_vector! {
     #[doc = "Vector of eight `usize` values"]
     struct usizex8([usize; 8]);
 }

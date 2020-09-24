@@ -1,9 +1,9 @@
-define_type! {
+define_vector! {
     #[doc = "Vector of two `i128` values"]
     struct i128x2([i128; 2]);
 }
 
-define_type! {
+define_vector! {
     #[doc = "Vector of four `i128` values"]
     struct i128x4([i128; 4]);
 }
