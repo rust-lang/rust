@@ -3240,8 +3240,7 @@ impl<T> [T] {
         if split_index > self.len() {
             return None;
         }
-        let original = crate::mem::take(self);
-        let (front, back) = original.split_at(split_index);
+        let (front, back) = self.split_at(split_index);
         if taking_front {
             *self = back;
             Some(front)
