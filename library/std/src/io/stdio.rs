@@ -9,7 +9,7 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
 use crate::lazy::SyncOnceCell;
-use crate::sync::{Arc, Mutex, MutexGuard};
+use crate::sync::{Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -218,7 +218,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
-    inner: Arc<Mutex<BufReader<StdinRaw>>>,
+    inner: &'static Mutex<BufReader<StdinRaw>>,
 }
 
 /// A locked reference to the `Stdin` handle.
@@ -293,13 +293,11 @@ pub struct StdinLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: SyncOnceCell<Arc<Mutex<BufReader<StdinRaw>>>> = SyncOnceCell::new();
+    static INSTANCE: SyncOnceCell<Mutex<BufReader<StdinRaw>>> = SyncOnceCell::new();
     Stdin {
-        inner: INSTANCE
-            .get_or_init(|| {
-                Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin_raw())))
-            })
-            .clone(),
+        inner: INSTANCE.get_or_init(|| {
+            Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin_raw()))
+        }),
     }
 }
 
@@ -475,7 +473,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>,
 }
 
 /// A locked reference to the `Stdout` handle.
@@ -533,27 +531,25 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: SyncOnceCell<Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>> =
+    static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> =
         SyncOnceCell::new();
     Stdout {
-        inner: INSTANCE
-            .get_or_init(|| unsafe {
-                let _ = sys_common::at_exit(|| {
-                    if let Some(instance) = INSTANCE.get() {
-                        // Flush the data and disable buffering during shutdown
-                        // by replacing the line writer by one with zero
-                        // buffering capacity.
-                        // We use try_lock() instead of lock(), because someone
-                        // might have leaked a StdoutLock, which would
-                        // otherwise cause a deadlock here.
-                        if let Some(lock) = instance.try_lock() {
-                            *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
-                        }
+        inner: INSTANCE.get_or_init(|| unsafe {
+            let _ = sys_common::at_exit(|| {
+                if let Some(instance) = INSTANCE.get() {
+                    // Flush the data and disable buffering during shutdown
+                    // by replacing the line writer by one with zero
+                    // buffering capacity.
+                    // We use try_lock() instead of lock(), because someone
+                    // might have leaked a StdoutLock, which would
+                    // otherwise cause a deadlock here.
+                    if let Some(lock) = instance.try_lock() {
+                        *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
                     }
-                });
-                Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw()))))
-            })
-            .clone(),
+                }
+            });
+            ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())))
+        }),
     }
 }
 
