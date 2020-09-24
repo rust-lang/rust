@@ -9,7 +9,7 @@ pub mod __reexport {
 pub mod future {
     mod ready {
 
-        /// Link to [`ready`](function@ready)
+        /// Link to [`ready`](fn@ready)
         pub struct Ready;
         pub fn ready() {}
 

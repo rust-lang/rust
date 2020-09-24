@@ -9,7 +9,7 @@ pub fn foo() {
 
 pub mod foo {}
 // @has intra_doc_link_mod_ambiguity/struct.A.html '//a/@href' '../intra_doc_link_mod_ambiguity/foo/index.html'
-/// Module is [`module@foo`]
+/// Module is [`mod@foo`]
 pub struct A;
 
 
