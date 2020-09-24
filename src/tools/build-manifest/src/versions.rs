@@ -38,6 +38,8 @@ impl PkgType {
         }
     }
 
+    /// The directory containing the `Cargo.toml` of this component inside the monorepo, to
+    /// retrieve the source code version. If `None` is returned Rust's version will be used.
     fn rust_monorepo_path(&self) -> Option<&'static str> {
         match self {
             PkgType::Cargo => Some("src/tools/cargo"),
@@ -53,6 +55,7 @@ impl PkgType {
         }
     }
 
+    /// First part of the tarball name.
     fn tarball_component_name(&self) -> &str {
         match self {
             PkgType::Rust => "rust",
@@ -68,6 +71,8 @@ impl PkgType {
         }
     }
 
+    /// Whether this package has the same version as Rust itself, or has its own `version` and
+    /// `git-commit-hash` files inside the tarball.
     fn should_use_rust_version(&self) -> bool {
         match self {
             PkgType::Cargo => false,
