@@ -5,6 +5,7 @@
 - [Command-line arguments](command-line-arguments.md)
 - [The `#[doc]` attribute](the-doc-attribute.md)
 - [Documentation tests](documentation-tests.md)
+- [Linking to items by name](linking-to-items-by-name.md)
 - [Lints](lints.md)
 - [Passes](passes.md)
 - [Advanced Features](advanced-features.md)
