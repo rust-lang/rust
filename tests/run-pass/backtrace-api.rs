@@ -2,7 +2,7 @@
 // normalize-stderr-test "RUSTLIB/(.*):\d+:\d+ "-> "RUSTLIB/$1:LL:COL "
 
 extern "Rust" {
-    fn miri_get_backtrace() -> Box<[*mut ()]>;
+    fn miri_get_backtrace(flags: u64) -> Box<[*mut ()]>;
     fn miri_resolve_frame(ptr: *mut (), flags: u64) -> MiriFrame;
 }
 
@@ -16,7 +16,7 @@ struct MiriFrame {
 
 fn func_a() -> Box<[*mut ()]> { func_b::<u8>() }
 fn func_b<T>() -> Box<[*mut ()]> { func_c() }
-fn func_c() -> Box<[*mut ()]> { unsafe { miri_get_backtrace() } }
+fn func_c() -> Box<[*mut ()]> { unsafe { miri_get_backtrace(0) } }
 
 fn main() {
     let mut seen_main = false;

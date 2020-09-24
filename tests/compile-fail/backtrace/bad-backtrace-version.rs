@@ -4,6 +4,6 @@ extern "Rust" {
 
 fn main() {
     unsafe {
-        miri_resolve_frame(0 as *mut _, 1); //~ ERROR  Undefined Behavior: Unknown `miri_resolve_frame` flags 1
+        miri_resolve_frame(0 as *mut _, 1); //~ ERROR  unsupported operation: unknown `miri_resolve_frame` flags 1
     }
 }

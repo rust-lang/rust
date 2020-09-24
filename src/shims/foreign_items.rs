@@ -5,13 +5,12 @@ use log::trace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir;
 use rustc_target::{abi::{Align, Size}, spec::PanicStrategy};
-use rustc_middle::ty::{self, ParamEnv, TypeAndMut};
-use rustc_ast::ast::Mutability;
+use rustc_middle::ty;
 use rustc_apfloat::Float;
 use rustc_span::symbol::sym;
-use rustc_span::BytePos;
 
 use crate::*;
+use super::backtrace::EvalContextExt as _;
 use helpers::check_arg_count;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -216,84 +215,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Obtains a Miri backtrace. See the README for details.
             "miri_get_backtrace" => {
-                let tcx = this.tcx;
-                let mut data = Vec::new();
-                for frame in this.active_thread_stack().iter().rev() {
-                    data.push((frame.instance, frame.current_span().lo()));
-                }
-
-                let ptrs: Vec<_> = data.into_iter().map(|(instance, pos)| {
-                    let mut fn_ptr = this.memory.create_fn_alloc(FnVal::Instance(instance));
-                    fn_ptr.offset = Size::from_bytes(pos.0);
-                    Scalar::Ptr(fn_ptr)
-                }).collect();
-
-                let len = ptrs.len();
-
-                let ptr_ty = tcx.mk_ptr(TypeAndMut {
-                    ty: tcx.types.unit,
-                    mutbl: Mutability::Mut
-                });
-
-                let array_ty = tcx.mk_array(ptr_ty, ptrs.len().try_into().unwrap());
-                let array_ty_and_env = ParamEnv::empty().and(array_ty);
-
-                // Write pointers into array
-                let alloc = this.allocate(tcx.layout_of(array_ty_and_env).unwrap(), MiriMemoryKind::Rust.into());
-                for (i, ptr) in ptrs.into_iter().enumerate() {
-                    let place = this.mplace_index(alloc, i as u64)?;
-                    this.write_immediate_to_mplace(ptr.into(), place)?;
-                }
-
-                this.write_immediate(Immediate::new_slice(alloc.ptr.into(), len.try_into().unwrap(), this), dest)?;
+                this.handle_miri_get_backtrace(args, dest)?;
             }
 
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
-                let tcx = this.tcx;
-                let &[ptr, flags] = check_arg_count(args)?;
-
-                let flags = this.read_scalar(flags)?.to_u64()?;
-                if flags != 0 {
-                    throw_ub_format!("Unknown `miri_resolve_frame` flags {}", flags);
-                }
-
-                let ptr = match this.read_scalar(ptr)?.check_init()? {
-                    Scalar::Ptr(ptr) => ptr,
-                    Scalar::Raw { .. } => throw_ub_format!("Expected a pointer in `rust_miri_resolve_frame`, found {:?}", ptr)
-                };
-
-                let fn_instance = if let Some(GlobalAlloc::Function(instance)) = this.tcx.get_global_alloc(ptr.alloc_id) {
-                    instance
-                } else {
-                    throw_ub_format!("Expect function pointer, found {:?}", ptr);
-                };
-
-                if dest.layout.layout.fields.count() != 4 {
-                    throw_ub_format!("Bad declaration of miri_resolve_frame - should return a struct with 4 fields");
-                }
-
-                let pos = BytePos(ptr.offset.bytes().try_into().unwrap());
-                let name = fn_instance.to_string();
-
-                let lo = tcx.sess.source_map().lookup_char_pos(pos);
-
-                let filename = lo.file.name.to_string();
-                let lineno: u32 = lo.line as u32;
-                // `lo.col` is 0-based - add 1 to make it 1-based for the caller.
-                let colno: u32 = lo.col.0 as u32 + 1;
-
-                let name_alloc = this.allocate_str(&name, MiriMemoryKind::Rust.into());
-                let filename_alloc = this.allocate_str(&filename, MiriMemoryKind::Rust.into());
-                let lineno_alloc = Scalar::from_u32(lineno);
-                let colno_alloc = Scalar::from_u32(colno);
-
-                let dest = this.force_allocation_maybe_sized(dest, MemPlaceMeta::None)?.0;
-
-                this.write_immediate(name_alloc.to_ref(), this.mplace_field(dest, 0)?.into())?;
-                this.write_immediate(filename_alloc.to_ref(), this.mplace_field(dest, 1)?.into())?;
-                this.write_scalar(lineno_alloc, this.mplace_field(dest, 2)?.into())?;
-                this.write_scalar(colno_alloc, this.mplace_field(dest, 3)?.into())?;
+                this.handle_miri_resolve_frame(args, dest)?;
             }
 
 
