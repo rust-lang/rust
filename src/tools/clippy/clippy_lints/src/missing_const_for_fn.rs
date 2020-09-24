@@ -4,7 +4,6 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::WithOptConstParam;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
@@ -114,7 +113,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             FnKind::Closure(..) => return,
         }
 
-        let mir = cx.tcx.mir_const(WithOptConstParam::unknown(def_id)).borrow();
+
+        // FIXME(#6080): Const-checking is only guaranteed to be correct when run on unoptimized MIR.
+        // This needs to be changed to `mir_const`.
+        let mir = cx.tcx.optimized_mir(def_id);
 
         if rustc_mir::transform::check_consts::non_const_fn_could_be_made_stable_const_fn(cx.tcx, def_id, &mir) {
             span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`");
