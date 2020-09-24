@@ -76,18 +76,22 @@ impl<'a> Parser<'a> {
             };
             Ok(Some(stmt))
         })?;
-        match stmt.as_mut() {
-            Some(Stmt { kind: StmtKind::Local(local), .. }) => local.tokens = tokens,
-            Some(Stmt { kind: StmtKind::Item(item), .. }) => item.tokens = tokens,
+        let old_tokens = match stmt.as_mut() {
+            Some(Stmt { kind: StmtKind::Local(local), .. }) => Some(&mut local.tokens),
+            Some(Stmt { kind: StmtKind::Item(item), .. }) => Some(&mut item.tokens),
             Some(Stmt { kind: StmtKind::Expr(expr) | StmtKind::Semi(expr), .. }) => {
                 // FIXME: Attribute parsing should do this for us.
-                if expr.tokens.is_none() {
-                    expr.tokens = tokens
-                }
+                Some(&mut expr.tokens)
+            },
+            Some(Stmt { kind: StmtKind::Empty, .. }) => None,
+            Some(Stmt { kind: StmtKind::MacCall(mac), .. }) => Some(&mut mac.tokens),
+            None => None,
+        };
+
+        if let Some(old_tokens) = old_tokens {
+            if old_tokens.is_none() {
+                *old_tokens = tokens;
             }
-            Some(Stmt { kind: StmtKind::Empty, .. }) => {}
-            Some(Stmt { kind: StmtKind::MacCall(mac), .. }) => mac.tokens = tokens,
-            None => {}
         }
 
         Ok(stmt)
