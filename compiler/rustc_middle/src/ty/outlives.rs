@@ -3,8 +3,8 @@
 // RFC for reference.
 
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::walk::MiniSet;
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_data_structures::mini_set::MiniSet;
 use smallvec::SmallVec;
 
 #[derive(Debug)]

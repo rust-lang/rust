@@ -1,9 +1,9 @@
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::mini_set::MiniSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc_middle::ty::walk::MiniSet;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
