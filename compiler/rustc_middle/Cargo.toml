@@ -28,6 +28,5 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 chalk-ir = "0.21.0"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-arrayvec = { version = "0.5.1", default-features = false }
 measureme = "0.7.1"
 rustc_session = { path = "../rustc_session" }

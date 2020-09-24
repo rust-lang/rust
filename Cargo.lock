@@ -3638,7 +3638,6 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
- "arrayvec",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -3778,7 +3777,6 @@ dependencies = [
 name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
- "arrayvec",
  "bitflags",
  "chalk-ir",
  "measureme",

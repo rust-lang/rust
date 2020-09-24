@@ -3,50 +3,8 @@
 
 use crate::ty;
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use arrayvec::ArrayVec;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::mini_set::MiniSet;
 use smallvec::{self, SmallVec};
-use std::hash::Hash;
-
-/// Small-storage-optimized implementation of a set
-/// made specifically for walking type tree.
-///
-/// Stores elements in a small array up to a certain length
-/// and switches to `HashSet` when that length is exceeded.
-pub enum MiniSet<T> {
-    Array(ArrayVec<[T; 8]>),
-    Set(FxHashSet<T>),
-}
-
-impl<T: Eq + Hash + Copy> MiniSet<T> {
-    /// Creates an empty `MiniSet`.
-    pub fn new() -> Self {
-        MiniSet::Array(ArrayVec::new())
-    }
-
-    /// Adds a value to the set.
-    ///
-    /// If the set did not have this value present, true is returned.
-    ///
-    /// If the set did have this value present, false is returned.
-    pub fn insert(&mut self, elem: T) -> bool {
-        match self {
-            MiniSet::Array(array) => {
-                if array.iter().any(|e| *e == elem) {
-                    false
-                } else {
-                    if array.try_push(elem).is_err() {
-                        let mut set: FxHashSet<T> = array.iter().copied().collect();
-                        set.insert(elem);
-                        *self = MiniSet::Set(set);
-                    }
-                    true
-                }
-            }
-            MiniSet::Set(set) => set.insert(elem),
-        }
-    }
-}
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
 // avoid heap allocations.
