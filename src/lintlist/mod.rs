@@ -382,6 +382,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "derive",
     },
     Lint {
+        name: "disallowed_method",
+        group: "nursery",
+        desc: "default lint description",
+        deprecation: None,
+        module: "disallowed_method",
+    },
+    Lint {
         name: "diverging_sub_expression",
         group: "complexity",
         desc: "whether an expression contains a diverging sub expression",
