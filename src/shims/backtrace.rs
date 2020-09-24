@@ -77,7 +77,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let ptr = match this.read_scalar(ptr)?.check_init()? {
             Scalar::Ptr(ptr) => ptr,
-            Scalar::Raw { .. } => throw_ub_format!("Expected a pointer in `rust_miri_resolve_frame`, found {:?}", ptr)
+            Scalar::Raw { .. } => throw_ub_format!("expected a pointer in `rust_miri_resolve_frame`, found {:?}", ptr)
         };
 
         let fn_instance = if let Some(GlobalAlloc::Function(instance)) = this.tcx.get_global_alloc(ptr.alloc_id) {
@@ -87,7 +87,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         if dest.layout.layout.fields.count() != 4 {
-            throw_ub_format!("Bad declaration of miri_resolve_frame - should return a struct with 4 fields");
+            throw_ub_format!("bad declaration of miri_resolve_frame - should return a struct with 4 fields");
         }
 
         let pos = BytePos(ptr.offset.bytes().try_into().unwrap());
