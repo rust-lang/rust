@@ -76,6 +76,17 @@ and execute the following command in the root of the repository:
 
 The build files are found in the `book` directory.
 
+### Pre-commit script
+
+We also test that line lengths are less than 100 columns. To test this locally,
+you can run `ci/check_line_lengths.sh`.
+
+You can also set this to run automatically with the following command:
+
+```bash
+ln -s ../../ci/check_line_lengths.sh .git/hooks/pre-commit
+```
+
 ### Link Validations
 
 We use `mdbook-linkcheck` to validate URLs included in our documentation. To perform link checks, uncomment the `[output.linkcheck]` field in the `book.toml` configuration file and install `mdbook-linkcheck` with:

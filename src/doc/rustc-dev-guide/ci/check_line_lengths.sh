@@ -1,19 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ "$1" == "--help" ]; then
-    echo 'Usage:'
-    echo '  MAX_LINE_LENGTH=100' "$0" 'src/**/*.md'
-    exit 1
+  echo 'Usage:' "[MAX_LINE_LENGTH=n] $0 [file ...]"
+  exit 1
 fi
 
 if [ "$MAX_LINE_LENGTH" == "" ]; then
-    echo '`MAX_LINE_LENGTH` environment variable not set. Try --help.'
-    exit 1
+    MAX_LINE_LENGTH=100
 fi
 
 if [ "$1" == "" ]; then
-    echo 'No files provided.'
-    exit 1
+  files=( src/**/*.md )
+else
+  files=( "$@" )
 fi
 
 echo "Checking line lengths in all source files <= $MAX_LINE_LENGTH chars..."
@@ -21,7 +20,7 @@ echo "Checking line lengths in all source files <= $MAX_LINE_LENGTH chars..."
 echo "Offending files and lines:"
 (( bad_lines = 0 ))
 (( inside_block = 0 ))
-for file in "$@" ; do
+for file in "${files[@]}"; do
   echo "$file"
   (( line_no = 0 ))
   while IFS="" read -r line || [[ -n "$line" ]] ; do
