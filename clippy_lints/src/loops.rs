@@ -2134,7 +2134,7 @@ enum VarState {
     DontWarn,
 }
 
-/// Scan a for loop for variables that are incremented exactly once.
+/// Scan a for loop for variables that are incremented exactly once and not used after that.
 struct IncrementVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,          // context reference
     states: FxHashMap<HirId, VarState>, // incremented variables
@@ -2154,6 +2154,10 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         if let Some(def_id) = var_def_id(self.cx, expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 let state = self.states.entry(def_id).or_insert(VarState::Initial);
+                if *state == VarState::IncrOnce {
+                    *state = VarState::DontWarn;
+                    return;
+                }
 
                 match parent.kind {
                     ExprKind::AssignOp(op, ref lhs, ref rhs) => {
