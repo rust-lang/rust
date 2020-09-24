@@ -239,6 +239,7 @@
 #![cfg_attr(not(bootstrap), feature(const_fn_floating_point_arithmetic))]
 #![feature(const_fn_transmute)]
 #![feature(const_fn)]
+#![cfg_attr(not(bootstrap), feature(const_fn_fn_ptr_basics))]
 #![feature(const_ip)]
 #![feature(const_ipv6)]
 #![feature(const_raw_ptr_deref)]
