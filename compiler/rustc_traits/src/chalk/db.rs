@@ -427,6 +427,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             FnMut => self.interner.tcx.lang_items().fn_mut_trait(),
             FnOnce => self.interner.tcx.lang_items().fn_once_trait(),
             Unsize => self.interner.tcx.lang_items().unsize_trait(),
+            Unpin => self.interner.tcx.lang_items().unpin_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }
