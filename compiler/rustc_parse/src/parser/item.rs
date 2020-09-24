@@ -6,7 +6,7 @@ use crate::maybe_whole;
 use crate::parser::attr::attrs_require_tokens;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, TokenKind};
+use rustc_ast::token::{self, TokenKind, DelimToken};
 use rustc_ast::tokenstream::{
     AttributesData, DelimSpan, PreexpTokenStream, PreexpTokenTree, Spacing, TokenStream, TokenTree,
 };
@@ -1089,7 +1089,7 @@ impl<'a> Parser<'a> {
                 let (fields, recovered) = this.parse_record_struct_body()?;
                 VariantData::Struct(fields, recovered)
             } else if this.check(&token::OpenDelim(token::Paren)) {
-                VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
+                VariantData::Tuple(this.parse_tuple_struct_body("enum")?, DUMMY_NODE_ID)
             } else {
                 VariantData::Unit(DUMMY_NODE_ID)
             };
@@ -1166,7 +1166,7 @@ impl<'a> Parser<'a> {
             VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
-            let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
+            let body = VariantData::Tuple(self.parse_tuple_struct_body("struct")?, DUMMY_NODE_ID);
             generics.where_clause = self.parse_where_clause()?;
             self.expect_semi()?;
             body
@@ -1211,22 +1211,23 @@ impl<'a> Parser<'a> {
     fn parse_record_struct_body(
         &mut self,
     ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
-        self.parse_struct_or_enum_body("struct", |this| this.parse_struct_decl_field())
+        self.parse_struct_or_enum_body("struct", DelimToken::Brace, |this| this.parse_struct_decl_field())
     }
 
     fn parse_enum_body(&mut self) -> PResult<'a, (Vec<Option<Variant>>, bool)> {
-        self.parse_struct_or_enum_body("enum", |this| this.parse_enum_variant())
+        self.parse_struct_or_enum_body("enum", DelimToken::Brace, |this| this.parse_enum_variant())
     }
 
     fn parse_struct_or_enum_body<T>(
         &mut self,
         name: &str,
+        delim: DelimToken,
         mut parse: impl FnMut(&mut Self) -> PResult<'a, T>,
     ) -> PResult<'a, (Vec<T>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
-        if self.eat(&token::OpenDelim(token::Brace)) {
-            while self.token != token::CloseDelim(token::Brace) {
+        if self.eat(&token::OpenDelim(delim)) {
+            while self.token != token::CloseDelim(delim) {
                 let field = parse(self).map_err(|e| {
                     self.consume_block(token::Brace, ConsumeClosingDelim::No);
                     recovered = true;
@@ -1240,15 +1241,21 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            self.eat(&token::CloseDelim(token::Brace));
+            self.eat(&token::CloseDelim(delim));
         } else {
+            let delim_descr = match delim {
+                DelimToken::Paren => "(",
+                DelimToken::Bracket => "[",
+                DelimToken::Brace => "{",
+                DelimToken::NoDelim => panic!("Delimiter `NoDelim` not supported!"),
+            };
             let token_str = super::token_descr(&self.token);
             let msg =
-                &format!("expected `where`, or `{{` after {} name, found {}", name, token_str);
+                &format!("expected `where`, or `{}` after {} name, found {}", delim_descr, name, token_str);
             let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(
                 self.token.span,
-                &format!("expected `where`, or `{{` after {} name", name),
+                &format!("expected `where`, or `{}` after {} name", delim_descr, name),
             );
             return Err(err);
         }
@@ -1256,14 +1263,31 @@ impl<'a> Parser<'a> {
         Ok((fields, recovered))
     }
 
-    fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<StructField>> {
+    fn parse_tuple_struct_body(&mut self, name: &str) -> PResult<'a, Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
-        self.parse_paren_comma_seq(|p| {
-            p.parse_outer_attributes(SupportsCustomAttr::No, |p, attrs| {
+        let (fields, _) = self.parse_struct_or_enum_body(name, DelimToken::Paren, |p| {
+             p.parse_outer_attributes(SupportsCustomAttr::No, |p, attrs| {
                 let lo = p.token.span;
                 let vis = p.parse_visibility(FollowedByType::Yes)?;
                 let ty = p.parse_ty()?;
+
+                if !matches!(p.token.kind, token::CloseDelim(..)) {
+                    if let Err(mut e) = p.expect(&token::Comma) {
+                        if p.token.is_ident() {
+                            let sp = p.sess.source_map().next_point(p.prev_token.span);
+                            e.span_suggestion(
+                                sp,
+                                "try adding a comma",
+                                ",".into(),
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
+                        }
+                    }
+                }
+
+
                 Ok(StructField {
                     span: lo.to(ty.span),
                     vis,
@@ -1274,8 +1298,8 @@ impl<'a> Parser<'a> {
                     is_placeholder: false,
                 })
             })
-        })
-        .map(|(r, _)| r)
+        })?;
+        Ok(fields)
     }
 
     /// Parses an element of a struct declaration.

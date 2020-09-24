@@ -40,6 +40,12 @@ struct Foo<#[cfg(FALSE)] A, B> {
             let my_val = true;
         }
 
+        enum TupleEnum {
+            Foo(#[cfg(FALSE)] u8, #[cfg(FALSE)] bool, #[cfg(not(FALSE))] i32, #[cfg(FALSE)] String, u8)
+        }
+
+        struct TupleStruct(#[cfg(FALSE)] String, #[cfg(not(FALSE))] i32, #[cfg(FALSE)] bool, u8);
+
         0
     }],
     #[print_helper(d)]
