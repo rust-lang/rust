@@ -124,7 +124,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn try_print_query_stack(handler: &Handler) {
+    pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
         eprintln!("query stack during panic:");
 
         // Be careful reyling on global state here: this code is called from
@@ -138,6 +138,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 let mut i = 0;
 
                 while let Some(query) = current_query {
+                    if num_frames == Some(i) {
+                        break;
+                    }
                     let query_info =
                         if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query)) {
                             info
@@ -163,7 +166,11 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         });
 
-        eprintln!("end of query stack");
+        if num_frames != None {
+            eprintln!("we're just showing a limited slice of the query stack");
+        } else {
+            eprintln!("end of query stack");
+        }
     }
 }
 
