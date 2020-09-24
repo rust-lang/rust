@@ -51,7 +51,7 @@ impl_lint_pass!(DisallowedMethod => [DISALLOWED_METHOD]);
 
 impl <'tcx> LateLintPass<'tcx> for DisallowedMethod {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(path, _, _args, _) = &expr.kind {
+        if let ExprKind::MethodCall(_path, _, _args, _) = &expr.kind {
             let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
 
             let method_call = cx.get_def_path(def_id);
