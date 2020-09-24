@@ -918,3 +918,22 @@ fn ipv6_const() {
     const IP_V4: Option<Ipv4Addr> = IP_ADDRESS.to_ipv4();
     assert_eq!(IP_V4.unwrap(), Ipv4Addr::new(0, 0, 0, 1));
 }
+
+#[test]
+fn ip_const() {
+    // test that the methods of `IpAddr` are usable in a const context
+
+    const IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
+    const IS_UNSPECIFIED: bool = IP_ADDRESS.is_unspecified();
+    assert!(!IS_UNSPECIFIED);
+
+    const IS_LOOPBACK: bool = IP_ADDRESS.is_loopback();
+    assert!(IS_LOOPBACK);
+
+    const IS_GLOBAL: bool = IP_ADDRESS.is_global();
+    assert!(!IS_GLOBAL);
+
+    const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
+    assert!(!IS_MULTICAST);
+}

@@ -238,6 +238,7 @@
 #![feature(const_cstr_unchecked)]
 #![feature(const_fn_transmute)]
 #![feature(const_fn)]
+#![feature(const_ip)]
 #![feature(const_ipv6)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_ipv4)]
