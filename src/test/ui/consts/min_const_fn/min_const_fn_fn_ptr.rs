@@ -1,3 +1,5 @@
+// gate-test-const_fn_fn_ptr_basics
+
 struct HasPtr {
     field: fn(),
 }
