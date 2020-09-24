@@ -1504,6 +1504,12 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 write!(self, "::")?;
             }
 
+            if let DefPathDataName::Named(name) = name {
+                if Ident::with_dummy_span(name).is_raw_guess() {
+                    write!(self, "r#")?;
+                }
+            }
+
             let verbose = self.tcx.sess.verbose();
             disambiguated_data.fmt_maybe_verbose(&mut self, verbose)?;
 

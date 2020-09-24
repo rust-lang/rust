@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
@@ -159,9 +159,6 @@ impl DisambiguatedDefPathData {
     pub fn fmt_maybe_verbose(&self, writer: &mut impl Write, verbose: bool) -> fmt::Result {
         match self.data.name() {
             DefPathDataName::Named(name) => {
-                if Ident::with_dummy_span(name).is_raw_guess() {
-                    writer.write_str("r#")?;
-                }
                 if verbose && self.disambiguator != 0 {
                     write!(writer, "{}#{}", name, self.disambiguator)
                 } else {
