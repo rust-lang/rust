@@ -11,7 +11,6 @@ use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt, TypeFoldable};
 
 use rustc_hir::def_id::DefId;
-use rustc_hir::Unsafety;
 
 use rustc_span::symbol::sym;
 
@@ -19,6 +18,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use crate::chalk::lowering::{self, LowerInto};
+use rustc_hir::Unsafety;
 
 pub struct RustIrDatabase<'tcx> {
     pub(crate) interner: RustInterner<'tcx>,
@@ -247,12 +247,14 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         };
         Arc::new(chalk_solve::rust_ir::FnDefDatum {
             id: fn_def_id,
-            abi: sig.abi(),
-            safety: match sig.unsafety() {
-                Unsafety::Normal => chalk_ir::Safety::Safe,
-                Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
+            sig: chalk_ir::FnSig {
+                abi: sig.abi(),
+                safety: match sig.unsafety() {
+                    Unsafety::Normal => chalk_ir::Safety::Safe,
+                    Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
+                },
+                variadic: sig.c_variadic(),
             },
-            variadic: sig.c_variadic(),
             binders: chalk_ir::Binders::new(binders, bound),
         })
     }

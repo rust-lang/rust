@@ -340,18 +340,20 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     collect_bound_vars(interner, interner.tcx, &sig.inputs_and_output());
                 TyData::Function(chalk_ir::FnPointer {
                     num_binders: binders.len(interner),
+                    sig: chalk_ir::FnSig {
+                        abi: sig.abi(),
+                        safety: match sig.unsafety() {
+                            rustc_hir::Unsafety::Normal => chalk_ir::Safety::Safe,
+                            rustc_hir::Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
+                        },
+                        variadic: sig.c_variadic(),
+                    },
                     substitution: chalk_ir::Substitution::from_iter(
                         interner,
                         inputs_and_outputs.iter().map(|ty| {
                             chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner)
                         }),
                     ),
-                    abi: sig.abi(),
-                    safety: match sig.unsafety() {
-                        rustc_hir::Unsafety::Normal => chalk_ir::Safety::Safe,
-                        rustc_hir::Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
-                    },
-                    variadic: sig.c_variadic(),
                 })
                 .intern(interner)
             }
@@ -480,6 +482,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                     substs: application_ty.substitution.lower_into(interner),
                     item_def_id: assoc_ty.0,
                 }),
+                chalk_ir::TypeName::Foreign(def_id) => ty::Foreign(def_id.0),
                 chalk_ir::TypeName::Error => unimplemented!(),
             },
             TyData::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
