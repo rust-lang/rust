@@ -636,7 +636,10 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                     let (text, id) = match leaf {
                         tt::Leaf::Ident(ident) => (ident.text.clone(), ident.id),
                         tt::Leaf::Punct(punct) => {
-                            (SmolStr::new_inline_from_ascii(1, &[punct.char as u8]), punct.id)
+                            assert!(punct.char.is_ascii());
+                            let char = &(punct.char as u8);
+                            let text = std::str::from_utf8(std::slice::from_ref(char)).unwrap();
+                            (SmolStr::new_inline(text), punct.id)
                         }
                         tt::Leaf::Literal(lit) => (lit.text.clone(), lit.id),
                     };

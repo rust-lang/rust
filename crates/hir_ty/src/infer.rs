@@ -555,7 +555,7 @@ impl<'a> InferenceContext<'a> {
 
     fn resolve_lang_item(&self, name: &str) -> Option<LangItemTarget> {
         let krate = self.resolver.krate()?;
-        let name = SmolStr::new_inline_from_ascii(name.len(), name.as_bytes());
+        let name = SmolStr::new_inline(name);
         self.db.lang_item(krate, name)
     }
 

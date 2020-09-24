@@ -43,8 +43,8 @@ impl Name {
     }
 
     /// Shortcut to create inline plain text name
-    const fn new_inline_ascii(text: &[u8]) -> Name {
-        Name::new_text(SmolStr::new_inline_from_ascii(text.len(), text))
+    const fn new_inline(text: &str) -> Name {
+        Name::new_text(SmolStr::new_inline(text))
     }
 
     /// Resolve a name from the text of token.
@@ -127,7 +127,7 @@ pub mod known {
             $(
                 #[allow(bad_style)]
                 pub const $ident: super::Name =
-                    super::Name::new_inline_ascii(stringify!($ident).as_bytes());
+                    super::Name::new_inline(stringify!($ident));
             )*
         };
     }
@@ -210,8 +210,8 @@ pub mod known {
     );
 
     // self/Self cannot be used as an identifier
-    pub const SELF_PARAM: super::Name = super::Name::new_inline_ascii(b"self");
-    pub const SELF_TYPE: super::Name = super::Name::new_inline_ascii(b"Self");
+    pub const SELF_PARAM: super::Name = super::Name::new_inline("self");
+    pub const SELF_TYPE: super::Name = super::Name::new_inline("Self");
 
     #[macro_export]
     macro_rules! name {
