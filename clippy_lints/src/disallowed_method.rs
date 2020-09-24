@@ -1,7 +1,7 @@
 use crate::utils::span_lint;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Symbol;
@@ -36,7 +36,7 @@ pub struct DisallowedMethod {
 }
 
 impl DisallowedMethod {
-    pub fn new(disallowed: FxHashSet<String>) -> Self {
+    pub fn new(disallowed: &FxHashSet<String>) -> Self {
         Self {
             disallowed: disallowed
                 .iter()
