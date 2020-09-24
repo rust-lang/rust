@@ -24,6 +24,12 @@ fn main() {
         static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
         #[used]
         static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+
+        // HACK(eddyb) disable time-delayed purging to remove the main (only?)
+        // source of non-determinism in `jemalloc`.
+        #[used]
+        #[export_name = "malloc_conf"]
+        static MALLOC_CONF: &'static [u8; 34] = b"dirty_decay_ms:0,muzzy_decay_ms:0\0";
     }
 
     rustc_driver::set_sigpipe_handler();
