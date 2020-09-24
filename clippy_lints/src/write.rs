@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then};
+use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Item, ItemKind, MacCall, StrLit, StrStyle};
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
@@ -11,7 +12,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, FileName, Span};
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -236,7 +237,15 @@ impl EarlyLintPass for Write {
 
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &MacCall) {
         if mac.path == sym!(println) {
-            span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
+            let filename = cx.sess.source_map().span_to_filename(mac.span());
+            if_chain! {
+                if let FileName::Real(filename) = filename;
+                if let Some(filename) = filename.local_path().file_name();
+                if filename != "build.rs";
+                then {
+                    span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
+                }
+            }
             if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
                 if fmt_str.symbol == Symbol::intern("") {
                     span_lint_and_sugg(
@@ -251,7 +260,15 @@ impl EarlyLintPass for Write {
                 }
             }
         } else if mac.path == sym!(print) {
-            span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
+            if_chain! {
+                let filename = cx.sess.source_map().span_to_filename(mac.span());
+                if let FileName::Real(filename) = filename;
+                if let Some(filename) = filename.local_path().file_name();
+                if filename != "build.rs";
+                then {
+                    span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
+                }
+            }
             if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
                 if check_newlines(&fmt_str) {
                     span_lint_and_then(
