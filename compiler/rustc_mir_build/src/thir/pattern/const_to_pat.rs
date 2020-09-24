@@ -63,8 +63,23 @@ struct ConstToPat<'a, 'tcx> {
     include_lint_checks: bool,
 }
 
-#[derive(Debug)]
-struct FallbackToConstRef;
+mod fallback_to_const_ref {
+    #[derive(Debug)]
+    /// This error type signals that we encountered a non-struct-eq situation behind a reference.
+    /// We bubble this up in order to get back to the reference destructuring and make that emit
+    /// a const pattern instead of a deref pattern. This allows us to simply call `PartialEq::eq`
+    /// on such patterns (since that function takes a reference) and not have to jump through any
+    /// hoops to get a reference to the value.
+    pub(super) struct FallbackToConstRef(());
+
+    pub(super) fn fallback_to_const_ref<'a, 'tcx>(
+        c2p: &super::ConstToPat<'a, 'tcx>,
+    ) -> FallbackToConstRef {
+        assert!(c2p.behind_reference.get());
+        FallbackToConstRef(())
+    }
+}
+use fallback_to_const_ref::{fallback_to_const_ref, FallbackToConstRef};
 
 impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     fn new(
@@ -314,7 +329,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // Since we are behind a reference, we can just bubble the error up so we get a
                 // constant at reference type, making it easy to let the fallback call
                 // `PartialEq::eq` on it.
-                return Err(FallbackToConstRef);
+                return Err(fallback_to_const_ref(self));
             }
             ty::Adt(adt_def, _) if !self.type_marked_structural(cv.ty) => {
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, cv.ty);
@@ -447,7 +462,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     // very hard to invoke `PartialEq::eq` on it as a fallback.
                     let val = match self.recur(tcx.deref_const(self.param_env.and(cv)), false) {
                         Ok(subpattern) => PatKind::Deref { subpattern },
-                        Err(FallbackToConstRef) => PatKind::Constant { value: cv },
+                        Err(_) => PatKind::Constant { value: cv },
                     };
                     self.behind_reference.set(old);
                     val
