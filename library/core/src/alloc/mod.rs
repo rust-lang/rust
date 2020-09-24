@@ -10,6 +10,9 @@ pub use self::global::GlobalAlloc;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 pub use self::layout::{Layout, LayoutErr};
 
+#[stable(feature = "alloc_layout_error", since = "1.49.0")]
+pub use self::layout::LayoutError;
+
 use crate::fmt;
 use crate::ptr::{self, NonNull};
 
