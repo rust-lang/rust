@@ -136,6 +136,7 @@ impl RawWakerVTable {
     // (see https://github.com/rust-rfcs/const-eval/issues/19#issuecomment-472799062)
     #[rustc_allow_const_fn_ptr]
     #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
+    #[cfg_attr(not(bootstrap), allow_internal_unstable(const_fn_fn_ptr_basics))]
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),
