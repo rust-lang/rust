@@ -1,5 +1,5 @@
 use crate::consts::{constant_context, Constant};
-use crate::utils::{in_macro, is_type_diagnostic_item, snippet, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{in_macro, is_type_diagnostic_item, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
             if let Some(Constant::Int(1)) = constant_context(cx, cx.typeck_results()).expr(&count);
             if !in_macro(receiver.span);
             then {
-                let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&receiver));
+                let ty = cx.typeck_results().expr_ty(&receiver).peel_refs();
                 if ty.is_str() {
                     span_lint_and_sugg(
                         cx,

@@ -1,5 +1,6 @@
 // run-rustfix
 #![warn(clippy::option_if_let_else)]
+#![allow(clippy::redundant_closure)]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {
     string.map_or((false, "hello"), |x| (true, x))
@@ -34,6 +35,14 @@ fn longer_body(arg: Option<u32>) -> u32 {
         let y = x * x;
         y * y
     })
+}
+
+fn impure_else(arg: Option<i32>) {
+    let side_effect = || {
+        println!("return 1");
+        1
+    };
+    let _ = arg.map_or_else(|| side_effect(), |x| x);
 }
 
 fn test_map_or_else(arg: Option<u32>) {
@@ -71,4 +80,5 @@ fn main() {
     let _ = longer_body(None);
     test_map_or_else(None);
     let _ = negative_tests(None);
+    let _ = impure_else(None);
 }

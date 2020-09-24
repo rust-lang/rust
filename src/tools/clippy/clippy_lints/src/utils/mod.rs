@@ -10,6 +10,7 @@ pub mod comparisons;
 pub mod conf;
 pub mod constants;
 mod diagnostics;
+pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
 pub mod inspector;
@@ -130,6 +131,9 @@ pub fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
 }
 
 /// Checks if type is struct, enum or union type with the given def path.
+///
+/// If the type is a diagnostic item, use `is_type_diagnostic_item` instead.
+/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
 pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
@@ -138,6 +142,8 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
 }
 
 /// Checks if the type is equal to a diagnostic item
+///
+/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
 pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
@@ -744,14 +750,6 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
 pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
     match ty.kind {
         TyKind::Ptr(ref mut_ty) | TyKind::Rptr(_, ref mut_ty) => walk_ptrs_hir_ty(&mut_ty.ty),
-        _ => ty,
-    }
-}
-
-/// Returns the base type for references and raw pointers.
-pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
-    match ty.kind() {
-        ty::Ref(_, ty, _) => walk_ptrs_ty(ty),
         _ => ty,
     }
 }

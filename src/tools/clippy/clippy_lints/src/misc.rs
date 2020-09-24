@@ -17,7 +17,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_integer_const, iter_input_pats,
     last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_lint_hir_and_then, walk_ptrs_ty, SpanlessEq,
+    span_lint_and_then, span_lint_hir_and_then, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -99,11 +99,11 @@ declare_clippy_lint! {
     /// if y != x {} // where both are floats
     ///
     /// // Good
-    /// let error = f64::EPSILON; // Use an epsilon for comparison
+    /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
     /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
-    /// // let error = std::f64::EPSILON;
-    /// if (y - 1.23f64).abs() < error { }
-    /// if (y - x).abs() > error { }
+    /// // let error_margin = std::f64::EPSILON;
+    /// if (y - 1.23f64).abs() < error_margin { }
+    /// if (y - x).abs() > error_margin { }
     /// ```
     pub FLOAT_CMP,
     correctness,
@@ -242,10 +242,10 @@ declare_clippy_lint! {
     /// if x == ONE { } // where both are floats
     ///
     /// // Good
-    /// let error = f64::EPSILON; // Use an epsilon for comparison
+    /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
     /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
-    /// // let error = std::f64::EPSILON;
-    /// if (x - ONE).abs() < error { }
+    /// // let error_margin = std::f64::EPSILON;
+    /// if (x - ONE).abs() < error_margin { }
     /// ```
     pub FLOAT_CMP_CONST,
     restriction,
@@ -411,16 +411,16 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                         if !is_comparing_arrays {
                             diag.span_suggestion(
                                 expr.span,
-                                "consider comparing them within some error",
+                                "consider comparing them within some margin of error",
                                 format!(
-                                    "({}).abs() {} error",
+                                    "({}).abs() {} error_margin",
                                     lhs - rhs,
                                     if op == BinOpKind::Eq { '<' } else { '>' }
                                 ),
                                 Applicability::HasPlaceholders, // snippet
                             );
                         }
-                        diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error`");
+                        diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`");
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
@@ -561,7 +561,7 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let value = &walk_ptrs_ty(cx.typeck_results().expr_ty(expr)).kind();
+    let value = &cx.typeck_results().expr_ty(expr).peel_refs().kind();
 
     if let ty::Array(arr_ty, _) = value {
         return matches!(arr_ty.kind(), ty::Float(_));
@@ -571,7 +571,7 @@ fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_array(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(&walk_ptrs_ty(cx.typeck_results().expr_ty(expr)).kind(), ty::Array(_, _))
+    matches!(&cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
 }
 
 fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {

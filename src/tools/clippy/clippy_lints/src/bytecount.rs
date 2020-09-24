@@ -1,6 +1,5 @@
 use crate::utils::{
-    contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability,
-    span_lint_and_sugg, walk_ptrs_ty,
+    contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability, span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::UintTy;
@@ -53,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                     if let ExprKind::Binary(ref op, ref l, ref r) = body.value.kind;
                     if op.node == BinOpKind::Eq;
                     if match_type(cx,
-                               walk_ptrs_ty(cx.typeck_results().expr_ty(&filter_args[0])),
+                               cx.typeck_results().expr_ty(&filter_args[0]).peel_refs(),
                                &paths::SLICE_ITER);
                     then {
                         let needle = match get_path_name(l) {
@@ -63,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                                 _ => { return; }
                             }
                         };
-                        if ty::Uint(UintTy::U8) != *walk_ptrs_ty(cx.typeck_results().expr_ty(needle)).kind() {
+                        if ty::Uint(UintTy::U8) != *cx.typeck_results().expr_ty(needle).peel_refs().kind() {
                             return;
                         }
                         let haystack = if let ExprKind::MethodCall(ref path, _, ref args, _) =
