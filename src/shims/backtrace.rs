@@ -30,6 +30,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         let ptrs: Vec<_> = data.into_iter().map(|(instance, pos)| {
+            // We represent a frame pointer by using the `span.lo` value
+            // as an offset into the function's allocation. This gives us an
+            // opaque pointer that we can return to user code, and allows us
+            // to reconstruct the needed frame information in `handle_miri_resolve_frame`.
+            // Note that we never actually read or write anything from/to this pointer -
+            // all of the data is represented by the pointer value itself.
             let mut fn_ptr = this.memory.create_fn_alloc(FnVal::Instance(instance));
             fn_ptr.offset = Size::from_bytes(pos.0);
             Scalar::Ptr(fn_ptr)
