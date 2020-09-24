@@ -1,0 +1,75 @@
+name: upload
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-release:
+    name: build-release
+    strategy:
+      matrix:
+        build: [linux, macos, windows-gnu, windows-msvc]
+        include:
+          - build: linux
+            os: ubuntu-latest
+            rust: nightly
+          - build: macos
+            os: macos-latest
+            rust: nightly
+          - build: windows-gnu
+            os: windows-latest
+            rust: nightly-x86_64-gnu
+          - build: windows-msvc
+            os: windows-latest
+            rust: nightly-x86_64-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+
+      - name: Install cargo-make
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - name: Build release binaries
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: release
+
+      - name: Build archive
+        shell: bash
+        run: |
+          staging="rustfmt_${{ matrix.build }}_${{ github.event.release.tag_name }}"
+          mkdir -p "$staging"
+
+          cp {README.md,Configurations.md,CHANGELOG.md,LICENSE-MIT,LICENSE-APACHE} "$staging/"
+
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "target/release/{rustfmt.exe,cargo-fmt.exe,rustfmt-format-diff.exe,git-rustfmt.exe}" "$staging/"
+            7z a "$staging.zip" "$staging"
+            echo "::set-env name=ASSET::$staging.zip"
+          else
+            cp "target/release/{rustfmt,cargo-fmt,rustfmt-format-diff,git-rustfmt} "$staging/"
+            tar czf "$staging.tar.gz" "$staging"
+            echo "::set-env name=ASSET::$staging.tar.gz"
+          fi
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ env.ASSET }}
+          asset_name: ${{ env.ASSET }}
+          asset_content_type: application/octet-stream
