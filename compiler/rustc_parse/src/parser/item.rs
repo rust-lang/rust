@@ -6,7 +6,7 @@ use crate::maybe_whole;
 use crate::parser::attr::attrs_require_tokens;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, TokenKind, DelimToken};
+use rustc_ast::token::{self, DelimToken, TokenKind};
 use rustc_ast::tokenstream::{
     AttributesData, DelimSpan, PreexpTokenStream, PreexpTokenTree, Spacing, TokenStream, TokenTree,
 };
@@ -1210,7 +1210,9 @@ impl<'a> Parser<'a> {
     fn parse_record_struct_body(
         &mut self,
     ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
-        self.parse_struct_or_enum_body("struct", DelimToken::Brace, |this| this.parse_struct_decl_field())
+        self.parse_struct_or_enum_body("struct", DelimToken::Brace, |this| {
+            this.parse_struct_decl_field()
+        })
     }
 
     fn parse_enum_body(&mut self) -> PResult<'a, (Vec<Option<Variant>>, bool)> {
@@ -1249,8 +1251,10 @@ impl<'a> Parser<'a> {
                 DelimToken::NoDelim => panic!("Delimiter `NoDelim` not supported!"),
             };
             let token_str = super::token_descr(&self.token);
-            let msg =
-                &format!("expected `where`, or `{}` after {} name, found {}", delim_descr, name, token_str);
+            let msg = &format!(
+                "expected `where`, or `{}` after {} name, found {}",
+                delim_descr, name, token_str
+            );
             let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(
                 self.token.span,
@@ -1266,7 +1270,7 @@ impl<'a> Parser<'a> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
         let (fields, _) = self.parse_struct_or_enum_body(name, DelimToken::Paren, |p| {
-             p.parse_outer_attributes(|p, attrs| {
+            p.parse_outer_attributes(|p, attrs| {
                 let lo = p.token.span;
                 let vis = p.parse_visibility(FollowedByType::Yes)?;
                 let ty = p.parse_ty()?;
@@ -1285,7 +1289,6 @@ impl<'a> Parser<'a> {
                         }
                     }
                 }
-
 
                 Ok(StructField {
                     span: lo.to(ty.span),

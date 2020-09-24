@@ -82,7 +82,7 @@ impl<'a> Parser<'a> {
             Some(Stmt { kind: StmtKind::Expr(expr) | StmtKind::Semi(expr), .. }) => {
                 // FIXME: Attribute parsing should do this for us.
                 Some(&mut expr.tokens)
-            },
+            }
             Some(Stmt { kind: StmtKind::Empty, .. }) => None,
             Some(Stmt { kind: StmtKind::MacCall(mac), .. }) => Some(&mut mac.tokens),
             None => None,

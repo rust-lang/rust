@@ -41,10 +41,20 @@ struct Foo<#[cfg(FALSE)] A, B> {
         }
 
         enum TupleEnum {
-            Foo(#[cfg(FALSE)] u8, #[cfg(FALSE)] bool, #[cfg(not(FALSE))] i32, #[cfg(FALSE)] String, u8)
+            Foo(
+                #[cfg(FALSE)] u8,
+                #[cfg(FALSE)] bool,
+                #[cfg(not(FALSE))] i32,
+                #[cfg(FALSE)] String, u8
+            )
         }
 
-        struct TupleStruct(#[cfg(FALSE)] String, #[cfg(not(FALSE))] i32, #[cfg(FALSE)] bool, u8);
+        struct TupleStruct(
+            #[cfg(FALSE)] String,
+            #[cfg(not(FALSE))] i32,
+            #[cfg(FALSE)] bool,
+            u8
+        );
 
         0
     }],
