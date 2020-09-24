@@ -25,6 +25,18 @@ pub trait AsRawFd {
     /// This method does **not** pass ownership of the raw file descriptor
     /// to the caller. The descriptor is only guaranteed to be valid while
     /// the original object has not yet been destroyed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::io::File;
+    /// use std::os::unix::io::AsRawFd;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///     let raw_fd = f.as_raw_fd();
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_raw_fd(&self) -> RawFd;
 }
@@ -45,6 +57,19 @@ pub trait FromRawFd {
     /// descriptor they are wrapping. Usage of this function could
     /// accidentally allow violating this contract which can cause memory
     /// unsafety in code that relies on it being true.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::io::File;
+    /// use std::os::unix::io::{FromRawFd, IntoRawFd};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     let raw_fd = f.into_raw_fd();
+    ///     let f = File::from_raw_fd(raw_fd);
+    /// }
+    /// ```
     #[stable(feature = "from_raw_os", since = "1.1.0")]
     unsafe fn from_raw_fd(fd: RawFd) -> Self;
 }
@@ -58,6 +83,18 @@ pub trait IntoRawFd {
     /// This function **transfers ownership** of the underlying file descriptor
     /// to the caller. Callers are then the unique owners of the file descriptor
     /// and must close the descriptor once it's no longer needed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::io::File;
+    /// use std::os::unix::io::IntoRawFd;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     let raw_fd = f.into_raw_fd();
+    /// }
+    /// ```
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_fd(self) -> RawFd;
 }
