@@ -96,6 +96,8 @@ pub enum TerminatorKind<'tcx> {
     ///   P <- V
     /// }
     /// ```
+    ///
+    /// Note that DropAndReplace is eliminated as part of the `ElaborateDrops` pass.
     DropAndReplace {
         place: Place<'tcx>,
         value: Operand<'tcx>,

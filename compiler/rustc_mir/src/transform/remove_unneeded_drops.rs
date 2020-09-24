@@ -38,8 +38,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
 impl<'a, 'tcx> Visitor<'tcx> for RemoveUnneededDropsOptimizationFinder<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match terminator.kind {
-            TerminatorKind::Drop { place, target, .. }
-            | TerminatorKind::DropAndReplace { place, target, .. } => {
+            TerminatorKind::Drop { place, target, .. } => {
                 let ty = place.ty(self.body, self.tcx);
                 let needs_drop = ty.ty.needs_drop(self.tcx, self.tcx.param_env(self.def_id));
                 if !needs_drop {
