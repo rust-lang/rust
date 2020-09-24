@@ -404,7 +404,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         );
         if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
-
             Some(RegionNameHighlight::CannotMatchHirTy(span, type_name))
         } else {
             None
