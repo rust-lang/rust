@@ -2,12 +2,12 @@ fn main() {}
 
 const fn unsize(x: &[u8; 3]) -> &[u8] { x }
 const fn closure() -> fn() { || {} }
-//~^ ERROR function pointers in const fn are unstable
+//~^ ERROR function pointer
 const fn closure2() {
     (|| {}) as fn();
-//~^ ERROR function pointers in const fn are unstable
+//~^ ERROR function pointer
 }
 const fn reify(f: fn()) -> unsafe fn() { f }
-//~^ ERROR function pointers in const fn are unstable
+//~^ ERROR function pointer
 const fn reify2() { main as unsafe fn(); }
-//~^ ERROR function pointers in const fn are unstable
+//~^ ERROR function pointer
