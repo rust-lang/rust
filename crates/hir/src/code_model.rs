@@ -709,11 +709,23 @@ impl Function {
     }
 
     pub fn params(self, db: &dyn HirDatabase) -> Vec<Param> {
+        let resolver = self.id.resolver(db.upcast());
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let environment = TraitEnvironment::lower(db, &resolver);
         db.function_data(self.id)
             .params
             .iter()
             .skip(if self.self_param(db).is_some() { 1 } else { 0 })
-            .map(|_| Param { _ty: () })
+            .map(|type_ref| {
+                let ty = Type {
+                    krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
+                    ty: InEnvironment {
+                        value: Ty::from_hir_ext(&ctx, type_ref).0,
+                        environment: environment.clone(),
+                    },
+                };
+                Param { ty }
+            })
             .collect()
     }
 
@@ -742,13 +754,19 @@ impl From<Mutability> for Access {
     }
 }
 
+pub struct Param {
+    ty: Type,
+}
+
+impl Param {
+    pub fn ty(&self) -> &Type {
+        &self.ty
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     func: FunctionId,
-}
-
-pub struct Param {
-    _ty: (),
 }
 
 impl SelfParam {
@@ -1274,6 +1292,14 @@ impl Type {
             self.ty.value,
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(Mutability::Mut), .. })
         )
+    }
+
+    pub fn remove_ref(&self) -> Option<Type> {
+        if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(_), .. }) = self.ty.value {
+            self.ty.value.substs().map(|substs| self.derived(substs[0].clone()))
+        } else {
+            None
+        }
     }
 
     pub fn is_unknown(&self) -> bool {

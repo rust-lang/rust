@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use base_db::SourceDatabase;
-use hir::{Semantics, SemanticsScope, Type};
+use hir::{Local, ScopeDef, Semantics, SemanticsScope, Type};
 use ide_db::RootDatabase;
 use syntax::{
     algo::{find_covering_element, find_node_at_offset},
@@ -91,6 +91,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) impl_as_prev_sibling: bool,
     pub(super) is_match_arm: bool,
     pub(super) has_item_list_or_source_file_parent: bool,
+    pub(super) locals: Vec<(String, Local)>,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -119,6 +120,12 @@ impl<'a> CompletionContext<'a> {
             original_file.syntax().token_at_offset(position.offset).left_biased()?;
         let token = sema.descend_into_macros(original_token.clone());
         let scope = sema.scope_at_offset(&token.parent(), position.offset);
+        let mut locals = vec![];
+        scope.process_all_names(&mut |name, scope| {
+            if let ScopeDef::Local(local) = scope {
+                locals.push((name.to_string(), local));
+            }
+        });
         let mut ctx = CompletionContext {
             sema,
             scope,
@@ -167,6 +174,7 @@ impl<'a> CompletionContext<'a> {
             if_is_prev: false,
             is_match_arm: false,
             has_item_list_or_source_file_parent: false,
+            locals,
         };
 
         let mut original_file = original_file.syntax().clone();
