@@ -3,7 +3,7 @@ use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::Field;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::Span;
 use rustc_trait_selection::traits::predicate_for_trait_def;
@@ -89,18 +89,20 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         self.infcx.tcx
     }
 
+    fn adt_derive_msg(&self, adt_def: &AdtDef) -> String {
+        let path = self.tcx().def_path_str(adt_def.did);
+        format!(
+            "to use a constant of type `{}` in a pattern, \
+            `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+            path, path,
+        )
+    }
+
     fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
         traits::search_for_structural_match_violation(self.id, self.span, self.tcx(), ty).map(
             |non_sm_ty| {
                 with_no_trimmed_paths(|| match non_sm_ty {
-                    traits::NonStructuralMatchTy::Adt(adt_def) => {
-                        let path = self.tcx().def_path_str(adt_def.did);
-                        format!(
-                            "to use a constant of type `{}` in a pattern, \
-                         `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                            path, path,
-                        )
-                    }
+                    traits::NonStructuralMatchTy::Adt(adt) => self.adt_derive_msg(adt),
                     traits::NonStructuralMatchTy::Dynamic => {
                         "trait objects cannot be used in patterns".to_string()
                     }
@@ -412,12 +414,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                             && !self.saw_const_match_lint.get()
                         {
                             self.saw_const_match_lint.set(true);
-                            let path = self.tcx().def_path_str(adt_def.did);
-                            let msg = format!(
-                                "to use a constant of type `{}` in a pattern, \
-                                `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                path, path,
-                            );
+                            let msg = self.adt_derive_msg(adt_def);
                             self.tcx().struct_span_lint_hir(
                                 lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                 self.id,
@@ -429,12 +426,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     } else {
                         if !self.saw_const_match_error.get() {
                             self.saw_const_match_error.set(true);
-                            let path = self.tcx().def_path_str(adt_def.did);
-                            let msg = format!(
-                                "to use a constant of type `{}` in a pattern, \
-                                `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                path, path,
-                            );
+                            let msg = self.adt_derive_msg(adt_def);
                             if self.include_lint_checks {
                                 tcx.sess.span_err(span, &msg);
                             } else {
