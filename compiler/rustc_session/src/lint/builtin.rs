@@ -2191,8 +2191,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `pointer_structural_match` lint detects pointers used in patterns that do not
-    /// behave deterministically across optimizations.
+    /// The `pointer_structural_match` lint detects pointers used in patterns whose behaviour
+    /// cannot be relied upon across compiler versions and optimization levels.
     ///
     /// ### Example
     ///
