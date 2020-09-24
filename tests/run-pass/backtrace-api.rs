@@ -14,12 +14,26 @@ struct MiriFrame {
     colno: u32
 }
 
+fn func_a() -> Box<[*mut ()]> { func_b::<u8>() }
+fn func_b<T>() -> Box<[*mut ()]> { func_c() }
+fn func_c() -> Box<[*mut ()]> { unsafe { miri_get_backtrace() } }
+
 fn main() {
-    let frames = unsafe { miri_get_backtrace() };
+    let mut seen_main = false;
+    let frames = func_a();
     for frame in frames.into_iter() {
         let miri_frame = unsafe { miri_resolve_frame(*frame, 0) };
         let name = String::from_utf8(miri_frame.name.into()).unwrap();
         let filename = String::from_utf8(miri_frame.filename.into()).unwrap();
-        eprintln!("{}:{}:{} ({})", filename, miri_frame.lineno, miri_frame.colno, name);
+
+        // Print every frame to stderr.
+        let out = format!("{}:{}:{} ({})", filename, miri_frame.lineno, miri_frame.colno, name);
+        eprintln!("{}", out);
+        // Print the 'main' frame (and everything before it) to stdout, skipping
+        // the printing of internal (and possibly fragile) libstd frames.
+        if !seen_main {
+            println!("{}", out);
+            seen_main = name == "main";
+        }
     }
 }
