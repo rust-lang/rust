@@ -113,6 +113,30 @@ impl NonConstOp for Abort {
 }
 
 #[derive(Debug)]
+pub struct FloatingPointOp;
+impl NonConstOp for FloatingPointOp {
+    const STOPS_CONST_CHECKING: bool = true;
+
+    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
+        if ccx.const_kind() == hir::ConstContext::ConstFn {
+            Status::Unstable(sym::const_fn_floating_point_arithmetic)
+        } else {
+            Status::Allowed
+        }
+    }
+
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_fn_floating_point_arithmetic,
+            span,
+            &format!("floating point arithmetic is not allowed in {}s", ccx.const_kind()),
+        )
+        .emit();
+    }
+}
+
+#[derive(Debug)]
 pub struct NonPrimitiveOp;
 impl NonConstOp for NonPrimitiveOp {
     const STOPS_CONST_CHECKING: bool = true;

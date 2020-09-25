@@ -7,14 +7,14 @@ LL | const unsafe extern "C" fn closure() -> fn() { || {} }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: only int, `bool` and `char` operations are stable in const fn
+error[E0658]: floating point arithmetic is not allowed in constant functions
   --> $DIR/const-extern-fn-min-const-fn.rs:6:38
    |
 LL | const unsafe extern fn use_float() { 1.0 + 1.0; }
    |                                      ^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #57241 <https://github.com/rust-lang/rust/issues/57241> for more information
+   = help: add `#![feature(const_fn_floating_point_arithmetic)]` to the crate attributes to enable
 
 error[E0658]: casting pointers to integers in constant functions is unstable
   --> $DIR/const-extern-fn-min-const-fn.rs:8:48
