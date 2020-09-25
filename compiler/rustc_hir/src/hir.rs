@@ -2004,6 +2004,30 @@ pub enum PrimTy {
     Char,
 }
 
+impl PrimTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            PrimTy::Int(i) => i.name_str(),
+            PrimTy::Uint(u) => u.name_str(),
+            PrimTy::Float(f) => f.name_str(),
+            PrimTy::Str => "str",
+            PrimTy::Bool => "bool",
+            PrimTy::Char => "char",
+        }
+    }
+
+    pub fn name(self) -> Symbol {
+        match self {
+            PrimTy::Int(i) => i.name(),
+            PrimTy::Uint(u) => u.name(),
+            PrimTy::Float(f) => f.name(),
+            PrimTy::Str => sym::str,
+            PrimTy::Bool => sym::bool,
+            PrimTy::Char => sym::char,
+        }
+    }
+}
+
 #[derive(Debug, HashStable_Generic)]
 pub struct BareFnTy<'hir> {
     pub unsafety: Unsafety,

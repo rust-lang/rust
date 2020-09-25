@@ -6,19 +6,23 @@
 
 /// [path::to::nonexistent::module]
 //~^ ERROR unresolved link
-//~| NOTE no item named `path` in `intra_link_errors`
+//~| NOTE `intra_link_errors` contains no item named `path`
 
 /// [path::to::nonexistent::macro!]
 //~^ ERROR unresolved link
-//~| NOTE no item named `path` in `intra_link_errors`
+//~| NOTE `intra_link_errors` contains no item named `path`
 
 /// [type@path::to::nonexistent::type]
 //~^ ERROR unresolved link
-//~| NOTE no item named `path` in `intra_link_errors`
+//~| NOTE `intra_link_errors` contains no item named `path`
 
 /// [std::io::not::here]
 //~^ ERROR unresolved link
-//~| NOTE the module `io` has no inner item
+//~| NOTE `io` contains no item named `not`
+
+/// [type@std::io::not::here]
+//~^ ERROR unresolved link
+//~| NOTE `io` contains no item named `not`
 
 /// [std::io::Error::x]
 //~^ ERROR unresolved link
@@ -29,6 +33,10 @@
 //~| NOTE the enum `ErrorKind` has no variant
 
 /// [f::A]
+//~^ ERROR unresolved link
+//~| NOTE `f` is a function, not a module
+
+/// [f::A!]
 //~^ ERROR unresolved link
 //~| NOTE `f` is a function, not a module
 
@@ -46,7 +54,16 @@
 
 /// [u8::not_found]
 //~^ ERROR unresolved link
-//~| NOTE the builtin type `u8` does not have an associated item named `not_found`
+//~| NOTE the builtin type `u8` has no associated item named `not_found`
+
+/// [std::primitive::u8::not_found]
+//~^ ERROR unresolved link
+//~| NOTE the builtin type `u8` has no associated item named `not_found`
+
+/// [type@Vec::into_iter]
+//~^ ERROR unresolved link
+//~| HELP to link to the associated function, add parentheses
+//~| NOTE this link resolves to the associated function `into_iter`
 
 /// [S!]
 //~^ ERROR unresolved link
