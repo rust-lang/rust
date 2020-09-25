@@ -129,8 +129,12 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         debug!("impls_for_trait returned {} impls", result.len());
         result
     }
-    fn impl_provided_for(&self, auto_trait_id: TraitId, struct_id: AdtId) -> bool {
-        debug!("impl_provided_for {:?}, {:?}", auto_trait_id, struct_id);
+    fn impl_provided_for(
+        &self,
+        auto_trait_id: TraitId,
+        application_ty: &chalk_ir::ApplicationTy<Interner>,
+    ) -> bool {
+        debug!("impl_provided_for {:?}, {:?}", auto_trait_id, application_ty);
         false // FIXME
     }
     fn associated_ty_value(&self, id: AssociatedTyValueId) -> Arc<AssociatedTyValue> {
@@ -422,6 +426,7 @@ fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
         "fn_mut" => WellKnownTrait::FnMut,
         "fn" => WellKnownTrait::Fn,
         "unsize" => WellKnownTrait::Unsize,
+        "coerce_unsized" => WellKnownTrait::CoerceUnsized,
         _ => return None,
     })
 }
@@ -437,6 +442,7 @@ fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
         WellKnownTrait::Fn => "fn",
         WellKnownTrait::Unsize => "unsize",
         WellKnownTrait::Unpin => "unpin",
+        WellKnownTrait::CoerceUnsized => "coerce_unsized",
     }
 }
 
