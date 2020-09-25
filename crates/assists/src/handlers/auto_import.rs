@@ -196,10 +196,10 @@ impl AutoImportAssets {
             })
             .filter_map(|candidate| match candidate {
                 Either::Left(module_def) => {
-                    self.module_with_name_to_import.find_use_path(db, module_def)
+                    self.module_with_name_to_import.find_use_path_prefixed(db, module_def)
                 }
                 Either::Right(macro_def) => {
-                    self.module_with_name_to_import.find_use_path(db, macro_def)
+                    self.module_with_name_to_import.find_use_path_prefixed(db, macro_def)
                 }
             })
             .filter(|use_path| !use_path.segments.is_empty())
@@ -289,6 +289,35 @@ impl ImportCandidate {
 mod tests {
     use super::*;
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+
+    #[test]
+    fn applicable_when_found_an_import_partial() {
+        check_assist(
+            auto_import,
+            r"
+            mod std {
+                pub mod fmt {
+                    pub struct Formatter;
+                }
+            }
+
+            use std::fmt;
+
+            <|>Formatter
+            ",
+            r"
+            mod std {
+                pub mod fmt {
+                    pub struct Formatter;
+                }
+            }
+
+            use std::fmt::{self, Formatter};
+
+            Formatter
+            ",
+        );
+    }
 
     #[test]
     fn applicable_when_found_an_import() {
