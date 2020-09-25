@@ -14,9 +14,9 @@ struct MiriFrame {
     colno: u32
 }
 
-fn func_a() -> Box<[*mut ()]> { func_b::<u8>() }
-fn func_b<T>() -> Box<[*mut ()]> { func_c() }
-fn func_c() -> Box<[*mut ()]> { unsafe { miri_get_backtrace(0) } }
+#[inline(never)] fn func_a() -> Box<[*mut ()]> { func_b::<u8>() }
+#[inline(never)] fn func_b<T>() -> Box<[*mut ()]> { func_c() }
+#[inline(never)] fn func_c() -> Box<[*mut ()]> { unsafe { miri_get_backtrace(0) } }
 
 fn main() {
     let mut seen_main = false;
