@@ -2981,7 +2981,7 @@ impl<T> Iterator for IntoIter<T> {
         self.len()
     }
 
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {
