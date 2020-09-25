@@ -84,6 +84,7 @@ where
     def_id: DefId,
     dead_unwinds: Option<&'a BitSet<BasicBlock>>,
     entry_sets: IndexVec<BasicBlock, A::Domain>,
+    pass_name: Option<&'static str>,
     analysis: A,
 
     /// Cached, cumulative transfer functions for each block.
@@ -174,6 +175,7 @@ where
             body,
             def_id,
             dead_unwinds: None,
+            pass_name: None,
             entry_sets,
             apply_trans_for_block,
         }
@@ -186,6 +188,15 @@ where
     /// unwind during execution. Otherwise, your dataflow results will not be correct.
     pub fn dead_unwinds(mut self, dead_unwinds: &'a BitSet<BasicBlock>) -> Self {
         self.dead_unwinds = Some(dead_unwinds);
+        self
+    }
+
+    /// Adds an identifier to the graphviz output for this particular run of a dataflow analysis.
+    ///
+    /// Some analyses are run multiple times in the compilation pipeline. Give them a `pass_name`
+    /// to differentiate them. Otherwise, only the results for the latest run will be saved.
+    pub fn pass_name(mut self, name: &'static str) -> Self {
+        self.pass_name = Some(name);
         self
     }
 
@@ -202,6 +213,7 @@ where
             mut entry_sets,
             tcx,
             apply_trans_for_block,
+            pass_name,
             ..
         } = self;
 
@@ -249,7 +261,7 @@ where
 
         let results = Results { analysis, entry_sets };
 
-        let res = write_graphviz_results(tcx, def_id, &body, &results);
+        let res = write_graphviz_results(tcx, def_id, &body, &results, pass_name);
         if let Err(e) = res {
             warn!("Failed to write graphviz dataflow results: {}", e);
         }
@@ -267,6 +279,7 @@ fn write_graphviz_results<A>(
     def_id: DefId,
     body: &mir::Body<'tcx>,
     results: &Results<'tcx, A>,
+    pass_name: Option<&'static str>,
 ) -> std::io::Result<()>
 where
     A: Analysis<'tcx>,
@@ -285,12 +298,17 @@ where
         None if tcx.sess.opts.debugging_opts.dump_mir_dataflow
             && dump_enabled(tcx, A::NAME, def_id) =>
         {
+            // FIXME: Use some variant of `pretty::dump_path` for this
             let mut path = PathBuf::from(&tcx.sess.opts.debugging_opts.dump_mir_dir);
 
+            let crate_name = tcx.crate_name(def_id.krate);
             let item_name = ty::print::with_forced_impl_filename_line(|| {
                 tcx.def_path(def_id).to_filename_friendly_no_crate()
             });
-            path.push(format!("rustc.{}.{}.dot", item_name, A::NAME));
+
+            let pass_name = pass_name.map(|s| format!(".{}", s)).unwrap_or_default();
+
+            path.push(format!("{}.{}.{}{}.dot", crate_name, item_name, A::NAME, pass_name));
             path
         }
 
