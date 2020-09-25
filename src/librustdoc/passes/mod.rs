@@ -104,8 +104,8 @@ pub const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
     ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
     ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
-    ConditionalPass::always(PROPAGATE_DOC_CFG),
     ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
+    ConditionalPass::always(PROPAGATE_DOC_CFG),
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
