@@ -77,14 +77,6 @@ const fn foo11<T: std::fmt::Display>(t: T) -> T { t }
 //~^ ERROR trait bounds other than `Sized` on const fn parameters are unstable
 const fn foo11_2<T: Send>(t: T) -> T { t }
 //~^ ERROR trait bounds other than `Sized` on const fn parameters are unstable
-const fn foo19(f: f32) -> f32 { f * 2.0 }
-//~^ ERROR int, `bool` and `char` operations
-const fn foo19_2(f: f32) -> f32 { 2.0 - f }
-//~^ ERROR int, `bool` and `char` operations
-const fn foo19_3(f: f32) -> f32 { -f }
-//~^ ERROR int, `bool` and `char` operations
-const fn foo19_4(f: f32, g: f32) -> f32 { f / g }
-//~^ ERROR int, `bool` and `char` operations
 
 static BAR: u32 = 42;
 const fn foo25() -> u32 { BAR } //~ ERROR cannot refer to statics
