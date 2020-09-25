@@ -66,8 +66,6 @@ pub struct Config {
     pub test_compare_mode: bool,
     pub llvm_libunwind: bool,
 
-    pub skip_only_host_steps: bool,
-
     pub on_fail: Option<String>,
     pub stage: u32,
     pub keep_stage: Vec<u32>,
@@ -593,8 +591,6 @@ impl Config {
         } else {
             vec![config.build]
         };
-        // If host was explicitly given an empty list, don't run any host-only steps.
-        config.skip_only_host_steps = config.hosts.is_empty();
         config.targets = if let Some(arg_target) = flags.target {
             arg_target
         } else if let Some(file_target) = build.target {
