@@ -1275,7 +1275,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Gives temporary access to the region constraint data.
-    #[allow(non_camel_case_types)] // bug with impl trait
     pub fn with_region_constraints<R>(
         &self,
         op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,

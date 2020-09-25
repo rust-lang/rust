@@ -256,7 +256,6 @@ pub trait Visitor<'v>: Sized {
     /// patterns described on `itemlikevisit::ItemLikeVisitor`. The only
     /// reason to override this method is if you want a nested pattern
     /// but cannot supply a `Map`; see `nested_visit_map` for advice.
-    #[allow(unused_variables)]
     fn visit_nested_item(&mut self, id: ItemId) {
         let opt_item = self.nested_visit_map().inter().map(|map| map.item(id.id));
         walk_list!(self, visit_item, opt_item);
@@ -265,7 +264,6 @@ pub trait Visitor<'v>: Sized {
     /// Like `visit_nested_item()`, but for trait items. See
     /// `visit_nested_item()` for advice on when to override this
     /// method.
-    #[allow(unused_variables)]
     fn visit_nested_trait_item(&mut self, id: TraitItemId) {
         let opt_item = self.nested_visit_map().inter().map(|map| map.trait_item(id));
         walk_list!(self, visit_trait_item, opt_item);
@@ -274,7 +272,6 @@ pub trait Visitor<'v>: Sized {
     /// Like `visit_nested_item()`, but for impl items. See
     /// `visit_nested_item()` for advice on when to override this
     /// method.
-    #[allow(unused_variables)]
     fn visit_nested_impl_item(&mut self, id: ImplItemId) {
         let opt_item = self.nested_visit_map().inter().map(|map| map.impl_item(id));
         walk_list!(self, visit_impl_item, opt_item);

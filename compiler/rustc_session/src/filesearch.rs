@@ -1,5 +1,3 @@
-#![allow(non_camel_case_types)]
-
 pub use self::FileMatch::*;
 
 use std::borrow::Cow;

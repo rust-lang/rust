@@ -2,7 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
-#[allow(dead_code)]
 pub mod auto_trait;
 mod chalk_fulfill;
 pub mod codegen;

@@ -1845,7 +1845,6 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
         None
     }
 
-    #[allow(dead_code)]
     fn is_artificial(&self) -> bool {
         match self {
             VariantInfo::Generator { .. } => true,

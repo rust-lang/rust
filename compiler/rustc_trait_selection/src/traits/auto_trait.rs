@@ -32,6 +32,7 @@ pub enum AutoTraitResult<A> {
     NegativeImpl,
 }
 
+#[allow(dead_code)]
 impl<A> AutoTraitResult<A> {
     fn is_auto(&self) -> bool {
         match *self {
