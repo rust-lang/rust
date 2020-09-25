@@ -241,7 +241,7 @@ fn bench_extend_recycle(b: &mut Bencher) {
     let mut data = vec![0; 1000];
 
     b.iter(|| {
-        let tmp = std::mem::replace(&mut data, Vec::new());
+        let tmp = std::mem::take(&mut data);
         let mut to_extend = black_box(Vec::new());
         to_extend.extend(tmp.into_iter());
         data = black_box(to_extend);
@@ -500,7 +500,7 @@ fn bench_in_place_recycle(b: &mut Bencher) {
     let mut data = vec![0; 1000];
 
     b.iter(|| {
-        let tmp = std::mem::replace(&mut data, Vec::new());
+        let tmp = std::mem::take(&mut data);
         data = black_box(
             tmp.into_iter()
                 .enumerate()
@@ -520,7 +520,7 @@ fn bench_in_place_zip_recycle(b: &mut Bencher) {
     rng.fill_bytes(&mut subst[..]);
 
     b.iter(|| {
-        let tmp = std::mem::replace(&mut data, Vec::new());
+        let tmp = std::mem::take(&mut data);
         let mangled = tmp
             .into_iter()
             .zip(subst.iter().copied())
