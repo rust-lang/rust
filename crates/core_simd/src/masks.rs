@@ -2,7 +2,7 @@ macro_rules! define_mask {
     { $(#[$attr:meta])* struct $name:ident($type:ty); } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
+        #[derive(Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
         #[repr(transparent)]
         pub struct $name(pub(crate) $type);
 
@@ -31,6 +31,12 @@ macro_rules! define_mask {
         impl core::convert::From<$name> for bool {
             fn from(mask: $name) -> Self {
                 mask.test()
+            }
+        }
+
+        impl core::fmt::Debug for $name {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                self.test().fmt(f)
             }
         }
     }

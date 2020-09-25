@@ -100,9 +100,12 @@ macro_rules! define_pointer_vector {
     { debug $name:ident | $type:ty | $($index:tt)* } => {
         impl<T> core::fmt::Debug for $name<T> {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                f.debug_tuple(stringify!($name))
-                    $(.field(&(AsRef::<[isize]>::as_ref(&self.0)[$index] as $type)))*
-                    .finish()
+                crate::fmt::format(self.as_ref(), f)
+            }
+        }
+        impl<T> core::fmt::Pointer for $name<T> {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                crate::fmt::format_pointer(self.as_ref(), f)
             }
         }
     }

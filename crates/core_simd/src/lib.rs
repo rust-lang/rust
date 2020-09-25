@@ -6,6 +6,8 @@
 #[macro_use]
 mod macros;
 
+mod fmt;
+
 mod masks;
 pub use masks::*;
 

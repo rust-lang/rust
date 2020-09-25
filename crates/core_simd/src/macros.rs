@@ -247,7 +247,7 @@ macro_rules! define_vector {
     { def $(#[$attr:meta])* | $name:ident | $($itype:ty)* } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
+        #[derive(Copy, Clone, Default, PartialEq, PartialOrd)]
         #[repr(simd)]
         pub struct $name($($itype),*);
     };
@@ -284,7 +284,7 @@ macro_rules! define_mask_vector {
     { def $(#[$attr:meta])* | $name:ident | $($itype:ty)* } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
+        #[derive(Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord)]
         #[repr(simd)]
         pub struct $name($($itype),*);
     };
