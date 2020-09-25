@@ -272,7 +272,7 @@
 //! * [DOT language](http://www.graphviz.org/doc/info/lang.html)
 
 #![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 #![feature(nll)]

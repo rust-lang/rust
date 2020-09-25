@@ -6,7 +6,7 @@
 //! feature](https://doc.rust-lang.org/nightly/unstable-book/language-features/plugin.html)
 //! of the Unstable Book for some examples.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
 #![recursion_limit = "256"]
 
