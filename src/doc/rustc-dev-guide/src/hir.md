@@ -84,12 +84,12 @@ For more detailed information, check out the [chapter on identifiers][ids].
 ### The HIR Map
 
 Most of the time when you are working with the HIR, you will do so via
-the **HIR Map**, accessible in the tcx via [`tcx.hir_map`] (and defined in
+the **HIR Map**, accessible in the tcx via [`tcx.hir()`] (and defined in
 the [`hir::map`] module). The [HIR map] contains a [number of methods] to
 convert between IDs of various kinds and to lookup data associated
 with an HIR node.
 
-[`tcx.hir_map`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.GlobalCtxt.html#structfield.hir_map
+[`tcx.hir()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.hir
 [`hir::map`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/index.html
 [HIR map]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html
 [number of methods]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#methods
