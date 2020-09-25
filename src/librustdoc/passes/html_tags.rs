@@ -5,9 +5,8 @@ use crate::fold::DocFolder;
 use crate::html::markdown::opts;
 use core::ops::Range;
 use pulldown_cmark::{Event, Parser};
-// use rustc_hir::hir_id::HirId;
+use rustc_feature::UnstableFeatures;
 use rustc_session::lint;
-// use rustc_span::Span;
 
 pub const CHECK_INVALID_HTML_TAGS: Pass = Pass {
     name: "check-invalid-html-tags",
@@ -26,9 +25,13 @@ impl<'a, 'tcx> InvalidHtmlTagsLinter<'a, 'tcx> {
 }
 
 pub fn check_invalid_html_tags(krate: Crate, cx: &DocContext<'_>) -> Crate {
-    let mut coll = InvalidHtmlTagsLinter::new(cx);
+    if !UnstableFeatures::from_environment().is_nightly_build() {
+        krate
+    } else {
+        let mut coll = InvalidHtmlTagsLinter::new(cx);
 
-    coll.fold_crate(krate)
+        coll.fold_crate(krate)
+    }
 }
 
 const ALLOWED_UNCLOSED: &[&str] = &[

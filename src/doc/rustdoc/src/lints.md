@@ -253,10 +253,12 @@ typo mistakes for some common attributes.
 
 ## invalid_html_tags
 
-This lint **warns by default**. It detects unclosed or invalid HTML tags.
-For example:
+This lint is **allowed by default** and is **nightly-only**. It detects unclosed
+or invalid HTML tags. For example:
 
 ```rust
+#![warn(invalid_html_tags)]
+
 /// <h1>
 /// </script>
 pub fn foo() {}

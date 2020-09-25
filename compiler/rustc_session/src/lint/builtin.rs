@@ -1887,7 +1887,7 @@ declare_lint! {
     ///
     /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_html_tags
     pub INVALID_HTML_TAGS,
-    Warn,
+    Allow,
     "detects invalid HTML tags in doc comments"
 }
 
