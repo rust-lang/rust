@@ -96,7 +96,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             ));
 
             match result {
-                Ok(Some(ImplSource::ImplSourceUserDefined(_))) => {
+                Ok(Some(ImplSource::UserDefined(_))) => {
                     debug!(
                         "find_auto_trait_generics({:?}): \
                          manual impl found, bailing out",
@@ -315,9 +315,8 @@ impl AutoTraitFinder<'tcx> {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
-                    if let ImplSource::ImplSourceUserDefined(ImplSourceUserDefinedData {
-                        impl_def_id,
-                        ..
+                    if let ImplSource::UserDefined(ImplSourceUserDefinedData {
+                        impl_def_id, ..
                     }) = impl_source
                     {
                         // Blame 'tidy' for the weird bracket placement.
