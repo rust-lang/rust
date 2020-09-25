@@ -15,6 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Make the default stage for x.py configurable [#76625](https://github.com/rust-lang/rust/pull/76625)
 - Add a dedicated debug-logging option [#76588](https://github.com/rust-lang/rust/pull/76588)
 - Add sample defaults for x.py [#76628](https://github.com/rust-lang/rust/pull/76628)
+- Add `--keep-stage-std`, which behaves like `keep-stage` but allows the stage
+  0 compiler artifacts (i.e., stage1/bin/rustc) to be rebuilt if changed
+  [#77120](https://github.com/rust-lang/rust/pull/77120).
+
 
 ## [Version 0] - 2020-09-11
 

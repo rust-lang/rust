@@ -59,7 +59,9 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
-        if builder.config.keep_stage.contains(&compiler.stage) {
+        if builder.config.keep_stage.contains(&compiler.stage)
+            || builder.config.keep_stage_std.contains(&compiler.stage)
+        {
             builder.info("Warning: Using a potentially old libstd. This may not behave well.");
             builder.ensure(StdLink { compiler, target_compiler: compiler, target });
             return;
@@ -472,6 +474,7 @@ impl Step for Rustc {
 
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old librustc. This may not behave well.");
+            builder.info("Warning: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
             builder.ensure(RustcLink { compiler, target_compiler: compiler, target });
             return;
         }
