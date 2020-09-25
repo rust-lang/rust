@@ -8,6 +8,8 @@
 #![feature(bound_cloned)]
 #![feature(box_syntax)]
 #![feature(cell_update)]
+#![feature(const_assume)]
+#![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(debug_non_exhaustive)]
