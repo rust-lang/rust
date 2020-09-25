@@ -1687,6 +1687,10 @@ impl Clone for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
+    /// Converts an [`IntoIterator<Item = char>`](IntoIterator) into a [`String`].
+    ///
+    /// This appends the data in `iter` to a new [`String`].
+    /// The data is allocated on the heap if `iter` isn't empty.
     fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
@@ -1696,6 +1700,10 @@ impl FromIterator<char> for String {
 
 #[stable(feature = "string_from_iter_by_ref", since = "1.17.0")]
 impl<'a> FromIterator<&'a char> for String {
+    /// Converts an [`IntoIterator<Item = &char>`](IntoIterator) into a [`String`].
+    ///
+    /// This appends the data in `iter` to a new [`String`].
+    /// The data is allocated on the heap if `iter` isn't empty.
     fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
@@ -1705,6 +1713,10 @@ impl<'a> FromIterator<&'a char> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
+    /// Converts an [`IntoIterator<Item = &str>`](IntoIterator) into a [`String`].
+    ///
+    /// This appends the data in `iter` to a new [`String`].
+    /// The data is allocated on the heap if `iter` isn't empty.
     fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
@@ -1714,6 +1726,10 @@ impl<'a> FromIterator<&'a str> for String {
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
+    /// Converts an [`IntoIterator<Item = String>`](IntoIterator) into a [`String`].
+    ///
+    /// The data is appended to an existing [`String`] from `iter` if one is present.
+    /// If more capacity is required, the data is allocated on the heap.
     fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
         let mut iterator = iter.into_iter();
 
@@ -1732,6 +1748,10 @@ impl FromIterator<String> for String {
 
 #[stable(feature = "box_str2", since = "1.45.0")]
 impl FromIterator<Box<str>> for String {
+    /// Converts an [`IntoIterator<Item = Box<str>>`](IntoIterator) into a [`String`].
+    ///
+    /// This appends the data in `iter` to a new [`String`].
+    /// The data is allocated on the heap if `iter` isn't empty.
     fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
@@ -1741,6 +1761,11 @@ impl FromIterator<Box<str>> for String {
 
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> FromIterator<Cow<'a, str>> for String {
+    /// Converts an [`IntoIterator<Item = Cow<'a, str>>`](IntoIterator) into a [`String`].
+    ///
+    /// If `iter` isn't empty, the data is appended to its first element,
+    /// which is cloned it if it isn't already owned, resulting in an allocation on the heap.
+    /// If more capacity is required, the data is allocated on the heap.
     fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
         let mut iterator = iter.into_iter();
 
