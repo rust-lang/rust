@@ -19,6 +19,7 @@ pub struct Flags {
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Vec<u32>,
+    pub keep_stage_std: Vec<u32>,
 
     pub host: Option<Vec<TargetSelection>>,
     pub target: Option<Vec<TargetSelection>>,
@@ -141,6 +142,13 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "",
             "keep-stage",
             "stage(s) to keep without recompiling \
+            (pass multiple times to keep e.g., both stages 0 and 1)",
+            "N",
+        );
+        opts.optmulti(
+            "",
+            "keep-stage-std",
+            "stage(s) of the standard library to keep without recompiling \
             (pass multiple times to keep e.g., both stages 0 and 1)",
             "N",
         );
@@ -510,7 +518,9 @@ Arguments:
                 println!("--stage not supported for x.py check, always treated as stage 0");
                 process::exit(1);
             }
-            if matches.opt_str("keep-stage").is_some() {
+            if matches.opt_str("keep-stage").is_some()
+                || matches.opt_str("keep-stage-std").is_some()
+            {
                 println!("--keep-stage not supported for x.py check, only one stage available");
                 process::exit(1);
             }
@@ -527,6 +537,11 @@ Arguments:
                 .opt_strs("keep-stage")
                 .into_iter()
                 .map(|j| j.parse().expect("`keep-stage` should be a number"))
+                .collect(),
+            keep_stage_std: matches
+                .opt_strs("keep-stage-std")
+                .into_iter()
+                .map(|j| j.parse().expect("`keep-stage-std` should be a number"))
                 .collect(),
             host: if matches.opt_present("host") {
                 Some(
