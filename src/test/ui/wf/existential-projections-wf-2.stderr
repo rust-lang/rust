@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: Id<U>` is not satisfied
+  --> $DIR/existential-projections-wf-2.rs:18:42
+   |
+LL |     transmute::<U, dyn Setup<U, From=T>>(t)
+   |                                          ^ the trait `Id<U>` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | pub fn safe_transmute<T: Id<U>, U>(t: T) -> U {
+   |                        ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

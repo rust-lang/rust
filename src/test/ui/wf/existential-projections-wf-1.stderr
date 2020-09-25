@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/existential-projections-wf-1.rs:11:31
+   |
+LL |     copy::<dyn Setup<From=T>>(t)
+   |                               ^ the trait `Copy` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | pub fn copy_any<T: Copy>(t: &T) -> T {
+   |                  ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

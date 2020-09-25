@@ -695,6 +695,65 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 ));
             }
         }
+
+        // We also check the well formedness of projections, to prevent things like #27675
+        //
+        // ```rust
+        // trait Setup {
+        //     type From: Copy;
+        // }
+        //
+        // fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
+        //     *from
+        // }
+        //
+        // pub fn copy_any<T>(t: &T) -> T {
+        //     copy::<dyn Setup<From=T>>(t)
+        // }
+        // ```
+        if let Some(data) = data.no_bound_vars() {
+            let tcx = self.infcx.tcx;
+            for pred in data {
+                let projection = match pred {
+                    ty::ExistentialPredicate::Trait(_) | ty::ExistentialPredicate::AutoTrait(_) => {
+                        continue; // Nothing to do here.
+                    }
+                    ty::ExistentialPredicate::Projection(proj) => proj,
+                };
+
+                let proj = projection.with_self_ty(tcx, tcx.types.self_param);
+                let self_ty = tcx.mk_projection(projection.item_def_id, proj.projection_ty.substs);
+
+                let preds = tcx
+                    .predicates_of(projection.item_def_id)
+                    .instantiate(tcx, proj.projection_ty.substs);
+                for pred in preds.predicates.iter() {
+                    match pred.skip_binders() {
+                        ty::PredicateAtom::Trait(pred, ct) => {
+                            // If we have `<Self as Trait>::AssocTy: Trait`,
+                            // `projection.ty: Trait` must hold.
+                            if pred.self_ty() == self_ty {
+                                let trait_ref = ty::TraitRef::new(
+                                    pred.def_id(),
+                                    tcx.mk_substs_trait(projection.ty, &pred.trait_ref.substs[1..]),
+                                );
+                                // FIXME: Use a better obligation cause here.
+                                let cause = self.cause(traits::MiscObligation);
+                                self.out.push(traits::Obligation::new(
+                                    cause,
+                                    self.param_env,
+                                    ty::PredicateAtom::Trait(ty::TraitPredicate { trait_ref }, ct)
+                                        .to_predicate(tcx),
+                                ));
+                            }
+                        }
+                        // FIXME: Do we have to do something for other predicates here,
+                        // there is probably still subtle unsoundness here.
+                        _ => (),
+                    }
+                }
+            }
+        }
     }
 }
 
