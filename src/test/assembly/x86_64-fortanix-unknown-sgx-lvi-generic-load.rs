@@ -15,4 +15,3 @@ pub extern fn plus_one(r: &mut u64) {
 // CHECK: popq [[REGISTER:%[a-z]+]]
 // CHECK-NEXT: lfence
 // CHECK-NEXT: jmpq *[[REGISTER]]
-

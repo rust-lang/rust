@@ -8,7 +8,8 @@ int cmake_plus_one_c_asm(int *arg) {
     asm volatile ( "    movl (%1), %0\n"
                    "    inc %0\n"
                    "    jmp 1f\n"
-                   "    retq\n"  // never executed, but a shortcut to determine how the assembler deals with `ret` instructions
+                   "    retq\n"  // never executed, but a shortcut to determine how
+                                 // the assembler deals with `ret` instructions
                    "1:\n"
                    : "=r"(value)
                    : "r"(arg) );

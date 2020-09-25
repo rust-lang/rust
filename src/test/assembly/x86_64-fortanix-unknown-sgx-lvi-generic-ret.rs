@@ -10,4 +10,3 @@ pub extern fn myret() {}
 // CHECK: popq [[REGISTER:%[a-z]+]]
 // CHECK-NEXT: lfence
 // CHECK-NEXT: jmpq *[[REGISTER]]
-
