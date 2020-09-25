@@ -1,8 +1,8 @@
-use super::apple_sdk_base::{opts, AppleOS, Arch};
+use super::apple_sdk_base::{opts, Arch};
 use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
-    let base = opts(Arch::X86_64, AppleOS::iOS)?;
+    let base = opts(Arch::X86_64);
     Ok(Target {
         llvm_target: "x86_64-apple-tvos".to_string(),
         target_endian: "little".to_string(),
