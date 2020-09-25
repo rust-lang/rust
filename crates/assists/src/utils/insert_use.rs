@@ -810,16 +810,6 @@ use std::io;",
     }
 
     #[test]
-    #[ignore] // FIXME: Support this
-    fn merge_partial_path() {
-        check_full(
-            "ast::Foo",
-            r"use syntax::{ast, algo};",
-            r"use syntax::{ast::{self, Foo}, algo};",
-        )
-    }
-
-    #[test]
     fn merge_glob_nested() {
         check_full(
             "foo::bar::quux::Fez",

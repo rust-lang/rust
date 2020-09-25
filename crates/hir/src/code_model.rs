@@ -383,6 +383,16 @@ impl Module {
     pub fn find_use_path(self, db: &dyn DefDatabase, item: impl Into<ItemInNs>) -> Option<ModPath> {
         hir_def::find_path::find_path(db, item.into(), self.into())
     }
+
+    /// Finds a path that can be used to refer to the given item from within
+    /// this module, if possible. This is used for returning import paths for use-statements.
+    pub fn find_use_path_prefixed(
+        self,
+        db: &dyn DefDatabase,
+        item: impl Into<ItemInNs>,
+    ) -> Option<ModPath> {
+        hir_def::find_path::find_path_prefixed(db, item.into(), self.into())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

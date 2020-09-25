@@ -415,6 +415,41 @@ impl foo::Foo for S {
     }
 
     #[test]
+    fn test_qualify_path_2() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub trait Foo { fn foo(&self, bar: Bar); }
+    }
+}
+
+use foo::bar;
+
+struct S;
+impl bar::Foo for S { <|> }"#,
+            r#"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub trait Foo { fn foo(&self, bar: Bar); }
+    }
+}
+
+use foo::bar;
+
+struct S;
+impl bar::Foo for S {
+    fn foo(&self, bar: bar::Bar) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn test_qualify_path_generic() {
         check_assist(
             add_missing_impl_members,
