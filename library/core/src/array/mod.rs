@@ -19,6 +19,20 @@ mod iter;
 #[unstable(feature = "array_value_iter", issue = "65798")]
 pub use iter::IntoIter;
 
+/// Converts a reference to `T` into a reference to an array of length 1 (without copying).
+#[unstable(feature = "array_from_ref", issue = "77101")]
+pub fn from_ref<T>(s: &T) -> &[T; 1] {
+    // SAFETY: Converting `&T` to `&[T; 1]` is sound.
+    unsafe { &*(s as *const T).cast::<[T; 1]>() }
+}
+
+/// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
+#[unstable(feature = "array_from_ref", issue = "77101")]
+pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
+    // SAFETY: Converting `&mut T` to `&mut [T; 1]` is sound.
+    unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
+}
+
 /// Utility trait implemented only on arrays of fixed size
 ///
 /// This trait can be used to implement other traits on fixed-size arrays

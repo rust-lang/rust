@@ -1,5 +1,6 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
+use crate::array;
 use crate::intrinsics::is_aligned_and_not_null;
 use crate::mem;
 use crate::ptr;
@@ -140,19 +141,11 @@ pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T]
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
 pub fn from_ref<T>(s: &T) -> &[T] {
-    // SAFETY: a reference is guaranteed to be valid for reads. The returned
-    // reference cannot be mutated as it is an immutable reference.
-    // `mem::size_of::<T>()` cannot be larger than `isize::MAX`.
-    // Thus the call to `from_raw_parts` is safe.
-    unsafe { from_raw_parts(s, 1) }
+    array::from_ref(s)
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
 pub fn from_mut<T>(s: &mut T) -> &mut [T] {
-    // SAFETY: a mutable reference is guaranteed to be valid for writes.
-    // The reference cannot be accessed by another pointer as it is an mutable reference.
-    // `mem::size_of::<T>()` cannot be larger than `isize::MAX`.
-    // Thus the call to `from_raw_parts_mut` is safe.
-    unsafe { from_raw_parts_mut(s, 1) }
+    array::from_mut(s)
 }
