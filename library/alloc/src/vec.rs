@@ -2099,7 +2099,6 @@ impl<T> Extend<T> for Vec<T> {
 /// |  slice::Iter                    |  |                     |
 /// |  Iterator<Item = &Clone>        |  +---------------------+
 /// +---------------------------------+
-///
 /// ```
 trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
