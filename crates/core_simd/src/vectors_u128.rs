@@ -1,10 +1,12 @@
 define_vector! {
     #[doc = "Vector of two `u128` values"]
+    #[derive(Eq, Ord, Hash)]
     struct u128x2([u128; 2]);
 }
 
 define_vector! {
     #[doc = "Vector of four `u128` values"]
+    #[derive(Eq, Ord, Hash)]
     struct u128x4([u128; 4]);
 }
 

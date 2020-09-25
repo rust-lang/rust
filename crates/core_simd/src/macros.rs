@@ -96,7 +96,7 @@ macro_rules! call_counting_args {
     { 2 => $mac:path => $($args:tt)* } => {
         $mac! {
             $($args)*
-            v1 v2
+            v0 v1
         }
     };
     { 4 => $mac:path => $($args:tt)* } => {
@@ -131,6 +131,57 @@ macro_rules! call_counting_args {
             v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31
             v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47
             v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60 v61 v62 v63
+        }
+    };
+}
+
+/// Calls the macro `$mac` with the specified `$args` followed by counting values from 0 to the
+/// specified value.
+macro_rules! call_counting_values {
+    { 1 => $mac:path => $($args:tt)* } => {
+        $mac! {
+            $($args)*
+            0
+        }
+    };
+    { 2 => $mac:path => $($args:tt)* } => {
+        $mac! {
+            $($args)*
+            0 1
+        }
+    };
+    { 4 => $mac:path => $($args:tt)* } => {
+        $mac! {
+            $($args)*
+            0 1 2 3
+        }
+    };
+    { 8 => $mac:path => $($args:tt)* } => {
+        $mac! {
+            $($args)*
+            0 1 2 3 4 5 6 7
+        }
+    };
+    { 16 => $mac:path => $($args:tt)* } => {
+        $mac! {
+            $($args)*
+            0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+        }
+    };
+    { 32 => $mac:path => $($args:tt)* } => {
+        $mac! {
+            $($args)*
+            0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+            16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
+        }
+    };
+    { 64 => $mac:path => $($args:tt)* } => {
+        $mac! {
+            $($args)*
+            0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+            16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
+            32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47
+            48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63
         }
     };
 }
@@ -233,7 +284,7 @@ macro_rules! define_mask_vector {
     { def $(#[$attr:meta])* | $name:ident | $($itype:ty)* } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
+        #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
         #[repr(simd)]
         pub struct $name($($itype),*);
     };

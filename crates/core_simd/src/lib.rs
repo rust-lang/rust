@@ -9,6 +9,9 @@ mod macros;
 mod masks;
 pub use masks::*;
 
+mod pointers;
+pub use pointers::*;
+
 mod vectors_u8;
 pub use vectors_u8::*;
 mod vectors_u16;
