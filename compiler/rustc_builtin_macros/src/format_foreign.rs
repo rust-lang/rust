@@ -518,8 +518,7 @@ pub mod printf {
                         .and_then(|end| end.at_next_cp())
                         .map(|end| (next.slice_between(end).unwrap(), end));
                     let end = match end {
-                        Some(("32", end)) => end,
-                        Some(("64", end)) => end,
+                        Some(("32" | "64", end)) => end,
                         _ => next,
                     };
                     state = Type;
