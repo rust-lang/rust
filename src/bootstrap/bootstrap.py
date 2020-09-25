@@ -424,8 +424,19 @@ class RustBuild(object):
                     rustfmt_stamp.write(self.date + self.rustfmt_channel)
 
         if self.downloading_llvm():
-            llvm_sha = subprocess.check_output(["git", "log", "--author=bors",
-                "--format=%H", "-n1"]).decode(sys.getdefaultencoding()).strip()
+            # We want the most recent LLVM submodule update to avoid downloading
+            # LLVM more often than necessary.
+            #
+            # This git command finds that commit SHA, looking for bors-authored
+            # merges that modified src/llvm-project.
+            #
+            # This works even in a repository that has not yet initialized
+            # submodules.
+            llvm_sha = subprocess.check_output([
+                "git", "log", "--author=bors", "--format=%H", "-n1",
+                "-m", "--first-parent",
+                "--", "src/llvm-project"
+            ]).decode(sys.getdefaultencoding()).strip()
             llvm_assertions = self.get_toml('assertions', 'llvm') == 'true'
             if self.program_out_of_date(self.llvm_stamp(), llvm_sha + str(llvm_assertions)):
                 self._download_ci_llvm(llvm_sha, llvm_assertions)
