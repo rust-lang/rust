@@ -20,4 +20,3 @@ pub fn safe_transmute<T, U>(t: T) -> U {
 }
 
 fn main() {}
-
