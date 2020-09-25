@@ -11,7 +11,6 @@ use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt, TypeFoldable};
 
 use rustc_hir::def_id::DefId;
-use rustc_hir::Unsafety;
 
 use rustc_span::symbol::sym;
 
@@ -19,6 +18,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use crate::chalk::lowering::{self, LowerInto};
+use rustc_ast::ast;
 
 pub struct RustIrDatabase<'tcx> {
     pub(crate) interner: RustInterner<'tcx>,
@@ -247,12 +247,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         };
         Arc::new(chalk_solve::rust_ir::FnDefDatum {
             id: fn_def_id,
-            abi: sig.abi(),
-            safety: match sig.unsafety() {
-                Unsafety::Normal => chalk_ir::Safety::Safe,
-                Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
-            },
-            variadic: sig.c_variadic(),
+            sig: sig.lower_into(&self.interner),
             binders: chalk_ir::Binders::new(binders, bound),
         })
     }
@@ -327,21 +322,75 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     fn impl_provided_for(
         &self,
         auto_trait_id: chalk_ir::TraitId<RustInterner<'tcx>>,
-        adt_id: chalk_ir::AdtId<RustInterner<'tcx>>,
+        app_ty: &chalk_ir::ApplicationTy<RustInterner<'tcx>>,
     ) -> bool {
+        use chalk_ir::Scalar::*;
+        use chalk_ir::TypeName::*;
+
         let trait_def_id = auto_trait_id.0;
-        let adt_def = adt_id.0;
         let all_impls = self.interner.tcx.all_impls(trait_def_id);
         for impl_def_id in all_impls {
             let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap();
             let self_ty = trait_ref.self_ty();
-            match *self_ty.kind() {
-                ty::Adt(impl_adt_def, _) => {
-                    if impl_adt_def == adt_def {
-                        return true;
+            let provides = match (self_ty.kind(), app_ty.name) {
+                (&ty::Adt(impl_adt_def, ..), Adt(id)) => impl_adt_def.did == id.0.did,
+                (_, AssociatedType(_ty_id)) => {
+                    // FIXME(chalk): See https://github.com/rust-lang/rust/pull/77152#discussion_r494484774
+                    false
+                }
+                (ty::Bool, Scalar(Bool)) => true,
+                (ty::Char, Scalar(Char)) => true,
+                (ty::Int(ty1), Scalar(Int(ty2))) => match (ty1, ty2) {
+                    (ast::IntTy::Isize, chalk_ir::IntTy::Isize)
+                    | (ast::IntTy::I8, chalk_ir::IntTy::I8)
+                    | (ast::IntTy::I16, chalk_ir::IntTy::I16)
+                    | (ast::IntTy::I32, chalk_ir::IntTy::I32)
+                    | (ast::IntTy::I64, chalk_ir::IntTy::I64)
+                    | (ast::IntTy::I128, chalk_ir::IntTy::I128) => true,
+                    _ => false,
+                },
+                (ty::Uint(ty1), Scalar(Uint(ty2))) => match (ty1, ty2) {
+                    (ast::UintTy::Usize, chalk_ir::UintTy::Usize)
+                    | (ast::UintTy::U8, chalk_ir::UintTy::U8)
+                    | (ast::UintTy::U16, chalk_ir::UintTy::U16)
+                    | (ast::UintTy::U32, chalk_ir::UintTy::U32)
+                    | (ast::UintTy::U64, chalk_ir::UintTy::U64)
+                    | (ast::UintTy::U128, chalk_ir::UintTy::U128) => true,
+                    _ => false,
+                },
+                (ty::Float(ty1), Scalar(Float(ty2))) => match (ty1, ty2) {
+                    (ast::FloatTy::F32, chalk_ir::FloatTy::F32)
+                    | (ast::FloatTy::F64, chalk_ir::FloatTy::F64) => true,
+                    _ => false,
+                },
+                (&ty::Tuple(..), Tuple(..)) => true,
+                (&ty::Array(..), Array) => true,
+                (&ty::Slice(..), Slice) => true,
+                (&ty::RawPtr(type_and_mut), Raw(mutability)) => {
+                    match (type_and_mut.mutbl, mutability) {
+                        (ast::Mutability::Mut, chalk_ir::Mutability::Mut) => true,
+                        (ast::Mutability::Mut, chalk_ir::Mutability::Not) => false,
+                        (ast::Mutability::Not, chalk_ir::Mutability::Mut) => false,
+                        (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
                     }
                 }
-                _ => {}
+                (&ty::Ref(.., mutability1), Ref(mutability2)) => match (mutability1, mutability2) {
+                    (ast::Mutability::Mut, chalk_ir::Mutability::Mut) => true,
+                    (ast::Mutability::Mut, chalk_ir::Mutability::Not) => false,
+                    (ast::Mutability::Not, chalk_ir::Mutability::Mut) => false,
+                    (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
+                },
+                (&ty::Opaque(def_id, ..), OpaqueType(opaque_ty_id)) => def_id == opaque_ty_id.0,
+                (&ty::FnDef(def_id, ..), FnDef(fn_def_id)) => def_id == fn_def_id.0,
+                (&ty::Str, Str) => true,
+                (&ty::Never, Never) => true,
+                (&ty::Closure(def_id, ..), Closure(closure_id)) => def_id == closure_id.0,
+                (&ty::Foreign(def_id), Foreign(foreign_def_id)) => def_id == foreign_def_id.0,
+                (&ty::Error(..), Error) => false,
+                _ => false,
+            };
+            if provides {
+                return true;
             }
         }
         false
@@ -416,15 +465,18 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         well_known_trait: chalk_solve::rust_ir::WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<RustInterner<'tcx>>> {
         use chalk_solve::rust_ir::WellKnownTrait::*;
+        let lang_items = self.interner.tcx.lang_items();
         let def_id = match well_known_trait {
-            Sized => self.interner.tcx.lang_items().sized_trait(),
-            Copy => self.interner.tcx.lang_items().copy_trait(),
-            Clone => self.interner.tcx.lang_items().clone_trait(),
-            Drop => self.interner.tcx.lang_items().drop_trait(),
-            Fn => self.interner.tcx.lang_items().fn_trait(),
-            FnMut => self.interner.tcx.lang_items().fn_mut_trait(),
-            FnOnce => self.interner.tcx.lang_items().fn_once_trait(),
-            Unsize => self.interner.tcx.lang_items().unsize_trait(),
+            Sized => lang_items.sized_trait(),
+            Copy => lang_items.copy_trait(),
+            Clone => lang_items.clone_trait(),
+            Drop => lang_items.drop_trait(),
+            Fn => lang_items.fn_trait(),
+            FnMut => lang_items.fn_mut_trait(),
+            FnOnce => lang_items.fn_once_trait(),
+            Unsize => lang_items.unsize_trait(),
+            Unpin => lang_items.unpin_trait(),
+            CoerceUnsized => lang_items.coerce_unsized_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }

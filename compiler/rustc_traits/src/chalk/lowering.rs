@@ -39,6 +39,8 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::DefId;
 
+use chalk_ir::{FnSig, ForeignDefId};
+use rustc_hir::Unsafety;
 use std::collections::btree_map::{BTreeMap, Entry};
 
 /// Essentially an `Into` with a `&RustInterner` parameter
@@ -269,8 +271,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 ast::FloatTy::F64 => float(chalk_ir::FloatTy::F64),
             },
             Adt(def, substs) => apply(struct_ty(def.did), substs.lower_into(interner)),
-            // FIXME(chalk): lower Foreign
-            Foreign(def_id) => apply(chalk_ir::TypeName::FnDef(chalk_ir::FnDefId(def_id)), empty()),
+            Foreign(def_id) => apply(chalk_ir::TypeName::Foreign(ForeignDefId(def_id)), empty()),
             Str => apply(chalk_ir::TypeName::Str, empty()),
             Array(ty, len) => {
                 let value = match len.val {
@@ -340,18 +341,13 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     collect_bound_vars(interner, interner.tcx, &sig.inputs_and_output());
                 TyData::Function(chalk_ir::FnPointer {
                     num_binders: binders.len(interner),
+                    sig: sig.lower_into(interner),
                     substitution: chalk_ir::Substitution::from_iter(
                         interner,
                         inputs_and_outputs.iter().map(|ty| {
                             chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner)
                         }),
                     ),
-                    abi: sig.abi(),
-                    safety: match sig.unsafety() {
-                        rustc_hir::Unsafety::Normal => chalk_ir::Safety::Safe,
-                        rustc_hir::Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
-                    },
-                    variadic: sig.c_variadic(),
                 })
                 .intern(interner)
             }
@@ -480,6 +476,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                     substs: application_ty.substitution.lower_into(interner),
                     item_def_id: assoc_ty.0,
                 }),
+                chalk_ir::TypeName::Foreign(def_id) => ty::Foreign(def_id.0),
                 chalk_ir::TypeName::Error => unimplemented!(),
             },
             TyData::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
@@ -715,6 +712,19 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         });
         let value = chalk_ir::QuantifiedWhereClauses::from_iter(interner, where_clauses);
         chalk_ir::Binders::new(binders, value)
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, chalk_ir::FnSig<RustInterner<'tcx>>> for ty::Binder<ty::FnSig<'tcx>> {
+    fn lower_into(self, _interner: &RustInterner<'_>) -> FnSig<RustInterner<'tcx>> {
+        chalk_ir::FnSig {
+            abi: self.abi(),
+            safety: match self.unsafety() {
+                Unsafety::Normal => chalk_ir::Safety::Safe,
+                Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
+            },
+            variadic: self.c_variadic(),
+        }
     }
 }
 
