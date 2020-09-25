@@ -13,24 +13,27 @@
   
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
-          switchInt(move _2) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
+-         switchInt(move _2) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
++         goto -> bb1;                     // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
       }
   
       bb1: {
-          discriminant(_0) = 0;            // scope 0 at $DIR/simplify-arm.rs:12:17: 12:21
-          goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
-      }
-  
-      bb2: {
-          unreachable;                     // scope 0 at $DIR/simplify-arm.rs:10:11: 10:12
-      }
-  
-      bb3: {
+-         discriminant(_0) = 0;            // scope 0 at $DIR/simplify-arm.rs:12:17: 12:21
+-         goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
+-     }
+- 
+-     bb2: {
+-         unreachable;                     // scope 0 at $DIR/simplify-arm.rs:10:11: 10:12
+-     }
+- 
+-     bb3: {
           _0 = move _1;                    // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
-          goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
+-         goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
++         goto -> bb2;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
       }
   
-      bb4: {
+-     bb4: {
++     bb2: {
           return;                          // scope 0 at $DIR/simplify-arm.rs:14:2: 14:2
       }
   }
