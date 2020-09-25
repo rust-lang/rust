@@ -71,6 +71,7 @@ pub struct Config {
     pub on_fail: Option<String>,
     pub stage: u32,
     pub keep_stage: Vec<u32>,
+    pub keep_stage_std: Vec<u32>,
     pub src: PathBuf,
     // defaults to `config.toml`
     pub config: PathBuf,
@@ -542,6 +543,7 @@ impl Config {
         config.incremental = flags.incremental;
         config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
+        config.keep_stage_std = flags.keep_stage_std;
         config.bindir = "bin".into(); // default
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
