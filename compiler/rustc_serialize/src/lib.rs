@@ -5,7 +5,7 @@ Core encoding and decoding interfaces.
 */
 
 #![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]

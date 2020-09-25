@@ -2,7 +2,7 @@
 //!
 //! This module contains the code for creating and emitting diagnostics.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
 #![feature(backtrace)]
 #![feature(nll)]

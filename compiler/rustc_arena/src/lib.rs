@@ -8,7 +8,7 @@
 //! This crate implements several kinds of arena.
 
 #![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
 #![feature(dropck_eyepatch)]

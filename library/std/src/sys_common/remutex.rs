@@ -37,9 +37,7 @@ impl<T> RefUnwindSafe for ReentrantMutex<T> {}
 /// guarded data.
 #[must_use = "if unused the ReentrantMutex will immediately unlock"]
 pub struct ReentrantMutexGuard<'a, T: 'a> {
-    // funny underscores due to how Deref currently works (it disregards field
-    // privacy).
-    __lock: &'a ReentrantMutex<T>,
+    lock: &'a ReentrantMutex<T>,
 }
 
 impl<T> !marker::Send for ReentrantMutexGuard<'_, T> {}
@@ -129,7 +127,7 @@ impl<T: fmt::Debug + 'static> fmt::Debug for ReentrantMutex<T> {
 
 impl<'mutex, T> ReentrantMutexGuard<'mutex, T> {
     fn new(lock: &'mutex ReentrantMutex<T>) -> ReentrantMutexGuard<'mutex, T> {
-        ReentrantMutexGuard { __lock: lock }
+        ReentrantMutexGuard { lock }
     }
 }
 
@@ -137,7 +135,7 @@ impl<T> Deref for ReentrantMutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &self.__lock.data
+        &self.lock.data
     }
 }
 
@@ -145,7 +143,7 @@ impl<T> Drop for ReentrantMutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            self.__lock.inner.unlock();
+            self.lock.inner.unlock();
         }
     }
 }

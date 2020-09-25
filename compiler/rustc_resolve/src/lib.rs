@@ -8,7 +8,7 @@
 //!
 //! Type-relative name resolution (methods, fields, associated items) happens in `librustc_typeck`.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]

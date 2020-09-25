@@ -1,4 +1,4 @@
-use core::array::{FixedSizeArray, IntoIter};
+use core::array::{self, FixedSizeArray, IntoIter};
 use core::convert::TryFrom;
 
 #[test]
@@ -17,6 +17,21 @@ fn fixed_size_array() {
     assert_eq!(FixedSizeArray::as_mut_slice(&mut zero_sized).len(), 64);
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_array).len(), 0);
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_zero_sized).len(), 0);
+}
+
+#[test]
+fn array_from_ref() {
+    let value: String = "Hello World!".into();
+    let arr: &[String; 1] = array::from_ref(&value);
+    assert_eq!(&[value.clone()], arr);
+}
+
+#[test]
+fn array_from_mut() {
+    let mut value: String = "Hello World".into();
+    let arr: &mut [String; 1] = array::from_mut(&mut value);
+    arr[0].push_str("!");
+    assert_eq!(&value, "Hello World!");
 }
 
 #[test]

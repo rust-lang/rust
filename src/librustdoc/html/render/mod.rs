@@ -754,7 +754,9 @@ fn write_shared(
         write(cx.path("rust-logo.png"), static_files::RUST_LOGO)?;
     }
     if (*cx.shared).layout.favicon.is_empty() {
-        write(cx.path("favicon.ico"), static_files::RUST_FAVICON)?;
+        write(cx.path("favicon.svg"), static_files::RUST_FAVICON_SVG)?;
+        write(cx.path("favicon-16x16.png"), static_files::RUST_FAVICON_PNG_16)?;
+        write(cx.path("favicon-32x32.png"), static_files::RUST_FAVICON_PNG_32)?;
     }
     write(cx.path("brush.svg"), static_files::BRUSH_SVG)?;
     write(cx.path("wheel.svg"), static_files::WHEEL_SVG)?;

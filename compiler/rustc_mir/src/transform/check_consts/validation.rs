@@ -59,6 +59,7 @@ impl Qualifs<'mir, 'tcx> {
             MaybeMutBorrowedLocals::mut_borrows_only(tcx, &body, param_env)
                 .unsound_ignore_borrow_on_drop()
                 .into_engine(tcx, &body, def_id.to_def_id())
+                .pass_name("const_qualification")
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });

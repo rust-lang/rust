@@ -128,10 +128,10 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// }
 ///
 /// impl Sub for Point {
-///     type Output = Point;
+///     type Output = Self;
 ///
-///     fn sub(self, other: Point) -> Point {
-///         Point {
+///     fn sub(self, other: Self) -> Self::Output {
+///         Self {
 ///             x: self.x - other.x,
 ///             y: self.y - other.y,
 ///         }
@@ -241,7 +241,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///         // Reduce to lowest terms by dividing by the greatest common
 ///         // divisor.
 ///         let gcd = gcd(numerator, denominator);
-///         Rational {
+///         Self {
 ///             numerator: numerator / gcd,
 ///             denominator: denominator / gcd,
 ///         }
@@ -255,7 +255,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     fn mul(self, rhs: Self) -> Self {
 ///         let numerator = self.numerator * rhs.numerator;
 ///         let denominator = self.denominator * rhs.denominator;
-///         Rational::new(numerator, denominator)
+///         Self::new(numerator, denominator)
 ///     }
 /// }
 ///
@@ -291,7 +291,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     type Output = Self;
 ///
 ///     fn mul(self, rhs: Scalar) -> Self::Output {
-///         Vector { value: self.value.iter().map(|v| v * rhs.value).collect() }
+///         Self { value: self.value.iter().map(|v| v * rhs.value).collect() }
 ///     }
 /// }
 ///
@@ -369,7 +369,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///         // Reduce to lowest terms by dividing by the greatest common
 ///         // divisor.
 ///         let gcd = gcd(numerator, denominator);
-///         Rational {
+///         Self {
 ///             numerator: numerator / gcd,
 ///             denominator: denominator / gcd,
 ///         }
@@ -387,7 +387,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///
 ///         let numerator = self.numerator * rhs.denominator;
 ///         let denominator = self.denominator * rhs.numerator;
-///         Rational::new(numerator, denominator)
+///         Self::new(numerator, denominator)
 ///     }
 /// }
 ///
@@ -423,7 +423,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     type Output = Self;
 ///
 ///     fn div(self, rhs: Scalar) -> Self::Output {
-///         Vector { value: self.value.iter().map(|v| v / rhs.value).collect() }
+///         Self { value: self.value.iter().map(|v| v / rhs.value).collect() }
 ///     }
 /// }
 ///
@@ -515,7 +515,7 @@ div_impl_float! { f32 f64 }
 ///         let len = self.slice.len();
 ///         let rem = len % modulus;
 ///         let start = len - rem;
-///         SplitSlice {slice: &self.slice[start..]}
+///         Self {slice: &self.slice[start..]}
 ///     }
 /// }
 ///
@@ -615,7 +615,7 @@ rem_impl_float! { f32 f64 }
 /// }
 ///
 /// impl Neg for Sign {
-///     type Output = Sign;
+///     type Output = Self;
 ///
 ///     fn neg(self) -> Self::Output {
 ///         match self {

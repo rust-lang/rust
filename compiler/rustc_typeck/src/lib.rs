@@ -55,7 +55,7 @@ This API is completely unstable and subject to change.
 
 */
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![allow(non_camel_case_types)]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]

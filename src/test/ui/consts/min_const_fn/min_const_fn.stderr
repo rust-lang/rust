@@ -6,14 +6,14 @@ LL |     const fn into_inner(self) -> T { self.0 }
    |                         |
    |                         constant functions cannot evaluate destructors
 
-error[E0723]: mutable references in const fn are unstable
+error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:39:36
    |
 LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
    |                                    ^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:44:28
@@ -23,14 +23,14 @@ LL |     const fn into_inner_lt(self) -> T { self.0 }
    |                            |
    |                            constant functions cannot evaluate destructors
 
-error[E0723]: mutable references in const fn are unstable
+error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:46:42
    |
 LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
    |                                          ^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:51:27
@@ -40,23 +40,23 @@ LL |     const fn into_inner_s(self) -> T { self.0 }
    |                           |
    |                           constant functions cannot evaluate destructors
 
-error[E0723]: mutable references in const fn are unstable
+error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:53:38
    |
 LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
    |                                      ^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0723]: mutable references in const fn are unstable
+error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:58:39
    |
 LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
    |                                       ^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:76:16
@@ -164,14 +164,14 @@ LL | const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } 
    = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
    = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-error[E0723]: mutable references in const fn are unstable
+error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:101:14
    |
 LL | const fn inc(x: &mut i32) { *x += 1 }
    |              ^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:110:6
