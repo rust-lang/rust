@@ -435,6 +435,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // These just return their argument
                 self.copy_op(args[0], dest)?;
             }
+            sym::assume => {
+                let cond = self.read_scalar(args[0])?.check_init()?.to_bool()?;
+                if !cond {
+                    throw_ub_format!("`assume` intrinsic called with `false`");
+                }
+            }
             _ => return Ok(false),
         }
 
