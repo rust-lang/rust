@@ -7,25 +7,25 @@ use std::fmt;
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            super::ImplSourceUserDefined(ref v) => write!(f, "{:?}", v),
+            super::ImplSource::UserDefined(ref v) => write!(f, "{:?}", v),
 
-            super::ImplSourceAutoImpl(ref t) => write!(f, "{:?}", t),
+            super::ImplSource::AutoImpl(ref t) => write!(f, "{:?}", t),
 
-            super::ImplSourceClosure(ref d) => write!(f, "{:?}", d),
+            super::ImplSource::Closure(ref d) => write!(f, "{:?}", d),
 
-            super::ImplSourceGenerator(ref d) => write!(f, "{:?}", d),
+            super::ImplSource::Generator(ref d) => write!(f, "{:?}", d),
 
-            super::ImplSourceFnPointer(ref d) => write!(f, "ImplSourceFnPointer({:?})", d),
+            super::ImplSource::FnPointer(ref d) => write!(f, "({:?})", d),
 
-            super::ImplSourceDiscriminantKind(ref d) => write!(f, "{:?}", d),
+            super::ImplSource::DiscriminantKind(ref d) => write!(f, "{:?}", d),
 
-            super::ImplSourceObject(ref d) => write!(f, "{:?}", d),
+            super::ImplSource::Object(ref d) => write!(f, "{:?}", d),
 
-            super::ImplSourceParam(ref n) => write!(f, "ImplSourceParam({:?})", n),
+            super::ImplSource::Param(ref n) => write!(f, "ImplSourceParamData({:?})", n),
 
-            super::ImplSourceBuiltin(ref d) => write!(f, "{:?}", d),
+            super::ImplSource::Builtin(ref d) => write!(f, "{:?}", d),
 
-            super::ImplSourceTraitAlias(ref d) => write!(f, "{:?}", d),
+            super::ImplSource::TraitAlias(ref d) => write!(f, "{:?}", d),
         }
     }
 }
@@ -96,7 +96,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitAliasData<'tcx, 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ImplSourceTraitAlias(alias_def_id={:?}, substs={:?}, nested={:?})",
+            "ImplSourceTraitAliasData(alias_def_id={:?}, substs={:?}, nested={:?})",
             self.alias_def_id, self.substs, self.nested
         )
     }

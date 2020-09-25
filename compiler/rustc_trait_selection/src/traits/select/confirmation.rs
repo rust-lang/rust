@@ -19,16 +19,12 @@ use crate::traits::project::{self, normalize_with_depth};
 use crate::traits::select::TraitObligationExt;
 use crate::traits::util;
 use crate::traits::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
+use crate::traits::ImplSource;
 use crate::traits::Normalized;
 use crate::traits::OutputTypeParameterMismatch;
 use crate::traits::Selection;
 use crate::traits::TraitNotObjectSafe;
 use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
-use crate::traits::{
-    ImplSourceAutoImpl, ImplSourceBuiltin, ImplSourceClosure, ImplSourceDiscriminantKind,
-    ImplSourceFnPointer, ImplSourceGenerator, ImplSourceObject, ImplSourceParam,
-    ImplSourceTraitAlias, ImplSourceUserDefined,
-};
 use crate::traits::{
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
     ImplSourceDiscriminantKindData, ImplSourceFnPointerData, ImplSourceGeneratorData,
@@ -55,67 +51,67 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match candidate {
             BuiltinCandidate { has_nested } => {
                 let data = self.confirm_builtin_candidate(obligation, has_nested);
-                Ok(ImplSourceBuiltin(data))
+                Ok(ImplSource::Builtin(data))
             }
 
             ParamCandidate(param) => {
                 let obligations = self.confirm_param_candidate(obligation, param);
-                Ok(ImplSourceParam(obligations))
+                Ok(ImplSource::Param(obligations))
             }
 
             ImplCandidate(impl_def_id) => {
-                Ok(ImplSourceUserDefined(self.confirm_impl_candidate(obligation, impl_def_id)))
+                Ok(ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id)))
             }
 
             AutoImplCandidate(trait_def_id) => {
                 let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
-                Ok(ImplSourceAutoImpl(data))
+                Ok(ImplSource::AutoImpl(data))
             }
 
             ProjectionCandidate => {
                 self.confirm_projection_candidate(obligation);
-                Ok(ImplSourceParam(Vec::new()))
+                Ok(ImplSource::Param(Vec::new()))
             }
 
             ClosureCandidate => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
-                Ok(ImplSourceClosure(vtable_closure))
+                Ok(ImplSource::Closure(vtable_closure))
             }
 
             GeneratorCandidate => {
                 let vtable_generator = self.confirm_generator_candidate(obligation)?;
-                Ok(ImplSourceGenerator(vtable_generator))
+                Ok(ImplSource::Generator(vtable_generator))
             }
 
             FnPointerCandidate => {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
-                Ok(ImplSourceFnPointer(data))
+                Ok(ImplSource::FnPointer(data))
             }
 
             DiscriminantKindCandidate => {
-                Ok(ImplSourceDiscriminantKind(ImplSourceDiscriminantKindData))
+                Ok(ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData))
             }
 
             TraitAliasCandidate(alias_def_id) => {
                 let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
-                Ok(ImplSourceTraitAlias(data))
+                Ok(ImplSource::TraitAlias(data))
             }
 
             ObjectCandidate => {
                 let data = self.confirm_object_candidate(obligation);
-                Ok(ImplSourceObject(data))
+                Ok(ImplSource::Object(data))
             }
 
             BuiltinObjectCandidate => {
                 // This indicates something like `Trait + Send: Send`. In this case, we know that
                 // this holds because that's what the object type is telling us, and there's really
                 // no additional obligations to prove and no types in particular to unify, etc.
-                Ok(ImplSourceParam(Vec::new()))
+                Ok(ImplSource::Param(Vec::new()))
             }
 
             BuiltinUnsizeCandidate => {
                 let data = self.confirm_builtin_unsize_candidate(obligation)?;
-                Ok(ImplSourceBuiltin(data))
+                Ok(ImplSource::Builtin(data))
             }
         }
     }
