@@ -40,7 +40,7 @@ fn check_version(config: &Config) -> Option<String> {
         }
     } else {
         msg.push_str("warning: x.py has made several changes recently you may want to look at\n");
-        format!("add `changelog-seen = {}` to `config.toml`", VERSION)
+        format!("add `changelog-seen = {}` at the top of `config.toml`", VERSION)
     };
 
     msg.push_str("help: consider looking at the changes in `src/bootstrap/CHANGELOG.md`\n");
