@@ -192,7 +192,7 @@ install!((self, builder, _config),
         builder.ensure(dist::Docs { host: self.target });
         install_docs(builder, self.compiler.stage, self.target);
     };
-    Std, "library/std", true, only_hosts: true, {
+    Std, "library/std", true, only_hosts: false, {
         for target in &builder.targets {
             builder.ensure(dist::Std {
                 compiler: self.compiler,
