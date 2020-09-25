@@ -88,6 +88,11 @@ impl PkgType {
             PkgType::Other(_) => true,
         }
     }
+
+    /// Whether this package is target-independent or not.
+    fn target_independent(&self) -> bool {
+        *self == PkgType::RustSrc
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -198,15 +203,15 @@ impl Versions {
         package: &PkgType,
         target: &str,
     ) -> Result<String, Error> {
-        Ok(format!(
-            "{}-{}-{}.tar.gz",
-            package.tarball_component_name(),
-            self.package_version(package).with_context(|| format!(
-                "failed to get the package version for component {:?}",
-                package,
-            ))?,
-            target
-        ))
+        let component_name = package.tarball_component_name();
+        let version = self.package_version(package).with_context(|| {
+            format!("failed to get the package version for component {:?}", package,)
+        })?;
+        if package.target_independent() {
+            Ok(format!("{}-{}.tar.gz", component_name, version))
+        } else {
+            Ok(format!("{}-{}-{}.tar.gz", component_name, version, target))
+        }
     }
 
     pub(crate) fn package_version(&mut self, package: &PkgType) -> Result<String, Error> {
