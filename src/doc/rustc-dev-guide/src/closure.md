@@ -5,7 +5,7 @@ effectively "desugared" into structs that contain the values they use (or
 references to the values they use) from their creator's stack frame. rustc has
 the job of figuring out which values a closure uses and how, so it can decide
 whether to capture a given variable by shared reference, mutable reference, or
-by move. rustc also has to figure out which the closure traits ([`Fn`][fn],
+by move. rustc also has to figure out which of the closure traits ([`Fn`][fn],
 [`FnMut`][fn_mut], or [`FnOnce`][fn_once]) a closure is capable of
 implementing.
 
@@ -120,7 +120,7 @@ for this purpose.
 
 [upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/queries/struct.upvars_mentioned.html
 
-Other than lazy invocation, one other thing that the distinguishes a closure from a
+Other than lazy invocation, one other thing that distinguishes a closure from a
 normal function is that it can use the upvars. It borrows these upvars from its surrounding
 context; therefore the compiler has to determine the upvar's borrow type. The compiler starts with
 assigning an immutable borrow type and lowers the restriction (that is, changes it from
@@ -189,7 +189,7 @@ can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, it can be
 [mir_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html
 
 `Delegate` defines a few different methods (the different callbacks):
-**consume**: for *move* of a variable, **borrow** for a *borrow* of some kind
+**consume** for *move* of a variable, **borrow** for a *borrow* of some kind
 (shared or mutable), and **mutate** when we see an *assignment* of something.
 
 All of these callbacks have a common argument *cmt* which stands for Category,

@@ -78,7 +78,7 @@ something like this:
 You can see the exact dependencies by reading the `Cargo.toml` for the various
 crates, just like a normal Rust crate.
 
-One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM
+One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM.
 During bootstrapping, LLVM is built and the [`src/librustc_llvm`] and
 [`src/rustllvm`] crates contain rust wrappers around LLVM (which is written in
 C++), so that the compiler can interface with it.
