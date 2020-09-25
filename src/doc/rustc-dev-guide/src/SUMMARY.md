@@ -31,7 +31,7 @@
 
 - [Introduction](./contributing.md)
 - [About the compiler team](./compiler-team.md)
-- [Using git](./git.md)
+- [Using Git](./git.md)
 - [Mastering @rustbot](./rustbot.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [Bug Fix Procedure](./bug-fix-procedure.md)
