@@ -9,6 +9,17 @@ macro_rules! define_pointer_vector {
         #[repr(C)]
         pub struct $name<T>($underlying, PhantomData<T>);
 
+        impl<T> core::fmt::Debug for $name<T> {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                crate::fmt::format(self.as_ref(), f)
+            }
+        }
+        impl<T> core::fmt::Pointer for $name<T> {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                crate::fmt::format_pointer(self.as_ref(), f)
+            }
+        }
+
         impl<T> Copy for $name<T> {}
 
         impl<T> Clone for $name<T> {
@@ -39,8 +50,6 @@ macro_rules! define_pointer_vector {
                 self.0.cmp(&other.0)
             }
         }
-
-        call_counting_values! { $lanes => define_pointer_vector => debug $name | *$mut T | }
 
         impl<T> $name<T> {
             /// Construct a vector by setting all lanes to the given value.
@@ -97,18 +106,6 @@ macro_rules! define_pointer_vector {
             Self(<$underlying>::new($($var as isize),*), PhantomData)
         }
     };
-    { debug $name:ident | $type:ty | $($index:tt)* } => {
-        impl<T> core::fmt::Debug for $name<T> {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                crate::fmt::format(self.as_ref(), f)
-            }
-        }
-        impl<T> core::fmt::Pointer for $name<T> {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                crate::fmt::format_pointer(self.as_ref(), f)
-            }
-        }
-    }
 }
 
 define_pointer_vector! { #[doc = "Vector of two mutable pointers"] mptrx2 => isizex2 => 2, mut }

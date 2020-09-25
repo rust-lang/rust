@@ -135,57 +135,6 @@ macro_rules! call_counting_args {
     };
 }
 
-/// Calls the macro `$mac` with the specified `$args` followed by counting values from 0 to the
-/// specified value.
-macro_rules! call_counting_values {
-    { 1 => $mac:path => $($args:tt)* } => {
-        $mac! {
-            $($args)*
-            0
-        }
-    };
-    { 2 => $mac:path => $($args:tt)* } => {
-        $mac! {
-            $($args)*
-            0 1
-        }
-    };
-    { 4 => $mac:path => $($args:tt)* } => {
-        $mac! {
-            $($args)*
-            0 1 2 3
-        }
-    };
-    { 8 => $mac:path => $($args:tt)* } => {
-        $mac! {
-            $($args)*
-            0 1 2 3 4 5 6 7
-        }
-    };
-    { 16 => $mac:path => $($args:tt)* } => {
-        $mac! {
-            $($args)*
-            0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-        }
-    };
-    { 32 => $mac:path => $($args:tt)* } => {
-        $mac! {
-            $($args)*
-            0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
-            16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
-        }
-    };
-    { 64 => $mac:path => $($args:tt)* } => {
-        $mac! {
-            $($args)*
-            0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
-            16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
-            32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47
-            48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63
-        }
-    };
-}
-
 /// Implements common traits on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! base_vector_traits {
     { $name:path => [$type:ty; $lanes:literal] } => {
