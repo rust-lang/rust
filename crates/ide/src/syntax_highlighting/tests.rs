@@ -18,7 +18,7 @@ pub mod marker {
     pub trait Copy {}
 }
 
-#[derive(Clone, Debug)]
+
 struct Foo {
     pub x: i32,
     pub y: i32,
@@ -48,7 +48,7 @@ impl Foo {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy)]
 struct FooCopy {
     x: u32,
 }
@@ -118,7 +118,7 @@ fn main() {
     y;
 
     let mut foo = Foo { x, y: x };
-    let foo2 = foo.clone();
+    let foo2 = Foo { x, y: x };
     foo.quop();
     foo.qux();
     foo.baz(foo2);
