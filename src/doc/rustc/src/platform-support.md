@@ -57,7 +57,7 @@ Specifically, these platforms are required to have each of the following:
 
 target | std | host | notes
 -------|-----|------|-------
-`aarch64-apple-ios` | ✓[^apple] |  | ARM64 iOS
+`aarch64-apple-ios` | ✓ |  | ARM64 iOS
 `aarch64-fuchsia` | ✓ |  | ARM64 Fuchsia
 `aarch64-linux-android` | ✓ |  | ARM64 Android
 `aarch64-pc-windows-msvc` | ✓ |  | ARM64 Windows MSVC
@@ -122,7 +122,7 @@ target | std | host | notes
 `wasm32-unknown-emscripten` | ✓ |  | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ |  | WebAssembly
 `wasm32-wasi` | ✓ |  | WebAssembly with WASI
-`x86_64-apple-ios` | ✓[^apple] |  | 64-bit x86 iOS
+`x86_64-apple-ios` | ✓ |  | 64-bit x86 iOS
 `x86_64-fortanix-unknown-sgx` | ✓ |  | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ |  | 64-bit Fuchsia
 `x86_64-linux-android` | ✓ |  | 64-bit x86 Android
@@ -146,7 +146,7 @@ not available.
 target | std | host | notes
 -------|-----|------|-------
 `aarch64-apple-darwin` | ? |  | ARM64 macOS
-`aarch64-apple-tvos` | *[^apple] |  | ARM64 tvOS
+`aarch64-apple-tvos` | * |  | ARM64 tvOS
 `aarch64-unknown-cloudabi` | ✓ |  | ARM64 CloudABI
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ? |  |
@@ -158,16 +158,16 @@ target | std | host | notes
 `armv4t-unknown-linux-gnueabi` | ? |  |
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 `armv6-unknown-netbsd-eabihf` | ? |  |
-`armv7-apple-ios` | ✓[^apple] |  | ARMv7 iOS, Cortex-a8
+`armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8
 `armv7-unknown-cloudabi-eabihf` | ✓ |  | ARMv7 CloudABI, hardfloat
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7 FreeBSD
 `armv7-unknown-netbsd-eabihf` | ? |  |
 `armv7-wrs-vxworks-eabihf` | ? |  |
 `armv7a-none-eabihf` | * | | ARM Cortex-A, hardfloat
-`armv7s-apple-ios` | ✓[^apple] |  |
+`armv7s-apple-ios` | ✓ |  |
 `avr-unknown-gnu-atmega328` | ✗ |  | AVR. Requires `-Z build-std=core`
 `hexagon-unknown-linux-musl` | ? |  |
-`i386-apple-ios` | ✓[^apple] |  | 32-bit x86 iOS
+`i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 `i686-apple-darwin` | ✓ | ✓ | 32-bit OSX (10.7+, Lion+)
 `i686-pc-windows-msvc` | ✓ |  | 32-bit Windows XP support
 `i686-unknown-cloudabi` | ✓ |  | 32-bit CloudABI
@@ -203,8 +203,8 @@ target | std | host | notes
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7a Linux with NEON, MUSL
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
-`x86_64-apple-ios-macabi` | ✓[^apple] |  | Apple Catalyst
-`x86_64-apple-tvos` | *[^apple] | | x86 64-bit tvOS
+`x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst
+`x86_64-apple-tvos` | * | | x86 64-bit tvOS
 `x86_64-linux-kernel` | * |  | Linux kernel modules
 `x86_64-pc-solaris` | ? |  |
 `x86_64-pc-windows-msvc` | ✓ |  | 64-bit Windows XP support
@@ -221,4 +221,3 @@ target | std | host | notes
 `x86_64-wrs-vxworks` | ? |  |
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets
-[^apple]: These targets are only available on macOS.
