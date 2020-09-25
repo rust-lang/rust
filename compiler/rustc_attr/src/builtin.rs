@@ -1022,14 +1022,21 @@ pub fn find_transparency(
 
 pub fn allow_internal_unstable<'a>(
     sess: &'a Session,
-    attrs: &[Attribute],
+    attrs: &'a [Attribute],
 ) -> Option<impl Iterator<Item = Symbol> + 'a> {
-    let attr = sess.find_by_name(attrs, sym::allow_internal_unstable)?;
-    let list = attr.meta_item_list().or_else(|| {
-        sess.diagnostic()
-            .span_err(attr.span, "allow_internal_unstable expects list of feature names");
-        None
-    })?;
+    let attrs = sess.filter_by_name(attrs, sym::allow_internal_unstable);
+    let list = attrs
+        .filter_map(move |attr| {
+            attr.meta_item_list().or_else(|| {
+                sess.diagnostic().span_err(
+                    attr.span,
+                    "`allow_internal_unstable` expects a list of feature names",
+                );
+                None
+            })
+        })
+        .flatten();
+
     Some(list.into_iter().filter_map(move |it| {
         let name = it.ident().map(|ident| ident.name);
         if name.is_none() {
