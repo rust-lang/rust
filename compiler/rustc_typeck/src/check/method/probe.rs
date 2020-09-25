@@ -1306,7 +1306,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .at(&ObligationCause::dummy(), self.param_env)
                     .sup(candidate.xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
-                    Ok(Some(traits::ImplSource::ImplSourceUserDefined(ref impl_data))) => {
+                    Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
                         ImplSource(impl_data.impl_def_id)
