@@ -73,6 +73,8 @@ pub struct Config {
     pub keep_stage: Vec<u32>,
     pub keep_stage_std: Vec<u32>,
     pub src: PathBuf,
+    // defaults to `config.toml`
+    pub config: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
@@ -513,6 +515,7 @@ impl Config {
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.deny_warnings = true;
         config.missing_tools = false;
+        config.config = PathBuf::from("config.toml");
 
         // set by bootstrap.py
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
@@ -558,7 +561,7 @@ impl Config {
         let get_toml = |file: PathBuf| {
             use std::process;
 
-            let contents = t!(fs::read_to_string(&file), "configuration file did not exist");
+            let contents = t!(fs::read_to_string(&file), "`include` config not found");
             match toml::from_str(&contents) {
                 Ok(table) => table,
                 Err(err) => {
@@ -644,6 +647,7 @@ impl Config {
             | Subcommand::Clippy { .. }
             | Subcommand::Fix { .. }
             | Subcommand::Run { .. }
+            | Subcommand::Setup { .. }
             | Subcommand::Format { .. } => flags.stage.unwrap_or(0),
         };
 
@@ -668,6 +672,7 @@ impl Config {
                 | Subcommand::Clippy { .. }
                 | Subcommand::Fix { .. }
                 | Subcommand::Run { .. }
+                | Subcommand::Setup { .. }
                 | Subcommand::Format { .. } => {}
             }
         }
