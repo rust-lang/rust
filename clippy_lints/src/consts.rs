@@ -21,7 +21,7 @@ pub enum Constant {
     /// A `String` (e.g., "abc").
     Str(String),
     /// A binary string (e.g., `b"abc"`).
-    Binary(Lrc<Vec<u8>>),
+    Binary(Lrc<[u8]>),
     /// A single `char` (e.g., `'a'`).
     Char(char),
     /// An integer's bit representation.
@@ -155,7 +155,7 @@ pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
-        LitKind::ByteStr(ref s) => Constant::Binary(Lrc::clone(s)),
+        LitKind::ByteStr(ref s) => Constant::Binary(Lrc::from(s.as_slice())),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {

@@ -2,6 +2,7 @@
 #![warn(clippy::unnecessary_lazy_evaluations)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::bind_instead_of_map)]
+#![allow(clippy::map_identity)]
 
 struct Deep(Option<usize>);
 
@@ -40,7 +41,7 @@ fn main() {
     let _ = opt.or_else(|| None);
     let _ = opt.get_or_insert_with(|| 2);
     let _ = opt.ok_or_else(|| 2);
-    let _ = opt.ok_or_else(|| ext_arr[0]);
+    let _ = nested_tuple_opt.unwrap_or_else(|| Some((1, 2)));
 
     // Cases when unwrap is not called on a simple variable
     let _ = Some(10).unwrap_or_else(|| 2);
@@ -60,7 +61,6 @@ fn main() {
     // Should not lint - Option
     let _ = opt.unwrap_or_else(|| ext_str.return_some_field());
     let _ = nested_opt.unwrap_or_else(|| Some(some_call()));
-    let _ = nested_tuple_opt.unwrap_or_else(|| Some((1, 2)));
     let _ = nested_tuple_opt.unwrap_or_else(|| Some((some_call(), some_call())));
     let _ = opt.or_else(some_call);
     let _ = opt.or_else(|| some_call());
@@ -69,10 +69,13 @@ fn main() {
     let _ = deep.0.get_or_insert_with(|| some_call());
     let _ = deep.0.or_else(some_call);
     let _ = deep.0.or_else(|| some_call());
+    let _ = opt.ok_or_else(|| ext_arr[0]);
 
-    // These are handled by bind_instead_of_map
+    // should not lint, bind_instead_of_map takes priority
     let _ = Some(10).and_then(|idx| Some(ext_arr[idx]));
     let _ = Some(10).and_then(|idx| Some(idx));
+
+    // should lint, bind_instead_of_map doesn't apply
     let _: Option<usize> = None.or_else(|| Some(3));
     let _ = deep.0.or_else(|| Some(3));
     let _ = opt.or_else(|| Some(3));
@@ -92,17 +95,19 @@ fn main() {
     let _ = res2.unwrap_or_else(|err| err.return_some_field());
     let _ = res2.unwrap_or_else(|_| ext_str.return_some_field());
 
+    // should not lint, bind_instead_of_map takes priority
     let _: Result<usize, usize> = res.and_then(|x| Ok(x));
-    let _: Result<usize, usize> = res.and_then(|x| Err(x));
-
-    let _: Result<usize, usize> = res.or_else(|err| Ok(err));
     let _: Result<usize, usize> = res.or_else(|err| Err(err));
 
-    // These are handled by bind_instead_of_map
     let _: Result<usize, usize> = res.and_then(|_| Ok(2));
     let _: Result<usize, usize> = res.and_then(|_| Ok(astronomers_pi));
     let _: Result<usize, usize> = res.and_then(|_| Ok(ext_str.some_field));
 
+    let _: Result<usize, usize> = res.or_else(|_| Err(2));
+    let _: Result<usize, usize> = res.or_else(|_| Err(astronomers_pi));
+    let _: Result<usize, usize> = res.or_else(|_| Err(ext_str.some_field));
+
+    // should lint, bind_instead_of_map doesn't apply
     let _: Result<usize, usize> = res.and_then(|_| Err(2));
     let _: Result<usize, usize> = res.and_then(|_| Err(astronomers_pi));
     let _: Result<usize, usize> = res.and_then(|_| Err(ext_str.some_field));
@@ -111,7 +116,7 @@ fn main() {
     let _: Result<usize, usize> = res.or_else(|_| Ok(astronomers_pi));
     let _: Result<usize, usize> = res.or_else(|_| Ok(ext_str.some_field));
 
-    let _: Result<usize, usize> = res.or_else(|_| Err(2));
-    let _: Result<usize, usize> = res.or_else(|_| Err(astronomers_pi));
-    let _: Result<usize, usize> = res.or_else(|_| Err(ext_str.some_field));
+    // neither bind_instead_of_map nor unnecessary_lazy_eval applies here
+    let _: Result<usize, usize> = res.and_then(|x| Err(x));
+    let _: Result<usize, usize> = res.or_else(|err| Ok(err));
 }

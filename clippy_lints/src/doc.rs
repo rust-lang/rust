@@ -534,7 +534,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
             return false;
         }
 
-        let s = if s.ends_with('s') { &s[..s.len() - 1] } else { s };
+        let s = s.strip_suffix('s').unwrap_or(s);
 
         s.chars().all(char::is_alphanumeric)
             && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1

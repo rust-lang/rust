@@ -240,10 +240,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                         );
                         let mut app = Applicability::MaybeIncorrect;
 
-                        let mut call_snip = &snip[dot + 1..];
+                        let call_snip = &snip[dot + 1..];
                         // Machine applicable when `call_snip` looks like `foobar()`
-                        if call_snip.ends_with("()") {
-                            call_snip = call_snip[..call_snip.len()-2].trim();
+                        if let Some(call_snip) = call_snip.strip_suffix("()").map(str::trim) {
                             if call_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
                                 app = Applicability::MachineApplicable;
                             }

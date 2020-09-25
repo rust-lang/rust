@@ -1,4 +1,4 @@
-use crate::utils::{is_type_diagnostic_item, method_chain_args, return_ty, span_lint_and_then, walk_ptrs_ty};
+use crate::utils::{is_type_diagnostic_item, method_chain_args, return_ty, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -81,7 +81,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // check for `expect`
         if let Some(arglists) = method_chain_args(expr, &["expect"]) {
-            let reciever_ty = walk_ptrs_ty(self.typeck_results.expr_ty(&arglists[0][0]));
+            let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
             if is_type_diagnostic_item(self.lcx, reciever_ty, sym!(option_type))
                 || is_type_diagnostic_item(self.lcx, reciever_ty, sym!(result_type))
             {
@@ -91,7 +91,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
 
         // check for `unwrap`
         if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-            let reciever_ty = walk_ptrs_ty(self.typeck_results.expr_ty(&arglists[0][0]));
+            let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
             if is_type_diagnostic_item(self.lcx, reciever_ty, sym!(option_type))
                 || is_type_diagnostic_item(self.lcx, reciever_ty, sym!(result_type))
             {

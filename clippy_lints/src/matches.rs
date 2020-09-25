@@ -6,7 +6,7 @@ use crate::utils::{
     expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
     is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet,
     snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then, walk_ptrs_ty,
+    span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -502,7 +502,7 @@ impl_lint_pass!(Matches => [
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span) || in_macro(expr.span) {
             return;
         }
 
@@ -794,7 +794,7 @@ fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms
 }
 
 fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    let ex_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(ex));
+    let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
     if is_type_diagnostic_item(cx, ex_ty, sym!(result_type)) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {

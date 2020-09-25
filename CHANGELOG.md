@@ -1672,10 +1672,12 @@ Released 2018-09-13
 [`manual_memcpy`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_memcpy
 [`manual_non_exhaustive`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive
 [`manual_saturating_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_saturating_arithmetic
+[`manual_strip`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_strip
 [`manual_swap`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_swap
 [`many_single_char_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#many_single_char_names
 [`map_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_clone
 [`map_entry`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_entry
+[`map_err_ignore`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_err_ignore
 [`map_flatten`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_flatten
 [`map_identity`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_identity
 [`map_unwrap_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_unwrap_or
@@ -1755,6 +1757,7 @@ Released 2018-09-13
 [`out_of_bounds_indexing`]: https://rust-lang.github.io/rust-clippy/master/index.html#out_of_bounds_indexing
 [`overflow_check_conditional`]: https://rust-lang.github.io/rust-clippy/master/index.html#overflow_check_conditional
 [`panic`]: https://rust-lang.github.io/rust-clippy/master/index.html#panic
+[`panic_in_result_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
 [`panic_params`]: https://rust-lang.github.io/rust-clippy/master/index.html#panic_params
 [`panicking_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#panicking_unwrap
 [`partialeq_ne_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_ne_impl
@@ -1774,6 +1777,7 @@ Released 2018-09-13
 [`range_plus_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_plus_one
 [`range_step_by_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_step_by_zero
 [`range_zip_with_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_zip_with_len
+[`rc_buffer`]: https://rust-lang.github.io/rust-clippy/master/index.html#rc_buffer
 [`redundant_allocation`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation
 [`redundant_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_clone
 [`redundant_closure`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
