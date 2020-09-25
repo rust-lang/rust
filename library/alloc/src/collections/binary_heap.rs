@@ -30,7 +30,7 @@
 //! // Explicitly implement the trait so the queue becomes a min-heap
 //! // instead of a max-heap.
 //! impl Ord for State {
-//!     fn cmp(&self, other: &State) -> Ordering {
+//!     fn cmp(&self, other: &Self) -> Ordering {
 //!         // Notice that the we flip the ordering on costs.
 //!         // In case of a tie we compare positions - this step is necessary
 //!         // to make implementations of `PartialEq` and `Ord` consistent.
@@ -41,7 +41,7 @@
 //!
 //! // `PartialOrd` needs to be implemented as well.
 //! impl PartialOrd for State {
-//!     fn partial_cmp(&self, other: &State) -> Option<Ordering> {
+//!     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 //!         Some(self.cmp(other))
 //!     }
 //! }

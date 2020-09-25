@@ -643,9 +643,9 @@ macro_rules! impls {
 /// }
 ///
 /// impl<R: ResType> ExternalResource<R> {
-///     fn new() -> ExternalResource<R> {
+///     fn new() -> Self {
 ///         let size_of_res = mem::size_of::<R>();
-///         ExternalResource {
+///         Self {
 ///             resource_handle: foreign_lib::new(size_of_res),
 ///             resource_type: PhantomData,
 ///         }
