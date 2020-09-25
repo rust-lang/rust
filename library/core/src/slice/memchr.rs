@@ -46,11 +46,17 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     // - body, scan by 2 words at a time
     // - the last remaining part, < 2 word size
     let len = text.len();
-    let ptr = text.as_ptr();
     let usize_bytes = mem::size_of::<usize>();
 
+    // Fast path for small slices
+    if len < 2 * usize_bytes {
+        return text.iter().position(|elt| *elt == x);
+    }
+
     // search up to an aligned boundary
+    let ptr = text.as_ptr();
     let mut offset = ptr.align_offset(usize_bytes);
+
     if offset > 0 {
         offset = cmp::min(offset, len);
         if let Some(index) = text[..offset].iter().position(|elt| *elt == x) {
@@ -60,22 +66,19 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
 
     // search the body of the text
     let repeated_x = repeat_byte(x);
+    while offset <= len - 2 * usize_bytes {
+        unsafe {
+            let u = *(ptr.add(offset) as *const usize);
+            let v = *(ptr.add(offset + usize_bytes) as *const usize);
 
-    if len >= 2 * usize_bytes {
-        while offset <= len - 2 * usize_bytes {
-            unsafe {
-                let u = *(ptr.add(offset) as *const usize);
-                let v = *(ptr.add(offset + usize_bytes) as *const usize);
-
-                // break if there is a matching byte
-                let zu = contains_zero_byte(u ^ repeated_x);
-                let zv = contains_zero_byte(v ^ repeated_x);
-                if zu || zv {
-                    break;
-                }
+            // break if there is a matching byte
+            let zu = contains_zero_byte(u ^ repeated_x);
+            let zv = contains_zero_byte(v ^ repeated_x);
+            if zu || zv {
+                break;
             }
-            offset += usize_bytes * 2;
         }
+        offset += usize_bytes * 2;
     }
 
     // Find the byte after the point the body loop stopped.
