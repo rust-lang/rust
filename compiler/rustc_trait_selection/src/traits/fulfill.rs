@@ -305,8 +305,34 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             return ProcessResult::Unchanged;
         }
 
-        // This part of the code is much colder.
+        self.progress_changed_obligations(pending_obligation)
+    }
 
+    fn process_backedge<'c, I>(
+        &mut self,
+        cycle: I,
+        _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
+    ) where
+        I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
+    {
+        if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
+            debug!("process_child_obligations: coinductive match");
+        } else {
+            let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
+            self.selcx.infcx().report_overflow_error_cycle(&cycle);
+        }
+    }
+}
+
+impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
+    // The code calling this method is extremely hot and only rarely
+    // actually uses this, so move this part of the code
+    // out of that loop.
+    #[inline(never)]
+    fn progress_changed_obligations(
+        &mut self,
+        pending_obligation: &mut PendingPredicateObligation<'tcx>,
+    ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         pending_obligation.stalled_on.truncate(0);
 
         let obligation = &mut pending_obligation.obligation;
@@ -565,23 +591,6 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
     }
 
-    fn process_backedge<'c, I>(
-        &mut self,
-        cycle: I,
-        _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
-    ) where
-        I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
-    {
-        if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
-            debug!("process_child_obligations: coinductive match");
-        } else {
-            let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
-            self.selcx.infcx().report_overflow_error_cycle(&cycle);
-        }
-    }
-}
-
-impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     fn process_trait_obligation(
         &mut self,
         obligation: &PredicateObligation<'tcx>,
