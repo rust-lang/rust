@@ -183,10 +183,10 @@ The callbacks are defined by implementing the [`Delegate`] trait. The
 [`InferBorrowKind`][ibk] type implements `Delegate` and keeps a map that
 records for each upvar which mode of borrow was required. The modes of borrow
 can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, it can be
-`shared`, `shallow`, `unique` or `mut` as defined in the
-[`compiler/rustc_middle/src/mir/mod.rs`][mir_mod].
+`ImmBorrow`, `UniqueImmBorrow`, `MutBorrow` as defined in the
+[`compiler/rustc_middle/src/ty/mod.rs`][middle_ty].
 
-[mir_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html
+[middle_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
 
 `Delegate` defines a few different methods (the different callbacks):
 **consume** for *move* of a variable, **borrow** for a *borrow* of some kind
