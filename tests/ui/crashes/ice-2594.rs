@@ -1,5 +1,3 @@
-// run-pass
-
 #![allow(dead_code, unused_variables)]
 
 /// Should not trigger an ICE in `SpanlessHash` / `consts::constant`
