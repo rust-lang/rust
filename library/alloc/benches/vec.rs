@@ -221,6 +221,20 @@ fn bench_extend_1000_1000(b: &mut Bencher) {
     do_bench_extend(b, 1000, 1000)
 }
 
+#[bench]
+fn bench_extend_recycle(b: &mut Bencher) {
+    let mut data = vec![0; 1000];
+
+    b.iter(|| {
+        let tmp = std::mem::take(&mut data);
+        let mut to_extend = black_box(Vec::new());
+        to_extend.extend(tmp.into_iter());
+        data = black_box(to_extend);
+    });
+
+    black_box(data);
+}
+
 fn do_bench_extend_from_slice(b: &mut Bencher, dst_len: usize, src_len: usize) {
     let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
     let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
@@ -234,20 +248,6 @@ fn do_bench_extend_from_slice(b: &mut Bencher, dst_len: usize, src_len: usize) {
         assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         dst
     });
-}
-
-#[bench]
-fn bench_extend_recycle(b: &mut Bencher) {
-    let mut data = vec![0; 1000];
-
-    b.iter(|| {
-        let tmp = std::mem::take(&mut data);
-        let mut to_extend = black_box(Vec::new());
-        to_extend.extend(tmp.into_iter());
-        data = black_box(to_extend);
-    });
-
-    black_box(data);
 }
 
 #[bench]
