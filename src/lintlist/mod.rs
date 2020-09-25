@@ -384,7 +384,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "disallowed_method",
         group: "nursery",
-        desc: "used disallowed method call",
+        desc: "use of a disallowed method call",
         deprecation: None,
         module: "disallowed_method",
     },
