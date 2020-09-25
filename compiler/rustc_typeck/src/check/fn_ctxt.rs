@@ -143,6 +143,10 @@ pub struct FnCtxt<'a, 'tcx> {
     /// the diverges flag is set to something other than `Maybe`.
     pub(super) diverges: Cell<Diverges>,
 
+    /// This keeps track of the dead nodes. We use this to determine
+    /// if there are live nodes with the diverging fallback for linting.
+    pub(super) dead_nodes: RefCell<FxHashSet<hir::HirId>>,
+
     /// Whether any child nodes have any type errors.
     pub(super) has_errors: Cell<bool>,
 
@@ -175,6 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 by_id: Default::default(),
             }),
             inh,
+            dead_nodes: RefCell::new(FxHashSet::default()),
         }
     }
 

@@ -2494,6 +2494,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    //TODO: Add explanation.
+    pub FALL_BACK_TO_NEVER_TYPE,
+    Deny,
+    "Unresolved variable might fall back to never_type `!`"
+}
+
+declare_lint! {
     /// The `unsafe_op_in_unsafe_fn` lint detects unsafe operations in unsafe
     /// functions without an explicit unsafe block. This lint only works on
     /// the [**nightly channel**] with the
@@ -2680,6 +2687,7 @@ declare_lint_pass! {
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         LATE_BOUND_LIFETIME_ARGUMENTS,
+        FALL_BACK_TO_NEVER_TYPE,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         COHERENCE_LEAK_CHECK,
         DEPRECATED,
