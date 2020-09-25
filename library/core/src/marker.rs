@@ -391,6 +391,21 @@ pub macro Copy($item:item) {
     /* compiler built-in */
 }
 
+/// Types that are `Copy` but which require `.clone()` for copying,
+/// in order to indicate that some state is being duplicated, such
+/// as iterators (where implicit copies may appear misleading).
+///
+/// This doesn't propagate to aggregate types containing `MustClone`
+/// fields, unless they themselves also implement `MustClone`.
+/// Generics are also not affected, i.e. a `MustClone` type can still
+/// be used with a generic expecting a type that implements `Copy`.
+#[unstable(feature = "must_clone", issue = "none")]
+#[lang = "must_clone"]
+#[cfg(not(bootstrap))]
+pub trait MustClone: Copy {
+    // Empty.
+}
+
 /// Types for which it is safe to share references between threads.
 ///
 /// This trait is automatically implemented when the compiler determines

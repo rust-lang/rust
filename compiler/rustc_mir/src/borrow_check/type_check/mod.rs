@@ -2000,6 +2000,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // a required check to make sure that repeated elements implement `Copy`.
                         let span = body.source_info(location).span;
                         let ty = operand.ty(body, tcx);
+                        // FIXME(eddyb) add `|| type_is_must_clone(ty)` (or handle separately).
                         if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
                             let ccx = ConstCx::new_with_param_env(
                                 tcx,

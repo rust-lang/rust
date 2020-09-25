@@ -688,6 +688,21 @@ impl<'tcx> ty::TyS<'tcx> {
         tcx_at.is_copy_raw(param_env.and(self))
     }
 
+    /// Checks whether values of type `T` are discouraged to be copied,
+    /// despite being `Copy` (i.e. whether `T: MustClone`).
+    /// This is only relevant when deciding whether to to forbid/lint
+    /// direct copies of `T`, but *not* e.g. whether a `struct`/`enum`
+    /// with fields of type `T` can implement `Copy`, or whether some
+    /// `Copy`-specific optimization (such as assuming `!needs_drop`)
+    /// can be applied.
+    pub fn is_must_clone(
+        &'tcx self,
+        tcx_at: TyCtxtAt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        tcx_at.is_must_clone_raw(param_env.and(self))
+    }
+
     /// Checks whether values of this type `T` have a size known at
     /// compile time (i.e., whether `T: Sized`). Lifetimes are ignored
     /// for the purposes of this check, so it can be an
@@ -705,7 +720,6 @@ impl<'tcx> ty::TyS<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    // FIXME: use `TyCtxtAt` instead of separate `Span`.
     pub fn is_freeze(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         self.is_trivially_freeze() || tcx_at.is_freeze_raw(param_env.and(self))
     }

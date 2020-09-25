@@ -688,6 +688,7 @@ symbols! {
         mul,
         mul_assign,
         mul_with_overflow,
+        must_clone,
         must_use,
         mut_ptr,
         mut_slice_ptr,

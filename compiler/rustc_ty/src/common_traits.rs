@@ -10,6 +10,10 @@ fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) 
     is_item_raw(tcx, query, LangItem::Copy)
 }
 
+fn is_must_clone_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    is_item_raw(tcx, query, LangItem::MustClone)
+}
+
 fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     is_item_raw(tcx, query, LangItem::Sized)
 }
@@ -37,5 +41,11 @@ fn is_item_raw<'tcx>(
 }
 
 pub(crate) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { is_copy_raw, is_sized_raw, is_freeze_raw, ..*providers };
+    *providers = ty::query::Providers {
+        is_copy_raw,
+        is_must_clone_raw,
+        is_sized_raw,
+        is_freeze_raw,
+        ..*providers
+    };
 }

@@ -23,6 +23,8 @@ pub trait InferCtxtExt<'tcx> {
         span: Span,
     ) -> bool;
 
+    fn type_is_must_clone(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>, span: Span) -> bool;
+
     fn partially_normalize_associated_types_in<T>(
         &self,
         span: Span,
@@ -49,11 +51,33 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
 
         let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, None);
 
-        // This can get called from typeck (by euv), and `moves_by_default`
+        // This can get called from typeck (by euv), and `is_copy_modulo_regions`
         // rightly refuses to work with inference variables, but
-        // moves_by_default has a cache, which we want to use in other
+        // `is_copy_modulo_regions` has a cache, which we want to use in other
         // cases.
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id, span)
+    }
+
+    fn type_is_must_clone(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
+        let ty = self.resolve_vars_if_possible(&ty);
+
+        if !(param_env, ty).needs_infer() {
+            return ty.is_must_clone(self.tcx.at(span), param_env);
+        }
+
+        let must_clone_def_id = self.tcx.require_lang_item(LangItem::MustClone, None);
+
+        // This can get called from typeck (by euv), and `is_must_clone`
+        // rightly refuses to work with inference variables, but
+        // `is_must_clone` has a cache, which we want to use in other
+        // cases.
+        traits::type_known_to_meet_bound_modulo_regions(
+            self,
+            param_env,
+            ty,
+            must_clone_def_id,
+            span,
+        )
     }
 
     /// Normalizes associated types in `value`, potentially returning

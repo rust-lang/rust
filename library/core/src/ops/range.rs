@@ -71,7 +71,8 @@ impl fmt::Debug for RangeFull {
 /// ```
 #[lang = "Range"]
 #[doc(alias = "..")]
-#[derive(Clone, Default, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(not(bootstrap), derive(Copy))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -81,6 +82,10 @@ pub struct Range<Idx> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub end: Idx,
 }
+
+#[unstable(feature = "must_clone", issue = "none")]
+#[cfg(not(bootstrap))]
+impl<Idx: Copy> crate::marker::MustClone for Range<Idx> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
@@ -174,13 +179,18 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// ```
 #[lang = "RangeFrom"]
 #[doc(alias = "..")]
-#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(not(bootstrap), derive(Copy))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
     #[stable(feature = "rust1", since = "1.0.0")]
     pub start: Idx,
 }
+
+#[unstable(feature = "must_clone", issue = "none")]
+#[cfg(not(bootstrap))]
+impl<Idx: Copy> crate::marker::MustClone for RangeFrom<Idx> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
@@ -324,7 +334,8 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 #[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
-#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(not(bootstrap), derive(Copy))]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     // Note that the fields here are not public to allow changing the
@@ -343,6 +354,10 @@ pub struct RangeInclusive<Idx> {
     // This is required to support PartialEq and Hash without a PartialOrd bound or specialization.
     pub(crate) exhausted: bool,
 }
+
+#[unstable(feature = "must_clone", issue = "none")]
+#[cfg(not(bootstrap))]
+impl<Idx: Copy> crate::marker::MustClone for RangeInclusive<Idx> {}
 
 impl<Idx> RangeInclusive<Idx> {
     /// Creates a new inclusive range. Equivalent to writing `start..=end`.

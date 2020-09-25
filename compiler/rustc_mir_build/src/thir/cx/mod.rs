@@ -201,6 +201,10 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     crate fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
         self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
     }
+
+    crate fn type_is_must_clone(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        self.infcx.type_is_must_clone(self.param_env, ty, span)
+    }
 }
 
 impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {

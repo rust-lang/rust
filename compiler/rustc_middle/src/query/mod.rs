@@ -912,6 +912,10 @@ rustc_queries! {
         query is_copy_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             desc { "computing whether `{}` is `Copy`", env.value }
         }
+        /// Query backing `TyS::is_must_clone`.
+        query is_must_clone_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+            desc { "computing whether `{}` is `MustClone`", env.value }
+        }
         /// Query backing `TyS::is_sized`.
         query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             desc { "computing whether `{}` is `Sized`", env.value }

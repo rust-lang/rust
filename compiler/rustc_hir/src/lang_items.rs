@@ -196,6 +196,7 @@ language_item_table! {
     StructuralTeq,           sym::structural_teq,      structural_teq_trait,       Target::Trait;
     Copy,                    sym::copy,                copy_trait,                 Target::Trait;
     Clone,                   sym::clone,               clone_trait,                Target::Trait;
+    MustClone,               sym::must_clone,          must_clone_trait,           Target::Trait;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait;
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait;
     // The associated item of `trait DiscriminantKind`.

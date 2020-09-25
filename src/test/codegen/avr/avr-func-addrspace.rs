@@ -17,6 +17,8 @@
 pub trait Sized { }
 #[lang = "copy"]
 pub trait Copy { }
+#[lang = "must_clone"]
+pub trait MustClone { }
 #[lang = "receiver"]
 pub trait Receiver { }
 
