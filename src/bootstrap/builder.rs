@@ -549,7 +549,9 @@ impl<'a> Builder<'a> {
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
-            Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
+            Subcommand::Format { .. } | Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
+                panic!()
+            }
         };
 
         Self::new_internal(build, kind, paths.to_owned())
