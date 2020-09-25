@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use std::cell::RefCell;
-use std::panic::{AssertUnwindSafe, UnwindSafe};
-use std::rc::Rc;
-use std::sync::{Arc, Mutex, RwLock};
+use crate::cell::RefCell;
+use crate::panic::{AssertUnwindSafe, UnwindSafe};
+use crate::rc::Rc;
+use crate::sync::{Arc, Mutex, RwLock};
 
 struct Foo {
     a: i32,
@@ -12,7 +12,7 @@ struct Foo {
 fn assert<T: UnwindSafe + ?Sized>() {}
 
 #[test]
-fn test_panic_safety_traits() {
+fn panic_safety_traits() {
     assert::<i32>();
     assert::<&i32>();
     assert::<*mut i32>();

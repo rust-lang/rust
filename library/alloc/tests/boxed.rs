@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 
@@ -52,8 +53,6 @@ fn box_clone_from_ptr_stability() {
 
 #[test]
 fn box_deref_lval() {
-    use std::cell::Cell;
-
     let x = Box::new(Cell::new(5));
     x.set(1000);
     assert_eq!(x.get(), 1000);

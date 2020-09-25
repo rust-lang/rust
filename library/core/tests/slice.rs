@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::result::Result::{Err, Ok};
 
 #[test]
@@ -1983,8 +1984,6 @@ fn test_is_sorted() {
 
 #[test]
 fn test_slice_run_destructors() {
-    use core::cell::Cell;
-
     // Make sure that destructors get run on slice literals
     struct Foo<'a> {
         x: &'a Cell<isize>,

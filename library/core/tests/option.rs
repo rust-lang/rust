@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::clone::Clone;
 use core::mem;
 use core::ops::DerefMut;
@@ -375,8 +376,6 @@ fn option_const() {
 
 #[test]
 fn test_unwrap_drop() {
-    use std::cell::Cell;
-
     struct Dtor<'a> {
         x: &'a Cell<isize>,
     }

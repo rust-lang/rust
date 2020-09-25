@@ -1,5 +1,4 @@
 #![deny(warnings)]
-#![allow(unused_must_use)]
 
 use std::cell::RefCell;
 use std::fmt::{self, Write};
@@ -241,15 +240,15 @@ fn test_format_macro_interface() {
 #[test]
 fn test_write() {
     let mut buf = String::new();
-    write!(&mut buf, "{}", 3);
+    let _ = write!(&mut buf, "{}", 3);
     {
         let w = &mut buf;
-        write!(w, "{foo}", foo = 4);
-        write!(w, "{}", "hello");
-        writeln!(w, "{}", "line");
-        writeln!(w, "{foo}", foo = "bar");
-        w.write_char('☃');
-        w.write_str("str");
+        let _ = write!(w, "{foo}", foo = 4);
+        let _ = write!(w, "{}", "hello");
+        let _ = writeln!(w, "{}", "line");
+        let _ = writeln!(w, "{foo}", foo = "bar");
+        let _ = w.write_char('☃');
+        let _ = w.write_str("str");
     }
 
     t!(buf, "34helloline\nbar\n☃str");
@@ -273,9 +272,9 @@ fn test_format_args() {
     let mut buf = String::new();
     {
         let w = &mut buf;
-        write!(w, "{}", format_args!("{}", 1));
-        write!(w, "{}", format_args!("test"));
-        write!(w, "{}", format_args!("{test}", test = 3));
+        let _ = write!(w, "{}", format_args!("{}", 1));
+        let _ = write!(w, "{}", format_args!("test"));
+        let _ = write!(w, "{}", format_args!("{test}", test = 3));
     }
     let s = buf;
     t!(s, "1test3");
