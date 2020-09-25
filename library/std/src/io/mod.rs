@@ -285,7 +285,6 @@ mod buffered;
 mod cursor;
 mod error;
 mod impls;
-mod lazy;
 pub mod prelude;
 mod stdio;
 mod util;
