@@ -141,6 +141,7 @@ mod metadata;
 mod native;
 mod run;
 mod sanity;
+mod setup;
 mod test;
 mod tool;
 mod toolstate;
@@ -165,7 +166,7 @@ mod job {
 
 use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
-use crate::flags::Subcommand;
+pub use crate::flags::Subcommand;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-nm", // used to inspect binaries; it shows symbol names, their sizes and visibility
@@ -468,6 +469,10 @@ impl Build {
 
         if let Subcommand::Clean { all } = self.config.cmd {
             return clean::clean(self, all);
+        }
+
+        if let Subcommand::Setup { path: include_name } = &self.config.cmd {
+            return setup::setup(&self.config.src, include_name);
         }
 
         {
