@@ -252,7 +252,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
         // Make sure lifetimes are erased, to avoid generating distinct LLVM
         // types for Rust types that only differ in the choice of lifetimes.
-        let normal_ty = cx.tcx.erase_regions(&self.ty);
+        // Note that we erase *all* regions, include late-bound regions.
+        let normal_ty = cx.tcx.erase_early_and_late_regions(&self.ty);
 
         let mut defer = None;
         let llty = if self.ty != normal_ty {

@@ -347,6 +347,11 @@ rustc_queries! {
             anon
             desc { "erasing regions from `{:?}`", ty }
         }
+
+        query erase_early_and_late_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
+            anon
+            desc { "erasing early and late regions for `{:?}`", ty }
+        }
     }
 
     Linking {

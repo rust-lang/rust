@@ -2,13 +2,20 @@ use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::{self, Ty, TyCtxt, TypeFlags};
 
 pub(super) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { erase_regions_ty, ..*providers };
+    *providers =
+        ty::query::Providers { erase_regions_ty, erase_early_and_late_regions_ty, ..*providers };
 }
 
 fn erase_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     // N.B., use `super_fold_with` here. If we used `fold_with`, it
     // could invoke the `erase_regions_ty` query recursively.
     ty.super_fold_with(&mut RegionEraserVisitor { tcx })
+}
+
+fn erase_early_and_late_regions_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    // N.B., use `super_fold_with` here. If we used `fold_with`, it
+    // could invoke the `erase_regions_ty` query recursively.
+    ty.super_fold_with(&mut AllRegionEraserVisitor { tcx })
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -27,6 +34,36 @@ impl<'tcx> TyCtxt<'tcx> {
         let value1 = value.fold_with(&mut RegionEraserVisitor { tcx: self });
         debug!("erase_regions({:?}) = {:?}", value, value1);
         value1
+    }
+
+    /// Like `erase_regions`, but erases all regions, including late-bound regions.
+    /// This is only useful during certain parts of codegen, where regions truly
+    /// don't matter. Normally, `erase_regions` should be used instead.
+    pub fn erase_early_and_late_regions<T>(self, value: &T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        // If there's nothing to erase avoid performing the query at all
+        if !value.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND | TypeFlags::HAS_FREE_REGIONS) {
+            return value.clone();
+        }
+        value.fold_with(&mut AllRegionEraserVisitor { tcx: self })
+    }
+}
+
+struct AllRegionEraserVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl TypeFolder<'tcx> for AllRegionEraserVisitor<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.tcx.erase_early_and_late_regions_ty(ty)
+    }
+    fn fold_region(&mut self, _: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        self.tcx.lifetimes.re_erased
     }
 }
 
