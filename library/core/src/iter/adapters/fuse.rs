@@ -115,12 +115,13 @@ where
     }
 
     #[inline]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {
         match self.iter {
-            // SAFETY: the caller must uphold the contract for `Iterator::get_unchecked`.
+            // SAFETY: the caller must uphold the contract for
+            // `Iterator::__iterator_get_unchecked`.
             Some(ref mut iter) => unsafe { try_get_unchecked(iter, idx) },
             // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
             None => unsafe { intrinsics::unreachable() },

@@ -2980,12 +2980,18 @@ impl<T> Iterator for IntoIter<T> {
         self.len()
     }
 
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {
-        // SAFETY: the caller must uphold the contract for
-        // `Iterator::get_unchecked`.
+        // SAFETY: the caller must guarantee that `i` is in bounds of the
+        // `Vec<T>`, so `i` cannot overflow an `isize`, and the `self.ptr.add(i)`
+        // is guaranteed to pointer to an element of the `Vec<T>` and
+        // thus guaranteed to be valid to dereference.
+        //
+        // Also note the implementation of `Self: TrustedRandomAccess` requires
+        // that `T: Copy` so reading elements from the buffer doesn't invalidate
+        // them for `Drop`.
         unsafe {
             if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
         }

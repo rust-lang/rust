@@ -813,10 +813,10 @@ impl Iterator for Bytes<'_> {
     }
 
     #[inline]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> u8 {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> u8 {
         // SAFETY: the caller must uphold the safety contract
-        // for `Iterator::get_unchecked`.
-        unsafe { self.0.get_unchecked(idx) }
+        // for `Iterator::__iterator_get_unchecked`.
+        unsafe { self.0.__iterator_get_unchecked(idx) }
     }
 }
 
