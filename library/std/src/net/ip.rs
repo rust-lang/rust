@@ -148,8 +148,9 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)).is_unspecified(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)).is_unspecified(), true);
     /// ```
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
-    pub fn is_unspecified(&self) -> bool {
+    pub const fn is_unspecified(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_unspecified(),
             IpAddr::V6(ip) => ip.is_unspecified(),
@@ -169,8 +170,9 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).is_loopback(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1)).is_loopback(), true);
     /// ```
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
-    pub fn is_loopback(&self) -> bool {
+    pub const fn is_loopback(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_loopback(),
             IpAddr::V6(ip) => ip.is_loopback(),
@@ -192,7 +194,8 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
     /// ```
-    pub fn is_global(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    pub const fn is_global(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_global(),
             IpAddr::V6(ip) => ip.is_global(),
@@ -212,8 +215,9 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(224, 254, 0, 0)).is_multicast(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0)).is_multicast(), true);
     /// ```
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
-    pub fn is_multicast(&self) -> bool {
+    pub const fn is_multicast(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_multicast(),
             IpAddr::V6(ip) => ip.is_multicast(),
@@ -238,7 +242,8 @@ impl IpAddr {
     ///     true
     /// );
     /// ```
-    pub fn is_documentation(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    pub const fn is_documentation(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_documentation(),
             IpAddr::V6(ip) => ip.is_documentation(),
