@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// ```
     pub DISALLOWED_METHOD,
     nursery,
-    "used disallowed method call"
+    "use of a disallowed method call"
 }
 
 #[derive(Clone, Debug)]
@@ -55,18 +55,17 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
 
             let method_call = cx.get_def_path(def_id);
             if self.disallowed.contains(&method_call) {
+                let method = method_call
+                    .iter()
+                    .map(|s| s.to_ident_string())
+                    .collect::<Vec<_>>()
+                    .join("::");
+
                 span_lint(
                     cx,
                     DISALLOWED_METHOD,
                     expr.span,
-                    &format!(
-                        "Use of a disallowed method `{}`",
-                        method_call
-                            .iter()
-                            .map(|s| s.to_ident_string())
-                            .collect::<Vec<_>>()
-                            .join("::"),
-                    ),
+                    &format!("use of a disallowed method `{}`", method),
                 );
             }
         }
