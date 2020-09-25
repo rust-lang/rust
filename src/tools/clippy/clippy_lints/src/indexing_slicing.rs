@@ -88,7 +88,7 @@ declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Index(ref array, ref index) = &expr.kind {
-            let ty = cx.typeck_results().expr_ty(array);
+            let ty = cx.typeck_results().expr_ty(array).peel_refs();
             if let Some(range) = higher::range(index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.kind() {

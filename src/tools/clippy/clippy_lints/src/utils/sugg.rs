@@ -49,7 +49,7 @@ impl<'a> Sugg<'a> {
     /// Convenience function around `hir_opt` for suggestions with a default
     /// text.
     pub fn hir(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
-        Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
+        Self::hir_opt(cx, expr).unwrap_or(Sugg::NonParen(Cow::Borrowed(default)))
     }
 
     /// Same as `hir`, but it adapts the applicability level by following rules:

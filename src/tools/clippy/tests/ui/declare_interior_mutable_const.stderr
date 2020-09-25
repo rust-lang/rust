@@ -36,34 +36,10 @@ LL | declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:40:5
+  --> $DIR/declare_interior_mutable_const.rs:39:5
    |
 LL |     const ATOMIC: AtomicUsize; //~ ERROR interior mutable
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:44:5
-   |
-LL |     const INPUT: T;
-   |     ^^^^^^^^^^^^^-^
-   |                  |
-   |                  consider requiring `T` to be `Copy`
-
-error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:47:5
-   |
-LL |     const ASSOC: Self::NonCopyType;
-   |     ^^^^^^^^^^^^^-----------------^
-   |                  |
-   |                  consider requiring `<Self as Trait<T>>::NonCopyType` to be `Copy`
-
-error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:51:5
-   |
-LL |     const AN_INPUT: T = Self::INPUT;
-   |     ^^^^^^^^^^^^^^^^-^^^^^^^^^^^^^^^
-   |                     |
-   |                     consider requiring `T` to be `Copy`
 
 error: a `const` item should never be interior mutable
   --> $DIR/declare_interior_mutable_const.rs:16:9
@@ -71,40 +47,64 @@ error: a `const` item should never be interior mutable
 LL |         const $name: $ty = $e;
    |         ^^^^^^^^^^^^^^^^^^^^^^
 ...
-LL |     declare_const!(ANOTHER_INPUT: T = Self::INPUT); //~ ERROR interior mutable
-   |     ----------------------------------------------- in this macro invocation
+LL |     declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC); //~ ERROR interior mutable
+   |     ----------------------------------------------------------- in this macro invocation
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:60:5
+  --> $DIR/declare_interior_mutable_const.rs:67:5
    |
-LL |     const SELF_2: Self;
-   |     ^^^^^^^^^^^^^^----^
-   |                   |
-   |                   consider requiring `Self` to be `Copy`
+LL |     const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:81:5
+  --> $DIR/declare_interior_mutable_const.rs:92:5
    |
-LL |     const ASSOC_3: AtomicUsize = AtomicUsize::new(14); //~ ERROR interior mutable
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:84:5
+  --> $DIR/declare_interior_mutable_const.rs:93:5
    |
-LL |     const U_SELF: U = U::SELF_2;
-   |     ^^^^^^^^^^^^^^-^^^^^^^^^^^^^
-   |                   |
-   |                   consider requiring `U` to be `Copy`
+LL |     const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14)); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/declare_interior_mutable_const.rs:87:5
+  --> $DIR/declare_interior_mutable_const.rs:112:5
    |
-LL |     const T_ASSOC: T::NonCopyType = T::ASSOC;
-   |     ^^^^^^^^^^^^^^^--------------^^^^^^^^^^^^
-   |                    |
-   |                    consider requiring `<T as Trait<u32>>::NonCopyType` to be `Copy`
+LL |     const BOUNDED: T::ToBeBounded; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:140:5
+   |
+LL |     const SELF: Self = AtomicUsize::new(17); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:141:5
+   |
+LL |     const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21)); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:149:5
+   |
+LL |     const INDIRECT: Cell<*const T>; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:165:5
+   |
+LL |     const ATOMIC: AtomicUsize = AtomicUsize::new(18); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:171:5
+   |
+LL |     const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
 

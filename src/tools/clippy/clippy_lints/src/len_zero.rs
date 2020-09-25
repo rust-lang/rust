@@ -1,4 +1,4 @@
-use crate::utils::{get_item_name, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{get_item_name, snippet_with_applicability, span_lint, span_lint_and_sugg};
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -285,7 +285,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         })
     }
 
-    let ty = &walk_ptrs_ty(cx.typeck_results().expr_ty(expr));
+    let ty = &cx.typeck_results().expr_ty(expr).peel_refs();
     match ty.kind() {
         ty::Dynamic(ref tt, ..) => tt.principal().map_or(false, |principal| {
             cx.tcx
