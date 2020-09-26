@@ -373,9 +373,9 @@ the submodule to. Running `./x.py build` should work now.
 ## Writing Documentation
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
-is located in  [`src/doc`][srcdoc] in the tree, and standard API documentation is generated
-from the source code itself (e.g. [`lib.rs`][librs]). Documentation pull requests function in the same way
-as other pull requests.
+is located in [`src/doc`][srcdoc] in the tree, and standard API documentation is generated
+from the source code itself (e.g. [`lib.rs`][librs]). Documentation pull requests function
+in the same way as other pull requests.
 
 [srcdoc]: https://github.com/rust-lang/rust/tree/master/src/doc
 [librs]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
