@@ -14,7 +14,7 @@ use test_utils::mark;
 
 use crate::{
     display::{macro_label, ShortLabel, ToNav, TryToNav},
-    link_rewrite::rewrite_links,
+    link_rewrite::{remove_links, rewrite_links},
     markup::Markup,
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
@@ -26,17 +26,29 @@ pub struct HoverConfig {
     pub run: bool,
     pub debug: bool,
     pub goto_type_def: bool,
+    pub links_in_hover: bool,
 }
 
 impl Default for HoverConfig {
     fn default() -> Self {
-        Self { implementations: true, run: true, debug: true, goto_type_def: true }
+        Self {
+            implementations: true,
+            run: true,
+            debug: true,
+            goto_type_def: true,
+            links_in_hover: true,
+        }
     }
 }
 
 impl HoverConfig {
-    pub const NO_ACTIONS: Self =
-        Self { implementations: false, run: false, debug: false, goto_type_def: false };
+    pub const NO_ACTIONS: Self = Self {
+        implementations: false,
+        run: false,
+        debug: false,
+        goto_type_def: false,
+        links_in_hover: true,
+    };
 
     pub fn any(&self) -> bool {
         self.implementations || self.runnable() || self.goto_type_def
@@ -75,7 +87,11 @@ pub struct HoverResult {
 //
 // Shows additional information, like type of an expression or documentation for definition when "focusing" code.
 // Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
-pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
+pub(crate) fn hover(
+    db: &RootDatabase,
+    position: FilePosition,
+    links_in_hover: bool,
+) -> Option<RangeInfo<HoverResult>> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best(file.token_at_offset(position.offset))?;
@@ -93,7 +109,11 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     };
     if let Some(definition) = definition {
         if let Some(markup) = hover_for_definition(db, definition) {
-            let markup = rewrite_links(db, &markup.as_str(), &definition);
+            let markup = if links_in_hover {
+                rewrite_links(db, &markup.as_str(), &definition)
+            } else {
+                remove_links(&markup.as_str())
+            };
             res.markup = Markup::from(markup);
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
@@ -363,12 +383,23 @@ mod tests {
 
     fn check_hover_no_result(ra_fixture: &str) {
         let (analysis, position) = analysis_and_position(ra_fixture);
-        assert!(analysis.hover(position).unwrap().is_none());
+        assert!(analysis.hover(position, true).unwrap().is_none());
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = analysis_and_position(ra_fixture);
-        let hover = analysis.hover(position).unwrap().unwrap();
+        let hover = analysis.hover(position, true).unwrap().unwrap();
+
+        let content = analysis.db.file_text(position.file_id);
+        let hovered_element = &content[hover.range];
+
+        let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
+        expect.assert_eq(&actual)
+    }
+
+    fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
+        let hover = analysis.hover(position, false).unwrap().unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -379,7 +410,7 @@ mod tests {
 
     fn check_actions(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = analysis_and_position(ra_fixture);
-        let hover = analysis.hover(position).unwrap().unwrap();
+        let hover = analysis.hover(position, true).unwrap().unwrap();
         expect.assert_debug_eq(&hover.info.actions)
     }
 
@@ -1805,6 +1836,70 @@ struct S {
                 ---
 
                 [`S`](https://docs.rs/test/*/test/struct.S.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_no_links() {
+        check_hover_no_links(
+            r#"
+/// Test cases:
+/// case 1.  bare URL: https://www.example.com/
+/// case 2.  inline URL with title: [example](https://www.example.com/)
+/// case 3.  code refrence: [`Result`]
+/// case 4.  code refrence but miss footnote: [`String`]
+/// case 5.  autolink: <http://www.example.com/>
+/// case 6.  email address: <test@example.com>
+/// case 7.  refrence: [example][example]
+/// case 8.  collapsed link: [example][]
+/// case 9.  shortcut link: [example]
+/// case 10. inline without URL: [example]()
+/// case 11. refrence: [foo][foo]
+/// case 12. refrence: [foo][bar]
+/// case 13. collapsed link: [foo][]
+/// case 14. shortcut link: [foo]
+/// case 15. inline without URL: [foo]()
+/// case 16. just escaped text: \[foo]
+/// case 17. inline link: [Foo](foo::Foo)
+///
+/// [`Result`]: ../../std/result/enum.Result.html
+/// [^example]: https://www.example.com/
+pub fn fo<|>o() {}
+"#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub fn foo()
+                ```
+
+                ---
+
+                Test cases:
+                case 1.  bare URL: https://www.example.com/
+                case 2.  inline URL with title: [example](https://www.example.com/)
+                case 3.  code refrence: `Result`
+                case 4.  code refrence but miss footnote: `String`
+                case 5.  autolink: http://www.example.com/
+                case 6.  email address: test@example.com
+                case 7.  refrence: example
+                case 8.  collapsed link: example
+                case 9.  shortcut link: example
+                case 10. inline without URL: example
+                case 11. refrence: foo
+                case 12. refrence: foo
+                case 13. collapsed link: foo
+                case 14. shortcut link: foo
+                case 15. inline without URL: foo
+                case 16. just escaped text: \[foo]
+                case 17. inline link: Foo
+
+                [^example]: https://www.example.com/
             "#]],
         );
     }
