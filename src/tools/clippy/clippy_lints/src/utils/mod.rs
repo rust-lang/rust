@@ -20,6 +20,7 @@ pub mod paths;
 pub mod ptr;
 pub mod sugg;
 pub mod usage;
+pub mod qualify_min_const_fn;
 
 pub use self::attrs::*;
 pub use self::diagnostics::*;
