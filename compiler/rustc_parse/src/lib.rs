@@ -297,7 +297,11 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     };
 
     // FIXME(#43081): Avoid this pretty-print + reparse hack
-    let source = pprust::nonterminal_to_string(nt);
+    // Pretty-print the AST struct without inserting any parenthesis
+    // beyond those explicitly written by the user (e.g. `ExpnKind::Paren`).
+    // The resulting stream may have incorrect precedence, but it's only
+    // ever used for a comparison against the capture tokenstream.
+    let source = pprust::nonterminal_to_string_no_extra_parens(nt);
     let filename = FileName::macro_expansion_source_code(&source);
     let reparsed_tokens = parse_stream_from_source_str(filename, source, sess, Some(span));
 
@@ -325,9 +329,28 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // modifications, including adding/removing typically non-semantic
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
+        // If the streams match, then the AST hasn't been modified. Return the captured
+        // `TokenStream`.
         if tokenstream_probably_equal_for_proc_macro(&tokens, &reparsed_tokens, sess) {
             return tokens;
         }
+
+        // The check failed. This time, we pretty-print the AST struct with parenthesis
+        // inserted to preserve precedence. This may cause `None`-delimiters in the captured
+        // token stream to match up with inserted parenthesis in the reparsed stream.
+        let source_with_parens = pprust::nonterminal_to_string(nt);
+        let filename_with_parens = FileName::macro_expansion_source_code(&source_with_parens);
+        let tokens_with_parens = parse_stream_from_source_str(
+            filename_with_parens,
+            source_with_parens,
+            sess,
+            Some(span),
+        );
+
+        if tokenstream_probably_equal_for_proc_macro(&tokens, &tokens_with_parens, sess) {
+            return tokens;
+        }
+
         info!(
             "cached tokens found, but they're not \"probably equal\", \
                 going with stringified version"
@@ -489,12 +512,12 @@ pub fn tokentree_probably_equal_for_proc_macro(
         (TokenTree::Token(token), TokenTree::Token(reparsed_token)) => {
             token_probably_equal_for_proc_macro(token, reparsed_token)
         }
-        (
-            TokenTree::Delimited(_, delim, tokens),
-            TokenTree::Delimited(_, reparsed_delim, reparsed_tokens),
-        ) => {
-            delim == reparsed_delim
-                && tokenstream_probably_equal_for_proc_macro(tokens, reparsed_tokens, sess)
+        (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
+            // `NoDelim` delimiters can appear in the captured tokenstream, but not
+            // in the reparsed tokenstream. Allow them to match with anything, so
+            // that we check if the two streams are structurally equivalent.
+            (delim == delim2 || *delim == DelimToken::NoDelim || *delim2 == DelimToken::NoDelim)
+                && tokenstream_probably_equal_for_proc_macro(&tts, &tts2, sess)
         }
         _ => false,
     }
