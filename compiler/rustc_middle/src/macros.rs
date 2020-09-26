@@ -45,13 +45,14 @@ macro_rules! CloneLiftImpls {
     };
 }
 
-/// Used for types that are `Copy` and which **do not care arena
+/// Used for types that are `Copy` and which **do not carry arena
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
 macro_rules! CloneTypeFoldableImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
             impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
+                #[inline(always)]
                 fn super_fold_with<F: $crate::ty::fold::TypeFolder<$tcx>>(
                     &self,
                     _: &mut F
@@ -59,6 +60,7 @@ macro_rules! CloneTypeFoldableImpls {
                     Clone::clone(self)
                 }
 
+                #[inline(always)]
                 fn super_visit_with<F: $crate::ty::fold::TypeVisitor<$tcx>>(
                     &self,
                     _: &mut F)
