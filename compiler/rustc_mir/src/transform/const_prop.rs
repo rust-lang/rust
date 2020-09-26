@@ -1046,9 +1046,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
 
-        // Only const prop copies and moves on `mir_opt_level=3` as doing so
-        // currently increases compile time.
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 3 {
+        // Only const prop copies and moves on `mir_opt_level=2` as doing so
+        // currently slightly increases compile time in some cases.
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             self.propagate_operand(operand)
         }
     }
@@ -1246,8 +1246,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             | TerminatorKind::InlineAsm { .. } => {}
             // Every argument in our function calls have already been propagated in `visit_operand`.
             //
-            // NOTE: because LLVM codegen gives performance regressions with it, so this is gated
-            // on `mir_opt_level=3`.
+            // NOTE: because LLVM codegen gives slight performance regressions with it, so this is
+            // gated on `mir_opt_level=2`.
             TerminatorKind::Call { .. } => {}
         }
 
