@@ -653,7 +653,12 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn report_type_error(&self, t: Ty<'tcx>) {
         if !self.tcx.sess.has_errors() {
             self.infcx
-                .need_type_info_err(Some(self.body.id()), self.span.to_span(self.tcx), t, E0282)
+                .emit_inference_failure_err(
+                    Some(self.body.id()),
+                    self.span.to_span(self.tcx),
+                    t.into(),
+                    E0282,
+                )
                 .emit();
         }
     }
@@ -661,10 +666,10 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn report_const_error(&self, c: &'tcx ty::Const<'tcx>) {
         if !self.tcx.sess.has_errors() {
             self.infcx
-                .need_type_info_err_const(
+                .emit_inference_failure_err(
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),
-                    c,
+                    c.into(),
                     E0282,
                 )
                 .emit();
