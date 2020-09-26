@@ -7,7 +7,7 @@
 #![feature(or_patterns)]
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{self, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
@@ -359,9 +359,6 @@ pub fn tokenstream_probably_equal_for_proc_macro(
                 // The pretty printer tends to add trailing commas to
                 // everything, and in particular, after struct fields.
                 | token::Comma
-                // The pretty printer emits `NoDelim` as whitespace.
-                | token::OpenDelim(DelimToken::NoDelim)
-                | token::CloseDelim(DelimToken::NoDelim)
                 // The pretty printer collapses many semicolons into one.
                 | token::Semi
                 // We don't preserve leading `|` tokens in patterns, so
