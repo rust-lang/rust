@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, parse_macro_input, Ident, LitStr, Token};
 
-#[allow(non_camel_case_types)]
 mod kw {
     syn::custom_keyword!(Keywords);
     syn::custom_keyword!(Symbols);

@@ -930,7 +930,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildSelect(self.llbuilder, cond, then_val, else_val, UNNAMED) }
     }
 
-    #[allow(dead_code)]
     fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildVAArg(self.llbuilder, list, ty, UNNAMED) }
     }

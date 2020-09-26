@@ -2148,7 +2148,6 @@ trait TraitObligationExt<'tcx> {
 }
 
 impl<'tcx> TraitObligationExt<'tcx> for TraitObligation<'tcx> {
-    #[allow(unused_comparisons)]
     fn derived_cause(
         &self,
         variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,

@@ -7,7 +7,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![allow(incomplete_features)]
 #![feature(array_windows)]
 #![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]

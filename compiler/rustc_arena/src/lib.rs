@@ -15,7 +15,6 @@
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
 #![cfg_attr(test, feature(test))]
-#![allow(deprecated)]
 
 use rustc_data_structures::cold_path;
 use smallvec::SmallVec;

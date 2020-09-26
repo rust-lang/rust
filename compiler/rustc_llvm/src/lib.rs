@@ -21,7 +21,6 @@ impl RustString {
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
 pub unsafe extern "C" fn LLVMRustStringWriteImpl(
     sr: &RustString,
     ptr: *const c_char,
