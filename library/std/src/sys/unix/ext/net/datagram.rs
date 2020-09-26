@@ -757,7 +757,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         self.0.set_passcred(passcred)
@@ -769,7 +769,7 @@ impl UnixDatagram {
     /// Get the socket option `SO_PASSCRED`.
     ///
     /// [`set_passcred`]: UnixDatagram::set_passcred
-    #[cfg(any(doc, target_os = "android", target_os = "emscripten", target_os = "linux",))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn passcred(&self) -> io::Result<bool> {
         self.0.passcred()
