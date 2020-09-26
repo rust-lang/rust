@@ -7,6 +7,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
+use build_helper::t;
 use getopts::Options;
 
 use crate::builder::Builder;
@@ -88,6 +89,9 @@ pub enum Subcommand {
     },
     Run {
         paths: Vec<PathBuf>,
+    },
+    Setup {
+        path: String,
     },
 }
 
@@ -199,6 +203,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 || (s == "install")
                 || (s == "run")
                 || (s == "r")
+                || (s == "setup")
         });
         let subcommand = match subcommand {
             Some(s) => s,
@@ -453,10 +458,21 @@ Arguments:
     At least a tool needs to be called.",
                 );
             }
+            "setup" => {
+                subcommand_help.push_str(
+                    "\n
+Arguments:
+    This subcommand accepts a 'profile' to use for builds. For example:
+
+        ./x.py setup library
+
+    The profile is optional and you will be prompted interactively if it is not given.",
+                );
+            }
             _ => {}
         };
         // Get any optional paths which occur after the subcommand
-        let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
+        let mut paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
         let cfg_file = env::var_os("BOOTSTRAP_CONFIG").map(PathBuf::from);
         let verbose = matches.opt_present("verbose");
@@ -507,6 +523,20 @@ Arguments:
                     usage(1, &opts, verbose, &subcommand_help);
                 }
                 Subcommand::Run { paths }
+            }
+            "setup" => {
+                let path = if paths.len() > 1 {
+                    println!("\nat most one profile can be passed to setup\n");
+                    usage(1, &opts, verbose, &subcommand_help)
+                } else if let Some(path) = paths.pop() {
+                    t!(path.into_os_string().into_string().map_err(|path| format!(
+                        "{} is not a valid UTF8 string",
+                        path.to_string_lossy()
+                    )))
+                } else {
+                    t!(crate::setup::interactive_path())
+                };
+                Subcommand::Setup { path }
             }
             _ => {
                 usage(1, &opts, verbose, &subcommand_help);
