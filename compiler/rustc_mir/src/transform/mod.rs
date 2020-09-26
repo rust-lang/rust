@@ -36,7 +36,6 @@ pub mod match_branches;
 pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
-pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
 pub mod remove_unneeded_drops;
 pub mod required_consts;
