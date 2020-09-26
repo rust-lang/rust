@@ -367,7 +367,6 @@ fn visit_fn<'tcx>(
 
     if let Some(upvars) = ir.tcx.upvars_mentioned(def_id) {
         for (&var_hir_id, _upvar) in upvars {
-            debug!("adding upvar {:?}", var_hir_id);
             let var_name = ir.tcx.hir().name(var_hir_id);
             fn_maps.add_variable(Upvar(var_hir_id, var_name));
         }
@@ -379,7 +378,6 @@ fn visit_fn<'tcx>(
             _ => false,
         };
         param.pat.each_binding(|_bm, hir_id, _x, ident| {
-            debug!("adding parameters {:?}", hir_id);
             let var = if is_shorthand {
                 Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
             } else {
