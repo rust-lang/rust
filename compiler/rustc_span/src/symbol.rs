@@ -352,6 +352,7 @@ symbols! {
         const_evaluatable_checked,
         const_extern_fn,
         const_fn,
+        const_fn_floating_point_arithmetic,
         const_fn_transmute,
         const_fn_union,
         const_generics,

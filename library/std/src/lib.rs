@@ -236,6 +236,7 @@
 #![feature(clamp)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
+#![cfg_attr(not(bootstrap), feature(const_fn_floating_point_arithmetic))]
 #![feature(const_fn_transmute)]
 #![feature(const_fn)]
 #![feature(const_ip)]
