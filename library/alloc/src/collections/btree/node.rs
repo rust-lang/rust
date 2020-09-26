@@ -484,7 +484,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     ///
     /// # Safety
     /// The node has more than `idx` initialized elements.
-    pub unsafe fn key_mut_at(&mut self, idx: usize) -> &mut K {
+    unsafe fn key_mut_at(&mut self, idx: usize) -> &mut K {
         unsafe { self.reborrow_mut().into_key_mut_at(idx) }
     }
 
@@ -492,7 +492,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     ///
     /// # Safety
     /// The node has more than `idx` initialized elements.
-    pub unsafe fn val_mut_at(&mut self, idx: usize) -> &mut V {
+    unsafe fn val_mut_at(&mut self, idx: usize) -> &mut V {
         unsafe { self.reborrow_mut().into_val_mut_at(idx) }
     }
 
@@ -655,7 +655,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
 
     /// Adds a key/value pair, and an edge to go to the left of that pair,
     /// to the beginning of the node.
-    pub fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
+    fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
         assert!(self.len() < CAPACITY);
 
@@ -1011,18 +1011,18 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let (mut left, k, v, mut right) = middle.split();
-            match insertion {
+            let mut insertion_edge = match insertion {
                 InsertionPlace::Left(insert_idx) => unsafe {
-                    Handle::new_edge(left.reborrow_mut(), insert_idx).insert_fit(key, val, edge);
+                    Handle::new_edge(left.reborrow_mut(), insert_idx)
                 },
                 InsertionPlace::Right(insert_idx) => unsafe {
                     Handle::new_edge(
                         right.node_as_mut().cast_unchecked::<marker::Internal>(),
                         insert_idx,
                     )
-                    .insert_fit(key, val, edge);
                 },
-            }
+            };
+            insertion_edge.insert_fit(key, val, edge);
             InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right })
         }
     }
