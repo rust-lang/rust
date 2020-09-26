@@ -211,14 +211,11 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn to_const_int(self) -> ConstInt {
         assert!(self.layout.ty.is_integral());
-        ConstInt::new(
-            self.to_scalar()
-                .expect("to_const_int doesn't work on scalar pairs")
-                .assert_bits(self.layout.size),
-            self.layout.size,
-            self.layout.ty.is_signed(),
-            self.layout.ty.is_ptr_sized_integral(),
-        )
+        let int = match self.to_scalar().expect("to_const_int doesn't work on scalar pairs") {
+            Scalar::Raw(int) => int,
+            Scalar::Ptr(_) => bug!("to_const_int doesn't work on pointers"),
+        };
+        ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())
     }
 }
 
@@ -544,7 +541,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let tag_scalar = |scalar| -> InterpResult<'tcx, _> {
             Ok(match scalar {
                 Scalar::Ptr(ptr) => Scalar::Ptr(self.global_base_pointer(ptr)?),
-                Scalar::Raw { data, size } => Scalar::Raw { data, size },
+                Scalar::Raw(int) => Scalar::Raw(int),
             })
         };
         // Early-return cases.

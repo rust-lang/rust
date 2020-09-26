@@ -71,7 +71,7 @@ macro_rules! throw_inval {
 
 #[macro_export]
 macro_rules! throw_ub {
-    ($($tt:tt)*) => { Err::<!, _>(err_ub!($($tt)*))? };
+    ($($tt:tt)*) => { Err::<!, _>($crate::err_ub!($($tt)*))? };
 }
 
 #[macro_export]

@@ -8,9 +8,9 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 
-use crate::ty::{ParamEnv, Ty, TyCtxt};
+use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
-use super::{sign_extend, truncate, AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
+use super::{sign_extend, AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Clone, HashStable, TyEncodable, TyDecodable)]
@@ -103,12 +103,7 @@ impl<'tcx> ConstValue<'tcx> {
 #[derive(HashStable)]
 pub enum Scalar<Tag = ()> {
     /// The raw bytes of a simple value.
-    Raw {
-        /// The first `size` bytes of `data` are the value.
-        /// Do not try to read less or more bytes than that. The remaining bytes must be 0.
-        data: u128,
-        size: u8,
-    },
+    Raw(ScalarInt),
 
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
     /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
@@ -125,16 +120,7 @@ impl<Tag: fmt::Debug> fmt::Debug for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr) => write!(f, "{:?}", ptr),
-            &Scalar::Raw { data, size } => {
-                Scalar::check_data(data, size);
-                if size == 0 {
-                    write!(f, "<ZST>")
-                } else {
-                    // Format as hex number wide enough to fit any value of the given `size`.
-                    // So data=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
-                    write!(f, "0x{:>0width$x}", data, width = (size * 2) as usize)
-                }
-            }
+            Scalar::Raw(int) => write!(f, "{:?}", int),
         }
     }
 }
@@ -163,21 +149,6 @@ impl<Tag> From<Double> for Scalar<Tag> {
 }
 
 impl Scalar<()> {
-    /// Make sure the `data` fits in `size`.
-    /// This is guaranteed by all constructors here, but since the enum variants are public,
-    /// it could still be violated (even though no code outside this file should
-    /// construct `Scalar`s).
-    #[inline(always)]
-    fn check_data(data: u128, size: u8) {
-        debug_assert_eq!(
-            truncate(data, Size::from_bytes(u64::from(size))),
-            data,
-            "Scalar value {:#x} exceeds size of {} bytes",
-            data,
-            size
-        );
-    }
-
     /// Tag this scalar with `new_tag` if it is a pointer, leave it unchanged otherwise.
     ///
     /// Used by `MemPlace::replace_tag`.
@@ -185,7 +156,7 @@ impl Scalar<()> {
     pub fn with_tag<Tag>(self, new_tag: Tag) -> Scalar<Tag> {
         match self {
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.with_tag(new_tag)),
-            Scalar::Raw { data, size } => Scalar::Raw { data, size },
+            Scalar::Raw(int) => Scalar::Raw(int),
         }
     }
 }
@@ -198,18 +169,18 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn erase_tag(self) -> Scalar {
         match self {
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.erase_tag()),
-            Scalar::Raw { data, size } => Scalar::Raw { data, size },
+            Scalar::Raw(int) => Scalar::Raw(int),
         }
     }
 
     #[inline]
     pub fn null_ptr(cx: &impl HasDataLayout) -> Self {
-        Scalar::Raw { data: 0, size: cx.data_layout().pointer_size.bytes() as u8 }
+        Scalar::Raw(ScalarInt::null(cx.data_layout().pointer_size))
     }
 
     #[inline]
     pub fn zst() -> Self {
-        Scalar::Raw { data: 0, size: 0 }
+        Scalar::Raw(ScalarInt::zst())
     }
 
     #[inline(always)]
@@ -220,10 +191,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         f_ptr: impl FnOnce(Pointer<Tag>) -> InterpResult<'tcx, Pointer<Tag>>,
     ) -> InterpResult<'tcx, Self> {
         match self {
-            Scalar::Raw { data, size } => {
-                assert_eq!(u64::from(size), dl.pointer_size.bytes());
-                Ok(Scalar::Raw { data: u128::from(f_int(u64::try_from(data).unwrap())?), size })
-            }
+            Scalar::Raw(int) => Ok(Scalar::Raw(int.ptr_sized_op(dl, f_int)?)),
             Scalar::Ptr(ptr) => Ok(Scalar::Ptr(f_ptr(ptr)?)),
         }
     }
@@ -264,24 +232,17 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_bool(b: bool) -> Self {
-        // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: b as u128, size: 1 }
+        Scalar::Raw(b.into())
     }
 
     #[inline]
     pub fn from_char(c: char) -> Self {
-        // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: c as u128, size: 4 }
+        Scalar::Raw(c.into())
     }
 
     #[inline]
     pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
-        let i = i.into();
-        if truncate(i, size) == i {
-            Some(Scalar::Raw { data: i, size: size.bytes() as u8 })
-        } else {
-            None
-        }
+        ScalarInt::try_from_uint(i, size).map(Scalar::Raw)
     }
 
     #[inline]
@@ -293,26 +254,22 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_u8(i: u8) -> Self {
-        // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: i.into(), size: 1 }
+        Scalar::Raw(i.into())
     }
 
     #[inline]
     pub fn from_u16(i: u16) -> Self {
-        // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: i.into(), size: 2 }
+        Scalar::Raw(i.into())
     }
 
     #[inline]
     pub fn from_u32(i: u32) -> Self {
-        // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: i.into(), size: 4 }
+        Scalar::Raw(i.into())
     }
 
     #[inline]
     pub fn from_u64(i: u64) -> Self {
-        // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: i.into(), size: 8 }
+        Scalar::Raw(i.into())
     }
 
     #[inline]
@@ -322,14 +279,7 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn try_from_int(i: impl Into<i128>, size: Size) -> Option<Self> {
-        let i = i.into();
-        // `into` performed sign extension, we have to truncate
-        let truncated = truncate(i as u128, size);
-        if sign_extend(truncated, size) as i128 == i {
-            Some(Scalar::Raw { data: truncated, size: size.bytes() as u8 })
-        } else {
-            None
-        }
+        ScalarInt::try_from_int(i, size).map(Scalar::Raw)
     }
 
     #[inline]
@@ -366,14 +316,12 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_f32(f: Single) -> Self {
-        // We trust apfloat to give us properly truncated data.
-        Scalar::Raw { data: f.to_bits(), size: 4 }
+        Scalar::Raw(f.into())
     }
 
     #[inline]
     pub fn from_f64(f: Double) -> Self {
-        // We trust apfloat to give us properly truncated data.
-        Scalar::Raw { data: f.to_bits(), size: 8 }
+        Scalar::Raw(f.into())
     }
 
     /// This is very rarely the method you want!  You should dispatch on the type
@@ -388,11 +336,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     ) -> Result<u128, Pointer<Tag>> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
-            Scalar::Raw { data, size } => {
-                assert_eq!(target_size.bytes(), u64::from(size));
-                Scalar::check_data(data, size);
-                Ok(data)
-            }
+            Scalar::Raw(int) => Ok(int.assert_bits(target_size)),
             Scalar::Ptr(ptr) => {
                 assert_eq!(target_size, cx.data_layout().pointer_size);
                 Err(ptr)
@@ -406,16 +350,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
-            Scalar::Raw { data, size } => {
-                if target_size.bytes() != u64::from(size) {
-                    throw_ub!(ScalarSizeMismatch {
-                        target_size: target_size.bytes(),
-                        data_size: u64::from(size),
-                    });
-                }
-                Scalar::check_data(data, size);
-                Ok(data)
-            }
+            Scalar::Raw(int) => int.to_bits(target_size),
             Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
         }
     }

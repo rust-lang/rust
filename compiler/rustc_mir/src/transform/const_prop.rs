@@ -19,7 +19,9 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, ConstInt, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
@@ -578,8 +580,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             Some(l) => l.to_const_int(),
                             // Invent a dummy value, the diagnostic ignores it anyway
                             None => ConstInt::new(
-                                1,
-                                left_size,
+                                ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
                                 left_ty.is_signed(),
                                 left_ty.is_ptr_sized_integral(),
                             ),

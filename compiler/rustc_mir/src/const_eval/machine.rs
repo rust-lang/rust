@@ -1,6 +1,6 @@
 use rustc_middle::mir;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, ScalarInt, Ty};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
@@ -194,13 +194,13 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
     fn guaranteed_ne(&mut self, a: Scalar, b: Scalar) -> bool {
         match (a, b) {
             // Comparisons between integers are always known.
-            (Scalar::Raw { .. }, Scalar::Raw { .. }) => a != b,
+            (Scalar::Raw(_), Scalar::Raw(_)) => a != b,
             // Comparisons of abstract pointers with null pointers are known if the pointer
             // is in bounds, because if they are in bounds, the pointer can't be null.
-            (Scalar::Raw { data: 0, .. }, Scalar::Ptr(ptr))
-            | (Scalar::Ptr(ptr), Scalar::Raw { data: 0, .. }) => !self.memory.ptr_may_be_null(ptr),
             // Inequality with integers other than null can never be known for sure.
-            (Scalar::Raw { .. }, Scalar::Ptr(_)) | (Scalar::Ptr(_), Scalar::Raw { .. }) => false,
+            (Scalar::Raw(int), Scalar::Ptr(ptr)) | (Scalar::Ptr(ptr), Scalar::Raw(int)) => {
+                int == ScalarInt::null(int.size()) && !self.memory.ptr_may_be_null(ptr)
+            }
             // FIXME: return `true` for at least some comparisons where we can reliably
             // determine the result of runtime inequality tests at compile-time.
             // Examples include comparison of addresses in different static items.

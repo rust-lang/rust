@@ -137,10 +137,10 @@ pub(super) fn op_to_const<'tcx>(
             let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
-        Scalar::Raw { data, .. } => {
+        Scalar::Raw(int) => {
             assert!(mplace.layout.is_zst());
             assert_eq!(
-                u64::try_from(data).unwrap() % mplace.layout.align.abi.bytes(),
+                u64::try_from(int).unwrap() % mplace.layout.align.abi.bytes(),
                 0,
                 "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
