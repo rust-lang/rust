@@ -299,7 +299,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // FIXME(#43081): Avoid this pretty-print + reparse hack
     let source = pprust::nonterminal_to_string(nt);
     let filename = FileName::macro_expansion_source_code(&source);
-    let tokens_for_real = parse_stream_from_source_str(filename, source, sess, Some(span));
+    let reparsed_tokens = parse_stream_from_source_str(filename, source, sess, Some(span));
 
     // During early phases of the compiler the AST could get modified
     // directly (e.g., attributes added or removed) and the internal cache
@@ -325,7 +325,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // modifications, including adding/removing typically non-semantic
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
-        if tokenstream_probably_equal_for_proc_macro(&tokens, &tokens_for_real, sess) {
+        if tokenstream_probably_equal_for_proc_macro(&tokens, &reparsed_tokens, sess) {
             return tokens;
         }
         info!(
@@ -333,9 +333,9 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
                 going with stringified version"
         );
         info!("cached tokens: {:?}", tokens);
-        info!("reparsed tokens: {:?}", tokens_for_real);
+        info!("reparsed tokens: {:?}", reparsed_tokens);
     }
-    tokens_for_real
+    reparsed_tokens
 }
 
 // See comments in `Nonterminal::to_tokenstream` for why we care about
@@ -344,8 +344,8 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
 // This is otherwise the same as `eq_unspanned`, only recursing with a
 // different method.
 pub fn tokenstream_probably_equal_for_proc_macro(
-    first: &TokenStream,
-    other: &TokenStream,
+    tokens: &TokenStream,
+    reparsed_tokens: &TokenStream,
     sess: &ParseSess,
 ) -> bool {
     // When checking for `probably_eq`, we ignore certain tokens that aren't
@@ -460,10 +460,11 @@ pub fn tokenstream_probably_equal_for_proc_macro(
 
     // Break tokens after we expand any nonterminals, so that we break tokens
     // that are produced as a result of nonterminal expansion.
-    let t1 = first.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
-    let t2 = other.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
+    let tokens = tokens.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
+    let reparsed_tokens =
+        reparsed_tokens.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
 
-    t1.eq_by(t2, |t1, t2| tokentree_probably_equal_for_proc_macro(&t1, &t2, sess))
+    tokens.eq_by(reparsed_tokens, |t, rt| tokentree_probably_equal_for_proc_macro(&t, &rt, sess))
 }
 
 // See comments in `Nonterminal::to_tokenstream` for why we care about
@@ -472,16 +473,20 @@ pub fn tokenstream_probably_equal_for_proc_macro(
 // This is otherwise the same as `eq_unspanned`, only recursing with a
 // different method.
 pub fn tokentree_probably_equal_for_proc_macro(
-    first: &TokenTree,
-    other: &TokenTree,
+    token: &TokenTree,
+    reparsed_token: &TokenTree,
     sess: &ParseSess,
 ) -> bool {
-    match (first, other) {
-        (TokenTree::Token(token), TokenTree::Token(token2)) => {
-            token_probably_equal_for_proc_macro(token, token2)
+    match (token, reparsed_token) {
+        (TokenTree::Token(token), TokenTree::Token(reparsed_token)) => {
+            token_probably_equal_for_proc_macro(token, reparsed_token)
         }
-        (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
-            delim == delim2 && tokenstream_probably_equal_for_proc_macro(&tts, &tts2, sess)
+        (
+            TokenTree::Delimited(_, delim, tokens),
+            TokenTree::Delimited(_, reparsed_delim, reparsed_tokens),
+        ) => {
+            delim == reparsed_delim
+                && tokenstream_probably_equal_for_proc_macro(tokens, reparsed_tokens, sess)
         }
         _ => false,
     }
