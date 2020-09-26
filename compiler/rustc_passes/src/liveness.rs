@@ -1093,9 +1093,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Ret(ref o_e) => {
-                // ignore succ and subst exit_ln:
-                let exit_ln = self.exit_ln;
-                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
+                // Ignore succ and subst exit_ln.
+                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), self.exit_ln)
             }
 
             hir::ExprKind::Break(label, ref opt_expr) => {
