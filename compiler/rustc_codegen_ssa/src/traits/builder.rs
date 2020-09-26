@@ -18,7 +18,6 @@ use rustc_middle::ty::Ty;
 use rustc_target::abi::{Abi, Align, Scalar, Size};
 use rustc_target::spec::HasTargetSpec;
 
-use std::iter::TrustedLen;
 use std::ops::Range;
 
 #[derive(Copy, Clone)]
@@ -60,7 +59,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         &mut self,
         v: Self::Value,
         else_llbb: Self::BasicBlock,
-        cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock)> + TrustedLen,
+        cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock)>,
     );
     fn invoke(
         &mut self,
