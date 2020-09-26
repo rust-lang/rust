@@ -277,6 +277,7 @@ extern "Rust" {
     /// and `MiriFrame` should be declared as follows:
     ///
     /// ```rust
+    /// #[repr(C)]
     /// struct MiriFrame {
     ///     // The name of the function being executed, encoded in UTF-8
     ///     name: Box<[u8]>,

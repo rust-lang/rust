@@ -7,6 +7,7 @@ extern "Rust" {
 }
 
 #[derive(Debug)]
+#[repr(C)]
 struct MiriFrame {
     name: Box<[u8]>,
     filename: Box<[u8]>,

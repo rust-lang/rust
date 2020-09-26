@@ -1,6 +1,6 @@
 use crate::*;
 use helpers::check_arg_count;
-use rustc_middle::ty::TypeAndMut;
+use rustc_middle::ty::{self, TypeAndMut};
 use rustc_ast::ast::Mutability;
 use rustc_span::BytePos;
 use rustc_target::abi::Size;
@@ -105,7 +105,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let lineno_alloc = Scalar::from_u32(lineno);
         let colno_alloc = Scalar::from_u32(colno);
 
-        let dest = this.force_allocation_maybe_sized(dest, MemPlaceMeta::None)?.0;
+        let dest = this.force_allocation(dest)?;
+        if let ty::Adt(adt, _) = dest.layout.ty.kind() {
+            if !adt.repr.c() {
+                throw_ub_format!("miri_resolve_frame must be declared with a `#[repr(C)]` return type");
+            }
+        }
 
         this.write_immediate(name_alloc.to_ref(), this.mplace_field(dest, 0)?.into())?;
         this.write_immediate(filename_alloc.to_ref(), this.mplace_field(dest, 1)?.into())?;
