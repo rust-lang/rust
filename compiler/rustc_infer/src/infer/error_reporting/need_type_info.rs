@@ -364,7 +364,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
         };
 
-        let mut local_visitor = FindHirNodeVisitor::new(&self, arg.into(), span);
+        let mut local_visitor = FindHirNodeVisitor::new(&self, arg, span);
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
