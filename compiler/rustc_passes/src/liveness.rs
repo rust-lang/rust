@@ -62,13 +62,13 @@
 //! - `reader`: the `LiveNode` ID of some node which will read the value
 //!    that `V` holds on entry to `N`. Formally: a node `M` such
 //!    that there exists a path `P` from `N` to `M` where `P` does not
-//!    write `V`. If the `reader` is `invalid_node()`, then the current
+//!    write `V`. If the `reader` is `INVALID_NODE`, then the current
 //!    value will never be read (the variable is dead, essentially).
 //!
 //! - `writer`: the `LiveNode` ID of some node which will write the
 //!    variable `V` and which is reachable from `N`. Formally: a node `M`
 //!    such that there exists a path `P` from `N` to `M` and `M` writes
-//!    `V`. If the `writer` is `invalid_node()`, then there is no writer
+//!    `V`. If the `writer` is `INVALID_NODE`, then there is no writer
 //!    of `V` that follows `N`.
 //!
 //! - `used`: a boolean value indicating whether `V` is *used*. We
@@ -92,6 +92,7 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
+use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
@@ -100,26 +101,20 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 use std::collections::VecDeque;
-use std::fmt;
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
 
-#[derive(Copy, Clone, PartialEq)]
-struct Variable(u32);
-
-#[derive(Copy, Clone, PartialEq)]
-struct LiveNode(u32);
-
-impl Variable {
-    fn get(&self) -> usize {
-        self.0 as usize
+rustc_index::newtype_index! {
+    pub struct Variable {
+        DEBUG_FORMAT = "v({})",
     }
 }
 
-impl LiveNode {
-    fn get(&self) -> usize {
-        self.0 as usize
+rustc_index::newtype_index! {
+    pub struct LiveNode {
+        DEBUG_FORMAT = "ln({})",
+        const INVALID_NODE = LiveNode::MAX_AS_U32,
     }
 }
 
@@ -183,18 +178,6 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_liveness, ..*providers };
 }
 
-impl fmt::Debug for LiveNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ln({})", self.get())
-    }
-}
-
-impl fmt::Debug for Variable {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "v({})", self.get())
-    }
-}
-
 // ______________________________________________________________________
 // Creating ir_maps
 //
@@ -218,13 +201,9 @@ impl fmt::Debug for Variable {
 // assignment.  And so forth.
 
 impl LiveNode {
-    fn is_valid(&self) -> bool {
-        self.0 != u32::MAX
+    fn is_valid(self) -> bool {
+        self != INVALID_NODE
     }
-}
-
-fn invalid_node() -> LiveNode {
-    LiveNode(u32::MAX)
 }
 
 struct CaptureInfo {
@@ -252,8 +231,8 @@ struct IrMaps<'tcx> {
     live_node_map: HirIdMap<LiveNode>,
     variable_map: HirIdMap<Variable>,
     capture_info_map: HirIdMap<Rc<Vec<CaptureInfo>>>,
-    var_kinds: Vec<VarKind>,
-    lnks: Vec<LiveNodeKind>,
+    var_kinds: IndexVec<Variable, VarKind>,
+    lnks: IndexVec<LiveNode, LiveNodeKind>,
 }
 
 impl IrMaps<'tcx> {
@@ -264,14 +243,13 @@ impl IrMaps<'tcx> {
             live_node_map: HirIdMap::default(),
             variable_map: HirIdMap::default(),
             capture_info_map: Default::default(),
-            var_kinds: Vec::new(),
-            lnks: Vec::new(),
+            var_kinds: IndexVec::new(),
+            lnks: IndexVec::new(),
         }
     }
 
     fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
-        let ln = LiveNode(self.lnks.len() as u32);
-        self.lnks.push(lnk);
+        let ln = self.lnks.push(lnk);
 
         debug!("{:?} is of kind {}", ln, live_node_kind_to_string(lnk, self.tcx));
 
@@ -286,8 +264,7 @@ impl IrMaps<'tcx> {
     }
 
     fn add_variable(&mut self, vk: VarKind) -> Variable {
-        let v = Variable(self.var_kinds.len() as u32);
-        self.var_kinds.push(vk);
+        let v = self.var_kinds.push(vk);
 
         match vk {
             Local(LocalInfo { id: node_id, .. }) | Param(node_id, _) | Upvar(node_id, _) => {
@@ -310,13 +287,13 @@ impl IrMaps<'tcx> {
     }
 
     fn variable_name(&self, var: Variable) -> Symbol {
-        match self.var_kinds[var.get()] {
+        match self.var_kinds[var] {
             Local(LocalInfo { name, .. }) | Param(_, name) | Upvar(_, name) => name,
         }
     }
 
     fn variable_is_shorthand(&self, var: Variable) -> bool {
-        match self.var_kinds[var.get()] {
+        match self.var_kinds[var] {
             Local(LocalInfo { is_shorthand, .. }) => is_shorthand,
             Param(..) | Upvar(..) => false,
         }
@@ -327,7 +304,7 @@ impl IrMaps<'tcx> {
     }
 
     fn lnk(&self, ln: LiveNode) -> LiveNodeKind {
-        self.lnks[ln.get()]
+        self.lnks[ln]
     }
 }
 
@@ -556,10 +533,10 @@ struct RWUTable {
     unpacked_rwus: Vec<RWU>,
 }
 
-// A constant representing `RWU { reader: invalid_node(); writer: invalid_node(); used: false }`.
+// A constant representing `RWU { reader: INVALID_NODE; writer: INVALID_NODE; used: false }`.
 const INV_INV_FALSE: u32 = u32::MAX;
 
-// A constant representing `RWU { reader: invalid_node(); writer: invalid_node(); used: true }`.
+// A constant representing `RWU { reader: INVALID_NODE; writer: INVALID_NODE; used: true }`.
 const INV_INV_TRUE: u32 = u32::MAX - 1;
 
 impl RWUTable {
@@ -570,8 +547,8 @@ impl RWUTable {
     fn get(&self, idx: usize) -> RWU {
         let packed_rwu = self.packed_rwus[idx];
         match packed_rwu {
-            INV_INV_FALSE => RWU { reader: invalid_node(), writer: invalid_node(), used: false },
-            INV_INV_TRUE => RWU { reader: invalid_node(), writer: invalid_node(), used: true },
+            INV_INV_FALSE => RWU { reader: INVALID_NODE, writer: INVALID_NODE, used: false },
+            INV_INV_TRUE => RWU { reader: INVALID_NODE, writer: INVALID_NODE, used: true },
             _ => self.unpacked_rwus[packed_rwu as usize],
         }
     }
@@ -579,7 +556,7 @@ impl RWUTable {
     fn get_reader(&self, idx: usize) -> LiveNode {
         let packed_rwu = self.packed_rwus[idx];
         match packed_rwu {
-            INV_INV_FALSE | INV_INV_TRUE => invalid_node(),
+            INV_INV_FALSE | INV_INV_TRUE => INVALID_NODE,
             _ => self.unpacked_rwus[packed_rwu as usize].reader,
         }
     }
@@ -587,7 +564,7 @@ impl RWUTable {
     fn get_writer(&self, idx: usize) -> LiveNode {
         let packed_rwu = self.packed_rwus[idx];
         match packed_rwu {
-            INV_INV_FALSE | INV_INV_TRUE => invalid_node(),
+            INV_INV_FALSE | INV_INV_TRUE => INVALID_NODE,
             _ => self.unpacked_rwus[packed_rwu as usize].writer,
         }
     }
@@ -607,7 +584,7 @@ impl RWUTable {
     }
 
     fn assign_unpacked(&mut self, idx: usize, rwu: RWU) {
-        if rwu.reader == invalid_node() && rwu.writer == invalid_node() {
+        if rwu.reader == INVALID_NODE && rwu.writer == INVALID_NODE {
             // When we overwrite an indexing entry in `self.packed_rwus` with
             // `INV_INV_{TRUE,FALSE}` we don't remove the corresponding entry
             // from `self.unpacked_rwus`; it's not worth the effort, and we
@@ -634,7 +611,7 @@ struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    successors: Vec<LiveNode>,
+    successors: IndexVec<LiveNode, LiveNode>,
     rwu_table: RWUTable,
 
     /// A live node representing a point of execution before closure entry &
@@ -667,7 +644,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ir,
             typeck_results,
             param_env,
-            successors: vec![invalid_node(); num_live_nodes],
+            successors: IndexVec::from_elem_n(INVALID_NODE, num_live_nodes),
             rwu_table: RWUTable::new(num_live_nodes * num_vars),
             closure_ln,
             exit_ln,
@@ -708,7 +685,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn idx(&self, ln: LiveNode, var: Variable) -> usize {
-        ln.get() * self.ir.var_kinds.len() + var.get()
+        ln.index() * self.ir.var_kinds.len() + var.index()
     }
 
     fn live_on_entry(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
@@ -719,7 +696,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     // Is this variable live on entry to any of its successor nodes?
     fn live_on_exit(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
-        let successor = self.successors[ln.get()];
+        let successor = self.successors[ln];
         self.live_on_entry(successor, var)
     }
 
@@ -735,7 +712,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn assigned_on_exit(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
-        let successor = self.successors[ln.get()];
+        let successor = self.successors[ln];
         self.assigned_on_entry(successor, var)
     }
 
@@ -743,8 +720,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     where
         F: FnMut(&mut Liveness<'a, 'tcx>, usize, usize),
     {
-        let node_base_idx = self.idx(ln, Variable(0));
-        let succ_base_idx = self.idx(succ_ln, Variable(0));
+        let node_base_idx = self.idx(ln, Variable::from(0u32));
+        let succ_base_idx = self.idx(succ_ln, Variable::from(0u32));
         for var_idx in 0..self.ir.var_kinds.len() {
             op(self, node_base_idx + var_idx, succ_base_idx + var_idx);
         }
@@ -754,11 +731,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     where
         F: FnMut(usize) -> bool,
     {
-        let node_base_idx = self.idx(ln, Variable(0));
+        let node_base_idx = self.idx(ln, Variable::from(0u32));
         for var_idx in 0..self.ir.var_kinds.len() {
             let idx = node_base_idx + var_idx;
             if test(idx) {
-                write!(wr, " {:?}", Variable(var_idx as u32))?;
+                write!(wr, " {:?}", Variable::from(var_idx))?;
             }
         }
         Ok(())
@@ -769,14 +746,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut wr = Vec::new();
         {
             let wr = &mut wr as &mut dyn Write;
-            write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
+            write!(wr, "[{:?} of kind {:?} reads", ln, self.ir.lnk(ln));
             self.write_vars(wr, ln, |idx| self.rwu_table.get_reader(idx).is_valid());
             write!(wr, "  writes");
             self.write_vars(wr, ln, |idx| self.rwu_table.get_writer(idx).is_valid());
             write!(wr, "  uses");
             self.write_vars(wr, ln, |idx| self.rwu_table.get_used(idx));
 
-            write!(wr, "  precedes {:?}]", self.successors[ln.get()]);
+            write!(wr, "  precedes {:?}]", self.successors[ln]);
         }
         String::from_utf8(wr).unwrap()
     }
@@ -787,7 +764,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             "^^ liveness computation results for body {} (entry={:?})",
             {
                 for ln_idx in 0..self.ir.lnks.len() {
-                    debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
+                    debug!("{:?}", self.ln_str(LiveNode::from(ln_idx)));
                 }
                 hir_id
             },
@@ -796,7 +773,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn init_empty(&mut self, ln: LiveNode, succ_ln: LiveNode) {
-        self.successors[ln.get()] = succ_ln;
+        self.successors[ln] = succ_ln;
 
         // It is not necessary to initialize the RWUs here because they are all
         // set to INV_INV_FALSE when they are created, and the sets only grow
@@ -805,7 +782,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn init_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode) {
         // more efficient version of init_empty() / merge_from_succ()
-        self.successors[ln.get()] = succ_ln;
+        self.successors[ln] = succ_ln;
 
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
             this.rwu_table.copy_packed(idx, succ_idx);
@@ -878,7 +855,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut rwu = self.rwu_table.get(idx);
 
         if (acc & ACC_WRITE) != 0 {
-            rwu.reader = invalid_node();
+            rwu.reader = INVALID_NODE;
             rwu.writer = ln;
         }
 
