@@ -2194,7 +2194,7 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         //
         // If it has been advanced, we can reuse the memory by moving the
         // data to the front. But we only do so when the resulting Vec
-        // would have less unused capacity than extending a new Vec with the
+        // would have less unused capacity than growing a new Vec with the
         // generic from_iter would. This limitation is not strictly necessary
         // as Vec's allocation is intentionally unspecified.
         // This is a conservative choice.
