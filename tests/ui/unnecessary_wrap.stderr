@@ -26,16 +26,42 @@ LL |     } else {
  ...
 
 error: this function returns unnecessarily wrapping data
-  --> $DIR/unnecessary_wrap.rs:39:1
+  --> $DIR/unnecessary_wrap.rs:21:1
    |
-LL | / fn func4() -> Option<i32> {
+LL | / fn func2(a: bool, b: bool) -> Option<i32> {
+LL | |     if a && b {
+LL | |         return Some(10);
+LL | |     }
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: remove `Option` from the return type...
+   |
+LL | fn func2(a: bool, b: bool) -> i32 {
+   |                               ^^^
+help: ...and change the returning expressions
+   |
+LL |         return 10;
+LL |     }
+LL |     if a {
+LL |         20
+LL |     } else {
+LL |         30
+   |
+
+error: this function returns unnecessarily wrapping data
+  --> $DIR/unnecessary_wrap.rs:51:1
+   |
+LL | / fn func5() -> Option<i32> {
 LL | |     Some(1)
 LL | | }
    | |_^
    |
 help: remove `Option` from the return type...
    |
-LL | fn func4() -> i32 {
+LL | fn func5() -> i32 {
    |               ^^^
 help: ...and change the returning expressions
    |
@@ -43,21 +69,21 @@ LL |     1
    |
 
 error: this function returns unnecessarily wrapping data
-  --> $DIR/unnecessary_wrap.rs:49:1
+  --> $DIR/unnecessary_wrap.rs:61:1
    |
-LL | / fn func6() -> Result<i32, ()> {
+LL | / fn func7() -> Result<i32, ()> {
 LL | |     Ok(1)
 LL | | }
    | |_^
    |
 help: remove `Result` from the return type...
    |
-LL | fn func6() -> i32 {
+LL | fn func7() -> i32 {
    |               ^^^
 help: ...and change the returning expressions
    |
 LL |     1
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

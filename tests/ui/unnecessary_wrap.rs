@@ -17,8 +17,20 @@ fn func1(a: bool, b: bool) -> Option<i32> {
     }
 }
 
+// should be linted
+fn func2(a: bool, b: bool) -> Option<i32> {
+    if a && b {
+        return Some(10);
+    }
+    if a {
+        Some(20)
+    } else {
+        Some(30)
+    }
+}
+
 // public fns should not be linted
-pub fn func2(a: bool) -> Option<i32> {
+pub fn func3(a: bool) -> Option<i32> {
     if a {
         Some(1)
     } else {
@@ -27,7 +39,7 @@ pub fn func2(a: bool) -> Option<i32> {
 }
 
 // should not be linted
-fn func3(a: bool) -> Option<i32> {
+fn func4(a: bool) -> Option<i32> {
     if a {
         Some(1)
     } else {
@@ -36,22 +48,22 @@ fn func3(a: bool) -> Option<i32> {
 }
 
 // should be linted
-fn func4() -> Option<i32> {
+fn func5() -> Option<i32> {
     Some(1)
 }
 
 // should not be linted
-fn func5() -> Option<i32> {
+fn func6() -> Option<i32> {
     None
 }
 
 // should be linted
-fn func6() -> Result<i32, ()> {
+fn func7() -> Result<i32, ()> {
     Ok(1)
 }
 
 // should not be linted
-fn func7(a: bool) -> Result<i32, ()> {
+fn func8(a: bool) -> Result<i32, ()> {
     if a {
         Ok(1)
     } else {
@@ -60,12 +72,12 @@ fn func7(a: bool) -> Result<i32, ()> {
 }
 
 // should not be linted
-fn func8(a: bool) -> Result<i32, ()> {
+fn func9(a: bool) -> Result<i32, ()> {
     Err(())
 }
 
 fn main() {
     // method calls are not linted
     func1(true, true);
-    func2(true);
+    func2(true, true);
 }
