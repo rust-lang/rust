@@ -1,4 +1,4 @@
-use rand::prelude::*;
+use rand::RngCore;
 use std::iter::{repeat, FromIterator};
 use test::{black_box, Bencher};
 
