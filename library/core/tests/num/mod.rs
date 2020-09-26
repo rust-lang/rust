@@ -634,14 +634,18 @@ assume_usize_width! {
 macro_rules! test_float {
     ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr) => {
         mod $modname {
-            // FIXME(nagisa): these tests should test for sign of -0.0
             #[test]
             fn min() {
                 assert_eq!((0.0 as $fty).min(0.0), 0.0);
+                assert!((0.0 as $fty).min(0.0).is_sign_positive());
                 assert_eq!((-0.0 as $fty).min(-0.0), -0.0);
+                assert!((-0.0 as $fty).min(-0.0).is_sign_negative());
                 assert_eq!((9.0 as $fty).min(9.0), 9.0);
                 assert_eq!((-9.0 as $fty).min(0.0), -9.0);
                 assert_eq!((0.0 as $fty).min(9.0), 0.0);
+                assert!((0.0 as $fty).min(9.0).is_sign_positive());
+                assert_eq!((-0.0 as $fty).min(9.0), -0.0);
+                assert!((-0.0 as $fty).min(9.0).is_sign_negative());
                 assert_eq!((-0.0 as $fty).min(-9.0), -9.0);
                 assert_eq!(($inf as $fty).min(9.0), 9.0);
                 assert_eq!((9.0 as $fty).min($inf), 9.0);
@@ -660,11 +664,19 @@ macro_rules! test_float {
             #[test]
             fn max() {
                 assert_eq!((0.0 as $fty).max(0.0), 0.0);
+                assert!((0.0 as $fty).max(0.0).is_sign_positive());
                 assert_eq!((-0.0 as $fty).max(-0.0), -0.0);
+                assert!((-0.0 as $fty).max(-0.0).is_sign_negative());
                 assert_eq!((9.0 as $fty).max(9.0), 9.0);
                 assert_eq!((-9.0 as $fty).max(0.0), 0.0);
+                assert!((-9.0 as $fty).max(0.0).is_sign_positive());
+                assert_eq!((-9.0 as $fty).max(-0.0), -0.0);
+                assert!((-9.0 as $fty).max(-0.0).is_sign_negative());
                 assert_eq!((0.0 as $fty).max(9.0), 9.0);
+                assert_eq!((0.0 as $fty).max(-9.0), 0.0);
+                assert!((0.0 as $fty).max(-9.0).is_sign_positive());
                 assert_eq!((-0.0 as $fty).max(-9.0), -0.0);
+                assert!((-0.0 as $fty).max(-9.0).is_sign_negative());
                 assert_eq!(($inf as $fty).max(9.0), $inf);
                 assert_eq!((9.0 as $fty).max($inf), $inf);
                 assert_eq!(($inf as $fty).max(-9.0), $inf);
