@@ -43,31 +43,31 @@ macro_rules! define_mask {
 }
 
 define_mask! {
-    #[doc = "8-bit mask"]
+    /// 8-bit mask
     struct mask8(i8);
 }
 
 define_mask! {
-    #[doc = "16-bit mask"]
+    /// 16-bit mask
     struct mask16(i16);
 }
 
 define_mask! {
-    #[doc = "32-bit mask"]
+    /// 32-bit mask
     struct mask32(i32);
 }
 
 define_mask! {
-    #[doc = "64-bit mask"]
+    /// 64-bit mask
     struct mask64(i64);
 }
 
 define_mask! {
-    #[doc = "128-bit mask"]
+    /// 128-bit mask
     struct mask128(i128);
 }
 
 define_mask! {
-    #[doc = "`isize`-wide mask"]
+    /// `isize`-wide mask
     struct masksize(isize);
 }

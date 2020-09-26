@@ -1,17 +1,17 @@
 define_vector! {
-    #[doc = "Vector of two `isize` values"]
+    /// Vector of two `isize` values
     #[derive(Eq, Ord, Hash)]
     struct isizex2([isize; 2]);
 }
 
 define_vector! {
-    #[doc = "Vector of four `isize` values"]
+    /// Vector of four `isize` values
     #[derive(Eq, Ord, Hash)]
     struct isizex4([isize; 4]);
 }
 
 define_vector! {
-    #[doc = "Vector of eight `isize` values"]
+    /// Vector of eight `isize` values
     #[derive(Eq, Ord, Hash)]
     struct isizex8([isize; 8]);
 }
