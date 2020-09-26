@@ -1,21 +1,21 @@
-error[E0391]: cycle detected when simplifying constant for the type system `Alpha::V3::{{constant}}#0`
+error[E0391]: cycle detected when simplifying constant for the type system `Alpha::V3::{constant#0}`
   --> $DIR/self-in-enum-definition.rs:5:10
    |
 LL |     V3 = Self::V1 {} as u8 + 2,
    |          ^^^^^^^^
    |
-note: ...which requires simplifying constant for the type system `Alpha::V3::{{constant}}#0`...
+note: ...which requires simplifying constant for the type system `Alpha::V3::{constant#0}`...
   --> $DIR/self-in-enum-definition.rs:5:10
    |
 LL |     V3 = Self::V1 {} as u8 + 2,
    |          ^^^^^^^^
-note: ...which requires const-evaluating + checking `Alpha::V3::{{constant}}#0`...
+note: ...which requires const-evaluating + checking `Alpha::V3::{constant#0}`...
   --> $DIR/self-in-enum-definition.rs:5:10
    |
 LL |     V3 = Self::V1 {} as u8 + 2,
    |          ^^^^^^^^
    = note: ...which requires computing layout of `Alpha`...
-   = note: ...which again requires simplifying constant for the type system `Alpha::V3::{{constant}}#0`, completing the cycle
+   = note: ...which again requires simplifying constant for the type system `Alpha::V3::{constant#0}`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/self-in-enum-definition.rs:1:1
    |

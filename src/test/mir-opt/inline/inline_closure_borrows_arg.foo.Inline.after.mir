@@ -4,8 +4,8 @@ fn foo(_1: T, _2: &i32) -> i32 {
     debug _t => _1;                      // in scope 0 at $DIR/inline-closure-borrows-arg.rs:11:17: 11:19
     debug q => _2;                       // in scope 0 at $DIR/inline-closure-borrows-arg.rs:11:24: 11:25
     let mut _0: i32;                     // return place in scope 0 at $DIR/inline-closure-borrows-arg.rs:11:36: 11:39
-    let _3: [closure@foo<T>::{{closure}}#0]; // in scope 0 at $DIR/inline-closure-borrows-arg.rs:12:9: 12:10
-    let mut _4: &[closure@foo<T>::{{closure}}#0]; // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:6
+    let _3: [closure@foo<T>::{closure#0}]; // in scope 0 at $DIR/inline-closure-borrows-arg.rs:12:9: 12:10
+    let mut _4: &[closure@foo<T>::{closure#0}]; // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:6
     let mut _5: (&i32, &i32);            // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
     let mut _6: &i32;                    // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:7: 16:8
     let mut _7: &i32;                    // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:10: 16:11

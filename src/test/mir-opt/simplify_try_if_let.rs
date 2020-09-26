@@ -1,5 +1,5 @@
 // compile-flags: -Zmir-opt-level=1
-// EMIT_MIR simplify_try_if_let.{{impl}}-append.SimplifyArmIdentity.diff
+// EMIT_MIR simplify_try_if_let.{impl#0}-append.SimplifyArmIdentity.diff
 
 use std::ptr::NonNull;
 

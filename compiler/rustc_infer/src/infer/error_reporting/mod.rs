@@ -531,7 +531,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 disambiguated_data: &DisambiguatedDefPathData,
             ) -> Result<Self::Path, Self::Error> {
                 let mut path = print_prefix(self)?;
-                path.push(disambiguated_data.data.as_symbol().to_string());
+                path.push(disambiguated_data.to_string());
                 Ok(path)
             }
             fn path_generic_args(

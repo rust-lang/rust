@@ -1,6 +1,6 @@
-// MIR for `E::V::{{constant}}#0` 0 mir_map
+// MIR for `E::V::{constant#0}` 0 mir_map
 
-E::V::{{constant}}#0: isize = {
+E::V::{constant#0}: isize = {
     let mut _0: isize;                   // return place in scope 0 at $DIR/unusual-item-types.rs:22:9: 22:10
 
     bb0: {

@@ -5,7 +5,7 @@
 pub async fn f() -> impl std::fmt::Debug {
     #[derive(Debug)]
     enum E {
-    //~^ ERROR recursive type `f::{{closure}}#0::E` has infinite size
+    //~^ ERROR recursive type `f::{closure#0}::E` has infinite size
         This(E),
         Unit,
     }

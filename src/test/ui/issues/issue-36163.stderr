@@ -1,15 +1,15 @@
-error[E0391]: cycle detected when simplifying constant for the type system `Foo::B::{{constant}}#0`
+error[E0391]: cycle detected when simplifying constant for the type system `Foo::B::{constant#0}`
   --> $DIR/issue-36163.rs:4:9
    |
 LL |     B = A,
    |         ^
    |
-note: ...which requires simplifying constant for the type system `Foo::B::{{constant}}#0`...
+note: ...which requires simplifying constant for the type system `Foo::B::{constant#0}`...
   --> $DIR/issue-36163.rs:4:9
    |
 LL |     B = A,
    |         ^
-note: ...which requires const-evaluating + checking `Foo::B::{{constant}}#0`...
+note: ...which requires const-evaluating + checking `Foo::B::{constant#0}`...
   --> $DIR/issue-36163.rs:4:9
    |
 LL |     B = A,
@@ -31,7 +31,7 @@ note: ...which requires const-evaluating + checking `A`...
 LL | const A: isize = Foo::B as isize;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires normalizing `A`...
-   = note: ...which again requires simplifying constant for the type system `Foo::B::{{constant}}#0`, completing the cycle
+   = note: ...which again requires simplifying constant for the type system `Foo::B::{constant#0}`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/issue-36163.rs:1:1
    |

@@ -846,7 +846,7 @@ impl<'tcx> LateContext<'tcx> {
                     return Ok(path);
                 }
 
-                path.push(disambiguated_data.data.as_symbol());
+                path.push(Symbol::intern(&disambiguated_data.data.to_string()));
                 Ok(path)
             }
 

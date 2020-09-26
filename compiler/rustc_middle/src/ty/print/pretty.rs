@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::ItemKind;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -1498,24 +1498,20 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
         // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
-        let name = disambiguated_data.data.as_symbol();
-        if name != kw::Invalid {
+        let name = disambiguated_data.data.name();
+        if name != DefPathDataName::Named(kw::Invalid) {
             if !self.empty_path {
                 write!(self, "::")?;
             }
-            if Ident::with_dummy_span(name).is_raw_guess() {
-                write!(self, "r#")?;
-            }
-            write!(self, "{}", name)?;
 
-            // FIXME(eddyb) this will print e.g. `{{closure}}#3`, but it
-            // might be nicer to use something else, e.g. `{closure#3}`.
-            let dis = disambiguated_data.disambiguator;
-            let print_dis = disambiguated_data.data.get_opt_name().is_none()
-                || dis != 0 && self.tcx.sess.verbose();
-            if print_dis {
-                write!(self, "#{}", dis)?;
+            if let DefPathDataName::Named(name) = name {
+                if Ident::with_dummy_span(name).is_raw_guess() {
+                    write!(self, "r#")?;
+                }
             }
+
+            let verbose = self.tcx.sess.verbose();
+            disambiguated_data.fmt_maybe_verbose(&mut self, verbose)?;
 
             self.empty_path = false;
         }

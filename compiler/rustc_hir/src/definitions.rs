@@ -13,9 +13,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use std::hash::Hash;
 use tracing::debug;
 
@@ -155,6 +155,29 @@ pub struct DisambiguatedDefPathData {
     pub disambiguator: u32,
 }
 
+impl DisambiguatedDefPathData {
+    pub fn fmt_maybe_verbose(&self, writer: &mut impl Write, verbose: bool) -> fmt::Result {
+        match self.data.name() {
+            DefPathDataName::Named(name) => {
+                if verbose && self.disambiguator != 0 {
+                    write!(writer, "{}#{}", name, self.disambiguator)
+                } else {
+                    writer.write_str(&name.as_str())
+                }
+            }
+            DefPathDataName::Anon { namespace } => {
+                write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+            }
+        }
+    }
+}
+
+impl fmt::Display for DisambiguatedDefPathData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.fmt_maybe_verbose(f, true)
+    }
+}
+
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct DefPath {
     /// The path leading from the crate root to the item.
@@ -198,33 +221,11 @@ impl DefPath {
     /// Returns a string representation of the `DefPath` without
     /// the crate-prefix. This method is useful if you don't have
     /// a `TyCtxt` available.
-    pub fn to_string_no_crate(&self) -> String {
+    pub fn to_string_no_crate_verbose(&self) -> String {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
-        }
-
-        s
-    }
-
-    /// Returns a filename-friendly string for the `DefPath`, with the
-    /// crate-prefix.
-    pub fn to_string_friendly<F>(&self, crate_imported_name: F) -> String
-    where
-        F: FnOnce(CrateNum) -> Symbol,
-    {
-        let crate_name_str = crate_imported_name(self.krate).as_str();
-        let mut s = String::with_capacity(crate_name_str.len() + self.data.len() * 16);
-
-        write!(s, "::{}", crate_name_str).unwrap();
-
-        for component in &self.data {
-            if component.disambiguator == 0 {
-                write!(s, "::{}", component.data.as_symbol()).unwrap();
-            } else {
-                write!(s, "{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
-            }
+            write!(s, "::{}", component).unwrap();
         }
 
         s
@@ -240,12 +241,9 @@ impl DefPath {
         for component in &self.data {
             s.extend(opt_delimiter);
             opt_delimiter = Some('-');
-            if component.disambiguator == 0 {
-                write!(s, "{}", component.data.as_symbol()).unwrap();
-            } else {
-                write!(s, "{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
-            }
+            write!(s, "{}", component).unwrap();
         }
+
         s
     }
 }
@@ -427,6 +425,12 @@ impl Definitions {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum DefPathDataName {
+    Named(Symbol),
+    Anon { namespace: Symbol },
+}
+
 impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
@@ -437,22 +441,30 @@ impl DefPathData {
         }
     }
 
-    pub fn as_symbol(&self) -> Symbol {
+    pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => name,
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
+                DefPathDataName::Named(name)
+            }
             // Note that this does not show up in user print-outs.
-            CrateRoot => sym::double_braced_crate,
-            Impl => sym::double_braced_impl,
-            Misc => sym::double_braced_misc,
-            ClosureExpr => sym::double_braced_closure,
-            Ctor => sym::double_braced_constructor,
-            AnonConst => sym::double_braced_constant,
-            ImplTrait => sym::double_braced_opaque,
+            CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
+            Impl => DefPathDataName::Anon { namespace: kw::Impl },
+            Misc => DefPathDataName::Anon { namespace: sym::misc },
+            ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
+            Ctor => DefPathDataName::Anon { namespace: sym::constructor },
+            AnonConst => DefPathDataName::Anon { namespace: sym::constant },
+            ImplTrait => DefPathDataName::Anon { namespace: sym::opaque },
         }
     }
+}
 
-    pub fn to_string(&self) -> String {
-        self.as_symbol().to_string()
+impl fmt::Display for DefPathData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.name() {
+            DefPathDataName::Named(name) => f.write_str(&name.as_str()),
+            // FIXME(#70334): this will generate legacy {{closure}}, {{impl}}, etc
+            DefPathDataName::Anon { namespace } => write!(f, "{{{{{}}}}}", namespace),
+        }
     }
 }

@@ -3,6 +3,7 @@ use std::collections::hash_map::Entry;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
@@ -354,7 +355,10 @@ fn compute_codegen_unit_name(
     *cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
         let def_path = tcx.def_path(cgu_def_id);
 
-        let components = def_path.data.iter().map(|part| part.data.as_symbol());
+        let components = def_path.data.iter().map(|part| match part.data.name() {
+            DefPathDataName::Named(name) => name,
+            DefPathDataName::Anon { .. } => unreachable!(),
+        });
 
         let volatile_suffix = volatile.then_some("volatile");
 
