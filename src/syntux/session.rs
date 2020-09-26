@@ -230,6 +230,17 @@ impl ParseSess {
         }
     }
 
+    pub(crate) fn emit_or_cancel_diagnostic(&self, diagnostic: &mut Diagnostic) {
+        self.parse_sess.span_diagnostic.emit_diagnostic(diagnostic);
+        // The Handler will check whether the diagnostic should be emitted
+        // based on the user's rustfmt configuration and the originating file
+        // that caused the parser error. If the Handler determined it should skip
+        // emission then we need to ensure the diagnostic is cancelled.
+        if !diagnostic.cancelled() {
+            diagnostic.cancel();
+        }
+    }
+
     pub(super) fn can_reset_errors(&self) -> bool {
         *self.can_reset_errors.borrow()
     }

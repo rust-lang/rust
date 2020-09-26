@@ -65,8 +65,11 @@ impl<'a> ParserBuilder<'a> {
         let parser = match Self::parser(sess.inner(), input) {
             Ok(p) => p,
             Err(db) => {
-                sess.emit_diagnostics(db);
-                return Err(ParserError::ParserCreationError);
+                if let Some(diagnostics) = db {
+                    sess.emit_diagnostics(diagnostics);
+                    return Err(ParserError::ParserCreationError);
+                }
+                return Err(ParserError::ParsePanicError);
             }
         };
 
@@ -76,14 +79,18 @@ impl<'a> ParserBuilder<'a> {
     fn parser(
         sess: &'a rustc_session::parse::ParseSess,
         input: Input,
-    ) -> Result<rustc_parse::parser::Parser<'a>, Vec<Diagnostic>> {
+    ) -> Result<rustc_parse::parser::Parser<'a>, Option<Vec<Diagnostic>>> {
         match input {
-            Input::File(ref file) => Ok(new_parser_from_file(sess, file, None)),
+            Input::File(ref file) => catch_unwind(AssertUnwindSafe(move || {
+                new_parser_from_file(sess, file, None)
+            }))
+            .map_err(|_| None),
             Input::Text(text) => rustc_parse::maybe_new_parser_from_source_str(
                 sess,
                 rustc_span::FileName::Custom("stdin".to_owned()),
                 text,
-            ),
+            )
+            .map_err(|db| Some(db)),
         }
     }
 }
@@ -120,8 +127,10 @@ impl<'a> Parser<'a> {
             match parser.parse_mod(&TokenKind::Eof, ast::Unsafe::No) {
                 Ok(result) => Some(result),
                 Err(mut e) => {
-                    e.cancel();
-                    sess.reset_errors();
+                    sess.emit_or_cancel_diagnostic(&mut e);
+                    if sess.can_reset_errors() {
+                        sess.reset_errors();
+                    }
                     None
                 }
             }
