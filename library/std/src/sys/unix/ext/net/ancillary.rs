@@ -400,7 +400,7 @@ impl<'a> Iterator for Messages<'a> {
                               target_os = "netbsd",
                               target_os = "openbsd",
                           ))] {
-                    msg.msg_controllen = self.buffer.len() as libc::socklen_t;;
+                    msg.msg_controllen = self.buffer.len() as libc::socklen_t;
                 }
             }
 
