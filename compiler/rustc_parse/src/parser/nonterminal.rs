@@ -188,7 +188,7 @@ impl<'a> Parser<'a> {
                 token::NtPath(path)
             }
             NonterminalKind::Meta => {
-                let (mut attr, tokens) = self.collect_tokens(|this| this.parse_attr_item())?;
+                let (mut attr, tokens) = self.collect_tokens(|this| this.parse_attr_item(false))?;
                 // We may have eaten a nonterminal, which could already have tokens
                 if attr.tokens.is_none() {
                     attr.tokens = Some(tokens);

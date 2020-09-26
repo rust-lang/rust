@@ -15,7 +15,7 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
         );
 
         let start_span = parser.token.span;
-        let AttrItem { path, args, tokens: _ } = match parser.parse_attr_item() {
+        let AttrItem { path, args, tokens: _ } = match parser.parse_attr_item(false) {
             Ok(ai) => ai,
             Err(mut err) => {
                 err.emit();

@@ -972,7 +972,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
+        // Tokens aren't needed after macro expansion and parsing
+        Attribute { kind, id: attr.id, style: attr.style, span: attr.span, tokens: None }
     }
 
     fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {
@@ -1713,7 +1714,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 pat: self.lower_pat(&l.pat),
                 init,
                 span: l.span,
-                attrs: l.attrs.clone(),
+                attrs: l.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
                 source: hir::LocalSource::Normal,
             },
             ids,

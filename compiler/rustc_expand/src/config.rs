@@ -3,10 +3,13 @@
 use rustc_ast::attr::HasAttrs;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
+use rustc_ast::token::{DelimToken, Token, TokenKind};
+use rustc_ast::tokenstream::{DelimSpan, LazyTokenStreamInner, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, AttrItem, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{error_code, struct_span_err, Applicability, Handler};
 use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{
@@ -289,7 +292,37 @@ impl<'a> StripUnconfigured<'a> {
         expanded_attrs
             .into_iter()
             .flat_map(|(item, span)| {
-                let attr = attr::mk_attr_from_item(attr.style, item, span);
+                let orig_tokens =
+                    attr.tokens.as_ref().unwrap_or_else(|| panic!("Missing tokens for {:?}", attr));
+
+                // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
+                // and producing an attribute of the form `#[attr]`. We
+                // have captured tokens for `attr` itself, but we need to
+                // synthesize tokens for the wrapper `#` and `[]`, which
+                // we do below.
+
+                // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
+                // for `attr` when we expand it to `#[attr]`
+                let pound_token = orig_tokens.into_token_stream().trees().next().unwrap();
+                if !matches!(pound_token, TokenTree::Token(Token { kind: TokenKind::Pound, .. })) {
+                    panic!("Bad tokens for attribute {:?}", attr);
+                }
+                // We don't really have a good span to use for the syntheized `[]`
+                // in `#[attr]`, so just use the span of the `#` token.
+                let bracket_group = TokenTree::Delimited(
+                    DelimSpan::from_single(pound_token.span()),
+                    DelimToken::Bracket,
+                    item.tokens
+                        .clone()
+                        .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
+                        .into_token_stream(),
+                );
+
+                let mut attr = attr::mk_attr_from_item(attr.style, item, span);
+                attr.tokens = Some(Lrc::new(LazyTokenStreamInner::Ready(TokenStream::new(vec![
+                    (pound_token, Spacing::Alone),
+                    (bracket_group, Spacing::Alone),
+                ]))));
                 self.process_cfg_attr(attr)
             })
             .collect()

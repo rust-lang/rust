@@ -252,9 +252,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     let convert_tokens = |tokens: Option<LazyTokenStream>| tokens.map(|t| t.into_token_stream());
 
     let tokens = match *nt {
-        Nonterminal::NtItem(ref item) => {
-            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-        }
+        Nonterminal::NtItem(ref item) => prepend_attrs(&item.attrs, item.tokens.as_ref()),
         Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.clone()),
         Nonterminal::NtStmt(ref stmt) => {
             // FIXME: We currently only collect tokens for `:stmt`
@@ -279,7 +277,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
             if expr.tokens.is_none() {
                 debug!("missing tokens for expr {:?}", expr);
             }
-            prepend_attrs(sess, &expr.attrs, expr.tokens.as_ref(), span)
+            prepend_attrs(&expr.attrs, expr.tokens.as_ref())
         }
     };
 
@@ -603,10 +601,8 @@ fn token_probably_equal_for_proc_macro(first: &Token, other: &Token) -> bool {
 }
 
 fn prepend_attrs(
-    sess: &ParseSess,
     attrs: &[ast::Attribute],
     tokens: Option<&tokenstream::LazyTokenStream>,
-    span: rustc_span::Span,
 ) -> Option<tokenstream::TokenStream> {
     let tokens = tokens?.clone().into_token_stream();
     if attrs.is_empty() {
@@ -619,47 +615,12 @@ fn prepend_attrs(
             ast::AttrStyle::Outer,
             "inner attributes should prevent cached tokens from existing"
         );
-
-        let source = pprust::attribute_to_string(attr);
-        let macro_filename = FileName::macro_expansion_source_code(&source);
-
-        let item = match attr.kind {
-            ast::AttrKind::Normal(ref item) => item,
-            ast::AttrKind::DocComment(..) => {
-                let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
-                builder.push(stream);
-                continue;
-            }
-        };
-
-        // synthesize # [ $path $tokens ] manually here
-        let mut brackets = tokenstream::TokenStreamBuilder::new();
-
-        // For simple paths, push the identifier directly
-        if item.path.segments.len() == 1 && item.path.segments[0].args.is_none() {
-            let ident = item.path.segments[0].ident;
-            let token = token::Ident(ident.name, ident.as_str().starts_with("r#"));
-            brackets.push(tokenstream::TokenTree::token(token, ident.span));
-
-        // ... and for more complicated paths, fall back to a reparse hack that
-        // should eventually be removed.
-        } else {
-            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
-            brackets.push(stream);
-        }
-
-        brackets.push(item.args.outer_tokens());
-
-        // The span we list here for `#` and for `[ ... ]` are both wrong in
-        // that it encompasses more than each token, but it hopefully is "good
-        // enough" for now at least.
-        builder.push(tokenstream::TokenTree::token(token::Pound, attr.span));
-        let delim_span = tokenstream::DelimSpan::from_single(attr.span);
-        builder.push(tokenstream::TokenTree::Delimited(
-            delim_span,
-            token::DelimToken::Bracket,
-            brackets.build(),
-        ));
+        builder.push(
+            attr.tokens
+                .clone()
+                .unwrap_or_else(|| panic!("Attribute {:?} is missing tokens!", attr))
+                .into_token_stream(),
+        );
     }
     builder.push(tokens.clone());
     Some(builder.build())
