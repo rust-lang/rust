@@ -173,6 +173,29 @@ type SyntaxContextTable = Lazy<Table<u32, Lazy<SyntaxContextData>>>;
 type ExpnDataTable = Lazy<Table<u32, Lazy<ExpnData>>>;
 
 #[derive(MetadataEncodable, MetadataDecodable)]
+crate struct ProcMacroData {
+    proc_macro_decls_static: DefIndex,
+    stability: Option<attr::Stability>,
+    macros: Lazy<[DefIndex]>,
+}
+
+/// Serialized metadata for a crate.
+/// When compiling a proc-macro crate, we encode many of
+/// the `Lazy<[T]>` fields as `Lazy::empty()`. This serves two purposes:
+///
+/// 1. We avoid performing unnecessary work. Proc-macro crates can only
+/// export proc-macros functions, which are compiled into a shared library.
+/// As a result, a large amount of the information we normally store
+/// (e.g. optimized MIR) is unneeded by downstream crates.
+/// 2. We avoid serializing invalid `CrateNum`s. When we deserialize
+/// a proc-macro crate, we don't load any of its dependencies (since we
+/// just need to invoke a native function from the shared library).
+/// This means that any foreign `CrateNum`s that we serialize cannot be
+/// deserialized, since we will not know how to map them into the current
+/// compilation session. If we were to serialize a proc-macro crate like
+/// a normal crate, much of what we serialized would be unusable in addition
+/// to being unused.
+#[derive(MetadataEncodable, MetadataDecodable)]
 crate struct CrateRoot<'tcx> {
     name: Symbol,
     triple: TargetTriple,
@@ -185,8 +208,6 @@ crate struct CrateRoot<'tcx> {
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
     plugin_registrar_fn: Option<DefIndex>,
-    proc_macro_decls_static: Option<DefIndex>,
-    proc_macro_stability: Option<attr::Stability>,
 
     crate_deps: Lazy<[CrateDep]>,
     dylib_dependency_formats: Lazy<[Option<LinkagePreference>]>,
@@ -198,11 +219,9 @@ crate struct CrateRoot<'tcx> {
     foreign_modules: Lazy<[ForeignModule]>,
     impls: Lazy<[TraitImpls]>,
     interpret_alloc_index: Lazy<[u32]>,
+    proc_macro_data: Option<ProcMacroData>,
 
     tables: LazyTables<'tcx>,
-
-    /// The DefIndex's of any proc macros declared by this crate.
-    proc_macro_data: Option<Lazy<[DefIndex]>>,
 
     exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
 

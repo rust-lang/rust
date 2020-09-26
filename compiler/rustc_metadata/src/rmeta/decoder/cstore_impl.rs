@@ -179,8 +179,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         })
     }
     proc_macro_decls_static => {
-        cdata.root.proc_macro_decls_static.map(|index| {
-            DefId { krate: def_id.krate, index }
+        cdata.root.proc_macro_data.as_ref().map(|data| {
+            DefId {
+                krate: def_id.krate,
+                index: data.proc_macro_decls_static,
+            }
         })
     }
     crate_disambiguator => { cdata.root.disambiguator }
