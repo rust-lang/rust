@@ -27,7 +27,6 @@ debug_wrapper! {
     Octal => format_octal,
     LowerHex => format_lower_hex,
     UpperHex => format_upper_hex,
-    Pointer => format_pointer,
 }
 
 macro_rules! impl_fmt_trait {
