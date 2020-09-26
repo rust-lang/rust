@@ -788,30 +788,18 @@ pub struct CaptureInfo<'tcx> {
     pub capture_kind: UpvarCapture<'tcx>,
 }
 
+#[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct CapturedPlace<'tcx> {
+    pub place: HirPlace<'tcx>,
+    pub info: CaptureInfo<'tcx>,
+}
+
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
-/// Consider closure where s.str1 is captured via an ImmutableBorrow and s.str2 via a MutableBorrow
-///
-/// ```rust
-/// // Assume that thte HirId for the variable definition is `V1`
-/// let mut s = SomeStruct { str1: format!("s1"), str2: format!("s2") }
-///
-/// let fix_s = |new_s2| {
-///     // Assume that the HirId for the expression `s.str1` is `E1`
-///     println!("Updating SomeStruct with str1=", s.str1);
-///     // Assume that the HirId for the expression `*s.str2` is `E2`
-///     s.str2 = new_s2;
-/// }
-/// ```
-///
-/// For closure `fix_s`, (at a high level) the IndexMap will contain:
-///
-/// Place { V1, [ProjectionKind::Field(Index=0, Variant=0)] } : CaptureKind { E1, ImmutableBorrow }
-/// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
-///
-pub type CaptureInformationMap<'tcx> =
-    FxHashMap<DefId, FxIndexMap<HirPlace<'tcx>, CaptureInfo<'tcx>>>;
+pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
+pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<hir::HirId, MinCaptureList<'tcx>>;
+pub type MinCaptureInformationMap<'tcx> = FxHashMap<DefId, RootVariableMinCaptureList<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
