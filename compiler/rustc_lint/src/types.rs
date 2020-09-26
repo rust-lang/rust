@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;

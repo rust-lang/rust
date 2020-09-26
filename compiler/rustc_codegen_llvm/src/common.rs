@@ -1,5 +1,3 @@
-#![allow(non_camel_case_types, non_snake_case)]
-
 //! Code that is useful in various codegen modules.
 
 use crate::consts::{self, const_alloc_to_llvm};
