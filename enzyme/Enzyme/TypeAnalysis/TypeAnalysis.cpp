@@ -46,7 +46,7 @@
 
 #include "TBAA.h"
 
-llvm::cl::opt<bool> PrintType("enzyme_PrintType", cl::init(false), cl::Hidden,
+llvm::cl::opt<bool> PrintType("enzyme_printtype", cl::init(false), cl::Hidden,
                               cl::desc("Print type detection algorithm"));
 
 TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA)
@@ -276,19 +276,33 @@ void TypeAnalyzer::updateAnalysis(Value *val, TypeTree data, Value *origin) {
   if (auto arg = dyn_cast<Argument>(val))
     assert(fntypeinfo.Function == arg->getParent());
 
-  if (isa<GetElementPtrInst>(val) && data[{}] == BaseType::Integer) {
+  /*
+  if (isa<GetElementPtrInst>(val) && data.Data0()[{}] == BaseType::Integer) {
     llvm::errs() << "illegal gep update\n";
     assert(0 && "illegal gep update");
   }
+  */
 
-  if (val->getType()->isPointerTy() && data[{}] == BaseType::Integer) {
+  if ( (val->getType()->isPointerTy()  || isa<PtrToIntInst>(val)) && data.Data0()[{}] == BaseType::Integer) {
+    llvm::errs() << *fntypeinfo.Function << "\n";
+    dump();
     llvm::errs() << "illegal gep update for val: " << *val << "\n";
     if (origin)
       llvm::errs() << " + " << *origin << "\n";
     assert(0 && "illegal gep update");
   }
 
-  if (analysis[val] |= data) {
+  bool LegalOr = true;
+  bool Changed = analysis[val].checkedOrIn(data, /*PointerIntSame*/false, LegalOr);
+
+  if (!LegalOr) {
+    llvm::errs() << "Illegal updateAnalysis prev:" << analysis[val].str() << " new: " << data.str() << "\n";
+    llvm::errs() << "val: " << *val << " origin=" << *origin << "\n";
+    assert(0 && "Performed illegal updateAnalysis");
+    llvm_unreachable("Performed illegal updateAnalysis");
+  }
+
+  if (Changed) {
     // Add val so it can explicitly propagate this new info, if able to
     if (val != origin)
       addToWorkList(val);
@@ -305,6 +319,15 @@ void TypeAnalyzer::updateAnalysis(Value *val, TypeTree data, Value *origin) {
         }
 
         addToWorkList(use);
+
+        // per the handling of phi's
+        if (auto BO = dyn_cast<BinaryOperator>(use)) {
+          for (User *suse : BO->users()) {
+            if (isa<PHINode>(suse) && suse != origin) {
+              addToWorkList(suse);
+            }
+          }
+        }
       }
     }
 
@@ -610,11 +633,13 @@ bool TypeAnalyzer::runUnusedChecks() {
   for (BasicBlock &BB : *fntypeinfo.Function) {
     for (auto &inst : BB) {
       auto analysis = getAnalysis(&inst);
-      if (analysis[{0}] != BaseType::Unknown)
-        continue;
 
       if (!inst.getType()->isIntOrIntVectorTy())
         continue;
+
+      if (analysis.Data0()[{}] != BaseType::Unknown)
+        continue;
+
 
       // This deals with integers representing floats or pointers with no use
       // (and thus can be anything)
@@ -629,10 +654,14 @@ bool TypeAnalyzer::runUnusedChecks() {
       }
 
       // This deals with integers with no use
+      // Just because this has no integral use doesn't mean this is
+      // necessarily an integer -- it could be an unused pointer/float
+      // thus set it as "Anything" such that it could have a use as any
+      // type.
       {
         if (!hasNonIntegralUse(*this, &inst, intseen, nullptr)) {
           updateAnalysis(&inst,
-                         TypeTree(BaseType::Integer)
+                         TypeTree(BaseType::Anything)
                              .Only(inst.getType()->isIntegerTy() ? -1 : 0),
                          &inst);
           changed = true;
@@ -726,6 +755,10 @@ void TypeAnalyzer::visitLoadInst(LoadInst &I) {
                  .ShiftIndices(dl, /*start*/ 0, loadSize, /*addOffset*/ 0)
                  .PurgeAnything();
   ptr |= TypeTree(BaseType::Pointer);
+  //llvm::errs() << I << "\n";
+  //llvm::errs() << ptr.str() << "\n";
+  //llvm::errs() << getAnalysis(I.getOperand(0)).str() << " loadSize=" << loadSize << "\n"; 
+  //llvm::errs() << getAnalysis(I.getOperand(0)).Lookup(loadSize, dl).str() << "\n"; 
   updateAnalysis(I.getOperand(0), ptr.Only(-1), &I);
   updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup(loadSize, dl), &I);
 }
@@ -868,18 +901,6 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
   }
 
   assert(phi.getNumIncomingValues() > 0);
-  // TODO phi needs reconsidering here
-  TypeTree vd;
-  bool set = false;
-
-  auto consider = [&](TypeTree &&newData, Value *v) {
-    if (set) {
-      vd &= newData;
-    } else {
-      set = true;
-      vd = newData;
-    }
-  };
 
   // TODO generalize this (and for recursive, etc)
   std::deque<Value *> vals;
@@ -889,6 +910,9 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
   }
 
   std::vector<BinaryOperator *> bos;
+
+  // Unique values that propagate into this phi
+  std::vector<Value *> UniqueValues;
 
   while (vals.size()) {
     Value *todo = vals.front();
@@ -922,23 +946,62 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
       vals.push_back(sel->getOperand(2));
       continue;
     }
+    UniqueValues.push_back(todo);
+  }
 
-    consider(getAnalysis(todo), todo);
+  TypeTree PhiTypes;
+  bool set = false;
+
+  for(size_t i=0, size=UniqueValues.size(); i < size; ++i) {
+    TypeTree newData = getAnalysis(UniqueValues[i]);
+    if (UniqueValues.size() == 2) {
+      if (auto BO = dyn_cast<BinaryOperator>(UniqueValues[i])) {
+        if (BO->getOpcode() == BinaryOperator::Add || BO->getOpcode() == BinaryOperator::Mul) {
+          TypeTree otherData = getAnalysis(UniqueValues[1-i]);
+          if (BO->getOperand(0) == &phi) {
+            set = true;
+            PhiTypes = otherData;
+            PhiTypes.binopIn(getAnalysis(BO->getOperand(1)), BO->getOpcode());
+            break;
+          } else if (BO->getOperand(1) == &phi) {
+            set = true;
+            PhiTypes = getAnalysis(BO->getOperand(0));
+            PhiTypes.binopIn(otherData, BO->getOpcode());
+            break;
+          }
+        } else if (BO->getOpcode() == BinaryOperator::Sub) {
+          // Repeated subtraction from a type X yields the type X back
+          TypeTree otherData = getAnalysis(UniqueValues[1-i]);
+          if (BO->getOperand(0) == &phi) {
+            set = true;
+            PhiTypes = otherData;
+            //PhiTypes.binopIn(getAnalysis(BO->getOperand(1)), BO->getOpcode());
+            break;
+          } 
+        } 
+      }
+    }
+    if (set) {
+      PhiTypes &= newData;
+    } else {
+      set = true;
+      PhiTypes = newData;
+    }
   }
 
   assert(set);
   for (BinaryOperator *bo : bos) {
     TypeTree vd1 = isa<ConstantInt>(bo->getOperand(0))
                         ? getAnalysis(bo->getOperand(0)).Data0()
-                        : vd.Data0();
+                        : PhiTypes.Data0();
     TypeTree vd2 = isa<ConstantInt>(bo->getOperand(1))
                         ? getAnalysis(bo->getOperand(1)).Data0()
-                        : vd.Data0();
+                        : PhiTypes.Data0();
     vd1.binopIn(vd2, bo->getOpcode());
-    vd &= vd1.Only(bo->getType()->isIntegerTy() ? -1 : 0);
+    PhiTypes &= vd1.Only(bo->getType()->isIntegerTy() ? -1 : 0);
   }
 
-  updateAnalysis(&phi, vd, &phi);
+  updateAnalysis(&phi, PhiTypes, &phi);
 }
 
 void TypeAnalyzer::visitTruncInst(TruncInst &I) {
@@ -1192,7 +1255,6 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     default:
       break;
     }
-
     TypeTree vd = AnalysisLHS;
     vd.binopIn(AnalysisRHS, I.getOpcode());
 
@@ -1202,7 +1264,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
              fntypeinfo.knownIntegralValues(I.getOperand(i), DT, intseen)) {
           if (andval <= 16 && andval >= 0) {
 
-            vd |= TypeTree(BaseType::Integer);
+            vd = TypeTree(BaseType::Integer);
           }
         }
       }

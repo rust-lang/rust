@@ -546,6 +546,8 @@ public:
           continue;
         }
         llvm::errs() << "could not merge test  " << str() << "\n";
+        assert(0 && "could not merge");
+        llvm_unreachable("could not merge");
       }
 
       if (pair.first[1] == -1) {
@@ -678,8 +680,8 @@ public:
 
   /// Set this to the logical or of itself and RHS, returning whether this value changed
   /// Setting `PointerIntSame` considers pointers and integers as equivalent
-  /// This function will error if doing an illegal Operation
-  bool orIn(const TypeTree &RHS, bool PointerIntSame) {
+  /// If this is an illegal operation, `LegalOr` will be set to false
+  bool checkedOrIn(const TypeTree &RHS, bool PointerIntSame, bool &LegalOr) {
     // TODO detect recursive merge and simplify
 
     bool changed = false;
@@ -687,7 +689,7 @@ public:
     if (RHS[{-1}] != BaseType::Unknown) {
       for (auto &pair : mapping) {
         if (pair.first.size() == 1 && pair.first[0] != -1) {
-          pair.second.orIn(RHS[{-1}], PointerIntSame);
+          pair.second.checkedOrIn(RHS[{-1}], PointerIntSame, LegalOr);
           // if (pair.second == ) // NOTE DELETE the non -1
         }
       }
@@ -696,10 +698,24 @@ public:
     for (auto &pair : RHS.mapping) {
       assert(pair.second != BaseType::Unknown);
       ConcreteType CT = operator[](pair.first);
-      changed |= (CT.orIn(pair.second, PointerIntSame));
+      changed |= (CT.checkedOrIn(pair.second, PointerIntSame, LegalOr));
       insert(pair.first, CT);
     }
     return changed;
+  }
+
+  /// Set this to the logical or of itself and RHS, returning whether this value changed
+  /// Setting `PointerIntSame` considers pointers and integers as equivalent
+  /// This function will error if doing an illegal Operation
+  bool orIn(const TypeTree RHS, bool PointerIntSame) {
+    bool Legal = true;
+    bool Result = checkedOrIn(RHS, PointerIntSame, Legal);
+    if (!Legal) {
+      llvm::errs() << "Illegal orIn: " << str() << " right: " << RHS.str() << " PointerIntSame=" << PointerIntSame << "\n";
+      assert(0 && "Performed illegal ConcreteType::orIn");
+      llvm_unreachable("Performed illegal ConcreteType::orIn");
+    }
+    return Result;
   }
 
   /// Set this to the logical or of itself and RHS, returning whether this value changed
@@ -746,31 +762,39 @@ public:
   bool binopIn(const TypeTree &RHS, llvm::BinaryOperator::BinaryOps Op) {
     bool changed = false;
 
-    auto found = mapping.find({});
-    if (found != mapping.end()) {
-      changed |= (found->second.binopIn(RHS[{}], Op));
-      if (found->second == BaseType::Unknown) {
-        mapping.erase(std::vector<int>({}));
+    std::vector<std::vector<int>> toErase;
+
+    for(auto& pair : mapping) {
+      ConcreteType CT(pair.second);
+      ConcreteType RightCT(BaseType::Unknown);
+
+      // Mutual mappings
+      auto found = RHS.mapping.find(pair.first);
+      if (found != RHS.mapping.end()) {
+        RightCT = found->second;
       }
-    } else if (RHS.mapping.find({}) != RHS.mapping.end()) {
-      ConcreteType CT(BaseType::Unknown);
-      CT.binopIn(RHS[{}], Op);
-      if (CT != BaseType::Unknown) {
-        changed = true;
-        mapping.emplace(std::vector<int>({}), CT);
+
+      changed |= CT.binopIn(RightCT, Op);
+      if (CT == BaseType::Unknown) {
+        toErase.push_back(pair.first);
+      } else {
+        pair.second = CT;
       }
     }
 
-    std::vector<std::vector<int>> keystodelete;
-
-    for (auto &pair : mapping) {
-      if (pair.first != std::vector<int>({}))
-        keystodelete.push_back(pair.first);
+    // mapings just on the right
+    for(auto& pair : RHS.mapping) {
+      if (mapping.find(pair.first) == RHS.mapping.end()) {
+        ConcreteType CT = BaseType::Unknown;
+        changed |= CT.binopIn(pair.second, Op);
+        if (CT != BaseType::Unknown) {
+          mapping.insert(std::make_pair(pair.first, CT));
+        }
+      }
     }
 
-    for (auto &key : keystodelete) {
-      mapping.erase(key);
-      changed = true;
+    for(auto vec : toErase) {
+      mapping.erase(vec);
     }
 
     return changed;

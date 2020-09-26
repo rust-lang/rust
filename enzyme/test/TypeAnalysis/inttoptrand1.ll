@@ -19,7 +19,7 @@ entry:
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %loaded = load i64, i64* %lhs, align 4: {[-1]:Pointer}
 ; CHECK-NEXT:   %a2 = inttoptr i64 %loaded to double*: {[-1]:Pointer}
-; CHECK-NEXT:   %div = lshr i64 %loaded, 3: {[-1]:Integer}
+; CHECK-NEXT:   %div = lshr i64 %loaded, 3: {[-1]:Anything}
 ; CHECK-NEXT:   %and = and i64 %div, 1: {[-1]:Integer}
 ; CHECK-NEXT:   %gep = getelementptr inbounds double, double* %a2, i64 %and: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT:   %a4 = load double, double* %gep, align 8: {[-1]:Float@double}

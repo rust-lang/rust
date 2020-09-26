@@ -86,7 +86,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[addptr:.+]] = getelementptr inbounds double, double* %x, i64 %[[idxext]]
 ; CHECK-NEXT:   %[[addptripg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[idxext]]
 ; CHECK-NEXT:   %[[sub:.+]] = sub i32 %n, %[[div]]
-; CHECK-NEXT:   call void @differecsum.1(double* %[[addptr]], double* %[[addptripg]], i32 %[[sub]], double %differeturn)
+; CHECK-NEXT:   call void @differecsum.{{(1|2)}}(double* %[[addptr]], double* %[[addptripg]], i32 %[[sub]], double %differeturn)
 ; CHECK-NEXT:   call void @differecsum.1(double* %x, double* %"x'", i32 %[[div]], double %differeturn)
 ; CHECK-NEXT:   br label %invertentry
 ; CHECK-NEXT: }

@@ -280,12 +280,12 @@ public:
       return Changed;
     }
 
-    // Constant & float => Unknown
-    if (Op == BinaryOperator::And &&
-        (((SubTypeEnum == BaseType::Anything || SubTypeEnum == BaseType::Integer) &&
+    // [?] op float => Unknown
+    if ((((SubTypeEnum == BaseType::Anything || SubTypeEnum == BaseType::Integer || SubTypeEnum == BaseType::Unknown) &&
           RHS.isFloat()) ||
          (isFloat() && (RHS.SubTypeEnum == BaseType::Anything ||
-                        RHS.SubTypeEnum == BaseType::Integer)))) {
+                        RHS.SubTypeEnum == BaseType::Integer  ||
+                        RHS.SubTypeEnum == BaseType::Unknown)))) {
       SubTypeEnum = BaseType::Unknown;
       SubType = nullptr;
       Changed = true;
@@ -307,12 +307,37 @@ public:
       return Changed;
     }
 
-    // Integer op Anything => Anything
+    // Integer op Anything => {Anything, Integer}
     if ((SubTypeEnum == BaseType::Anything && RHS.SubTypeEnum == BaseType::Integer) ||
         (SubTypeEnum == BaseType::Integer && RHS.SubTypeEnum == BaseType::Anything)) {
-      if (SubTypeEnum != BaseType::Anything) {
-        SubTypeEnum = BaseType::Anything;
-        Changed = true;
+      
+      switch (Op) {
+      // The result of these operands mix data between LHS/RHS
+      // Therefore there is some "anything" data in the result
+      case BinaryOperator::Add:
+      case BinaryOperator::Sub:
+      case BinaryOperator::Mul:
+      case BinaryOperator::And:
+      case BinaryOperator::Or:
+      case BinaryOperator::Xor:
+        if (SubTypeEnum != BaseType::Anything) {
+          SubTypeEnum = BaseType::Anything;
+          Changed = true;
+        }
+        break;
+
+      // The result of these operands only use data from LHS
+      case BinaryOperator::UDiv:
+      case BinaryOperator::SDiv:
+      case BinaryOperator::URem:
+      case BinaryOperator::SRem:
+      case BinaryOperator::Shl:
+      case BinaryOperator::AShr:
+      case BinaryOperator::LShr:
+        // No change since we retain data from LHS
+        break;
+      default:
+        llvm_unreachable("unknown binary operator");
       }
       return Changed;
     }
