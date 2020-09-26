@@ -11,14 +11,18 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::unnecessary-wrap` implied by `-D warnings`
-help: factor this out to
+help: remove `Option` from the return type...
    |
 LL | fn func1(a: bool, b: bool) -> i32 {
-LL |     if a && b {
+   |                               ^^^
+help: ...and change the returning expressions
+   |
 LL |         return 42;
 LL |     }
 LL |     if a {
 LL |         Some(-1);
+LL |         2
+LL |     } else {
  ...
 
 error: this function returns unnecessarily wrapping data
@@ -29,9 +33,12 @@ LL | |     Some(1)
 LL | | }
    | |_^
    |
-help: factor this out to
+help: remove `Option` from the return type...
    |
 LL | fn func4() -> i32 {
+   |               ^^^
+help: ...and change the returning expressions
+   |
 LL |     1
    |
 
@@ -43,9 +50,12 @@ LL | |     Ok(1)
 LL | | }
    | |_^
    |
-help: factor this out to
+help: remove `Result` from the return type...
    |
 LL | fn func6() -> i32 {
+   |               ^^^
+help: ...and change the returning expressions
+   |
 LL |     1
    |
 

@@ -68,10 +68,10 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
             }
         }
 
-        let path = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(option_type)) {
-            &paths::OPTION_SOME
+        let (return_type, path) = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(option_type)) {
+            ("Option", &paths::OPTION_SOME)
         } else if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type)) {
-            &paths::RESULT_OK
+            ("Result", &paths::RESULT_OK)
         } else {
             return;
         };
@@ -98,23 +98,26 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
                 UNNECESSARY_WRAP,
                 span,
                 "this function returns unnecessarily wrapping data",
-                move |diag| {
+                |diag| {
+                    let inner_ty = return_ty(cx, hir_id)
+                        .walk()
+                        .skip(1) // skip `std::option::Option` or `std::result::Result`
+                        .take(1) // take the first outermost inner type
+                        .filter_map(|inner| match inner.unpack() {
+                            GenericArgKind::Type(inner_ty) => Some(inner_ty.to_string()),
+                            _ => None,
+                        });
+                    inner_ty.for_each(|inner_ty| {
+                        diag.span_suggestion(
+                            fn_decl.output.span(),
+                            format!("remove `{}` from the return type...", return_type).as_str(),
+                            inner_ty,
+                            Applicability::MachineApplicable,
+                        );
+                    });
                     diag.multipart_suggestion(
-                        "factor this out to",
-                        suggs
-                            .into_iter()
-                            .chain({
-                                let inner_ty = return_ty(cx, hir_id)
-                                    .walk()
-                                    .skip(1) // skip `std::option::Option` or `std::result::Result`
-                                    .take(1) // take the first outermost inner type
-                                    .filter_map(|inner| match inner.unpack() {
-                                        GenericArgKind::Type(inner_ty) => Some(inner_ty.to_string()),
-                                        _ => None,
-                                    });
-                                inner_ty.map(|inner_ty| (fn_decl.output.span(), inner_ty))
-                            })
-                            .collect(),
+                        "...and change the returning expressions",
+                        suggs,
                         Applicability::MachineApplicable,
                     );
                 },
