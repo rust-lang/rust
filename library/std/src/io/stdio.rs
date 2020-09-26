@@ -7,10 +7,11 @@ use crate::io::prelude::*;
 
 use crate::cell::RefCell;
 use crate::fmt;
-use crate::io::lazy::Lazy;
 use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
-use crate::sync::{Arc, Mutex, MutexGuard, Once};
+use crate::lazy::SyncOnceCell;
+use crate::sync::{Mutex, MutexGuard};
 use crate::sys::stdio;
+use crate::sys_common;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
 
@@ -217,7 +218,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
-    inner: Arc<Mutex<BufReader<StdinRaw>>>,
+    inner: &'static Mutex<BufReader<StdinRaw>>,
 }
 
 /// A locked reference to the `Stdin` handle.
@@ -292,15 +293,11 @@ pub struct StdinLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: Lazy<Mutex<BufReader<StdinRaw>>> = Lazy::new();
-    return Stdin {
-        inner: unsafe { INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown") },
-    };
-
-    fn stdin_init() -> Arc<Mutex<BufReader<StdinRaw>>> {
-        // This must not reentrantly access `INSTANCE`
-        let stdin = stdin_raw();
-        Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin)))
+    static INSTANCE: SyncOnceCell<Mutex<BufReader<StdinRaw>>> = SyncOnceCell::new();
+    Stdin {
+        inner: INSTANCE.get_or_init(|| {
+            Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin_raw()))
+        }),
     }
 }
 
@@ -476,7 +473,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>,
 }
 
 /// A locked reference to the `Stdout` handle.
@@ -534,19 +531,27 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = Lazy::new();
-    return Stdout {
-        inner: unsafe { INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown") },
-    };
-
-    fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> {
-        // This must not reentrantly access `INSTANCE`
-        let stdout = stdout_raw();
-        unsafe {
-            let ret = Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))));
-            ret.init();
-            ret
-        }
+    static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> =
+        SyncOnceCell::new();
+    Stdout {
+        inner: INSTANCE.get_or_init(|| unsafe {
+            let _ = sys_common::at_exit(|| {
+                if let Some(instance) = INSTANCE.get() {
+                    // Flush the data and disable buffering during shutdown
+                    // by replacing the line writer by one with zero
+                    // buffering capacity.
+                    // We use try_lock() instead of lock(), because someone
+                    // might have leaked a StdoutLock, which would
+                    // otherwise cause a deadlock here.
+                    if let Some(lock) = instance.try_lock() {
+                        *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
+                    }
+                }
+            });
+            let r = ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())));
+            r.init();
+            r
+        }),
     }
 }
 
@@ -741,16 +746,15 @@ pub fn stderr() -> Stderr {
     //
     // This has the added benefit of allowing `stderr` to be usable during
     // process shutdown as well!
-    static INSTANCE: ReentrantMutex<RefCell<StderrRaw>> =
-        unsafe { ReentrantMutex::new(RefCell::new(stderr_raw())) };
+    static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<StderrRaw>>> = SyncOnceCell::new();
 
-    // When accessing stderr we need one-time initialization of the reentrant
-    // mutex. Afterwards we can just always use the now-filled-in `INSTANCE` value.
-    static INIT: Once = Once::new();
-    INIT.call_once(|| unsafe {
-        INSTANCE.init();
-    });
-    Stderr { inner: &INSTANCE }
+    Stderr {
+        inner: INSTANCE.get_or_init(|| unsafe {
+            let r = ReentrantMutex::new(RefCell::new(stderr_raw()));
+            r.init();
+            r
+        }),
+    }
 }
 
 impl Stderr {
