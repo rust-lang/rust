@@ -268,12 +268,14 @@ where
 }
 
 impl SliceContains for u8 {
+    #[inline]
     fn slice_contains(&self, x: &[Self]) -> bool {
         memchr::memchr(*self, x).is_some()
     }
 }
 
 impl SliceContains for i8 {
+    #[inline]
     fn slice_contains(&self, x: &[Self]) -> bool {
         let byte = *self as u8;
         // SAFETY: `i8` and `u8` have the same memory layout, thus casting `x.as_ptr()`
