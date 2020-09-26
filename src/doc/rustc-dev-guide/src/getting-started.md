@@ -126,22 +126,29 @@ this chapter for more info][config].
 In the top level of the repo:
 
 ```sh
-cp config.toml.example config.toml
+$ x.py setup
 ```
 
-Then, edit `config.toml`. You may want to search for, uncomment, and update
-the following settings:
+This will walk you through an interactive setup for x.py that looks like this:
 
-- `debug = true`: enables debug symbols and `debug!` logging, takes a bit longer to compile.
-- `incremental = true`: enables incremental compilation of the compiler itself,
-  which can significantly speed things up.  This is turned off by default
-  because it's technically unsound; sometimes it will cause weird crashes.
-  Also, it can consume a lot of disk space. This has the same effect as the
-  `-i` or `--incremental` flags.
-- `llvm-config`: enables building with system LLVM. [See this chapter][sysllvm]
-  for more info. This avoids building LLVM, which can take a while (45 minutes
-  on my laptop; others have reported 15 minutes or faster with incremental
-  compilation).
+```
+$ x.py setup
+Welcome to the Rust project! What do you want to do with x.py?
+a) Contribute to the standard library
+b) Contribute to the compiler
+c) Contribute to the compiler, and also modify LLVM or codegen
+d) Install Rust from source
+Please choose one (a/b/c/d): a
+`x.py` will now use the configuration at /home/joshua/rustc2/src/bootstrap/defaults/config.toml.library
+To get started, try one of the following commands:
+- `x.py check`
+- `x.py build`
+- `x.py test library/std`
+- `x.py doc`
+For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html
+```
+
+You may also want to set up [system LLVM][sysllvm] to avoid building LLVM from source.
 
 [sysllvm]: ./building/suggested.html#building-with-system-llvm
 
