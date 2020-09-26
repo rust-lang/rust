@@ -141,24 +141,28 @@ macro_rules! base_vector_traits {
         impl Copy for $name {}
 
         impl Clone for $name {
+            #[inline]
             fn clone(&self) -> Self {
                 *self
             }
         }
 
         impl Default for $name {
+            #[inline]
             fn default() -> Self {
                 Self::splat(<$type>::default())
             }
         }
 
         impl PartialEq for $name {
+            #[inline]
             fn eq(&self, other: &Self) -> bool {
                 AsRef::<[$type]>::as_ref(self) == AsRef::<[$type]>::as_ref(other)
             }
         }
 
         impl PartialOrd for $name {
+            #[inline]
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                 AsRef::<[$type]>::as_ref(self).partial_cmp(AsRef::<[$type]>::as_ref(other))
             }
@@ -213,12 +217,14 @@ macro_rules! integer_vector_traits {
         impl Eq for $name {}
 
         impl Ord for $name {
+            #[inline]
             fn cmp(&self, other: &Self) -> core::cmp::Ordering {
                 AsRef::<[$type]>::as_ref(self).cmp(AsRef::<[$type]>::as_ref(other))
             }
         }
 
         impl core::hash::Hash for $name {
+            #[inline]
             fn hash<H>(&self, state: &mut H)
             where
                 H: core::hash::Hasher
