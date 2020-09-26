@@ -2,9 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/cannot-infer-const-args.rs:12:5
    |
 LL |     foo();
-   |     ^^^
-   |
-   = note: cannot infer the value of the const parameter `X`
+   |     ^^^ cannot infer the value of const parameter `X` declared on the function `foo`
 
 error: aborting due to previous error
 

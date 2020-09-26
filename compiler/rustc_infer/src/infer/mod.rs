@@ -1163,7 +1163,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             GenericParamDefKind::Const { .. } => {
                 let origin = ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::ConstParameterDefinition(param.name),
+                    kind: ConstVariableOriginKind::ConstParameterDefinition(
+                        param.name,
+                        param.def_id,
+                    ),
                     span,
                 };
                 let const_var_id =

@@ -2,9 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/method-chain.rs:21:33
    |
 LL |     Foo.bar().bar().bar().bar().baz();
-   |                                 ^^^
-   |
-   = note: cannot infer the value of the const parameter `N`
+   |                                 ^^^ cannot infer the value of const parameter `N` declared on the associated function `baz`
 
 error: aborting due to previous error
 
