@@ -385,6 +385,7 @@ pub(super) fn check_opaque<'tcx>(
     origin: &hir::OpaqueTyOrigin,
 ) {
     check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
+    tcx.ensure().type_of(def_id);
     check_opaque_for_cycles(tcx, def_id, substs, span, origin);
 }
 
