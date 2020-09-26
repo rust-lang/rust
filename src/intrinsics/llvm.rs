@@ -12,22 +12,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
-    let ret = match destination {
-        Some((place, _)) => place,
-        None => {
-            // Insert non returning intrinsics here
-            match intrinsic {
-                "abort" => {
-                    trap_panic(fx, "Called intrinsic::abort.");
-                }
-                "unreachable" => {
-                    trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
-                }
-                _ => unimplemented!("unsupported instrinsic {}", intrinsic),
-            }
-            return;
-        }
-    };
+    let ret = destination.unwrap().0;
 
     intrinsic_match! {
         fx, intrinsic, substs, args,
