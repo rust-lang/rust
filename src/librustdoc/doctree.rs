@@ -89,7 +89,7 @@ pub struct Struct<'hir> {
     pub generics: &'hir hir::Generics<'hir>,
     pub attrs: &'hir [ast::Attribute],
     pub fields: &'hir [hir::StructField<'hir>],
-    pub whence: Span,
+    pub span: Span,
 }
 
 pub struct Union<'hir> {
@@ -100,7 +100,7 @@ pub struct Union<'hir> {
     pub generics: &'hir hir::Generics<'hir>,
     pub attrs: &'hir [ast::Attribute],
     pub fields: &'hir [hir::StructField<'hir>],
-    pub whence: Span,
+    pub span: Span,
 }
 
 pub struct Enum<'hir> {
@@ -109,7 +109,7 @@ pub struct Enum<'hir> {
     pub generics: &'hir hir::Generics<'hir>,
     pub attrs: &'hir [ast::Attribute],
     pub id: hir::HirId,
-    pub whence: Span,
+    pub span: Span,
     pub name: Symbol,
 }
 
@@ -118,7 +118,7 @@ pub struct Variant<'hir> {
     pub id: hir::HirId,
     pub attrs: &'hir [ast::Attribute],
     pub def: &'hir hir::VariantData<'hir>,
-    pub whence: Span,
+    pub span: Span,
 }
 
 pub struct Function<'hir> {
@@ -128,7 +128,7 @@ pub struct Function<'hir> {
     pub name: Symbol,
     pub vis: &'hir hir::Visibility<'hir>,
     pub header: hir::FnHeader,
-    pub whence: Span,
+    pub span: Span,
     pub generics: &'hir hir::Generics<'hir>,
     pub body: hir::BodyId,
 }
@@ -139,7 +139,7 @@ pub struct Typedef<'hir> {
     pub name: Symbol,
     pub id: hir::HirId,
     pub attrs: &'hir [ast::Attribute],
-    pub whence: Span,
+    pub span: Span,
     pub vis: &'hir hir::Visibility<'hir>,
 }
 
@@ -148,7 +148,7 @@ pub struct OpaqueTy<'hir> {
     pub name: Symbol,
     pub id: hir::HirId,
     pub attrs: &'hir [ast::Attribute],
-    pub whence: Span,
+    pub span: Span,
     pub vis: &'hir hir::Visibility<'hir>,
 }
 
@@ -161,7 +161,7 @@ pub struct Static<'hir> {
     pub attrs: &'hir [ast::Attribute],
     pub vis: &'hir hir::Visibility<'hir>,
     pub id: hir::HirId,
-    pub whence: Span,
+    pub span: Span,
 }
 
 pub struct Constant<'hir> {
@@ -171,7 +171,7 @@ pub struct Constant<'hir> {
     pub attrs: &'hir [ast::Attribute],
     pub vis: &'hir hir::Visibility<'hir>,
     pub id: hir::HirId,
-    pub whence: Span,
+    pub span: Span,
 }
 
 pub struct Trait<'hir> {
@@ -183,7 +183,7 @@ pub struct Trait<'hir> {
     pub bounds: &'hir [hir::GenericBound<'hir>],
     pub attrs: &'hir [ast::Attribute],
     pub id: hir::HirId,
-    pub whence: Span,
+    pub span: Span,
     pub vis: &'hir hir::Visibility<'hir>,
 }
 
@@ -193,7 +193,7 @@ pub struct TraitAlias<'hir> {
     pub bounds: &'hir [hir::GenericBound<'hir>],
     pub attrs: &'hir [ast::Attribute],
     pub id: hir::HirId,
-    pub whence: Span,
+    pub span: Span,
     pub vis: &'hir hir::Visibility<'hir>,
 }
 
@@ -208,7 +208,7 @@ pub struct Impl<'hir> {
     pub for_: &'hir hir::Ty<'hir>,
     pub items: Vec<&'hir hir::ImplItem<'hir>>,
     pub attrs: &'hir [ast::Attribute],
-    pub whence: Span,
+    pub span: Span,
     pub vis: &'hir hir::Visibility<'hir>,
     pub id: hir::HirId,
 }
@@ -219,7 +219,7 @@ pub struct ForeignItem<'hir> {
     pub name: Symbol,
     pub kind: &'hir hir::ForeignItemKind<'hir>,
     pub attrs: &'hir [ast::Attribute],
-    pub whence: Span,
+    pub span: Span,
 }
 
 // For Macro we store the DefId instead of the NodeId, since we also create
@@ -229,7 +229,7 @@ pub struct Macro<'hir> {
     pub hid: hir::HirId,
     pub def_id: hir::def_id::DefId,
     pub attrs: &'hir [ast::Attribute],
-    pub whence: Span,
+    pub span: Span,
     pub matchers: Vec<Span>,
     pub imported_from: Option<Symbol>,
 }
@@ -240,7 +240,7 @@ pub struct ExternCrate<'hir> {
     pub path: Option<String>,
     pub vis: &'hir hir::Visibility<'hir>,
     pub attrs: &'hir [ast::Attribute],
-    pub whence: Span,
+    pub span: Span,
 }
 
 pub struct Import<'hir> {
@@ -250,7 +250,7 @@ pub struct Import<'hir> {
     pub attrs: &'hir [ast::Attribute],
     pub path: &'hir hir::Path<'hir>,
     pub glob: bool,
-    pub whence: Span,
+    pub span: Span,
 }
 
 pub struct ProcMacro<'hir> {
@@ -259,7 +259,7 @@ pub struct ProcMacro<'hir> {
     pub kind: MacroKind,
     pub helpers: Vec<Symbol>,
     pub attrs: &'hir [ast::Attribute],
-    pub whence: Span,
+    pub span: Span,
 }
 
 pub fn struct_type_from_def(vdata: &hir::VariantData<'_>) -> StructType {

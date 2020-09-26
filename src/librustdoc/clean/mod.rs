@@ -256,7 +256,7 @@ impl Clean<Item> for doctree::Module<'_> {
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
-        let whence = {
+        let span = {
             let sm = cx.sess().source_map();
             let outer = sm.lookup_char_pos(self.where_outer.lo());
             let inner = sm.lookup_char_pos(self.where_inner.lo());
@@ -272,7 +272,7 @@ impl Clean<Item> for doctree::Module<'_> {
         Item {
             name: Some(name),
             attrs,
-            source: whence.clean(cx),
+            source: span.clean(cx),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
@@ -912,7 +912,7 @@ impl Clean<Item> for doctree::Function<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
@@ -1020,7 +1020,7 @@ impl Clean<Item> for doctree::Trait<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs,
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -1044,7 +1044,7 @@ impl Clean<Item> for doctree::TraitAlias<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs,
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -1830,7 +1830,7 @@ impl Clean<Item> for doctree::Struct<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -1850,7 +1850,7 @@ impl Clean<Item> for doctree::Union<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -1880,7 +1880,7 @@ impl Clean<Item> for doctree::Enum<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -1899,7 +1899,7 @@ impl Clean<Item> for doctree::Variant<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             visibility: Inherited,
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
@@ -2047,7 +2047,7 @@ impl Clean<Item> for doctree::Typedef<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -2062,7 +2062,7 @@ impl Clean<Item> for doctree::OpaqueTy<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -2093,7 +2093,7 @@ impl Clean<Item> for doctree::Static<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -2114,7 +2114,7 @@ impl Clean<Item> for doctree::Constant<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: def_id.to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -2168,7 +2168,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
         let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| Item {
             name: None,
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: def_id.to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -2219,7 +2219,7 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
         vec![Item {
             name: None,
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: DefId { krate: self.cnum, index: CRATE_DEF_INDEX },
             visibility: self.vis.clean(cx),
             stability: None,
@@ -2284,7 +2284,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         vec![Item {
             name: None,
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: DefId::local(CRATE_DEF_INDEX),
             visibility: self.vis.clean(cx),
             stability: None,
@@ -2326,7 +2326,7 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
@@ -2342,7 +2342,7 @@ impl Clean<Item> for doctree::Macro<'_> {
         Item {
             name: Some(name.clone()),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             visibility: Public,
             stability: cx.stability(self.hid).clean(cx),
             deprecation: cx.deprecation(self.hid).clean(cx),
@@ -2367,7 +2367,7 @@ impl Clean<Item> for doctree::ProcMacro<'_> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
+            source: self.span.clean(cx),
             visibility: Public,
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
