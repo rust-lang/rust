@@ -2175,6 +2175,11 @@ pub type ParseError = core::convert::Infallible;
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for String {
     type Err = core::convert::Infallible;
+    /// Converts a `&str` into a `String`.
+    ///
+    /// The result is allocated on the heap.
+    ///
+    /// This conversion never returns an error.
     #[inline]
     fn from_str(s: &str) -> Result<String, Self::Err> {
         Ok(String::from(s))
