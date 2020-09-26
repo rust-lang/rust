@@ -14,7 +14,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     // Prevent const trait methods from being annotated as `stable`.
     if tcx.features().staged_api {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
+        if rustc_mir::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
             return Err((body.span, "trait methods cannot be stable const fn".into()));
         }
     }
@@ -32,13 +32,13 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                 | ty::PredicateAtom::ConstEquate(..)
                 | ty::PredicateAtom::TypeWellFormedFromEnv(..) => continue,
                 ty::PredicateAtom::ObjectSafe(_) => {
-                    bug!("object safe predicate on function: {:#?}", predicate)
+                    panic!("object safe predicate on function: {:#?}", predicate)
                 }
                 ty::PredicateAtom::ClosureKind(..) => {
-                    bug!("closure kind predicate on function: {:#?}", predicate)
+                    panic!("closure kind predicate on function: {:#?}", predicate)
                 }
                 ty::PredicateAtom::Subtype(_) => {
-                    bug!("subtype predicate on function: {:#?}", predicate)
+                    panic!("subtype predicate on function: {:#?}", predicate)
                 }
                 ty::PredicateAtom::Trait(pred, constness) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
@@ -343,7 +343,7 @@ fn feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bo
 
     // However, we cannot allow stable `const fn`s to use unstable features without an explicit
     // opt-in via `allow_internal_unstable`.
-    super::check_consts::allow_internal_unstable(tcx, def_id, feature_gate)
+    rustc_mir::transform::check_consts::allow_internal_unstable(tcx, def_id, feature_gate)
 }
 
 /// Returns `true` if the given library feature gate is allowed within the function with the given `DefId`.
@@ -362,7 +362,7 @@ pub fn lib_feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbo
 
     // However, we cannot allow stable `const fn`s to use unstable features without an explicit
     // opt-in via `allow_internal_unstable`.
-    super::check_consts::allow_internal_unstable(tcx, def_id, feature_gate)
+    rustc_mir::transform::check_consts::allow_internal_unstable(tcx, def_id, feature_gate)
 }
 
 fn check_terminator(
@@ -407,8 +407,8 @@ fn check_terminator(
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
                 // Allow unstable const if we opt in by using #[allow_internal_unstable]
                 // on function or macro declaration.
-                if !crate::const_eval::is_min_const_fn(tcx, fn_def_id)
-                    && !crate::const_eval::is_unstable_const_fn(tcx, fn_def_id)
+                if !rustc_mir::const_eval::is_min_const_fn(tcx, fn_def_id)
+                    && !rustc_mir::const_eval::is_unstable_const_fn(tcx, fn_def_id)
                         .map(|feature| {
                             span.allows_unstable(feature)
                                 || lib_feature_allowed(tcx, def_id, feature)
