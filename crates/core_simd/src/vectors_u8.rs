@@ -1,14 +1,4 @@
 define_integer_vector! {
-    /// Vector of two `u8` values
-    struct u8x2([u8; 2]);
-}
-
-define_integer_vector! {
-    /// Vector of four `u8` values
-    struct u8x4([u8; 4]);
-}
-
-define_integer_vector! {
     /// Vector of eight `u8` values
     struct u8x8([u8; 8]);
 }

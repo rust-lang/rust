@@ -1,9 +1,4 @@
 define_integer_vector! {
-    /// Vector of two `u16` values
-    struct u16x2([u16; 2]);
-}
-
-define_integer_vector! {
     /// Vector of four `u16` values
     struct u16x4([u16; 4]);
 }

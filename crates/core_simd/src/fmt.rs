@@ -74,10 +74,10 @@ macro_rules! impl_fmt_trait {
 
 impl_fmt_trait! {
     integers:
-        crate::u8x2,    crate::u8x4,    crate::u8x8,    crate::u8x16,    crate::u8x32,    crate::u8x64,
-        crate::i8x2,    crate::i8x4,    crate::i8x8,    crate::i8x16,    crate::i8x32,    crate::i8x64,
-        crate::u16x2,   crate::u16x4,   crate::u16x8,   crate::u16x16,   crate::u16x32,
-        crate::i16x2,   crate::i16x4,   crate::i16x8,   crate::i16x16,   crate::i16x32,
+        crate::u8x8,    crate::u8x16,    crate::u8x32,    crate::u8x64,
+        crate::i8x8,    crate::i8x16,    crate::i8x32,    crate::i8x64,
+        crate::u16x4,   crate::u16x8,   crate::u16x16,   crate::u16x32,
+        crate::i16x4,   crate::i16x8,   crate::i16x16,   crate::i16x32,
         crate::u32x2,   crate::u32x4,   crate::u32x8,   crate::u32x16,
         crate::i32x2,   crate::i32x4,   crate::i32x8,   crate::i32x16,
         crate::u64x2,   crate::u64x4,   crate::u64x8,
@@ -96,8 +96,8 @@ impl_fmt_trait! {
 
 impl_fmt_trait! {
     masks:
-        crate::mask8x2,    crate::mask8x4,    crate::mask8x8,    crate::mask8x16,    crate::mask8x32,    crate::mask8x64,
-        crate::mask16x2,   crate::mask16x4,   crate::mask16x8,   crate::mask16x16,   crate::mask16x32,
+        crate::mask8x8,    crate::mask8x16,    crate::mask8x32,    crate::mask8x64,
+        crate::mask16x4,   crate::mask16x8,   crate::mask16x16,   crate::mask16x32,
         crate::mask32x2,   crate::mask32x4,   crate::mask32x8,   crate::mask32x16,
         crate::mask64x2,   crate::mask64x4,   crate::mask64x8,
         crate::mask128x2,  crate::mask128x4,

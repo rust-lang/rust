@@ -1,11 +1,6 @@
 use crate::mask16;
 
 define_mask_vector! {
-    /// Vector of two `mask16` values
-    struct mask16x2([i16 as mask16; 2]);
-}
-
-define_mask_vector! {
     /// Vector of four `mask16` values
     struct mask16x4([i16 as mask16; 4]);
 }
