@@ -235,9 +235,8 @@ impl EarlyLintPass for Write {
     }
 
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &MacCall) {
-        fn is_build_scripts(cx: &EarlyContext<'_>) -> bool {
-            // We could leverage the fact that Cargo sets the crate name
-            // for build scripts to `build_script_build`.
+        fn is_build_script(cx: &EarlyContext<'_>) -> bool {
+            // Cargo sets the crate name for build scripts to `build_script_build`
             cx.sess
                 .opts
                 .crate_name
@@ -246,7 +245,7 @@ impl EarlyLintPass for Write {
         }
 
         if mac.path == sym!(println) {
-            if !is_build_scripts(cx) {
+            if !is_build_script(cx) {
                 span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
             }
             if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
@@ -263,7 +262,7 @@ impl EarlyLintPass for Write {
                 }
             }
         } else if mac.path == sym!(print) {
-            if !is_build_scripts(cx) {
+            if !is_build_script(cx) {
                 span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
             }
             if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
