@@ -183,10 +183,10 @@ The callbacks are defined by implementing the [`Delegate`] trait. The
 [`InferBorrowKind`][ibk] type implements `Delegate` and keeps a map that
 records for each upvar which mode of capture was required. The modes of capture
 can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, the possible
-[`BorrowKind`][BorrowKind]s are `ImmBorrow`, `UniqueImmBorrow`, `MutBorrow` as defined in the
+[`BorrowKind`]s are `ImmBorrow`, `UniqueImmBorrow`, `MutBorrow` as defined in the
 [`compiler/rustc_middle/src/ty/mod.rs`][middle_ty].
 
-[BorrowKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BorrowKind.html
+[`BorrowKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BorrowKind.html
 [middle_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
 
 `Delegate` defines a few different methods (the different callbacks):
