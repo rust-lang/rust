@@ -2412,6 +2412,9 @@ impl<'a> From<&'a String> for Cow<'a, str> {
 
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<char> for Cow<'a, str> {
+    /// Converts an [`IntoIterator<Item = char>`](IntoIterator) into the `Owned` variant of a [`Cow<'a, str>`](Cow).
+    ///
+    /// The result is allocated on the heap.
     fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str> {
         Cow::Owned(FromIterator::from_iter(it))
     }
@@ -2419,6 +2422,9 @@ impl<'a> FromIterator<char> for Cow<'a, str> {
 
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
+    /// Converts an [`IntoIterator<Item = &str>`](IntoIterator) into the `Owned` variant of a [`Cow<'a, str>`](Cow).
+    ///
+    /// The result is allocated on the heap.
     fn from_iter<I: IntoIterator<Item = &'b str>>(it: I) -> Cow<'a, str> {
         Cow::Owned(FromIterator::from_iter(it))
     }
@@ -2426,6 +2432,9 @@ impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
 
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<String> for Cow<'a, str> {
+    /// Converts an [`IntoIterator<Item = String>`](IntoIterator) into the `Owned` variant of a [`Cow<'a, str>`](Cow).
+    ///
+    /// The result is allocated on the heap.
     fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {
         Cow::Owned(FromIterator::from_iter(it))
     }
