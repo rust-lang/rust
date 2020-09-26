@@ -138,6 +138,32 @@ macro_rules! call_counting_args {
 /// Implements common traits on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! base_vector_traits {
     { $name:path => [$type:ty; $lanes:literal] } => {
+        impl Copy for $name {}
+
+        impl Clone for $name {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::splat(<$type>::default())
+            }
+        }
+
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                AsRef::<[$type]>::as_ref(self) == AsRef::<[$type]>::as_ref(other)
+            }
+        }
+
+        impl PartialOrd for $name {
+            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+                AsRef::<[$type]>::as_ref(self).partial_cmp(AsRef::<[$type]>::as_ref(other))
+            }
+        }
+
         // array references
         impl AsRef<[$type; $lanes]> for $name {
             #[inline]
@@ -196,7 +222,6 @@ macro_rules! define_vector {
     { def $(#[$attr:meta])* | $name:ident | $($itype:ty)* } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Default, PartialEq, PartialOrd)]
         #[repr(simd)]
         pub struct $name($($itype),*);
     };
@@ -233,7 +258,7 @@ macro_rules! define_mask_vector {
     { def $(#[$attr:meta])* | $name:ident | $($itype:ty)* } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord)]
+        #[derive(Eq, Ord)]
         #[repr(simd)]
         pub struct $name($($itype),*);
     };
