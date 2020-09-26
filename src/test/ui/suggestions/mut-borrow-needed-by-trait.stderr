@@ -33,18 +33,18 @@ LL | pub struct BufWriter<W: Write> {
    |
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
 
-error[E0599]: no method named `write_fmt` found for struct `BufWriter<&dyn std::io::Write>` in the current scope
+error[E0599]: the method `write_fmt` exists for struct `BufWriter<&dyn std::io::Write>`, but its trait bounds were not satisfied
   --> $DIR/mut-borrow-needed-by-trait.rs:22:5
    |
 LL |     writeln!(fp, "hello world").unwrap();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `BufWriter<&dyn std::io::Write>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ method cannot be called on `BufWriter<&dyn std::io::Write>` due to unsatisfied trait bounds
    | 
   ::: $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
    |
 LL | pub struct BufWriter<W: Write> {
    | ------------------------------ doesn't satisfy `BufWriter<&dyn std::io::Write>: std::io::Write`
    |
-   = note: the method `write_fmt` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `&dyn std::io::Write: std::io::Write`
            which is required by `BufWriter<&dyn std::io::Write>: std::io::Write`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -1,4 +1,4 @@
-error[E0599]: no method named `clone` found for struct `Bar<NotClone>` in the current scope
+error[E0599]: the method `clone` exists for struct `Bar<NotClone>`, but its trait bounds were not satisfied
   --> $DIR/derive-assoc-type-not-impl.rs:18:30
    |
 LL | struct Bar<T: Foo> {
@@ -11,7 +11,7 @@ LL | struct NotClone;
    | ---------------- doesn't satisfy `NotClone: Clone`
 ...
 LL |     Bar::<NotClone> { x: 1 }.clone();
-   |                              ^^^^^ method not found in `Bar<NotClone>`
+   |                              ^^^^^ method cannot be called on `Bar<NotClone>` due to unsatisfied trait bounds
    | 
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
@@ -21,7 +21,7 @@ LL |     fn clone(&self) -> Self;
    |        the method is available for `Arc<Bar<NotClone>>` here
    |        the method is available for `Rc<Bar<NotClone>>` here
    |
-   = note: the method `clone` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `NotClone: Clone`
            which is required by `Bar<NotClone>: Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
