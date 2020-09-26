@@ -21,6 +21,9 @@ pub use self::tme::*;
 mod crc;
 pub use self::crc::*;
 
+mod prefetch;
+pub use self::prefetch::*;
+
 pub use super::acle::*;
 
 #[cfg(test)]

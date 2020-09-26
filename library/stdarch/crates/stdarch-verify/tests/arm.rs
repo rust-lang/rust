@@ -330,6 +330,7 @@ fn verify_all_signatures() {
                 "_rbit_u64",
                 "_cls_u32",
                 "_cls_u64",
+                "_prefetch",
             ];
             if !skip.contains(&rust.name) {
                 println!(
@@ -350,7 +351,7 @@ fn verify_all_signatures() {
         // Skip some intrinsics that aren't NEON and are located in different
         // places than the whitelists below.
         match rust.name {
-            "brk" | "__breakpoint" | "udf" => continue,
+            "brk" | "__breakpoint" | "udf" | "_prefetch" => continue,
             _ => {}
         }
         let arm = match map.get(rust.name) {
