@@ -39,10 +39,12 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
-use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId};
+use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, ProjectionKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::sym;
 use rustc_span::{Span, Symbol};
+
+use std::env;
 
 macro_rules! log_capture_analysis {
     ($fcx:expr, $closure_def_id:expr, $fmt:literal) => {
@@ -58,6 +60,17 @@ macro_rules! log_capture_analysis {
             println!($fmt, $($args),*);
         }
     };
+}
+
+/// Describe the relationship between the paths of two places
+/// eg:
+/// - foo is ancestor of foo.bar.baz
+/// - foo.bar.baz is an descendant of foo.bar,
+/// - foo.bar and foo.baz are divergent
+enum PlaceAncestryRelation {
+    Ancestor,
+    Descendant,
+    Divergent,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -130,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let local_def_id = closure_def_id.expect_local();
 
         let mut capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::default();
-        if self.tcx.features().capture_disjoint_fields {
+        if self.tcx.features().capture_disjoint_fields || matches!(env::var("SG_NEW"), Ok(_)) {
             log_capture_analysis!(self, closure_def_id, "Using new-style capture analysis");
         } else {
             log_capture_analysis!(self, closure_def_id, "Using old-style capture analysis");
@@ -192,12 +205,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        self.set_closure_captures(closure_def_id, &delegate);
-
-        self.typeck_results
-            .borrow_mut()
-            .closure_capture_information
-            .insert(closure_def_id, delegate.capture_information);
+        self.compute_min_captures(closure_def_id, delegate);
+        self.set_closure_captures(closure_def_id);
 
         // Now that we've analyzed the closure, we know how each
         // variable is borrowed, and we know what traits the closure
@@ -266,43 +275,221 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
-    fn set_closure_captures(
-        &self,
-        closure_def_id: DefId,
-        inferred_info: &InferBorrowKind<'_, 'tcx>,
-    ) {
+    /// Bridge for closure analysis
+    /// ----------------------------
+    ///
+    /// For closure with DefId `c`, the bridge converts structures required for supporting RFC 2229,
+    /// to structures currently used in the compiler for handling closure captures.
+    ///
+    /// For example the following structure will be converted:
+    ///
+    /// closure_min_captures
+    /// foo -> [ {foo.x, ImmBorrow}, {foo.y, MutBorrow} ]
+    /// bar -> [ {bar.z, ByValue}, {bar.q, MutBorrow} ]
+    ///
+    /// to
+    ///
+    /// 1. closure_captures
+    /// foo -> UpvarId(foo, c), bar -> UpvarId(bar, c)
+    ///
+    /// 2. upvar_capture_map
+    /// UpvarId(foo,c) -> MutBorrow, UpvarId(bar, c) -> ByValue
+
+    fn set_closure_captures(&self, closure_def_id: DefId) {
         let mut closure_captures: FxIndexMap<hir::HirId, ty::UpvarId> = Default::default();
+        let mut upvar_capture_map = ty::UpvarCaptureMap::default();
 
-        for (place, capture_info) in inferred_info.capture_information.iter() {
-            let upvar_id = match place.base {
-                PlaceBase::Upvar(upvar_id) => upvar_id,
-                base => bug!("Expected upvar, found={:?}", base),
-            };
+        if let Some(min_captures) =
+            self.typeck_results.borrow().closure_min_captures.get(&closure_def_id)
+        {
+            for (var_hir_id, min_list) in min_captures.iter() {
+                for captured_place in min_list {
+                    let place = &captured_place.place;
+                    let capture_info = captured_place.info;
 
-            assert_eq!(upvar_id.closure_expr_id, closure_def_id.expect_local());
+                    let upvar_id = match place.base {
+                        PlaceBase::Upvar(upvar_id) => upvar_id,
+                        base => bug!("Expected upvar, found={:?}", base),
+                    };
 
-            let var_hir_id = upvar_id.var_path.hir_id;
-            closure_captures.insert(var_hir_id, upvar_id);
+                    assert_eq!(upvar_id.var_path.hir_id, *var_hir_id);
+                    assert_eq!(upvar_id.closure_expr_id, closure_def_id.expect_local());
 
-            let new_capture_kind = if let Some(capture_kind) =
-                self.typeck_results.borrow_mut().upvar_capture_map.get(&upvar_id)
-            {
-                // upvar_capture_map only stores the UpvarCapture (CaptureKind),
-                // so we create a fake capture info with no expression.
-                let fake_capture_info =
-                    ty::CaptureInfo { expr_id: None, capture_kind: capture_kind.clone() };
-                self.determine_capture_info(fake_capture_info, capture_info.clone()).capture_kind
-            } else {
-                capture_info.capture_kind
-            };
-            self.typeck_results.borrow_mut().upvar_capture_map.insert(upvar_id, new_capture_kind);
+                    closure_captures.insert(*var_hir_id, upvar_id);
+
+                    let new_capture_kind = if let Some(capture_kind) =
+                        upvar_capture_map.get(&upvar_id)
+                    {
+                        // upvar_capture_map only stores the UpvarCapture (CaptureKind),
+                        // so we create a fake capture info with no expression.
+                        let fake_capture_info =
+                            ty::CaptureInfo { expr_id: None, capture_kind: capture_kind.clone() };
+                        self.determine_capture_info(fake_capture_info, capture_info.clone())
+                            .capture_kind
+                    } else {
+                        capture_info.capture_kind
+                    };
+                    upvar_capture_map.insert(upvar_id, new_capture_kind);
+                }
+            }
         }
+        debug!(
+            "For closure_def_id={:?}, set_closure_captures={:#?}",
+            closure_def_id, closure_captures
+        );
+        debug!(
+            "For closure_def_id={:?}, upvar_capture_map={:#?}",
+            closure_def_id, upvar_capture_map
+        );
 
         if !closure_captures.is_empty() {
             self.typeck_results
                 .borrow_mut()
                 .closure_captures
                 .insert(closure_def_id, closure_captures);
+
+            self.typeck_results.borrow_mut().upvar_capture_map.extend(upvar_capture_map);
+        }
+    }
+
+    /// Analyses the information collected by InferBorrowKind to compute the min number of
+    /// Places (and corresponding capture kind) that we need to keep track of to support all
+    /// the required captured paths.
+    ///
+    /// Eg:
+    /// ```rust
+    /// struct Point { x: i32, y: i32 }
+    ///
+    /// let s: String;  // hir_id_s
+    /// let mut p: Point; // his_id_p
+    /// let c = || {
+    ///        println!("{}", s);  // L1
+    ///        p.x += 10;  // L2
+    ///        println!("{}" , p.y) // L3
+    ///        println!("{}", p) // L4
+    ///        drop(s);   // L5
+    /// };
+    /// ```
+    /// and let hir_id_L1..5 be the expressions pointing to use of a captured variable on
+    /// the lines L1..5 respectively.
+    ///
+    /// InferBorrowKind results in a structure like this:
+    ///
+    /// ```
+    /// {
+    ///       Place(base: hir_id_s, projections: [], ....) -> (hir_id_L5, ByValue),
+    ///       Place(base: hir_id_p, projections: [Field(0, 0)], ...) -> (hir_id_L2, ByRef(MutBorrow))
+    ///       Place(base: hir_id_p, projections: [Field(1, 0)], ...) -> (hir_id_L3, ByRef(ImmutBorrow))
+    ///       Place(base: hir_id_p, projections: [], ...) -> (hir_id_L4, ByRef(ImmutBorrow))
+    /// ```
+    ///
+    /// After the min capture analysis, we get:
+    /// ```
+    /// {
+    ///       hir_id_s -> [
+    ///            Place(base: hir_id_s, projections: [], ....) -> (hir_id_L4, ByValue)
+    ///       ],
+    ///       hir_id_p -> [
+    ///            Place(base: hir_id_p, projections: [], ...) -> (hir_id_L2, ByRef(MutBorrow)),
+    ///       ],
+    /// ```
+    fn compute_min_captures(
+        &self,
+        closure_def_id: DefId,
+        inferred_info: InferBorrowKind<'_, 'tcx>,
+    ) {
+        let mut root_var_min_capture_list: ty::RootVariableMinCaptureList<'_> = Default::default();
+
+        for (place, capture_info) in inferred_info.capture_information.into_iter() {
+            let var_hir_id = match place.base {
+                PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+                base => bug!("Expected upvar, found={:?}", base),
+            };
+
+            // Arrays are captured in entirety, drop Index projections and projections
+            // after Index projections.
+            let first_index_projection =
+                place.projections.split(|proj| ProjectionKind::Index == proj.kind).next();
+            let place = Place {
+                base_ty: place.base_ty,
+                base: place.base,
+                projections: first_index_projection.map_or(Vec::new(), |p| p.to_vec()),
+            };
+
+            let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
+                None => {
+                    let min_cap_list = vec![ty::CapturedPlace { place: place, info: capture_info }];
+                    root_var_min_capture_list.insert(var_hir_id, min_cap_list);
+                    continue;
+                }
+                Some(min_cap_list) => min_cap_list,
+            };
+
+            // Go through each entry in the current list of min_captures
+            // - if ancestor is found, update it's capture kind to account for current place's
+            // capture information.
+            //
+            // - if descendant is found, remove it from the list, and update the current place's
+            // capture information to account for the descendants's capture kind.
+            //
+            // We can never be in a case where the list contains both an ancestor and a descendant
+            // Also there can only be ancestor but in case of descendants there might be
+            // multiple.
+
+            let mut descendant_found = false;
+            let mut updated_capture_info = capture_info;
+            min_cap_list.retain(|possible_descendant| {
+                match determine_place_ancestry_relation(&place, &possible_descendant.place) {
+                    // current place is ancestor of possible_descendant
+                    PlaceAncestryRelation::Ancestor => {
+                        descendant_found = true;
+                        updated_capture_info = self
+                            .determine_capture_info(updated_capture_info, possible_descendant.info);
+                        false
+                    }
+
+                    _ => true,
+                }
+            });
+
+            let mut ancestor_found = false;
+            if !descendant_found {
+                for possible_ancestor in min_cap_list.iter_mut() {
+                    match determine_place_ancestry_relation(&place, &possible_ancestor.place) {
+                        // current place is descendant of possible_ancestor
+                        PlaceAncestryRelation::Descendant => {
+                            ancestor_found = true;
+                            possible_ancestor.info =
+                                self.determine_capture_info(possible_ancestor.info, capture_info);
+
+                            // Only one ancestor of the current place will be in the list.
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            // Only need to insert when we don't have an ancestor in the existing min capture list
+            if !ancestor_found {
+                let captured_place =
+                    ty::CapturedPlace { place: place.clone(), info: updated_capture_info };
+                min_cap_list.push(captured_place);
+            }
+        }
+
+        log_capture_analysis!(
+            self,
+            closure_def_id,
+            "min_captures={:#?}",
+            root_var_min_capture_list
+        );
+
+        if !root_var_min_capture_list.is_empty() {
+            self.typeck_results
+                .borrow_mut()
+                .closure_min_captures
+                .insert(closure_def_id, root_var_min_capture_list);
         }
     }
 
@@ -418,8 +605,27 @@ struct InferBorrowKind<'a, 'tcx> {
     // variable access that caused us to do so.
     current_origin: Option<(Span, Symbol)>,
 
-    // For each upvar that we access, we track the minimal kind of
-    // access we need (ref, ref mut, move, etc).
+    /// For each Place that we access, we track the minimal kind of
+    /// access we need (ref, ref mut, move, etc) and the expression that resulted in such access.
+    /// Consider closure where s.str1 is captured via an ImmutableBorrow and
+    /// s.str2 via a MutableBorrow
+    ///
+    /// ```rust
+    /// // Assume that the HirId for the variable definition is `V1`
+    /// let mut s = SomeStruct { str1: format!("s1"), str2: format!("s2") }
+    ///
+    /// let fix_s = |new_s2| {
+    ///     // Assume that the HirId for the expression `s.str1` is `E1`
+    ///     println!("Updating SomeStruct with str1=", s.str1);
+    ///     // Assume that the HirId for the expression `*s.str2` is `E2`
+    ///     s.str2 = new_s2;
+    /// }
+    /// ```
+    ///
+    /// For closure `fix_s`, (at a high level) the map contains
+    ///
+    /// Place { V1, [ProjectionKind::Field(Index=0, Variant=0)] } : CaptureKind { E1, ImmutableBorrow }
+    /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
     capture_information: FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>>,
 }
 
@@ -713,4 +919,46 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
+}
+
+/// Determines the Ancestry relationship of Place A relative to Place B
+///
+/// `PlaceAncestryRelation::Ancestor` implies Place A is ancestor of Place B
+/// `PlaceAncestryRelation::Descendant` implies Place A is descendant of Place B
+/// `PlaceAncestryRelation::Divergent` implies neither of them is the ancestor of the other.
+fn determine_place_ancestry_relation(
+    place_a: &Place<'tcx>,
+    place_b: &Place<'tcx>,
+) -> PlaceAncestryRelation {
+    // If Place A and Place B, don't start off from the same root variable, they are divergent.
+    if place_a.base != place_b.base {
+        return PlaceAncestryRelation::Divergent;
+    }
+
+    // Assume of length of projections_a = n
+    let projections_a = &place_a.projections;
+
+    // Assume of length of projections_b = m
+    let projections_b = &place_b.projections;
+
+    let mut same_initial_projections = true;
+
+    for (proj_a, proj_b) in projections_a.iter().zip(projections_b.iter()) {
+        if proj_a != proj_b {
+            same_initial_projections = false;
+            break;
+        }
+    }
+
+    if same_initial_projections {
+        // First min(n, m) projections are the same
+        // Select Ancestor/Descendant
+        if projections_b.len() >= projections_a.len() {
+            PlaceAncestryRelation::Ancestor
+        } else {
+            PlaceAncestryRelation::Descendant
+        }
+    } else {
+        PlaceAncestryRelation::Divergent
+    }
 }

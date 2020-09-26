@@ -18,7 +18,6 @@ use rustc_middle::ty::{self, adjustment, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 use crate::mem_categorization as mc;
-use rustc_span::Span;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
@@ -331,8 +330,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_expr(base);
             }
 
-            hir::ExprKind::Closure(_, _, _, fn_decl_span, _) => {
-                self.walk_captures(expr, fn_decl_span);
+            hir::ExprKind::Closure(..) => {
+                self.walk_captures(expr);
             }
 
             hir::ExprKind::Box(ref base) => {
@@ -571,51 +570,73 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }));
     }
 
-    // FIXME(arora-aman):  fix the fn_decl_span
-    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>, _fn_decl_span: Span) {
+    /// Handle the case where the current body contains a closure.
+    ///
+    /// When the current body being handled is a closure, then we must make sure that
+    /// - The parent closure only captures Places from the nested closure that are not local to it.
+    ///
+    /// In the following example the closures `c` only captures `p.x`` even though `incr`
+    /// is a capture of the nested closure
+    ///
+    /// ```rust
+    /// let p = ..;
+    /// let c = || {
+    ///    let incr = 10;
+    ///    let nested = || p.x += incr;
+    /// }
+    /// ```
+    ///
+    /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
+    /// closure as the DefId.
+    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
         debug!("walk_captures({:?})", closure_expr);
 
-        // We are currently walking a closure that is within a given body
-        // We need to process all the captures for this closure.
         let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
         let upvars = self.tcx().upvars_mentioned(self.body_owner);
-        if let Some(closure_capture_information) =
-            self.mc.typeck_results.closure_capture_information.get(&closure_def_id)
-        {
-            for (place, capture_info) in closure_capture_information.iter() {
-                let var_hir_id = if let PlaceBase::Upvar(upvar_id) = place.base {
-                    upvar_id.var_path.hir_id
-                } else {
-                    continue;
-                    // FIXME(arora-aman): throw err?
-                };
 
-                if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hir_id)) {
-                    // The nested closure might be capturing our local variables
-                    // Since for the current body these aren't captures, we will ignore them.
+        // For purposes of this function, generator and closures are equivalent.
+        let body_owner_is_closure = match self.tcx().type_of(self.body_owner.to_def_id()).kind() {
+            ty::Closure(..) | ty::Generator(..) => true,
+            _ => false,
+        };
+
+        if let Some(min_captures) = self.mc.typeck_results.closure_min_captures.get(&closure_def_id)
+        {
+            for (var_hir_id, min_list) in min_captures.iter() {
+                if upvars.map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id)) {
+                    // The nested closure might be capturing the current (enclosing) closure's local variables.
+                    // We check if the root variable is ever mentioned within the enclosing closure, if not
+                    // then for the current body (if it's a closure) these aren't captures, we will ignore them.
                     continue;
                 }
+                for captured_place in min_list {
+                    let place = &captured_place.place;
+                    let capture_info = captured_place.info;
 
-                // The place is being captured by the enclosing closure
-                // FIXME(arora-aman) Make sure this is valid to do when called from clippy.
-                let upvar_id = ty::UpvarId::new(var_hir_id, self.body_owner);
-                let place_with_id = PlaceWithHirId::new(
-                    capture_info.expr_id.unwrap_or(closure_expr.hir_id),
-                    place.base_ty,
-                    PlaceBase::Upvar(upvar_id),
-                    place.projections.clone(),
-                );
-                match capture_info.capture_kind {
-                    ty::UpvarCapture::ByValue(_) => {
-                        let mode = copy_or_move(&self.mc, &place_with_id);
-                        self.delegate.consume(&place_with_id, place_with_id.hir_id, mode);
-                    }
-                    ty::UpvarCapture::ByRef(upvar_borrow) => {
-                        self.delegate.borrow(
-                            &place_with_id,
-                            place_with_id.hir_id,
-                            upvar_borrow.kind,
-                        );
+                    let upvar_id = if body_owner_is_closure {
+                        // Mark the place to be captured by the enclosing closure
+                        ty::UpvarId::new(*var_hir_id, self.body_owner)
+                    } else {
+                        ty::UpvarId::new(*var_hir_id, closure_def_id.expect_local())
+                    };
+                    let place_with_id = PlaceWithHirId::new(
+                        capture_info.expr_id.unwrap_or(closure_expr.hir_id),
+                        place.base_ty,
+                        PlaceBase::Upvar(upvar_id),
+                        place.projections.clone(),
+                    );
+                    match capture_info.capture_kind {
+                        ty::UpvarCapture::ByValue(_) => {
+                            let mode = copy_or_move(&self.mc, &place_with_id);
+                            self.delegate.consume(&place_with_id, place_with_id.hir_id, mode);
+                        }
+                        ty::UpvarCapture::ByRef(upvar_borrow) => {
+                            self.delegate.borrow(
+                                &place_with_id,
+                                place_with_id.hir_id,
+                                upvar_borrow.kind,
+                            );
+                        }
                     }
                 }
             }
