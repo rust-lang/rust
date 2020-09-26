@@ -2,7 +2,7 @@ error: unclosed HTML tag `unknown`
   --> $DIR/invalid-html-tags.rs:7:5
    |
 LL | /// <unknown>
-   |     ^^^^^^^^
+   |     ^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/invalid-html-tags.rs:1:9
@@ -14,25 +14,43 @@ error: unclosed HTML tag `script`
   --> $DIR/invalid-html-tags.rs:10:5
    |
 LL | /// <script>
-   |     ^^^^^^^
+   |     ^^^^^^^^
 
 error: unclosed HTML tag `h2`
   --> $DIR/invalid-html-tags.rs:15:7
    |
 LL | ///   <h2>
-   |       ^^^
+   |       ^^^^
 
 error: unclosed HTML tag `h3`
   --> $DIR/invalid-html-tags.rs:17:9
    |
 LL | ///     <h3>
-   |         ^^^
+   |         ^^^^
 
 error: unopened HTML tag `hello`
   --> $DIR/invalid-html-tags.rs:20:5
    |
 LL | /// </hello>
-   |     ^^^^^^^
+   |     ^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: unclosed HTML tag `p`
+  --> $DIR/invalid-html-tags.rs:25:14
+   |
+LL | ///    <br/> <p>
+   |              ^^^
+
+error: unclosed HTML tag `div`
+  --> $DIR/invalid-html-tags.rs:37:5
+   |
+LL | /// <div style="hello">
+   |     ^^^^
+
+error: unclosed HTML tag `h3`
+  --> $DIR/invalid-html-tags.rs:39:7
+   |
+LL | ///   <h3>
+   |       ^^^^
+
+error: aborting due to 8 previous errors
 

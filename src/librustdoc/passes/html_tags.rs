@@ -45,18 +45,20 @@ fn drop_tag(
     range: Range<usize>,
     f: &impl Fn(&str, &Range<usize>),
 ) {
-    if let Some(pos) = tags.iter().position(|(t, _)| *t == tag_name) {
-        for _ in pos + 1..tags.len() {
-            if ALLOWED_UNCLOSED.iter().find(|&at| at == &tags[pos + 1].0).is_some() {
+    if let Some(pos) = tags.iter().rev().position(|(t, _)| *t == tag_name) {
+        // Because this is from a `rev` iterator, the position is reversed as well!
+        let pos = tags.len() - 1 - pos;
+        for (last_tag_name, last_tag_span) in tags.drain(pos + 1..) {
+            if ALLOWED_UNCLOSED.iter().any(|&at| at == &last_tag_name) {
                 continue;
             }
             // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
             // So `<h2><h3></h2>` will look like `["h2", "h3"]`. So when closing `h2`, we will still
             // have `h3`, meaning the tag wasn't closed as it should have.
-            f(&format!("unclosed HTML tag `{}`", tags[pos + 1].0), &tags[pos + 1].1);
-            tags.remove(pos + 1);
+            f(&format!("unclosed HTML tag `{}`", last_tag_name), &last_tag_span);
         }
-        tags.remove(pos);
+        // Remove the `tag_name` that was originally closed
+        tags.pop();
     } else {
         // It can happen for example in this case: `<h2></script></h2>` (the `h2` tag isn't required
         // but it helps for the visualization).
@@ -84,7 +86,13 @@ fn extract_tag(
                     tag_name.push(*c);
                 } else {
                     if !tag_name.is_empty() {
-                        let r = Range { start: range.start + start_pos, end: range.start + pos };
+                        let mut r =
+                            Range { start: range.start + start_pos, end: range.start + pos };
+                        if *c == '>' {
+                            // In case we have a tag without attribute, we can consider the span to
+                            // refer to it fully.
+                            r.end += 1;
+                        }
                         if is_closing {
                             drop_tag(tags, tag_name, r, f);
                         } else {
