@@ -74,11 +74,10 @@ macro_rules! forward {
         });
     };
 
-    // Forward pattern for &mut self -> &mut Self, with S: Into<MultiSpan>
-    // type parameter. No obvious way to make this more generic.
+    // Forward pattern for &mut self -> &mut Self, with generic parameters.
     (
         $(#[$attrs:meta])*
-        pub fn $n:ident<S: Into<MultiSpan>>(
+        pub fn $n:ident<$($generic:ident: $bound:path),*>(
             &mut self,
             $($name:ident: $ty:ty),*
             $(,)?
@@ -86,7 +85,7 @@ macro_rules! forward {
     ) => {
         $(#[$attrs])*
         forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
-        pub fn $n<S: Into<MultiSpan>>(&mut self, $($name: $ty),*) -> &mut Self {
+        pub fn $n<$($generic: $bound),*>(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
         });
@@ -398,6 +397,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    forward!(pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 

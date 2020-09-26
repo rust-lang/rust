@@ -5,6 +5,6 @@
 use std::iter::once;
 fn main() {
     once::<&str>("str").fuse().filter(|a: &str| true).count();
-    //~^ ERROR no method named `count`
+    //~^ ERROR the method
     //~| ERROR type mismatch in closure arguments
 }

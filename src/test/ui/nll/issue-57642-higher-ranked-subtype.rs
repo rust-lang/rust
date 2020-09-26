@@ -31,7 +31,7 @@ impl<T> Y for fn(T) {
 }
 
 fn higher_ranked_region_has_lost_its_binder() {
-    let x = <fn (&())>::make_g(); //~ ERROR no function
+    let x = <fn (&())>::make_g(); //~ ERROR the function
 }
 
 fn magical() {

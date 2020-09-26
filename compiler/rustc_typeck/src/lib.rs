@@ -60,6 +60,7 @@ This API is completely unstable and subject to change.
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
+#![feature(format_args_capture)]
 #![feature(in_band_lifetimes)]
 #![feature(is_sorted)]
 #![feature(nll)]

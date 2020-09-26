@@ -17,5 +17,5 @@ where
 
 fn main() {
     1u32.f("abc");
-    //~^ ERROR no method named `f` found for type `u32` in the current scope
+    //~^ ERROR the method
 }

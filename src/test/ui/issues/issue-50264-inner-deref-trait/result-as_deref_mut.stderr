@@ -1,10 +1,10 @@
-error[E0599]: no method named `as_deref_mut` found for enum `std::result::Result<{integer}, _>` in the current scope
+error[E0599]: the method `as_deref_mut` exists for enum `std::result::Result<{integer}, _>`, but its trait bounds were not satisfied
   --> $DIR/result-as_deref_mut.rs:2:31
    |
 LL |     let _result = &mut Ok(42).as_deref_mut();
-   |                               ^^^^^^^^^^^^ method not found in `std::result::Result<{integer}, _>`
+   |                               ^^^^^^^^^^^^ method cannot be called on `std::result::Result<{integer}, _>` due to unsatisfied trait bounds
    |
-   = note: the method `as_deref_mut` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `{integer}: DerefMut`
            `<{integer} as Deref>::Target = _`
 

@@ -5,7 +5,7 @@ use issue_69725::Struct;
 
 fn crash<A>() {
     let _ = Struct::<A>::new().clone();
-    //~^ ERROR: no method named `clone` found
+    //~^ ERROR: the method
 }
 
 fn main() {}

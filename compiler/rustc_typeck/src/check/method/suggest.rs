@@ -446,6 +446,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
+                let mut label_span_not_found = || {
+                    if unsatisfied_predicates.is_empty() {
+                        err.span_label(span, format!("{item_kind} not found in `{ty_str}`"));
+                    } else {
+                        err.span_label(span, format!("{item_kind} cannot be called on `{ty_str}` due to unsatisfied trait bounds"));
+                    }
+                    self.tcx.sess.trait_methods_not_found.borrow_mut().insert(orig_span);
+                };
+
                 // If the method name is the name of a field with a function or closure type,
                 // give a helping note that it has to be called as `(x.f)(...)`.
                 if let SelfSource::MethodCall(expr) = source {
@@ -501,12 +510,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let field_kind = if is_accessible { "field" } else { "private field" };
                         err.span_label(item_name.span, format!("{}, not a method", field_kind));
                     } else if lev_candidate.is_none() && static_sources.is_empty() {
-                        err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
-                        self.tcx.sess.trait_methods_not_found.borrow_mut().insert(orig_span);
+                        label_span_not_found();
                     }
                 } else {
-                    err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
-                    self.tcx.sess.trait_methods_not_found.borrow_mut().insert(orig_span);
+                    label_span_not_found();
                 }
 
                 if self.is_fn_ty(&rcvr_ty, span) {
@@ -721,10 +728,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .map(|(_, path)| path)
                             .collect::<Vec<_>>()
                             .join("\n");
+                        let actual_prefix = actual.prefix_string();
+                        err.set_primary_message(&format!(
+                            "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, but its trait bounds were not satisfied"
+                        ));
                         err.note(&format!(
-                            "the method `{}` exists but the following trait bounds were not \
-                             satisfied:\n{}",
-                            item_name, bound_list
+                            "the following trait bounds were not satisfied:\n{bound_list}"
                         ));
                     }
                 }
@@ -742,7 +751,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                if actual.is_enum() {
+                // Don't emit a suggestion if we found an actual method
+                // that had unsatisfied trait bounds
+                if unsatisfied_predicates.is_empty() && actual.is_enum() {
                     let adt_def = actual.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggestion) = lev_distance::find_best_match_for_name(
                         &adt_def.variants.iter().map(|s| s.ident.name).collect::<Vec<_>>(),
@@ -778,17 +789,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_label(span, msg);
                     }
                 } else if let Some(lev_candidate) = lev_candidate {
-                    let def_kind = lev_candidate.kind.as_def_kind();
-                    err.span_suggestion(
-                        span,
-                        &format!(
-                            "there is {} {} with a similar name",
-                            def_kind.article(),
-                            def_kind.descr(lev_candidate.def_id),
-                        ),
-                        lev_candidate.ident.to_string(),
-                        Applicability::MaybeIncorrect,
-                    );
+                    // Don't emit a suggestion if we found an actual method
+                    // that had unsatisfied trait bounds
+                    if unsatisfied_predicates.is_empty() {
+                        let def_kind = lev_candidate.kind.as_def_kind();
+                        err.span_suggestion(
+                            span,
+                            &format!(
+                                "there is {} {} with a similar name",
+                                def_kind.article(),
+                                def_kind.descr(lev_candidate.def_id),
+                            ),
+                            lev_candidate.ident.to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
 
                 return Some(err);

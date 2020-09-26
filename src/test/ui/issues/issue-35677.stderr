@@ -1,10 +1,10 @@
-error[E0599]: no method named `is_subset` found for reference `&HashSet<T>` in the current scope
+error[E0599]: the method `is_subset` exists for reference `&HashSet<T>`, but its trait bounds were not satisfied
   --> $DIR/issue-35677.rs:4:10
    |
 LL |     this.is_subset(other)
-   |          ^^^^^^^^^ method not found in `&HashSet<T>`
+   |          ^^^^^^^^^ method cannot be called on `&HashSet<T>` due to unsatisfied trait bounds
    |
-   = note: the method `is_subset` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `T: Eq`
            `T: Hash`
 

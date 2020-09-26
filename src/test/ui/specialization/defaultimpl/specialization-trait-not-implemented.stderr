@@ -8,7 +8,7 @@ LL | #![feature(specialization)]
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
 
-error[E0599]: no method named `foo_one` found for struct `MyStruct` in the current scope
+error[E0599]: the method `foo_one` exists for struct `MyStruct`, but its trait bounds were not satisfied
   --> $DIR/specialization-trait-not-implemented.rs:22:29
    |
 LL | struct MyStruct;
@@ -18,9 +18,9 @@ LL | struct MyStruct;
    | doesn't satisfy `MyStruct: Foo`
 ...
 LL |     println!("{}", MyStruct.foo_one());
-   |                             ^^^^^^^ method not found in `MyStruct`
+   |                             ^^^^^^^ method cannot be called on `MyStruct` due to unsatisfied trait bounds
    |
-   = note: the method `foo_one` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `MyStruct: Foo`
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `foo_one`, perhaps you need to implement it
