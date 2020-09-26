@@ -207,6 +207,28 @@ macro_rules! base_vector_traits {
     }
 }
 
+/// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
+macro_rules! integer_vector_traits {
+    { $name:path => [$type:ty; $lanes:literal] } => {
+        impl Eq for $name {}
+
+        impl Ord for $name {
+            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+                AsRef::<[$type]>::as_ref(self).cmp(AsRef::<[$type]>::as_ref(other))
+            }
+        }
+
+        impl core::hash::Hash for $name {
+            fn hash<H>(&self, state: &mut H)
+            where
+                H: core::hash::Hasher
+            {
+                AsRef::<[$type]>::as_ref(self).hash(state)
+            }
+        }
+    }
+}
+
 /// Defines a vector `$name` containing multiple `$lanes` of `$type`.
 macro_rules! define_vector {
     { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); } => {
@@ -242,6 +264,18 @@ macro_rules! define_vector {
     }
 }
 
+/// Defines an integer vector `$name` containing multiple `$lanes` of integer `$type`.
+macro_rules! define_integer_vector {
+    { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); } => {
+        define_vector! {
+            $(#[$attr])*
+            struct $name([$type; $lanes]);
+        }
+
+        integer_vector_traits! { $name => [$type; $lanes] }
+    }
+}
+
 /// Defines a mask vector `$name` containing multiple `$lanes` of `$type`, represented by the
 /// underlying type `$impl_type`.
 macro_rules! define_mask_vector {
@@ -254,11 +288,11 @@ macro_rules! define_mask_vector {
         }
 
         base_vector_traits! { $name => [$type; $lanes] }
+        integer_vector_traits! { $name => [$type; $lanes] }
     };
     { def $(#[$attr:meta])* | $name:ident | $($itype:ty)* } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        #[derive(Eq, Ord)]
         #[repr(simd)]
         pub struct $name($($itype),*);
     };

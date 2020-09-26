@@ -1,18 +1,15 @@
-define_vector! {
+define_integer_vector! {
     /// Vector of two `usize` values
-    #[derive(Eq, Ord, Hash)]
     struct usizex2([usize; 2]);
 }
 
-define_vector! {
+define_integer_vector! {
     /// Vector of four `usize` values
-    #[derive(Eq, Ord, Hash)]
     struct usizex4([usize; 4]);
 }
 
-define_vector! {
+define_integer_vector! {
     /// Vector of eight `usize` values
-    #[derive(Eq, Ord, Hash)]
     struct usizex8([usize; 8]);
 }
 

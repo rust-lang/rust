@@ -1,30 +1,25 @@
-define_vector! {
+define_integer_vector! {
     /// Vector of two `i16` values
-    #[derive(Eq, Ord, Hash)]
     struct i16x2([i16; 2]);
 }
 
-define_vector! {
+define_integer_vector! {
     /// Vector of four `i16` values
-    #[derive(Eq, Ord, Hash)]
     struct i16x4([i16; 4]);
 }
 
-define_vector! {
+define_integer_vector! {
     /// Vector of eight `i16` values
-    #[derive(Eq, Ord, Hash)]
     struct i16x8([i16; 8]);
 }
 
-define_vector! {
+define_integer_vector! {
     /// Vector of 16 `i16` values
-    #[derive(Eq, Ord, Hash)]
     struct i16x16([i16; 16]);
 }
 
-define_vector! {
+define_integer_vector! {
     /// Vector of 32 `i16` values
-    #[derive(Eq, Ord, Hash)]
     struct i16x32([i16; 32]);
 }
 

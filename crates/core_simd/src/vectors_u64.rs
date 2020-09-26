@@ -1,18 +1,15 @@
-define_vector! {
+define_integer_vector! {
     /// Vector of two `u64` values
-    #[derive(Eq, Ord, Hash)]
     struct u64x2([u64; 2]);
 }
 
-define_vector! {
+define_integer_vector! {
     /// Vector of four `u64` values
-    #[derive(Eq, Ord, Hash)]
     struct u64x4([u64; 4]);
 }
 
-define_vector! {
+define_integer_vector! {
     /// Vector of eight `u64` values
-    #[derive(Eq, Ord, Hash)]
     struct u64x8([u64; 8]);
 }
 
