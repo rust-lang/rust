@@ -353,13 +353,14 @@ incredibly helpful:
 - [Cleanup crew][iceb]: find minimal reproductions of ICEs, bisect
   regressions, etc. This is a way of helping that saves a ton of time for
   others to fix an error later.
-- Writing documentation: if you are feeling a bit more intrepid, you could try
+- [Writing documentation][wd]: if you are feeling a bit more intrepid, you could try
   to read a part of the code and write doc comments for it. This will help you
   to learn some part of the compiler while also producing a useful artifact!
 - [Working groups][wg]: there are a bunch of working groups on a wide variety
   of rust-related things.
 
 [iceb]: ./notification-groups/cleanup-crew.md
+[wd]: ./contributing.md#writing-documentation
 [wg]: https://rust-lang.github.io/compiler-team/working-groups/
 
 
