@@ -2293,6 +2293,9 @@ impl AsRef<[u8]> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<&str> for String {
+    /// Converts a [`&str`](prim@str) into a [`String`].
+    ///
+    /// The result is allocated on the heap.
     #[inline]
     fn from(s: &str) -> String {
         s.to_owned()
@@ -2301,7 +2304,7 @@ impl From<&str> for String {
 
 #[stable(feature = "from_mut_str_for_string", since = "1.44.0")]
 impl From<&mut str> for String {
-    /// Converts a `&mut str` into a `String`.
+    /// Converts a [`&mut str`](prim@str) into a [`String`].
     ///
     /// The result is allocated on the heap.
     #[inline]
@@ -2312,6 +2315,9 @@ impl From<&mut str> for String {
 
 #[stable(feature = "from_ref_string", since = "1.35.0")]
 impl From<&String> for String {
+    /// Converts a [`&String`](String) into a [`String`].
+    ///
+    /// The result is allocated on the heap.
     #[inline]
     fn from(s: &String) -> String {
         s.clone()
@@ -2363,6 +2369,9 @@ impl From<String> for Box<str> {
 
 #[stable(feature = "string_from_cow_str", since = "1.14.0")]
 impl<'a> From<Cow<'a, str>> for String {
+    /// Converts a [`Cow<'a, str>`](Cow) into a [`String`].
+    ///
+    /// If `s` is borrowed, the result is allocated on the heap.
     fn from(s: Cow<'a, str>) -> String {
         s.into_owned()
     }
@@ -2559,6 +2568,9 @@ impl FusedIterator for Drain<'_> {}
 
 #[stable(feature = "from_char_for_string", since = "1.46.0")]
 impl From<char> for String {
+    /// Converts a [`char`] into a [`String`].
+    ///
+    /// The result is allocated on the heap.
     #[inline]
     fn from(c: char) -> Self {
         c.to_string()
