@@ -6,7 +6,6 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_target::abi::VariantIdx;
 
 use super::MoveDataParamEnv;
 
@@ -19,6 +18,7 @@ use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
 use super::on_lookup_result_bits;
 use crate::dataflow::drop_flag_effects;
+use crate::dataflow::framework::SwitchIntEdgeEffects;
 
 mod borrowed_locals;
 pub(super) mod borrows;
@@ -352,24 +352,46 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         );
     }
 
-    fn discriminant_switch_effect(
+    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
         &self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _block: mir::BasicBlock,
-        enum_place: mir::Place<'tcx>,
-        _adt: &ty::AdtDef,
-        variant: VariantIdx,
+        block: mir::BasicBlock,
+        discr: &mir::Operand<'tcx>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
-        // Kill all move paths that correspond to variants we know to be inactive along this
-        // particular outgoing edge of a `SwitchInt`.
-        drop_flag_effects::on_all_inactive_variants(
-            self.tcx,
-            self.body,
-            self.move_data(),
-            enum_place,
-            variant,
-            |mpi| trans.kill(mpi),
-        );
+        let enum_ = discr.place().and_then(|discr| {
+            switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
+        });
+
+        let (enum_place, enum_def) = match enum_ {
+            Some(x) => x,
+            None => return,
+        };
+
+        let mut discriminants = enum_def.discriminants(self.tcx);
+        edge_effects.apply(|trans, edge| {
+            let value = match edge.value {
+                Some(x) => x,
+                None => return,
+            };
+
+            // MIR building adds discriminants to the `values` array in the same order as they
+            // are yielded by `AdtDef::discriminants`. We rely on this to match each
+            // discriminant in `values` to its corresponding variant in linear time.
+            let (variant, _) = discriminants
+                .find(|&(_, discr)| discr.val == value)
+                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
+
+            // Kill all move paths that correspond to variants we know to be inactive along this
+            // particular outgoing edge of a `SwitchInt`.
+            drop_flag_effects::on_all_inactive_variants(
+                self.tcx,
+                self.body,
+                self.move_data(),
+                enum_place,
+                variant,
+                |mpi| trans.kill(mpi),
+            );
+        });
     }
 }
 
@@ -441,28 +463,50 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         );
     }
 
-    fn discriminant_switch_effect(
+    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
         &self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _block: mir::BasicBlock,
-        enum_place: mir::Place<'tcx>,
-        _adt: &ty::AdtDef,
-        variant: VariantIdx,
+        block: mir::BasicBlock,
+        discr: &mir::Operand<'tcx>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
         if !self.mark_inactive_variants_as_uninit {
             return;
         }
 
-        // Mark all move paths that correspond to variants other than this one as maybe
-        // uninitialized (in reality, they are *definitely* uninitialized).
-        drop_flag_effects::on_all_inactive_variants(
-            self.tcx,
-            self.body,
-            self.move_data(),
-            enum_place,
-            variant,
-            |mpi| trans.gen(mpi),
-        );
+        let enum_ = discr.place().and_then(|discr| {
+            switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
+        });
+
+        let (enum_place, enum_def) = match enum_ {
+            Some(x) => x,
+            None => return,
+        };
+
+        let mut discriminants = enum_def.discriminants(self.tcx);
+        edge_effects.apply(|trans, edge| {
+            let value = match edge.value {
+                Some(x) => x,
+                None => return,
+            };
+
+            // MIR building adds discriminants to the `values` array in the same order as they
+            // are yielded by `AdtDef::discriminants`. We rely on this to match each
+            // discriminant in `values` to its corresponding variant in linear time.
+            let (variant, _) = discriminants
+                .find(|&(_, discr)| discr.val == value)
+                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
+
+            // Mark all move paths that correspond to variants other than this one as maybe
+            // uninitialized (in reality, they are *definitely* uninitialized).
+            drop_flag_effects::on_all_inactive_variants(
+                self.tcx,
+                self.body,
+                self.move_data(),
+                enum_place,
+                variant,
+                |mpi| trans.gen(mpi),
+            );
+        });
     }
 }
 
@@ -622,5 +666,44 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         for init_index in &init_loc_map[call_loc] {
             trans.gen(*init_index);
         }
+    }
+}
+
+/// Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt` is
+/// an enum discriminant.
+///
+/// We expect such blocks to have a call to `discriminant` as their last statement like so:
+///
+/// ```text
+/// ...
+/// _42 = discriminant(_1)
+/// SwitchInt(_42, ..)
+/// ```
+///
+/// If the basic block matches this pattern, this function returns the place corresponding to the
+/// enum (`_1` in the example above) as well as the `AdtDef` of that enum.
+fn switch_on_enum_discriminant(
+    tcx: TyCtxt<'tcx>,
+    body: &'mir mir::Body<'tcx>,
+    block: &'mir mir::BasicBlockData<'tcx>,
+    switch_on: mir::Place<'tcx>,
+) -> Option<(mir::Place<'tcx>, &'tcx ty::AdtDef)> {
+    match block.statements.last().map(|stmt| &stmt.kind) {
+        Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
+            if *lhs == switch_on =>
+        {
+            match &discriminated.ty(body, tcx).ty.kind() {
+                ty::Adt(def, _) => Some((*discriminated, def)),
+
+                // `Rvalue::Discriminant` is also used to get the active yield point for a
+                // generator, but we do not need edge-specific effects in that case. This may
+                // change in the future.
+                ty::Generator(..) => None,
+
+                t => bug!("`discriminant` called on unexpected type {:?}", t),
+            }
+        }
+
+        _ => None,
     }
 }
