@@ -319,6 +319,13 @@ pub(super) trait SplitIter: DoubleEndedIterator {
 ///
 /// This struct is created by the [`split`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let slice = [10, 40, 33, 20];
+/// let mut iter = slice.split(|num| num % 3 == 0);
+/// ```
+///
 /// [`split`]: ../../std/primitive.slice.html#method.split
 /// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -434,6 +441,15 @@ impl<T, P> FusedIterator for Split<'_, T, P> where P: FnMut(&T) -> bool {}
 ///
 /// This struct is created by the [`split_inclusive`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// #![feature(split_inclusive)]
+///
+/// let slice = [10, 40, 33, 20];
+/// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
+/// ```
+///
 /// [`split_inclusive`]: ../../std/primitive.slice.html#method.split_inclusive
 /// [slices]: ../../std/primitive.slice.html
 #[unstable(feature = "split_inclusive", issue = "72360")]
@@ -538,6 +554,13 @@ impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool
 /// by elements that match `pred`.
 ///
 /// This struct is created by the [`split_mut`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// let mut v = [10, 40, 30, 20, 60, 50];
+/// let iter = v.split_mut(|num| *num % 3 == 0);
+/// ```
 ///
 /// [`split_mut`]: ../../std/primitive.slice.html#method.split_mut
 /// [slices]: ../../std/primitive.slice.html
@@ -661,6 +684,15 @@ impl<T, P> FusedIterator for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
 ///
 /// This struct is created by the [`split_inclusive_mut`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// #![feature(split_inclusive)]
+///
+/// let mut v = [10, 40, 30, 20, 60, 50];
+/// let iter = v.split_inclusive_mut(|num| *num % 3 == 0);
+/// ```
+///
 /// [`split_inclusive_mut`]: ../../std/primitive.slice.html#method.split_inclusive_mut
 /// [slices]: ../../std/primitive.slice.html
 #[unstable(feature = "split_inclusive", issue = "72360")]
@@ -775,6 +807,13 @@ impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> b
 ///
 /// This struct is created by the [`rsplit`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let slice = [11, 22, 33, 0, 44, 55];
+/// let iter = slice.rsplit(|num| *num == 0);
+/// ```
+///
 /// [`rsplit`]: ../../std/primitive.slice.html#method.rsplit
 /// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -853,6 +892,13 @@ impl<T, P> FusedIterator for RSplit<'_, T, P> where P: FnMut(&T) -> bool {}
 /// by elements that match `pred`, starting from the end of the slice.
 ///
 /// This struct is created by the [`rsplit_mut`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// let mut slice = [11, 22, 33, 0, 44, 55];
+/// let iter = slice.rsplit_mut(|num| *num == 0);
+/// ```
 ///
 /// [`rsplit_mut`]: ../../std/primitive.slice.html#method.rsplit_mut
 /// [slices]: ../../std/primitive.slice.html
@@ -966,6 +1012,13 @@ impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
 ///
 /// This struct is created by the [`splitn`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let slice = [10, 40, 30, 20, 60, 50];
+/// let iter = slice.splitn(2, |num| *num % 3 == 0);
+/// ```
+///
 /// [`splitn`]: ../../std/primitive.slice.html#method.splitn
 /// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -999,6 +1052,13 @@ where
 ///
 /// This struct is created by the [`rsplitn`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let slice = [10, 40, 30, 20, 60, 50];
+/// let iter = slice.rsplitn(2, |num| *num % 3 == 0);
+/// ```
+///
 /// [`rsplitn`]: ../../std/primitive.slice.html#method.rsplitn
 /// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1030,6 +1090,13 @@ where
 /// function, limited to a given number of splits.
 ///
 /// This struct is created by the [`splitn_mut`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// let mut slice = [10, 40, 30, 20, 60, 50];
+/// let iter = slice.splitn_mut(2, |num| *num % 3 == 0);
+/// ```
 ///
 /// [`splitn_mut`]: ../../std/primitive.slice.html#method.splitn_mut
 /// [slices]: ../../std/primitive.slice.html
@@ -1063,6 +1130,13 @@ where
 /// from the end of the slice.
 ///
 /// This struct is created by the [`rsplitn_mut`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// let mut slice = [10, 40, 30, 20, 60, 50];
+/// let iter = slice.rsplitn_mut(2, |num| *num % 3 == 0);
+/// ```
 ///
 /// [`rsplitn_mut`]: ../../std/primitive.slice.html#method.rsplitn_mut
 /// [slices]: ../../std/primitive.slice.html
@@ -1099,6 +1173,13 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 /// An iterator over overlapping subslices of length `size`.
 ///
 /// This struct is created by the [`windows`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// let slice = ['r', 'u', 's', 't'];
+/// let iter = slice.windows(2);
+/// ```
 ///
 /// [`windows`]: ../../std/primitive.slice.html#method.windows
 /// [slices]: ../../std/primitive.slice.html
@@ -1238,6 +1319,13 @@ unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
 /// of the iteration will be the remainder.
 ///
 /// This struct is created by the [`chunks`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// let slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.chunks(2);
+/// ```
 ///
 /// [`chunks`]: ../../std/primitive.slice.html#method.chunks
 /// [slices]: ../../std/primitive.slice.html
@@ -1400,6 +1488,13 @@ unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
 ///
 /// This struct is created by the [`chunks_mut`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let mut slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.chunks_mut(2);
+/// ```
+///
 /// [`chunks_mut`]: ../../std/primitive.slice.html#method.chunks_mut
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
@@ -1559,6 +1654,13 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
 ///
 /// This struct is created by the [`chunks_exact`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.chunks_exact(2);
+/// ```
+///
 /// [`chunks_exact`]: ../../std/primitive.slice.html#method.chunks_exact
 /// [`remainder`]: ChunksExact::remainder
 /// [slices]: ../../std/primitive.slice.html
@@ -1708,6 +1810,13 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
 ///
 /// This struct is created by the [`chunks_exact_mut`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let mut slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.chunks_exact_mut(2);
+/// ```
+///
 /// [`chunks_exact_mut`]: ../../std/primitive.slice.html#method.chunks_exact_mut
 /// [`into_remainder`]: ChunksExactMut::into_remainder
 /// [slices]: ../../std/primitive.slice.html
@@ -1850,6 +1959,15 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
 ///
 /// This struct is created by the [`array_windows`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// #![feature(array_windows)]
+///
+/// let slice = [0, 1, 2, 3];
+/// let iter = slice.array_windows::<2>();
+/// ```
+///
 /// [`array_windows`]: ../../std/primitive.slice.html#method.array_windows
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug, Clone, Copy)]
@@ -1961,6 +2079,15 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
 /// the [`remainder`] function from the iterator.
 ///
 /// This struct is created by the [`array_chunks`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// #![feature(array_chunks)]
+///
+/// let slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.array_chunks::<2>();
+/// ```
 ///
 /// [`array_chunks`]: ../../std/primitive.slice.html#method.array_chunks
 /// [`remainder`]: ArrayChunks::remainder
@@ -2080,6 +2207,15 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N>
 ///
 /// This struct is created by the [`array_chunks_mut`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// #![feature(array_chunks)]
+///
+/// let mut slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.array_chunks_mut::<2>();
+/// ```
+///
 /// [`array_chunks_mut`]: ../../std/primitive.slice.html#method.array_chunks_mut
 /// [`into_remainder`]: ../../std/slice/struct.ArrayChunksMut.html#method.into_remainder
 /// [slices]: ../../std/primitive.slice.html
@@ -2189,6 +2325,13 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T,
 /// of the iteration will be the remainder.
 ///
 /// This struct is created by the [`rchunks`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// let slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.rchunks(2);
+/// ```
 ///
 /// [`rchunks`]: ../../std/primitive.slice.html#method.rchunks
 /// [slices]: ../../std/primitive.slice.html
@@ -2347,6 +2490,13 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {
 ///
 /// This struct is created by the [`rchunks_mut`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let mut slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.rchunks_mut(2);
+/// ```
+///
 /// [`rchunks_mut`]: ../../std/primitive.slice.html#method.rchunks_mut
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
@@ -2504,6 +2654,13 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {
 ///
 /// This struct is created by the [`rchunks_exact`] method on [slices].
 ///
+/// # Example
+///
+/// ```
+/// let slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.rchunks_exact(2);
+/// ```
+///
 /// [`rchunks_exact`]: ../../std/primitive.slice.html#method.rchunks_exact
 /// [`remainder`]: ChunksExact::remainder
 /// [slices]: ../../std/primitive.slice.html
@@ -2656,6 +2813,13 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {
 /// [`into_remainder`] function from the iterator.
 ///
 /// This struct is created by the [`rchunks_exact_mut`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// let mut slice = ['l', 'o', 'r', 'e', 'm'];
+/// let iter = slice.rchunks_exact_mut(2);
+/// ```
 ///
 /// [`rchunks_exact_mut`]: ../../std/primitive.slice.html#method.rchunks_exact_mut
 /// [`into_remainder`]: ChunksExactMut::into_remainder
