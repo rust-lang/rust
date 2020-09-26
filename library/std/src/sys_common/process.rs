@@ -92,4 +92,41 @@ impl CommandEnv {
             self.saw_path = true;
         }
     }
+
+    pub fn iter(&self) -> CommandEnvs<'_> {
+        let iter = self.vars.iter();
+        CommandEnvs { iter }
+    }
+}
+
+/// An iterator over the command environment variables.
+///
+/// This struct is created by
+/// [`Command::get_envs`][crate::process::Command::get_envs]. See its
+/// documentation for more.
+#[unstable(feature = "command_access", issue = "44434")]
+#[derive(Debug)]
+pub struct CommandEnvs<'a> {
+    iter: crate::collections::btree_map::Iter<'a, EnvKey, Option<OsString>>,
+}
+
+#[unstable(feature = "command_access", issue = "44434")]
+impl<'a> Iterator for CommandEnvs<'a> {
+    type Item = (&'a OsStr, Option<&'a OsStr>);
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(|(key, value)| (key.as_ref(), value.as_deref()))
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+#[unstable(feature = "command_access", issue = "44434")]
+impl<'a> ExactSizeIterator for CommandEnvs<'a> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
 }
