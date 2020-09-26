@@ -175,6 +175,7 @@ mod dbg_macro;
 mod default_trait_access;
 mod dereference;
 mod derive;
+mod disallowed_method;
 mod doc;
 mod double_comparison;
 mod double_parens;
@@ -525,6 +526,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &derive::DERIVE_ORD_XOR_PARTIAL_ORD,
         &derive::EXPL_IMPL_CLONE_ON_COPY,
         &derive::UNSAFE_DERIVE_DESERIALIZE,
+        &disallowed_method::DISALLOWED_METHOD,
         &doc::DOC_MARKDOWN,
         &doc::MISSING_ERRORS_DOC,
         &doc::MISSING_SAFETY_DOC,
@@ -1118,6 +1120,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
     store.register_late_pass(|| box manual_strip::ManualStrip);
     store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
+    let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
+
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1807,6 +1812,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(&cognitive_complexity::COGNITIVE_COMPLEXITY),
+        LintId::of(&disallowed_method::DISALLOWED_METHOD),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
         LintId::of(&floating_point_arithmetic::IMPRECISE_FLOPS),
         LintId::of(&floating_point_arithmetic::SUBOPTIMAL_FLOPS),
