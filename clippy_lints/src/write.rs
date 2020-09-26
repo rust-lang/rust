@@ -235,8 +235,19 @@ impl EarlyLintPass for Write {
     }
 
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &MacCall) {
+        fn is_build_script(cx: &EarlyContext<'_>) -> bool {
+            // Cargo sets the crate name for build scripts to `build_script_build`
+            cx.sess
+                .opts
+                .crate_name
+                .as_ref()
+                .map_or(false, |crate_name| crate_name == "build_script_build")
+        }
+
         if mac.path == sym!(println) {
-            span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
+            if !is_build_script(cx) {
+                span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
+            }
             if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
                 if fmt_str.symbol == Symbol::intern("") {
                     span_lint_and_sugg(
@@ -251,7 +262,9 @@ impl EarlyLintPass for Write {
                 }
             }
         } else if mac.path == sym!(print) {
-            span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
+            if !is_build_script(cx) {
+                span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
+            }
             if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
                 if check_newlines(&fmt_str) {
                     span_lint_and_then(
