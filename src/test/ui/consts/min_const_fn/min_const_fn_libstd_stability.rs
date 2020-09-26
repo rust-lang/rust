@@ -3,7 +3,7 @@
             we're apparently really bad at it",
             issue = "none")]
 
-#![feature(const_fn, foo, foo2)]
+#![feature(const_fn, const_fn_floating_point_arithmetic, foo, foo2)]
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -25,9 +25,9 @@ const fn bar2() -> u32 { foo2() } //~ ERROR not yet stable as a const fn
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
-// conformity is required, even with `const_fn` feature gate
+// Const-stable functions cannot rely on unstable const-eval features.
 const fn bar3() -> u32 { (5f32 + 6f32) as u32 }
-//~^ ERROR const-stable function cannot use `#[feature(const_fn)]`
+//~^ ERROR const-stable function cannot use `#[feature(const_fn_floating_point_arithmetic)]`
 
 // check whether this function cannot be called even with the feature gate active
 #[unstable(feature = "foo2", issue = "none")]
