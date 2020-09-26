@@ -120,9 +120,11 @@ public:
   std::set<int64_t> knownIntegralValues(llvm::Value *val) const;
 };
 
+
 /// Helper class that computes the fixed-point type results of a given function
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
 public:
+
   /// List of value's which should be re-analyzed now with new information
   std::deque<llvm::Value *> workList;
 
@@ -141,14 +143,28 @@ public:
   /// functions
   TypeAnalysis &interprocedural;
 
+  /// Directionality of checks
+  uint8_t direction;
+
+  /// Whether an inconsistent update has been found
+  /// This will only be set when direction != Both, erring otherwise
+  bool Invalid;
+
+  // propagate from instruction to operand
+  static constexpr uint8_t UP = 1;
+  // propagate from operand to instruction
+  static constexpr uint8_t DOWN = 2;
+  static constexpr uint8_t BOTH = UP | DOWN;
+
   /// Intermediate conservative, but correct Type analysis results
   std::map<llvm::Value *, TypeTree> analysis;
 
   llvm::DominatorTree DT;
 
-  TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA);
+  TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA, uint8_t direction=BOTH);
 
-  TypeTree getAnalysis(llvm::Value *val);
+  /// Get the current results for a given value
+  TypeTree getAnalysis(llvm::Value *Val);
 
   /// Add additional information to the Type info of val, readding it to the
   /// work queue as necessary
@@ -189,6 +205,8 @@ public:
   void visitSExtInst(llvm::SExtInst &I);
 
   void visitAddrSpaceCastInst(llvm::AddrSpaceCastInst &I);
+
+  void visitFPExtInst(llvm::FPExtInst &I);
 
   void visitFPTruncInst(llvm::FPTruncInst &I);
 

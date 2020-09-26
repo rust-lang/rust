@@ -49,344 +49,426 @@
 llvm::cl::opt<bool> PrintType("enzyme_printtype", cl::init(false), cl::Hidden,
                               cl::desc("Print type detection algorithm"));
 
-TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA)
-    : intseen(), fntypeinfo(fn), interprocedural(TA), DT(*fn.Function) {
+TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA, uint8_t direction)
+    : intseen(), fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false), DT(*fn.Function) {
+  // Add all instructions in the function
   for (BasicBlock &BB : *fntypeinfo.Function) {
-    for (auto &inst : BB) {
-      workList.push_back(&inst);
+    for (Instruction &I : BB) {
+      workList.push_back(&I);
     }
   }
+  // Add all operands referenced in the function
+  // This is done to investigate any referenced globals/etc
   for (BasicBlock &BB : *fntypeinfo.Function) {
-    for (auto &inst : BB) {
-      for (auto &op : inst.operands()) {
-        addToWorkList(op);
+    for (Instruction &I : BB) {
+      for (auto &Op : I.operands()) {
+        addToWorkList(Op);
       }
     }
   }
 }
 
 /// Given a constant value, deduce any type information applicable
-TypeTree getConstantAnalysis(Constant *val, const FnTypeInfo &nfti,
+TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
                               TypeAnalysis &TA) {
-  auto &dl = nfti.Function->getParent()->getDataLayout();
+  auto &DL = nfti.Function->getParent()->getDataLayout();
   // Undefined value is an anything everywhere
-  if (isa<UndefValue>(val) || isa<ConstantAggregateZero>(val)) {
+  if (isa<UndefValue>(Val) || isa<ConstantAggregateZero>(Val)) {
     return TypeTree(BaseType::Anything).Only(-1);
   }
 
   // Null pointer is a pointer to anything, everywhere
-  if (isa<ConstantPointerNull>(val)) {
-    TypeTree vd(BaseType::Pointer);
-    vd |= TypeTree(BaseType::Anything).Only(-1);
-    return vd.Only(-1);
+  if (isa<ConstantPointerNull>(Val)) {
+    TypeTree Result(BaseType::Pointer);
+    Result |= TypeTree(BaseType::Anything).Only(-1);
+    return Result.Only(-1);
   }
 
   // Known pointers are pointers at offset 0
-  if (isa<Function>(val) || isa<BlockAddress>(val)) {
+  if (isa<Function>(Val) || isa<BlockAddress>(Val)) {
     return TypeTree(BaseType::Pointer).Only(-1);
   }
 
-  if (auto ca = dyn_cast<ConstantAggregate>(val)) {
-    TypeTree res;
-    int off = 0;
-    for (unsigned i = 0; i < ca->getNumOperands(); ++i) {
+  // Type of an aggregate is the aggregation of
+  // the subtypes
+  if (auto CA = dyn_cast<ConstantAggregate>(Val)) {
+    TypeTree Result;
+    int Off = 0;
+    for (unsigned i = 0, size = CA->getNumOperands(); i < size; ++i) {
       assert(nfti.Function);
-      auto op = ca->getOperand(i);
+      auto Op = CA->getOperand(i);
       // TODO check this for i1 constant aggregates packing/etc
-      auto size =
+      auto ObjSize =
           (nfti.Function->getParent()->getDataLayout().getTypeSizeInBits(
-               op->getType()) +
+               Op->getType()) +
            7) /
           8;
-      res |= getConstantAnalysis(op, nfti, TA)
-                 .ShiftIndices(dl, /*init offset*/ 0, /*maxSize*/ size,
-                               /*addOffset*/ off);
-      off += size;
+      Result |= getConstantAnalysis(Op, nfti, TA)
+                 .ShiftIndices(DL, /*init offset*/ 0, /*maxSize*/ ObjSize,
+                                   /*addOffset*/ Off);
+      Off += ObjSize;
     }
-    return res;
+    return Result;
   }
-
-  if (auto ca = dyn_cast<ConstantDataSequential>(val)) {
-    TypeTree res;
-    int off = 0;
-    for (unsigned i = 0; i < ca->getNumElements(); ++i) {
+  
+  // Type of an sequence is the aggregation of
+  // the subtypes
+  if (auto CD = dyn_cast<ConstantDataSequential>(Val)) {
+    TypeTree Result;
+    int Off = 0;
+    for (unsigned i = 0, size = CD->getNumElements(); i < size; ++i) {
       assert(nfti.Function);
-      auto op = ca->getElementAsConstant(0);
+      auto Op = CD->getElementAsConstant(i);
       // TODO check this for i1 constant aggregates packing/etc
-      auto size =
+      auto ObjSize =
           (nfti.Function->getParent()->getDataLayout().getTypeSizeInBits(
-               op->getType()) +
+               Op->getType()) +
            7) /
           8;
-      res |= getConstantAnalysis(op, nfti, TA)
-                 .ShiftIndices(dl, /*init offset*/ 0, /*maxSize*/ size,
-                               /*addOffset*/ off);
-      off += size;
+      Result |= getConstantAnalysis(Op, nfti, TA)
+                 .ShiftIndices(DL, /*init offset*/ 0, /*maxSize*/ ObjSize,
+                                   /*addOffset*/ Off);
+      Off += size;
     }
-    return res;
+    return Result;
   }
 
-  if (isa<ConstantData>(val)) {
-    if (auto fp = dyn_cast<ConstantFP>(val)) {
-      if (fp->isExactlyValue(0.0))
+  if (isa<ConstantData>(Val)) {
+    // Any constants == 0 are considered Anything
+    // other floats are assumed to be that type
+    if (auto FP = dyn_cast<ConstantFP>(Val)) {
+      if (FP->isExactlyValue(0.0))
         return TypeTree(BaseType::Anything).Only(-1);
-      return TypeTree(fp->getType()).Only(-1);
+      return TypeTree(FP->getType()).Only(-1);
     }
 
-    if (auto ci = dyn_cast<ConstantInt>(val)) {
-      if (ci->getLimitedValue() >= 1 && ci->getLimitedValue() <= 4096) {
+    if (auto ci = dyn_cast<ConstantInt>(Val)) {
+      // Constants in range [1, 4096] are assumed to be integral since
+      // any float or pointers they may represent are ill-formed
+      if (!ci->isNegative() && ci->getLimitedValue() >= 1 && ci->getLimitedValue() <= 4096) {
         return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
       }
+
+      // Constants explicitly marked as negative are considered integral
+      if (ci->isNegative()) {
+        return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
+      }
+
+      // 0-value bytes are considered integral since they cannot possibly
+      // represent a float or pointer
       if (ci->getType()->getBitWidth() == 8 && ci->getLimitedValue() == 0) {
         return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
       }
-      if (ci->getLimitedValue() == 0)
-        return TypeTree(BaseType::Anything).Only(-1);
+      // All other constant-ints could be any type
       return TypeTree(BaseType::Anything).Only(-1);
     }
   }
 
-  if (auto ce = dyn_cast<ConstantExpr>(val)) {
-    TypeTree vd;
+  // ConstantExprs are handled by considering the
+  // equivalent instruction
+  if (auto CE = dyn_cast<ConstantExpr>(Val)) {
+    TypeTree Result;
 
-    auto ae = ce->getAsInstruction();
-    ae->insertBefore(nfti.Function->getEntryBlock().getTerminator());
+    auto I = CE->getAsInstruction();
+    I->insertBefore(nfti.Function->getEntryBlock().getTerminator());
 
+    // Just analyze this new "instruction" and none of the others
     {
-      TypeAnalyzer tmp(nfti, TA);
-      tmp.workList.clear();
-      tmp.visit(*ae);
-      vd = tmp.getAnalysis(ae);
+      TypeAnalyzer tmpAnalysis(nfti, TA);
+      tmpAnalysis.workList.clear();
+      tmpAnalysis.visit(*I);
+      Result = tmpAnalysis.getAnalysis(I);
     }
 
-    ae->eraseFromParent();
-    return vd;
+    I->eraseFromParent();
+    return Result;
   }
 
-  if (auto gv = dyn_cast<GlobalVariable>(val)) {
-    if (gv->isConstant() && gv->hasInitializer()) {
-      TypeTree vd = ConcreteType(BaseType::Pointer);
-      vd |= getConstantAnalysis(gv->getInitializer(), nfti, TA);
-      return vd.Only(-1);
+  if (auto GV = dyn_cast<GlobalVariable>(Val)) {
+    // A fixed constant global is a pointer to its initializer
+    if (GV->isConstant() && GV->hasInitializer()) {
+      TypeTree Result = ConcreteType(BaseType::Pointer);
+      Result |= getConstantAnalysis(GV->getInitializer(), nfti, TA);
+      return Result.Only(-1);
     }
-    auto globalSize = dl.getTypeSizeInBits(gv->getValueType()) / 8;
-    // since halfs are 16bit (2 byte) and pointers are >=32bit (4 byte) any
-    // single byte object must be integral
+    auto globalSize = DL.getTypeSizeInBits(GV->getValueType()) / 8;
+    // Since halfs are 16bit (2 byte) and pointers are >=32bit (4 byte) any
+    // Single byte object must be integral
     if (globalSize == 1) {
-      TypeTree vd = ConcreteType(BaseType::Pointer);
-      vd |= TypeTree(ConcreteType(BaseType::Integer)).Only(0);
-      return vd.Only(-1);
+      TypeTree Result = ConcreteType(BaseType::Pointer);
+      Result |= TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
+      return Result.Only(-1);
     }
+    // Otherwise, we simply know that this is a pointer, and
+    // not what it is a pointer to
     return TypeTree(BaseType::Pointer).Only(-1);
   }
 
+  // No other information can be ascertained
   return TypeTree();
 }
 
-TypeTree TypeAnalyzer::getAnalysis(Value *val) {
-  if (val->getType()->isIntegerTy() &&
-      cast<IntegerType>(val->getType())->getBitWidth() == 1)
+TypeTree TypeAnalyzer::getAnalysis(Value *Val) {
+  // Single byte integers must be integral, since it cannot
+  // possibly represent a float or pointer
+  if (Val->getType()->isIntegerTy() &&
+      cast<IntegerType>(Val->getType())->getBitWidth() == 1)
     return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
 
-  Type *vt = val->getType();
-  if (vt->isPointerTy()) {
-    vt = cast<PointerType>(vt)->getElementType();
+  if (auto C = dyn_cast<Constant>(Val)) {
+    return getConstantAnalysis(C, fntypeinfo, interprocedural);
   }
 
-  if (auto con = dyn_cast<Constant>(val)) {
-    return getConstantAnalysis(con, fntypeinfo, interprocedural);
-  }
-
-  if (auto inst = dyn_cast<Instruction>(val)) {
-    if (inst->getParent()->getParent() != fntypeinfo.Function) {
+  // Check that this value is from the function being analyzed
+  if (auto I = dyn_cast<Instruction>(Val)) {
+    if (I->getParent()->getParent() != fntypeinfo.Function) {
       llvm::errs() << " function: " << *fntypeinfo.Function << "\n";
-      llvm::errs() << " instParent: " << *inst->getParent()->getParent()
+      llvm::errs() << " instParent: " << *I->getParent()->getParent()
                    << "\n";
-      llvm::errs() << " inst: " << *inst << "\n";
+      llvm::errs() << " inst: " << *I << "\n";
     }
-    assert(inst->getParent()->getParent() == fntypeinfo.Function);
+    assert(I->getParent()->getParent() == fntypeinfo.Function);
   }
-  if (auto arg = dyn_cast<Argument>(val)) {
-    if (arg->getParent() != fntypeinfo.Function) {
+  if (auto Arg = dyn_cast<Argument>(Val)) {
+    if (Arg->getParent() != fntypeinfo.Function) {
       llvm::errs() << " function: " << *fntypeinfo.Function << "\n";
-      llvm::errs() << " argParent: " << *arg->getParent() << "\n";
-      llvm::errs() << " arg: " << *arg << "\n";
+      llvm::errs() << " argParent: " << *Arg->getParent() << "\n";
+      llvm::errs() << " arg: " << *Arg << "\n";
     }
-    assert(arg->getParent() == fntypeinfo.Function);
+    assert(Arg->getParent() == fntypeinfo.Function);
   }
 
-  if (isa<Argument>(val) || isa<Instruction>(val))
-    return analysis[val];
+  // Return current results
+  if (isa<Argument>(Val) || isa<Instruction>(Val))
+    return analysis[Val];
 
-  llvm::errs() << "ERROR UNKNOWN: " << *val << "\n";
-  // TODO consider other things like globals perhaps?
-  return TypeTree();
+  // Unhandled/unknown Value
+  llvm::errs() << "Error Unknown Value: " << *Val << "\n";
+  assert(0 && "Error Unknown Value: ");
+  llvm_unreachable("Error Unknown Value: ");
+  //return TypeTree();
 }
 
-void TypeAnalyzer::updateAnalysis(Value *val, ConcreteType data, Value *origin) {
-  updateAnalysis(val, TypeTree(data), origin);
+void TypeAnalyzer::updateAnalysis(Value *Val, ConcreteType Data, Value *Origin) {
+  updateAnalysis(Val, TypeTree(Data), Origin);
 }
 
-void TypeAnalyzer::updateAnalysis(Value *val, BaseType data, Value *origin) {
-  updateAnalysis(val, TypeTree(ConcreteType(data)), origin);
+void TypeAnalyzer::updateAnalysis(Value *Val, BaseType Data, Value *Origin) {
+  updateAnalysis(Val, TypeTree(ConcreteType(Data)), Origin);
 }
 
-void TypeAnalyzer::addToWorkList(Value *val) {
-  if (!isa<Instruction>(val) && !isa<Argument>(val))
+void TypeAnalyzer::addToWorkList(Value *Val) {
+  // Only consider instructions/arguments
+  if (!isa<Instruction>(Val) && !isa<Argument>(Val))
     return;
-  if (std::find(workList.begin(), workList.end(), val) != workList.end())
+
+  // Don't add this value to list twice
+  if (std::find(workList.begin(), workList.end(), Val) != workList.end())
     return;
 
-  if (auto inst = dyn_cast<Instruction>(val)) {
-    if (fntypeinfo.Function != inst->getParent()->getParent()) {
+  // Verify this value comes from the function being analyzed
+  if (auto I = dyn_cast<Instruction>(Val)) {
+    if (fntypeinfo.Function != I->getParent()->getParent()) {
       llvm::errs() << "function: " << *fntypeinfo.Function << "\n";
-      llvm::errs() << "instf: " << *inst->getParent()->getParent() << "\n";
-      llvm::errs() << "inst: " << *inst << "\n";
+      llvm::errs() << "instf: " << *I->getParent()->getParent() << "\n";
+      llvm::errs() << "inst: " << *I << "\n";
     }
-    assert(fntypeinfo.Function == inst->getParent()->getParent());
-  }
-  if (auto arg = dyn_cast<Argument>(val))
-    assert(fntypeinfo.Function == arg->getParent());
+    assert(fntypeinfo.Function == I->getParent()->getParent());
+  } else if (auto Arg = dyn_cast<Argument>(Val))
+    assert(fntypeinfo.Function == Arg->getParent());
 
-  workList.push_back(val);
+  // Add to workList
+  workList.push_back(Val);
 }
 
-void TypeAnalyzer::updateAnalysis(Value *val, TypeTree data, Value *origin) {
-  if (isa<ConstantData>(val) || isa<Function>(val)) {
+void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
+  // ConstantData's and Functions don't have analysis updated
+  // We don't do "Constant" as globals are "Constant" types
+  if (isa<ConstantData>(Val) || isa<Function>(Val)) {
     return;
   }
 
+  // Print the update being made, if requested
   if (PrintType) {
-    llvm::errs() << "updating analysis of val: " << *val
-                 << " current: " << analysis[val].str() << " new "
-                 << data.str();
-    if (origin)
-      llvm::errs() << " from " << *origin;
+    llvm::errs() << "updating analysis of val: " << *Val
+                 << " current: " << analysis[Val].str() << " new "
+                 << Data.str();
+    if (Origin)
+      llvm::errs() << " from " << *Origin;
     llvm::errs() << "\n";
   }
 
-  if (auto inst = dyn_cast<Instruction>(val)) {
-    if (fntypeinfo.Function != inst->getParent()->getParent()) {
+  if (auto I = dyn_cast<Instruction>(Val)) {
+    if (fntypeinfo.Function != I->getParent()->getParent()) {
       llvm::errs() << "function: " << *fntypeinfo.Function << "\n";
-      llvm::errs() << "instf: " << *inst->getParent()->getParent() << "\n";
-      llvm::errs() << "inst: " << *inst << "\n";
+      llvm::errs() << "instf: " << *I->getParent()->getParent() << "\n";
+      llvm::errs() << "inst: " << *I << "\n";
     }
-    assert(fntypeinfo.Function == inst->getParent()->getParent());
-  }
-  if (auto arg = dyn_cast<Argument>(val))
-    assert(fntypeinfo.Function == arg->getParent());
+    assert(fntypeinfo.Function == I->getParent()->getParent());
+  } else if (auto Arg = dyn_cast<Argument>(Val))
+    assert(fntypeinfo.Function == Arg->getParent());
 
-  /*
-  if (isa<GetElementPtrInst>(val) && data.Data0()[{}] == BaseType::Integer) {
-    llvm::errs() << "illegal gep update\n";
-    assert(0 && "illegal gep update");
-  }
-  */
-
-  if ( (val->getType()->isPointerTy()  || isa<PtrToIntInst>(val)) && data.Data0()[{}] == BaseType::Integer) {
-    llvm::errs() << *fntypeinfo.Function << "\n";
-    dump();
-    llvm::errs() << "illegal gep update for val: " << *val << "\n";
-    if (origin)
-      llvm::errs() << " + " << *origin << "\n";
-    assert(0 && "illegal gep update");
+  if (auto pt = dyn_cast<PointerType>(Val->getType())) {
+    if (auto st = dyn_cast<StructType>(pt->getElementType())) {
+      if (st->hasName() && st->getName().startswith("struct.Eigen::internal::mapbase_evaluator")) {
+        if (Data[{-1, 0}] == BaseType::Integer || Data[{0, 0}] == BaseType::Integer) {
+          llvm::errs() << *fntypeinfo.Function << "\n";
+          dump();
+          llvm::errs() << "illegal mt update for val: " << *Val << "\n";
+          if (Origin)
+            llvm::errs() << " + " << *Origin << "\n";
+          assert(0 && "illegal mt update");
+        }
+      }
+    }
   }
 
+  bool pointerUse = false;
+  if (Instruction* I = dyn_cast<Instruction>(Val)) {
+    for(auto user : Val->users()) {
+      if (isa<LoadInst>(user)) {
+        pointerUse = true; break;
+      }
+      if (auto SI = dyn_cast<StoreInst>(user)) {
+        if (SI->getPointerOperand() == Val) {
+          pointerUse = true; break;
+        }
+      }
+      if (auto GEP = dyn_cast<GetElementPtrInst>(user)) {
+        if (GEP->getPointerOperand() == Val) {
+          pointerUse = true; break;
+        }
+      }
+    }
+    if (isa<GetElementPtrInst>(I)) pointerUse = true;
+  }
+
+  // If this is a deinite ptr type and we find instead this is an integer, error early
+  // This is unlikely to occur in real codes and a very good way to identify
+  // TypeAnalysis bugs
+  if (pointerUse && Data.Data0()[{}] == BaseType::Integer) {
+      if (direction != BOTH) {
+        Invalid = true;
+        return;
+      }
+      llvm::errs() << *fntypeinfo.Function << "\n";
+      dump();
+      llvm::errs() << "illegal ptr update for val: " << *Val << "\n";
+      if (Origin)
+        llvm::errs() << " + " << *Origin << "\n";
+      assert(0 && "illegal ptr update");
+  }
+
+  // Attempt to update the underlying analysis
   bool LegalOr = true;
-  bool Changed = analysis[val].checkedOrIn(data, /*PointerIntSame*/false, LegalOr);
+  bool Changed = analysis[Val].checkedOrIn(Data, /*PointerIntSame*/false, LegalOr);
 
   if (!LegalOr) {
-    llvm::errs() << "Illegal updateAnalysis prev:" << analysis[val].str() << " new: " << data.str() << "\n";
-    llvm::errs() << "val: " << *val << " origin=" << *origin << "\n";
+    if (direction != BOTH) {
+      Invalid = true;
+      return;
+    }
+    llvm::errs() << "Illegal updateAnalysis prev:" << analysis[Val].str() << " new: " << Data.str() << "\n";
+    llvm::errs() << "val: " << *Val;
+    if (Origin) llvm::errs() << " origin=" << *Origin;
+    llvm::errs() << "\n";
     assert(0 && "Performed illegal updateAnalysis");
     llvm_unreachable("Performed illegal updateAnalysis");
   }
 
   if (Changed) {
     // Add val so it can explicitly propagate this new info, if able to
-    if (val != origin)
-      addToWorkList(val);
+    if (Val != Origin)
+      addToWorkList(Val);
 
     // Add users and operands of the value so they can update from the new
     // operand/use
-    for (User *use : val->users()) {
-      if (use != origin) {
+    for (User *U : Val->users()) {
+      if (U != Origin) {
 
-        if (auto inst = dyn_cast<Instruction>(use)) {
-          if (fntypeinfo.Function != inst->getParent()->getParent()) {
+        if (auto I = dyn_cast<Instruction>(U)) {
+          if (fntypeinfo.Function != I->getParent()->getParent()) {
             continue;
           }
         }
 
-        addToWorkList(use);
+        addToWorkList(U);
 
         // per the handling of phi's
-        if (auto BO = dyn_cast<BinaryOperator>(use)) {
-          for (User *suse : BO->users()) {
-            if (isa<PHINode>(suse) && suse != origin) {
-              addToWorkList(suse);
+        if (auto BO = dyn_cast<BinaryOperator>(U)) {
+          for (User *U2 : BO->users()) {
+            if (isa<PHINode>(U2) && U2 != Origin) {
+              addToWorkList(U2);
             }
           }
         }
       }
     }
 
-    if (User *me = dyn_cast<User>(val)) {
-      for (Value *op : me->operands()) {
-        if (op != origin) {
-          addToWorkList(op);
+    if (User *US = dyn_cast<User>(Val)) {
+      for (Value *Op : US->operands()) {
+        if (Op != Origin) {
+          addToWorkList(Op);
         }
       }
     }
   }
 }
 
+/// Analyze type info given by the arguments, possibly adding to work queue
 void TypeAnalyzer::prepareArgs() {
+  // Propagate input type information for arguments
   for (auto &pair : fntypeinfo.Arguments) {
     assert(pair.first->getParent() == fntypeinfo.Function);
     updateAnalysis(pair.first, pair.second, nullptr);
   }
 
-  for (auto &arg : fntypeinfo.Function->args()) {
-    // Get type and other information about argument
-    updateAnalysis(&arg, getAnalysis(&arg), &arg);
+  // Get type and other information about argument
+  // getAnalysis may add more information so this
+  // is necessary/useful
+  for (Argument &Arg : fntypeinfo.Function->args()) {
+    updateAnalysis(&Arg, getAnalysis(&Arg), &Arg);
   }
 
   // Propagate return value type information
-  for (auto &BB : *fntypeinfo.Function) {
-    for (auto &inst : BB) {
-      if (auto ri = dyn_cast<ReturnInst>(&inst)) {
-        if (auto rv = ri->getReturnValue()) {
-          updateAnalysis(rv, fntypeinfo.Return, nullptr);
+  for (BasicBlock &BB : *fntypeinfo.Function) {
+    for (Instruction &I : BB) {
+      if (ReturnInst* RI = dyn_cast<ReturnInst>(&I)) {
+        if (Value* RV = RI->getReturnValue()) {
+          updateAnalysis(RV, fntypeinfo.Return, nullptr);
+          updateAnalysis(RV, getAnalysis(RV), RV);
         }
       }
     }
   }
 }
 
+/// Analyze type info given by the TBAA, possibly adding to work queue
 void TypeAnalyzer::considerTBAA() {
-  auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
+  auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
 
-  for (auto &BB : *fntypeinfo.Function) {
-    for (auto &inst : BB) {
+  for (BasicBlock &BB : *fntypeinfo.Function) {
+    for (Instruction &I : BB) {
 
-      auto vdptr = parseTBAA(inst, dl);
+      TypeTree vdptr = parseTBAA(I, DL);
 
+      // If we don't have any useful information,
+      // don't bother updating
       if (!vdptr.isKnownPastPointer())
         continue;
 
-      if (auto call = dyn_cast<CallInst>(&inst)) {
+      if (CallInst* call = dyn_cast<CallInst>(&I)) {
         if (call->getCalledFunction() &&
             (call->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy ||
              call->getCalledFunction()->getIntrinsicID() ==
                  Intrinsic::memmove)) {
-          int64_t sz = 1;
+          int64_t copySize = 1;
           for (auto val :
                fntypeinfo.knownIntegralValues(call->getOperand(2), DT, intseen)) {
-            sz = max(sz, val);
+            copySize = max(copySize, val);
           }
-          auto update = vdptr.ShiftIndices(dl, /*init offset*/ 0,
-                                           /*max size*/ sz, /*new offset*/ 0);
+          TypeTree update = vdptr.ShiftIndices(DL, /*init offset*/ 0,
+                                           /*max size*/ copySize, /*new offset*/ 0);
 
           updateAnalysis(call->getOperand(0), update.Only(-1), call);
           updateAnalysis(call->getOperand(1), update.Only(-1), call);
@@ -394,96 +476,116 @@ void TypeAnalyzer::considerTBAA() {
         } else if (call->getType()->isPointerTy()) {
           updateAnalysis(call, vdptr.Only(-1), call);
         } else {
-          llvm::errs() << " inst: " << inst << " vdptr: " << vdptr.str()
+          llvm::errs() << " inst: " << I << " vdptr: " << vdptr.str()
                        << "\n";
           assert(0 && "unknown tbaa call instruction user");
         }
-      } else if (auto si = dyn_cast<StoreInst>(&inst)) {
-        auto size =
-            (dl.getTypeSizeInBits(si->getValueOperand()->getType()) + 7) / 8;
-        updateAnalysis(si->getPointerOperand(),
+      } else if (auto SI = dyn_cast<StoreInst>(&I)) {
+        auto StoreSize =
+            (DL.getTypeSizeInBits(SI->getValueOperand()->getType()) + 7) / 8;
+        updateAnalysis(SI->getPointerOperand(),
                        vdptr
-                           .ShiftIndices(dl, /*init offset*/ 0,
-                                         /*max size*/ size, /*new offset*/ 0)
+                           // Cut off any values outside of store
+                           .ShiftIndices(DL, /*init offset*/ 0,
+                                         /*max size*/ StoreSize, /*new offset*/ 0)
+                           // Don't propagate "Anything" into ptr
                            .PurgeAnything()
                            .Only(-1),
-                       si);
-        auto req = vdptr.Only(-1);
-        updateAnalysis(si->getValueOperand(), req.Lookup(size, dl), si);
-      } else if (auto li = dyn_cast<LoadInst>(&inst)) {
-        auto size = (dl.getTypeSizeInBits(li->getType()) + 7) / 8;
-        updateAnalysis(li->getPointerOperand(),
+                       SI);
+        TypeTree req = vdptr.Only(-1);
+        updateAnalysis(SI->getValueOperand(), req.Lookup(StoreSize, DL), SI);
+      } else if (auto LI = dyn_cast<LoadInst>(&I)) {
+        auto LoadSize = (DL.getTypeSizeInBits(LI->getType()) + 7) / 8;
+        updateAnalysis(LI->getPointerOperand(),
                        vdptr
-                           .ShiftIndices(dl, /*init offset*/ 0,
-                                         /*max size*/ size, /*new offset*/ 0)
+                           // Cut off any values outside of load
+                           .ShiftIndices(DL, /*init offset*/ 0,
+                                         /*max size*/ LoadSize, /*new offset*/ 0)
+                           // Don't propagate "Anything" into ptr
                            .PurgeAnything()
                            .Only(-1),
-                       li);
-        auto req = vdptr.Only(-1);
-        updateAnalysis(li, req.Lookup(size, dl), li);
+                       LI);
+        TypeTree req = vdptr.Only(-1);
+        updateAnalysis(LI, req.Lookup(LoadSize, DL), LI);
       } else {
-        llvm::errs() << " inst: " << inst << " vdptr: " << vdptr.str() << "\n";
+        llvm::errs() << " inst: " << I << " vdptr: " << vdptr.str() << "\n";
         assert(0 && "unknown tbaa instruction user");
+        llvm_unreachable("unknown tbaa instruction user");
       }
     }
   }
 }
 
+/// Return whether the given value is used in any meaningful (non-print) way
+/// Cache caches previous results in order to handle phinodes that may eventually
+/// refer to themselves.
+/// if sawReturn != nullptr, we can ignore uses of returninst, setting sawReturn
+/// to true if it is used in a return
 bool hasAnyUse(TypeAnalyzer &TAZ,
-               Value *val, std::map<Value *, bool> &intseen, bool *sawReturn /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
-  if (intseen.find(val) != intseen.end())
-    return intseen[val];
-  // todo what to insert to intseen
+               Value *Val, std::map<Value *, bool> &Cache, bool *sawReturn) {
+  // if already saw Val, return the previous result
+  if (Cache.find(Val) != Cache.end())
+    return Cache[Val];
 
+  // Otherwise let's assume this Value isn't used and attempt to prove this fact
+  Cache[Val] = false;
+
+  // Keep track of any uses we don't analyze, initially none
   bool unknownUse = false;
-  intseen[val] = false;
 
-  for (User *use : val->users()) {
-    if (auto ci = dyn_cast<CastInst>(use)) {
-      unknownUse |= hasAnyUse(TAZ, ci, intseen, sawReturn);
+  // Check all users of this, and see if any user is not handled (e.g. a print)
+  for (User *use : Val->users()) {
+
+    if (CastInst* CI = dyn_cast<CastInst>(use)) {
+      unknownUse |= hasAnyUse(TAZ, CI, Cache, sawReturn);
       continue;
     }
 
-    if (auto pn = dyn_cast<PHINode>(use)) {
-      unknownUse |= hasAnyUse(TAZ, pn, intseen, sawReturn);
+    if (PHINode* PN = dyn_cast<PHINode>(use)) {
+      unknownUse |= hasAnyUse(TAZ, PN, Cache, sawReturn);
       continue;
     }
 
-    if (auto seli = dyn_cast<SelectInst>(use)) {
-      unknownUse |= hasAnyUse(TAZ, seli, intseen, sawReturn);
+    if (SelectInst* Sel = dyn_cast<SelectInst>(use)) {
+      unknownUse |= hasAnyUse(TAZ, Sel, Cache, sawReturn);
       continue;
     }
 
-    if (auto call = dyn_cast<CallInst>(use)) {
-      if (Function *ci = call->getCalledFunction()) {
-        // These function calls are known uses that do not potentially have an
-        // inactive use
-        if (ci->getName() == "__cxa_guard_acquire" ||
-            ci->getName() == "__cxa_guard_release" ||
-            ci->getName() == "__cxa_guard_abort" || ci->getName() == "printf" ||
-            ci->getName() == "fprintf") {
+    if (CallInst* Call = dyn_cast<CallInst>(use)) {
+      if (Function *CI = Call->getCalledFunction()) {
+        // These function calls are known uses that do not impact the results
+        if (CI->getName() == "__cxa_guard_acquire" ||
+            CI->getName() == "__cxa_guard_release" ||
+            CI->getName() == "__cxa_guard_abort" ||
+            CI->getName() == "printf" ||
+            CI->getName() == "fprintf") {
           continue;
         }
 
-        // TODO recursive fns
+        // Check for uses in the subcall
+        if (!CI->empty()) {
 
-        if (!ci->empty()) {
-          auto a = ci->arg_begin();
-
+          // This variable will be set by subcalls if Val
+          // is potentially returned
           bool shouldHandleReturn = false;
 
-          for (size_t i = 0; i < call->getNumArgOperands(); ++i) {
-            if (call->getArgOperand(i) == val) {
-              if (hasAnyUse(TAZ, a, intseen, &shouldHandleReturn)) {
-                return intseen[val] = unknownUse = true;
+          // Check if the value is an argument of the subcall and if so
+          // analyze uses of that argument in the subcall
+          auto Arg = CI->arg_begin();
+          for (size_t i = 0, size = Call->getNumArgOperands(); i < size; ++i) {
+            if (Call->getArgOperand(i) == Val) {
+              if (hasAnyUse(TAZ, Arg, Cache, &shouldHandleReturn)) {
+                return Cache[Val] = unknownUse = true;
               }
             }
-            ++a;
+            ++Arg;
           }
 
+          // If the value was potentially returned, analyze uses of the
+          // value returned by the call
           if (shouldHandleReturn) {
-            if (hasAnyUse(TAZ, call, intseen, sawReturn)) {
-              return intseen[val] = unknownUse = true;
+            if (hasAnyUse(TAZ, Call, Cache, sawReturn)) {
+              return Cache[Val] = unknownUse = true;
             }
           }
           continue;
@@ -491,104 +593,125 @@ bool hasAnyUse(TypeAnalyzer &TAZ,
       }
     }
 
+    // Set that the value is used in a return, if requested
     if (sawReturn && isa<ReturnInst>(use)) {
       *sawReturn = true;
       continue;
     }
 
+    // otherwise this is used in a way not handled and thus is not an "any" use
     unknownUse = true;
     continue;
   }
 
-  return intseen[val] = unknownUse;
+  return Cache[Val] = unknownUse;
 }
 
+/// Return whether the given value is used in any meaningful way an integer could
+/// not be used as
+/// Cache caches previous results in order to handle phinodes that may eventually
+/// refer to themselves.
+/// if sawReturn != nullptr, we can ignore uses of returninst, setting sawReturn
+/// to true if it is used in a return
 bool hasNonIntegralUse(TypeAnalyzer &TAZ,
-                       Value *val, std::map<Value *, bool> &intseen, bool *sawReturn /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
-  if (intseen.find(val) != intseen.end())
-    return intseen[val];
-  // todo what to insert to intseen
+                       Value *Val, std::map<Value *, bool> &Cache, bool *sawReturn) {
+  assert(Val->getType()->isIntOrIntVectorTy());
 
+  // if already saw Val, return the previous result
+  if (Cache.find(Val) != Cache.end())
+    return Cache[Val];
+  
+  // Otherwise let's assume this Value isn't used and attempt to prove this fact
+  Cache[Val] = false;
+
+  // Keep track of any uses we don't analyze, initially none
   bool unknownUse = false;
-  intseen[val] = false;
 
-  for (User *use : val->users()) {
-    if (auto ci = dyn_cast<CastInst>(use)) {
+  // Check all users of this, and see if any user is not handled
+  for (User *use : Val->users()) {
 
+    if (auto CI = dyn_cast<CastInst>(use)) {
+      // integer to fp casts are fine as clearly just an integral use
       if (isa<SIToFPInst>(use) || isa<UIToFPInst>(use)) {
         continue;
       }
 
+      // fp to integer casts are illegal, clearly indicating
+      // this is a float
       if (isa<FPToSIInst>(use) || isa<FPToUIInst>(use)) {
-        continue;
-      }
-
-      if (ci->getDestTy()->isPointerTy()) {
         unknownUse = true;
         break;
       }
 
-      unknownUse |= hasNonIntegralUse(TAZ, ci, intseen, sawReturn);
-      continue;
-    }
-
-    if (auto bi = dyn_cast<BinaryOperator>(use)) {
-
-      unknownUse |= hasNonIntegralUse(TAZ, bi, intseen, sawReturn);
-      continue;
-    }
-
-    if (auto pn = dyn_cast<PHINode>(use)) {
-      unknownUse |= hasNonIntegralUse(TAZ, pn, intseen, sawReturn);
-      continue;
-    }
-
-    if (auto seli = dyn_cast<SelectInst>(use)) {
-      unknownUse |= hasNonIntegralUse(TAZ, seli, intseen, sawReturn);
-      continue;
-    }
-
-    if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
-      if (gep->getPointerOperand() == val) {
+      // A cast that creates a non-integer is considered potentially
+      // showing a non-integral use
+      if (!CI->getDestTy()->isIntOrIntVectorTy()) {
         unknownUse = true;
         break;
       }
 
-      // this assumes that the original value doesnt propagate out through the
-      // pointer
+      // otherwise check uses of the result
+      unknownUse |= hasNonIntegralUse(TAZ, CI, Cache, sawReturn);
       continue;
     }
 
-    if (auto call = dyn_cast<CallInst>(use)) {
-      if (Function *ci = call->getCalledFunction()) {
+    // Uses in a binop / phinode / select simply require analyzing
+    // uses of that value
+    if (isa<BinaryOperator>(use) || isa<PHINode>(use) || isa<SelectInst>(use)) {
+      unknownUse |= hasNonIntegralUse(TAZ, use, Cache, sawReturn);
+      continue;
+    }
+
+    if (auto GEP = dyn_cast<GetElementPtrInst>(use)) {
+      // if this is used as the pointer of a gep, this is clearly a potential
+      // pointer use
+      if (GEP->getPointerOperand() == Val) {
+        unknownUse = true;
+        break;
+      }
+
+      // Otherwise an index into a gep is considered a value integer use
+      // Note: This assumes that the original value doesn't propagate out
+      // through the pointer
+      continue;
+    }
+
+    if (CallInst* call = dyn_cast<CallInst>(use)) {
+      if (Function *CI = call->getCalledFunction()) {
         // These function calls are known uses that do not potentially have an
         // inactive use
-        if (ci->getName() == "__cxa_guard_acquire" ||
-            ci->getName() == "__cxa_guard_release" ||
-            ci->getName() == "__cxa_guard_abort" || ci->getName() == "printf" ||
-            ci->getName() == "fprintf") {
+        if (CI->getName() == "__cxa_guard_acquire" ||
+            CI->getName() == "__cxa_guard_release" ||
+            CI->getName() == "__cxa_guard_abort" ||
+            CI->getName() == "printf" ||
+            CI->getName() == "fprintf") {
           continue;
         }
 
-        // TODO recursive fns
+        // Check for uses in the subcall
+        if (!CI->empty()) {
 
-        if (!ci->empty()) {
-          auto a = ci->arg_begin();
-
+          // This variable will be set by subcalls if Val
+          // is potentially returned
           bool shouldHandleReturn = false;
 
-          for (size_t i = 0; i < call->getNumArgOperands(); ++i) {
-            if (call->getArgOperand(i) == val) {
-              if (hasNonIntegralUse(TAZ, a, intseen, &shouldHandleReturn)) {
-                return intseen[val] = unknownUse = true;
+          // Check if the value is an argument of the subcall and if so
+          // analyze uses of that argument in the subcall
+          auto Arg = CI->arg_begin();
+          for (size_t i = 0, size = call->getNumArgOperands(); i < size; ++i) {
+            if (call->getArgOperand(i) == Val) {
+              if (hasNonIntegralUse(TAZ, Arg, Cache, &shouldHandleReturn)) {
+                return Cache[Val] = unknownUse = true;
               }
             }
-            ++a;
+            ++Arg;
           }
 
+          // If the value was potentially returned, analyze uses of the
+          // value returned by the call
           if (shouldHandleReturn) {
-            if (hasNonIntegralUse(TAZ, call, intseen, sawReturn)) {
-              return intseen[val] = unknownUse = true;
+            if (hasNonIntegralUse(TAZ, call, Cache, sawReturn)) {
+              return Cache[Val] = unknownUse = true;
             }
           }
           continue;
@@ -596,15 +719,8 @@ bool hasNonIntegralUse(TypeAnalyzer &TAZ,
       }
     }
 
-    if (isa<AllocaInst>(use)) {
-      continue;
-    }
-
-    if (isa<CmpInst>(use))
-      continue;
-    if (isa<SwitchInst>(use))
-      continue;
-    if (isa<BranchInst>(use))
+    // Any uses inside these instructions cannot possibly have non-integer uses
+    if (isa<AllocaInst>(use) || isa<CmpInst>(use) || isa<SwitchInst>(use) || isa<BranchInst>(use))
       continue;
 
     if (sawReturn && isa<ReturnInst>(use)) {
@@ -613,17 +729,53 @@ bool hasNonIntegralUse(TypeAnalyzer &TAZ,
     }
 
     unknownUse = true;
-    // llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
     continue;
   }
 
-  return intseen[val] = unknownUse;
+  return Cache[Val] = unknownUse;
 }
 
 bool TypeAnalyzer::runUnusedChecks() {
+
+
+  for (BasicBlock &BB : *fntypeinfo.Function) {
+    for (Instruction &inst : BB) {
+      if (PHINode* phi = dyn_cast<PHINode>(&inst)) {
+        if (direction & DOWN && phi->getType()->isIntOrIntVectorTy() && !getAnalysis(phi).isKnown()) {
+          // Assume that this is an integer, does that mean we can prove that the incoming
+          // operands are integral
+
+          TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural, DOWN);
+          tmpAnalysis.workList.clear();
+          tmpAnalysis.intseen = intseen;
+          tmpAnalysis.analysis = analysis;
+          tmpAnalysis.analysis[phi] = TypeTree(BaseType::Integer).Only(-1);
+          for(auto U : phi->users()) {
+            if (auto I = dyn_cast<Instruction>(U)) {
+              tmpAnalysis.visit(*I);
+            }
+          }
+          tmpAnalysis.run();
+          if (!tmpAnalysis.Invalid) {
+            TypeTree Result = tmpAnalysis.getAnalysis(phi);
+            for (auto &op : phi->incoming_values()) {
+              Result &= tmpAnalysis.getAnalysis(op);
+            }
+            if (Result == TypeTree(BaseType::Integer).Only(-1) || Result == TypeTree(BaseType::Anything).Only(-1)) {
+              updateAnalysis(phi, Result, phi);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Old-style unused checks below are currently broken, do not run them
+  return false;
+
   // NOTE explicitly NOT doing arguments here
   //  this is done to prevent information being propagated up via IPO that is
-  //  incorrect (since there may be other uses in the caller)
+  //  incorrect (since there may be other uses of that value in the caller)
   bool changed = false;
   std::vector<Value *> todo;
 
@@ -631,7 +783,7 @@ bool TypeAnalyzer::runUnusedChecks() {
   std::map<Value *, bool> intseen;
 
   for (BasicBlock &BB : *fntypeinfo.Function) {
-    for (auto &inst : BB) {
+    for (Instruction &inst : BB) {
       auto analysis = getAnalysis(&inst);
 
       if (!inst.getType()->isIntOrIntVectorTy())
@@ -643,29 +795,30 @@ bool TypeAnalyzer::runUnusedChecks() {
 
       // This deals with integers representing floats or pointers with no use
       // (and thus can be anything)
-      {
-        if (!hasAnyUse(*this, &inst, anyseen, nullptr)) {
-          updateAnalysis(&inst,
-                         TypeTree(BaseType::Anything)
-                             .Only(inst.getType()->isIntegerTy() ? -1 : 0),
-                         &inst);
-          changed = true;
-        }
+      // Note that we set origin to nullptr to ensure we add this value to
+      // the work queue
+      if (!hasAnyUse(*this, &inst, anyseen, nullptr)) {
+        updateAnalysis(&inst,
+                        TypeTree(BaseType::Anything)
+                            .Only(inst.getType()->isIntegerTy() ? -1 : 0),
+                        /*origin*/nullptr);
+        changed = true;
       }
 
-      // This deals with integers with no use
-      // Just because this has no integral use doesn't mean this is
+      // This deals with values with without a potential non-integral use.
+      // Note that we set origin to nullptr to ensure we add this value to
+      // the work queue
+      // TODO: potential clash (see comment below)
+      // Just because this has no non-integral use doesn't mean this is
       // necessarily an integer -- it could be an unused pointer/float
       // thus set it as "Anything" such that it could have a use as any
       // type.
-      {
-        if (!hasNonIntegralUse(*this, &inst, intseen, nullptr)) {
-          updateAnalysis(&inst,
-                         TypeTree(BaseType::Anything)
-                             .Only(inst.getType()->isIntegerTy() ? -1 : 0),
-                         &inst);
-          changed = true;
-        }
+      if (!hasNonIntegralUse(*this, &inst, intseen, nullptr)) {
+        updateAnalysis(&inst,
+                        TypeTree(BaseType::Integer)
+                            .Only(inst.getType()->isIntegerTy() ? -1 : 0),
+                        /*origin*/nullptr);
+        changed = true;
       }
     }
   }
@@ -674,11 +827,21 @@ bool TypeAnalyzer::runUnusedChecks() {
 }
 
 void TypeAnalyzer::run() {
+  // This function runs a full round of type analysis.
+  // This works by doing two stages of analysis, 
+  // with a "deduced integer types for unused" values
+  // sandwiched in-between. This is done because we only
+  // perform that check for values without types.
+  //
+  // For performance reasons in each round of type analysis
+  // only analyze any call instances after all other potential
+  // updates have been done. This is to minimize the number
+  // of expensive interprocedural analyses 
   std::deque<CallInst *> pendingCalls;
 
   do {
 
-    while (workList.size()) {
+    while (!Invalid && workList.size()) {
       auto todo = workList.front();
       workList.pop_front();
       if (auto ci = dyn_cast<CallInst>(todo)) {
@@ -702,7 +865,7 @@ void TypeAnalyzer::run() {
 
   do {
 
-    while (workList.size()) {
+    while (!Invalid && workList.size()) {
       auto todo = workList.front();
       workList.pop_front();
       if (auto ci = dyn_cast<CallInst>(todo)) {
@@ -731,7 +894,7 @@ void TypeAnalyzer::visitValue(Value &val) {
   if (!isa<Argument>(&val) && !isa<Instruction>(&val))
     return;
 
-  // TODO add no users integral here
+  // TODO perhaps add no users integral here
 
   if (auto inst = dyn_cast<Instruction>(&val)) {
     visit(*inst);
@@ -739,48 +902,57 @@ void TypeAnalyzer::visitValue(Value &val) {
 }
 
 void TypeAnalyzer::visitCmpInst(CmpInst &cmp) {
+  // No directionality check needed as always true
   updateAnalysis(&cmp, TypeTree(BaseType::Integer).Only(-1), &cmp);
 }
 
 void TypeAnalyzer::visitAllocaInst(AllocaInst &I) {
+  // No directionality check needed as always true
   updateAnalysis(I.getArraySize(), TypeTree(BaseType::Integer).Only(-1), &I);
   updateAnalysis(&I, TypeTree(BaseType::Pointer).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitLoadInst(LoadInst &I) {
-  auto &dl = I.getParent()->getParent()->getParent()->getDataLayout();
-  auto loadSize = (dl.getTypeSizeInBits(I.getType()) + 7) / 8;
+  auto &DL = I.getParent()->getParent()->getParent()->getDataLayout();
+  auto LoadSize = (DL.getTypeSizeInBits(I.getType()) + 7) / 8;
 
+  // Only propagate mappings in range that aren't "Anything" into the pointer
   auto ptr = getAnalysis(&I)
-                 .ShiftIndices(dl, /*start*/ 0, loadSize, /*addOffset*/ 0)
+                 .ShiftIndices(DL, /*start*/ 0, LoadSize, /*addOffset*/ 0)
                  .PurgeAnything();
   ptr |= TypeTree(BaseType::Pointer);
-  //llvm::errs() << I << "\n";
-  //llvm::errs() << ptr.str() << "\n";
-  //llvm::errs() << getAnalysis(I.getOperand(0)).str() << " loadSize=" << loadSize << "\n"; 
-  //llvm::errs() << getAnalysis(I.getOperand(0)).Lookup(loadSize, dl).str() << "\n"; 
-  updateAnalysis(I.getOperand(0), ptr.Only(-1), &I);
-  updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup(loadSize, dl), &I);
+  if (direction & UP)
+    updateAnalysis(I.getOperand(0), ptr.Only(-1), &I);
+  if (direction & DOWN)
+  updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup(LoadSize, DL), &I);
 }
 
 void TypeAnalyzer::visitStoreInst(StoreInst &I) {
-  auto &dl = I.getParent()->getParent()->getParent()->getDataLayout();
-  auto storeSize =
-      (dl.getTypeSizeInBits(I.getValueOperand()->getType()) + 7) / 8;
+  auto &DL = I.getParent()->getParent()->getParent()->getDataLayout();
+  auto StoreSize =
+      (DL.getTypeSizeInBits(I.getValueOperand()->getType()) + 7) / 8;
 
+  // Only propagate mappings in range that aren't "Anything" into the pointer
   auto ptr = TypeTree(BaseType::Pointer);
   auto purged = getAnalysis(I.getValueOperand())
-                    .ShiftIndices(dl, /*start*/ 0, storeSize, /*addOffset*/ 0)
+                    .ShiftIndices(DL, /*start*/ 0, StoreSize, /*addOffset*/ 0)
                     .PurgeAnything();
   ptr |= purged;
 
-  updateAnalysis(I.getPointerOperand(), ptr.Only(-1), &I);
-  updateAnalysis(
-      I.getValueOperand(),
-      getAnalysis(I.getPointerOperand()).PurgeAnything().Lookup(storeSize, dl),
-      &I);
+  if (direction & UP) {
+    updateAnalysis(I.getPointerOperand(), ptr.Only(-1), &I);
+    // Note that we also must purge anything from ptr => value in case we store
+    // to a nullptr which has type [-1, -1]: Anything. While storing to a nullptr
+    // is obviously bad, this doesn't mean the value we're storing is an Anything
+    updateAnalysis(
+        I.getValueOperand(),
+        getAnalysis(I.getPointerOperand()).PurgeAnything().Lookup(StoreSize, DL),
+        &I);
+  }
 }
 
+// Give a list of sets representing the legal set of values at a given index
+// return a set of all possible combinations of those values
 template <typename T>
 std::set<std::vector<T>> getSet(const std::vector<std::set<T>> &todo,
                                 size_t idx) {
@@ -804,15 +976,18 @@ std::set<std::vector<T>> getSet(const std::vector<std::set<T>> &todo,
 }
 
 void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
-  auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
+  auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
 
   auto pointerAnalysis = getAnalysis(gep.getPointerOperand());
-  updateAnalysis(&gep, pointerAnalysis.KeepMinusOne(), &gep);
+  if (direction & DOWN)
+    updateAnalysis(&gep, pointerAnalysis.KeepMinusOne(), &gep);
 
   // If one of these is known to be a pointer, propagate it
-  updateAnalysis(&gep, TypeTree(pointerAnalysis.Data0()[{}]).Only(-1), &gep);
-  updateAnalysis(gep.getPointerOperand(),
-                 TypeTree(getAnalysis(&gep).Data0()[{}]).Only(-1), &gep);
+  if (direction & DOWN)
+    updateAnalysis(&gep, TypeTree(pointerAnalysis.Data0()[{}]).Only(-1), &gep);
+  if (direction & UP)
+    updateAnalysis(gep.getPointerOperand(),
+                   TypeTree(getAnalysis(&gep).Data0()[{}]).Only(-1), &gep);
 
   if (isa<UndefValue>(gep.getPointerOperand())) {
     return;
@@ -830,12 +1005,11 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
   // TODO note that we don't force the inttype::pointer (commented below)
   // assuming nullptr[nullptr] doesn't occur in practice
   // if (gep.isInBounds() && pointerAnalysis[{}] == BaseType::Pointer) {
-  if (gep.isInBounds()) {
-    // llvm::errs() << "gep: " << gep << "\n";
-    for (auto &ind : gep.indices()) {
-      // llvm::errs() << " + ind: " << *ind << " - prev - " <<
-      // getAnalysis(ind).str() << "\n";
-      updateAnalysis(ind, TypeTree(BaseType::Integer).Only(-1), &gep);
+  if (direction & UP) {
+    if (gep.isInBounds()) {
+      for (auto &ind : gep.indices()) {
+        updateAnalysis(ind, TypeTree(BaseType::Integer).Only(-1), &gep);
+      }
     }
   }
 
@@ -856,11 +1030,11 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
   for (auto vec : getSet(idnext, idnext.size() - 1)) {
     auto g2 = GetElementPtrInst::Create(nullptr, gep.getOperand(0), vec);
 #if LLVM_VERSION_MAJOR > 6
-    APInt ai(dl.getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
+    APInt ai(DL.getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
 #else
-    APInt ai(dl.getPointerSize(gep.getPointerAddressSpace()) * 8, 0);
+    APInt ai(DL.getPointerSize(gep.getPointerAddressSpace()) * 8, 0);
 #endif
-    g2->accumulateConstantOffset(dl, ai);
+    g2->accumulateConstantOffset(DL, ai);
     // Using destructor rather than eraseFromParent
     //   as g2 has no parent
     delete g2;
@@ -873,31 +1047,35 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
     int maxSize = -1;
     if (cast<ConstantInt>(vec[0])->getLimitedValue() == 0) {
-      maxSize = dl.getTypeAllocSizeInBits(
+      maxSize = DL.getTypeAllocSizeInBits(
                     cast<PointerType>(gep.getType())->getElementType()) /
                 8;
     }
 
     auto unmerged = pointerAnalysis.Data0()
-                        .ShiftIndices(dl, /*init offset*/ off,
+                        .ShiftIndices(DL, /*init offset*/ off,
                                       /*max size*/ maxSize, /*newoffset*/ 0)
                         .Only(-1);
 
-    updateAnalysis(&gep, unmerged, &gep);
+    if (direction & UP)
+      updateAnalysis(&gep, unmerged, &gep);
 
     auto merged = getAnalysis(&gep)
                       .Data0()
-                      .ShiftIndices(dl, /*init offset*/ 0, /*max size*/ -1,
+                      .ShiftIndices(DL, /*init offset*/ 0, /*max size*/ -1,
                                     /*new offset*/ off)
                       .Only(-1);
 
-    updateAnalysis(gep.getPointerOperand(), merged, &gep);
+    if (direction & DOWN)
+      updateAnalysis(gep.getPointerOperand(), merged, &gep);
   }
 }
 
 void TypeAnalyzer::visitPHINode(PHINode &phi) {
-  for (auto &op : phi.incoming_values()) {
-    updateAnalysis(op, getAnalysis(&phi), &phi);
+  if (direction & UP) {
+    for (auto &op : phi.incoming_values()) {
+      updateAnalysis(op, getAnalysis(&phi), &phi);
+    }
   }
 
   assert(phi.getNumIncomingValues() > 0);
@@ -975,7 +1153,6 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
           if (BO->getOperand(0) == &phi) {
             set = true;
             PhiTypes = otherData;
-            //PhiTypes.binopIn(getAnalysis(BO->getOperand(1)), BO->getOpcode());
             break;
           } 
         } 
@@ -1001,72 +1178,100 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     PhiTypes &= vd1.Only(bo->getType()->isIntegerTy() ? -1 : 0);
   }
 
-  updateAnalysis(&phi, PhiTypes, &phi);
+  if (direction & DOWN)
+    updateAnalysis(&phi, PhiTypes, &phi);
 }
 
 void TypeAnalyzer::visitTruncInst(TruncInst &I) {
+  if (direction & DOWN)
   updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+  if (direction & UP)
   updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
 void TypeAnalyzer::visitZExtInst(ZExtInst &I) {
+  if (direction & DOWN)
   updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+  if (direction & UP)
   updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
 void TypeAnalyzer::visitSExtInst(SExtInst &I) {
-  updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
-  updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
+  // This is only legal on integer types [not pointers per sign]
+  // nor floatings points. Likewise, there's no direction check
+  // necessary since this is always valid.
+  updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
+  updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
+  if (direction & DOWN)
   updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+  if (direction & UP)
   updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
+void TypeAnalyzer::visitFPExtInst(FPExtInst &I) {
+  //No direction check as always true
+  updateAnalysis(&I, TypeTree(ConcreteType(I.getType())).Only(-1), &I);
+  updateAnalysis(I.getOperand(0),
+                 TypeTree(ConcreteType(I.getOperand(0)->getType())).Only(-1), &I);
+}
+
 void TypeAnalyzer::visitFPTruncInst(FPTruncInst &I) {
+  //No direction check as always true
   updateAnalysis(&I, TypeTree(ConcreteType(I.getType())).Only(-1), &I);
   updateAnalysis(I.getOperand(0),
                  TypeTree(ConcreteType(I.getOperand(0)->getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitFPToUIInst(FPToUIInst &I) {
+  //No direction check as always true
   updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
   updateAnalysis(I.getOperand(0),
                  TypeTree(ConcreteType(I.getOperand(0)->getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitFPToSIInst(FPToSIInst &I) {
+  //No direction check as always true
   updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
   updateAnalysis(I.getOperand(0),
                  TypeTree(ConcreteType(I.getOperand(0)->getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitUIToFPInst(UIToFPInst &I) {
+  //No direction check as always true
   updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
   updateAnalysis(&I, TypeTree(ConcreteType(I.getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitSIToFPInst(SIToFPInst &I) {
+  //No direction check as always true
   updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
   updateAnalysis(&I, TypeTree(ConcreteType(I.getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitPtrToIntInst(PtrToIntInst &I) {
   // Note it is illegal to assume here that either is a pointer or an int
+  if (direction & DOWN)
   updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+  if (direction & UP)
   updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
 void TypeAnalyzer::visitIntToPtrInst(IntToPtrInst &I) {
   // Note it is illegal to assume here that either is a pointer or an int
+  if (direction & DOWN)
   updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+  if (direction & UP)
   updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
 void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
   if (I.getType()->isIntOrIntVectorTy() || I.getType()->isFPOrFPVectorTy()) {
+    if (direction & DOWN)
     updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+    if (direction & UP)
     updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
     return;
   }
@@ -1075,6 +1280,7 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
     Type *et1 = cast<PointerType>(I.getType())->getElementType();
     Type *et2 = cast<PointerType>(I.getOperand(0)->getType())->getElementType();
 
+    if (direction & DOWN)
     updateAnalysis(
         &I,
         getAnalysis(I.getOperand(0))
@@ -1083,6 +1289,8 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
                          et1)
             .Only(-1),
         &I);
+
+    if (direction & UP)
     updateAnalysis(
         I.getOperand(0),
         getAnalysis(&I)
@@ -1095,17 +1303,23 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
 }
 
 void TypeAnalyzer::visitSelectInst(SelectInst &I) {
+  if (direction & UP)
   updateAnalysis(I.getTrueValue(), getAnalysis(&I), &I);
+  if (direction & UP)
   updateAnalysis(I.getFalseValue(), getAnalysis(&I), &I);
 
   TypeTree vd = getAnalysis(I.getTrueValue());
   vd &= getAnalysis(I.getFalseValue());
+  if (direction & DOWN)
   updateAnalysis(&I, vd, &I);
 }
 
 void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
+  if (direction & UP)
   updateAnalysis(I.getIndexOperand(), BaseType::Integer, &I);
+  if (direction & UP)
   updateAnalysis(I.getVectorOperand(), getAnalysis(&I), &I);
+  if (direction & DOWN)
   updateAnalysis(&I, getAnalysis(I.getVectorOperand()), &I);
 }
 
@@ -1119,18 +1333,24 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
   // res |= getAnalysis(I.getOperand(1)).Only(idx);
   res |= getAnalysis(&I);
 
+  if (direction & UP)
   updateAnalysis(I.getOperand(0), res, &I);
+  if (direction & DOWN)
   updateAnalysis(&I, res, &I);
+  if (direction & UP)
   updateAnalysis(I.getOperand(1), res, &I);
 }
 
 void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
+  if (direction & UP)
   updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
+  if (direction & UP)
   updateAnalysis(I.getOperand(1), getAnalysis(&I), &I);
 
   TypeTree vd = getAnalysis(I.getOperand(0));
   vd &= getAnalysis(I.getOperand(1));
 
+  if (direction & DOWN)
   updateAnalysis(&I, vd, &I);
 }
 
@@ -1157,11 +1377,14 @@ void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
 
   int size = dl.getTypeSizeInBits(I.getType()) / 8;
 
+  if (direction & DOWN)
   updateAnalysis(&I,
                  getAnalysis(I.getOperand(0))
                      .ShiftIndices(dl, off, size, /*addOffset*/ 0)
                      .CanonicalizeValue(size, dl),
                  &I);
+
+  if (direction & UP)
   updateAnalysis(I.getOperand(0),
                  getAnalysis(&I).ShiftIndices(dl, 0, size, off), &I);
 }
@@ -1191,19 +1414,23 @@ void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
   int ins_size =
       dl.getTypeSizeInBits(I.getInsertedValueOperand()->getType()) / 8;
 
+  if (direction & UP)
   updateAnalysis(I.getAggregateOperand(),
                  getAnalysis(&I).Clear(off, off + ins_size, agg_size), &I);
+  if (direction & UP)
   updateAnalysis(I.getInsertedValueOperand(),
                  getAnalysis(&I)
                      .ShiftIndices(dl, off, ins_size, 0)
                      .CanonicalizeValue(ins_size, dl),
                  &I);
 
+
   auto new_res =
       getAnalysis(I.getAggregateOperand()).Clear(off, off + ins_size, agg_size);
   auto shifted = getAnalysis(I.getInsertedValueOperand())
                      .ShiftIndices(dl, 0, ins_size, off);
   new_res |= shifted;
+  if (direction & DOWN)
   updateAnalysis(&I, new_res.CanonicalizeValue(agg_size, dl), &I);
 }
 
@@ -1226,13 +1453,17 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     auto ty = I.getType()->getScalarType();
     assert(ty->isFloatingPointTy());
     ConcreteType dt(ty);
+    if (direction & UP)
     updateAnalysis(I.getOperand(0), TypeTree(dt).Only(-1), &I);
+    if (direction & UP)
     updateAnalysis(I.getOperand(1), TypeTree(dt).Only(-1), &I);
+    if (direction & DOWN)
     updateAnalysis(&I, TypeTree(dt).Only(-1), &I);
   } else {
     auto AnalysisLHS = getAnalysis(I.getOperand(0)).Data0();
     auto AnalysisRHS = getAnalysis(I.getOperand(1)).Data0();
     auto AnalysisRet = getAnalysis(&I).Data0();
+    TypeTree Result;
 
     switch (I.getOpcode()) {
     case BinaryOperator::Sub:
@@ -1240,7 +1471,9 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
       // these are equal ptr - int => ptr and int - ptr => ptr; thus
       // howerver we do not want to propagate underlying ptr types since it's legal to subtract unrelated pointer
       if (AnalysisRet[{}] == BaseType::Integer) {
+        if (direction & UP)
         updateAnalysis(I.getOperand(0), TypeTree(AnalysisRHS[{}]).Only(-1), &I);
+        if (direction & UP)
         updateAnalysis(I.getOperand(1), TypeTree(AnalysisLHS[{}]).Only(-1), &I);
       }
       break;
@@ -1248,15 +1481,18 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     case BinaryOperator::Add:
     case BinaryOperator::Mul:
       // if a + b or a * b == int, then a and b must be ints
+      if (direction & UP)
       updateAnalysis(I.getOperand(0), TypeTree(AnalysisRet.JustInt()[{}]).Only(-1), &I);
+      if (direction & UP)
       updateAnalysis(I.getOperand(1), TypeTree(AnalysisRet.JustInt()[{}]).Only(-1), &I);
       break;
 
     default:
       break;
     }
-    TypeTree vd = AnalysisLHS;
-    vd.binopIn(AnalysisRHS, I.getOpcode());
+
+    Result = AnalysisLHS;
+    Result.binopIn(AnalysisRHS, I.getOpcode());
 
     if (I.getOpcode() == BinaryOperator::And) {
       for (int i = 0; i < 2; ++i) {
@@ -1264,12 +1500,13 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
              fntypeinfo.knownIntegralValues(I.getOperand(i), DT, intseen)) {
           if (andval <= 16 && andval >= 0) {
 
-            vd = TypeTree(BaseType::Integer);
+            Result = TypeTree(BaseType::Integer);
           }
         }
       }
     }
-    updateAnalysis(&I, vd.Only(-1), &I);
+    if (direction & DOWN)
+    updateAnalysis(&I, Result.Only(-1), &I);
   }
 }
 
@@ -1286,11 +1523,13 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
   TypeTree res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz).PurgeAnything();
   res |= res2;
 
-  updateAnalysis(MTI.getArgOperand(0), res, &MTI);
-  updateAnalysis(MTI.getArgOperand(1), res, &MTI);
-  for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i) {
-    updateAnalysis(MTI.getArgOperand(i), TypeTree(BaseType::Integer).Only(-1),
-                   &MTI);
+  if (direction & UP) {
+    updateAnalysis(MTI.getArgOperand(0), res, &MTI);
+    updateAnalysis(MTI.getArgOperand(1), res, &MTI);
+    for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i) {
+      updateAnalysis(MTI.getArgOperand(i), TypeTree(BaseType::Integer).Only(-1),
+                    &MTI);
+    }
   }
 }
 
@@ -1311,8 +1550,10 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::round:
   case Intrinsic::sqrt:
   case Intrinsic::fabs:
+    // No direction check as always valid
     updateAnalysis(
         &I, TypeTree(ConcreteType(I.getType()->getScalarType())).Only(-1), &I);
+    // No direction check as always valid
     updateAnalysis(
         I.getOperand(0),
         TypeTree(ConcreteType(I.getOperand(0)->getType()->getScalarType()))
@@ -1321,13 +1562,16 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     return;
 
   case Intrinsic::powi:
+    // No direction check as always valid
     updateAnalysis(
         &I, TypeTree(ConcreteType(I.getType()->getScalarType())).Only(-1), &I);
+    // No direction check as always valid
     updateAnalysis(
         I.getOperand(0),
         TypeTree(ConcreteType(I.getOperand(0)->getType()->getScalarType()))
             .Only(-1),
         &I);
+    // No direction check as always valid
     updateAnalysis(
         I.getOperand(1),
         TypeTree(BaseType::Integer)
@@ -1347,13 +1591,16 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::maxnum:
   case Intrinsic::minnum:
   case Intrinsic::pow:
+    // No direction check as always valid
     updateAnalysis(
         &I, TypeTree(ConcreteType(I.getType()->getScalarType())).Only(-1), &I);
+    // No direction check as always valid
     updateAnalysis(
         I.getOperand(0),
         TypeTree(ConcreteType(I.getOperand(0)->getType()->getScalarType()))
             .Only(-1),
         &I);
+    // No direction check as always valid
     updateAnalysis(
         I.getOperand(1),
         TypeTree(ConcreteType(I.getOperand(1)->getType()->getScalarType()))
@@ -1400,7 +1647,10 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       llvm_unreachable("unknown binary operator");
     }
 
+    // TODO update with newer binop protocol (see binop)
+    if (direction & UP)
     updateAnalysis(I.getOperand(0), analysis.Only(-1), &I);
+    if (direction & UP)
     updateAnalysis(I.getOperand(1), analysis.Only(-1), &I);
 
     TypeTree vd = getAnalysis(I.getOperand(0)).Data0();
@@ -1413,6 +1663,7 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         TypeTree(BaseType::Integer)
             .Only((dl.getTypeSizeInBits(I.getOperand(0)->getType()) + 7) / 8);
 
+    if (direction & DOWN)
     updateAnalysis(&I, overall, &I);
     return;
   }
@@ -1421,6 +1672,10 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   }
 }
 
+/// This template class is defined to take the templated type T
+/// update the analysis of the first argument (val) to be type T
+/// As such, below we have several template specializations
+/// to convert various c/c++ to TypeAnalysis types
 template <typename T> struct TypeHandler {};
 
 template <> struct TypeHandler<double> {
@@ -1622,6 +1877,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
   #else
   if (auto iasm = dyn_cast<InlineAsm>(call.getCalledValue())) {
   #endif
+    // NO direction check as always valid
     if (iasm->getAsmString() == "cpuid") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       for (unsigned i = 0; i < call.getNumArgOperands(); ++i) {
@@ -1644,7 +1900,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     analyzeFuncTypes<__VA_ARGS__>(::fn, call, *this);                                       \
     return;                                                                    \
   }
-
+    //All these are always valid => no direction check
     CONSIDER(malloc)
     // CONSIDER(__lgamma_r_finite)
     CONSIDER2(frexp, double, double, int*)
@@ -1967,15 +2223,19 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
   if (PrintType)
     llvm::errs() << " starting IPO of " << call << "\n";
 
-  auto a = fn.arg_begin();
-  for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
-    auto dt = interprocedural.query(a, typeInfo);
-    updateAnalysis(call.getArgOperand(i), dt, &call);
-    ++a;
+  if (direction & UP) {
+    auto a = fn.arg_begin();
+    for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
+      auto dt = interprocedural.query(a, typeInfo);
+      updateAnalysis(call.getArgOperand(i), dt, &call);
+      ++a;
+    }
   }
 
-  TypeTree vd = interprocedural.getReturnAnalysis(typeInfo);
-  updateAnalysis(&call, vd, &call);
+  if (direction & DOWN) {
+    TypeTree vd = interprocedural.getReturnAnalysis(typeInfo);
+    updateAnalysis(&call, vd, &call);
+  }
 }
 
 TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
@@ -2067,7 +2327,6 @@ ConcreteType TypeAnalysis::intType(Value *val, const FnTypeInfo &fn,
   assert(val->getType());
   auto q = query(val, fn).Data0();
   auto dt = q[{}];
-  // dump();
   if (errIfNotFound && (!dt.isKnown() || dt == BaseType::Anything)) {
     if (auto inst = dyn_cast<Instruction>(val)) {
       llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";

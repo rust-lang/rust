@@ -1,28 +1,9 @@
 ; RUN: %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=sum_list -o /dev/null | FileCheck %s
 
-; #include <stdlib.h>
-; #include <stdio.h>
-;
-; struct n {
-;     double *values;
-;     struct n *next;
-; };
-;
-; __attribute__((noinline))
-; double sum_list(const struct n *__restrict node, unsigned long times) {
-;     double sum = 0;
-;     for(const struct n *val = node; val != 0; val = val->next) {
-;         for(int i=0; i<=times; i++) {
-;             sum += val->values[i];
-;         }
-;     }
-;     return sum;
-; }
-
 %struct.n = type { double, %struct.n* }
 
 ; Function Attrs: noinline norecurse nounwind readonly uwtable
-define dso_local double @sum_list(%struct.n* noalias readonly %node, i64 %times) local_unnamed_addr #0 {
+define dso_local double @sum_list(%struct.n* noalias readonly %node) local_unnamed_addr #0 {
 entry:
   br label %for
 
@@ -40,20 +21,6 @@ for:                              ; preds = %for.cond.cleanup4, %entry
 for.cond.cleanup:                                 ; preds = %for.cond.cleanup4, %entry
   ret double %add
 }
-
-; Function Attrs: nounwind
-declare dso_local noalias i8* @malloc(i64) local_unnamed_addr #2
-
-; Function Attrs: noinline nounwind uwtable
-define dso_local double @derivative(%struct.n* %x, %struct.n* %xp, i64 %n) {
-entry:
-  %0 = tail call double (double (%struct.n*, i64)*, ...) @__enzyme_autodiff(double (%struct.n*, i64)* nonnull @sum_list, %struct.n* %x, %struct.n* %xp, i64 %n)
-  ret double %0
-}
-
-; Function Attrs: nounwind
-declare double @__enzyme_autodiff(double (%struct.n*, i64)*, ...) #4
-
 
 attributes #0 = { noinline norecurse nounwind readonly uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="false" "no-infs-fp-math"="true" "no-jump-tables"="false" "no-nans-fp-math"="true" "no-signed-zeros-fp-math"="true" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="true" "use-soft-float"="false" }
 attributes #1 = { nounwind uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="false" "no-infs-fp-math"="true" "no-jump-tables"="false" "no-nans-fp-math"="true" "no-signed-zeros-fp-math"="true" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="true" "use-soft-float"="false" }
@@ -78,9 +45,8 @@ attributes #4 = { nounwind }
 
 ; TODO nicely present recursive structure
 
-; CHECK: sum_list - {} |{}:{} {}:{} 
+; CHECK: sum_list - {} |{}:{}
 ; CHECK-NEXT: %struct.n* %node: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Pointer, [-1,8,0]:Float@double, [-1,8,8]:Pointer, [-1,8,8,0]:Float@double, [-1,8,8,8]:Pointer, [-1,8,8,8,0]:Float@double, [-1,8,8,8,8]:Pointer, [-1,8,8,8,8,0]:Float@double, [-1,8,8,8,8,8]:Pointer}
-; CHECK-NEXT: i64 %times: {}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   br label %for: {}
 ; CHECK-NEXT: for

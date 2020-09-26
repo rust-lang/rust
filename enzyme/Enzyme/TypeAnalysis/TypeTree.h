@@ -351,8 +351,8 @@ public:
           SubResult.insert(next, pair.second);
         }
         Result |= SubResult;
-      } else if ((size_t)pair.first[0] > start &&
-                 (size_t)pair.first[0] >= end && (size_t)pair.first[0] < len) {
+      } else if ((size_t)pair.first[0] < start ||
+                 ((size_t)pair.first[0] >= end && (size_t)pair.first[0] < len)) {
         // Otherwise simply check that the given offset is in range
         
         TypeTree SubResult;

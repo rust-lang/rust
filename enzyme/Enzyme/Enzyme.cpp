@@ -222,6 +222,8 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
       } else if (et->isPointerTy()) {
         dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
       }
+    } else if (a.getType()->isIntOrIntVectorTy()) {
+      dt = ConcreteType(BaseType::Integer);
     }
     type_args.Arguments.insert(std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
     // TODO note that here we do NOT propagate constants in type info (and

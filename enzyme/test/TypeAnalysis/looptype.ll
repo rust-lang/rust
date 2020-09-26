@@ -51,6 +51,6 @@ for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %2 = load i64, i64* %call6, align 8, !tbaa !0: {[-1]:Integer}
 ; CHECK-NEXT:   %mul7 = mul nsw i64 %2, %div: {[-1]:Anything}
 ; CHECK-NEXT:   %sub = sub nsw i64 %index.addr.023, %mul7: {[-1]:Anything}
-; CHECK-NEXT:   %indvars.iv.next = add nsw i64 %indvars.iv, -1: {[-1]:Anything}
+; CHECK-NEXT:   %indvars.iv.next = add nsw i64 %indvars.iv, -1: {[-1]:Integer}
 ; CHECK-NEXT:   %cmp = icmp ugt i64 %indvars.iv, 1: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %for.cond.cleanup: {}

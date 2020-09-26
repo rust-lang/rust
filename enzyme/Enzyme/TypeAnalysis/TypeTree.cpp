@@ -38,66 +38,67 @@ using namespace llvm;
 // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
 // After a depth len into the index tree, prune any lookups that are not {0} or
 // {-1} Todo handle {double}** to double** where there is a 0 removed
-TypeTree TypeTree::KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
-                                 llvm::Type *to) const {
-  assert(from);
-  assert(to);
+TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
+                                 llvm::Type *To) const {
+  assert(From);
+  assert(To);
 
-  bool fromOpaque = isa<StructType>(from) && cast<StructType>(from)->isOpaque();
-  bool toOpaque = isa<StructType>(to) && cast<StructType>(to)->isOpaque();
+  bool FromOpaque = isa<StructType>(From) && cast<StructType>(From)->isOpaque();
+  bool ToOpaque = isa<StructType>(To) && cast<StructType>(To)->isOpaque();
 
-  TypeTree vd;
+  TypeTree Result;
 
   for (auto &pair : mapping) {
 
-    TypeTree vd2;
-
-    // llvm::errs() << " considering casting from " << *from << " to " << *to <<
-    // " fromidx: " << to_string(pair.first) << " dt:" << pair.second.str() << "
-    // fromsize: " << fromsize << " tosize: " << tosize << "\n";
+    TypeTree SubResult;
 
     if (pair.first.size() == 0) {
-      vd2.insert(pair.first, pair.second);
+      SubResult.insert(pair.first, pair.second);
       goto add;
     }
 
-    if (!fromOpaque && !toOpaque) {
-      uint64_t fromsize = (dl.getTypeSizeInBits(from) + 7) / 8;
-      if (fromsize == 0)
-        llvm::errs() << "from: " << *from << "\n";
-      assert(fromsize > 0);
-      uint64_t tosize = (dl.getTypeSizeInBits(to) + 7) / 8;
-      assert(tosize > 0);
+    // Only consider casts of non-opaque types
+    // This requirement exists because we need the sizes
+    // of types to ensure bounds are appropriately applied
+    if (!FromOpaque && !ToOpaque) {
+      uint64_t Fromsize = (DL.getTypeSizeInBits(From) + 7) / 8;
+      if (Fromsize == 0) {
+        llvm::errs() << "Found FromType of size 0 -- " << *From << "\n";
+        assert(0 && "Found FromType of size 0");
+        llvm_unreachable("Found FromType of size 0");
+      }
+      uint64_t Tosize = (DL.getTypeSizeInBits(To) + 7) / 8;
+      if (Tosize == 0) {
+        llvm::errs() << "Found ToType of size 0 -- " << *To << "\n";
+        assert(0 && "Found ToType of size 0");
+        llvm_unreachable("Found ToType of size 0");
+      }
 
       // If the sizes are the same, whatever the original one is okay [ since
       // tomemory[ i*sizeof(from) ] indeed the start of an object of type to
       // since tomemory is "aligned" to type to
-      if (fromsize == tosize) {
-        vd2.insert(pair.first, pair.second);
+      if (Fromsize == Tosize) {
+        SubResult.insert(pair.first, pair.second);
         goto add;
       }
 
-      // If the offset doesn't leak into a later element, we're fine to include
-      if (pair.first[0] != -1 && (uint64_t)pair.first[0] < tosize) {
-        vd2.insert(pair.first, pair.second);
-        goto add;
-      }
-
+      // If the offset is a fixed (non-repeating) value, it's to include
+      // directly.
       if (pair.first[0] != -1) {
-        vd.insert(pair.first, pair.second);
+        SubResult.insert(pair.first, pair.second);
         goto add;
       } else {
-        // pair.first[0] == -1
+        // Case where pair.first[0] == -1
 
-        if (fromsize < tosize) {
-          if (tosize % fromsize == 0) {
+        if (Fromsize < Tosize) {
+          if (Tosize % Fromsize == 0) {
             // TODO should really be at each offset do a -1
-            vd.insert(pair.first, pair.second);
+            SubResult.insert(pair.first, pair.second);
             goto add;
           } else {
             auto tmp(pair.first);
             tmp[0] = 0;
-            vd.insert(tmp, pair.second);
+            SubResult.insert(tmp, pair.second);
             goto add;
           }
         } else {
@@ -106,7 +107,7 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
           // fromsize
           auto tmp(pair.first);
           tmp[0] = 0;
-          vd.insert(tmp, pair.second);
+          SubResult.insert(tmp, pair.second);
           goto add;
         }
       }
@@ -114,7 +115,7 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
 
     continue;
   add:;
-    vd |= vd2;
+    Result |= SubResult;
   }
-  return vd;
+  return Result;
 }
