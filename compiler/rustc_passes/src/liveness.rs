@@ -79,7 +79,7 @@
 //! ## Special nodes and variables
 //!
 //! We generate various special nodes for various, well, special purposes.
-//! These are described in the `Specials` struct.
+//! These are described in the `Liveness` struct.
 
 use self::LiveNodeKind::*;
 use self::VarKind::*;
@@ -626,17 +626,6 @@ impl RWUTable {
     }
 }
 
-#[derive(Copy, Clone)]
-struct Specials {
-    /// A live node representing a point of execution before closure entry &
-    /// after closure exit. Used to calculate liveness of captured variables
-    /// through calls to the same closure. Used for Fn & FnMut closures only.
-    closure_ln: LiveNode,
-    /// A live node representing every 'exit' from the function, whether it be
-    /// by explicit return, panic, or other means.
-    exit_ln: LiveNode,
-}
-
 const ACC_READ: u32 = 1;
 const ACC_WRITE: u32 = 2;
 const ACC_USE: u32 = 4;
@@ -645,9 +634,16 @@ struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    s: Specials,
     successors: Vec<LiveNode>,
     rwu_table: RWUTable,
+
+    /// A live node representing a point of execution before closure entry &
+    /// after closure exit. Used to calculate liveness of captured variables
+    /// through calls to the same closure. Used for Fn & FnMut closures only.
+    closure_ln: LiveNode,
+    /// A live node representing every 'exit' from the function, whether it be
+    /// by explicit return, panic, or other means.
+    exit_ln: LiveNode,
 
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
@@ -658,13 +654,11 @@ struct Liveness<'a, 'tcx> {
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, def_id: LocalDefId) -> Liveness<'a, 'tcx> {
-        let specials = Specials {
-            closure_ln: ir.add_live_node(ClosureNode),
-            exit_ln: ir.add_live_node(ExitNode),
-        };
-
         let typeck_results = ir.tcx.typeck(def_id);
         let param_env = ir.tcx.param_env(def_id);
+
+        let closure_ln = ir.add_live_node(ClosureNode);
+        let exit_ln = ir.add_live_node(ExitNode);
 
         let num_live_nodes = ir.lnks.len();
         let num_vars = ir.var_kinds.len();
@@ -673,9 +667,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ir,
             typeck_results,
             param_env,
-            s: specials,
             successors: vec![invalid_node(); num_live_nodes],
             rwu_table: RWUTable::new(num_live_nodes * num_vars),
+            closure_ln,
+            exit_ln,
             break_ln: Default::default(),
             cont_ln: Default::default(),
         }
@@ -935,14 +930,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 match self.typeck_results.upvar_capture(upvar_id) {
                     ty::UpvarCapture::ByRef(_) => {
                         let var = self.variable(var_hir_id, upvar.span);
-                        self.acc(self.s.exit_ln, var, ACC_READ | ACC_USE);
+                        self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
                     }
                     ty::UpvarCapture::ByValue(_) => {}
                 }
             }
         }
 
-        let succ = self.propagate_through_expr(&body.value, self.s.exit_ln);
+        let succ = self.propagate_through_expr(&body.value, self.exit_ln);
 
         match fk {
             FnKind::Method(..) | FnKind::ItemFn(..) => return succ,
@@ -965,19 +960,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // Propagate through calls to the closure.
         let mut first_merge = true;
         loop {
-            self.init_from_succ(self.s.closure_ln, succ);
+            self.init_from_succ(self.closure_ln, succ);
             for param in body.params {
                 param.pat.each_binding(|_bm, hir_id, _x, ident| {
                     let var = self.variable(hir_id, ident.span);
-                    self.define(self.s.closure_ln, var);
+                    self.define(self.closure_ln, var);
                 })
             }
 
-            if !self.merge_from_succ(self.s.exit_ln, self.s.closure_ln, first_merge) {
+            if !self.merge_from_succ(self.exit_ln, self.closure_ln, first_merge) {
                 break;
             }
             first_merge = false;
-            assert_eq!(succ, self.propagate_through_expr(&body.value, self.s.exit_ln));
+            assert_eq!(succ, self.propagate_through_expr(&body.value, self.exit_ln));
         }
 
         succ
@@ -1099,7 +1094,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::Ret(ref o_e) => {
                 // ignore succ and subst exit_ln:
-                let exit_ln = self.s.exit_ln;
+                let exit_ln = self.exit_ln;
                 self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
             }
 
@@ -1174,7 +1169,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.typeck_results.expr_ty(expr),
                     self.param_env,
                 ) {
-                    self.s.exit_ln
+                    self.exit_ln
                 } else {
                     succ
                 };
@@ -1189,7 +1184,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.typeck_results.expr_ty(expr),
                     self.param_env,
                 ) {
-                    self.s.exit_ln
+                    self.exit_ln
                 } else {
                     succ
                 };
@@ -1226,7 +1221,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::InlineAsm(ref asm) => {
                 // Handle non-returning asm
                 let mut succ = if asm.options.contains(InlineAsmOptions::NORETURN) {
-                    self.s.exit_ln
+                    self.exit_ln
                 } else {
                     succ
                 };
@@ -1696,7 +1691,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
             // {ret}`, there is only one node, so asking about
             // assigned_on_exit() is not meaningful.
             let is_assigned =
-                if ln == self.s.exit_ln { false } else { self.assigned_on_exit(ln, var).is_some() };
+                if ln == self.exit_ln { false } else { self.assigned_on_exit(ln, var).is_some() };
 
             if is_assigned {
                 self.ir.tcx.struct_span_lint_hir(
