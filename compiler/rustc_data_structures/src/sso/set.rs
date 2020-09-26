@@ -1,10 +1,9 @@
-use super::EitherIter;
-use crate::fx::FxHashSet;
-use arrayvec::ArrayVec;
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::Hash;
 use std::iter::FromIterator;
+
+use super::map::SsoHashMap;
 
 /// Small-storage-optimized implementation of a set.
 ///
@@ -18,77 +17,73 @@ use std::iter::FromIterator;
 ///   try_reserve (unstable)
 ///   shrink_to (unstable)
 ///   drain_filter (unstable)
+///   replace
 ///   get_or_insert/get_or_insert_owned/get_or_insert_with (unstable)
 ///   difference/symmetric_difference/intersection/union
 ///   is_disjoint/is_subset/is_superset
-///   PartialEq/Eq (requires sorting the array)
+///   PartialEq/Eq (requires SsoHashMap implementation)
 ///   BitOr/BitAnd/BitXor/Sub
 #[derive(Clone)]
-pub enum SsoHashSet<T> {
-    Array(ArrayVec<[T; 8]>),
-    Set(FxHashSet<T>),
+pub struct SsoHashSet<T> {
+    map: SsoHashMap<T, ()>,
+}
+
+/// Adapter function used ot return
+/// result if SsoHashMap functions into
+/// result SsoHashSet should return.
+#[inline(always)]
+fn entry_to_key<K, V>((k, _v): (K, V)) -> K {
+    k
 }
 
 impl<T> SsoHashSet<T> {
     /// Creates an empty `SsoHashSet`.
+    #[inline]
     pub fn new() -> Self {
-        SsoHashSet::Array(ArrayVec::new())
+        Self { map: SsoHashMap::new() }
     }
 
     /// Creates an empty `SsoHashSet` with the specified capacity.
+    #[inline]
     pub fn with_capacity(cap: usize) -> Self {
-        let array = ArrayVec::new();
-        if array.capacity() >= cap {
-            SsoHashSet::Array(array)
-        } else {
-            SsoHashSet::Set(FxHashSet::with_capacity_and_hasher(cap, Default::default()))
-        }
+        Self { map: SsoHashMap::with_capacity(cap) }
     }
 
     /// Clears the set, removing all values.
+    #[inline]
     pub fn clear(&mut self) {
-        match self {
-            SsoHashSet::Array(array) => array.clear(),
-            SsoHashSet::Set(set) => set.clear(),
-        }
+        self.map.clear()
     }
 
     /// Returns the number of elements the set can hold without reallocating.
+    #[inline]
     pub fn capacity(&self) -> usize {
-        match self {
-            SsoHashSet::Array(array) => array.capacity(),
-            SsoHashSet::Set(set) => set.capacity(),
-        }
+        self.map.capacity()
     }
 
     /// Returns the number of elements in the set.
+    #[inline]
     pub fn len(&self) -> usize {
-        match self {
-            SsoHashSet::Array(array) => array.len(),
-            SsoHashSet::Set(set) => set.len(),
-        }
+        self.map.len()
     }
 
     /// Returns `true` if the set contains no elements.
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        match self {
-            SsoHashSet::Array(array) => array.is_empty(),
-            SsoHashSet::Set(set) => set.is_empty(),
-        }
+        self.map.is_empty()
     }
 
     /// An iterator visiting all elements in arbitrary order.
     /// The iterator element type is `&'a T`.
+    #[inline]
     pub fn iter(&'a self) -> impl Iterator<Item = &'a T> {
         self.into_iter()
     }
 
     /// Clears the set, returning all elements in an iterator.
+    #[inline]
     pub fn drain(&mut self) -> impl Iterator<Item = T> + '_ {
-        match self {
-            SsoHashSet::Array(array) => EitherIter::Left(array.drain(..)),
-            SsoHashSet::Set(set) => EitherIter::Right(set.drain()),
-        }
+        self.map.drain().map(entry_to_key)
     }
 }
 
@@ -96,95 +91,46 @@ impl<T: Eq + Hash> SsoHashSet<T> {
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `SsoHashSet`. The collection may reserve more space to avoid
     /// frequent reallocations.
+    #[inline]
     pub fn reserve(&mut self, additional: usize) {
-        match self {
-            SsoHashSet::Array(array) => {
-                if array.capacity() < (array.len() + additional) {
-                    let mut set: FxHashSet<T> = array.drain(..).collect();
-                    set.reserve(additional);
-                    *self = SsoHashSet::Set(set);
-                }
-            }
-            SsoHashSet::Set(set) => set.reserve(additional),
-        }
+        self.map.reserve(additional)
     }
 
     /// Shrinks the capacity of the set as much as possible. It will drop
     /// down as much as possible while maintaining the internal rules
     /// and possibly leaving some space in accordance with the resize policy.
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
-        if let SsoHashSet::Set(set) = self {
-            let mut array = ArrayVec::new();
-            if set.len() <= array.capacity() {
-                array.extend(set.drain());
-                *self = SsoHashSet::Array(array);
-            } else {
-                set.shrink_to_fit();
-            }
-        }
+        self.map.shrink_to_fit()
     }
 
     /// Retains only the elements specified by the predicate.
+    #[inline]
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
     {
-        match self {
-            SsoHashSet::Array(array) => array.retain(|v| f(v)),
-            SsoHashSet::Set(set) => set.retain(f),
-        }
+        self.map.retain(|k, _v| f(k))
     }
 
     /// Removes and returns the value in the set, if any, that is equal to the given one.
+    #[inline]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
     where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self {
-            SsoHashSet::Array(array) => {
-                if let Some(index) = array.iter().position(|val| val.borrow() == value) {
-                    Some(array.swap_remove(index))
-                } else {
-                    None
-                }
-            }
-            SsoHashSet::Set(set) => set.take(value),
-        }
-    }
-
-    /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
-    /// one. Returns the replaced value.
-    pub fn replace(&mut self, value: T) -> Option<T> {
-        match self {
-            SsoHashSet::Array(array) => {
-                if let Some(index) = array.iter().position(|val| *val == value) {
-                    let old_value = std::mem::replace(&mut array[index], value);
-                    Some(old_value)
-                } else {
-                    None
-                }
-            }
-            SsoHashSet::Set(set) => set.replace(value),
-        }
+        self.map.remove_entry(value).map(entry_to_key)
     }
 
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
+    #[inline]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
     where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self {
-            SsoHashSet::Array(array) => {
-                if let Some(index) = array.iter().position(|val| val.borrow() == value) {
-                    Some(&array[index])
-                } else {
-                    None
-                }
-            }
-            SsoHashSet::Set(set) => set.get(value),
-        }
+        self.map.get_key_value(value).map(entry_to_key)
     }
 
     /// Adds a value to the set.
@@ -192,60 +138,30 @@ impl<T: Eq + Hash> SsoHashSet<T> {
     /// If the set did not have this value present, `true` is returned.
     ///
     /// If the set did have this value present, `false` is returned.
+    #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
-        match self {
-            SsoHashSet::Array(array) => {
-                if array.iter().any(|e| *e == elem) {
-                    false
-                } else {
-                    if let Err(error) = array.try_push(elem) {
-                        let mut set: FxHashSet<T> = array.drain(..).collect();
-                        set.insert(error.element());
-                        *self = SsoHashSet::Set(set);
-                    }
-                    true
-                }
-            }
-            SsoHashSet::Set(set) => set.insert(elem),
-        }
+        self.map.insert(elem, ()).is_none()
     }
 
     /// Removes a value from the set. Returns whether the value was
     /// present in the set.
+    #[inline]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
     where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self {
-            SsoHashSet::Array(array) => {
-                if let Some(index) = array.iter().position(|val| val.borrow() == value) {
-                    array.swap_remove(index);
-                    true
-                } else {
-                    false
-                }
-            }
-            SsoHashSet::Set(set) => set.remove(value),
-        }
+        self.map.remove(value).is_some()
     }
 
     /// Returns `true` if the set contains a value.
+    #[inline]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self {
-            SsoHashSet::Array(array) => array.iter().any(|v| v.borrow() == value),
-            SsoHashSet::Set(set) => set.contains(value),
-        }
-    }
-}
-
-impl<T> Default for SsoHashSet<T> {
-    fn default() -> Self {
-        Self::new()
+        self.map.contains_key(value)
     }
 }
 
@@ -254,6 +170,13 @@ impl<T: Eq + Hash> FromIterator<T> for SsoHashSet<T> {
         let mut set: SsoHashSet<T> = Default::default();
         set.extend(iter);
         set
+    }
+}
+
+impl<T> Default for SsoHashSet<T> {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -267,21 +190,14 @@ impl<T: Eq + Hash> Extend<T> for SsoHashSet<T> {
         }
     }
 
+    #[inline]
     fn extend_one(&mut self, item: T) {
         self.insert(item);
     }
 
+    #[inline]
     fn extend_reserve(&mut self, additional: usize) {
-        match self {
-            SsoHashSet::Array(array) => {
-                if array.capacity() < (array.len() + additional) {
-                    let mut set: FxHashSet<T> = array.drain(..).collect();
-                    set.extend_reserve(additional);
-                    *self = SsoHashSet::Set(set);
-                }
-            }
-            SsoHashSet::Set(set) => set.extend_reserve(additional),
-        }
+        self.map.extend_reserve(additional)
     }
 }
 
@@ -289,46 +205,42 @@ impl<'a, T> Extend<&'a T> for SsoHashSet<T>
 where
     T: 'a + Eq + Hash + Copy,
 {
+    #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
 
+    #[inline]
     fn extend_one(&mut self, &item: &'a T) {
         self.insert(item);
     }
 
+    #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         Extend::<T>::extend_reserve(self, additional)
     }
 }
 
 impl<T> IntoIterator for SsoHashSet<T> {
-    type IntoIter = EitherIter<
-        <ArrayVec<[T; 8]> as IntoIterator>::IntoIter,
-        <FxHashSet<T> as IntoIterator>::IntoIter,
-    >;
+    type IntoIter = std::iter::Map<<SsoHashMap<T, ()> as IntoIterator>::IntoIter, fn((T, ())) -> T>;
     type Item = <Self::IntoIter as Iterator>::Item;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        match self {
-            SsoHashSet::Array(array) => EitherIter::Left(array.into_iter()),
-            SsoHashSet::Set(set) => EitherIter::Right(set.into_iter()),
-        }
+        self.map.into_iter().map(entry_to_key)
     }
 }
 
 impl<'a, T> IntoIterator for &'a SsoHashSet<T> {
-    type IntoIter = EitherIter<
-        <&'a ArrayVec<[T; 8]> as IntoIterator>::IntoIter,
-        <&'a FxHashSet<T> as IntoIterator>::IntoIter,
+    type IntoIter = std::iter::Map<
+        <&'a SsoHashMap<T, ()> as IntoIterator>::IntoIter,
+        fn((&'a T, &'a ())) -> &'a T,
     >;
     type Item = <Self::IntoIter as Iterator>::Item;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        match self {
-            SsoHashSet::Array(array) => EitherIter::Left(array.into_iter()),
-            SsoHashSet::Set(set) => EitherIter::Right(set.into_iter()),
-        }
+        self.map.iter().map(entry_to_key)
     }
 }
 

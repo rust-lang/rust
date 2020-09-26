@@ -1,4 +1,4 @@
-use super::EitherIter;
+use super::either_iter::EitherIter;
 use crate::fx::FxHashMap;
 use arrayvec::ArrayVec;
 use std::borrow::Borrow;
@@ -32,6 +32,7 @@ pub enum SsoHashMap<K, V> {
 
 impl<K, V> SsoHashMap<K, V> {
     /// Creates an empty `SsoHashMap`.
+    #[inline]
     pub fn new() -> Self {
         SsoHashMap::Array(ArrayVec::new())
     }
@@ -81,13 +82,15 @@ impl<K, V> SsoHashMap<K, V> {
 
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// The iterator element type is `(&'a K, &'a V)`.
-    pub fn iter(&self) -> impl Iterator<Item = (&'_ K, &'_ V)> {
+    #[inline]
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
         self.into_iter()
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
     /// The iterator element type is `(&'a K, &'a mut V)`.
+    #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&'_ K, &'_ mut V)> {
         self.into_iter()
     }
@@ -319,12 +322,14 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    #[inline]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
         Entry { ssomap: self, key }
     }
 }
 
 impl<K, V> Default for SsoHashMap<K, V> {
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -348,6 +353,7 @@ impl<K: Eq + Hash, V> Extend<(K, V)> for SsoHashMap<K, V> {
         }
     }
 
+    #[inline]
     fn extend_one(&mut self, (k, v): (K, V)) {
         self.insert(k, v);
     }
@@ -375,10 +381,12 @@ where
         self.extend(iter.into_iter().map(|(k, v)| (k.clone(), v.clone())))
     }
 
+    #[inline]
     fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
         self.insert(k, v);
     }
 
+    #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         Extend::<(K, V)>::extend_reserve(self, additional)
     }
@@ -400,12 +408,14 @@ impl<K, V> IntoIterator for SsoHashMap<K, V> {
 }
 
 /// adapts Item of array reference iterator to Item of hashmap reference iterator.
+#[inline(always)]
 fn adapt_array_ref_it<K, V>(pair: &'a (K, V)) -> (&'a K, &'a V) {
     let (a, b) = pair;
     (a, b)
 }
 
 /// adapts Item of array mut reference iterator to Item of hashmap mut reference iterator.
+#[inline(always)]
 fn adapt_array_mut_it<K, V>(pair: &'a mut (K, V)) -> (&'a K, &'a mut V) {
     let (a, b) = pair;
     (a, b)
@@ -464,6 +474,7 @@ where
 {
     type Output = V;
 
+    #[inline]
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
     }
@@ -490,6 +501,7 @@ impl<'a, K: Eq + Hash, V> Entry<'a, K, V> {
 
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
+    #[inline]
     pub fn or_insert(self, value: V) -> &'a mut V {
         self.or_insert_with(|| value)
     }
@@ -515,6 +527,7 @@ impl<'a, K: Eq + Hash, V> Entry<'a, K, V> {
     }
 
     /// Returns a reference to this entry's key.
+    #[inline]
     pub fn key(&self) -> &K {
         &self.key
     }
@@ -523,6 +536,7 @@ impl<'a, K: Eq + Hash, V> Entry<'a, K, V> {
 impl<'a, K: Eq + Hash, V: Default> Entry<'a, K, V> {
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
+    #[inline]
     pub fn or_default(self) -> &'a mut V {
         self.or_insert_with(Default::default)
     }
