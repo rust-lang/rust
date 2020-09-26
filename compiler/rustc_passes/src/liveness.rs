@@ -249,8 +249,6 @@ enum VarKind {
 struct IrMaps<'tcx> {
     tcx: TyCtxt<'tcx>,
     body_owner: LocalDefId,
-    num_live_nodes: usize,
-    num_vars: usize,
     live_node_map: HirIdMap<LiveNode>,
     variable_map: HirIdMap<Variable>,
     capture_info_map: HirIdMap<Rc<Vec<CaptureInfo>>>,
@@ -263,8 +261,6 @@ impl IrMaps<'tcx> {
         IrMaps {
             tcx,
             body_owner,
-            num_live_nodes: 0,
-            num_vars: 0,
             live_node_map: HirIdMap::default(),
             variable_map: HirIdMap::default(),
             capture_info_map: Default::default(),
@@ -274,9 +270,8 @@ impl IrMaps<'tcx> {
     }
 
     fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
-        let ln = LiveNode(self.num_live_nodes as u32);
+        let ln = LiveNode(self.lnks.len() as u32);
         self.lnks.push(lnk);
-        self.num_live_nodes += 1;
 
         debug!("{:?} is of kind {}", ln, live_node_kind_to_string(lnk, self.tcx));
 
@@ -291,9 +286,8 @@ impl IrMaps<'tcx> {
     }
 
     fn add_variable(&mut self, vk: VarKind) -> Variable {
-        let v = Variable(self.num_vars as u32);
+        let v = Variable(self.var_kinds.len() as u32);
         self.var_kinds.push(vk);
-        self.num_vars += 1;
 
         match vk {
             Local(LocalInfo { id: node_id, .. }) | Param(node_id, _) | Upvar(node_id, _) => {
@@ -672,8 +666,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(def_id);
         let param_env = ir.tcx.param_env(def_id);
 
-        let num_live_nodes = ir.num_live_nodes;
-        let num_vars = ir.num_vars;
+        let num_live_nodes = ir.lnks.len();
+        let num_vars = ir.var_kinds.len();
 
         Liveness {
             ir,
@@ -719,7 +713,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn idx(&self, ln: LiveNode, var: Variable) -> usize {
-        ln.get() * self.ir.num_vars + var.get()
+        ln.get() * self.ir.var_kinds.len() + var.get()
     }
 
     fn live_on_entry(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
@@ -756,7 +750,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     {
         let node_base_idx = self.idx(ln, Variable(0));
         let succ_base_idx = self.idx(succ_ln, Variable(0));
-        for var_idx in 0..self.ir.num_vars {
+        for var_idx in 0..self.ir.var_kinds.len() {
             op(self, node_base_idx + var_idx, succ_base_idx + var_idx);
         }
     }
@@ -766,7 +760,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         F: FnMut(usize) -> bool,
     {
         let node_base_idx = self.idx(ln, Variable(0));
-        for var_idx in 0..self.ir.num_vars {
+        for var_idx in 0..self.ir.var_kinds.len() {
             let idx = node_base_idx + var_idx;
             if test(idx) {
                 write!(wr, " {:?}", Variable(var_idx as u32))?;
@@ -797,7 +791,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!(
             "^^ liveness computation results for body {} (entry={:?})",
             {
-                for ln_idx in 0..self.ir.num_live_nodes {
+                for ln_idx in 0..self.ir.lnks.len() {
                     debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
                 }
                 hir_id
