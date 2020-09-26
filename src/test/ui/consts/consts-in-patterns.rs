@@ -19,8 +19,6 @@ pub fn main() {
     assert_eq!(y, 2);
     let z = match &() {
         ZST => 9,
-        // FIXME: this should not be required
-        _ => 42,
     };
     assert_eq!(z, 9);
     let z = match b"" {

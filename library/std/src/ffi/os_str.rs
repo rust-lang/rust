@@ -94,7 +94,7 @@ pub struct OsString {
 // `OsStr::from_inner` current implementation relies
 // on `OsStr` being layout-compatible with `Slice`.
 // When attribute privacy is implemented, `OsStr` should be annotated as `#[repr(transparent)]`.
-// Anyway, `OsStr` representation and layout are considered implementation detail, are
+// Anyway, `OsStr` representation and layout are considered implementation details, are
 // not documented and must not be relied upon.
 pub struct OsStr {
     inner: Slice,

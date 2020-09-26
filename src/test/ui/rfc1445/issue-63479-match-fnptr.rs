@@ -5,6 +5,8 @@
 // cover the case this hit; I've since expanded it accordingly, but the
 // experience left me wary of leaving this regression test out.)
 
+#![warn(pointer_structural_match)]
+
 #[derive(Eq)]
 struct A {
   a: i64
@@ -31,6 +33,8 @@ fn main() {
   let s = B(my_fn);
   match s {
     B(TEST) => println!("matched"),
+     //~^ WARN pointers in patterns behave unpredictably
+    //~| WARN this was previously accepted by the compiler but is being phased out
     _ => panic!("didn't match")
   };
 }

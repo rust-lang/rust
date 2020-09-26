@@ -1,34 +1,30 @@
-warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
+warning: to use a constant of type `NoDerive` in a pattern, the constant's initializer must be trivial or `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/warn_corner_cases.rs:26:47
    |
 LL |     match None { Some(_) => panic!("whoops"), INDEX => dbg!(INDEX), };
    |                                               ^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/warn_corner_cases.rs:15:9
-   |
-LL | #![warn(indirect_structural_match)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(nontrivial_structural_match)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
 
-warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
+warning: to use a constant of type `NoDerive` in a pattern, the constant's initializer must be trivial or `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/warn_corner_cases.rs:32:47
    |
 LL |     match None { Some(_) => panic!("whoops"), CALL => dbg!(CALL), };
    |                                               ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
 
-warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
+warning: to use a constant of type `NoDerive` in a pattern, the constant's initializer must be trivial or `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/warn_corner_cases.rs:38:47
    |
 LL |     match None { Some(_) => panic!("whoops"), METHOD_CALL => dbg!(METHOD_CALL), };
    |                                               ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
 
 warning: 3 warnings emitted
 

@@ -742,6 +742,14 @@ rustc_queries! {
             desc { "destructure constant" }
         }
 
+        /// Dereference a constant reference or raw pointer and turn the result into a constant
+        /// again.
+        query deref_const(
+            key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
+        ) -> &'tcx ty::Const<'tcx> {
+            desc { "deref constant" }
+        }
+
         query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
             desc { "get a &core::panic::Location referring to a span" }
         }
