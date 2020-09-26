@@ -483,6 +483,22 @@ fn format_lines_errors_are_reported_with_tabs() {
     assert!(session.has_formatting_errors());
 }
 
+#[test]
+fn parser_creation_errors_on_entry_new_parser_from_file_panic() {
+    // See also https://github.com/rust-lang/rustfmt/issues/4418
+    let filename = "tests/parser/issue_4418.rs";
+    let file = PathBuf::from(filename);
+    let (config, operation, _) = read_config(&file);
+    if let Err(OperationError::ParseError { input, is_panic }) =
+        format_file(&file, operation, config)
+    {
+        assert_eq!(input.as_path().unwrap(), file);
+        assert!(is_panic);
+    } else {
+        panic!("Expected ParseError operation error");
+    }
+}
+
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
 fn check_files(files: Vec<PathBuf>, opt_config: &Option<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
