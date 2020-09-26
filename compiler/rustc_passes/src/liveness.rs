@@ -96,7 +96,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 use std::collections::VecDeque;
@@ -309,9 +309,9 @@ impl IrMaps<'tcx> {
         }
     }
 
-    fn variable_name(&self, var: Variable) -> String {
+    fn variable_name(&self, var: Variable) -> Symbol {
         match self.var_kinds[var.get()] {
-            Local(LocalInfo { name, .. }) | Param(_, name) | Upvar(_, name) => name.to_string(),
+            Local(LocalInfo { name, .. }) | Param(_, name) | Upvar(_, name) => name,
         }
     }
 
@@ -1587,7 +1587,14 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name.is_empty() || name.as_bytes()[0] == b'_' { None } else { Some(name) }
+        if name == kw::Invalid {
+            return None;
+        }
+        let name: &str = &name.as_str();
+        if name.as_bytes()[0] == b'_' {
+            return None;
+        }
+        Some(name.to_owned())
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
@@ -1659,7 +1666,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         // bindings, and we also consider the first pattern to be the "authoritative" set of ids.
         // However, we should take the ids and spans of variables with the same name from the later
         // patterns so the suggestions to prefix with underscores will apply to those too.
-        let mut vars: FxIndexMap<String, (LiveNode, Variable, Vec<(HirId, Span)>)> = <_>::default();
+        let mut vars: FxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span)>)> = <_>::default();
 
         pat.each_binding(|_, hir_id, pat_sp, ident| {
             let ln = entry_ln.unwrap_or_else(|| self.live_node(hir_id, pat_sp));
