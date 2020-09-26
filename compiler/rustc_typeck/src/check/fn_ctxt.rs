@@ -2991,7 +2991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                self.need_type_info_err((**self).body_id, sp, ty, E0282)
+                self.emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282)
                     .note("type must be known at this point")
                     .emit();
             }

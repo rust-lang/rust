@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Non-breaking changes since the last major version]
 
+- Add `x.py setup` [#76631](https://github.com/rust-lang/rust/pull/76631)
 - Add a changelog for x.py [#76626](https://github.com/rust-lang/rust/pull/76626)
 - Optionally, download LLVM from CI on Linux and NixOS
   + [#76439](https://github.com/rust-lang/rust/pull/76349)

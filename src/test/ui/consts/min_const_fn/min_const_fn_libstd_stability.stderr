@@ -14,7 +14,7 @@ LL | const fn bar2() -> u32 { foo2() }
    |
    = help: Const-stable functions can only call other const-stable functions
 
-error: const-stable function cannot use `#[feature(const_fn)]`
+error: const-stable function cannot use `#[feature(const_fn_floating_point_arithmetic)]`
   --> $DIR/min_const_fn_libstd_stability.rs:29:26
    |
 LL | const fn bar3() -> u32 { (5f32 + 6f32) as u32 }

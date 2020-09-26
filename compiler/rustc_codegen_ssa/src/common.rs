@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, non_snake_case)]
+#![allow(non_camel_case_types)]
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -25,7 +25,6 @@ pub enum IntPredicate {
     IntSLE,
 }
 
-#[allow(dead_code)]
 pub enum RealPredicate {
     RealPredicateFalse,
     RealOEQ,
@@ -60,7 +59,6 @@ pub enum AtomicRmwBinOp {
 }
 
 pub enum AtomicOrdering {
-    #[allow(dead_code)]
     NotAtomic,
     Unordered,
     Monotonic,

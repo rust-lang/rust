@@ -9,7 +9,6 @@ use syn::{
     ReturnType, Token, Type,
 };
 
-#[allow(non_camel_case_types)]
 mod kw {
     syn::custom_keyword!(query);
 }

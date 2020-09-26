@@ -1163,7 +1163,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             GenericParamDefKind::Const { .. } => {
                 let origin = ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::ConstParameterDefinition(param.name),
+                    kind: ConstVariableOriginKind::ConstParameterDefinition(
+                        param.name,
+                        param.def_id,
+                    ),
                     span,
                 };
                 let const_var_id =
@@ -1275,7 +1278,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Gives temporary access to the region constraint data.
-    #[allow(non_camel_case_types)] // bug with impl trait
     pub fn with_region_constraints<R>(
         &self,
         op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,

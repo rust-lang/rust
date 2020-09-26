@@ -4,8 +4,9 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify::{
     self, EqUnifyValue, InPlace, NoError, UnificationTable, UnifyKey, UnifyValue,
 };
+use rustc_span::def_id::DefId;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use std::cmp;
 use std::marker::PhantomData;
@@ -124,8 +125,7 @@ pub struct ConstVariableOrigin {
 pub enum ConstVariableOriginKind {
     MiscVariable,
     ConstInference,
-    // FIXME(const_generics): Consider storing the `DefId` of the param here.
-    ConstParameterDefinition(Symbol),
+    ConstParameterDefinition(Symbol, DefId),
     SubstitutionPlaceholder,
 }
 
@@ -176,17 +176,17 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
     type Error = (&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>);
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
-        let val = match (value1.val, value2.val) {
+        let (val, span) = match (value1.val, value2.val) {
             (ConstVariableValue::Known { .. }, ConstVariableValue::Known { .. }) => {
                 bug!("equating two const variables, both of which have known values")
             }
 
             // If one side is known, prefer that one.
             (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => {
-                Ok(value1.val)
+                (value1.val, value1.origin.span)
             }
             (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => {
-                Ok(value2.val)
+                (value2.val, value2.origin.span)
             }
 
             // If both sides are *unknown*, it hardly matters, does it?
@@ -200,14 +200,14 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
                 // universe is the minimum of the two universes, because that is
                 // the one which contains the fewest names in scope.
                 let universe = cmp::min(universe1, universe2);
-                Ok(ConstVariableValue::Unknown { universe })
+                (ConstVariableValue::Unknown { universe }, value1.origin.span)
             }
-        }?;
+        };
 
         Ok(ConstVarValue {
             origin: ConstVariableOrigin {
                 kind: ConstVariableOriginKind::ConstInference,
-                span: DUMMY_SP,
+                span: span,
             },
             val,
         })

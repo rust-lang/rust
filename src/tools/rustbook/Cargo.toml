@@ -9,6 +9,6 @@ edition = "2018"
 clap = "2.25.0"
 
 [dependencies.mdbook]
-version = "0.4.0"
+version = "0.4.3"
 default-features = false
 features = ["search"]
