@@ -221,7 +221,7 @@ impl Into<rustc_errors::DiagnosticId> for TypeAnnotationNeeded {
 }
 
 /// Information about a constant or a type containing inference variables.
-pub struct InferDiagnosticsData {
+pub struct InferenceDiagnosticsData {
     pub name: String,
     pub span: Option<Span>,
     pub description: Cow<'static, str>,
@@ -232,11 +232,11 @@ pub struct InferDiagnosticsData {
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Extracts data used by diagnostic for either types or constants
     /// which were stuck during inference.
-    pub fn extract_infer_data(
+    pub fn extract_inference_diagnostics_data(
         &self,
         arg: GenericArg<'tcx>,
         highlight: Option<ty::print::RegionHighlightMode>,
-    ) -> InferDiagnosticsData {
+    ) -> InferenceDiagnosticsData {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
@@ -266,7 +266,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             };
 
                         if name != kw::SelfUpper {
-                            return InferDiagnosticsData {
+                            return InferenceDiagnosticsData {
                                 name: name.to_string(),
                                 span: Some(var_origin.span),
                                 description: "type parameter".into(),
@@ -283,7 +283,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     printer.region_highlight_mode = highlight;
                 }
                 let _ = ty.print(printer);
-                InferDiagnosticsData {
+                InferenceDiagnosticsData {
                     name: s,
                     span: None,
                     description: ty.prefix_string(),
@@ -317,7 +317,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 (None, None)
                             };
 
-                        return InferDiagnosticsData {
+                        return InferenceDiagnosticsData {
                             name: name.to_string(),
                             span: Some(origin.span),
                             description: "const parameter".into(),
@@ -334,7 +334,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         printer.region_highlight_mode = highlight;
                     }
                     let _ = ct.print(printer);
-                    InferDiagnosticsData {
+                    InferenceDiagnosticsData {
                         name: s,
                         span: Some(origin.span),
                         description: "the constant".into(),
@@ -349,16 +349,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn need_type_info_err(
+    pub fn emit_inference_failure_err(
         &self,
         body_id: Option<hir::BodyId>,
         span: Span,
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
     ) -> DiagnosticBuilder<'tcx> {
-        let ty = self.resolve_vars_if_possible(&arg);
-        let arg_data = self.extract_infer_data(arg, None);
-        let kind_str = match ty.unpack() {
+        let arg = self.resolve_vars_if_possible(&arg);
+        let arg_data = self.extract_inference_diagnostics_data(arg, None);
+        let kind_str = match arg.unpack() {
             GenericArgKind::Type(_) => "type",
             GenericArgKind::Const(_) => "the value",
             GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
@@ -700,7 +700,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
-        let data = self.extract_infer_data(ty.into(), None);
+        let data = self.extract_inference_diagnostics_data(ty.into(), None);
 
         let mut err = struct_span_err!(
             self.tcx.sess,

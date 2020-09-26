@@ -1512,11 +1512,21 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
-                    self.need_type_info_err(body_id, span, self_ty.into(), ErrorCode::E0282).emit();
+                    self.emit_inference_failure_err(
+                        body_id,
+                        span,
+                        self_ty.into(),
+                        ErrorCode::E0282,
+                    )
+                    .emit();
                     return;
                 }
-                let mut err =
-                    self.need_type_info_err(body_id, span, self_ty.into(), ErrorCode::E0283);
+                let mut err = self.emit_inference_failure_err(
+                    body_id,
+                    span,
+                    self_ty.into(),
+                    ErrorCode::E0283,
+                );
                 err.note(&format!("cannot satisfy `{}`", predicate));
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
@@ -1580,7 +1590,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                self.need_type_info_err(body_id, span, arg, ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282)
             }
 
             ty::PredicateAtom::Subtype(data) => {
@@ -1591,7 +1601,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.need_type_info_err(body_id, span, a.into(), ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282)
             }
             ty::PredicateAtom::Projection(data) => {
                 let trait_ref = ty::Binder::bind(data).to_poly_trait_ref(self.tcx);
@@ -1602,8 +1612,12 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 if self_ty.needs_infer() && ty.needs_infer() {
                     // We do this for the `foo.collect()?` case to produce a suggestion.
-                    let mut err =
-                        self.need_type_info_err(body_id, span, self_ty.into(), ErrorCode::E0284);
+                    let mut err = self.emit_inference_failure_err(
+                        body_id,
+                        span,
+                        self_ty.into(),
+                        ErrorCode::E0284,
+                    );
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err
                 } else {

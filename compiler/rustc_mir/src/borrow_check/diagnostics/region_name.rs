@@ -396,7 +396,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ) -> Option<RegionNameHighlight> {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(needle_fr, counter);
-        let type_name = self.infcx.extract_infer_data(ty.into(), Some(highlight)).name;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(ty.into(), Some(highlight)).name;
 
         debug!(
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
@@ -645,7 +646,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
-        let type_name = self.infcx.extract_infer_data(return_ty.into(), Some(highlight)).name;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(return_ty.into(), Some(highlight)).name;
 
         let mir_hir_id = tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
 
@@ -697,7 +699,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
-        let type_name = self.infcx.extract_infer_data(yield_ty.into(), Some(highlight)).name;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(yield_ty.into(), Some(highlight)).name;
 
         let mir_hir_id = tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
 
