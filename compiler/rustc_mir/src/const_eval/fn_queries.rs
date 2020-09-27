@@ -50,7 +50,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             None => {
                 if let Some(stab) = tcx.lookup_stability(def_id) {
                     if stab.level.is_stable() {
-                        tcx.sess.span_err(
+                        tcx.sess.delay_span_bug(
                             tcx.def_span(def_id),
                             "stable const functions must have either `rustc_const_stable` or \
                              `rustc_const_unstable` attribute",

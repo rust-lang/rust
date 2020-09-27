@@ -204,9 +204,6 @@ impl Validator<'mir, 'tcx> {
     pub fn check_body(&mut self) {
         let ConstCx { tcx, body, def_id, .. } = *self.ccx;
 
-        // HACK: This function has side-effects???? Make sure we call it.
-        let _ = crate::const_eval::is_min_const_fn(tcx, def_id.to_def_id());
-
         // The local type and predicate checks are not free and only relevant for `const fn`s.
         if self.const_kind() == hir::ConstContext::ConstFn {
             // Prevent const trait methods from being annotated as `stable`.
