@@ -34,6 +34,18 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
 
     fn is_const_item_without_destructor(&self, local: Local) -> Option<DefId> {
         let def_id = self.is_const_item(local)?;
+
+        // We avoid linting mutation of a const item if the const's type has a
+        // Drop impl. The Drop logic observes the mutation which was performed.
+        //
+        //     struct Log { msg: &'static str }
+        //     const LOG: Log = Log { msg: "" };
+        //     impl Drop for Log {
+        //         fn drop(&mut self) { println!("{}", self.msg); }
+        //     }
+        //
+        //     LOG.msg = "wow";  // prints "wow"
+        //
         match self.tcx.adt_def(def_id).destructor(self.tcx) {
             Some(_) => None,
             None => Some(def_id),
