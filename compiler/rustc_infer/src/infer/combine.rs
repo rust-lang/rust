@@ -229,8 +229,6 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         target_vid: ty::ConstVid,
         ct: &'tcx ty::Const<'tcx>,
         vid_is_expected: bool,
-        vid: ty::ConstVid,
-        value: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         let (for_universe, span) = {
             let mut inner = self.inner.borrow_mut();
@@ -799,7 +797,7 @@ struct ConstInferUnifier<'cx, 'tcx> {
     /// The vid of the const variable that is in the process of being
     /// instantiated; if we find this within the const we are folding,
     /// that means we would have created a cyclic const.
-    target_vid: ty::ConstVid<'tcx>,
+    target_vid: ty::ConstVid,
 }
 
 // We use `TypeRelation` here to propagate `RelateResult` upwards.
@@ -934,7 +932,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                 // an inference variable which is unioned with `target_vid`.
                 //
                 // Not doing so can easily result in stack overflows.
-                if variable_table.unioned(self.target_vid, vid) {
+                if variable_table.unioned(self.target_vid.into(), vid) {
                     return Err(TypeError::CyclicConst(c));
                 }
 
@@ -949,7 +947,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                                 origin: var_value.origin,
                                 val: ConstVariableValue::Unknown { universe: self.for_universe },
                             });
-                            Ok(self.tcx().mk_const_var(new_var_id, c.ty))
+                            Ok(self.tcx().mk_const_var(new_var_id.vid, c.ty))
                         }
                     }
                 }

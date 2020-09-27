@@ -121,6 +121,11 @@ where
         self.relations().find(vid)
     }
 
+    pub fn unioned(&mut self, l: I, r: I) -> bool {
+        let mut relations = self.relations();
+        relations.find(l) == relations.find(r)
+    }
+
     pub fn unify_var_value(
         &mut self,
         vid: I,

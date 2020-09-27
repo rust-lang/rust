@@ -1136,6 +1136,13 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
 }
 
+fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
+    debug_assert!(crate_num == LOCAL_CRATE);
+    tcx.par_body_owners(|body_owner_def_id| {
+        tcx.ensure().typeck(body_owner_def_id);
+    });
+}
+
 fn fatally_break_rust(sess: &Session) {
     let handler = sess.diagnostic();
     handler.span_bug_no_panic(
