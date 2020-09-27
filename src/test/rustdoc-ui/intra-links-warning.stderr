@@ -10,37 +10,37 @@ warning: unresolved link to `Bar::foo`
   --> $DIR/intra-links-warning.rs:3:35
    |
 LL |        //! Test with [Foo::baz], [Bar::foo], ...
-   |                                   ^^^^^^^^ no item named `Bar` in `intra_links_warning`
+   |                                   ^^^^^^^^ the module `intra_links_warning` contains no item named `Bar`
 
 warning: unresolved link to `Uniooon::X`
   --> $DIR/intra-links-warning.rs:6:13
    |
 LL |      //! , [Uniooon::X] and [Qux::Z].
-   |             ^^^^^^^^^^ no item named `Uniooon` in `intra_links_warning`
+   |             ^^^^^^^^^^ the module `intra_links_warning` contains no item named `Uniooon`
 
 warning: unresolved link to `Qux::Z`
   --> $DIR/intra-links-warning.rs:6:30
    |
 LL |      //! , [Uniooon::X] and [Qux::Z].
-   |                              ^^^^^^ no item named `Qux` in `intra_links_warning`
+   |                              ^^^^^^ the module `intra_links_warning` contains no item named `Qux`
 
 warning: unresolved link to `Uniooon::X`
   --> $DIR/intra-links-warning.rs:10:14
    |
 LL |       //! , [Uniooon::X] and [Qux::Z].
-   |              ^^^^^^^^^^ no item named `Uniooon` in `intra_links_warning`
+   |              ^^^^^^^^^^ the module `intra_links_warning` contains no item named `Uniooon`
 
 warning: unresolved link to `Qux::Z`
   --> $DIR/intra-links-warning.rs:10:31
    |
 LL |       //! , [Uniooon::X] and [Qux::Z].
-   |                               ^^^^^^ no item named `Qux` in `intra_links_warning`
+   |                               ^^^^^^ the module `intra_links_warning` contains no item named `Qux`
 
 warning: unresolved link to `Qux:Y`
   --> $DIR/intra-links-warning.rs:14:13
    |
 LL |        /// [Qux:Y]
-   |             ^^^^^ no item named `Qux:Y` in `intra_links_warning`
+   |             ^^^^^ the module `intra_links_warning` contains no item named `Qux:Y`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -48,7 +48,7 @@ warning: unresolved link to `error`
   --> $DIR/intra-links-warning.rs:58:30
    |
 LL |  * time to introduce a link [error]*/
-   |                              ^^^^^ no item named `error` in `intra_links_warning`
+   |                              ^^^^^ the module `intra_links_warning` contains no item named `error`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -56,7 +56,7 @@ warning: unresolved link to `error`
   --> $DIR/intra-links-warning.rs:64:30
    |
 LL |  * time to introduce a link [error]
-   |                              ^^^^^ no item named `error` in `intra_links_warning`
+   |                              ^^^^^ the module `intra_links_warning` contains no item named `error`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -70,7 +70,7 @@ LL | #[doc = "single line [error]"]
            
            single line [error]
                         ^^^^^
-   = note: no item named `error` in `intra_links_warning`
+   = note: the module `intra_links_warning` contains no item named `error`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
@@ -83,7 +83,7 @@ LL | #[doc = "single line with \"escaping\" [error]"]
            
            single line with "escaping" [error]
                                         ^^^^^
-   = note: no item named `error` in `intra_links_warning`
+   = note: the module `intra_links_warning` contains no item named `error`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
@@ -98,14 +98,14 @@ LL | | /// [error]
            
            [error]
             ^^^^^
-   = note: no item named `error` in `intra_links_warning`
+   = note: the module `intra_links_warning` contains no item named `error`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error1`
   --> $DIR/intra-links-warning.rs:80:11
    |
 LL | /// docs [error1]
-   |           ^^^^^^ no item named `error1` in `intra_links_warning`
+   |           ^^^^^^ the module `intra_links_warning` contains no item named `error1`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -113,7 +113,7 @@ warning: unresolved link to `error2`
   --> $DIR/intra-links-warning.rs:82:11
    |
 LL | /// docs [error2]
-   |           ^^^^^^ no item named `error2` in `intra_links_warning`
+   |           ^^^^^^ the module `intra_links_warning` contains no item named `error2`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -121,7 +121,7 @@ warning: unresolved link to `BarA`
   --> $DIR/intra-links-warning.rs:21:10
    |
 LL | /// bar [BarA] bar
-   |          ^^^^ no item named `BarA` in `intra_links_warning`
+   |          ^^^^ the module `intra_links_warning` contains no item named `BarA`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -129,7 +129,7 @@ warning: unresolved link to `BarB`
   --> $DIR/intra-links-warning.rs:27:9
    |
 LL |  * bar [BarB] bar
-   |         ^^^^ no item named `BarB` in `intra_links_warning`
+   |         ^^^^ the module `intra_links_warning` contains no item named `BarB`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -137,7 +137,7 @@ warning: unresolved link to `BarC`
   --> $DIR/intra-links-warning.rs:34:6
    |
 LL | bar [BarC] bar
-   |      ^^^^ no item named `BarC` in `intra_links_warning`
+   |      ^^^^ the module `intra_links_warning` contains no item named `BarC`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -151,7 +151,7 @@ LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
            
            bar [BarD] bar
                 ^^^^
-   = note: no item named `BarD` in `intra_links_warning`
+   = note: the module `intra_links_warning` contains no item named `BarD`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarF`
@@ -167,7 +167,7 @@ LL | f!("Foo\nbar [BarF] bar\nbaz");
            
            bar [BarF] bar
                 ^^^^
-   = note: no item named `BarF` in `intra_links_warning`
+   = note: the module `intra_links_warning` contains no item named `BarF`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
