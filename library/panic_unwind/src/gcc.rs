@@ -114,7 +114,7 @@ const UNWIND_DATA_REG: (i32, i32) = (3, 4); // R3, R4 / X3, X4
 #[cfg(target_arch = "s390x")]
 const UNWIND_DATA_REG: (i32, i32) = (6, 7); // R6, R7
 
-#[cfg(target_arch = "sparc64")]
+#[cfg(any(target_arch = "sparc", target_arch = "sparc64"))]
 const UNWIND_DATA_REG: (i32, i32) = (24, 25); // I0, I1
 
 #[cfg(target_arch = "hexagon")]
