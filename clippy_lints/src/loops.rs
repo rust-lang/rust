@@ -768,12 +768,14 @@ fn check_for_loop<'tcx>(
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
 ) {
-    check_for_loop_range(cx, pat, arg, body, expr);
+    let is_manual_memcpy_triggered = detect_manual_memcpy(cx, pat, arg, body, expr);
+    if !is_manual_memcpy_triggered {
+        check_for_loop_range(cx, pat, arg, body, expr);
+        check_for_loop_explicit_counter(cx, pat, arg, body, expr);
+    }
     check_for_loop_arg(cx, pat, arg, expr);
-    check_for_loop_explicit_counter(cx, pat, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
-    detect_manual_memcpy(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
 }
 
@@ -1152,7 +1154,7 @@ fn detect_manual_memcpy<'tcx>(
     arg: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
-) {
+) -> bool {
     if let Some(higher::Range {
         start: Some(start),
         end: Some(end),
@@ -1222,9 +1224,11 @@ fn detect_manual_memcpy<'tcx>(
                     big_sugg,
                     Applicability::Unspecified,
                 );
+                return true;
             }
         }
     }
+    false
 }
 
 // Scans the body of the for loop and determines whether lint should be given

@@ -79,49 +79,49 @@ LL |     for i in 0..0 {
    |              ^^^^ help: try replacing the loop by: `dst[..0].clone_from_slice(&src[..0])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:121:14
+  --> $DIR/manual_memcpy.rs:120:14
    |
 LL |     for i in 3..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[3..src.len()].clone_from_slice(&src[..(src.len() - 3)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:127:14
+  --> $DIR/manual_memcpy.rs:126:14
    |
 LL |     for i in 3..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..(src.len() - 3)].clone_from_slice(&src[3..])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:133:14
+  --> $DIR/manual_memcpy.rs:132:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[3..(src.len() + 3)].clone_from_slice(&src[..])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:139:14
+  --> $DIR/manual_memcpy.rs:138:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[3..(src.len() + 3)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:145:14
+  --> $DIR/manual_memcpy.rs:144:14
    |
 LL |     for i in 3..(3 + src.len()) {
    |              ^^^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[3..((3 + src.len()))].clone_from_slice(&src[..((3 + src.len()) - 3)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:151:14
+  --> $DIR/manual_memcpy.rs:150:14
    |
 LL |     for i in 5..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[5..src.len()].clone_from_slice(&src[(3 - 2)..((src.len() - 2) + 3 - 5)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:157:14
+  --> $DIR/manual_memcpy.rs:156:14
    |
 LL |     for i in 3..10 {
    |              ^^^^^ help: try replacing the loop by: `dst[3..10].clone_from_slice(&src[5..(10 + 5 - 3)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:164:14
+  --> $DIR/manual_memcpy.rs:163:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^
@@ -133,13 +133,13 @@ LL |     dst2[30..(src.len() + 30)].clone_from_slice(&src[..]) {
    |
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:174:14
+  --> $DIR/manual_memcpy.rs:173:14
    |
 LL |     for i in 0..1 << 1 {
    |              ^^^^^^^^^ help: try replacing the loop by: `dst[(0 << 1)..((1 << 1) + (0 << 1))].clone_from_slice(&src[2..((1 << 1) + 2)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:182:14
+  --> $DIR/manual_memcpy.rs:181:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`

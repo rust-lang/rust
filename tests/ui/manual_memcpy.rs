@@ -115,7 +115,6 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     }
 }
 
-#[allow(clippy::needless_range_loop, clippy::explicit_counter_loop)]
 pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     let mut count = 0;
     for i in 3..src.len() {
