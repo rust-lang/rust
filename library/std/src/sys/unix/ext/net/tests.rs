@@ -2,7 +2,7 @@ use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
 use crate::iter::FromIterator;
-use crate::sys::unix::ext::io::AsRawFd;
+use crate::os::unix::io::AsRawFd;
 use crate::sys_common::io::test::tmpdir;
 use crate::thread;
 use crate::time::Duration;

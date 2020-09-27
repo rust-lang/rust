@@ -1,9 +1,8 @@
+use super::{sockaddr_un, SocketAddr, UnixStream};
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::Path;
+use crate::sys::cvt;
 use crate::sys::net::Socket;
-use crate::sys::unix::cvt;
-use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
-use crate::sys::unix::ext::net::stream::UnixStream;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, io, mem};
 
