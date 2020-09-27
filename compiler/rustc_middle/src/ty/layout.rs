@@ -2735,6 +2735,7 @@ where
             can_unwind: fn_can_unwind(cx.tcx().sess.panic_strategy(), codegen_fn_attr_flags, conv),
         };
         fn_abi.adjust_for_abi(cx, sig.abi);
+        debug!("FnAbi::new_internal = {:?}", fn_abi);
         fn_abi
     }
 
@@ -2748,7 +2749,7 @@ where
             || abi == SpecAbi::RustIntrinsic
             || abi == SpecAbi::PlatformIntrinsic
         {
-            let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>| {
+            let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>, is_ret: bool| {
                 if arg.is_ignore() {
                     return;
                 }
@@ -2786,8 +2787,11 @@ where
                     _ => return,
                 }
 
+                let max_by_val_size =
+                    if is_ret { call::max_ret_by_val(cx) } else { Pointer.size(cx) };
                 let size = arg.layout.size;
-                if arg.layout.is_unsized() || size > Pointer.size(cx) {
+
+                if arg.layout.is_unsized() || size > max_by_val_size {
                     arg.make_indirect();
                 } else {
                     // We want to pass small aggregates as immediates, but using
@@ -2796,9 +2800,9 @@ where
                     arg.cast_to(Reg { kind: RegKind::Integer, size });
                 }
             };
-            fixup(&mut self.ret);
+            fixup(&mut self.ret, true);
             for arg in &mut self.args {
-                fixup(arg);
+                fixup(arg, false);
             }
             if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
                 attrs.set(ArgAttribute::StructRet);
