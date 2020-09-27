@@ -422,10 +422,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 {
                     tcx.types.usize
                 }
-                Node::Ty(&Ty { kind: TyKind::Typeof(ref constant), .. })
-                    if constant.hir_id == hir_id =>
-                {
-                    tcx.typeck(def_id).node_type(constant.hir_id)
+                Node::Ty(&Ty { kind: TyKind::Typeof(ref e), .. }) if e.hir_id == hir_id => {
+                    tcx.typeck(def_id).node_type(e.hir_id)
                 }
 
                 Node::Expr(&Expr { kind: ExprKind::ConstBlock(ref anon_const), .. })

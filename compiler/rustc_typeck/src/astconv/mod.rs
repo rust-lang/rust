@@ -2279,7 +2279,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Typeof(ref e) => {
                 tcx.sess.emit_err(TypeofReservedKeywordUsed { span: ast_ty.span });
-                tcx.type_of(e.hir_id.owner)
+                tcx.type_of(tcx.hir().local_def_id(e.hir_id))
             }
             hir::TyKind::Infer => {
                 // Infer also appears as the type of arguments or return
