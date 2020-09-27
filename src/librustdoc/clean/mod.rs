@@ -2232,6 +2232,12 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
 
 impl Clean<Vec<Item>> for doctree::Import<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
+        // We need this comparison because some imports (for std types for example)
+        // are "inserted" as well but directly by the compiler and they should not be
+        // taken into account.
+        if self.span.is_dummy() {
+            return Vec::new();
+        }
         // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
@@ -2254,11 +2260,20 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         let inner = if self.glob {
             if !denied {
                 let mut visited = FxHashSet::default();
-                if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited) {
+                if let Some(mut items) = inline::try_inline_glob(cx, path.res, &mut visited) {
+                    items.push(Item {
+                        name: None,
+                        attrs: self.attrs.clean(cx),
+                        source: self.span.clean(cx),
+                        def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
+                        visibility: self.vis.clean(cx),
+                        stability: None,
+                        deprecation: None,
+                        inner: ImportItem(Import::Glob(resolve_use_source(cx, path))),
+                    });
                     return items;
                 }
             }
-
             Import::Glob(resolve_use_source(cx, path))
         } else {
             let name = self.name;
@@ -2273,7 +2288,8 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             }
             if !denied {
                 let mut visited = FxHashSet::default();
-                if let Some(items) = inline::try_inline(
+
+                if let Some(mut items) = inline::try_inline(
                     cx,
                     cx.tcx.parent_module(self.id).to_def_id(),
                     path.res,
@@ -2281,6 +2297,19 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                     Some(self.attrs),
                     &mut visited,
                 ) {
+                    items.push(Item {
+                        name: None,
+                        attrs: self.attrs.clean(cx),
+                        source: self.span.clean(cx),
+                        def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
+                        visibility: self.vis.clean(cx),
+                        stability: None,
+                        deprecation: None,
+                        inner: ImportItem(Import::Simple(
+                            self.name.clean(cx),
+                            resolve_use_source(cx, path),
+                        )),
+                    });
                     return items;
                 }
             }
