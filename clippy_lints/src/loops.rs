@@ -817,22 +817,22 @@ struct Offset {
 }
 
 impl Offset {
-    fn negative(value: MinifyingSugg<'static>) -> Self {
+    fn negative(value: Sugg<'static>) -> Self {
         Self {
-            value,
+            value: value.into(),
             sign: OffsetSign::Negative,
         }
     }
 
-    fn positive(value: MinifyingSugg<'static>) -> Self {
+    fn positive(value: Sugg<'static>) -> Self {
         Self {
-            value,
+            value: value.into(),
             sign: OffsetSign::Positive,
         }
     }
 
     fn empty() -> Self {
-        Self::positive(MinifyingSugg::non_paren("0"))
+        Self::positive(sugg::ZERO)
     }
 }
 
@@ -844,30 +844,22 @@ fn apply_offset(lhs: &MinifyingSugg<'static>, rhs: &Offset) -> MinifyingSugg<'st
 }
 
 #[derive(Clone)]
-struct MinifyingSugg<'a>(sugg::Sugg<'a>);
-
-impl std::fmt::Display for MinifyingSugg<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        std::fmt::Display::fmt(&self.0, f)
-    }
-}
+struct MinifyingSugg<'a>(Sugg<'a>);
 
 impl<'a> MinifyingSugg<'a> {
     fn as_str(&self) -> &str {
-        let sugg::Sugg::NonParen(s) | sugg::Sugg::MaybeParen(s) | sugg::Sugg::BinOp(_, s) = &self.0;
+        let Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) = &self.0;
         s.as_ref()
     }
 
-    fn hir(cx: &LateContext<'_>, expr: &Expr<'_>, default: &'a str) -> Self {
-        Self(sugg::Sugg::hir(cx, expr, default))
+    fn into_sugg(self) -> Sugg<'a> {
+        self.0
     }
+}
 
-    fn maybe_par(self) -> Self {
-        Self(self.0.maybe_par())
-    }
-
-    fn non_paren(str: impl Into<std::borrow::Cow<'a, str>>) -> Self {
-        Self(sugg::Sugg::NonParen(str.into()))
+impl<'a> From<Sugg<'a>> for MinifyingSugg<'a> {
+    fn from(sugg: Sugg<'a>) -> Self {
+        Self(sugg)
     }
 }
 
@@ -877,7 +869,7 @@ impl std::ops::Add for &MinifyingSugg<'static> {
         match (self.as_str(), rhs.as_str()) {
             ("0", _) => rhs.clone(),
             (_, "0") => self.clone(),
-            (_, _) => MinifyingSugg(&self.0 + &rhs.0),
+            (_, _) => (&self.0 + &rhs.0).into(),
         }
     }
 }
@@ -887,9 +879,9 @@ impl std::ops::Sub for &MinifyingSugg<'static> {
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
         match (self.as_str(), rhs.as_str()) {
             (_, "0") => self.clone(),
-            ("0", _) => MinifyingSugg(-(rhs.0.clone())),
-            (x, y) if x == y => MinifyingSugg::non_paren("0"),
-            (_, _) => MinifyingSugg(&self.0 - &rhs.0),
+            ("0", _) => (-rhs.0.clone()).into(),
+            (x, y) if x == y => sugg::ZERO.into(),
+            (_, _) => (&self.0 - &rhs.0).into(),
         }
     }
 }
@@ -900,7 +892,7 @@ impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
         match (self.as_str(), rhs.as_str()) {
             ("0", _) => rhs.clone(),
             (_, "0") => self,
-            (_, _) => MinifyingSugg(self.0 + &rhs.0),
+            (_, _) => (self.0 + &rhs.0).into(),
         }
     }
 }
@@ -910,9 +902,9 @@ impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
         match (self.as_str(), rhs.as_str()) {
             (_, "0") => self,
-            ("0", _) => MinifyingSugg(-(rhs.0.clone())),
-            (x, y) if x == y => MinifyingSugg::non_paren("0"),
-            (_, _) => MinifyingSugg(self.0 - &rhs.0),
+            ("0", _) => (-rhs.0.clone()).into(),
+            (x, y) if x == y => sugg::ZERO.into(),
+            (_, _) => (self.0 - &rhs.0).into(),
         }
     }
 }
@@ -969,19 +961,15 @@ fn get_details_from_idx<'tcx>(
         })
     }
 
-    fn get_offset<'tcx>(
-        cx: &LateContext<'tcx>,
-        e: &Expr<'_>,
-        starts: &[Start<'tcx>],
-    ) -> Option<MinifyingSugg<'static>> {
+    fn get_offset<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, starts: &[Start<'tcx>]) -> Option<Sugg<'static>> {
         match &e.kind {
             ExprKind::Lit(l) => match l.node {
-                ast::LitKind::Int(x, _ty) => Some(MinifyingSugg::non_paren(x.to_string())),
+                ast::LitKind::Int(x, _ty) => Some(Sugg::NonParen(x.to_string().into())),
                 _ => None,
             },
             ExprKind::Path(..) if get_start(cx, e, starts).is_none() => {
                 // `e` is always non paren as it's a `Path`
-                Some(MinifyingSugg::non_paren(snippet(cx, e.span, "???")))
+                Some(Sugg::NonParen(snippet(cx, e.span, "???")))
             },
             _ => None,
         }
@@ -1072,7 +1060,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
 ) -> String {
     fn print_offset(offset: MinifyingSugg<'static>) -> MinifyingSugg<'static> {
         if offset.as_str() == "0" {
-            MinifyingSugg::non_paren("")
+            sugg::EMPTY.into()
         } else {
             offset
         }
@@ -1088,14 +1076,14 @@ fn build_manual_memcpy_suggestion<'tcx>(
                 if var_def_id(cx, arg) == var_def_id(cx, base);
                 then {
                     if sugg.as_str() == end_str {
-                        MinifyingSugg::non_paren("")
+                        sugg::EMPTY.into()
                     } else {
                         sugg
                     }
                 } else {
                     match limits {
                         ast::RangeLimits::Closed => {
-                            sugg + &MinifyingSugg::non_paren("1")
+                            sugg + &sugg::ONE.into()
                         },
                         ast::RangeLimits::HalfOpen => sugg,
                     }
@@ -1103,29 +1091,31 @@ fn build_manual_memcpy_suggestion<'tcx>(
             }
         };
 
-    let start_str = MinifyingSugg::hir(cx, start, "");
-    let end_str = MinifyingSugg::hir(cx, end, "");
+    let start_str = Sugg::hir(cx, start, "").into();
+    let end_str: MinifyingSugg<'_> = Sugg::hir(cx, end, "").into();
 
     let print_offset_and_limit = |idx_expr: &IndexExpr<'_>| match idx_expr.idx {
         StartKind::Range => (
-            print_offset(apply_offset(&start_str, &idx_expr.idx_offset)),
+            print_offset(apply_offset(&start_str, &idx_expr.idx_offset)).into_sugg(),
             print_limit(
                 end,
                 end_str.as_str(),
                 idx_expr.base,
                 apply_offset(&end_str, &idx_expr.idx_offset),
-            ),
+            )
+            .into_sugg(),
         ),
         StartKind::Counter { initializer } => {
-            let counter_start = MinifyingSugg::hir(cx, initializer, "");
+            let counter_start = Sugg::hir(cx, initializer, "").into();
             (
-                print_offset(apply_offset(&counter_start, &idx_expr.idx_offset)),
+                print_offset(apply_offset(&counter_start, &idx_expr.idx_offset)).into_sugg(),
                 print_limit(
                     end,
                     end_str.as_str(),
                     idx_expr.base,
                     apply_offset(&end_str, &idx_expr.idx_offset) + &counter_start - &start_str,
-                ),
+                )
+                .into_sugg(),
             )
         },
     };
@@ -1136,7 +1126,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let dst_base_str = snippet(cx, dst.base.span, "???");
     let src_base_str = snippet(cx, src.base.span, "???");
 
-    let dst = if dst_offset.as_str() == "" && dst_limit.as_str() == "" {
+    let dst = if dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY {
         dst_base_str
     } else {
         format!(

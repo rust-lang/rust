@@ -16,7 +16,7 @@ use std::fmt::Display;
 use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parenthesis.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Sugg<'a> {
     /// An expression that never needs parenthesis such as `1337` or `[0; 42]`.
     NonParen(Cow<'a, str>),
@@ -27,8 +27,12 @@ pub enum Sugg<'a> {
     BinOp(AssocOp, Cow<'a, str>),
 }
 
+/// Literal constant `0`, for convenience.
+pub const ZERO: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("0"));
 /// Literal constant `1`, for convenience.
 pub const ONE: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("1"));
+/// a constant represents an empty string, for convenience.
+pub const EMPTY: Sugg<'static> = Sugg::NonParen(Cow::Borrowed(""));
 
 impl Display for Sugg<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
