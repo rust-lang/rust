@@ -1333,9 +1333,6 @@ fn add_late_link_args(
     crate_type: CrateType,
     codegen_results: &CodegenResults,
 ) {
-    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
-        cmd.args(args);
-    }
     let any_dynamic_crate = crate_type == CrateType::Dylib
         || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
             *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
@@ -1348,6 +1345,9 @@ fn add_late_link_args(
         if let Some(args) = sess.target.target.options.late_link_args_static.get(&flavor) {
             cmd.args(args);
         }
+    }
+    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
+        cmd.args(args);
     }
 }
 
