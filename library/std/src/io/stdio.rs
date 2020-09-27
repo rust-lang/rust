@@ -905,6 +905,10 @@ impl fmt::Debug for StderrLock<'_> {
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
+    if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
+        // LOCAL_STDERR is definitely None since LOCAL_STREAMS is false.
+        return None;
+    }
     let s = LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(
         |mut s| {
             let _ = s.flush();
@@ -932,6 +936,10 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 #[doc(hidden)]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
+    if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
+        // LOCAL_STDOUT is definitely None since LOCAL_STREAMS is false.
+        return None;
+    }
     let s = LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(
         |mut s| {
             let _ = s.flush();
