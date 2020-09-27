@@ -18,6 +18,7 @@ pub mod internal_lints;
 pub mod numeric_literal;
 pub mod paths;
 pub mod ptr;
+pub mod qualify_min_const_fn;
 pub mod sugg;
 pub mod usage;
 

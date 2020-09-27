@@ -87,6 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
         let maybe_storage_live_result = MaybeStorageLive
             .into_engine(cx.tcx, mir, def_id.to_def_id())
+            .pass_name("redundant_clone")
             .iterate_to_fixpoint()
             .into_results_cursor(mir);
         let mut possible_borrower = {
