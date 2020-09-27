@@ -33,7 +33,7 @@ SIMD has a few special vocabulary terms you should know:
 
 When using SIMD, you should be familiar with the CPU feature set that you're targeting.
 
-On `arm` and `aarch64` it's fairly simple. There's just one CPU feature that controls if SIMD is available: `neon` (or "NEON", all caps, as the ARM docs often put it). Neon registers are 128-bit, but they can also operate as 64-bit (the high lanes are just zeroed out).
+On `arm` and `aarch64` it's fairly simple. There's just one CPU feature that controls if SIMD is available: `neon` (or "NEON", all caps, as the ARM docs often put it). Neon registers can be used as 64-bit or 128-bit. When doing 128-bit operations it just uses two 64-bit registers as a single 128-bit register.
 
 > By default, the `aarch64`, `arm`, and `thumb` Rust targets generally do not enable `neon` unless it's in the target string.
 
@@ -41,6 +41,8 @@ On `x86` and `x86_64` it's slightly more complicated. The SIMD support is split 
 * 128-bit: `sse`, `sse2`, `sse3`, `ssse3` (not a typo!), `sse4.1`, `sse4.2`, `sse4a` (AMD only)
 * 256-bit (mostly): `avx`, `avx2`, `fma`
 * 512-bit (mostly): a *wide* range of `avx512` variations
+
+The list notes the bit widths available at each feature level, though the operations of the more advanced features can generally be used with the smaller register sizes as well. For example, new operations introduced in `avx` generally have a 128-bit form as well as a 256-bit form. This means that even if you only do 128-bit work you can still benefit from the later feature levels.
 
 > By default, the `i686` and `x86_64` Rust targets enable `sse` and `sse2`.
 
