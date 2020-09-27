@@ -941,7 +941,8 @@ pub fn read_line() -> Result<String> {
         0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly")),
         _ => {
             input.pop();
-            #[cfg(windows)] input.pop();
+            #[cfg(windows)]
+            input.pop();
             Ok(input)
         }
     }
