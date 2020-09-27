@@ -759,7 +759,7 @@ impl ExpnData {
 
     #[inline]
     pub fn is_root(&self) -> bool {
-        if let ExpnKind::Root = self.kind { true } else { false }
+        matches!(self.kind, ExpnKind::Root)
     }
 }
 
