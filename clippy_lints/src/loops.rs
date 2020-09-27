@@ -779,6 +779,17 @@ fn check_for_loop<'tcx>(
     detect_same_item_push(cx, pat, arg, body, expr);
 }
 
+// this function assumes the given expression is a `for` loop.
+fn get_span_of_entire_for_loop(expr: &Expr<'_>) -> Span {
+    // for some reason this is the only way to get the `Span`
+    // of the entire `for` loop
+    if let ExprKind::Match(_, arms, _) = &expr.kind {
+        arms[0].body.span
+    } else {
+        unreachable!()
+    }
+}
+
 fn same_var<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
     if_chain! {
         if let ExprKind::Path(qpath) = &expr.kind;
@@ -1138,7 +1149,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
     };
 
     format!(
-        "{}.clone_from_slice(&{}[{}..{}])",
+        "{}.clone_from_slice(&{}[{}..{}]);",
         dst,
         src_base_str,
         src_offset.maybe_par(),
@@ -1218,7 +1229,7 @@ fn detect_manual_memcpy<'tcx>(
                 span_lint_and_sugg(
                     cx,
                     MANUAL_MEMCPY,
-                    expr.span,
+                    get_span_of_entire_for_loop(expr),
                     "it looks like you're manually copying between slices",
                     "try replacing the loop by",
                     big_sugg,
@@ -1734,13 +1745,7 @@ fn check_for_loop_explicit_counter<'tcx>(
                 then {
                     let mut applicability = Applicability::MachineApplicable;
 
-                    // for some reason this is the only way to get the `Span`
-                    // of the entire `for` loop
-                    let for_span = if let ExprKind::Match(_, arms, _) = &expr.kind {
-                        arms[0].body.span
-                    } else {
-                        unreachable!()
-                    };
+                    let for_span = get_span_of_entire_for_loop(expr);
 
                     span_lint_and_sugg(
                         cx,
