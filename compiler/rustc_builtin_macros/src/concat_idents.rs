@@ -27,15 +27,15 @@ pub fn expand_concat_idents<'cx>(
                 }
             }
         } else {
-            match e {
-                TokenTree::Token(Token { kind: token::Ident(name, _), .. }) => {
-                    res_str.push_str(&name.as_str())
-                }
-                _ => {
-                    cx.span_err(sp, "concat_idents! requires ident args.");
-                    return DummyResult::any(sp);
+            if let TokenTree::Token(token) = e {
+                if let Some((ident, _)) = token.ident() {
+                    res_str.push_str(&ident.name.as_str());
+                    continue;
                 }
             }
+
+            cx.span_err(sp, "concat_idents! requires ident args.");
+            return DummyResult::any(sp);
         }
     }
 
