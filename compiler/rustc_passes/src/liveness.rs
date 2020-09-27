@@ -138,38 +138,6 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
-    type Map = Map<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
-    }
-
-    fn visit_fn(
-        &mut self,
-        fk: FnKind<'tcx>,
-        fd: &'tcx hir::FnDecl<'tcx>,
-        b: hir::BodyId,
-        s: Span,
-        id: HirId,
-    ) {
-        visit_fn(self, fk, fd, b, s, id);
-    }
-
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
-        visit_local(self, l);
-    }
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        visit_expr(self, ex);
-    }
-    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
-        visit_arm(self, a);
-    }
-    fn visit_param(&mut self, p: &'tcx hir::Param<'tcx>) {
-        visit_param(self, p);
-    }
-}
-
 fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx).as_deep_visitor());
 }
@@ -300,196 +268,204 @@ impl IrMaps<'tcx> {
     fn set_captures(&mut self, hir_id: HirId, cs: Vec<CaptureInfo>) {
         self.capture_info_map.insert(hir_id, Rc::new(cs));
     }
-}
 
-fn visit_fn<'tcx>(
-    ir: &mut IrMaps<'tcx>,
-    fk: FnKind<'tcx>,
-    decl: &'tcx hir::FnDecl<'tcx>,
-    body_id: hir::BodyId,
-    sp: Span,
-    id: hir::HirId,
-) {
-    debug!("visit_fn {:?}", id);
-
-    // swap in a new set of IR maps for this function body:
-    let def_id = ir.tcx.hir().local_def_id(id);
-    let mut fn_maps = IrMaps::new(ir.tcx);
-
-    // Don't run unused pass for #[derive()]
-    if let FnKind::Method(..) = fk {
-        let parent = ir.tcx.hir().get_parent_item(id);
-        if let Some(Node::Item(i)) = ir.tcx.hir().find(parent) {
-            if i.attrs.iter().any(|a| ir.tcx.sess.check_name(a, sym::automatically_derived)) {
-                return;
+    fn add_from_pat(&mut self, pat: &hir::Pat<'tcx>) {
+        // For struct patterns, take note of which fields used shorthand
+        // (`x` rather than `x: x`).
+        let mut shorthand_field_ids = HirIdSet::default();
+        let mut pats = VecDeque::new();
+        pats.push_back(pat);
+        while let Some(pat) = pats.pop_front() {
+            use rustc_hir::PatKind::*;
+            match &pat.kind {
+                Binding(.., inner_pat) => {
+                    pats.extend(inner_pat.iter());
+                }
+                Struct(_, fields, _) => {
+                    let ids = fields.iter().filter(|f| f.is_shorthand).map(|f| f.pat.hir_id);
+                    shorthand_field_ids.extend(ids);
+                }
+                Ref(inner_pat, _) | Box(inner_pat) => {
+                    pats.push_back(inner_pat);
+                }
+                TupleStruct(_, inner_pats, _) | Tuple(inner_pats, _) | Or(inner_pats) => {
+                    pats.extend(inner_pats.iter());
+                }
+                Slice(pre_pats, inner_pat, post_pats) => {
+                    pats.extend(pre_pats.iter());
+                    pats.extend(inner_pat.iter());
+                    pats.extend(post_pats.iter());
+                }
+                _ => {}
             }
         }
+
+        pat.each_binding(|_, hir_id, _, ident| {
+            self.add_live_node_for_node(hir_id, VarDefNode(ident.span));
+            self.add_variable(Local(LocalInfo {
+                id: hir_id,
+                name: ident.name,
+                is_shorthand: shorthand_field_ids.contains(&hir_id),
+            }));
+        });
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
-    debug!("creating fn_maps: {:p}", &fn_maps);
+    fn visit_fn(
+        &mut self,
+        fk: FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl<'tcx>,
+        body_id: hir::BodyId,
+        sp: Span,
+        id: HirId,
+    ) {
+        debug!("visit_fn {:?}", id);
 
-    let body = ir.tcx.hir().body(body_id);
+        // swap in a new set of IR maps for this function body:
+        let def_id = self.tcx.hir().local_def_id(id);
+        let mut fn_maps = IrMaps::new(self.tcx);
 
-    if let Some(upvars) = ir.tcx.upvars_mentioned(def_id) {
-        for (&var_hir_id, _upvar) in upvars {
-            let var_name = ir.tcx.hir().name(var_hir_id);
-            fn_maps.add_variable(Upvar(var_hir_id, var_name));
+        // Don't run unused pass for #[derive()]
+        if let FnKind::Method(..) = fk {
+            let parent = self.tcx.hir().get_parent_item(id);
+            if let Some(Node::Item(i)) = self.tcx.hir().find(parent) {
+                if i.attrs.iter().any(|a| self.tcx.sess.check_name(a, sym::automatically_derived)) {
+                    return;
+                }
+            }
         }
-    }
 
-    // gather up the various local variables, significant expressions,
-    // and so forth:
-    intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
+        debug!("creating fn_maps: {:p}", &fn_maps);
 
-    // compute liveness
-    let mut lsets = Liveness::new(&mut fn_maps, def_id);
-    let entry_ln = lsets.compute(&body, sp, id);
-    lsets.log_liveness(entry_ln, id);
+        let body = self.tcx.hir().body(body_id);
 
-    // check for various error conditions
-    lsets.visit_body(body);
-    lsets.warn_about_unused_upvars(entry_ln);
-    lsets.warn_about_unused_args(body, entry_ln);
-}
-
-fn add_from_pat(ir: &mut IrMaps<'_>, pat: &hir::Pat<'_>) {
-    // For struct patterns, take note of which fields used shorthand
-    // (`x` rather than `x: x`).
-    let mut shorthand_field_ids = HirIdSet::default();
-    let mut pats = VecDeque::new();
-    pats.push_back(pat);
-    while let Some(pat) = pats.pop_front() {
-        use rustc_hir::PatKind::*;
-        match &pat.kind {
-            Binding(.., inner_pat) => {
-                pats.extend(inner_pat.iter());
+        if let Some(upvars) = self.tcx.upvars_mentioned(def_id) {
+            for (&var_hir_id, _upvar) in upvars {
+                let var_name = self.tcx.hir().name(var_hir_id);
+                fn_maps.add_variable(Upvar(var_hir_id, var_name));
             }
-            Struct(_, fields, _) => {
-                let ids = fields.iter().filter(|f| f.is_shorthand).map(|f| f.pat.hir_id);
-                shorthand_field_ids.extend(ids);
-            }
-            Ref(inner_pat, _) | Box(inner_pat) => {
-                pats.push_back(inner_pat);
-            }
-            TupleStruct(_, inner_pats, _) | Tuple(inner_pats, _) | Or(inner_pats) => {
-                pats.extend(inner_pats.iter());
-            }
-            Slice(pre_pats, inner_pat, post_pats) => {
-                pats.extend(pre_pats.iter());
-                pats.extend(inner_pat.iter());
-                pats.extend(post_pats.iter());
-            }
-            _ => {}
         }
+
+        // gather up the various local variables, significant expressions,
+        // and so forth:
+        intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
+
+        // compute liveness
+        let mut lsets = Liveness::new(&mut fn_maps, def_id);
+        let entry_ln = lsets.compute(&body, sp, id);
+        lsets.log_liveness(entry_ln, id);
+
+        // check for various error conditions
+        lsets.visit_body(body);
+        lsets.warn_about_unused_upvars(entry_ln);
+        lsets.warn_about_unused_args(body, entry_ln);
     }
 
-    pat.each_binding(|_, hir_id, _, ident| {
-        ir.add_live_node_for_node(hir_id, VarDefNode(ident.span));
-        ir.add_variable(Local(LocalInfo {
-            id: hir_id,
-            name: ident.name,
-            is_shorthand: shorthand_field_ids.contains(&hir_id),
-        }));
-    });
-}
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+        self.add_from_pat(&local.pat);
+        intravisit::walk_local(self, local);
+    }
 
-fn visit_local<'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local<'tcx>) {
-    add_from_pat(ir, &local.pat);
-    intravisit::walk_local(ir, local);
-}
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
+        self.add_from_pat(&arm.pat);
+        intravisit::walk_arm(self, arm);
+    }
 
-fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
-    add_from_pat(ir, &arm.pat);
-    intravisit::walk_arm(ir, arm);
-}
-
-fn visit_param<'tcx>(ir: &mut IrMaps<'tcx>, param: &'tcx hir::Param<'tcx>) {
-    let is_shorthand = match param.pat.kind {
-        rustc_hir::PatKind::Struct(..) => true,
-        _ => false,
-    };
-    param.pat.each_binding(|_bm, hir_id, _x, ident| {
-        let var = if is_shorthand {
-            Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
-        } else {
-            Param(hir_id, ident.name)
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+        let is_shorthand = match param.pat.kind {
+            rustc_hir::PatKind::Struct(..) => true,
+            _ => false,
         };
-        ir.add_variable(var);
-    });
-    intravisit::walk_param(ir, param);
-}
+        param.pat.each_binding(|_bm, hir_id, _x, ident| {
+            let var = if is_shorthand {
+                Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
+            } else {
+                Param(hir_id, ident.name)
+            };
+            self.add_variable(var);
+        });
+        intravisit::walk_param(self, param);
+    }
 
-fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
-    match expr.kind {
-        // live nodes required for uses or definitions of variables:
-        hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-            debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
-            if let Res::Local(_var_hir_id) = path.res {
-                ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        match expr.kind {
+            // live nodes required for uses or definitions of variables:
+            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+                debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
+                if let Res::Local(_var_hir_id) = path.res {
+                    self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                }
+                intravisit::walk_expr(self, expr);
             }
-            intravisit::walk_expr(ir, expr);
-        }
-        hir::ExprKind::Closure(..) => {
-            // Interesting control flow (for loops can contain labeled
-            // breaks or continues)
-            ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+            hir::ExprKind::Closure(..) => {
+                // Interesting control flow (for loops can contain labeled
+                // breaks or continues)
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
 
-            // Make a live_node for each captured variable, with the span
-            // being the location that the variable is used.  This results
-            // in better error messages than just pointing at the closure
-            // construction site.
-            let mut call_caps = Vec::new();
-            let closure_def_id = ir.tcx.hir().local_def_id(expr.hir_id);
-            if let Some(upvars) = ir.tcx.upvars_mentioned(closure_def_id) {
-                call_caps.extend(upvars.iter().map(|(&var_id, upvar)| {
-                    let upvar_ln = ir.add_live_node(UpvarNode(upvar.span));
-                    CaptureInfo { ln: upvar_ln, var_hid: var_id }
-                }));
+                // Make a live_node for each captured variable, with the span
+                // being the location that the variable is used.  This results
+                // in better error messages than just pointing at the closure
+                // construction site.
+                let mut call_caps = Vec::new();
+                let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
+                if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
+                    call_caps.extend(upvars.iter().map(|(&var_id, upvar)| {
+                        let upvar_ln = self.add_live_node(UpvarNode(upvar.span));
+                        CaptureInfo { ln: upvar_ln, var_hid: var_id }
+                    }));
+                }
+                self.set_captures(expr.hir_id, call_caps);
+                intravisit::walk_expr(self, expr);
             }
-            ir.set_captures(expr.hir_id, call_caps);
-            intravisit::walk_expr(ir, expr);
-        }
 
-        // live nodes required for interesting control flow:
-        hir::ExprKind::Match(..) | hir::ExprKind::Loop(..) => {
-            ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
-            intravisit::walk_expr(ir, expr);
-        }
-        hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
-            ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
-            intravisit::walk_expr(ir, expr);
-        }
+            // live nodes required for interesting control flow:
+            hir::ExprKind::Match(..) | hir::ExprKind::Loop(..) => {
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                intravisit::walk_expr(self, expr);
+            }
+            hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                intravisit::walk_expr(self, expr);
+            }
 
-        // otherwise, live nodes are not required:
-        hir::ExprKind::Index(..)
-        | hir::ExprKind::Field(..)
-        | hir::ExprKind::Array(..)
-        | hir::ExprKind::Call(..)
-        | hir::ExprKind::MethodCall(..)
-        | hir::ExprKind::Tup(..)
-        | hir::ExprKind::Binary(..)
-        | hir::ExprKind::AddrOf(..)
-        | hir::ExprKind::Cast(..)
-        | hir::ExprKind::DropTemps(..)
-        | hir::ExprKind::Unary(..)
-        | hir::ExprKind::Break(..)
-        | hir::ExprKind::Continue(_)
-        | hir::ExprKind::Lit(_)
-        | hir::ExprKind::Ret(..)
-        | hir::ExprKind::Block(..)
-        | hir::ExprKind::Assign(..)
-        | hir::ExprKind::AssignOp(..)
-        | hir::ExprKind::Struct(..)
-        | hir::ExprKind::Repeat(..)
-        | hir::ExprKind::InlineAsm(..)
-        | hir::ExprKind::LlvmInlineAsm(..)
-        | hir::ExprKind::Box(..)
-        | hir::ExprKind::Yield(..)
-        | hir::ExprKind::Type(..)
-        | hir::ExprKind::Err
-        | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
-        | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {
-            intravisit::walk_expr(ir, expr);
+            // otherwise, live nodes are not required:
+            hir::ExprKind::Index(..)
+            | hir::ExprKind::Field(..)
+            | hir::ExprKind::Array(..)
+            | hir::ExprKind::Call(..)
+            | hir::ExprKind::MethodCall(..)
+            | hir::ExprKind::Tup(..)
+            | hir::ExprKind::Binary(..)
+            | hir::ExprKind::AddrOf(..)
+            | hir::ExprKind::Cast(..)
+            | hir::ExprKind::DropTemps(..)
+            | hir::ExprKind::Unary(..)
+            | hir::ExprKind::Break(..)
+            | hir::ExprKind::Continue(_)
+            | hir::ExprKind::Lit(_)
+            | hir::ExprKind::Ret(..)
+            | hir::ExprKind::Block(..)
+            | hir::ExprKind::Assign(..)
+            | hir::ExprKind::AssignOp(..)
+            | hir::ExprKind::Struct(..)
+            | hir::ExprKind::Repeat(..)
+            | hir::ExprKind::InlineAsm(..)
+            | hir::ExprKind::LlvmInlineAsm(..)
+            | hir::ExprKind::Box(..)
+            | hir::ExprKind::Yield(..)
+            | hir::ExprKind::Type(..)
+            | hir::ExprKind::Err
+            | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
+            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {
+                intravisit::walk_expr(self, expr);
+            }
         }
     }
 }
