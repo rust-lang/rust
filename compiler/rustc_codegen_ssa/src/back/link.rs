@@ -1289,7 +1289,6 @@ fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor)
         cmd.args(args);
     }
     cmd.args(&sess.opts.debugging_opts.pre_link_args);
-    add_apple_sdk(cmd, sess, flavor);
 }
 
 /// Add a link script embedded in the target, if applicable.
@@ -1524,6 +1523,9 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
 
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_pre_link_args(cmd, sess, flavor);
+
+    // NO-OPT-OUT, OBJECT-FILES-NO
+    add_apple_sdk(cmd, sess, flavor);
 
     // NO-OPT-OUT
     add_link_script(cmd, sess, tmpdir, crate_type);
