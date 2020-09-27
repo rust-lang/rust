@@ -1103,9 +1103,6 @@ impl Session {
         self.used_attrs.lock().is_marked(attr)
     }
 
-    /// Returns `true` if the attribute's path matches the argument. If it matches, then the
-    /// attribute is marked as used.
-
     /// Returns `true` if the attribute's path matches the argument. If it
     /// matches, then the attribute is marked as used.
     ///
