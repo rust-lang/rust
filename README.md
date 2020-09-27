@@ -6,7 +6,7 @@ Code repository for the [Portable SIMD Project Group](https://github.com/rust-la
 
 Currently the crate is organized so that each element type is a file, and then the 64-bit, 128-bit, 256-bit, and 512-bit vectors using those types are contained in said file.
 
-All types are then exported as a single, flat
+All types are then exported as a single, flat module.
 
 Depending on the size of the primitive type, the number of lanes the vector will have varies. For example, 128-bit vectors have four `f32` lanes and two `f64` lanes.
 
