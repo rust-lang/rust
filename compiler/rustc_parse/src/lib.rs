@@ -8,7 +8,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{self, LazyTokenStream, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
@@ -248,29 +248,32 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // As a result, some AST nodes are annotated with the token stream they
     // came from. Here we attempt to extract these lossless token streams
     // before we fall back to the stringification.
+
+    let convert_tokens = |tokens: Option<LazyTokenStream>| tokens.map(|t| t.into_token_stream());
+
     let tokens = match *nt {
         Nonterminal::NtItem(ref item) => {
             prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
         }
-        Nonterminal::NtBlock(ref block) => block.tokens.clone(),
+        Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.clone()),
         Nonterminal::NtStmt(ref stmt) => {
             // FIXME: We currently only collect tokens for `:stmt`
             // matchers in `macro_rules!` macros. When we start collecting
             // tokens for attributes on statements, we will need to prepend
             // attributes here
-            stmt.tokens.clone()
+            convert_tokens(stmt.tokens.clone())
         }
-        Nonterminal::NtPat(ref pat) => pat.tokens.clone(),
-        Nonterminal::NtTy(ref ty) => ty.tokens.clone(),
+        Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.clone()),
+        Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.clone()),
         Nonterminal::NtIdent(ident, is_raw) => {
             Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
         }
         Nonterminal::NtLifetime(ident) => {
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
-        Nonterminal::NtMeta(ref attr) => attr.tokens.clone(),
-        Nonterminal::NtPath(ref path) => path.tokens.clone(),
-        Nonterminal::NtVis(ref vis) => vis.tokens.clone(),
+        Nonterminal::NtMeta(ref attr) => convert_tokens(attr.tokens.clone()),
+        Nonterminal::NtPath(ref path) => convert_tokens(path.tokens.clone()),
+        Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.clone()),
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
         Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             if expr.tokens.is_none() {
@@ -602,10 +605,10 @@ fn token_probably_equal_for_proc_macro(first: &Token, other: &Token) -> bool {
 fn prepend_attrs(
     sess: &ParseSess,
     attrs: &[ast::Attribute],
-    tokens: Option<&tokenstream::TokenStream>,
+    tokens: Option<&tokenstream::LazyTokenStream>,
     span: rustc_span::Span,
 ) -> Option<tokenstream::TokenStream> {
-    let tokens = tokens?;
+    let tokens = tokens?.clone().into_token_stream();
     if attrs.is_empty() {
         return Some(tokens.clone());
     }

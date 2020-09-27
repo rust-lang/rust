@@ -6,6 +6,7 @@ use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
@@ -18,7 +19,6 @@ use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
 use std::mem;
-use tracing::debug;
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
@@ -459,7 +459,7 @@ impl<'a> Parser<'a> {
     /// Parses a prefix-unary-operator expr.
     fn parse_prefix_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
-        self.maybe_collect_tokens(!attrs.is_empty(), |this| {
+        self.maybe_collect_tokens(super::attr::maybe_needs_tokens(&attrs), |this| {
             let lo = this.token.span;
             // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
             let (hi, ex) = match this.token.uninterpolate().kind {
@@ -884,7 +884,7 @@ impl<'a> Parser<'a> {
                 assert!(suffix.is_none());
                 let symbol = Symbol::intern(&i);
                 self.token = Token::new(token::Ident(symbol, false), ident_span);
-                let next_token = Token::new(token::Dot, dot_span);
+                let next_token = (Token::new(token::Dot, dot_span), self.token_spacing);
                 self.parse_tuple_field_access_expr(lo, base, symbol, None, Some(next_token))
             }
             // 1.2 | 1.2e3
@@ -902,12 +902,14 @@ impl<'a> Parser<'a> {
                 };
                 let symbol1 = Symbol::intern(&i1);
                 self.token = Token::new(token::Ident(symbol1, false), ident1_span);
-                let next_token1 = Token::new(token::Dot, dot_span);
+                // This needs to be `Spacing::Alone` to prevent regressions.
+                // See issue #76399 and PR #76285 for more details
+                let next_token1 = (Token::new(token::Dot, dot_span), Spacing::Alone);
                 let base1 =
                     self.parse_tuple_field_access_expr(lo, base, symbol1, None, Some(next_token1));
                 let symbol2 = Symbol::intern(&i2);
                 let next_token2 = Token::new(token::Ident(symbol2, false), ident2_span);
-                self.bump_with(next_token2); // `.`
+                self.bump_with((next_token2, self.token_spacing)); // `.`
                 self.parse_tuple_field_access_expr(lo, base1, symbol2, suffix, None)
             }
             // 1e+ | 1e- (recovered)
@@ -930,7 +932,7 @@ impl<'a> Parser<'a> {
         base: P<Expr>,
         field: Symbol,
         suffix: Option<Symbol>,
-        next_token: Option<Token>,
+        next_token: Option<(Token, Spacing)>,
     ) -> P<Expr> {
         match next_token {
             Some(next_token) => self.bump_with(next_token),
@@ -1109,12 +1111,11 @@ impl<'a> Parser<'a> {
 
     fn maybe_collect_tokens(
         &mut self,
-        has_outer_attrs: bool,
+        needs_tokens: bool,
         f: impl FnOnce(&mut Self) -> PResult<'a, P<Expr>>,
     ) -> PResult<'a, P<Expr>> {
-        if has_outer_attrs {
+        if needs_tokens {
             let (mut expr, tokens) = self.collect_tokens(f)?;
-            debug!("maybe_collect_tokens: Collected tokens for {:?} (tokens {:?}", expr, tokens);
             expr.tokens = Some(tokens);
             Ok(expr)
         } else {
