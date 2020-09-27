@@ -149,8 +149,6 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
-mod parker;
-
 use crate::any::Any;
 use crate::cell::UnsafeCell;
 use crate::ffi::{CStr, CString};
@@ -166,9 +164,9 @@ use crate::sys::thread as imp;
 use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
+use crate::sys_common::thread_parker::Parker;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::Duration;
-use parker::Parker;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
