@@ -7,12 +7,12 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
-// @misc{enzymeGithub,
-//  author = {William S. Moses and Valentin Churavy},
-//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
-//  year = {2020},
-//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
-//  note = {commit xxxxxxx}
+// @incollection{enzymeNeurips,
+// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// author = {Moses, William S. and Churavy, Valentin},
+// booktitle = {Advances in Neural Information Processing Systems 33},
+// year = {2020},
+// note = {To appear in},
 // }
 //
 //===----------------------------------------------------------------------===//
@@ -31,7 +31,6 @@
 
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
-//#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"

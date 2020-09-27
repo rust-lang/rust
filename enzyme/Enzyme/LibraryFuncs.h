@@ -7,12 +7,12 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
-// @misc{enzymeGithub,
-//  author = {William S. Moses and Valentin Churavy},
-//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
-//  year = {2020},
-//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
-//  note = {commit xxxxxxx}
+// @incollection{enzymeNeurips,
+// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// author = {Moses, William S. and Churavy, Valentin},
+// booktitle = {Advances in Neural Information Processing Systems 33},
+// year = {2020},
+// note = {To appear in},
 // }
 //
 //===----------------------------------------------------------------------===//
@@ -28,7 +28,8 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/IR/Instructions.h"
 
-// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
+/// Return whether a given function is a known C/C++ memory allocation function
+/// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline bool isAllocationFunction(const llvm::Function &F,
                                         const llvm::TargetLibraryInfo &TLI) {
   using namespace llvm;
@@ -93,7 +94,8 @@ static inline bool isAllocationFunction(const llvm::Function &F,
   }
 }
 
-// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
+/// Return whether a given function is a known C/C++ memory deallocation function
+/// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline bool isDeallocationFunction(const llvm::Function &F,
                                           const llvm::TargetLibraryInfo &TLI) {
   using namespace llvm;
@@ -168,6 +170,8 @@ static inline bool isDeallocationFunction(const llvm::Function &F,
   }
 }
 
+/// Perform the corresponding deallocation of tofree, given it was allocated by
+/// allocationfn
 // For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline llvm::CallInst *
 freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
@@ -276,6 +280,7 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   return freecall;
 }
 
+/// Return whether maybeReader can read from memory written to by maybeWriter
 static inline bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
                                         llvm::Instruction *maybeWriter) {
   using namespace llvm;

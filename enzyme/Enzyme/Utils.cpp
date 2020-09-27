@@ -7,12 +7,12 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
-// @misc{enzymeGithub,
-//  author = {William S. Moses and Valentin Churavy},
-//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
-//  year = {2020},
-//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
-//  note = {commit xxxxxxx}
+// @incollection{enzymeNeurips,
+// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// author = {Moses, William S. and Churavy, Valentin},
+// booktitle = {Advances in Neural Information Processing Systems 33},
+// year = {2020},
+// note = {To appear in},
 // }
 //
 //===----------------------------------------------------------------------===//
@@ -32,6 +32,7 @@
 
 using namespace llvm;
 
+/// Convert a floating type to a string
 static inline std::string tofltstr(Type *T) {
   switch (T->getTypeID()) {
   case Type::HalfTyID:
@@ -51,8 +52,8 @@ static inline std::string tofltstr(Type *T) {
   }
 }
 
-//! Create function for type that is equivalent to memcpy but adds to
-//! destination rather than a direct copy; dst, src, numelems
+/// Create function for type that is equivalent to memcpy but adds to
+/// destination rather than a direct copy; dst, src, numelems
 Function *getOrInsertDifferentialFloatMemcpy(Module &M, PointerType *T,
                                              unsigned dstalign,
                                              unsigned srcalign) {

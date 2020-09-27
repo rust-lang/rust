@@ -42,18 +42,21 @@
 
 #include <set>
 
+/// Get LLVM fast math flags
 static inline llvm::FastMathFlags getFast() {
   llvm::FastMathFlags f;
   f.set();
   return f;
 }
 
+/// Pick the maximum value
 template <typename T> static inline T max(T a, T b) {
   if (a > b)
     return a;
   return b;
 }
 
+/// Output a set as a string
 template <typename T>
 static inline std::string to_string(const std::set<T> &us) {
   std::string s = "{";
@@ -62,6 +65,8 @@ static inline std::string to_string(const std::set<T> &us) {
   return s + "}";
 }
 
+/// Print a map, optionally with a shouldPrint function
+/// to decide to print a given value
 template <typename T, typename N>
 static inline void
 dumpMap(const llvm::ValueMap<T, N> &o,
@@ -76,6 +81,7 @@ dumpMap(const llvm::ValueMap<T, N> &o,
   llvm::errs() << "</end dump>\n";
 }
 
+/// Print a set
 template <typename T>
 static inline void dumpSet(const llvm::SmallPtrSetImpl<T *> &o) {
   llvm::errs() << "<begin dump>\n";
@@ -84,6 +90,7 @@ static inline void dumpSet(const llvm::SmallPtrSetImpl<T *> &o) {
   llvm::errs() << "</end dump>\n";
 }
 
+/// Get the next non-debug instruction, if one exists
 static inline llvm::Instruction *
 getNextNonDebugInstructionOrNull(llvm::Instruction *Z) {
   for (llvm::Instruction *I = Z->getNextNode(); I; I = I->getNextNode())
@@ -92,6 +99,7 @@ getNextNonDebugInstructionOrNull(llvm::Instruction *Z) {
   return nullptr;
 }
 
+/// Get the next non-debug instruction, erring if none exists
 static inline llvm::Instruction *
 getNextNonDebugInstruction(llvm::Instruction *Z) {
   auto z = getNextNonDebugInstructionOrNull(Z);
@@ -104,34 +112,45 @@ getNextNonDebugInstruction(llvm::Instruction *Z) {
   return nullptr;
 }
 
+/// Check if a global has metadata
 static inline bool hasMetadata(const llvm::GlobalObject *O,
                                llvm::StringRef kind) {
   return O->getMetadata(kind) != nullptr;
 }
 
+/// Check if an instruction has metadata
 static inline bool hasMetadata(const llvm::Instruction *O,
                                llvm::StringRef kind) {
   return O->getMetadata(kind) != nullptr;
 }
 
+/// Potential return type of generated functions
 enum class ReturnType {
+  /// Return is a struct of all args and the original return
   ArgsWithReturn,
+  /// Return is a struct of all args and two of the original return
   ArgsWithTwoReturns,
+  /// Return is a struct of all args
   Args,
+  /// Return is a tape type and the original return
   TapeAndReturn,
+  /// Return is a tape type and the two of the original return
   TapeAndTwoReturns,
+  /// Return is a tape type
   Tape,
 };
 
+/// Potential differentiable argument classifications
 enum class DIFFE_TYPE {
-  OUT_DIFF = 0,  // add differential to output struct
+  OUT_DIFF = 0,  // add differential to an output struct
   DUP_ARG = 1,   // duplicate the argument and store differential inside
   CONSTANT = 2,  // no differential
   DUP_NONEED = 3 // duplicate this argument and store differential inside, but
                  // don't need the forward
 };
 
-static inline std::string tostring(DIFFE_TYPE t) {
+/// Convert DIFFE_TYPE to a string
+static inline std::string to_string(DIFFE_TYPE t) {
   switch (t) {
   case DIFFE_TYPE::OUT_DIFF:
     return "OUT_DIFF";
@@ -149,7 +168,8 @@ static inline std::string tostring(DIFFE_TYPE t) {
 
 #include <set>
 
-// note this doesn't handle recursive types!
+/// Attempt to automatically detect the differentiable
+/// classification based off of a given type
 static inline DIFFE_TYPE whatType(llvm::Type *arg,
                                   std::set<llvm::Type *> seen = {}) {
   assert(arg);
@@ -232,6 +252,7 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg,
   }
 }
 
+/// Check whether this instruction is returned
 static inline bool isReturned(llvm::Instruction *inst) {
   for (const auto a : inst->users()) {
     if (llvm::isa<llvm::ReturnInst>(a))
@@ -240,6 +261,8 @@ static inline bool isReturned(llvm::Instruction *inst) {
   return false;
 }
 
+/// Convert a floating point type to an integer type
+/// of the same size
 static inline llvm::Type *FloatToIntTy(llvm::Type *T) {
   assert(T->isFPOrFPVectorTy());
   if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
@@ -260,6 +283,8 @@ static inline llvm::Type *FloatToIntTy(llvm::Type *T) {
   return nullptr;
 }
 
+/// Convert a integer type to a floating point type
+/// of the same size
 static inline llvm::Type *IntToFloatTy(llvm::Type *T) {
   assert(T->isIntOrIntVectorTy());
   if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
@@ -284,6 +309,9 @@ static inline llvm::Type *IntToFloatTy(llvm::Type *T) {
   return nullptr;
 }
 
+// TODO replace/rename
+/// Determine whether this function is a certain malloc free
+/// debug or lifetime
 static inline bool isCertainMallocOrFree(llvm::Function *called) {
   if (called == nullptr)
     return false;
@@ -309,6 +337,9 @@ static inline bool isCertainMallocOrFree(llvm::Function *called) {
   return false;
 }
 
+// TODO replace/rename
+/// Determine whether this function is a certain print free
+/// debug or lifetime
 static inline bool isCertainPrintOrFree(llvm::Function *called) {
   if (called == nullptr)
     return false;
@@ -333,6 +364,9 @@ static inline bool isCertainPrintOrFree(llvm::Function *called) {
   return false;
 }
 
+// TODO replace/rename
+/// Determine whether this function is a certain print malloc free
+/// debug or lifetime
 static inline bool isCertainPrintMallocOrFree(llvm::Function *called) {
   if (called == nullptr)
     return false;
@@ -372,6 +406,7 @@ llvm::Function *getOrInsertDifferentialFloatMemmove(llvm::Module &M,
                                                     unsigned dstalign,
                                                     unsigned srcalign);
 
+/// Insert into a map
 template <typename K, typename V>
 static inline typename std::map<K, V>::iterator
 insert_or_assign(std::map<K, V> &map, K& key, V &&val) {
@@ -382,6 +417,7 @@ insert_or_assign(std::map<K, V> &map, K& key, V &&val) {
   return map.emplace(key, val).first;
 }
 
+/// Insert into a map
 template <typename K, typename V>
 static inline typename std::map<K, V>::iterator
 insert_or_assign2(std::map<K, V> &map, K key, V val) {
@@ -395,7 +431,8 @@ insert_or_assign2(std::map<K, V> &map, K key, V val) {
 #include "llvm/IR/CFG.h"
 #include <deque>
 #include <functional>
-// Return true if should break early
+/// Call the function f for all instructions that happen after inst
+/// If the function returns true, the iteration will early exit
 static inline void allFollowersOf(llvm::Instruction *inst,
                                   std::function<bool(llvm::Instruction *)> f) {
 
@@ -428,6 +465,8 @@ static inline void allFollowersOf(llvm::Instruction *inst,
   }
 }
 
+/// Call the function f for all instructions that happen before inst
+/// If the function returns true, the iteration will early exit
 static inline void
 allPredecessorsOf(llvm::Instruction *inst,
                   std::function<bool(llvm::Instruction *)> f) {
@@ -465,6 +504,8 @@ allPredecessorsOf(llvm::Instruction *inst,
 
 #include "llvm/Analysis/LoopInfo.h"
 static inline void
+/// Call the function f for all instructions that happen between inst1 and inst2
+/// If the function returns true, the iteration will early exit
 allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction *inst1,
                        llvm::Instruction *inst2,
                        std::function<bool(llvm::Instruction *)> f) {

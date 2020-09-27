@@ -7,12 +7,12 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
-// @misc{enzymeGithub,
-//  author = {William S. Moses and Valentin Churavy},
-//  title = {Enzyme: High Performance Automatic Differentiation of LLVM},
-//  year = {2020},
-//  howpublished = {\url{https://github.com/wsmoses/Enzyme}},
-//  note = {commit xxxxxxx}
+// @incollection{enzymeNeurips,
+// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// author = {Moses, William S. and Churavy, Valentin},
+// booktitle = {Advances in Neural Information Processing Systems 33},
+// year = {2020},
+// note = {To appear in},
 // }
 //
 //===----------------------------------------------------------------------===//
@@ -516,228 +516,7 @@ void TypeAnalyzer::considerTBAA() {
   }
 }
 
-/// Return whether the given value is used in any meaningful (non-print) way
-/// Cache caches previous results in order to handle phinodes that may eventually
-/// refer to themselves.
-/// if sawReturn != nullptr, we can ignore uses of returninst, setting sawReturn
-/// to true if it is used in a return
-bool hasAnyUse(TypeAnalyzer &TAZ,
-               Value *Val, std::map<Value *, bool> &Cache, bool *sawReturn) {
-  // if already saw Val, return the previous result
-  if (Cache.find(Val) != Cache.end())
-    return Cache[Val];
-
-  // Otherwise let's assume this Value isn't used and attempt to prove this fact
-  Cache[Val] = false;
-
-  // Keep track of any uses we don't analyze, initially none
-  bool unknownUse = false;
-
-  // Check all users of this, and see if any user is not handled (e.g. a print)
-  for (User *use : Val->users()) {
-
-    if (CastInst* CI = dyn_cast<CastInst>(use)) {
-      unknownUse |= hasAnyUse(TAZ, CI, Cache, sawReturn);
-      continue;
-    }
-
-    if (PHINode* PN = dyn_cast<PHINode>(use)) {
-      unknownUse |= hasAnyUse(TAZ, PN, Cache, sawReturn);
-      continue;
-    }
-
-    if (SelectInst* Sel = dyn_cast<SelectInst>(use)) {
-      unknownUse |= hasAnyUse(TAZ, Sel, Cache, sawReturn);
-      continue;
-    }
-
-    if (CallInst* Call = dyn_cast<CallInst>(use)) {
-      if (Function *CI = Call->getCalledFunction()) {
-        // These function calls are known uses that do not impact the results
-        if (CI->getName() == "__cxa_guard_acquire" ||
-            CI->getName() == "__cxa_guard_release" ||
-            CI->getName() == "__cxa_guard_abort" ||
-            CI->getName() == "printf" ||
-            CI->getName() == "fprintf") {
-          continue;
-        }
-
-        // Check for uses in the subcall
-        if (!CI->empty()) {
-
-          // This variable will be set by subcalls if Val
-          // is potentially returned
-          bool shouldHandleReturn = false;
-
-          // Check if the value is an argument of the subcall and if so
-          // analyze uses of that argument in the subcall
-          auto Arg = CI->arg_begin();
-          for (size_t i = 0, size = Call->getNumArgOperands(); i < size; ++i) {
-            if (Call->getArgOperand(i) == Val) {
-              if (hasAnyUse(TAZ, Arg, Cache, &shouldHandleReturn)) {
-                return Cache[Val] = unknownUse = true;
-              }
-            }
-            ++Arg;
-          }
-
-          // If the value was potentially returned, analyze uses of the
-          // value returned by the call
-          if (shouldHandleReturn) {
-            if (hasAnyUse(TAZ, Call, Cache, sawReturn)) {
-              return Cache[Val] = unknownUse = true;
-            }
-          }
-          continue;
-        }
-      }
-    }
-
-    // Set that the value is used in a return, if requested
-    if (sawReturn && isa<ReturnInst>(use)) {
-      *sawReturn = true;
-      continue;
-    }
-
-    // otherwise this is used in a way not handled and thus is not an "any" use
-    unknownUse = true;
-    continue;
-  }
-
-  return Cache[Val] = unknownUse;
-}
-
-/// Return whether the given value is used in any meaningful way an integer could
-/// not be used as
-/// Cache caches previous results in order to handle phinodes that may eventually
-/// refer to themselves.
-/// if sawReturn != nullptr, we can ignore uses of returninst, setting sawReturn
-/// to true if it is used in a return
-bool hasNonIntegralUse(TypeAnalyzer &TAZ,
-                       Value *Val, std::map<Value *, bool> &Cache, bool *sawReturn) {
-  assert(Val->getType()->isIntOrIntVectorTy());
-
-  // if already saw Val, return the previous result
-  if (Cache.find(Val) != Cache.end())
-    return Cache[Val];
-  
-  // Otherwise let's assume this Value isn't used and attempt to prove this fact
-  Cache[Val] = false;
-
-  // Keep track of any uses we don't analyze, initially none
-  bool unknownUse = false;
-
-  // Check all users of this, and see if any user is not handled
-  for (User *use : Val->users()) {
-
-    if (auto CI = dyn_cast<CastInst>(use)) {
-      // integer to fp casts are fine as clearly just an integral use
-      if (isa<SIToFPInst>(use) || isa<UIToFPInst>(use)) {
-        continue;
-      }
-
-      // fp to integer casts are illegal, clearly indicating
-      // this is a float
-      if (isa<FPToSIInst>(use) || isa<FPToUIInst>(use)) {
-        unknownUse = true;
-        break;
-      }
-
-      // A cast that creates a non-integer is considered potentially
-      // showing a non-integral use
-      if (!CI->getDestTy()->isIntOrIntVectorTy()) {
-        unknownUse = true;
-        break;
-      }
-
-      // otherwise check uses of the result
-      unknownUse |= hasNonIntegralUse(TAZ, CI, Cache, sawReturn);
-      continue;
-    }
-
-    // Uses in a binop / phinode / select simply require analyzing
-    // uses of that value
-    if (isa<BinaryOperator>(use) || isa<PHINode>(use) || isa<SelectInst>(use)) {
-      unknownUse |= hasNonIntegralUse(TAZ, use, Cache, sawReturn);
-      continue;
-    }
-
-    if (auto GEP = dyn_cast<GetElementPtrInst>(use)) {
-      // if this is used as the pointer of a gep, this is clearly a potential
-      // pointer use
-      if (GEP->getPointerOperand() == Val) {
-        unknownUse = true;
-        break;
-      }
-
-      // Otherwise an index into a gep is considered a value integer use
-      // Note: This assumes that the original value doesn't propagate out
-      // through the pointer
-      continue;
-    }
-
-    if (CallInst* call = dyn_cast<CallInst>(use)) {
-      if (Function *CI = call->getCalledFunction()) {
-        // These function calls are known uses that do not potentially have an
-        // inactive use
-        if (CI->getName() == "__cxa_guard_acquire" ||
-            CI->getName() == "__cxa_guard_release" ||
-            CI->getName() == "__cxa_guard_abort" ||
-            CI->getName() == "printf" ||
-            CI->getName() == "fprintf") {
-          continue;
-        }
-
-        // Check for uses in the subcall
-        if (!CI->empty()) {
-
-          // This variable will be set by subcalls if Val
-          // is potentially returned
-          bool shouldHandleReturn = false;
-
-          // Check if the value is an argument of the subcall and if so
-          // analyze uses of that argument in the subcall
-          auto Arg = CI->arg_begin();
-          for (size_t i = 0, size = call->getNumArgOperands(); i < size; ++i) {
-            if (call->getArgOperand(i) == Val) {
-              if (hasNonIntegralUse(TAZ, Arg, Cache, &shouldHandleReturn)) {
-                return Cache[Val] = unknownUse = true;
-              }
-            }
-            ++Arg;
-          }
-
-          // If the value was potentially returned, analyze uses of the
-          // value returned by the call
-          if (shouldHandleReturn) {
-            if (hasNonIntegralUse(TAZ, call, Cache, sawReturn)) {
-              return Cache[Val] = unknownUse = true;
-            }
-          }
-          continue;
-        }
-      }
-    }
-
-    // Any uses inside these instructions cannot possibly have non-integer uses
-    if (isa<AllocaInst>(use) || isa<CmpInst>(use) || isa<SwitchInst>(use) || isa<BranchInst>(use))
-      continue;
-
-    if (sawReturn && isa<ReturnInst>(use)) {
-      *sawReturn = true;
-      continue;
-    }
-
-    unknownUse = true;
-    continue;
-  }
-
-  return Cache[Val] = unknownUse;
-}
-
-bool TypeAnalyzer::runUnusedChecks() {
-
-
+void TypeAnalyzer::runPHIHypotheses() {
   for (BasicBlock &BB : *fntypeinfo.Function) {
     for (Instruction &inst : BB) {
       if (PHINode* phi = dyn_cast<PHINode>(&inst)) {
@@ -769,61 +548,7 @@ bool TypeAnalyzer::runUnusedChecks() {
       }
     }
   }
-
-  // Old-style unused checks below are currently broken, do not run them
-  return false;
-
-  // NOTE explicitly NOT doing arguments here
-  //  this is done to prevent information being propagated up via IPO that is
-  //  incorrect (since there may be other uses of that value in the caller)
-  bool changed = false;
-  std::vector<Value *> todo;
-
-  std::map<Value *, bool> anyseen;
-  std::map<Value *, bool> intseen;
-
-  for (BasicBlock &BB : *fntypeinfo.Function) {
-    for (Instruction &inst : BB) {
-      auto analysis = getAnalysis(&inst);
-
-      if (!inst.getType()->isIntOrIntVectorTy())
-        continue;
-
-      if (analysis.Data0()[{}] != BaseType::Unknown)
-        continue;
-
-
-      // This deals with integers representing floats or pointers with no use
-      // (and thus can be anything)
-      // Note that we set origin to nullptr to ensure we add this value to
-      // the work queue
-      if (!hasAnyUse(*this, &inst, anyseen, nullptr)) {
-        updateAnalysis(&inst,
-                        TypeTree(BaseType::Anything)
-                            .Only(inst.getType()->isIntegerTy() ? -1 : 0),
-                        /*origin*/nullptr);
-        changed = true;
-      }
-
-      // This deals with values with without a potential non-integral use.
-      // Note that we set origin to nullptr to ensure we add this value to
-      // the work queue
-      // TODO: potential clash (see comment below)
-      // Just because this has no non-integral use doesn't mean this is
-      // necessarily an integer -- it could be an unused pointer/float
-      // thus set it as "Anything" such that it could have a use as any
-      // type.
-      if (!hasNonIntegralUse(*this, &inst, intseen, nullptr)) {
-        updateAnalysis(&inst,
-                        TypeTree(BaseType::Integer)
-                            .Only(inst.getType()->isIntegerTy() ? -1 : 0),
-                        /*origin*/nullptr);
-        changed = true;
-      }
-    }
-  }
-
-  return changed;
+  return;
 }
 
 void TypeAnalyzer::run() {
@@ -861,7 +586,7 @@ void TypeAnalyzer::run() {
 
   } while (1);
 
-  runUnusedChecks();
+  runPHIHypotheses();
 
   do {
 
