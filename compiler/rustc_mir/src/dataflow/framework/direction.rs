@@ -1,10 +1,10 @@
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use std::ops::RangeInclusive;
 
 use super::visitor::{ResultsVisitable, ResultsVisitor};
-use super::{Analysis, Effect, EffectIndex, GenKillAnalysis, GenKillSet};
+use super::{Analysis, Effect, EffectIndex, GenKillAnalysis, GenKillSet, SwitchIntTarget};
 
 pub trait Direction {
     fn is_forward() -> bool;
@@ -425,8 +425,8 @@ impl Direction for Forward {
 
     fn join_state_into_successors_of<A>(
         analysis: &A,
-        tcx: TyCtxt<'tcx>,
-        body: &mir::Body<'tcx>,
+        _tcx: TyCtxt<'tcx>,
+        _body: &mir::Body<'tcx>,
         dead_unwinds: Option<&BitSet<BasicBlock>>,
         exit_state: &mut A::Domain,
         (bb, bb_data): (BasicBlock, &'_ mir::BasicBlockData<'tcx>),
@@ -489,50 +489,23 @@ impl Direction for Forward {
             }
 
             SwitchInt { ref targets, ref values, ref discr, switch_ty: _ } => {
-                let enum_ = discr
-                    .place()
-                    .and_then(|discr| switch_on_enum_discriminant(tcx, &body, bb_data, discr));
-                match enum_ {
-                    // If this is a switch on an enum discriminant, a custom effect may be applied
-                    // along each outgoing edge.
-                    Some((enum_place, enum_def)) => {
-                        // MIR building adds discriminants to the `values` array in the same order as they
-                        // are yielded by `AdtDef::discriminants`. We rely on this to match each
-                        // discriminant in `values` to its corresponding variant in linear time.
-                        let mut tmp = analysis.bottom_value(body);
-                        let mut discriminants = enum_def.discriminants(tcx);
-                        for (value, target) in values.iter().zip(targets.iter().copied()) {
-                            let (variant_idx, _) =
-                                discriminants.find(|&(_, discr)| discr.val == *value).expect(
-                                    "Order of `AdtDef::discriminants` differed \
-                                         from that of `SwitchInt::values`",
-                                );
+                let mut applier = SwitchIntEdgeEffectApplier {
+                    exit_state,
+                    targets: targets.as_ref(),
+                    values: values.as_ref(),
+                    propagate,
+                    effects_applied: false,
+                };
 
-                            tmp.clone_from(exit_state);
-                            analysis.apply_discriminant_switch_effect(
-                                &mut tmp,
-                                bb,
-                                enum_place,
-                                enum_def,
-                                variant_idx,
-                            );
-                            propagate(target, &tmp);
-                        }
+                analysis.apply_switch_int_edge_effects(bb, discr, &mut applier);
 
-                        // Move out of `tmp` so we don't accidentally use it below.
-                        std::mem::drop(tmp);
+                let SwitchIntEdgeEffectApplier {
+                    exit_state, mut propagate, effects_applied, ..
+                } = applier;
 
-                        // Propagate dataflow state along the "otherwise" edge.
-                        let otherwise = targets.last().copied().unwrap();
-                        propagate(otherwise, exit_state)
-                    }
-
-                    // Otherwise, it's just a normal `SwitchInt`, and every successor sees the same
-                    // exit state.
-                    None => {
-                        for target in targets.iter().copied() {
-                            propagate(target, exit_state);
-                        }
+                if !effects_applied {
+                    for &target in targets.iter() {
+                        propagate(target, exit_state);
                     }
                 }
             }
@@ -540,37 +513,54 @@ impl Direction for Forward {
     }
 }
 
-/// Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt` is
-/// an enum discriminant.
-///
-/// We expect such blocks to have a call to `discriminant` as their last statement like so:
-///   _42 = discriminant(_1)
-///   SwitchInt(_42, ..)
-///
-/// If the basic block matches this pattern, this function returns the place corresponding to the
-/// enum (`_1` in the example above) as well as the `AdtDef` of that enum.
-fn switch_on_enum_discriminant(
-    tcx: TyCtxt<'tcx>,
-    body: &'mir mir::Body<'tcx>,
-    block: &'mir mir::BasicBlockData<'tcx>,
-    switch_on: mir::Place<'tcx>,
-) -> Option<(mir::Place<'tcx>, &'tcx ty::AdtDef)> {
-    match block.statements.last().map(|stmt| &stmt.kind) {
-        Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
-            if *lhs == switch_on =>
-        {
-            match &discriminated.ty(body, tcx).ty.kind() {
-                ty::Adt(def, _) => Some((*discriminated, def)),
+struct SwitchIntEdgeEffectApplier<'a, D, F> {
+    exit_state: &'a mut D,
+    values: &'a [u128],
+    targets: &'a [BasicBlock],
+    propagate: F,
 
-                // `Rvalue::Discriminant` is also used to get the active yield point for a
-                // generator, but we do not need edge-specific effects in that case. This may
-                // change in the future.
-                ty::Generator(..) => None,
+    effects_applied: bool,
+}
 
-                t => bug!("`discriminant` called on unexpected type {:?}", t),
-            }
+impl<D, F> super::SwitchIntEdgeEffects<D> for SwitchIntEdgeEffectApplier<'_, D, F>
+where
+    D: Clone,
+    F: FnMut(BasicBlock, &D),
+{
+    fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
+        assert!(!self.effects_applied);
+
+        let mut tmp = None;
+        for (&value, &target) in self.values.iter().zip(self.targets.iter()) {
+            let tmp = opt_clone_from_or_clone(&mut tmp, self.exit_state);
+            apply_edge_effect(tmp, SwitchIntTarget { value: Some(value), target });
+            (self.propagate)(target, tmp);
         }
 
-        _ => None,
+        // Once we get to the final, "otherwise" branch, there is no need to preserve `exit_state`,
+        // so pass it directly to `apply_edge_effect` to save a clone of the dataflow state.
+        let otherwise = self.targets.last().copied().unwrap();
+        apply_edge_effect(self.exit_state, SwitchIntTarget { value: None, target: otherwise });
+        (self.propagate)(otherwise, self.exit_state);
+
+        self.effects_applied = true;
+    }
+}
+
+/// An analogue of `Option::get_or_insert_with` that stores a clone of `val` into `opt`, but uses
+/// the more efficient `clone_from` if `opt` was `Some`.
+///
+/// Returns a mutable reference to the new clone that resides in `opt`.
+//
+// FIXME: Figure out how to express this using `Option::clone_from`, or maybe lift it into the
+// standard library?
+fn opt_clone_from_or_clone<T: Clone>(opt: &'a mut Option<T>, val: &T) -> &'a mut T {
+    if opt.is_some() {
+        let ret = opt.as_mut().unwrap();
+        ret.clone_from(val);
+        ret
+    } else {
+        *opt = Some(val.clone());
+        opt.as_mut().unwrap()
     }
 }

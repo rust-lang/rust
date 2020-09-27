@@ -37,8 +37,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_middle::ty::TyCtxt;
 
 mod cursor;
 mod direction;
@@ -152,6 +151,8 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     ) {
     }
 
+    /* Edge-specific effects */
+
     /// Updates the current dataflow state with the effect of a successful return from a `Call`
     /// terminator.
     ///
@@ -183,19 +184,27 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// Updates the current dataflow state with the effect of taking a particular branch in a
     /// `SwitchInt` terminator.
     ///
-    /// Much like `apply_call_return_effect`, this effect is only propagated along a single
-    /// outgoing edge from this basic block.
+    /// Unlike the other edge-specific effects, which are allowed to mutate `Self::Domain`
+    /// directly, overriders of this method must pass a callback to
+    /// `SwitchIntEdgeEffects::apply`. The callback will be run once for each outgoing edge and
+    /// will have access to the dataflow state that will be propagated along that edge.
+    ///
+    /// This interface is somewhat more complex than the other visitor-like "effect" methods.
+    /// However, it is both more ergonomic—callers don't need to recompute or cache information
+    /// about a given `SwitchInt` terminator for each one of its edges—and more efficient—the
+    /// engine doesn't need to clone the exit state for a block unless
+    /// `SwitchIntEdgeEffects::apply` is actually called.
     ///
     /// FIXME: This class of effects is not supported for backward dataflow analyses.
-    fn apply_discriminant_switch_effect(
+    fn apply_switch_int_edge_effects(
         &self,
-        _state: &mut Self::Domain,
         _block: BasicBlock,
-        _enum_place: mir::Place<'tcx>,
-        _adt: &ty::AdtDef,
-        _variant: VariantIdx,
+        _discr: &mir::Operand<'tcx>,
+        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
     }
+
+    /* Extension methods */
 
     /// Creates an `Engine` to find the fixpoint for this dataflow problem.
     ///
@@ -267,6 +276,8 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     ) {
     }
 
+    /* Edge-specific effects */
+
     /// See `Analysis::apply_call_return_effect`.
     fn call_return_effect(
         &self,
@@ -286,14 +297,12 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     ) {
     }
 
-    /// See `Analysis::apply_discriminant_switch_effect`.
-    fn discriminant_switch_effect(
+    /// See `Analysis::apply_switch_int_edge_effects`.
+    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
         &self,
-        _state: &mut impl GenKill<Self::Idx>,
         _block: BasicBlock,
-        _enum_place: mir::Place<'tcx>,
-        _adt: &ty::AdtDef,
-        _variant: VariantIdx,
+        _discr: &mir::Operand<'tcx>,
+        _edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
     }
 }
@@ -339,6 +348,8 @@ where
         self.before_terminator_effect(state, terminator, location);
     }
 
+    /* Edge-specific effects */
+
     fn apply_call_return_effect(
         &self,
         state: &mut A::Domain,
@@ -359,16 +370,16 @@ where
         self.yield_resume_effect(state, resume_block, resume_place);
     }
 
-    fn apply_discriminant_switch_effect(
+    fn apply_switch_int_edge_effects(
         &self,
-        state: &mut A::Domain,
         block: BasicBlock,
-        enum_place: mir::Place<'tcx>,
-        adt: &ty::AdtDef,
-        variant: VariantIdx,
+        discr: &mir::Operand<'tcx>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<A::Domain>,
     ) {
-        self.discriminant_switch_effect(state, block, enum_place, adt, variant);
+        self.switch_int_edge_effects(block, discr, edge_effects);
     }
+
+    /* Extension methods */
 
     fn into_engine(
         self,
@@ -529,6 +540,18 @@ impl EffectIndex {
             .then_with(|| self.effect.cmp(&other.effect));
         ord == Ordering::Less
     }
+}
+
+pub struct SwitchIntTarget {
+    pub value: Option<u128>,
+    pub target: BasicBlock,
+}
+
+/// A type that records the edge-specific effects for a `SwitchInt` terminator.
+pub trait SwitchIntEdgeEffects<D> {
+    /// Calls `apply_edge_effect` for each outgoing edge from a `SwitchInt` terminator and
+    /// records the results.
+    fn apply(&mut self, apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget));
 }
 
 #[cfg(test)]
