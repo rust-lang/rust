@@ -46,7 +46,7 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
         //
         //     LOG.msg = "wow";  // prints "wow"
         //
-        match self.tcx.adt_def(def_id).destructor(self.tcx) {
+        match self.tcx.adt_destructor(def_id) {
             Some(_) => None,
             None => Some(def_id),
         }
