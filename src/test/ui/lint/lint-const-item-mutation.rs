@@ -18,10 +18,16 @@ impl Drop for Mutable {
     }
 }
 
+struct Mutable2 { // this one has drop glue but not a Drop impl
+    msg: &'static str,
+    other: String,
+}
+
 const ARRAY: [u8; 1] = [25];
 const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
 const RAW_PTR: *mut u8 = 1 as *mut u8;
 const MUTABLE: Mutable = Mutable { msg: "" };
+const MUTABLE2: Mutable2 = Mutable2 { msg: "", other: String::new() };
 
 fn main() {
     ARRAY[0] = 5; //~ WARN attempting to modify
@@ -41,4 +47,5 @@ fn main() {
     }
 
     MUTABLE.msg = "wow"; // no warning, because Drop observes the mutation
+    MUTABLE2.msg = "wow"; //~ WARN attempting to modify
 }
