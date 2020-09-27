@@ -16,8 +16,6 @@ use crate::sys_common;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
 
-static LOCAL_STREAMS: AtomicBool = AtomicBool::new(false);
-
 thread_local! {
     /// Used by the test crate to capture the output of the print! and println! macros.
     static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
@@ -31,6 +29,20 @@ thread_local! {
         RefCell::new(None)
     }
 }
+
+/// Flag to indicate LOCAL_STDOUT and/or LOCAL_STDERR is used.
+///
+/// If both are None and were never set on any thread, this flag is set to
+/// false, and both LOCAL_STDOUT and LOCAL_STDOUT can be safely ignored on all
+/// threads, saving some time and memory registering an unused thread local.
+///
+/// Note about memory ordering: This contains information about whether two
+/// thread local variables might be in use. Although this is a global flag, the
+/// memory ordering between threads does not matter: we only want this flag to
+/// have a consistent order between set_print/set_panic and print_to *within
+/// the same thread*. Within the same thread, things always have a perfectly
+/// consistent order. So Ordering::Relaxed is fine.
+static LOCAL_STREAMS: AtomicBool = AtomicBool::new(false);
 
 /// A handle to a raw instance of the standard input stream of this process.
 ///
@@ -899,7 +911,7 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
             Some(s)
         },
     );
-    LOCAL_STREAMS.store(true, Ordering::Release);
+    LOCAL_STREAMS.store(true, Ordering::Relaxed);
     s
 }
 
@@ -926,7 +938,7 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
             Some(s)
         },
     );
-    LOCAL_STREAMS.store(true, Ordering::Release);
+    LOCAL_STREAMS.store(true, Ordering::Relaxed);
     s
 }
 
@@ -949,7 +961,7 @@ fn print_to<T>(
     T: Write,
 {
     let result = LOCAL_STREAMS
-        .load(Ordering::Acquire)
+        .load(Ordering::Relaxed)
         .then(|| {
             local_s
                 .try_with(|s| {
