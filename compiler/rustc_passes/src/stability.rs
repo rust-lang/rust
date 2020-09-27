@@ -459,6 +459,21 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             self.tcx.sess.span_err(span, &format!("{} has missing stability attribute", descr));
         }
     }
+
+    fn check_missing_const_stability(&self, hir_id: HirId, span: Span) {
+        let stab_map = self.tcx.stability();
+        let stab = stab_map.local_stability(hir_id);
+        if stab.map_or(false, |stab| stab.level.is_stable()) {
+            let const_stab = stab_map.local_const_stability(hir_id);
+            if const_stab.is_none() {
+                self.tcx.sess.span_err(
+                    span,
+                    "`#[stable]` const functions must also be either \
+                    `#[rustc_const_stable]` or `#[rustc_const_unstable]`",
+                );
+            }
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
@@ -469,14 +484,23 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
-        match i.kind {
-            // Inherent impls and foreign modules serve only as containers for other items,
-            // they don't have their own stability. They still can be annotated as unstable
-            // and propagate this unstability to children, but this annotation is completely
-            // optional. They inherit stability from their parents when unannotated.
-            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {}
+        // Inherent impls and foreign modules serve only as containers for other items,
+        // they don't have their own stability. They still can be annotated as unstable
+        // and propagate this unstability to children, but this annotation is completely
+        // optional. They inherit stability from their parents when unannotated.
+        if !matches!(
+            i.kind,
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..)
+        ) {
+            self.check_missing_stability(i.hir_id, i.span);
+        }
 
-            _ => self.check_missing_stability(i.hir_id, i.span),
+        // Ensure `const fn` that are `stable` have one of `rustc_const_unstable` or
+        // `rustc_const_stable`.
+        if self.tcx.features().staged_api
+            && matches!(&i.kind, hir::ItemKind::Fn(sig, ..) if sig.header.is_const())
+        {
+            self.check_missing_const_stability(i.hir_id, i.span);
         }
 
         intravisit::walk_item(self, i)
