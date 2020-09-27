@@ -8,7 +8,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::cmp::Ordering::{self, Equal, Greater, Less};
+use crate::cmp::Ordering::{self, Greater, Less};
 use crate::marker::Copy;
 use crate::mem;
 use crate::num::NonZeroUsize;
@@ -2154,29 +2154,24 @@ impl<T> [T] {
     where
         F: FnMut(&'a T) -> Ordering,
     {
-        let s = self;
-        let mut size = s.len();
-        if size == 0 {
-            return Err(0);
-        }
-        let mut base = 0usize;
-        while size > 1 {
-            let half = size / 2;
-            let mid = base + half;
-            // SAFETY: the call is made safe by the following inconstants:
-            // - `mid >= 0`: by definition
-            // - `mid < size`: `mid = size / 2 + size / 4 + size / 8 ...`
-            let cmp = f(unsafe { s.get_unchecked(mid) });
-            if cmp == Equal {
+        let mut left = 0;
+        let mut right = self.len();
+        while left < right {
+            // never overflow because `slice::len()` max is `isize::MAX`.
+            let mid = (left + right) / 2;
+            // SAFETY: the call is made safe by the following invariants:
+            // - `mid >= 0`
+            // - `mid < size`: `mid` is limited by `[left; right)` bound.
+            let cmp = f(unsafe { self.get_unchecked(mid) });
+            if cmp == Less {
+                left = mid + 1;
+            } else if cmp == Greater {
+                right = mid;
+            } else {
                 return Ok(mid);
-            } else if cmp == Less {
-                base = mid
             }
-            size -= half;
         }
-        // SAFETY: base is always in [0, size) because base <= mid.
-        let cmp = f(unsafe { s.get_unchecked(base) });
-        if cmp == Equal { Ok(base) } else { Err(base + (cmp == Less) as usize) }
+        Err(left)
     }
 
     /// Binary searches this sorted slice with a key extraction function.

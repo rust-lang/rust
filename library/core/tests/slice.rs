@@ -76,7 +76,7 @@ fn test_binary_search_implementation_details() {
     assert_eq!(b.binary_search(&3), Ok(5));
     let b = [1, 1, 1, 1, 1, 3, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(4));
-    assert_eq!(b.binary_search(&3), Ok(6));
+    assert_eq!(b.binary_search(&3), Ok(7));
     let b = [1, 1, 1, 1, 3, 3, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(2));
     assert_eq!(b.binary_search(&3), Ok(4));
