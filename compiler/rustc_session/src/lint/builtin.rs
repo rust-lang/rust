@@ -1827,6 +1827,17 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// This is a subset of `broken_intra_doc_links` that warns when linking from
+    /// a public item to a private one. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#private_intra_doc_links
+    pub PRIVATE_INTRA_DOC_LINKS,
+    Warn,
+    "linking from a public item to a private one"
+}
+
+declare_lint! {
     /// The `invalid_codeblock_attributes` lint detects code block attributes
     /// in documentation examples that have potentially mis-typed values. This
     /// is a `rustdoc` only lint, see the documentation in the [rustdoc book].
