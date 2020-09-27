@@ -9,9 +9,19 @@ impl MyStruct {
     fn use_mut(&mut self) {}
 }
 
+struct Mutable {
+    msg: &'static str,
+}
+impl Drop for Mutable {
+    fn drop(&mut self) {
+        println!("{}", self.msg);
+    }
+}
+
 const ARRAY: [u8; 1] = [25];
 const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
 const RAW_PTR: *mut u8 = 1 as *mut u8;
+const MUTABLE: Mutable = Mutable { msg: "" };
 
 fn main() {
     ARRAY[0] = 5; //~ WARN attempting to modify
@@ -29,4 +39,6 @@ fn main() {
         *RAW_PTR = 0;
         *MY_STRUCT.raw_ptr = 0;
     }
+
+    MUTABLE.msg = "wow"; // no warning, because Drop observes the mutation
 }
