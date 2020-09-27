@@ -2,4 +2,19 @@
 
 Code repository for the [Portable SIMD Project Group](https://github.com/rust-lang/project-portable-simd).
 
-More coming soon!
+## Code Organization
+
+Currently the crate is organized so that each element type is a file, and then the 64-bit, 128-bit, 256-bit, and 512-bit vectors using those types are contained in said file.
+
+All types are then exported as a single, flat module.
+
+Depending on the size of the primitive type, the number of lanes the vector will have varies. For example, 128-bit vectors have four `f32` lanes and two `f64` lanes.
+
+The supported element types are as follows:
+* **Floating Point:** `f32`, `f64`
+* **Signed Integers:** `i8`, `i16`, `i32`, `i64`, `i128`, `isize`
+* **Unsigned Integers:** `u8`, `u16`, `u32`, `u64`, `u128`, `usize`
+* **Masks:** `mask8`, `mask16`, `mask32`, `mask64`, `masksize`
+
+Floating point, signed integers, and unsigned integers are the [primitive types](https://doc.rust-lang.org/core/primitive/index.html) you're already used to.
+The `mask` types are "truthy" values, but they use the number of bits in their name instead of just 1 bit like a normal `bool` uses.
