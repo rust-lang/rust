@@ -294,7 +294,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 let body = cx.tcx.hir().body(eid);
                 Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
 
-                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(cx.sess(), &item.attrs) {
+                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(cx.sess(), &item.attrs)
+                {
                     check_must_use_candidate(
                         cx,
                         &sig.decl,
@@ -373,7 +374,12 @@ impl<'tcx> Functions {
         }
 
         if line_count > self.max_lines {
-            span_lint(cx, TOO_MANY_LINES, span, "This function has a large number of lines.")
+            span_lint(
+                cx,
+                TOO_MANY_LINES,
+                span,
+                &format!("this function has too many lines ({}/{})", line_count, self.max_lines),
+            )
         }
     }
 
@@ -504,7 +510,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<
 static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
 
 fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut FxHashSet<DefId>) -> bool {
-    match ty.kind {
+    match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
         ty::Adt(ref adt, ref substs) => {

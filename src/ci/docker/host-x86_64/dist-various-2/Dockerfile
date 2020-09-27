@@ -61,8 +61,6 @@ RUN env \
 
 WORKDIR /tmp
 COPY host-x86_64/dist-various-2/shared.sh /tmp/
-COPY host-x86_64/dist-various-2/build-cloudabi-toolchain.sh /tmp/
-RUN /tmp/build-cloudabi-toolchain.sh x86_64-unknown-cloudabi
 COPY host-x86_64/dist-various-2/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
 COPY host-x86_64/dist-various-2/build-solaris-toolchain.sh /tmp/
@@ -97,7 +95,6 @@ ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
-ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
 ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
 ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
 ENV TARGETS=$TARGETS,armv7-unknown-linux-gnueabi

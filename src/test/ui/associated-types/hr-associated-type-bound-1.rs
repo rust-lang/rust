@@ -10,7 +10,7 @@ where
 
 impl X<'_> for i32 {
     type U = str;
-    //~^ ERROR the trait bound `for<'b> <i32 as X<'b>>::U: std::clone::Clone`
+    //~^ ERROR the trait bound `for<'b> <i32 as X<'b>>::U: Clone`
 }
 
 fn main() {

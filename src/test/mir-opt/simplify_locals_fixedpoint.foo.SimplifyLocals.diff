@@ -31,12 +31,6 @@
   
       bb1: {
           _0 = const ();                   // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb7;                     // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
       }
   
@@ -52,35 +46,17 @@
           StorageLive(_8);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
           _8 = _6;                         // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
           _7 = Gt(move _8, const 42_u8);   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
-                                           // ty::Const
-                                           // + ty: u8
-                                           // + val: Value(Scalar(0x2a))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify-locals-fixedpoint.rs:5:16: 5:20
-                                           // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
           StorageDead(_8);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:19: 5:20
           switchInt(_7) -> [false: bb4, otherwise: bb5]; // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   
       bb4: {
           _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb6;                     // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   
       bb5: {
           _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:21: 7:10
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify-locals-fixedpoint.rs:5:21: 7:10
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb6;                     // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   

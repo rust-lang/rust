@@ -7,7 +7,7 @@ fn fmt() {
         return;
     }
 
-    // Skip this test if rustup nightly is unavailable
+    // Skip this test if nightly rustfmt is unavailable
     let rustup_output = Command::new("rustup")
         .args(&["component", "list", "--toolchain", "nightly"])
         .output()
@@ -19,12 +19,9 @@ fn fmt() {
     }
 
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let dev_dir = root_dir.join("clippy_dev");
-    let target_dir = root_dir.join("target");
-    let target_dir = target_dir.to_str().unwrap();
     let output = Command::new("cargo")
-        .current_dir(dev_dir)
-        .args(&["+nightly", "run", "--target-dir", target_dir, "--", "fmt", "--check"])
+        .current_dir(root_dir)
+        .args(&["dev", "fmt", "--check"])
         .output()
         .unwrap();
 

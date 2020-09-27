@@ -6,7 +6,7 @@ use crate::utils::{
     expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
     is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet,
     snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then, walk_ptrs_ty,
+    span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -502,7 +502,7 @@ impl_lint_pass!(Matches => [
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span) || in_macro(expr.span) {
             return;
         }
 
@@ -573,7 +573,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             if let QPath::Resolved(_, ref path) = qpath;
             if let Some(def_id) = path.res.opt_def_id();
             let ty = cx.tcx.type_of(def_id);
-            if let ty::Adt(def, _) = ty.kind;
+            if let ty::Adt(def, _) = ty.kind();
             if def.is_struct() || def.is_union();
             if fields.len() == def.non_enum_variant().fields.len();
 
@@ -621,7 +621,7 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
         };
 
         let ty = cx.typeck_results().expr_ty(ex);
-        if ty.kind != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
+        if *ty.kind() != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
         }
@@ -712,7 +712,7 @@ fn check_single_match_opt_like(
 
 fn check_match_bool(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
-    if cx.typeck_results().expr_ty(ex).kind == ty::Bool {
+    if *cx.typeck_results().expr_ty(ex).kind() == ty::Bool {
         span_lint_and_then(
             cx,
             MATCH_BOOL,
@@ -794,7 +794,7 @@ fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms
 }
 
 fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    let ex_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(ex));
+    let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
     if is_type_diagnostic_item(cx, ex_ty, sym!(result_type)) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {
@@ -860,7 +860,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
         // already covered.
 
         let mut missing_variants = vec![];
-        if let ty::Adt(def, _) = ty.kind {
+        if let ty::Adt(def, _) = ty.kind() {
             for variant in &def.variants {
                 missing_variants.push(variant);
             }
@@ -914,7 +914,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
 
         let mut message = "wildcard match will miss any future added variants";
 
-        if let ty::Adt(def, _) = ty.kind {
+        if let ty::Adt(def, _) = ty.kind() {
             if def.is_variant_list_non_exhaustive() {
                 message = "match on non-exhaustive enum doesn't explicitly match all known variants";
                 suggestion.push(String::from("_"));
@@ -1014,11 +1014,11 @@ fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             let input_ty = cx.typeck_results().expr_ty(ex);
 
             let cast = if_chain! {
-                if let ty::Adt(_, substs) = input_ty.kind;
+                if let ty::Adt(_, substs) = input_ty.kind();
                 let input_ty = substs.type_at(0);
-                if let ty::Adt(_, substs) = output_ty.kind;
+                if let ty::Adt(_, substs) = output_ty.kind();
                 let output_ty = substs.type_at(0);
-                if let ty::Ref(_, output_ty, _) = output_ty.kind;
+                if let ty::Ref(_, output_ty, _) = *output_ty.kind();
                 if input_ty != output_ty;
                 then {
                     ".map(|x| x as _)"
@@ -1440,15 +1440,12 @@ where
 
 mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
-    use crate::utils::{in_constant, match_qpath, match_trait_method, paths, snippet, span_lint_and_then};
+    use crate::utils::{match_qpath, match_trait_method, paths, snippet, span_lint_and_then};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
     use rustc_errors::Applicability;
-    use rustc_hir::{Arm, Expr, ExprKind, HirId, MatchSource, PatKind, QPath};
+    use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind, QPath};
     use rustc_lint::LateContext;
-    use rustc_middle::ty;
-    use rustc_mir::const_eval::is_const_fn;
-    use rustc_span::source_map::Symbol;
 
     pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
@@ -1468,37 +1465,24 @@ mod redundant_pattern_match {
         arms: &[Arm<'_>],
         keyword: &'static str,
     ) {
-        fn find_suggestion(cx: &LateContext<'_>, hir_id: HirId, path: &QPath<'_>) -> Option<&'static str> {
-            if match_qpath(path, &paths::RESULT_OK) && can_suggest(cx, hir_id, sym!(result_type), "is_ok") {
-                return Some("is_ok()");
-            }
-            if match_qpath(path, &paths::RESULT_ERR) && can_suggest(cx, hir_id, sym!(result_type), "is_err") {
-                return Some("is_err()");
-            }
-            if match_qpath(path, &paths::OPTION_SOME) && can_suggest(cx, hir_id, sym!(option_type), "is_some") {
-                return Some("is_some()");
-            }
-            if match_qpath(path, &paths::OPTION_NONE) && can_suggest(cx, hir_id, sym!(option_type), "is_none") {
-                return Some("is_none()");
-            }
-            None
-        }
-
-        let hir_id = expr.hir_id;
         let good_method = match arms[0].pat.kind {
             PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
                 if let PatKind::Wild = patterns[0].kind {
-                    find_suggestion(cx, hir_id, path)
+                    if match_qpath(path, &paths::RESULT_OK) {
+                        "is_ok()"
+                    } else if match_qpath(path, &paths::RESULT_ERR) {
+                        "is_err()"
+                    } else if match_qpath(path, &paths::OPTION_SOME) {
+                        "is_some()"
+                    } else {
+                        return;
+                    }
                 } else {
-                    None
+                    return;
                 }
             },
-            PatKind::Path(ref path) => find_suggestion(cx, hir_id, path),
-            _ => None,
-        };
-        let good_method = match good_method {
-            Some(method) => method,
-            None => return,
+            PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
+            _ => return,
         };
 
         // check that `while_let_on_iterator` lint does not trigger
@@ -1547,7 +1531,6 @@ mod redundant_pattern_match {
         if arms.len() == 2 {
             let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 
-            let hir_id = expr.hir_id;
             let found_good_method = match node_pair {
                 (
                     PatKind::TupleStruct(ref path_left, ref patterns_left, _),
@@ -1562,8 +1545,6 @@ mod redundant_pattern_match {
                             &paths::RESULT_ERR,
                             "is_ok()",
                             "is_err()",
-                            || can_suggest(cx, hir_id, sym!(result_type), "is_ok"),
-                            || can_suggest(cx, hir_id, sym!(result_type), "is_err"),
                         )
                     } else {
                         None
@@ -1582,8 +1563,6 @@ mod redundant_pattern_match {
                             &paths::OPTION_NONE,
                             "is_some()",
                             "is_none()",
-                            || can_suggest(cx, hir_id, sym!(option_type), "is_some"),
-                            || can_suggest(cx, hir_id, sym!(option_type), "is_none"),
                         )
                     } else {
                         None
@@ -1616,7 +1595,6 @@ mod redundant_pattern_match {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn find_good_method_for_match<'a>(
         arms: &[Arm<'_>],
         path_left: &QPath<'_>,
@@ -1625,8 +1603,6 @@ mod redundant_pattern_match {
         expected_right: &[&str],
         should_be_left: &'a str,
         should_be_right: &'a str,
-        can_suggest_left: impl Fn() -> bool,
-        can_suggest_right: impl Fn() -> bool,
     ) -> Option<&'a str> {
         let body_node_pair = if match_qpath(path_left, expected_left) && match_qpath(path_right, expected_right) {
             (&(*arms[0].body).kind, &(*arms[1].body).kind)
@@ -1638,34 +1614,12 @@ mod redundant_pattern_match {
 
         match body_node_pair {
             (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => match (&lit_left.node, &lit_right.node) {
-                (LitKind::Bool(true), LitKind::Bool(false)) if can_suggest_left() => Some(should_be_left),
-                (LitKind::Bool(false), LitKind::Bool(true)) if can_suggest_right() => Some(should_be_right),
+                (LitKind::Bool(true), LitKind::Bool(false)) => Some(should_be_left),
+                (LitKind::Bool(false), LitKind::Bool(true)) => Some(should_be_right),
                 _ => None,
             },
             _ => None,
         }
-    }
-
-    fn can_suggest(cx: &LateContext<'_>, hir_id: HirId, diag_item: Symbol, name: &str) -> bool {
-        if !in_constant(cx, hir_id) {
-            return true;
-        }
-
-        // Avoid suggesting calls to non-`const fn`s in const contexts, see #5697.
-        cx.tcx
-            .get_diagnostic_item(diag_item)
-            .and_then(|def_id| {
-                cx.tcx.inherent_impls(def_id).iter().find_map(|imp| {
-                    cx.tcx
-                        .associated_items(*imp)
-                        .in_definition_order()
-                        .find_map(|item| match item.kind {
-                            ty::AssocKind::Fn if item.ident.name.as_str() == name => Some(item.def_id),
-                            _ => None,
-                        })
-                })
-            })
-            .map_or(false, |def_id| is_const_fn(cx.tcx, def_id))
     }
 }
 

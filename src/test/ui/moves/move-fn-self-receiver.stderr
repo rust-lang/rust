@@ -11,7 +11,7 @@ note: this function consumes the receiver `self` by taking ownership of it, whic
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
-   = note: move occurs because `val.0` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+   = note: move occurs because `val.0` has type `Vec<bool>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `foo`
   --> $DIR/move-fn-self-receiver.rs:34:5
@@ -43,7 +43,7 @@ error[E0382]: use of moved value: `boxed_foo`
   --> $DIR/move-fn-self-receiver.rs:42:5
    |
 LL |     let boxed_foo = Box::new(Foo);
-   |         --------- move occurs because `boxed_foo` has type `std::boxed::Box<Foo>`, which does not implement the `Copy` trait
+   |         --------- move occurs because `boxed_foo` has type `Box<Foo>`, which does not implement the `Copy` trait
 LL |     boxed_foo.use_box_self();
    |               -------------- `boxed_foo` moved due to this method call
 LL |     boxed_foo;
@@ -59,7 +59,7 @@ error[E0382]: use of moved value: `pin_box_foo`
   --> $DIR/move-fn-self-receiver.rs:46:5
    |
 LL |     let pin_box_foo = Box::pin(Foo);
-   |         ----------- move occurs because `pin_box_foo` has type `std::pin::Pin<std::boxed::Box<Foo>>`, which does not implement the `Copy` trait
+   |         ----------- move occurs because `pin_box_foo` has type `Pin<Box<Foo>>`, which does not implement the `Copy` trait
 LL |     pin_box_foo.use_pin_box_self();
    |                 ------------------ `pin_box_foo` moved due to this method call
 LL |     pin_box_foo;
@@ -85,7 +85,7 @@ error[E0382]: use of moved value: `rc_foo`
   --> $DIR/move-fn-self-receiver.rs:55:5
    |
 LL |     let rc_foo = Rc::new(Foo);
-   |         ------ move occurs because `rc_foo` has type `std::rc::Rc<Foo>`, which does not implement the `Copy` trait
+   |         ------ move occurs because `rc_foo` has type `Rc<Foo>`, which does not implement the `Copy` trait
 LL |     rc_foo.use_rc_self();
    |            ------------- `rc_foo` moved due to this method call
 LL |     rc_foo;
@@ -117,7 +117,7 @@ error[E0382]: use of moved value: `implicit_into_iter`
   --> $DIR/move-fn-self-receiver.rs:63:5
    |
 LL |     let implicit_into_iter = vec![true];
-   |         ------------------ move occurs because `implicit_into_iter` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+   |         ------------------ move occurs because `implicit_into_iter` has type `Vec<bool>`, which does not implement the `Copy` trait
 LL |     for _val in implicit_into_iter {}
    |                 ------------------
    |                 |
@@ -130,7 +130,7 @@ error[E0382]: use of moved value: `explicit_into_iter`
   --> $DIR/move-fn-self-receiver.rs:67:5
    |
 LL |     let explicit_into_iter = vec![true];
-   |         ------------------ move occurs because `explicit_into_iter` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+   |         ------------------ move occurs because `explicit_into_iter` has type `Vec<bool>`, which does not implement the `Copy` trait
 LL |     for _val in explicit_into_iter.into_iter() {}
    |                                    ----------- `explicit_into_iter` moved due to this method call
 LL |     explicit_into_iter;

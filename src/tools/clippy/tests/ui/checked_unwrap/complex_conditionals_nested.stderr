@@ -1,4 +1,4 @@
-error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals_nested.rs:8:13
    |
 LL |         if x.is_some() {
@@ -12,7 +12,7 @@ note: the lint level is defined here
 LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: This call to `unwrap()` will always panic.
+error: this call to `unwrap()` will always panic
   --> $DIR/complex_conditionals_nested.rs:10:13
    |
 LL |         if x.is_some() {

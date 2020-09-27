@@ -16,7 +16,7 @@ LL | |     fn f() {}
 LL | | }
    | |_^
 
-error: cannot specialize on trait `std::clone::Clone`
+error: cannot specialize on trait `Clone`
   --> $DIR/specialization_trait.rs:21:1
    |
 LL | / impl<T: Clone> SpecMarker for [T] {

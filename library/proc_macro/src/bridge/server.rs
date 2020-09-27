@@ -135,6 +135,7 @@ pub trait ExecutionStrategy {
         input: Buffer<u8>,
         run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
+        force_show_panics: bool,
     ) -> Buffer<u8>;
 }
 
@@ -147,10 +148,14 @@ impl ExecutionStrategy for SameThread {
         input: Buffer<u8>,
         run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
+        force_show_panics: bool,
     ) -> Buffer<u8> {
         let mut dispatch = |b| dispatcher.dispatch(b);
 
-        run_client(Bridge { cached_buffer: input, dispatch: (&mut dispatch).into() }, client_data)
+        run_client(
+            Bridge { cached_buffer: input, dispatch: (&mut dispatch).into(), force_show_panics },
+            client_data,
+        )
     }
 }
 
@@ -166,6 +171,7 @@ impl ExecutionStrategy for CrossThread1 {
         input: Buffer<u8>,
         run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
+        force_show_panics: bool,
     ) -> Buffer<u8> {
         use std::sync::mpsc::channel;
 
@@ -179,7 +185,11 @@ impl ExecutionStrategy for CrossThread1 {
             };
 
             run_client(
-                Bridge { cached_buffer: input, dispatch: (&mut dispatch).into() },
+                Bridge {
+                    cached_buffer: input,
+                    dispatch: (&mut dispatch).into(),
+                    force_show_panics,
+                },
                 client_data,
             )
         });
@@ -201,6 +211,7 @@ impl ExecutionStrategy for CrossThread2 {
         input: Buffer<u8>,
         run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
+        force_show_panics: bool,
     ) -> Buffer<u8> {
         use std::sync::{Arc, Mutex};
 
@@ -226,7 +237,11 @@ impl ExecutionStrategy for CrossThread2 {
             };
 
             let r = run_client(
-                Bridge { cached_buffer: input, dispatch: (&mut dispatch).into() },
+                Bridge {
+                    cached_buffer: input,
+                    dispatch: (&mut dispatch).into(),
+                    force_show_panics,
+                },
                 client_data,
             );
 
@@ -265,6 +280,7 @@ fn run_server<
     input: I,
     run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
     client_data: D,
+    force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher =
         Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
@@ -272,7 +288,13 @@ fn run_server<
     let mut b = Buffer::new();
     input.encode(&mut b, &mut dispatcher.handle_store);
 
-    b = strategy.run_bridge_and_client(&mut dispatcher, b, run_client, client_data);
+    b = strategy.run_bridge_and_client(
+        &mut dispatcher,
+        b,
+        run_client,
+        client_data,
+        force_show_panics,
+    );
 
     Result::decode(&mut &b[..], &mut dispatcher.handle_store)
 }
@@ -283,6 +305,7 @@ impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
         strategy: &impl ExecutionStrategy,
         server: S,
         input: S::TokenStream,
+        force_show_panics: bool,
     ) -> Result<S::TokenStream, PanicMessage> {
         let client::Client { get_handle_counters, run, f } = *self;
         run_server(
@@ -292,6 +315,7 @@ impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
             <MarkedTypes<S> as Types>::TokenStream::mark(input),
             run,
             f,
+            force_show_panics,
         )
         .map(<MarkedTypes<S> as Types>::TokenStream::unmark)
     }
@@ -304,6 +328,7 @@ impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenSt
         server: S,
         input: S::TokenStream,
         input2: S::TokenStream,
+        force_show_panics: bool,
     ) -> Result<S::TokenStream, PanicMessage> {
         let client::Client { get_handle_counters, run, f } = *self;
         run_server(
@@ -316,6 +341,7 @@ impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenSt
             ),
             run,
             f,
+            force_show_panics,
         )
         .map(<MarkedTypes<S> as Types>::TokenStream::unmark)
     }

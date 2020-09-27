@@ -28,7 +28,7 @@ LL |     let _: HashMap<String, isize> = ();
    |            |
    |            expected due to this
    |
-   = note: expected struct `HashMap<std::string::String, isize>`
+   = note: expected struct `HashMap<String, isize>`
            found unit type `()`
 
 error[E0308]: mismatched types
@@ -39,7 +39,7 @@ LL |     let _: HashMap<String, isize, Hash<String>> = ();
    |            |
    |            expected due to this
    |
-   = note: expected struct `HashMap<std::string::String, isize>`
+   = note: expected struct `HashMap<String, isize>`
            found unit type `()`
 
 error[E0308]: mismatched types

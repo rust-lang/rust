@@ -32,10 +32,7 @@ LL | / fn bar<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
 LL | |
 LL | | where
 LL | |     G: Get<T>
-...  |
-LL | |     }
-LL | | }
-   | |_^
+   | |_____________^
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:47:45
@@ -50,10 +47,7 @@ LL | / fn qux<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
 LL | |
 LL | | where
 LL | |     G: Get<T>
-...  |
-LL | |     }
-LL | | }
-   | |_^
+   | |_____________^
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:59:58
@@ -64,13 +58,8 @@ LL |     fn qux<'b, G: Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
 note: the parameter type `G` must be valid for the anonymous lifetime #1 defined on the method body at 59:5...
   --> $DIR/missing-lifetimes-in-signature.rs:59:5
    |
-LL | /     fn qux<'b, G: Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ {
-LL | |
-LL | |         move || {
-LL | |             *dest = g.get();
-LL | |         }
-LL | |     }
-   | |_____^
+LL |     fn qux<'b, G: Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:68:45
@@ -85,10 +74,7 @@ LL | / fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
 LL | |
 LL | | where
 LL | |     G: Get<T>
-...  |
-LL | |     }
-LL | | }
-   | |_^
+   | |_____________^
 
 error[E0621]: explicit lifetime required in the type of `dest`
   --> $DIR/missing-lifetimes-in-signature.rs:73:5

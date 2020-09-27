@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<std::vec::IntoIter<i32> as std::iter::Iterator>::Item == u32`
+error[E0271]: type mismatch resolving `<std::vec::IntoIter<i32> as Iterator>::Item == u32`
   --> $DIR/traits-assoc-type-in-supertrait-bad.rs:12:16
    |
 LL |     type Key = u32;

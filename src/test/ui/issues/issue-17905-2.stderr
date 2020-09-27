@@ -9,12 +9,8 @@ LL |     fn say(self: &Pair<&str, isize>) {
 note: the anonymous lifetime #2 defined on the method body at 8:5...
   --> $DIR/issue-17905-2.rs:8:5
    |
-LL | /     fn say(self: &Pair<&str, isize>) {
-LL | |
-LL | |
-LL | |         println!("{:?}", self);
-LL | |     }
-   | |_____^
+LL |     fn say(self: &Pair<&str, isize>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...does not necessarily outlive the lifetime `'_` as defined on the impl at 5:5
   --> $DIR/issue-17905-2.rs:5:5
    |
@@ -37,12 +33,8 @@ LL |     &str,
 note: ...does not necessarily outlive the anonymous lifetime #2 defined on the method body at 8:5
   --> $DIR/issue-17905-2.rs:8:5
    |
-LL | /     fn say(self: &Pair<&str, isize>) {
-LL | |
-LL | |
-LL | |         println!("{:?}", self);
-LL | |     }
-   | |_____^
+LL |     fn say(self: &Pair<&str, isize>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

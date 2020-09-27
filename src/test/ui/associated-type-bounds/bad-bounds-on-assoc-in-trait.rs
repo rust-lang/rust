@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // NOTE: rustc cannot currently handle bounds of the form `for<'a> <Foo as Bar<'a>>::Assoc: Baz`.
 // This should hopefully be fixed with Chalk.
 
@@ -29,15 +27,15 @@ trait Case1 {
 
 pub struct S1;
 impl Case1 for S1 {
-//~^ ERROR `<L1 as Lam<&'a u8>>::App` doesn't implement `std::fmt::Debug` [E0277]
+//~^ ERROR `<L1 as Lam<&'a u8>>::App` doesn't implement `Debug` [E0277]
     type C = Once<Once<L1>>;
 }
 
 fn assume_case1<T: Case1>() {
-//~^ ERROR `<_ as Lam<&'a u8>>::App` doesn't implement `std::fmt::Debug` [E0277]
-//~| ERROR `<<T as Case1>::C as std::iter::Iterator>::Item` is not an iterator [E0277]
-//~| ERROR `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be sent between threads safely [E0277]
-//~| ERROR `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be shared between threads safely [E0277]
+//~^ ERROR `<_ as Lam<&'a u8>>::App` doesn't implement `Debug` [E0277]
+//~| ERROR `<<T as Case1>::C as Iterator>::Item` is not an iterator [E0277]
+//~| ERROR `<<T as Case1>::C as Iterator>::Item` cannot be sent between threads safely [E0277]
+//~| ERROR `<<T as Case1>::C as Iterator>::Item` cannot be shared between threads safely [E0277]
     fn assert_a<_0, A>() where A: Iterator<Item = _0>, _0: Debug {}
     assert_a::<_, T::A>();
 

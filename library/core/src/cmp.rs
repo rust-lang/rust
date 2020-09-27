@@ -25,7 +25,7 @@
 use self::Ordering::*;
 
 /// Trait for equality comparisons which are [partial equivalence
-/// relations](http://en.wikipedia.org/wiki/Partial_equivalence_relation).
+/// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
@@ -356,8 +356,9 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
+    #[rustc_const_stable(feature = "const_ordering", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reverse(self) -> Ordering {
+    pub const fn reverse(self) -> Ordering {
         match self {
             Less => Greater,
             Equal => Equal,
@@ -394,8 +395,9 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
+    #[rustc_const_stable(feature = "const_ordering", since = "1.48.0")]
     #[stable(feature = "ordering_chaining", since = "1.17.0")]
-    pub fn then(self, other: Ordering) -> Ordering {
+    pub const fn then(self, other: Ordering) -> Ordering {
         match self {
             Equal => other,
             _ => self,
@@ -505,7 +507,7 @@ impl<T: Ord> Ord for Reverse<T> {
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
 /// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
-/// When `derive`d on enums, variants are ordered by their top-to-bottom declaration order.
+/// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
 ///
 /// ## How can I implement `Ord`?
 ///
@@ -694,7 +696,7 @@ impl PartialOrd for Ordering {
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
 /// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
-/// When `derive`d on enums, variants are ordered by their top-to-bottom declaration order.
+/// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
 ///
 /// ## How can I implement `PartialOrd`?
 ///
@@ -724,19 +726,19 @@ impl PartialOrd for Ordering {
 /// }
 ///
 /// impl PartialOrd for Person {
-///     fn partial_cmp(&self, other: &Person) -> Option<Ordering> {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 ///         Some(self.cmp(other))
 ///     }
 /// }
 ///
 /// impl Ord for Person {
-///     fn cmp(&self, other: &Person) -> Ordering {
+///     fn cmp(&self, other: &Self) -> Ordering {
 ///         self.height.cmp(&other.height)
 ///     }
 /// }
 ///
 /// impl PartialEq for Person {
-///     fn eq(&self, other: &Person) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.height == other.height
 ///     }
 /// }

@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   g++-arm-linux-gnueabi \
   make \
+  ninja-build \
   file \
   curl \
   ca-certificates \

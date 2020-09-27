@@ -8,7 +8,7 @@ LL | |             demand_y(x, y, p)
 LL | |         },
    | |_________^
    |
-   = note: defining type: supply::{{closure}}#0 with closure substs [
+   = note: defining type: supply::{closure#0} with closure substs [
                i16,
                for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('s)) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('s)) u32>)),
                (),
@@ -21,9 +21,9 @@ error: lifetime may not live long enough
   --> $DIR/propagate-approximated-fail-no-postdom.rs:46:13
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
-   |          ----------              ---------- has type `std::cell::Cell<&'2 &'_#3r u32>`
+   |          ----------              ---------- has type `Cell<&'2 &'_#3r u32>`
    |          |
-   |          has type `std::cell::Cell<&'_#1r &'1 u32>`
+   |          has type `Cell<&'_#1r &'1 u32>`
 ...
 LL |             demand_y(x, y, p)
    |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`

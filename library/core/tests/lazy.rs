@@ -122,3 +122,12 @@ fn reentrant_init() {
     });
     eprintln!("use after free: {:?}", dangling_ref.get().unwrap());
 }
+
+#[test]
+fn dropck() {
+    let cell = OnceCell::new();
+    {
+        let s = String::new();
+        cell.set(&s).unwrap();
+    }
+}

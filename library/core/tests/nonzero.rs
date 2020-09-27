@@ -195,3 +195,20 @@ fn test_nonzero_from_int_on_err() {
     assert!(NonZeroI8::try_from(0).is_err());
     assert!(NonZeroI32::try_from(0).is_err());
 }
+
+#[test]
+fn nonzero_const() {
+    // test that the methods of `NonZeroX>` are usable in a const context
+    // Note: only tests NonZero8
+
+    const NONZERO: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(5) };
+
+    const GET: u8 = NONZERO.get();
+    assert_eq!(GET, 5);
+
+    const ZERO: Option<NonZeroU8> = NonZeroU8::new(0);
+    assert!(ZERO.is_none());
+
+    const ONE: Option<NonZeroU8> = NonZeroU8::new(1);
+    assert!(ONE.is_some());
+}

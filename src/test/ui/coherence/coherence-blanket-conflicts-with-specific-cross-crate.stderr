@@ -5,8 +5,8 @@ LL | impl GoMut for MyThingy {
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `go_trait`:
-           - impl<G> go_trait::GoMut for G
-             where G: go_trait::Go;
+           - impl<G> GoMut for G
+             where G: Go;
 
 error: aborting due to previous error
 

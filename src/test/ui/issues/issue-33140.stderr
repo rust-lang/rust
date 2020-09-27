@@ -19,15 +19,11 @@ LL | impl Trait2 for dyn Sync + Send + Sync {
 error[E0592]: duplicate definitions with name `abc`
   --> $DIR/issue-33140.rs:29:5
    |
-LL | /     fn abc() -> bool {
-LL | |         false
-LL | |     }
-   | |_____^ duplicate definitions for `abc`
+LL |     fn abc() -> bool {
+   |     ^^^^^^^^^^^^^^^^ duplicate definitions for `abc`
 ...
-LL | /     fn abc() -> bool {
-LL | |         true
-LL | |     }
-   | |_____- other definition for `abc`
+LL |     fn abc() -> bool {
+   |     ---------------- other definition for `abc`
 
 error: aborting due to 3 previous errors
 

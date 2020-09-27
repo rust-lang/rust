@@ -14,7 +14,7 @@ pub fn run(rustc_path: Option<&str>) {
     // we can unwrap here because the arg is required here
     let rustc_path = PathBuf::from(rustc_path.unwrap());
     assert!(rustc_path.is_dir(), "path is not a directory");
-    let rustc_source_basedir = rustc_path.join("src");
+    let rustc_source_basedir = rustc_path.join("compiler");
     assert!(
         rustc_source_basedir.is_dir(),
         "are you sure the path leads to a rustc repo?"
@@ -61,17 +61,18 @@ fn inject_deps_into_manifest(
     let new_deps = extern_crates.map(|dep| {
         // format the dependencies that are going to be put inside the Cargo.toml
         format!(
-            "{dep} = {{ path = \"{source_path}/lib{dep}\" }}\n",
+            "{dep} = {{ path = \"{source_path}/{dep}\" }}\n",
             dep = dep,
             source_path = rustc_source_dir.display()
         )
     });
 
     // format a new [dependencies]-block with the new deps we need to inject
-    let mut all_deps = String::from("[dependencies]\n");
+    let mut all_deps = String::from("[target.'cfg(NOT_A_PLATFORM)'.dependencies]\n");
     new_deps.for_each(|dep_line| {
         all_deps.push_str(&dep_line);
     });
+    all_deps.push_str("\n[dependencies]\n");
 
     // replace "[dependencies]" with
     // [dependencies]

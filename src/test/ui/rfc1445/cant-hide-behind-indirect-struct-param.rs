@@ -23,7 +23,7 @@ fn main() {
     match WRAP_INDIRECT_PARAM {
         WRAP_INDIRECT_PARAM => { panic!("WRAP_INDIRECT_PARAM matched itself"); }
         //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| WARN will become a hard error in a future release
+        //~| WARN this was previously accepted
         _ => { println!("WRAP_INDIRECT_PARAM correctly did not match itself"); }
     }
 }

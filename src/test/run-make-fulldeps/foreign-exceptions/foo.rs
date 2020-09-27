@@ -1,5 +1,5 @@
-// Tests that C++ exceptions can unwind through Rust code, run destructors and
-// are ignored by catch_unwind. Also tests that Rust panics can unwind through
+// Tests that C++ exceptions can unwind through Rust code run destructors and
+// are caught by catch_unwind. Also tests that Rust panics can unwind through
 // C++ code.
 
 // For linking libstdc++ on MinGW
@@ -17,7 +17,7 @@ impl<'a> Drop for DropCheck<'a> {
 }
 
 extern "C" {
-    fn throw_cxx_exception();
+    fn test_cxx_exception();
 
     #[unwind(allowed)]
     fn cxx_catch_callback(cb: extern "C" fn(), ok: *mut bool);
@@ -26,15 +26,12 @@ extern "C" {
 #[no_mangle]
 #[unwind(allowed)]
 extern "C" fn rust_catch_callback(cb: extern "C" fn(), rust_ok: &mut bool) {
-    let _caught_unwind = catch_unwind(AssertUnwindSafe(|| {
-        let _drop = DropCheck(rust_ok);
-        cb();
-        unreachable!("should have unwound instead of returned");
-    }));
-    unreachable!("catch_unwind should not have caught foreign exception");
+    let _drop = DropCheck(rust_ok);
+    cb();
+    unreachable!("should have unwound instead of returned");
 }
 
-fn throw_rust_panic() {
+fn test_rust_panic() {
     #[unwind(allowed)]
     extern "C" fn callback() {
         println!("throwing rust panic");
@@ -60,6 +57,6 @@ fn throw_rust_panic() {
 }
 
 fn main() {
-    unsafe { throw_cxx_exception() };
-    throw_rust_panic();
+    unsafe { test_cxx_exception() };
+    test_rust_panic();
 }

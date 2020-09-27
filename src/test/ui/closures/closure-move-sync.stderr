@@ -7,26 +7,26 @@ LL |     let t = thread::spawn(|| {
   ::: $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
 LL |     F: Send + 'static,
-   |        ---- required by this bound in `std::thread::spawn`
+   |        ---- required by this bound in `spawn`
    |
-   = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `&std::sync::mpsc::Receiver<()>`
+   = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
+   = note: required because of the requirements on the impl of `Send` for `&std::sync::mpsc::Receiver<()>`
    = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:6:27: 9:6 recv:&std::sync::mpsc::Receiver<()>]`
 
-error[E0277]: `std::sync::mpsc::Sender<()>` cannot be shared between threads safely
+error[E0277]: `Sender<()>` cannot be shared between threads safely
   --> $DIR/closure-move-sync.rs:18:5
    |
 LL |     thread::spawn(|| tx.send(()).unwrap());
-   |     ^^^^^^^^^^^^^ `std::sync::mpsc::Sender<()>` cannot be shared between threads safely
+   |     ^^^^^^^^^^^^^ `Sender<()>` cannot be shared between threads safely
    | 
   ::: $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
 LL |     F: Send + 'static,
-   |        ---- required by this bound in `std::thread::spawn`
+   |        ---- required by this bound in `spawn`
    |
-   = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Sender<()>`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `&std::sync::mpsc::Sender<()>`
-   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:18:19: 18:42 tx:&std::sync::mpsc::Sender<()>]`
+   = help: the trait `Sync` is not implemented for `Sender<()>`
+   = note: required because of the requirements on the impl of `Send` for `&Sender<()>`
+   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:18:19: 18:42 tx:&Sender<()>]`
 
 error: aborting due to 2 previous errors
 

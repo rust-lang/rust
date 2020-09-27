@@ -6,7 +6,7 @@ LL |         asm!("{}", in(reg) 0i128);
    |
    = note: register class `reg` supports these types: i16, i32, i64, f32, f64
 
-error: type `std::arch::x86_64::__m128` cannot be used with this register class
+error: type `__m128` cannot be used with this register class
   --> $DIR/type-check-3.rs:14:28
    |
 LL |         asm!("{}", in(reg) _mm_setzero_ps());
@@ -14,7 +14,7 @@ LL |         asm!("{}", in(reg) _mm_setzero_ps());
    |
    = note: register class `reg` supports these types: i16, i32, i64, f32, f64
 
-error: type `std::arch::x86_64::__m256` cannot be used with this register class
+error: type `__m256` cannot be used with this register class
   --> $DIR/type-check-3.rs:16:28
    |
 LL |         asm!("{}", in(reg) _mm256_setzero_ps());

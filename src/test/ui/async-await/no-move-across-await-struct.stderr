@@ -6,7 +6,7 @@ LL |     needs_vec(s.x).await;
 LL |     s.x
    |     ^^^ value used here after move
    |
-   = note: move occurs because `s.x` has type `std::vec::Vec<usize>`, which does not implement the `Copy` trait
+   = note: move occurs because `s.x` has type `Vec<usize>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

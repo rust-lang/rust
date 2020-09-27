@@ -1,3 +1,4 @@
+use std::mem::MaybeUninit;
 use std::{fmt, str};
 
 use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded};
@@ -36,20 +37,20 @@ macro_rules! check_shortest {
     );
 
     ($f:ident($v:expr) => $buf:expr, $exp:expr; $fmt:expr, $($key:ident = $val:expr),*) => ({
-        let mut buf = [b'_'; MAX_SIG_DIGITS];
-        let (len, k) = $f(&decode_finite($v), &mut buf);
-        assert!((&buf[..len], k) == ($buf, $exp),
-                $fmt, actual = (str::from_utf8(&buf[..len]).unwrap(), k),
+        let mut buf = [MaybeUninit::new(b'_'); MAX_SIG_DIGITS];
+        let (buf, k) = $f(&decode_finite($v), &mut buf);
+        assert!((buf, k) == ($buf, $exp),
+                $fmt, actual = (str::from_utf8(buf).unwrap(), k),
                       expected = (str::from_utf8($buf).unwrap(), $exp),
                       $($key = $val),*);
     });
 
     ($f:ident{$($k:ident: $v:expr),+} => $buf:expr, $exp:expr;
                                          $fmt:expr, $($key:ident = $val:expr),*) => ({
-        let mut buf = [b'_'; MAX_SIG_DIGITS];
-        let (len, k) = $f(&Decoded { $($k: $v),+ }, &mut buf);
-        assert!((&buf[..len], k) == ($buf, $exp),
-                $fmt, actual = (str::from_utf8(&buf[..len]).unwrap(), k),
+        let mut buf = [MaybeUninit::new(b'_'); MAX_SIG_DIGITS];
+        let (buf, k) = $f(&Decoded { $($k: $v),+ }, &mut buf);
+        assert!((buf, k) == ($buf, $exp),
+                $fmt, actual = (str::from_utf8(buf).unwrap(), k),
                       expected = (str::from_utf8($buf).unwrap(), $exp),
                       $($key = $val),*);
     })
@@ -58,9 +59,9 @@ macro_rules! check_shortest {
 macro_rules! try_exact {
     ($f:ident($decoded:expr) => $buf:expr, $expected:expr, $expectedk:expr;
                                 $fmt:expr, $($key:ident = $val:expr),*) => ({
-        let (len, k) = $f($decoded, &mut $buf[..$expected.len()], i16::MIN);
-        assert!((&$buf[..len], k) == ($expected, $expectedk),
-                $fmt, actual = (str::from_utf8(&$buf[..len]).unwrap(), k),
+        let (buf, k) = $f($decoded, &mut $buf[..$expected.len()], i16::MIN);
+        assert!((buf, k) == ($expected, $expectedk),
+                $fmt, actual = (str::from_utf8(buf).unwrap(), k),
                       expected = (str::from_utf8($expected).unwrap(), $expectedk),
                       $($key = $val),*);
     })
@@ -69,9 +70,9 @@ macro_rules! try_exact {
 macro_rules! try_fixed {
     ($f:ident($decoded:expr) => $buf:expr, $request:expr, $expected:expr, $expectedk:expr;
                                 $fmt:expr, $($key:ident = $val:expr),*) => ({
-        let (len, k) = $f($decoded, &mut $buf[..], $request);
-        assert!((&$buf[..len], k) == ($expected, $expectedk),
-                $fmt, actual = (str::from_utf8(&$buf[..len]).unwrap(), k),
+        let (buf, k) = $f($decoded, &mut $buf[..], $request);
+        assert!((buf, k) == ($expected, $expectedk),
+                $fmt, actual = (str::from_utf8(buf).unwrap(), k),
                       expected = (str::from_utf8($expected).unwrap(), $expectedk),
                       $($key = $val),*);
     })
@@ -93,10 +94,10 @@ fn ldexp_f64(a: f64, b: i32) -> f64 {
 fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16)
 where
     T: DecodableFloat,
-    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     // use a large enough buffer
-    let mut buf = [b'_'; 1024];
+    let mut buf = [MaybeUninit::new(b'_'); 1024];
     let mut expected_ = [b'_'; 1024];
 
     let decoded = decode_finite(v);
@@ -118,7 +119,7 @@ where
                 // we should always return `100..00` (`i` digits) instead, since that's
                 // what we can came up with `i` digits anyway. `round_up` assumes that
                 // the adjustment to the length is done by caller, which we simply ignore.
-                if let Some(_) = round_up(&mut expected_, i) {
+                if let Some(_) = round_up(&mut expected_[..i]) {
                     expectedk_ += 1;
                 }
             }
@@ -193,10 +194,10 @@ impl TestableFloat for f64 {
 fn check_exact_one<F, T>(mut f: F, x: i64, e: isize, tstr: &str, expected: &[u8], expectedk: i16)
 where
     T: TestableFloat,
-    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     // use a large enough buffer
-    let mut buf = [b'_'; 1024];
+    let mut buf = [MaybeUninit::new(b'_'); 1024];
     let v: T = TestableFloat::ldexpi(x, e);
     let decoded = decode_finite(v);
 
@@ -230,7 +231,7 @@ macro_rules! check_exact_one {
 
 pub fn f32_shortest_sanity_test<F>(mut f: F)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     // 0.0999999940395355224609375
     // 0.100000001490116119384765625
@@ -277,7 +278,7 @@ where
 
 pub fn f32_exact_sanity_test<F>(mut f: F)
 where
-    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     let minf32 = ldexp_f32(1.0, -149);
 
@@ -321,7 +322,7 @@ where
 
 pub fn f64_shortest_sanity_test<F>(mut f: F)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     // 0.0999999999999999777955395074968691915273...
     // 0.1000000000000000055511151231257827021181...
@@ -387,7 +388,7 @@ where
 
 pub fn f64_exact_sanity_test<F>(mut f: F)
 where
-    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     let minf64 = ldexp_f64(1.0, -1074);
 
@@ -474,7 +475,7 @@ where
 
 pub fn more_shortest_sanity_test<F>(mut f: F)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     check_shortest!(f{mant: 99_999_999_999_999_999, minus: 1, plus: 1,
                       exp: 0, inclusive: true} => b"1", 18);
@@ -484,10 +485,10 @@ where
 
 fn to_string_with_parts<F>(mut f: F) -> String
 where
-    F: for<'a> FnMut(&'a mut [u8], &'a mut [Part<'a>]) -> Formatted<'a>,
+    F: for<'a> FnMut(&'a mut [MaybeUninit<u8>], &'a mut [MaybeUninit<Part<'a>>]) -> Formatted<'a>,
 {
-    let mut buf = [0; 1024];
-    let mut parts = [Part::Zero(0); 16];
+    let mut buf = [MaybeUninit::new(0); 1024];
+    let mut parts = [MaybeUninit::new(Part::Zero(0)); 16];
     let formatted = f(&mut buf, &mut parts);
     let mut ret = vec![0; formatted.len()];
     assert_eq!(formatted.write(&mut ret), Some(ret.len()));
@@ -496,14 +497,14 @@ where
 
 pub fn to_shortest_str_test<F>(mut f_: F)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, frac_digits: usize) -> String
     where
         T: DecodableFloat,
-        F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+        F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
     {
         to_string_with_parts(|buf, parts| {
             to_shortest_str(|d, b| f(d, b), v, sign, frac_digits, buf, parts)
@@ -597,14 +598,14 @@ where
 
 pub fn to_shortest_exp_str_test<F>(mut f_: F)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, exp_bounds: (i16, i16), upper: bool) -> String
     where
         T: DecodableFloat,
-        F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+        F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
     {
         to_string_with_parts(|buf, parts| {
             to_shortest_exp_str(|d, b| f(d, b), v, sign, exp_bounds, upper, buf, parts)
@@ -716,14 +717,14 @@ where
 
 pub fn to_exact_exp_str_test<F>(mut f_: F)
 where
-    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, ndigits: usize, upper: bool) -> String
     where
         T: DecodableFloat,
-        F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+        F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
     {
         to_string_with_parts(|buf, parts| {
             to_exact_exp_str(|d, b, l| f(d, b, l), v, sign, ndigits, upper, buf, parts)
@@ -989,14 +990,14 @@ where
 
 pub fn to_exact_fixed_str_test<F>(mut f_: F)
 where
-    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, frac_digits: usize) -> String
     where
         T: DecodableFloat,
-        F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+        F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
     {
         to_string_with_parts(|buf, parts| {
             to_exact_fixed_str(|d, b, l| f(d, b, l), v, sign, frac_digits, buf, parts)

@@ -10,5 +10,5 @@ mod cat {
 
 fn main() {
     let nyan = cat::new_cat();
-    assert_eq!(nyan.meows, 52);    //~ ERROR field `meows` of struct `cat::Cat` is private
+    assert_eq!(nyan.meows, 52);    //~ ERROR field `meows` of struct `Cat` is private
 }

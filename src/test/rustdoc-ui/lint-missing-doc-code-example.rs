@@ -38,3 +38,34 @@ pub mod module3 {
   //~^ ERROR
   pub fn test() {}
 }
+
+/// Doc, but no code example and it's fine!
+pub const Const: u32 = 0;
+/// Doc, but no code example and it's fine!
+pub static Static: u32 = 0;
+/// Doc, but no code example and it's fine!
+pub type Type = u32;
+
+/// Doc
+//~^ ERROR
+pub struct Struct {
+    /// Doc, but no code example and it's fine!
+    pub field: u32,
+}
+
+/// Doc
+//~^ ERROR
+pub enum Enum {
+    /// Doc, but no code example and it's fine!
+    X,
+}
+
+/// Doc
+//~^ ERROR
+#[repr(C)]
+union Union {
+    /// Doc, but no code example and it's fine!
+    a: i32,
+    /// Doc, but no code example and it's fine!
+    b: f32,
+}

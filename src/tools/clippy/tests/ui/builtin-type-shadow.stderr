@@ -1,4 +1,4 @@
-error: This generic shadows the built-in type `u32`
+error: this generic shadows the built-in type `u32`
   --> $DIR/builtin-type-shadow.rs:4:8
    |
 LL | fn foo<u32>(a: u32) -> u32 {

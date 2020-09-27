@@ -1,4 +1,4 @@
-error[E0491]: in type `&'a variant_struct_type::Foo<&'b i32>`, reference has a longer lifetime than the data it references
+error[E0491]: in type `&'a Foo<&'b i32>`, reference has a longer lifetime than the data it references
   --> $DIR/regions-outlives-nominal-type-type-rev.rs:17:9
    |
 LL |         type Out = &'a Foo<&'b i32>;

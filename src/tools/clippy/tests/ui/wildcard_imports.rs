@@ -20,6 +20,7 @@ use wildcard_imports_helper::inner::inner_for_self_import::*;
 use wildcard_imports_helper::*;
 
 use std::io::prelude::*;
+use wildcard_imports_helper::prelude::v1::*;
 
 struct ReadFoo;
 
@@ -75,6 +76,7 @@ fn main() {
     let _ = A;
     let _ = inner_struct_mod::C;
     let _ = ExternA;
+    let _ = PreludeModAnywhere;
 
     double_struct_import_test!();
     double_struct_import_test!();

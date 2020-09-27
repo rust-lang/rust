@@ -1,80 +1,80 @@
-error[E0277]: `impl Sized` doesn't implement `std::fmt::Debug`
-  --> $DIR/bound-suggestions.rs:5:22
+error[E0277]: `impl Sized` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:9:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
-LL | fn test_impl(t: impl Sized + std::fmt::Debug) {
-   |                            ^^^^^^^^^^^^^^^^^
+LL | fn test_impl(t: impl Sized + Debug) {
+   |                            ^^^^^^^
 
-error[E0277]: `T` doesn't implement `std::fmt::Debug`
-  --> $DIR/bound-suggestions.rs:11:22
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:15:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
-LL | fn test_no_bounds<T: std::fmt::Debug>(t: T) {
-   |                    ^^^^^^^^^^^^^^^^^
+LL | fn test_no_bounds<T: Debug>(t: T) {
+   |                    ^^^^^^^
 
-error[E0277]: `T` doesn't implement `std::fmt::Debug`
-  --> $DIR/bound-suggestions.rs:17:22
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:21:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
-LL | fn test_one_bound<T: Sized + std::fmt::Debug>(t: T) {
-   |                            ^^^^^^^^^^^^^^^^^
+LL | fn test_one_bound<T: Sized + Debug>(t: T) {
+   |                            ^^^^^^^
 
-error[E0277]: `Y` doesn't implement `std::fmt::Debug`
-  --> $DIR/bound-suggestions.rs:23:30
+error[E0277]: `Y` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:27:30
    |
 LL |     println!("{:?} {:?}", x, y);
-   |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `Y`
    |
-LL | fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: std::fmt::Debug {
-   |                                                                   ^^^^^^^^^^^^^^^^^^^^
+LL | fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: Debug {
+   |                                                                   ^^^^^^^^^^
 
-error[E0277]: `X` doesn't implement `std::fmt::Debug`
-  --> $DIR/bound-suggestions.rs:29:22
+error[E0277]: `X` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:33:22
    |
 LL |     println!("{:?}", x);
-   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
-LL | fn test_one_bound_where<X>(x: X) where X: Sized + std::fmt::Debug {
-   |                                                 ^^^^^^^^^^^^^^^^^
+LL | fn test_one_bound_where<X>(x: X) where X: Sized + Debug {
+   |                                                 ^^^^^^^
 
-error[E0277]: `X` doesn't implement `std::fmt::Debug`
-  --> $DIR/bound-suggestions.rs:35:22
+error[E0277]: `X` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:39:22
    |
 LL |     println!("{:?}", x);
-   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `X`
    |
-LL | fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized, X: std::fmt::Debug {
-   |                                                            ^^^^^^^^^^^^^^^^^^^^
+LL | fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized, X: Debug {
+   |                                                            ^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

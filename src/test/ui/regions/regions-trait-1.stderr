@@ -14,10 +14,8 @@ LL | impl<'a> GetCtxt for HasCtxt<'a> {
 note: ...does not necessarily outlive the anonymous lifetime #1 defined on the method body at 16:5
   --> $DIR/regions-trait-1.rs:16:5
    |
-LL | /     fn get_ctxt(&self) -> &'a Ctxt {
-LL | |         self.c
-LL | |     }
-   | |_____^
+LL |     fn get_ctxt(&self) -> &'a Ctxt {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

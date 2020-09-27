@@ -25,7 +25,7 @@ LL |     let test: &mut dyn Bar = &mut thing;
    |                              ^^^^^^^^^^ the trait `Bar` cannot be made into an object
    |
    = help: consider moving `foo` to another trait
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&mut dyn Bar>` for `&mut Thing`
+   = note: required because of the requirements on the impl of `CoerceUnsized<&mut dyn Bar>` for `&mut Thing`
    = note: required by cast to type `&mut dyn Bar`
 
 error: aborting due to 2 previous errors

@@ -53,22 +53,22 @@ pub unsafe fn test_Foo_cxchg(p: &mut Foo, v: Foo) {
 
 pub unsafe fn test_Bar_load(p: &mut Bar, v: Bar) {
     intrinsics::atomic_load(p);
-    //~^ ERROR expected basic integer type, found `&dyn std::ops::Fn()`
+    //~^ ERROR expected basic integer type, found `&dyn Fn()`
 }
 
 pub unsafe fn test_Bar_store(p: &mut Bar, v: Bar) {
     intrinsics::atomic_store(p, v);
-    //~^ ERROR expected basic integer type, found `&dyn std::ops::Fn()`
+    //~^ ERROR expected basic integer type, found `&dyn Fn()`
 }
 
 pub unsafe fn test_Bar_xchg(p: &mut Bar, v: Bar) {
     intrinsics::atomic_xchg(p, v);
-    //~^ ERROR expected basic integer type, found `&dyn std::ops::Fn()`
+    //~^ ERROR expected basic integer type, found `&dyn Fn()`
 }
 
 pub unsafe fn test_Bar_cxchg(p: &mut Bar, v: Bar) {
     intrinsics::atomic_cxchg(p, v, v);
-    //~^ ERROR expected basic integer type, found `&dyn std::ops::Fn()`
+    //~^ ERROR expected basic integer type, found `&dyn Fn()`
 }
 
 pub unsafe fn test_Quux_load(p: &mut Quux, v: Quux) {

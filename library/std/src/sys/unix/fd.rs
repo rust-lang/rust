@@ -1,10 +1,11 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
+#[cfg(test)]
+mod tests;
+
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
 use crate::mem;
-#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
-use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::cvt;
 use crate::sys_common::AsInner;
 
@@ -28,24 +29,35 @@ const READ_LIMIT: usize = c_int::MAX as usize - 1;
 #[cfg(not(target_os = "macos"))]
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
-#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
-fn max_iov() -> usize {
-    static LIM: AtomicUsize = AtomicUsize::new(0);
-
-    let mut lim = LIM.load(Ordering::Relaxed);
-    if lim == 0 {
-        let ret = unsafe { libc::sysconf(libc::_SC_IOV_MAX) };
-
-        // 16 is the minimum value required by POSIX.
-        lim = if ret > 0 { ret as usize } else { 16 };
-        LIM.store(lim, Ordering::Relaxed);
-    }
-
-    lim
+#[cfg(any(
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "ios",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+const fn max_iov() -> usize {
+    libc::IOV_MAX as usize
 }
 
-#[cfg(any(target_os = "redox", target_env = "newlib"))]
-fn max_iov() -> usize {
+#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+const fn max_iov() -> usize {
+    libc::UIO_MAXIOV as usize
+}
+
+#[cfg(not(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "ios",
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+)))]
+const fn max_iov() -> usize {
     16 // The minimum value required by POSIX.
 }
 
@@ -277,18 +289,5 @@ impl Drop for FileDesc {
         // something like EINTR), we might close another valid file descriptor
         // opened after we closed ours.
         let _ = unsafe { libc::close(self.fd) };
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{FileDesc, IoSlice};
-    use core::mem::ManuallyDrop;
-
-    #[test]
-    fn limit_vector_count() {
-        let stdout = ManuallyDrop::new(FileDesc { fd: 1 });
-        let bufs = (0..1500).map(|_| IoSlice::new(&[])).collect::<Vec<_>>();
-        assert!(stdout.write_vectored(&bufs).is_ok());
     }
 }

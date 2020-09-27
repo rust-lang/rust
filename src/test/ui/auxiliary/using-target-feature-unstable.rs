@@ -1,5 +1,5 @@
-#![feature(mmx_target_feature)]
+#![feature(avx512_target_feature)]
 
 #[inline]
-#[target_feature(enable = "mmx")]
+#[target_feature(enable = "avx512ifma")]
 pub unsafe fn foo() {}

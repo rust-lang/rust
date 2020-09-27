@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `Error: std::cmp::Ord` is not satisfied
+error[E0277]: the trait bound `Error: Ord` is not satisfied
   --> $DIR/derives-span-Ord-enum-struct-variant.rs:9:6
    |
 LL |      x: Error
-   |      ^^^^^^^^ the trait `std::cmp::Ord` is not implemented for `Error`
+   |      ^^^^^^^^ the trait `Ord` is not implemented for `Error`
    |
    = note: required by `std::cmp::Ord::cmp`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)

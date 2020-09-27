@@ -1,4 +1,4 @@
-error: using `[u8; 0]` as const generic parameters is forbidden
+error: `[u8; 0]` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:3:21
    |
 LL | struct Foo<const N: [u8; 0]>;
@@ -7,7 +7,7 @@ LL | struct Foo<const N: [u8; 0]>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `()` as const generic parameters is forbidden
+error: `()` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:6:21
    |
 LL | struct Bar<const N: ()>;
@@ -16,8 +16,8 @@ LL | struct Bar<const N: ()>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `No` as const generic parameters is forbidden
-  --> $DIR/complex-types.rs:12:21
+error: `No` is forbidden as the type of a const generic parameter
+  --> $DIR/complex-types.rs:11:21
    |
 LL | struct Fez<const N: No>;
    |                     ^^
@@ -25,8 +25,8 @@ LL | struct Fez<const N: No>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `&'static u8` as const generic parameters is forbidden
-  --> $DIR/complex-types.rs:15:21
+error: `&'static u8` is forbidden as the type of a const generic parameter
+  --> $DIR/complex-types.rs:14:21
    |
 LL | struct Faz<const N: &'static u8>;
    |                     ^^^^^^^^^^^

@@ -43,12 +43,6 @@ fn use_x(_1: &'_#6r mut i32, _2: &'_#7r u32, _3: &'_#8r u32, _4: &'_#9r u32) -> 
 
     bb0: {
         _0 = const Const(Value(Scalar(0x01)): bool); // bb0[0]: scope 0 at $DIR/named-lifetimes-basic.rs:12:88: 12:92
-                                         // ty::Const
-                                         // + ty: bool
-                                         // + val: Value(Scalar(0x01))
-                                         // mir::Constant
-                                         // + span: $DIR/named-lifetimes-basic.rs:12:88: 12:92
-                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
         return;                          // bb0[1]: scope 0 at $DIR/named-lifetimes-basic.rs:12:94: 12:94
     }
 }

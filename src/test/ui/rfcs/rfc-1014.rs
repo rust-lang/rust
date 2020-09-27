@@ -30,5 +30,6 @@ fn close_stdout() {
 
 fn main() {
     close_stdout();
-    println!("hello world");
+    println!("hello");
+    println!("world");
 }

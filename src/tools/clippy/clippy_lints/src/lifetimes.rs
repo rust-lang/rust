@@ -13,9 +13,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Symbol};
 
-use crate::reexport::Name;
 use crate::utils::{in_macro, last_path_segment, span_lint, trait_ref_of_method};
 
 declare_clippy_lint! {
@@ -113,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 enum RefLt {
     Unnamed,
     Static,
-    Named(Name),
+    Named(Symbol),
 }
 
 fn check_fn_inner<'tcx>(
@@ -456,7 +455,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereCl
 }
 
 struct LifetimeChecker {
-    map: FxHashMap<Name, Span>,
+    map: FxHashMap<Symbol, Span>,
 }
 
 impl<'tcx> Visitor<'tcx> for LifetimeChecker {

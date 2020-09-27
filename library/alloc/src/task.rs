@@ -13,11 +13,9 @@ use crate::sync::Arc;
 ///
 /// This trait is a memory-safe and ergonomic alternative to constructing a
 /// [`RawWaker`]. It supports the common executor design in which the data used
-/// to wake up a task is stored in an [`Arc`][arc]. Some executors (especially
+/// to wake up a task is stored in an [`Arc`]. Some executors (especially
 /// those for embedded systems) cannot use this API, which is why [`RawWaker`]
 /// exists as an alternative for those systems.
-///
-/// [arc]: ../../std/sync/struct.Arc.html
 #[unstable(feature = "wake_trait", issue = "69912")]
 pub trait Wake {
     /// Wake this task.
@@ -35,6 +33,7 @@ pub trait Wake {
     }
 }
 
+#[allow(rustc::ineffective_unstable_trait_impl)]
 #[unstable(feature = "wake_trait", issue = "69912")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     fn from(waker: Arc<W>) -> Waker {
@@ -44,6 +43,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     }
 }
 
+#[allow(rustc::ineffective_unstable_trait_impl)]
 #[unstable(feature = "wake_trait", issue = "69912")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     fn from(waker: Arc<W>) -> RawWaker {

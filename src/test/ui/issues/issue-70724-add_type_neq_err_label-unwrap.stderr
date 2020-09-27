@@ -20,18 +20,18 @@ LL |     assert_eq!(a, 0);
                  found type `i32`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `fn() -> i32 {a}` doesn't implement `std::fmt::Debug`
+error[E0277]: `fn() -> i32 {a}` doesn't implement `Debug`
   --> $DIR/issue-70724-add_type_neq_err_label-unwrap.rs:6:5
    |
 LL | fn a() -> i32 {
    |    - consider calling this function
 ...
 LL |     assert_eq!(a, 0);
-   |     ^^^^^^^^^^^^^^^^^ `fn() -> i32 {a}` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |     ^^^^^^^^^^^^^^^^^ `fn() -> i32 {a}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `fn() -> i32 {a}`
+   = help: the trait `Debug` is not implemented for `fn() -> i32 {a}`
    = help: use parentheses to call the function: `a()`
-   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&fn() -> i32 {a}`
+   = note: required because of the requirements on the impl of `Debug` for `&fn() -> i32 {a}`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

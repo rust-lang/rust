@@ -7,7 +7,7 @@ LL | fn is_sync<T: Sync>(t: T) { }
 LL |     is_sync(bar());
    |     ^^^^^^^ future returned by `bar` is not `Sync`
    |
-   = help: within `impl std::future::Future`, the trait `std::marker::Sync` is not implemented for `Foo`
+   = help: within `impl Future`, the trait `Sync` is not implemented for `Foo`
 note: future is not `Sync` as this value is used across an await
   --> $DIR/issue-64130-1-sync.rs:15:5
    |

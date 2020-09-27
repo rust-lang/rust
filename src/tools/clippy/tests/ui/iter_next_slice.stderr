@@ -1,4 +1,4 @@
-error: Using `.iter().next()` on an array
+error: using `.iter().next()` on an array
   --> $DIR/iter_next_slice.rs:9:5
    |
 LL |     s.iter().next();
@@ -6,19 +6,19 @@ LL |     s.iter().next();
    |
    = note: `-D clippy::iter-next-slice` implied by `-D warnings`
 
-error: Using `.iter().next()` on a Slice without end index.
+error: using `.iter().next()` on a Slice without end index
   --> $DIR/iter_next_slice.rs:12:5
    |
 LL |     s[2..].iter().next();
    |     ^^^^^^^^^^^^^^^^^^^^ help: try calling: `s.get(2)`
 
-error: Using `.iter().next()` on a Slice without end index.
+error: using `.iter().next()` on a Slice without end index
   --> $DIR/iter_next_slice.rs:15:5
    |
 LL |     v[5..].iter().next();
    |     ^^^^^^^^^^^^^^^^^^^^ help: try calling: `v.get(5)`
 
-error: Using `.iter().next()` on an array
+error: using `.iter().next()` on an array
   --> $DIR/iter_next_slice.rs:18:5
    |
 LL |     v.iter().next();

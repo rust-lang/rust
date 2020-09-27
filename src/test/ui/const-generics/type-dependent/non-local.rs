@@ -1,7 +1,9 @@
 // aux-build:type_dependent_lib.rs
 // run-pass
-#![feature(const_generics)]
-#![allow(incomplete_features)]
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 extern crate type_dependent_lib;
 

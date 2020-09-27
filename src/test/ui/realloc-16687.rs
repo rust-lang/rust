@@ -48,7 +48,7 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?}) = {:?}", layout, ptr);
         }
 
-        ptr.as_non_null_ptr().as_ptr()
+        ptr.as_mut_ptr()
     }
 
     unsafe fn deallocate(ptr: *mut u8, layout: Layout) {
@@ -65,23 +65,17 @@ unsafe fn test_triangle() -> bool {
         }
 
         let memory = if new.size() > old.size() {
-            Global.grow(
-                NonNull::new_unchecked(ptr),
-                old,
-                new.size(),
-            )
+            Global.grow(NonNull::new_unchecked(ptr), old, new)
         } else {
-            Global.shrink(NonNull::new_unchecked(ptr), old, new.size())
+            Global.shrink(NonNull::new_unchecked(ptr), old, new)
         };
 
-        let ptr = memory.unwrap_or_else(|_| {
-            handle_alloc_error(Layout::from_size_align_unchecked(new.size(), old.align()))
-        });
+        let ptr = memory.unwrap_or_else(|_| handle_alloc_error(new));
 
         if PRINT {
             println!("reallocate({:?}, old={:?}, new={:?}) = {:?}", ptr, old, new, ptr);
         }
-        ptr.as_non_null_ptr().as_ptr()
+        ptr.as_mut_ptr()
     }
 
     fn idx_to_size(i: usize) -> usize {

@@ -7,9 +7,9 @@ LL | impl Foo for Option<[u8]> {}
   ::: $SRC_DIR/core/src/option.rs:LL:COL
    |
 LL | pub enum Option<T> {
-   |                 - required by this bound in `std::option::Option`
+   |                 - required by this bound in `Option`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = help: the trait `Sized` is not implemented for `[u8]`
 
 error: aborting due to previous error
 

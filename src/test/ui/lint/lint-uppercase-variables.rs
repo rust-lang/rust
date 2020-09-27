@@ -21,18 +21,18 @@ fn main() {
     match foo::Foo::Foo {
         Foo => {}
 //~^ ERROR variable `Foo` should have a snake case name
-//~^^ WARN `Foo` is named the same as one of the variants of the type `foo::Foo`
+//~^^ WARN `Foo` is named the same as one of the variants of the type `Foo`
 //~^^^ WARN unused variable: `Foo`
     }
 
     let Foo = foo::Foo::Foo;
     //~^ ERROR variable `Foo` should have a snake case name
-    //~^^ WARN `Foo` is named the same as one of the variants of the type `foo::Foo`
+    //~^^ WARN `Foo` is named the same as one of the variants of the type `Foo`
     //~^^^ WARN unused variable: `Foo`
 
     fn in_param(Foo: foo::Foo) {}
     //~^ ERROR variable `Foo` should have a snake case name
-    //~^^ WARN `Foo` is named the same as one of the variants of the type `foo::Foo`
+    //~^^ WARN `Foo` is named the same as one of the variants of the type `Foo`
     //~^^^ WARN unused variable: `Foo`
 
     test(1);

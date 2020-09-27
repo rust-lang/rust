@@ -2,7 +2,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-capture-clause-bad.rs:8:20
    |
 LL |     let x = "Hello world!".to_string();
-   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     thread::spawn(move|| {
    |                   ------ value moved into closure here
 LL |         println!("{}", x);

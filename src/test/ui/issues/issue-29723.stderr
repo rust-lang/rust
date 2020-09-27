@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `s`
   --> $DIR/issue-29723.rs:10:13
    |
 LL |     let s = String::new();
-   |         - move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `s` has type `String`, which does not implement the `Copy` trait
 LL |     let _s = match 0 {
 LL |         0 if { drop(s); false } => String::from("oops"),
    |                     - value moved here

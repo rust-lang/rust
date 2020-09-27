@@ -33,11 +33,11 @@ declare_clippy_lint! {
     /// ```
     pub DROP_BOUNDS,
     correctness,
-    "Bounds of the form `T: Drop` are useless"
+    "bounds of the form `T: Drop` are useless"
 }
 
-const DROP_BOUNDS_SUMMARY: &str = "Bounds of the form `T: Drop` are useless. \
-                                   Use `std::mem::needs_drop` to detect if a type has drop glue.";
+const DROP_BOUNDS_SUMMARY: &str = "bounds of the form `T: Drop` are useless, \
+                                   use `std::mem::needs_drop` to detect if a type has drop glue";
 
 declare_lint_pass!(DropBounds => [DROP_BOUNDS]);
 

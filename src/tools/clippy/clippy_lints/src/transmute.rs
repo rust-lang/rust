@@ -1,9 +1,9 @@
 use crate::utils::{
-    is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_sugg,
+    in_constant, is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_sugg,
     span_lint_and_then, sugg,
 };
 use if_chain::if_chain;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -61,12 +61,14 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust,ignore
-    /// core::intrinsics::transmute::<*const [i32], *const [u16]>(p)
+    /// ```rust
+    /// # let p: *const [i32] = &[];
+    /// unsafe { std::mem::transmute::<*const [i32], *const [u16]>(p) };
     /// ```
     /// Use instead:
     /// ```rust
-    /// p as *const [u16]
+    /// # let p: *const [i32] = &[];
+    /// p as *const [u16];
     /// ```
     pub TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
     complexity,
@@ -329,10 +331,15 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::TRANSMUTE);
             then {
+                // Avoid suggesting from/to bits and dereferencing raw pointers in const contexts.
+                // See https://github.com/rust-lang/rust/issues/73736 for progress on making them `const fn`.
+                // And see https://github.com/rust-lang/rust/issues/51911 for dereferencing raw pointers.
+                let const_context = in_constant(cx, e.hir_id);
+
                 let from_ty = cx.typeck_results().expr_ty(&args[0]);
                 let to_ty = cx.typeck_results().expr_ty(e);
 
-                match (&from_ty.kind, &to_ty.kind) {
+                match (&from_ty.kind(), &to_ty.kind()) {
                     _ if from_ty == to_ty => span_lint(
                         cx,
                         USELESS_TRANSMUTE,
@@ -440,7 +447,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             &format!("transmute from a `{}` to a `char`", from_ty),
                             |diag| {
                                 let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                let arg = if let ty::Int(_) = from_ty.kind {
+                                let arg = if let ty::Int(_) = from_ty.kind() {
                                     arg.as_ty(ast::UintTy::U32.name_str())
                                 } else {
                                     arg
@@ -456,8 +463,8 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                     },
                     (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) => {
                         if_chain! {
-                            if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind, &ty_to.kind);
-                            if let ty::Uint(ast::UintTy::U8) = slice_ty.kind;
+                            if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind(), &ty_to.kind());
+                            if let ty::Uint(ast::UintTy::U8) = slice_ty.kind();
                             if from_mutbl == to_mutbl;
                             then {
                                 let postfix = if *from_mutbl == Mutability::Mut {
@@ -480,7 +487,8 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                                     Applicability::Unspecified,
                                 );
                             } else {
-                                if cx.tcx.erase_regions(&from_ty) != cx.tcx.erase_regions(&to_ty) {
+                                if (cx.tcx.erase_regions(&from_ty) != cx.tcx.erase_regions(&to_ty))
+                                    && !const_context {
                                     span_lint_and_then(
                                         cx,
                                         TRANSMUTE_PTR_TO_PTR,
@@ -542,14 +550,14 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             },
                         )
                     },
-                    (ty::Int(_) | ty::Uint(_), ty::Float(_)) => span_lint_and_then(
+                    (ty::Int(_) | ty::Uint(_), ty::Float(_)) if !const_context => span_lint_and_then(
                         cx,
                         TRANSMUTE_INT_TO_FLOAT,
                         e.span,
                         &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                         |diag| {
                             let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                            let arg = if let ty::Int(int_ty) = from_ty.kind {
+                            let arg = if let ty::Int(int_ty) = from_ty.kind() {
                                 arg.as_ty(format!(
                                     "u{}",
                                     int_ty.bit_width().map_or_else(|| "size".to_string(), |v| v.to_string())
@@ -565,7 +573,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             );
                         },
                     ),
-                    (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) => span_lint_and_then(
+                    (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) if !const_context => span_lint_and_then(
                         cx,
                         TRANSMUTE_FLOAT_TO_INT,
                         e.span,
@@ -595,7 +603,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             arg = sugg::Sugg::NonParen(format!("{}.to_bits()", arg.maybe_par()).into());
 
                             // cast the result of `to_bits` if `to_ty` is signed
-                            arg = if let ty::Int(int_ty) = to_ty.kind {
+                            arg = if let ty::Int(int_ty) = to_ty.kind() {
                                 arg.as_ty(int_ty.name_str().to_string())
                             } else {
                                 arg
@@ -704,14 +712,14 @@ fn can_be_expressed_as_pointer_cast<'tcx>(
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
 ) -> bool {
-    use CastKind::*;
+    use CastKind::{AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast};
     matches!(
         check_cast(cx, e, from_ty, to_ty),
         Some(PtrPtrCast | PtrAddrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast)
     )
 }
 
-/// If a cast from from_ty to to_ty is valid, returns an Ok containing the kind of
+/// If a cast from `from_ty` to `to_ty` is valid, returns an Ok containing the kind of
 /// the cast. In certain cases, including some invalid casts from array references
 /// to pointers, this may cause additional errors to be emitted and/or ICE error
 /// messages. This function will panic if that occurs.

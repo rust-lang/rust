@@ -23,10 +23,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_unprop_assign.rs:5:9: 5:10
-          _1 = const foo() -> bb1;         // scope 0 at $DIR/mutable_variable_unprop_assign.rs:5:13: 5:18
-                                           // ty::Const
-                                           // + ty: fn() -> i32 {foo}
-                                           // + val: Value(Scalar(<ZST>))
+          _1 = foo() -> bb1;               // scope 0 at $DIR/mutable_variable_unprop_assign.rs:5:13: 5:18
                                            // mir::Constant
                                            // + span: $DIR/mutable_variable_unprop_assign.rs:5:13: 5:16
                                            // + literal: Const { ty: fn() -> i32 {foo}, val: Value(Scalar(<ZST>)) }
@@ -35,19 +32,7 @@
       bb1: {
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:9: 6:14
           (_2.0: i32) = const 1_i32;       // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:29: 6:35
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_unprop_assign.rs:6:30: 6:31
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
           (_2.1: i32) = const 2_i32;       // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:29: 6:35
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000002))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_unprop_assign.rs:6:33: 6:34
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
           StorageLive(_3);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:7:11: 7:12
           _3 = _1;                         // scope 2 at $DIR/mutable_variable_unprop_assign.rs:7:11: 7:12
           (_2.1: i32) = move _3;           // scope 2 at $DIR/mutable_variable_unprop_assign.rs:7:5: 7:12
@@ -57,12 +42,6 @@
           StorageLive(_5);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:9:9: 9:10
           _5 = (_2.0: i32);                // scope 3 at $DIR/mutable_variable_unprop_assign.rs:9:13: 9:16
           _0 = const ();                   // scope 0 at $DIR/mutable_variable_unprop_assign.rs:4:11: 10:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_unprop_assign.rs:4:11: 10:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_5);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:10:1: 10:2
           StorageDead(_4);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:10:1: 10:2
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:10:1: 10:2

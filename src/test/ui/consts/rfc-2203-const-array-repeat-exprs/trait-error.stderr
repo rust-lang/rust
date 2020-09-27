@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `Foo<std::string::String>: std::marker::Copy` is not satisfied
-  --> $DIR/trait-error.rs:8:5
+error[E0277]: the trait bound `Foo<String>: Copy` is not satisfied
+  --> $DIR/trait-error.rs:7:5
    |
 LL |     [Foo(String::new()); 4];
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `Foo<std::string::String>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Foo<String>`
    |
    = help: the following implementations were found:
-             <Foo<T> as std::marker::Copy>
+             <Foo<T> as Copy>
    = note: the `Copy` trait is required because the repeated element will be copied
 
 error: aborting due to previous error

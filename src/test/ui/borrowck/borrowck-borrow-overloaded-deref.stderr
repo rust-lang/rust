@@ -4,7 +4,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
 LL |     let __isize = &mut *x;
    |                   ^^^^^^^ cannot borrow as mutable
    |
-   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::rc::Rc<isize>`
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<isize>`
 
 error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-deref.rs:16:19
@@ -12,7 +12,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
 LL |     let __isize = &mut *x;
    |                   ^^^^^^^ cannot borrow as mutable
    |
-   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::rc::Rc<isize>`
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<isize>`
 
 error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-deref.rs:24:5
@@ -20,7 +20,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
 LL |     &mut **x
    |     ^^^^^^^^ cannot borrow as mutable
    |
-   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::rc::Rc<isize>`
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<isize>`
 
 error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-deref.rs:28:5
@@ -28,7 +28,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
 LL |     &mut **x
    |     ^^^^^^^^ cannot borrow as mutable
    |
-   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::rc::Rc<isize>`
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<isize>`
 
 error[E0594]: cannot assign to data in an `Rc`
   --> $DIR/borrowck-borrow-overloaded-deref.rs:32:5
@@ -36,7 +36,7 @@ error[E0594]: cannot assign to data in an `Rc`
 LL |     *x = 3;
    |     ^^^^^^ cannot assign
    |
-   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::rc::Rc<isize>`
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<isize>`
 
 error[E0594]: cannot assign to data in an `Rc`
   --> $DIR/borrowck-borrow-overloaded-deref.rs:36:5
@@ -44,7 +44,7 @@ error[E0594]: cannot assign to data in an `Rc`
 LL |     **x = 3;
    |     ^^^^^^^ cannot assign
    |
-   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::rc::Rc<isize>`
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<isize>`
 
 error[E0594]: cannot assign to data in an `Rc`
   --> $DIR/borrowck-borrow-overloaded-deref.rs:40:5
@@ -52,7 +52,7 @@ error[E0594]: cannot assign to data in an `Rc`
 LL |     **x = 3;
    |     ^^^^^^^ cannot assign
    |
-   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::rc::Rc<isize>`
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<isize>`
 
 error: aborting due to 7 previous errors
 

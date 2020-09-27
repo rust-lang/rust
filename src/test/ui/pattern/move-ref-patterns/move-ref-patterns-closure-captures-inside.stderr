@@ -2,7 +2,7 @@ error[E0382]: borrow of moved value: `tup0`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:33:10
    |
 LL |     let mut tup0 = (S, S);
-   |         -------- move occurs because `tup0` has type `(main::S, main::S)`, which does not implement the `Copy` trait
+   |         -------- move occurs because `tup0` has type `(S, S)`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -17,7 +17,7 @@ error[E0382]: borrow of moved value: `tup1`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:34:10
    |
 LL |     let mut tup1 = (S, S, S);
-   |         -------- move occurs because `tup1` has type `(main::S, main::S, main::S)`, which does not implement the `Copy` trait
+   |         -------- move occurs because `tup1` has type `(S, S, S)`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -32,7 +32,7 @@ error[E0382]: borrow of moved value: `tup2`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:35:10
    |
 LL |     let tup2 = (S, S);
-   |         ---- move occurs because `tup2` has type `(main::S, main::S)`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup2` has type `(S, S)`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -47,7 +47,7 @@ error[E0382]: borrow of moved value: `tup3`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:36:10
    |
 LL |     let tup3 = (S, S, S);
-   |         ---- move occurs because `tup3` has type `(main::S, main::S, main::S)`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup3` has type `(S, S, S)`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -62,7 +62,7 @@ error[E0382]: borrow of moved value: `tup4`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:41:10
    |
 LL |     let tup4 = (S, S);
-   |         ---- move occurs because `tup4` has type `(main::S, main::S)`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup4` has type `(S, S)`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -77,7 +77,7 @@ error[E0382]: borrow of moved value: `arr0`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:43:10
    |
 LL |     let mut arr0 = [S, S, S];
-   |         -------- move occurs because `arr0` has type `[main::S; 3]`, which does not implement the `Copy` trait
+   |         -------- move occurs because `arr0` has type `[S; 3]`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -92,7 +92,7 @@ error[E0382]: borrow of moved value: `arr1`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:44:36
    |
 LL |     let mut arr1 = [S, S, S, S, S];
-   |         -------- move occurs because `arr1` has type `[main::S; 5]`, which does not implement the `Copy` trait
+   |         -------- move occurs because `arr1` has type `[S; 5]`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -107,7 +107,7 @@ error[E0382]: borrow of moved value: `arr2`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:45:10
    |
 LL |     let arr2 = [S, S, S];
-   |         ---- move occurs because `arr2` has type `[main::S; 3]`, which does not implement the `Copy` trait
+   |         ---- move occurs because `arr2` has type `[S; 3]`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -122,7 +122,7 @@ error[E0382]: borrow of moved value: `arr3`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:46:36
    |
 LL |     let arr3 = [S, S, S, S, S];
-   |         ---- move occurs because `arr3` has type `[main::S; 5]`, which does not implement the `Copy` trait
+   |         ---- move occurs because `arr3` has type `[S; 5]`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -137,7 +137,7 @@ error[E0382]: borrow of moved value: `tup0`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:77:10
    |
 LL |     let mut tup0: Option<(S, S)> = None;
-   |         -------- move occurs because `tup0` has type `std::option::Option<(main::S, main::S)>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `tup0` has type `Option<(S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -151,7 +151,7 @@ error[E0382]: borrow of moved value: `tup1`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:78:10
    |
 LL |     let mut tup1: Option<(S, S, S)> = None;
-   |         -------- move occurs because `tup1` has type `std::option::Option<(main::S, main::S, main::S)>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `tup1` has type `Option<(S, S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -166,7 +166,7 @@ error[E0382]: borrow of moved value: `tup2`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:79:10
    |
 LL |     let tup2: Option<(S, S)> = None;
-   |         ---- move occurs because `tup2` has type `std::option::Option<(main::S, main::S)>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup2` has type `Option<(S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -181,7 +181,7 @@ error[E0382]: borrow of moved value: `tup3`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:80:10
    |
 LL |     let tup3: Option<(S, S, S)> = None;
-   |         ---- move occurs because `tup3` has type `std::option::Option<(main::S, main::S, main::S)>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup3` has type `Option<(S, S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -196,7 +196,7 @@ error[E0382]: borrow of moved value: `tup4`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:81:21
    |
 LL |     let tup4: Option<(S, S)> = None;
-   |         ---- move occurs because `tup4` has type `std::option::Option<(main::S, main::S)>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup4` has type `Option<(S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -211,7 +211,7 @@ error[E0382]: borrow of moved value: `arr0`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:82:10
    |
 LL |     let mut arr0: Option<[S; 3]> = None;
-   |         -------- move occurs because `arr0` has type `std::option::Option<[main::S; 3]>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `arr0` has type `Option<[S; 3]>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -226,7 +226,7 @@ error[E0382]: borrow of moved value: `arr1`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:83:35
    |
 LL |     let mut arr1: Option<[S; 5]> = None;
-   |         -------- move occurs because `arr1` has type `std::option::Option<[main::S; 5]>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `arr1` has type `Option<[S; 5]>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -241,7 +241,7 @@ error[E0382]: borrow of moved value: `arr2`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:84:10
    |
 LL |     let arr2: Option<[S; 3]> = None;
-   |         ---- move occurs because `arr2` has type `std::option::Option<[main::S; 3]>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `arr2` has type `Option<[S; 3]>`, which does not implement the `Copy` trait
 LL |     let arr3: Option<[S; 5]> = None;
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -256,7 +256,7 @@ error[E0382]: borrow of moved value: `arr3`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:85:35
    |
 LL |     let arr3: Option<[S; 5]> = None;
-   |         ---- move occurs because `arr3` has type `std::option::Option<[main::S; 5]>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `arr3` has type `Option<[S; 5]>`, which does not implement the `Copy` trait
 LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
@@ -270,7 +270,7 @@ error[E0382]: borrow of moved value: `tup0`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:113:10
    |
 LL |     let mut tup0: Option<(S, S)> = None;
-   |         -------- move occurs because `tup0` has type `std::option::Option<(main::S, main::S)>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `tup0` has type `Option<(S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -284,7 +284,7 @@ error[E0382]: borrow of moved value: `tup1`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:114:10
    |
 LL |     let mut tup1: Option<(S, S, S)> = None;
-   |         -------- move occurs because `tup1` has type `std::option::Option<(main::S, main::S, main::S)>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `tup1` has type `Option<(S, S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -299,7 +299,7 @@ error[E0382]: borrow of moved value: `tup2`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:115:10
    |
 LL |     let tup2: Option<(S, S)> = None;
-   |         ---- move occurs because `tup2` has type `std::option::Option<(main::S, main::S)>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup2` has type `Option<(S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -314,7 +314,7 @@ error[E0382]: borrow of moved value: `tup3`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:116:10
    |
 LL |     let tup3: Option<(S, S, S)> = None;
-   |         ---- move occurs because `tup3` has type `std::option::Option<(main::S, main::S, main::S)>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup3` has type `Option<(S, S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -329,7 +329,7 @@ error[E0382]: borrow of moved value: `tup4`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:117:21
    |
 LL |     let tup4: Option<(S, S)> = None;
-   |         ---- move occurs because `tup4` has type `std::option::Option<(main::S, main::S)>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `tup4` has type `Option<(S, S)>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -344,7 +344,7 @@ error[E0382]: borrow of moved value: `arr0`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:118:10
    |
 LL |     let mut arr0: Option<[S; 3]> = None;
-   |         -------- move occurs because `arr0` has type `std::option::Option<[main::S; 3]>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `arr0` has type `Option<[S; 3]>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -359,7 +359,7 @@ error[E0382]: borrow of moved value: `arr1`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:119:35
    |
 LL |     let mut arr1: Option<[S; 5]> = None;
-   |         -------- move occurs because `arr1` has type `std::option::Option<[main::S; 5]>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `arr1` has type `Option<[S; 5]>`, which does not implement the `Copy` trait
 ...
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -374,7 +374,7 @@ error[E0382]: borrow of moved value: `arr2`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:120:10
    |
 LL |     let arr2: Option<[S; 3]> = None;
-   |         ---- move occurs because `arr2` has type `std::option::Option<[main::S; 3]>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `arr2` has type `Option<[S; 3]>`, which does not implement the `Copy` trait
 LL |     let arr3: Option<[S; 5]> = None;
 LL |     let mut closure = || {
    |                       -- value moved into closure here
@@ -389,7 +389,7 @@ error[E0382]: borrow of moved value: `arr3`
   --> $DIR/move-ref-patterns-closure-captures-inside.rs:121:35
    |
 LL |     let arr3: Option<[S; 5]> = None;
-   |         ---- move occurs because `arr3` has type `std::option::Option<[main::S; 5]>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `arr3` has type `Option<[S; 5]>`, which does not implement the `Copy` trait
 LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...

@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `std::boxed::Box<X<C<'_>>>: NotAuto`
+error[E0275]: overflow evaluating the requirement `Box<X<C<'_>>>: NotAuto`
   --> $DIR/traits-inductive-overflow-lifetime.rs:27:5
    |
 LL | fn is_send<S: NotAuto>() {}

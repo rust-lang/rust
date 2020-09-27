@@ -1,4 +1,4 @@
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-36617.rs:1:1
    |
 LL | #![derive(Copy)]
@@ -22,3 +22,4 @@ LL | #![derive(Copy)]
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0774`.

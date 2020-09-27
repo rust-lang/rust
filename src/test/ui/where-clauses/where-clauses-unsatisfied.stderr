@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `Struct: std::cmp::Eq` is not satisfied
+error[E0277]: the trait bound `Struct: Eq` is not satisfied
   --> $DIR/where-clauses-unsatisfied.rs:6:10
    |
 LL | fn equal<T>(a: &T, b: &T) -> bool where T : Eq { a == b }
    |                                             -- required by this bound in `equal`
 ...
 LL |     drop(equal(&Struct, &Struct))
-   |          ^^^^^ the trait `std::cmp::Eq` is not implemented for `Struct`
+   |          ^^^^^ the trait `Eq` is not implemented for `Struct`
 
 error: aborting due to previous error
 

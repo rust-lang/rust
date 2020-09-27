@@ -8,8 +8,10 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
+use core::intrinsics;
 use core::mem;
 use core::ptr;
+use core::sync::atomic::{AtomicBool, Ordering};
 use libc::{self, c_int};
 use unwind as uw;
 
@@ -47,6 +49,11 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
 };
 
 struct Exception {
+    // This is necessary because C++ code can capture our execption with
+    // std::exception_ptr and rethrow it multiple times, possibly even in
+    // another thread.
+    caught: AtomicBool,
+
     // This needs to be an Option because the object's lifetime follows C++
     // semantics: when catch_unwind moves the Box out of the exception it must
     // still leave the exception object in a valid state because its destructor
@@ -55,11 +62,27 @@ struct Exception {
 }
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
-    assert!(!ptr.is_null());
-    let adjusted_ptr = __cxa_begin_catch(ptr as *mut libc::c_void) as *mut Exception;
-    let ex = (*adjusted_ptr).data.take();
+    // intrinsics::try actually gives us a pointer to this structure.
+    #[repr(C)]
+    struct CatchData {
+        ptr: *mut u8,
+        is_rust_panic: bool,
+    }
+    let catch_data = &*(ptr as *mut CatchData);
+
+    let adjusted_ptr = __cxa_begin_catch(catch_data.ptr as *mut libc::c_void) as *mut Exception;
+    let out = if catch_data.is_rust_panic {
+        let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::SeqCst);
+        if was_caught {
+            // Since cleanup() isn't allowed to panic, we just abort instead.
+            intrinsics::abort();
+        }
+        (*adjusted_ptr).data.take().unwrap()
+    } else {
+        super::__rust_foreign_exception();
+    };
     __cxa_end_catch();
-    ex.unwrap()
+    out
 }
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
@@ -68,25 +91,16 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     if exception.is_null() {
         return uw::_URC_FATAL_PHASE1_ERROR as u32;
     }
-    ptr::write(exception, Exception { data: Some(data) });
+    ptr::write(exception, Exception { caught: AtomicBool::new(false), data: Some(data) });
     __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
 }
 
-// On WASM and ARM, the destructor returns the pointer to the object.
-cfg_if::cfg_if! {
-    if #[cfg(any(target_arch = "arm", target_arch = "wasm32"))] {
-        type DestructorRet = *mut libc::c_void;
-    } else {
-        type DestructorRet = ();
-    }
-}
-extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> DestructorRet {
+extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
     unsafe {
         if let Some(b) = (ptr as *mut Exception).read().data {
             drop(b);
             super::__rust_drop_panic();
         }
-        #[cfg(any(target_arch = "arm", target_arch = "wasm32"))]
         ptr
     }
 }
@@ -109,7 +123,7 @@ extern "C" {
     fn __cxa_throw(
         thrown_exception: *mut libc::c_void,
         tinfo: *const TypeInfo,
-        dest: extern "C" fn(*mut libc::c_void) -> DestructorRet,
+        dest: extern "C" fn(*mut libc::c_void) -> *mut libc::c_void,
     ) -> !;
     fn __gxx_personality_v0(
         version: c_int,

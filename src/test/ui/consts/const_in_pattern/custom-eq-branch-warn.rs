@@ -1,8 +1,5 @@
 // check-pass
 
-#![warn(indirect_structural_match)]
-//~^ NOTE lint level is defined here
-
 struct CustomEq;
 
 impl Eq for CustomEq {}
@@ -32,7 +29,8 @@ fn main() {
         BAR_BAZ => panic!(),
         //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
         //~| WARN this was previously accepted
-        //~| NOTE see issue #62411
+        //~| NOTE see issue #73448
+        //~| NOTE `#[warn(nontrivial_structural_match)]` on by default
         _ => {}
     }
 }

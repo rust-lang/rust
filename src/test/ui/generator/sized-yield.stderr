@@ -8,7 +8,7 @@ LL | |        yield s[..];
 LL | |    };
    | |____^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
    = note: the yield type of a generator must have a statically known size
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
@@ -17,7 +17,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |    Pin::new(&mut gen).resume(());
    |                       ^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
 
 error: aborting due to 2 previous errors
 

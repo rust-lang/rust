@@ -7,8 +7,8 @@ LL |     fn foo(self) -> &'static i32 {
    = help: unsized locals are gated as an unstable feature
 help: consider further restricting `Self`
    |
-LL |     fn foo(self) -> &'static i32 where Self: std::marker::Sized {
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn foo(self) -> &'static i32 where Self: Sized {
+   |                                  ^^^^^^^^^^^^^^^^^
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     fn foo(&self) -> &'static i32 {

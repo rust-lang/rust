@@ -5,7 +5,7 @@ const QUERY = [
     'StructFieldItem',
     'StructMethodItem',
     'ImplTraitItem',
-    'ImplAssociatedConstItem',
+    'StructImplConstItem',
     'ImplTraitFunction',
     'EnumItem',
     'VariantItem',
@@ -64,8 +64,16 @@ const EXPECTED = [
         'others': [],
     },
     {
-        // ImplAssociatedConstItem
-        'others': [],
+        // StructImplConstItem
+        'others': [
+            {
+                'path': 'doc_alias::Struct',
+                'name': 'ImplConstItem',
+                'alias': 'StructImplConstItem',
+                'href': '../doc_alias/struct.Struct.html#associatedconstant.ImplConstItem',
+                'is_alias': true
+            },
+        ],
     },
     {
         'others': [
@@ -196,6 +204,10 @@ const EXPECTED = [
                 'alias': 'ConstItem',
                 'href': '../doc_alias/constant.Const.html',
                 'is_alias': true
+            },
+            {
+                'path': 'doc_alias::Struct',
+                'name': 'ImplConstItem',
             },
         ],
     },

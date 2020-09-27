@@ -1,0 +1,16 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_llvm"
+version = "0.0.0"
+edition = "2018"
+
+[features]
+static-libstdcpp = []
+emscripten = []
+
+[dependencies]
+libc = "0.2.73"
+
+[build-dependencies]
+build_helper = { path = "../../src/build_helper" }
+cc = "1.0.60"

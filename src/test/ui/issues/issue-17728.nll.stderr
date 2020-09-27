@@ -9,12 +9,12 @@ LL | |         "n" | "north" => RoomDirection::North,
 LL | |         "down" => RoomDirection::Down,
    | |                   ------------------- this and all prior arms are found to be of type `RoomDirection`
 LL | |         _ => None
-   | |              ^^^^ expected enum `RoomDirection`, found enum `std::option::Option`
+   | |              ^^^^ expected enum `RoomDirection`, found enum `Option`
 LL | |     }
    | |_____- `match` arms have incompatible types
    |
    = note: expected enum `RoomDirection`
-              found enum `std::option::Option<_>`
+              found enum `Option<_>`
 
 error: aborting due to previous error
 

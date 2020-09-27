@@ -15,22 +15,22 @@ LL |     default type Output = Box<T>;
 LL |     default fn generate(self) -> Self::Output {
    |                                  ------------ expected `<T as Example>::Output` because of return type
 LL |         Box::new(self)
-   |         ^^^^^^^^^^^^^^ expected associated type, found struct `std::boxed::Box`
+   |         ^^^^^^^^^^^^^^ expected associated type, found struct `Box`
    |
    = note: expected associated type `<T as Example>::Output`
-                       found struct `std::boxed::Box<T>`
+                       found struct `Box<T>`
 
 error[E0308]: mismatched types
   --> $DIR/specialization-default-types.rs:25:5
    |
 LL | fn trouble<T>(t: T) -> Box<T> {
-   |                        ------ expected `std::boxed::Box<T>` because of return type
+   |                        ------ expected `Box<T>` because of return type
 LL |     Example::generate(t)
-   |     ^^^^^^^^^^^^^^^^^^^^ expected struct `std::boxed::Box`, found associated type
+   |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Box`, found associated type
    |
-   = note:       expected struct `std::boxed::Box<T>`
+   = note:       expected struct `Box<T>`
            found associated type `<T as Example>::Output`
-   = help: consider constraining the associated type `<T as Example>::Output` to `std::boxed::Box<T>`
+   = help: consider constraining the associated type `<T as Example>::Output` to `Box<T>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to 2 previous errors; 1 warning emitted

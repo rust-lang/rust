@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                         cx.tcx.for_each_impl(default_trait_id, |d| {
                                             if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
                                                 if let Some(local_def_id) = ty_def.did.as_local() {
-                                                    impls.insert(cx.tcx.hir().as_local_hir_id(local_def_id));
+                                                    impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
                                                 }
                                             }
                                         });

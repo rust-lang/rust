@@ -300,20 +300,26 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
         .unwrap_or(c::INFINITE)
 }
 
-// On Windows, use the processor-specific __fastfail mechanism.  In Windows 8
-// and later, this will terminate the process immediately without running any
-// in-process exception handlers.  In earlier versions of Windows, this
-// sequence of instructions will be treated as an access violation,
-// terminating the process but without necessarily bypassing all exception
-// handlers.
-//
-// https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
+/// Use `__fastfail` to abort the process
+///
+/// This is the same implementation as in libpanic_abort's `__rust_start_panic`. See
+/// that function for more information on `__fastfail`
 #[allow(unreachable_code)]
 pub fn abort_internal() -> ! {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
     unsafe {
-        llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
-        crate::intrinsics::unreachable();
+        cfg_if::cfg_if! {
+            if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+                asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
+                crate::intrinsics::unreachable();
+            } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
+                asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+                crate::intrinsics::unreachable();
+            } else if #[cfg(target_arch = "aarch64")] {
+                asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
+                crate::intrinsics::unreachable();
+            }
+        }
     }
     crate::intrinsics::abort();
 }

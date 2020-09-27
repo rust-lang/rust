@@ -117,8 +117,6 @@ pub trait Write {
     ///
     /// This function will return an instance of [`Error`] on error.
     ///
-    /// [`Error`]: struct.Error.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -146,9 +144,6 @@ pub trait Write {
     ///
     /// This function will return an instance of [`Error`] on error.
     ///
-    /// [`char`]: ../../std/primitive.char.html
-    /// [`Error`]: struct.Error.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -172,8 +167,6 @@ pub trait Write {
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
-    ///
-    /// [`write!`]: ../../std/macro.write.html
     ///
     /// # Examples
     ///
@@ -218,9 +211,6 @@ impl<W: Write + ?Sized> Write for &mut W {
 /// To interact with a `Formatter`, you'll call various methods to change the
 /// various options related to formatting. For examples, please see the
 /// documentation of the methods defined on `Formatter` below.
-///
-/// [`Debug`]: trait.Debug.html
-/// [`Display`]: trait.Display.html
 #[allow(missing_debug_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Formatter<'a> {
@@ -378,7 +368,7 @@ impl<'a> Arguments<'a> {
 ///
 /// The [`format_args!`] macro will safely create an instance of this structure.
 /// The macro validates the format string at compile-time so usage of the
-/// [`write`] and [`format`] functions can be safely performed.
+/// [`write()`] and [`format()`] functions can be safely performed.
 ///
 /// You can use the `Arguments<'a>` that [`format_args!`] returns in `Debug`
 /// and `Display` contexts as seen below. The example also shows that `Debug`
@@ -392,9 +382,7 @@ impl<'a> Arguments<'a> {
 /// assert_eq!(display, debug);
 /// ```
 ///
-/// [`format_args!`]: ../../std/macro.format_args.html
-/// [`format`]: ../../std/fmt/fn.format.html
-/// [`write`]: ../../std/fmt/fn.write.html
+/// [`format()`]: ../../std/fmt/fn.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
@@ -472,9 +460,7 @@ impl Display for Arguments<'_> {
 ///
 /// When used with the alternate format specifier `#?`, the output is pretty-printed.
 ///
-/// For more information on formatters, see [the module-level documentation][module].
-///
-/// [module]: ../../std/fmt/index.html
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// This trait can be used with `#[derive]` if all fields implement `Debug`. When
 /// `derive`d for structs, it will use the name of the `struct`, then `{`, then a
@@ -535,8 +521,7 @@ impl Display for Arguments<'_> {
 /// `Debug` implementations using either `derive` or the debug builder API
 /// on [`Formatter`] support pretty-printing using the alternate flag: `{:#?}`.
 ///
-/// [`debug_struct`]: ../../std/fmt/struct.Formatter.html#method.debug_struct
-/// [`Formatter`]: ../../std/fmt/struct.Formatter.html
+/// [`debug_struct`]: Formatter::debug_struct
 ///
 /// Pretty-printing with `#?`:
 ///
@@ -618,14 +603,10 @@ pub use macros::Debug;
 
 /// Format trait for an empty format, `{}`.
 ///
-/// `Display` is similar to [`Debug`][debug], but `Display` is for user-facing
+/// `Display` is similar to [`Debug`], but `Display` is for user-facing
 /// output, and so cannot be derived.
 ///
-/// [debug]: trait.Debug.html
-///
-/// For more information on formatters, see [the module-level documentation][module].
-///
-/// [module]: ../../std/fmt/index.html
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// # Examples
 ///
@@ -697,9 +678,7 @@ pub trait Display {
 ///
 /// The alternate flag, `#`, adds a `0o` in front of the output.
 ///
-/// For more information on formatters, see [the module-level documentation][module].
-///
-/// [module]: ../../std/fmt/index.html
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// # Examples
 ///
@@ -751,7 +730,7 @@ pub trait Octal {
 ///
 /// The alternate flag, `#`, adds a `0b` in front of the output.
 ///
-/// For more information on formatters, see [the module-level documentation][module].
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// # Examples
 ///
@@ -790,12 +769,6 @@ pub trait Octal {
 ///     "l as binary is: 0b000000000000000000000001101011"
 /// );
 /// ```
-///
-/// [module]: ../../std/fmt/index.html
-/// [`i8`]: ../../std/primitive.i8.html
-/// [`i128`]: ../../std/primitive.i128.html
-/// [`isize`]: ../../std/primitive.isize.html
-/// [`i32`]: ../../std/primitive.i32.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Binary {
     /// Formats the value using the given formatter.
@@ -813,9 +786,7 @@ pub trait Binary {
 ///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
-/// For more information on formatters, see [the module-level documentation][module].
-///
-/// [module]: ../../std/fmt/index.html
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// # Examples
 ///
@@ -868,9 +839,7 @@ pub trait LowerHex {
 ///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
-/// For more information on formatters, see [the module-level documentation][module].
-///
-/// [module]: ../../std/fmt/index.html
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// # Examples
 ///
@@ -918,9 +887,7 @@ pub trait UpperHex {
 /// The `Pointer` trait should format its output as a memory location. This is commonly presented
 /// as hexadecimal.
 ///
-/// For more information on formatters, see [the module-level documentation][module].
-///
-/// [module]: ../../std/fmt/index.html
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// # Examples
 ///
@@ -967,9 +934,7 @@ pub trait Pointer {
 ///
 /// The `LowerExp` trait should format its output in scientific notation with a lower-case `e`.
 ///
-/// For more information on formatters, see [the module-level documentation][module].
-///
-/// [module]: ../../std/fmt/index.html
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// # Examples
 ///
@@ -1018,9 +983,7 @@ pub trait LowerExp {
 ///
 /// The `UpperExp` trait should format its output in scientific notation with an upper-case `E`.
 ///
-/// For more information on formatters, see [the module-level documentation][module].
-///
-/// [module]: ../../std/fmt/index.html
+/// For more information on formatters, see [the module-level documentation][self].
 ///
 /// # Examples
 ///
@@ -1812,8 +1775,7 @@ impl<'a> Formatter<'a> {
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
     /// [`fmt::Debug`] implementations for structs.
     ///
-    /// [`DebugStruct`]: ../../std/fmt/struct.DebugStruct.html
-    /// [`fmt::Debug`]: ../../std/fmt/trait.Debug.html
+    /// [`fmt::Debug`]: self::Debug
     ///
     /// # Examples
     ///
@@ -2124,7 +2086,7 @@ impl<T: ?Sized> Pointer for *const T {
             f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
 
             if f.width.is_none() {
-                f.width = Some(((mem::size_of::<usize>() * 8) / 4) + 2);
+                f.width = Some((usize::BITS / 4) as usize + 2);
             }
         }
         f.flags |= 1 << (FlagV1::Alternate as u32);

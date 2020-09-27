@@ -1,0 +1,18 @@
+error: reaching this expression at runtime will panic or abort
+  --> $DIR/const-eval-query-stack.rs:19:28
+   |
+LL |     let x: &'static i32 = &(1 / 0);
+   |                           -^^^^^^^
+   |                            |
+   |                            dividing by zero
+   |
+   = note: `#[deny(const_err)]` on by default
+
+query stack during panic:
+#0 [eval_to_allocation_raw] const-evaluating + checking `main::promoted[1]`
+#1 [eval_to_const_value_raw] simplifying constant for the type system `main::promoted[1]`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `main::promoted[1]`
+#3 [normalize_generic_arg_after_erasing_regions] normalizing `main::promoted[1]`
+#4 [optimized_mir] optimizing MIR for `main`
+#5 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack

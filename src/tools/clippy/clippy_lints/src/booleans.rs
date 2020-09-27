@@ -1,6 +1,6 @@
 use crate::utils::{
-    get_trait_def_id, implements_trait, in_macro, is_type_diagnostic_item, paths, snippet_opt, span_lint_and_sugg,
-    span_lint_and_then, SpanlessEq,
+    eq_expr_value, get_trait_def_id, implements_trait, in_macro, is_type_diagnostic_item, paths, snippet_opt,
+    span_lint_and_sugg, span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -128,7 +128,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
             }
         }
         for (n, expr) in self.terminals.iter().enumerate() {
-            if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e, expr) {
+            if eq_expr_value(self.cx, e, expr) {
                 #[allow(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
@@ -138,8 +138,8 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 if implements_ord(self.cx, e_lhs);
                 if let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.kind;
                 if negate(e_binop.node) == Some(expr_binop.node);
-                if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e_lhs, expr_lhs);
-                if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e_rhs, expr_rhs);
+                if eq_expr_value(self.cx, e_lhs, expr_lhs);
+                if eq_expr_value(self.cx, e_rhs, expr_rhs);
                 then {
                     #[allow(clippy::cast_possible_truncation)]
                     return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));

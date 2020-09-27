@@ -14,6 +14,6 @@ fn main() {
     let i = vec![r(0)];
     let j = vec![r(1)];
     let k = i + j;
-    //~^ ERROR cannot add `std::vec::Vec<R>` to `std::vec::Vec<R>`
+    //~^ ERROR cannot add `Vec<R>` to `Vec<R>`
     println!("{:?}", j);
 }

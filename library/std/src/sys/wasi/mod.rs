@@ -17,6 +17,7 @@
 use crate::io as std_io;
 use crate::mem;
 
+#[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
 #[path = "../unsupported/cmath.rs"]
@@ -33,8 +34,11 @@ pub mod net;
 pub mod os;
 pub use crate::sys_common::os_str_bytes as os_str;
 pub mod ext;
+#[path = "../unix/path.rs"]
 pub mod path;
+#[path = "../unsupported/pipe.rs"]
 pub mod pipe;
+#[path = "../unsupported/process.rs"]
 pub mod process;
 #[path = "../unsupported/rwlock.rs"]
 pub mod rwlock;

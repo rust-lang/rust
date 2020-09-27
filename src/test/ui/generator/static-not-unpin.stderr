@@ -5,7 +5,7 @@ LL | fn assert_unpin<T: Unpin>(_: T) {
    |                    ----- required by this bound in `assert_unpin`
 ...
 LL |     assert_unpin(generator);
-   |                  ^^^^^^^^^ the trait `std::marker::Unpin` is not implemented for `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6 _]`
+   |                  ^^^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6 _]`
 
 error: aborting due to previous error
 

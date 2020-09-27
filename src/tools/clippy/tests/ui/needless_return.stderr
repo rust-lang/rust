@@ -72,5 +72,17 @@ error: unneeded `return` statement
 LL |         _ => return,
    |              ^^^^^^ help: replace `return` with an empty block: `{}`
 
-error: aborting due to 12 previous errors
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:83:9
+   |
+LL |         return String::from("test");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::from("test")`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:85:9
+   |
+LL |         return String::new();
+   |         ^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::new()`
+
+error: aborting due to 14 previous errors
 

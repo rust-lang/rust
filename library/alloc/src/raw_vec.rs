@@ -3,6 +3,7 @@
 
 use core::alloc::LayoutErr;
 use core::cmp;
+use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
 use core::ptr::{NonNull, Unique};
@@ -149,6 +150,7 @@ impl<T> RawVec<T, Global> {
 impl<T, A: AllocRef> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
+    #[allow_internal_unstable(const_fn)]
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self { ptr: Unique::dangling(), cap: 0, alloc }
@@ -168,7 +170,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         Self::allocate_in(capacity, AllocInit::Zeroed, alloc)
     }
 
-    fn allocate_in(capacity: usize, init: AllocInit, mut alloc: A) -> Self {
+    fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
         if mem::size_of::<T>() == 0 {
             Self::new_in(alloc)
         } else {
@@ -305,11 +307,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// # }
     /// ```
     pub fn reserve(&mut self, len: usize, additional: usize) {
-        match self.try_reserve(len, additional) {
-            Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocError { layout, .. }) => handle_alloc_error(layout),
-            Ok(()) => { /* yay */ }
-        }
+        handle_reserve(self.try_reserve(len, additional));
     }
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
@@ -339,11 +337,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     pub fn reserve_exact(&mut self, len: usize, additional: usize) {
-        match self.try_reserve_exact(len, additional) {
-            Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocError { layout, .. }) => handle_alloc_error(layout),
-            Ok(()) => { /* yay */ }
-        }
+        handle_reserve(self.try_reserve_exact(len, additional));
     }
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
@@ -366,11 +360,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     pub fn shrink_to_fit(&mut self, amount: usize) {
-        match self.shrink(amount) {
-            Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocError { layout, .. }) => handle_alloc_error(layout),
-            Ok(()) => { /* yay */ }
-        }
+        handle_reserve(self.shrink(amount));
     }
 }
 
@@ -465,8 +455,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let new_size = amount * mem::size_of::<T>();
 
         let ptr = unsafe {
-            self.alloc.shrink(ptr, layout, new_size).map_err(|_| TryReserveError::AllocError {
-                layout: Layout::from_size_align_unchecked(new_size, layout.align()),
+            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+            self.alloc.shrink(ptr, layout, new_layout).map_err(|_| TryReserveError::AllocError {
+                layout: new_layout,
                 non_exhaustive: (),
             })?
         };
@@ -494,13 +485,16 @@ where
 
     let memory = if let Some((ptr, old_layout)) = current_memory {
         debug_assert_eq!(old_layout.align(), new_layout.align());
-        unsafe { alloc.grow(ptr, old_layout, new_layout.size()) }
+        unsafe {
+            // The allocator checks for alignment equality
+            intrinsics::assume(old_layout.align() == new_layout.align());
+            alloc.grow(ptr, old_layout, new_layout)
+        }
     } else {
         alloc.alloc(new_layout)
-    }
-    .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?;
+    };
 
-    Ok(memory)
+    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })
 }
 
 unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {
@@ -509,6 +503,16 @@ unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {
         if let Some((ptr, layout)) = self.current_memory() {
             unsafe { self.alloc.dealloc(ptr, layout) }
         }
+    }
+}
+
+// Central function for reserve error handling.
+#[inline]
+fn handle_reserve(result: Result<(), TryReserveError>) {
+    match result {
+        Err(CapacityOverflow) => capacity_overflow(),
+        Err(AllocError { layout, .. }) => handle_alloc_error(layout),
+        Ok(()) => { /* yay */ }
     }
 }
 
@@ -523,7 +527,7 @@ unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {
 
 #[inline]
 fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
-    if mem::size_of::<usize>() < 8 && alloc_size > isize::MAX as usize {
+    if usize::BITS < 64 && alloc_size > isize::MAX as usize {
         Err(CapacityOverflow)
     } else {
         Ok(())

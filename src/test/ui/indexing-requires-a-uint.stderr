@@ -4,8 +4,8 @@ error[E0277]: the type `[{integer}]` cannot be indexed by `u8`
 LL |     [0][0u8];
    |     ^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `std::slice::SliceIndex<[{integer}]>` is not implemented for `u8`
-   = note: required because of the requirements on the impl of `std::ops::Index<u8>` for `[{integer}]`
+   = help: the trait `SliceIndex<[{integer}]>` is not implemented for `u8`
+   = note: required because of the requirements on the impl of `Index<u8>` for `[{integer}]`
 
 error[E0308]: mismatched types
   --> $DIR/indexing-requires-a-uint.rs:12:18

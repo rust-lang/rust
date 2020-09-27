@@ -63,9 +63,8 @@ use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, TypeKind};
-use crate::config::RenderInfo;
-use crate::config::RenderOptions;
+use crate::clean::{self, AttributesExt, Deprecation, GetDefId, RenderedLink, SelfTy, TypeKind};
+use crate::config::{RenderInfo, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::doctree;
 use crate::error::Error;
@@ -755,7 +754,9 @@ fn write_shared(
         write(cx.path("rust-logo.png"), static_files::RUST_LOGO)?;
     }
     if (*cx.shared).layout.favicon.is_empty() {
-        write(cx.path("favicon.ico"), static_files::RUST_FAVICON)?;
+        write(cx.path("favicon.svg"), static_files::RUST_FAVICON_SVG)?;
+        write(cx.path("favicon-16x16.png"), static_files::RUST_FAVICON_PNG_16)?;
+        write(cx.path("favicon-32x32.png"), static_files::RUST_FAVICON_PNG_32)?;
     }
     write(cx.path("brush.svg"), static_files::BRUSH_SVG)?;
     write(cx.path("wheel.svg"), static_files::WHEEL_SVG)?;
@@ -1061,12 +1062,17 @@ themePicker.onblur = handleThemeButtonsBlur;
 
             let content = format!(
                 "<h1 class='fqn'>\
-     <span class='in-band'>List of all crates</span>\
-</h1><ul class='mod'>{}</ul>",
+                     <span class='in-band'>List of all crates</span>\
+                </h1>\
+                <ul class='crate mod'>{}</ul>",
                 krates
                     .iter()
                     .map(|s| {
-                        format!("<li><a href=\"{}index.html\">{}</li>", ensure_trailing_slash(s), s)
+                        format!(
+                            "<li><a class=\"crate mod\" href=\"{}index.html\">{}</a></li>",
+                            ensure_trailing_slash(s),
+                            s
+                        )
                     })
                     .collect::<String>()
             );
@@ -1307,15 +1313,16 @@ impl AllTypes {
         write!(
             f,
             "<h1 class='fqn'>\
-        <span class='out-of-band'>\
-            <span id='render-detail'>\
-                <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" title=\"collapse all docs\">\
-                    [<span class='inner'>&#x2212;</span>]\
-                </a>\
-            </span>
-        </span>
-        <span class='in-band'>List of all items</span>\
-    </h1>"
+                 <span class='out-of-band'>\
+                     <span id='render-detail'>\
+                         <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
+                            title=\"collapse all docs\">\
+                             [<span class='inner'>&#x2212;</span>]\
+                         </a>\
+                     </span>
+                 </span>
+                 <span class='in-band'>List of all items</span>\
+             </h1>"
         );
         print_entries(f, &self.structs, "Structs", "structs");
         print_entries(f, &self.enums, "Enums", "enums");
@@ -1345,20 +1352,20 @@ impl Setting {
         match *self {
             Setting::Section { ref description, ref sub_settings } => format!(
                 "<div class='setting-line'>\
-                        <div class='title'>{}</div>\
-                        <div class='sub-settings'>{}</div>
-                    </div>",
+                     <div class='title'>{}</div>\
+                     <div class='sub-settings'>{}</div>
+                 </div>",
                 description,
                 sub_settings.iter().map(|s| s.display()).collect::<String>()
             ),
             Setting::Entry { ref js_data_name, ref description, ref default_value } => format!(
                 "<div class='setting-line'>\
-                        <label class='toggle'>\
-                        <input type='checkbox' id='{}' {}>\
-                        <span class='slider'></span>\
-                        </label>\
-                        <div>{}</div>\
-                    </div>",
+                     <label class='toggle'>\
+                     <input type='checkbox' id='{}' {}>\
+                     <span class='slider'></span>\
+                     </label>\
+                     <div>{}</div>\
+                 </div>",
                 js_data_name,
                 if *default_value { " checked" } else { "" },
                 description,
@@ -1502,6 +1509,7 @@ impl Context {
         }
     }
 
+    /// Construct a map of items shown in the sidebar to a plain-text summary of their docs.
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
@@ -1518,7 +1526,7 @@ impl Context {
             let short = short.to_string();
             map.entry(short)
                 .or_default()
-                .push((myname, Some(plain_summary_line(item.doc_value()))));
+                .push((myname, Some(plain_text_summary(item.doc_value()))));
         }
 
         if self.shared.sort_modules_alphabetically {
@@ -1724,22 +1732,15 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     s
 }
 
+/// Renders the first paragraph of the given markdown as plain text, making it suitable for
+/// contexts like alt-text or the search index.
+///
+/// If no markdown is supplied, the empty string is returned.
+///
+/// See [`markdown::plain_text_summary`] for further details.
 #[inline]
-crate fn plain_summary_line(s: Option<&str>) -> String {
-    let s = s.unwrap_or("");
-    // This essentially gets the first paragraph of text in one line.
-    let mut line = s
-        .lines()
-        .skip_while(|line| line.chars().all(|c| c.is_whitespace()))
-        .take_while(|line| line.chars().any(|c| !c.is_whitespace()))
-        .fold(String::new(), |mut acc, line| {
-            acc.push_str(line);
-            acc.push(' ');
-            acc
-        });
-    // remove final whitespace
-    line.pop();
-    markdown::plain_summary_line(&line[..])
+crate fn plain_text_summary(s: Option<&str>) -> String {
+    s.map(markdown::plain_text_summary).unwrap_or_default()
 }
 
 crate fn shorten(s: String) -> String {
@@ -1774,7 +1775,7 @@ fn render_markdown(
     w: &mut Buffer,
     cx: &Context,
     md_text: &str,
-    links: Vec<(String, String)>,
+    links: Vec<RenderedLink>,
     prefix: &str,
     is_hidden: bool,
 ) {
@@ -1796,25 +1797,35 @@ fn render_markdown(
     )
 }
 
+/// Writes a documentation block containing only the first paragraph of the documentation. If the
+/// docs are longer, a "Read more" link is appended to the end.
 fn document_short(
     w: &mut Buffer,
-    cx: &Context,
     item: &clean::Item,
     link: AssocItemLink<'_>,
     prefix: &str,
     is_hidden: bool,
 ) {
     if let Some(s) = item.doc_value() {
-        let markdown = if s.contains('\n') {
-            format!(
-                "{} [Read more]({})",
-                &plain_summary_line(Some(s)),
-                naive_assoc_href(item, link)
-            )
-        } else {
-            plain_summary_line(Some(s))
-        };
-        render_markdown(w, cx, &markdown, item.links(), prefix, is_hidden);
+        let mut summary_html = MarkdownSummaryLine(s, &item.links()).into_string();
+
+        if s.contains('\n') {
+            let link = format!(r#" <a href="{}">Read more</a>"#, naive_assoc_href(item, link));
+
+            if let Some(idx) = summary_html.rfind("</p>") {
+                summary_html.insert_str(idx, &link);
+            } else {
+                summary_html.push_str(&link);
+            }
+        }
+
+        write!(
+            w,
+            "<div class='docblock{}'>{}{}</div>",
+            if is_hidden { " hidden" } else { "" },
+            prefix,
+            summary_html,
+        );
     } else if !prefix.is_empty() {
         write!(
             w,
@@ -1872,30 +1883,29 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
             write!(
                 w,
                 "Non-exhaustive structs could have additional fields added in future. \
-                       Therefore, non-exhaustive structs cannot be constructed in external crates \
-                       using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
-                       matched against without a wildcard <code>..</code>; and \
-                       struct update syntax will not work."
+                 Therefore, non-exhaustive structs cannot be constructed in external crates \
+                 using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
+                 matched against without a wildcard <code>..</code>; and \
+                 struct update syntax will not work."
             );
         } else if item.is_enum() {
             write!(
                 w,
                 "Non-exhaustive enums could have additional variants added in future. \
-                       Therefore, when matching against variants of non-exhaustive enums, an \
-                       extra wildcard arm must be added to account for any future variants."
+                 Therefore, when matching against variants of non-exhaustive enums, an \
+                 extra wildcard arm must be added to account for any future variants."
             );
         } else if item.is_variant() {
             write!(
                 w,
                 "Non-exhaustive enum variants could have additional fields added in future. \
-                       Therefore, non-exhaustive enum variants cannot be constructed in external \
-                       crates and cannot be matched against."
+                 Therefore, non-exhaustive enum variants cannot be constructed in external \
+                 crates and cannot be matched against."
             );
         } else {
             write!(
                 w,
-                "This type will require a wildcard arm in any match statements or \
-                       constructors."
+                "This type will require a wildcard arm in any match statements or constructors."
             );
         }
 
@@ -2092,12 +2102,11 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                 let doc_value = myitem.doc_value().unwrap_or("");
                 write!(
                     w,
-                    "\
-                       <tr class='{stab}{add}module-item'>\
-                           <td><a class=\"{class}\" href=\"{href}\" \
-                                  title='{title}'>{name}</a>{unsafety_flag}</td>\
-                           <td class='docblock-short'>{stab_tags}{docs}</td>\
-                       </tr>",
+                    "<tr class='{stab}{add}module-item'>\
+                         <td><a class=\"{class}\" href=\"{href}\" \
+                             title='{title}'>{name}</a>{unsafety_flag}</td>\
+                         <td class='docblock-short'>{stab_tags}{docs}</td>\
+                     </tr>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = stability_tags(myitem),
                     docs = MarkdownSummaryLine(doc_value, &myitem.links()).into_string(),
@@ -2126,8 +2135,8 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
 fn stability_tags(item: &clean::Item) -> String {
     let mut tags = String::new();
 
-    fn tag_html(class: &str, contents: &str) -> String {
-        format!(r#"<span class="stab {}">{}</span>"#, class, contents)
+    fn tag_html(class: &str, title: &str, contents: &str) -> String {
+        format!(r#"<span class="stab {}" title="{}">{}</span>"#, class, Escape(title), contents)
     }
 
     // The trailing space after each tag is to space it properly against the rest of the docs.
@@ -2136,7 +2145,7 @@ fn stability_tags(item: &clean::Item) -> String {
         if !stability::deprecation_in_effect(depr.is_since_rustc_version, depr.since.as_deref()) {
             message = "Deprecation planned";
         }
-        tags += &tag_html("deprecated", message);
+        tags += &tag_html("deprecated", "", message);
     }
 
     // The "rustc_private" crates are permanently unstable so it makes no sense
@@ -2147,11 +2156,11 @@ fn stability_tags(item: &clean::Item) -> String {
         .map(|s| s.level == stability::Unstable && s.feature != "rustc_private")
         == Some(true)
     {
-        tags += &tag_html("unstable", "Experimental");
+        tags += &tag_html("unstable", "", "Experimental");
     }
 
     if let Some(ref cfg) = item.attrs.cfg {
-        tags += &tag_html("portability", &cfg.render_short_html());
+        tags += &tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html());
     }
 
     tags
@@ -2246,8 +2255,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
 
     write!(
         w,
-        "{vis}const \
-               {name}: {typ}",
+        "{vis}const {name}: {typ}",
         vis = it.visibility.print_with_space(),
         name = it.name.as_ref().unwrap(),
         typ = c.type_.print(),
@@ -2281,8 +2289,7 @@ fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static
     render_attributes(w, it, false);
     write!(
         w,
-        "{vis}static {mutability}\
-               {name}: {typ}</pre>",
+        "{vis}static {mutability} {name}: {typ}</pre>",
         vis = it.visibility.print_with_space(),
         mutability = s.mutability.print_with_space(),
         name = it.name.as_ref().unwrap(),
@@ -2308,7 +2315,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
     write!(
         w,
         "{vis}{constness}{asyncness}{unsafety}{abi}fn \
-           {name}{generics}{decl}{spotlight}{where_clause}</pre>",
+         {name}{generics}{decl}{spotlight}{where_clause}</pre>",
         vis = it.visibility.print_with_space(),
         constness = f.header.constness.print_with_space(),
         asyncness = f.header.asyncness.print_with_space(),
@@ -2499,10 +2506,9 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
             w,
-            "
-            <h2 id='{0}' class='small-section-header'>\
-              {1}<a href='#{0}' class='anchor'></a>\
-            </h2>{2}",
+            "<h2 id='{0}' class='small-section-header'>\
+                {1}<a href='#{0}' class='anchor'></a>\
+             </h2>{2}",
             id, title, extra_content
         )
     }
@@ -2831,7 +2837,7 @@ fn render_assoc_item(
         write!(
             w,
             "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
-                   {generics}{decl}{spotlight}{where_clause}",
+             {generics}{decl}{spotlight}{where_clause}",
             if parent == ItemType::Trait { "    " } else { "" },
             meth.visibility.print_with_space(),
             header.constness.print_with_space(),
@@ -2906,9 +2912,9 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
-                           <a href=\"#{id}\" class=\"anchor field\"></a>\
-                           <code>{name}: {ty}</code>\
-                           </span>",
+                         <a href=\"#{id}\" class=\"anchor field\"></a>\
+                         <code>{name}: {ty}</code>\
+                     </span>",
                     item_type = ItemType::StructField,
                     id = id,
                     name = field.name.as_ref().unwrap(),
@@ -2950,9 +2956,9 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, 
             write!(
                 w,
                 "<span id=\"{id}\" class=\"{shortty} small-section-header\">\
-                           <a href=\"#{id}\" class=\"anchor field\"></a>\
-                           <code>{name}: {ty}</code>\
-                       </span>",
+                     <a href=\"#{id}\" class=\"anchor field\"></a>\
+                     <code>{name}: {ty}</code>\
+                 </span>",
                 id = id,
                 name = name,
                 shortty = ItemType::StructField,
@@ -3077,9 +3083,9 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
                         write!(
                             w,
                             "<span id=\"{id}\" class=\"variant small-section-header\">\
-                                   <a href=\"#{id}\" class=\"anchor field\"></a>\
-                                   <code>{f}:&nbsp;{t}\
-                                   </code></span>",
+                                 <a href=\"#{id}\" class=\"anchor field\"></a>\
+                                 <code>{f}:&nbsp;{t}</code>\
+                             </span>",
                             id = id,
                             f = field.name.as_ref().unwrap(),
                             t = ty.print()
@@ -3292,23 +3298,19 @@ fn render_assoc_items(
             AssocItemRender::All => {
                 write!(
                     w,
-                    "\
-                    <h2 id='implementations' class='small-section-header'>\
-                      Implementations<a href='#implementations' class='anchor'></a>\
-                    </h2>\
-                "
+                    "<h2 id='implementations' class='small-section-header'>\
+                         Implementations<a href='#implementations' class='anchor'></a>\
+                    </h2>"
                 );
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 write!(
                     w,
-                    "\
-                    <h2 id='deref-methods' class='small-section-header'>\
-                      Methods from {}&lt;Target = {}&gt;\
-                      <a href='#deref-methods' class='anchor'></a>\
-                    </h2>\
-                ",
+                    "<h2 id='deref-methods' class='small-section-header'>\
+                         Methods from {}&lt;Target = {}&gt;\
+                         <a href='#deref-methods' class='anchor'></a>\
+                     </h2>",
                     trait_.print(),
                     type_.print()
                 );
@@ -3355,11 +3357,10 @@ fn render_assoc_items(
         if !impls.is_empty() {
             write!(
                 w,
-                "\
-                <h2 id='trait-implementations' class='small-section-header'>\
-                  Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
-                </h2>\
-                <div id='trait-implementations-list'>{}</div>",
+                "<h2 id='trait-implementations' class='small-section-header'>\
+                     Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
+                 </h2>\
+                 <div id='trait-implementations-list'>{}</div>",
                 impls
             );
         }
@@ -3367,13 +3368,11 @@ fn render_assoc_items(
         if !synthetic.is_empty() {
             write!(
                 w,
-                "\
-                <h2 id='synthetic-implementations' class='small-section-header'>\
-                  Auto Trait Implementations\
-                  <a href='#synthetic-implementations' class='anchor'></a>\
-                </h2>\
-                <div id='synthetic-implementations-list'>\
-            "
+                "<h2 id='synthetic-implementations' class='small-section-header'>\
+                     Auto Trait Implementations\
+                     <a href='#synthetic-implementations' class='anchor'></a>\
+                 </h2>\
+                 <div id='synthetic-implementations-list'>"
             );
             render_impls(cx, w, &synthetic, containing_item, cache);
             write!(w, "</div>");
@@ -3382,13 +3381,11 @@ fn render_assoc_items(
         if !blanket_impl.is_empty() {
             write!(
                 w,
-                "\
-                <h2 id='blanket-implementations' class='small-section-header'>\
-                  Blanket Implementations\
-                  <a href='#blanket-implementations' class='anchor'></a>\
-                </h2>\
-                <div id='blanket-implementations-list'>\
-            "
+                "<h2 id='blanket-implementations' class='small-section-header'>\
+                     Blanket Implementations\
+                     <a href='#blanket-implementations' class='anchor'></a>\
+                 </h2>\
+                 <div id='blanket-implementations-list'>"
             );
             render_impls(cx, w, &blanket_impl, containing_item, cache);
             write!(w, "</div>");
@@ -3469,7 +3466,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
                     if out.is_empty() {
                         out.push_str(&format!(
                             "<h3 class=\"notable\">Notable traits for {}</h3>\
-                                      <code class=\"content\">",
+                             <code class=\"content\">",
                             impl_.for_.print()
                         ));
                         trait_.push_str(&impl_.for_.print().to_string());
@@ -3612,7 +3609,7 @@ fn render_impl(
         };
 
         let (is_hidden, extra_class) =
-            if (trait_.is_none() || item.doc_value().is_some() || item.inner.is_associated())
+            if (trait_.is_none() || item.doc_value().is_some() || item.inner.is_type_alias())
                 && !is_default_item
             {
                 (false, "")
@@ -3685,7 +3682,7 @@ fn render_impl(
                         } else if show_def_docs {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, cx, it, link, "", is_hidden);
+                            document_short(w, it, link, "", is_hidden);
                         }
                     }
                 } else {
@@ -3697,7 +3694,7 @@ fn render_impl(
             } else {
                 document_stability(w, cx, item, is_hidden);
                 if show_def_docs {
-                    document_short(w, cx, item, link, "", is_hidden);
+                    document_short(w, item, link, "", is_hidden);
                 }
             }
         }
@@ -3905,8 +3902,8 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
             write!(
                 buffer,
                 "<div class='block version'>\
-                    <p>Version {}</p>\
-                    </div>",
+                     <p>Version {}</p>\
+                 </div>",
                 Escape(version)
             );
         }
@@ -4181,7 +4178,7 @@ fn sidebar_struct(buf: &mut Buffer, it: &clean::Item, s: &clean::Struct) {
         if let doctree::Plain = s.struct_type {
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
-                                       <div class=\"sidebar-links\">{}</div>",
+                 <div class=\"sidebar-links\">{}</div>",
                 fields
             ));
         }
@@ -4308,8 +4305,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             res.sort();
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
-                    Implementations on Foreign Types</a><div \
-                    class=\"sidebar-links\">{}</div>",
+                    Implementations on Foreign Types</a>\
+                 <div class=\"sidebar-links\">{}</div>",
                 res.into_iter()
                     .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
                     .collect::<Vec<_>>()

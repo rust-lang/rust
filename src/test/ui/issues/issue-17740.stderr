@@ -9,14 +9,8 @@ LL |     fn bar(self: &mut Foo) {
 note: the anonymous lifetime #2 defined on the method body at 6:5...
   --> $DIR/issue-17740.rs:6:5
    |
-LL | /     fn bar(self: &mut Foo) {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |
-LL | |     }
-   | |_____^
+LL |     fn bar(self: &mut Foo) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 5:7
   --> $DIR/issue-17740.rs:5:7
    |
@@ -39,14 +33,8 @@ LL | impl <'a> Foo<'a>{
 note: ...does not necessarily outlive the anonymous lifetime #2 defined on the method body at 6:5
   --> $DIR/issue-17740.rs:6:5
    |
-LL | /     fn bar(self: &mut Foo) {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |
-LL | |     }
-   | |_____^
+LL |     fn bar(self: &mut Foo) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -266,6 +266,9 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}Relative Path, {:?}", ind, ty);
             println!("{}seg: {:?}", ind, seg);
         },
+        hir::ExprKind::Path(hir::QPath::LangItem(lang_item, ..)) => {
+            println!("{}Lang Item Path, {:?}", ind, lang_item.name());
+        },
         hir::ExprKind::AddrOf(kind, ref muta, ref e) => {
             println!("{}AddrOf", ind);
             println!("kind: {:?}", kind);
@@ -487,6 +490,9 @@ fn print_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, indent: usize) {
         hir::PatKind::Path(hir::QPath::TypeRelative(ref ty, ref seg)) => {
             println!("{}Relative Path, {:?}", ind, ty);
             println!("{}seg: {:?}", ind, seg);
+        },
+        hir::PatKind::Path(hir::QPath::LangItem(lang_item, ..)) => {
+            println!("{}Lang Item Path, {:?}", ind, lang_item.name());
         },
         hir::PatKind::Tuple(pats, opt_dots_position) => {
             println!("{}Tuple", ind);

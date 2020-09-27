@@ -9,7 +9,7 @@ pub const STRIP_PRIVATE: Pass = Pass {
     name: "strip-private",
     run: strip_private,
     description: "strips all private items from a crate which cannot be seen externally, \
-        implies strip-priv-imports",
+                  implies strip-priv-imports",
 };
 
 /// Strip private items from the point of view of a crate or externally from a

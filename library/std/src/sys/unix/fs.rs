@@ -1140,14 +1140,14 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 
     let (mut reader, reader_metadata) = open_from(from)?;
-    let len = reader_metadata.len();
+    let max_len = u64::MAX;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
     let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
     let mut written = 0u64;
-    while written < len {
+    while written < max_len {
         let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(len - written, usize::MAX as u64) as usize;
+            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64) as usize;
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically
@@ -1162,7 +1162,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             };
             if let Err(ref copy_err) = copy_result {
                 match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS) | Some(libc::EPERM) => {
+                    Some(libc::ENOSYS | libc::EPERM | libc::EOPNOTSUPP) => {
                         HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
                     }
                     _ => {}
@@ -1173,18 +1173,25 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             Err(io::Error::from_raw_os_error(libc::ENOSYS))
         };
         match copy_result {
+            Ok(0) if written == 0 => {
+                // fallback to work around several kernel bugs where copy_file_range will fail to
+                // copy any bytes and return 0 instead of an error if
+                // - reading virtual files from the proc filesystem which appear to have 0 size
+                //   but are not empty. noted in coreutils to affect kernels at least up to 5.6.19.
+                // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
+                return io::copy(&mut reader, &mut writer);
+            }
+            Ok(0) => return Ok(written), // reached EOF
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 match err.raw_os_error() {
-                    Some(os_err)
-                        if os_err == libc::ENOSYS
-                            || os_err == libc::EXDEV
-                            || os_err == libc::EINVAL
-                            || os_err == libc::EPERM =>
-                    {
+                    Some(
+                        libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
+                    ) => {
                         // Try fallback io::copy if either:
                         // - Kernel version is < 4.5 (ENOSYS)
                         // - Files are mounted on different fs (EXDEV)
+                        // - copy_file_range is broken in various ways on RHEL/CentOS 7 (EOPNOTSUPP)
                         // - copy_file_range is disallowed, for example by seccomp (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         assert_eq!(written, 0);

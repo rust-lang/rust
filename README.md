@@ -1,13 +1,16 @@
-<a href = "https://www.rust-lang.org/"> 
+<a href = "https://www.rust-lang.org/">
 <img width = "90%" height = "auto" src = "https://img.shields.io/badge/Rust-Programming%20Language-black?style=flat&logo=rust" alt = "The Rust Programming Language">
 </a>
 
 This is the main source code repository for [Rust]. It contains the compiler,
-standard library, and documentation. 
+standard library, and documentation.
 
 [Rust]: https://www.rust-lang.org
 
-**Note: this README is for _users_ rather than _contributors_.**
+**Note: this README is for _users_ rather than _contributors_.
+If you wish to _contribute_ to the compiler, you should read the
+[Getting Started][gettingstarted] of the rustc-dev-guide instead of this
+section.**
 
 ## Quick Start
 
@@ -18,12 +21,8 @@ Read ["Installation"] from [The Book].
 
 ## Installing from Source
 
-**Note: If you wish to _contribute_ to the compiler, you should read the
-[Getting Started][gettingstarted] of the rustc-dev-guide instead of this
-section.**
-
 The Rust build system uses a Python script called `x.py` to build the compiler,
-which manages the bootstrapping process. More information about it can be found 
+which manages the bootstrapping process. More information about it can be found
 by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 
 [gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.html
@@ -36,6 +35,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
    * `python` 3 or 2.7
    * GNU `make` 3.81 or later
    * `cmake` 3.4.3 or later
+   * `ninja`
    * `curl`
    * `git`
    * `ssl` which comes in `libssl-dev` or `openssl-devel`
@@ -44,8 +44,8 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 2. Clone the [source] with `git`:
 
    ```sh
-   $ git clone https://github.com/rust-lang/rust.git
-   $ cd rust
+   git clone https://github.com/rust-lang/rust.git
+   cd rust
    ```
 
 [source]: https://github.com/rust-lang/rust
@@ -57,7 +57,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
     Copy the default `config.toml.example` to `config.toml` to get started.
 
     ```sh
-    $ cp config.toml.example config.toml
+    cp config.toml.example config.toml
     ```
 
     If you plan to use `x.py install` to create an installation, it is recommended
@@ -68,7 +68,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 4. Build and install:
 
     ```sh
-    $ ./x.py build && ./x.py install
+    ./x.py build && ./x.py install
     ```
 
     When complete, `./x.py install` will place several programs into
@@ -106,27 +106,28 @@ build.
 
    ```sh
    # Update package mirrors (may be needed if you have a fresh install of MSYS2)
-   $ pacman -Sy pacman-mirrors
+   pacman -Sy pacman-mirrors
 
    # Install build tools needed for Rust. If you're building a 32-bit compiler,
    # then replace "x86_64" below with "i686". If you've already got git, python,
    # or CMake installed and in PATH you can remove them from this list. Note
-   # that it is important that you do **not** use the 'python2' and 'cmake'
+   # that it is important that you do **not** use the 'python2', 'cmake' and 'ninja'
    # packages from the 'msys2' subsystem. The build has historically been known
    # to fail with these packages.
-   $ pacman -S git \
+   pacman -S git \
                make \
                diffutils \
                tar \
                mingw-w64-x86_64-python \
                mingw-w64-x86_64-cmake \
-               mingw-w64-x86_64-gcc
+               mingw-w64-x86_64-gcc \
+               mingw-w64-x86_64-ninja
    ```
 
 4. Navigate to Rust's source code (or clone it), then build it:
 
    ```sh
-   $ ./x.py build && ./x.py install
+   ./x.py build && ./x.py install
    ```
 
 #### MSVC
@@ -144,7 +145,7 @@ With these dependencies installed, you can build the compiler in a `cmd.exe`
 shell with:
 
 ```sh
-> python x.py build
+python x.py build
 ```
 
 Currently, building Rust only works with some known versions of Visual Studio. If
@@ -153,20 +154,9 @@ you may need to force rustbuild to use an older version. This can be done
 by manually calling the appropriate vcvars file before running the bootstrap.
 
 ```batch
-> CALL "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
-> python x.py build
+CALL "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+python x.py build
 ```
-
-### Building rustc with older host toolchains
-It is still possible to build Rust with the older toolchain versions listed below, but only if the
-LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN option is set to true in the config.toml file.
-
-* Clang 3.1
-* Apple Clang 3.1
-* GCC 4.8
-* Visual Studio 2015 (Update 3)
-
-Toolchain versions older than what is listed above cannot be used to build rustc.
 
 #### Specifying an ABI
 
@@ -191,8 +181,8 @@ While it's not the recommended build system, this project also provides a
 configure script and makefile (the latter of which just invokes `x.py`).
 
 ```sh
-$ ./configure
-$ make && sudo make install
+./configure
+make && sudo make install
 ```
 
 When using the configure script, the generated `config.mk` file may override the
@@ -204,7 +194,7 @@ When using the configure script, the generated `config.mk` file may override the
 If you’d like to build the documentation, it’s almost the same:
 
 ```sh
-$ ./x.py doc
+./x.py doc
 ```
 
 The generated documentation will appear under `doc` in the `build` directory for
@@ -220,11 +210,17 @@ fetch snapshots, and an OS that can execute the available snapshot binaries.
 
 Snapshot binaries are currently built and tested on several platforms:
 
-| Platform / Architecture    | x86 | x86_64 |
-|----------------------------|-----|--------|
-| Windows (7, 8, 10, ...)    | ✓   | ✓      |
-| Linux (2.6.18 or later)    | ✓   | ✓      |
-| macOS (10.7 Lion or later) | ✓   | ✓      |
+| Platform / Architecture                     | x86 | x86_64 |
+|---------------------------------------------|-----|--------|
+| Windows (7, 8, 10, ...)                     | ✓   | ✓      |
+| Linux (kernel 2.6.32, glibc 2.11 or later)  | ✓   | ✓      |
+| macOS (10.7 Lion or later)                  | (\*) | ✓      |
+
+(\*): Apple dropped support for running 32-bit binaries starting from macOS 10.15 and iOS 11.
+Due to this decision from Apple, the targets are no longer useful to our users.
+Please read [our blog post][macx32] for more info.
+
+[macx32]: https://blog.rust-lang.org/2020/01/03/reducing-support-for-32-bit-apple-targets.html
 
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
@@ -245,6 +241,8 @@ The Rust community congregates in a few places:
 
 If you are interested in contributing to the Rust project, please take a look
 at the [Getting Started][gettingstarted] guide in the [rustc-dev-guide].
+
+[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org
 
 ## License
 

@@ -585,7 +585,7 @@ LL |         fn clone(&self) -> _ { FnTest9 }
    |                            ^
    |                            |
    |                            not allowed in type signatures
-   |                            help: replace with the correct return type: `main::FnTest9`
+   |                            help: replace with the correct return type: `FnTest9`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:201:14

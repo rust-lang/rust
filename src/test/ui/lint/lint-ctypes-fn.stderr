@@ -91,7 +91,7 @@ note: the type is defined here
 LL | pub struct ZeroSizeWithPhantomData(PhantomData<i32>);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `extern` fn uses type `std::marker::PhantomData<bool>`, which is not FFI-safe
+error: `extern` fn uses type `PhantomData<bool>`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:98:51
    |
 LL | pub extern "C" fn zero_size_phantom_toplevel() -> PhantomData<bool> {
@@ -134,7 +134,7 @@ LL | pub extern "C" fn transparent_str(p: TransparentStr) { }
    = help: consider using `*const u8` and a length instead
    = note: string slices have no C equivalent
 
-error: `extern` fn uses type `std::marker::PhantomData<bool>`, which is not FFI-safe
+error: `extern` fn uses type `PhantomData<bool>`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:160:43
    |
 LL | pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
@@ -142,7 +142,7 @@ LL | pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
    |
    = note: composed only of `PhantomData`
 
-error: `extern` fn uses type `std::vec::Vec<T>`, which is not FFI-safe
+error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:173:39
    |
 LL | pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
@@ -151,7 +151,7 @@ LL | pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 
-error: `extern` fn uses type `std::vec::Vec<T>`, which is not FFI-safe
+error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:176:41
    |
 LL | pub extern "C" fn used_generic5<T>() -> Vec<T> {

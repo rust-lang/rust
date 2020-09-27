@@ -1,5 +1,9 @@
 # `ffi_const`
 
+The tracking issue for this feature is: [#58328]
+
+------
+
 The `#[ffi_const]` attribute applies clang's `const` attribute to foreign
 functions declarations.
 
@@ -42,6 +46,7 @@ implemented in this way on all of them. It is therefore also worth verifying
 that the semantics of the C toolchain used to compile the binary being linked
 against are compatible with those of the `#[ffi_const]`.
 
+[#58328]: https://github.com/rust-lang/rust/issues/58328
 [ARM C/C++ compiler]: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0491c/Cacgigch.html
 [GCC]: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-const-function-attribute
 [IBM ILE C/C++]: https://www.ibm.com/support/knowledgecenter/fr/ssw_ibm_i_71/rzarg/fn_attrib_const.htm

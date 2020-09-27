@@ -12,7 +12,7 @@ struct PartialEqNotEq;
 
 #[derive(Eq)]
 union U2 {
-    a: PartialEqNotEq, //~ ERROR the trait bound `PartialEqNotEq: std::cmp::Eq` is not satisfied
+    a: PartialEqNotEq, //~ ERROR the trait bound `PartialEqNotEq: Eq` is not satisfied
 }
 
 impl PartialEq for U2 { fn eq(&self, rhs: &Self) -> bool { true } }

@@ -2,12 +2,12 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/E0225.rs:6:36
    |
 LL |     let _: Box<dyn std::io::Read + std::io::Write>;
-   |                    -------------   ^^^^^^^^^^^^^^
-   |                    |               |
-   |                    |               additional non-auto trait
-   |                    |               trait alias used in trait object type (additional use)
+   |                    -------------   ^^^^^^^^^^^^^^ additional non-auto trait
+   |                    |
    |                    first non-auto trait
-   |                    trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::io::Read + std::io::Write {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/E0225.rs:8:20
@@ -22,6 +22,9 @@ LL |     let _: Box<dyn Foo>;
    |                    |
    |                    trait alias used in trait object type (additional use)
    |                    trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::io::Read + std::io::Write {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error: aborting due to 2 previous errors
 

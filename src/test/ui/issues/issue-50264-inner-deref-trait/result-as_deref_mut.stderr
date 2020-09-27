@@ -5,8 +5,8 @@ LL |     let _result = &mut Ok(42).as_deref_mut();
    |                               ^^^^^^^^^^^^ method not found in `std::result::Result<{integer}, _>`
    |
    = note: the method `as_deref_mut` exists but the following trait bounds were not satisfied:
-           `{integer}: std::ops::DerefMut`
-           `<{integer} as std::ops::Deref>::Target = _`
+           `{integer}: DerefMut`
+           `<{integer} as Deref>::Target = _`
 
 error: aborting due to previous error
 

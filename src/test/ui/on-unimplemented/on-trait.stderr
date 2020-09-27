@@ -1,24 +1,24 @@
-error[E0277]: the trait bound `std::option::Option<std::vec::Vec<u8>>: MyFromIterator<&u8>` is not satisfied
+error[E0277]: the trait bound `Option<Vec<u8>>: MyFromIterator<&u8>` is not satisfied
   --> $DIR/on-trait.rs:28:30
    |
 LL | fn collect<A, I: Iterator<Item=A>, B: MyFromIterator<A>>(it: I) -> B {
    |                                       ----------------- required by this bound in `collect`
 ...
 LL |     let y: Option<Vec<u8>> = collect(x.iter()); // this should give approximately the same error for x.iter().collect()
-   |                              ^^^^^^^ a collection of type `std::option::Option<std::vec::Vec<u8>>` cannot be built from an iterator over elements of type `&u8`
+   |                              ^^^^^^^ a collection of type `Option<Vec<u8>>` cannot be built from an iterator over elements of type `&u8`
    |
-   = help: the trait `MyFromIterator<&u8>` is not implemented for `std::option::Option<std::vec::Vec<u8>>`
+   = help: the trait `MyFromIterator<&u8>` is not implemented for `Option<Vec<u8>>`
 
-error[E0277]: the trait bound `std::string::String: Bar::Foo<u8, _, u32>` is not satisfied
+error[E0277]: the trait bound `String: Foo<u8, _, u32>` is not satisfied
   --> $DIR/on-trait.rs:31:21
    |
 LL | fn foobar<U: Clone, T: Foo<u8, U, u32>>() -> T {
    |                        --------------- required by this bound in `foobar`
 ...
 LL |     let x: String = foobar();
-   |                     ^^^^^^ test error `std::string::String` with `u8` `_` `u32` in `Bar::Foo`
+   |                     ^^^^^^ test error `String` with `u8` `_` `u32` in `Foo`
    |
-   = help: the trait `Bar::Foo<u8, _, u32>` is not implemented for `std::string::String`
+   = help: the trait `Foo<u8, _, u32>` is not implemented for `String`
 
 error: aborting due to 2 previous errors
 

@@ -175,7 +175,7 @@ pub struct _TypeDescriptor {
 // to be able to catch Rust panics by simply declaring a `struct rust_panic`.
 //
 // When modifying, make sure that the type name string exactly matches
-// the one used in src/librustc_codegen_llvm/intrinsic.rs.
+// the one used in `compiler/rustc_codegen_llvm/src/intrinsic.rs`.
 const TYPE_NAME: [u8; 11] = *b"rust_panic\0";
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
@@ -309,15 +309,21 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
 
     extern "system" {
         #[unwind(allowed)]
-        pub fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
+        fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
     }
 
     _CxxThrowException(throw_ptr, &mut THROW_INFO as *mut _ as *mut _);
 }
 
 pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
-    let exception = &mut *(payload as *mut Exception);
-    exception.data.take().unwrap()
+    // A NULL payload here means that we got here from the catch (...) of
+    // __rust_try. This happens when a non-Rust foreign exception is caught.
+    if payload.is_null() {
+        super::__rust_foreign_exception();
+    } else {
+        let exception = &mut *(payload as *mut Exception);
+        exception.data.take().unwrap()
+    }
 }
 
 // This is required by the compiler to exist (e.g., it's a lang item), but

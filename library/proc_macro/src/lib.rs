@@ -20,6 +20,7 @@
 )]
 #![feature(nll)]
 #![feature(staged_api)]
+#![feature(const_fn)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
 #![feature(extern_types)]
@@ -451,7 +452,7 @@ impl SourceFile {
     /// Also note that even if `is_real` returns `true`, if `--remap-path-prefix` was passed on
     /// the command line, the path as given may not actually be valid.
     ///
-    /// [`is_real`]: #method.is_real
+    /// [`is_real`]: Self::is_real
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn path(&self) -> PathBuf {
         PathBuf::from(self.0.path())

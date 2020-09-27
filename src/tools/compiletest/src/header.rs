@@ -5,11 +5,11 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use log::*;
+use tracing::*;
 
 use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PassMode};
-use crate::extract_gdb_version;
 use crate::util;
+use crate::{extract_cdb_version, extract_gdb_version};
 
 #[cfg(test)]
 mod tests;
@@ -105,6 +105,10 @@ impl EarlyProps {
                     props.ignore = true;
                 }
 
+                if config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln) {
+                    props.ignore = true;
+                }
+
                 if config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln) {
                     props.ignore = true;
                 }
@@ -131,6 +135,21 @@ impl EarlyProps {
 
         return props;
 
+        fn ignore_cdb(config: &Config, line: &str) -> bool {
+            if let Some(actual_version) = config.cdb_version {
+                if let Some(min_version) = line.strip_prefix("min-cdb-version:").map(str::trim) {
+                    let min_version = extract_cdb_version(min_version).unwrap_or_else(|| {
+                        panic!("couldn't parse version range: {:?}", min_version);
+                    });
+
+                    // Ignore if actual version is smaller than the minimum
+                    // required version
+                    return actual_version < min_version;
+                }
+            }
+            false
+        }
+
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if let Some(actual_version) = config.gdb_version {
                 if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
@@ -142,8 +161,8 @@ impl EarlyProps {
                     if start_ver != end_ver {
                         panic!("Expected single GDB version")
                     }
-                    // Ignore if actual version is smaller the minimum required
-                    // version
+                    // Ignore if actual version is smaller than the minimum
+                    // required version
                     return actual_version < start_ver;
                 } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
                     let (min_version, max_version) =
@@ -173,10 +192,8 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     actual_version < min_version
-                } else if line.starts_with("rust-lldb") && !config.lldb_native_rust {
-                    true
                 } else {
-                    false
+                    line.starts_with("rust-lldb") && !config.lldb_native_rust
                 }
             } else {
                 false
@@ -657,7 +674,6 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
             it(ln[comment.len()..].trim_start());
         }
     }
-    return;
 }
 
 impl Config {
@@ -819,7 +835,7 @@ impl Config {
         let name = line[prefix.len() + 1..].split(&[':', ' '][..]).next().unwrap();
 
         let is_match = name == "test" ||
-            &self.target == name ||                             // triple
+            self.target == name ||                              // triple
             util::matches_os(&self.target, name) ||             // target
             util::matches_env(&self.target, name) ||            // env
             self.target.ends_with(name) ||                      // target and env
@@ -857,10 +873,7 @@ impl Config {
         // Ensure the directive is a whole word. Do not match "ignore-x86" when
         // the line says "ignore-x86_64".
         line.starts_with(directive)
-            && match line.as_bytes().get(directive.len()) {
-                None | Some(&b' ') | Some(&b':') => true,
-                _ => false,
-            }
+            && matches!(line.as_bytes().get(directive.len()), None | Some(&b' ') | Some(&b':'))
     }
 
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
@@ -901,9 +914,9 @@ impl Config {
 }
 
 fn expand_variables(mut value: String, config: &Config) -> String {
-    const CWD: &'static str = "{{cwd}}";
-    const SRC_BASE: &'static str = "{{src-base}}";
-    const BUILD_BASE: &'static str = "{{build-base}}";
+    const CWD: &str = "{{cwd}}";
+    const SRC_BASE: &str = "{{src-base}}";
+    const BUILD_BASE: &str = "{{build-base}}";
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();

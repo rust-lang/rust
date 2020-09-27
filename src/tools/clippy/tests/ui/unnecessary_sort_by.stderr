@@ -1,5 +1,5 @@
 error: use Vec::sort here instead
-  --> $DIR/unnecessary_sort_by.rs:12:5
+  --> $DIR/unnecessary_sort_by.rs:14:5
    |
 LL |     vec.sort_by(|a, b| a.cmp(b));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort()`
@@ -7,37 +7,37 @@ LL |     vec.sort_by(|a, b| a.cmp(b));
    = note: `-D clippy::unnecessary-sort-by` implied by `-D warnings`
 
 error: use Vec::sort here instead
-  --> $DIR/unnecessary_sort_by.rs:13:5
+  --> $DIR/unnecessary_sort_by.rs:15:5
    |
 LL |     vec.sort_unstable_by(|a, b| a.cmp(b));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable()`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/unnecessary_sort_by.rs:14:5
+  --> $DIR/unnecessary_sort_by.rs:16:5
    |
 LL |     vec.sort_by(|a, b| (a + 5).abs().cmp(&(b + 5).abs()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&a| (a + 5).abs())`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/unnecessary_sort_by.rs:15:5
+  --> $DIR/unnecessary_sort_by.rs:17:5
    |
 LL |     vec.sort_unstable_by(|a, b| id(-a).cmp(&id(-b)));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|&a| id(-a))`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/unnecessary_sort_by.rs:17:5
+  --> $DIR/unnecessary_sort_by.rs:19:5
    |
 LL |     vec.sort_by(|a, b| b.cmp(a));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse(b))`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/unnecessary_sort_by.rs:18:5
+  --> $DIR/unnecessary_sort_by.rs:20:5
    |
 LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse((b + 5).abs()))`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/unnecessary_sort_by.rs:19:5
+  --> $DIR/unnecessary_sort_by.rs:21:5
    |
 LL |     vec.sort_unstable_by(|a, b| id(-b).cmp(&id(-a)));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|&b| Reverse(id(-b)))`

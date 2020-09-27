@@ -10,12 +10,12 @@ LL |         self.foo();
    = note: the method `foo` exists but the following trait bounds were not satisfied:
            `T: Bar`
            which is required by `Foo<T>: Bar`
-           `T: std::default::Default`
+           `T: Default`
            which is required by `Foo<T>: Bar`
 help: consider restricting the type parameters to satisfy the trait bounds
    |
-LL | struct Foo<T> where T: Bar, T: std::default::Default {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Foo<T> where T: Bar, T: Default {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `foo` found for reference `&Fin<T>` in the current scope
   --> $DIR/missing-trait-bounds-for-method-call.rs:27:14
@@ -27,12 +27,12 @@ LL |         self.foo();
    |              ^^^ method not found in `&Fin<T>`
    |
    = note: the method `foo` exists but the following trait bounds were not satisfied:
-           `T: std::default::Default`
+           `T: Default`
            which is required by `Fin<T>: Bar`
 help: consider restricting the type parameter to satisfy the trait bound
    |
-LL | struct Fin<T> where T: Bar, T: std::default::Default {
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Fin<T> where T: Bar, T: Default {
+   |                           ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

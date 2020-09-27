@@ -4,11 +4,5 @@ error: expected identifier, found keyword `let`
 LL |     let foo: (),
    |     ^^^ expected identifier, found keyword
 
-error: expected `:`, found `foo`
-  --> $DIR/removed-syntax-field-let.rs:2:9
-   |
-LL |     let foo: (),
-   |         ^^^ expected `:`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

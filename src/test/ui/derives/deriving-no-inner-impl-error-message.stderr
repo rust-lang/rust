@@ -16,13 +16,13 @@ LL |     x: NoCloneOrEq
    = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `NoCloneOrEq: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `NoCloneOrEq: Clone` is not satisfied
   --> $DIR/deriving-no-inner-impl-error-message.rs:10:5
    |
 LL |     x: NoCloneOrEq
-   |     ^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `NoCloneOrEq`
+   |     ^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NoCloneOrEq`
    |
-   = note: required by `std::clone::Clone::clone`
+   = note: required by `clone`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors

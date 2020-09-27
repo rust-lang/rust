@@ -73,8 +73,6 @@ impl IntoRawHandle for process::ChildStderr {
 }
 
 /// Windows-specific extensions to [`process::ExitStatus`].
-///
-/// [`process::ExitStatus`]: ../../../../std/process/struct.ExitStatus.html
 #[stable(feature = "exit_status_from", since = "1.12.0")]
 pub trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `u32` return value of
@@ -91,8 +89,6 @@ impl ExitStatusExt for process::ExitStatus {
 }
 
 /// Windows-specific extensions to the [`process::Command`] builder.
-///
-/// [`process::Command`]: ../../../../std/process/struct.Command.html
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
 pub trait CommandExt {
     /// Sets the [process creation flags][1] to be passed to `CreateProcess`.

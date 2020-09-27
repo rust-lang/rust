@@ -4,7 +4,7 @@ error[E0053]: method `fmt` has an incompatible type for trait
 LL |    fn fmt(&self, x: &str) -> () { }
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
    |
-   = note: expected fn pointer `fn(&MyType, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
+   = note: expected fn pointer `fn(&MyType, &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
               found fn pointer `fn(&MyType, &str)`
 
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
@@ -13,7 +13,7 @@ error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fm
 LL |    fn fmt(&self) -> () { }
    |           ^^^^^ expected 2 parameters, found 1
    |
-   = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
+   = note: `fmt` from trait: `fn(&Self, &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
 error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in the impl
   --> $DIR/trait_type.rs:17:4
@@ -21,7 +21,7 @@ error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in th
 LL |    fn fmt() -> () { }
    |    ^^^^^^^^^^^^^^ expected `&self` in impl
    |
-   = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
+   = note: `fmt` from trait: `fn(&Self, &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
 error[E0046]: not all trait items implemented, missing: `fmt`
   --> $DIR/trait_type.rs:21:1
@@ -29,7 +29,7 @@ error[E0046]: not all trait items implemented, missing: `fmt`
 LL | impl std::fmt::Display for MyType4 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `fmt` in implementation
    |
-   = help: implement the missing item: `fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> { todo!() }`
+   = help: implement the missing item: `fn fmt(&self, _: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> { todo!() }`
 
 error: aborting due to 4 previous errors
 

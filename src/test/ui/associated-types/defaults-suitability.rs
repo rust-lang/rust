@@ -13,12 +13,12 @@ struct NotClone;
 // Assoc. type bounds must hold for the default type
 trait Tr {
     type Ty: Clone = NotClone;
-    //~^ ERROR the trait bound `NotClone: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
 }
 
 // Where-clauses defined on the trait must also be considered
 trait Tr2 where Self::Ty: Clone {
-    //~^ ERROR the trait bound `NotClone: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
     type Ty = NotClone;
 }
 
@@ -31,7 +31,7 @@ trait Tr3 {
 // Involved type parameters must fulfill all bounds required by defaults that mention them
 trait Foo<T> {
     type Bar: Clone = Vec<T>;
-    //~^ ERROR the trait bound `T: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `T: Clone` is not satisfied
 }
 
 trait Bar: Sized {
@@ -55,7 +55,7 @@ trait C where
 // Test that we get all expected errors if that default is unsuitable
 trait D where
     Vec<Self::Assoc>: Clone,
-    //~^ ERROR the trait bound `NotClone: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
     Self::Assoc: IsU8<Self::Assoc>,
     //~^ ERROR the trait bound `NotClone: IsU8<NotClone>` is not satisfied
     bool: IsU8<Self::Assoc>,
@@ -70,7 +70,7 @@ trait D where
 // `Clone`.
 trait Foo2<T> {
     type Bar: Clone = Vec<Self::Baz>;
-    //~^ ERROR the trait bound `<Self as Foo2<T>>::Baz: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `<Self as Foo2<T>>::Baz: Clone` is not satisfied
     type Baz = T;
 }
 
@@ -79,7 +79,7 @@ trait Foo2<T> {
 // this would be accepted.
 trait Foo25<T: Clone> {
     type Bar: Clone = Vec<Self::Baz>;
-    //~^ ERROR the trait bound `<Self as Foo25<T>>::Baz: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `<Self as Foo25<T>>::Baz: Clone` is not satisfied
     type Baz = T;
 }
 
@@ -88,7 +88,7 @@ trait Foo25<T: Clone> {
 trait Foo3<T> where
     Self::Bar: Clone,
     Self::Baz: Clone,
-    //~^ ERROR the trait bound `T: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `T: Clone` is not satisfied
 {
     type Bar = Vec<Self::Baz>;
     type Baz = T;

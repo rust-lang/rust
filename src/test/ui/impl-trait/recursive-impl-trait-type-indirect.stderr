@@ -5,9 +5,9 @@ LL | fn option(i: i32) -> impl Sized {
    |                      ^^^^^^^^^^ recursive opaque type
 LL |
 LL |     if i < 0 { None } else { Some((option(i - 1), i)) }
-   |                ----          ------------------------ returning here with type `std::option::Option<(impl Sized, i32)>`
+   |                ----          ------------------------ returning here with type `Option<(impl Sized, i32)>`
    |                |
-   |                returning here with type `std::option::Option<(impl Sized, i32)>`
+   |                returning here with type `Option<(impl Sized, i32)>`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:12:15
@@ -135,13 +135,13 @@ error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:91:28
    |
 LL | fn mutual_recursion() -> impl Sync {
-   |                          --------- returning this opaque type `impl std::marker::Sync`
+   |                          --------- returning this opaque type `impl Sync`
 ...
 LL | fn mutual_recursion_b() -> impl Sized {
    |                            ^^^^^^^^^^ recursive opaque type
 LL |
 LL |     mutual_recursion()
-   |     ------------------ returning here with type `impl std::marker::Sync`
+   |     ------------------ returning here with type `impl Sync`
 
 error: aborting due to 14 previous errors
 

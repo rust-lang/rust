@@ -2,6 +2,7 @@ use std::collections::TryReserveError::*;
 use std::collections::{vec_deque::Drain, VecDeque};
 use std::fmt::Debug;
 use std::mem::size_of;
+use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use crate::hash;
@@ -113,6 +114,20 @@ fn test_index_out_of_bounds() {
         deq.push_front(i);
     }
     deq[3];
+}
+
+#[test]
+#[should_panic]
+fn test_range_start_overflow() {
+    let deq = VecDeque::from(vec![1, 2, 3]);
+    deq.range((Included(0), Included(usize::MAX)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_end_overflow() {
+    let deq = VecDeque::from(vec![1, 2, 3]);
+    deq.range((Excluded(usize::MAX), Included(0)));
 }
 
 #[derive(Clone, PartialEq, Debug)]

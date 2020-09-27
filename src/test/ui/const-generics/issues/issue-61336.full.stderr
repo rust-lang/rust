@@ -7,17 +7,17 @@ LL | #![cfg_attr(full, feature(const_generics))]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/issue-61336.rs:10:5
    |
 LL |     [x; N]
-   |     ^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |     ^^^^^^ the trait `Copy` is not implemented for `T`
    |
    = note: the `Copy` trait is required because the repeated element will be copied
 help: consider restricting type parameter `T`
    |
-LL | fn g<T: std::marker::Copy, const N: usize>(x: T) -> [T; N] {
-   |       ^^^^^^^^^^^^^^^^^^^
+LL | fn g<T: Copy, const N: usize>(x: T) -> [T; N] {
+   |       ^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

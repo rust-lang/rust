@@ -44,13 +44,13 @@ incremental builds the default is 256 which allows caching to be more granular.
 
 ## control-flow-guard
 
-This flag controls whether LLVM enables the Windows [Control Flow 
-Guard](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard) 
-platform security feature. This flag is currently ignored for non-Windows targets. 
+This flag controls whether LLVM enables the Windows [Control Flow
+Guard](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard)
+platform security feature. This flag is currently ignored for non-Windows targets.
 It takes one of the following values:
 
 * `y`, `yes`, `on`, `checks`, or no value: enable Control Flow Guard.
-* `nochecks`: emit Control Flow Guard metadata without runtime enforcement checks (this 
+* `nochecks`: emit Control Flow Guard metadata without runtime enforcement checks (this
 should only be used for testing purposes as it does not provide security enforcement).
 * `n`, `no`, `off`: do not enable Control Flow Guard (the default).
 
@@ -199,6 +199,18 @@ the following values:
 
 An example of when this flag might be useful is when trying to construct code coverage
 metrics.
+
+## link-self-contained
+
+On targets that support it this flag controls whether the linker will use libraries and objects
+shipped with Rust instead or those in the system.
+It takes one of the following values:
+
+* no value: rustc will use heuristic to disable self-contained mode if system has necessary tools.
+* `y`, `yes`, `on`: use only libraries/objects shipped with Rust.
+* `n`, `no`, or `off`: rely on the user or the linker to provide non-Rust libraries/objects.
+
+This allows overriding cases when detection fails or user wants to use shipped libraries.
 
 ## linker
 

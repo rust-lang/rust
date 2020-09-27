@@ -2,7 +2,7 @@ error[E0507]: cannot move out of `self.tokens` which is behind a shared referenc
   --> $DIR/issue-2590.rs:11:9
    |
 LL |         self.tokens
-   |         ^^^^^^^^^^^ move occurs because `self.tokens` has type `std::vec::Vec<isize>`, which does not implement the `Copy` trait
+   |         ^^^^^^^^^^^ move occurs because `self.tokens` has type `Vec<isize>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

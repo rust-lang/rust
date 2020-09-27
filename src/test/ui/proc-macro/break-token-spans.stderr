@@ -8,11 +8,11 @@ error[E0308]: mismatched types
   --> $DIR/break-token-spans.rs:14:32
    |
 LL |     let a: Option<Option<u8>>= true;
-   |            ------------------  ^^^^ expected enum `std::option::Option`, found `bool`
+   |            ------------------  ^^^^ expected enum `Option`, found `bool`
    |            |
    |            expected due to this
    |
-   = note: expected enum `std::option::Option<std::option::Option<u8>>`
+   = note: expected enum `Option<Option<u8>>`
               found type `bool`
 
 error: aborting due to 2 previous errors

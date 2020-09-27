@@ -1,35 +1,28 @@
 error: called `skip(x).next()` on an iterator
-  --> $DIR/iter_skip_next.rs:13:13
+  --> $DIR/iter_skip_next.rs:15:28
    |
 LL |     let _ = some_vec.iter().skip(42).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                            ^^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(42)`
    |
    = note: `-D clippy::iter-skip-next` implied by `-D warnings`
-   = help: this is more succinctly expressed by calling `nth(x)`
 
 error: called `skip(x).next()` on an iterator
-  --> $DIR/iter_skip_next.rs:14:13
+  --> $DIR/iter_skip_next.rs:16:36
    |
 LL |     let _ = some_vec.iter().cycle().skip(42).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: this is more succinctly expressed by calling `nth(x)`
+   |                                    ^^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(42)`
 
 error: called `skip(x).next()` on an iterator
-  --> $DIR/iter_skip_next.rs:15:13
+  --> $DIR/iter_skip_next.rs:17:20
    |
 LL |     let _ = (1..10).skip(10).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: this is more succinctly expressed by calling `nth(x)`
+   |                    ^^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(10)`
 
 error: called `skip(x).next()` on an iterator
-  --> $DIR/iter_skip_next.rs:16:14
+  --> $DIR/iter_skip_next.rs:18:33
    |
 LL |     let _ = &some_vec[..].iter().skip(3).next();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: this is more succinctly expressed by calling `nth(x)`
+   |                                 ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(3)`
 
 error: aborting due to 4 previous errors
 

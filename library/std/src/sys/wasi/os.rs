@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::any::Any;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, CString, OsStr, OsString};

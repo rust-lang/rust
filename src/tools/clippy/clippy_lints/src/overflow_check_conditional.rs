@@ -42,13 +42,13 @@ impl<'tcx> LateLintPass<'tcx> for OverflowCheckConditional {
                 if let BinOpKind::Lt = op.node {
                     if let BinOpKind::Add = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
-                            "You are trying to use classic C overflow conditions that will fail in Rust.");
+                            "you are trying to use classic C overflow conditions that will fail in Rust");
                     }
                 }
                 if let BinOpKind::Gt = op.node {
                     if let BinOpKind::Sub = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
-                            "You are trying to use classic C underflow conditions that will fail in Rust.");
+                            "you are trying to use classic C underflow conditions that will fail in Rust");
                     }
                 }
             }
@@ -67,13 +67,13 @@ impl<'tcx> LateLintPass<'tcx> for OverflowCheckConditional {
                 if let BinOpKind::Gt = op.node {
                     if let BinOpKind::Add = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
-                            "You are trying to use classic C overflow conditions that will fail in Rust.");
+                            "you are trying to use classic C overflow conditions that will fail in Rust");
                     }
                 }
                 if let BinOpKind::Lt = op.node {
                     if let BinOpKind::Sub = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
-                            "You are trying to use classic C underflow conditions that will fail in Rust.");
+                            "you are trying to use classic C underflow conditions that will fail in Rust");
                     }
                 }
             }

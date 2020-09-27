@@ -1,0 +1,8 @@
+error: missing fragment specifier
+  --> $DIR/issue-39404.rs:3:19
+   |
+LL | macro_rules! m { ($i) => {} }
+   |                   ^^
+
+error: aborting due to previous error
+

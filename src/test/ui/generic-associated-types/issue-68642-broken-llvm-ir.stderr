@@ -7,7 +7,7 @@ LL | #![feature(generic_associated_types)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
-error[E0277]: expected a `std::ops::Fn<()>` closure, found `T`
+error[E0277]: expected a `Fn<()>` closure, found `T`
   --> $DIR/issue-68642-broken-llvm-ir.rs:15:5
    |
 LL |     type F<'a>: Fn() -> u32;
@@ -19,8 +19,8 @@ LL |     type F<'a> = Self;
    = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
 help: consider restricting type parameter `T`
    |
-LL | impl<T: std::ops::Fn<()>> Fun for T {
-   |       ^^^^^^^^^^^^^^^^^^
+LL | impl<T: Fn<()>> Fun for T {
+   |       ^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

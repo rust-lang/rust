@@ -1,16 +1,16 @@
-error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/where-clause-constraints-are-local-for-inherent-impl.rs:13:22
    |
 LL | fn require_copy<T: Copy>(x: T) {}
    |                    ---- required by this bound in `require_copy`
 ...
 LL |         require_copy(self.x);
-   |                      ^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |                      ^^^^^^ the trait `Copy` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
-LL | impl<T: std::marker::Copy> Foo<T> {
-   |       ^^^^^^^^^^^^^^^^^^^
+LL | impl<T: Copy> Foo<T> {
+   |       ^^^^^^
 
 error: aborting due to previous error
 

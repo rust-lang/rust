@@ -16,6 +16,7 @@ use std::process::{Command, Stdio};
 
 static HOSTS: &[&str] = &[
     "aarch64-unknown-linux-gnu",
+    "aarch64-unknown-linux-musl",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",
     "armv7-unknown-linux-gnueabihf",
@@ -110,6 +111,7 @@ static TARGETS: &[&str] = &[
     "riscv32i-unknown-none-elf",
     "riscv32imc-unknown-none-elf",
     "riscv32imac-unknown-none-elf",
+    "riscv32gc-unknown-linux-gnu",
     "riscv64imac-unknown-none-elf",
     "riscv64gc-unknown-none-elf",
     "riscv64gc-unknown-linux-gnu",
@@ -447,6 +449,7 @@ impl Builder {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
         package("rustc-dev", HOSTS);
+        package("rustc-docs", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);
         package("rust-std", TARGETS);
@@ -500,6 +503,7 @@ impl Builder {
         // for users to install the additional component manually, if needed.
         if self.rust_release == "nightly" {
             self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
+            self.extend_profile("complete", &mut manifest.profiles, &["rustc-docs"]);
         }
     }
 
@@ -575,6 +579,7 @@ impl Builder {
                 .map(|target| Component::from_str("rust-std", target)),
         );
         extensions.extend(HOSTS.iter().map(|target| Component::from_str("rustc-dev", target)));
+        extensions.extend(HOSTS.iter().map(|target| Component::from_str("rustc-docs", target)));
         extensions.push(Component::from_str("rust-src", "*"));
 
         // If the components/extensions don't actually exist for this

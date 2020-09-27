@@ -1,10 +1,9 @@
 #![feature(allocator_api)]
 #![feature(box_syntax)]
-#![feature(btree_drain_filter)]
+#![feature(cow_is_borrowed)]
+#![feature(const_cow_is_borrowed)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
-#![feature(map_first_last)]
-#![feature(map_into_keys_values)]
 #![feature(new_uninit)]
 #![feature(pattern)]
 #![feature(str_split_once)]
@@ -17,6 +16,10 @@
 #![feature(slice_ptr_get)]
 #![feature(split_inclusive)]
 #![feature(binary_heap_retain)]
+#![feature(deque_range)]
+#![feature(inplace_iteration)]
+#![feature(iter_map_while)]
+#![feature(int_bits_const)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -25,7 +28,7 @@ mod arc;
 mod binary_heap;
 mod borrow;
 mod boxed;
-mod btree;
+mod btree_set_hash;
 mod cow_str;
 mod fmt;
 mod heap;

@@ -40,8 +40,8 @@ fn add_generic<A: Add<B>, B>(lhs: A, rhs: B) -> Either<
 fn add_one(
     value: u32,
 ) -> Either<impl Trait<<u32 as Add<u32>>::Output>, impl Trait<<u32 as Add<u32>>::Output>> {
-    //~^ ERROR: the trait bound `impl Trait<<u32 as std::ops::Add>::Output>: Trait<u32>`
-    //~| ERROR: the trait bound `impl Trait<<u32 as std::ops::Add>::Output>: Trait<u32>`
+    //~^ ERROR: the trait bound `impl Trait<<u32 as Add>::Output>: Trait<u32>`
+    //~| ERROR: the trait bound `impl Trait<<u32 as Add>::Output>: Trait<u32>`
     add_generic(value, 1u32)
 }
 

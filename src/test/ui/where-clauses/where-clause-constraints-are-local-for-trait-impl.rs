@@ -16,7 +16,7 @@ impl<T> Foo<T> for Bar<T> {
 
     fn fails_copy(self) {
         require_copy(self.x);
-        //~^ ERROR the trait bound `T: std::marker::Copy` is not satisfied
+        //~^ ERROR the trait bound `T: Copy` is not satisfied
     }
 }
 

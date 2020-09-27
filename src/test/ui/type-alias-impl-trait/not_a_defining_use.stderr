@@ -1,18 +1,14 @@
 error: concrete type differs from previous defining opaque type use
   --> $DIR/not_a_defining_use.rs:29:1
    |
-LL | / fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
-LL | |     (t, <U as Bar>::FOO)
-LL | | }
-   | |_^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
+LL | fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
    |
 note: previous use here
   --> $DIR/not_a_defining_use.rs:9:1
    |
-LL | / fn two<T: Debug>(t: T) -> Two<T, u32> {
-LL | |     (t, 4i8)
-LL | | }
-   | |_^
+LL | fn two<T: Debug>(t: T) -> Two<T, u32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

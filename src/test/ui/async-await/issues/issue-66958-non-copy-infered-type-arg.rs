@@ -8,7 +8,7 @@ impl<S> Ia<S> {
 
     async fn crash(self) {
         Self::partial(self.0);
-        Self::full(self); //~ ERROR use of moved value: `self`
+        Self::full(self); //~ ERROR use of partially moved value: `self`
     }
 }
 

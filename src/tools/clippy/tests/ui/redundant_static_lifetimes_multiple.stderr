@@ -1,4 +1,4 @@
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:3:18
    |
 LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
@@ -6,55 +6,55 @@ LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; 
    |
    = note: `-D clippy::redundant-static-lifetimes` implied by `-D warnings`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:3:30
    |
 LL | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
    |                             -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:5:29
    |
 LL | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                            -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:5:39
    |
 LL | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                      -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:7:40
    |
 LL | static STATIC_VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
    |                                       -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:7:55
    |
 LL | static STATIC_VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
    |                                                      -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:9:26
    |
 LL | static STATIC_VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
    |                         -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:9:38
    |
 LL | static STATIC_VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
    |                                     -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:11:37
    |
 LL | static STATIC_VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                    -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes_multiple.rs:11:47
    |
 LL | static STATIC_VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];

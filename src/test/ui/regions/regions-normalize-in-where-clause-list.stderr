@@ -5,9 +5,7 @@ LL | / fn bar<'a, 'b>()
 LL | |
 LL | |
 LL | |     where <() as Project<'a, 'b>>::Item : Eq
-LL | | {
-LL | | }
-   | |_^
+   | |____________________________________________^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 22:8...
   --> $DIR/regions-normalize-in-where-clause-list.rs:22:8
@@ -26,9 +24,7 @@ LL | / fn bar<'a, 'b>()
 LL | |
 LL | |
 LL | |     where <() as Project<'a, 'b>>::Item : Eq
-LL | | {
-LL | | }
-   | |_^
+   | |____________________________________________^
    = note: expected `Project<'a, 'b>`
               found `Project<'_, '_>`
 
@@ -39,9 +35,7 @@ LL | / fn bar<'a, 'b>()
 LL | |
 LL | |
 LL | |     where <() as Project<'a, 'b>>::Item : Eq
-LL | | {
-LL | | }
-   | |_^
+   | |____________________________________________^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 22:8...
   --> $DIR/regions-normalize-in-where-clause-list.rs:22:8
@@ -60,9 +54,7 @@ LL | / fn bar<'a, 'b>()
 LL | |
 LL | |
 LL | |     where <() as Project<'a, 'b>>::Item : Eq
-LL | | {
-LL | | }
-   | |_^
+   | |____________________________________________^
    = note: expected `Project<'a, 'b>`
               found `Project<'_, '_>`
 

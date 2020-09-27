@@ -1,4 +1,4 @@
-use core::array::{FixedSizeArray, IntoIter};
+use core::array::{self, FixedSizeArray, IntoIter};
 use core::convert::TryFrom;
 
 #[test]
@@ -17,6 +17,21 @@ fn fixed_size_array() {
     assert_eq!(FixedSizeArray::as_mut_slice(&mut zero_sized).len(), 64);
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_array).len(), 0);
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_zero_sized).len(), 0);
+}
+
+#[test]
+fn array_from_ref() {
+    let value: String = "Hello World!".into();
+    let arr: &[String; 1] = array::from_ref(&value);
+    assert_eq!(&[value.clone()], arr);
+}
+
+#[test]
+fn array_from_mut() {
+    let mut value: String = "Hello World".into();
+    let arr: &mut [String; 1] = array::from_mut(&mut value);
+    arr[0].push_str("!");
+    assert_eq!(&value, "Hello World!");
 }
 
 #[test]
@@ -289,4 +304,44 @@ fn empty_array_is_always_default() {
     struct DoesNotImplDefault;
 
     let _arr = <[DoesNotImplDefault; 0]>::default();
+}
+
+#[test]
+fn array_map() {
+    let a = [1, 2, 3];
+    let b = a.map(|v| v + 1);
+    assert_eq!(b, [2, 3, 4]);
+
+    let a = [1u8, 2, 3];
+    let b = a.map(|v| v as u64);
+    assert_eq!(b, [1, 2, 3]);
+}
+
+// See note on above test for why `should_panic` is used.
+#[test]
+#[should_panic(expected = "test succeeded")]
+fn array_map_drop_safety() {
+    use core::sync::atomic::AtomicUsize;
+    use core::sync::atomic::Ordering;
+    static DROPPED: AtomicUsize = AtomicUsize::new(0);
+    struct DropCounter;
+    impl Drop for DropCounter {
+        fn drop(&mut self) {
+            DROPPED.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let num_to_create = 5;
+    let success = std::panic::catch_unwind(|| {
+        let items = [0; 10];
+        let mut nth = 0;
+        items.map(|_| {
+            assert!(nth < num_to_create);
+            nth += 1;
+            DropCounter
+        });
+    });
+    assert!(success.is_err());
+    assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
+    panic!("test succeeded")
 }

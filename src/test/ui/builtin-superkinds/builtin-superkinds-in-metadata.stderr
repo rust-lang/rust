@@ -7,13 +7,13 @@ LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
   ::: $DIR/auxiliary/trait_superkinds_in_metadata.rs:7:58
    |
 LL | pub trait RequiresRequiresShareAndSend : RequiresShare + Send { }
-   |                                                          ---- required by this bound in `trait_superkinds_in_metadata::RequiresRequiresShareAndSend`
+   |                                                          ---- required by this bound in `RequiresRequiresShareAndSend`
    |
    = note: required because it appears within the type `X<T>`
 help: consider further restricting this bound
    |
-LL | impl <T:Sync+'static + std::marker::Send> RequiresRequiresShareAndSend for X<T> { }
-   |                      ^^^^^^^^^^^^^^^^^^^
+LL | impl <T:Sync+'static + Send> RequiresRequiresShareAndSend for X<T> { }
+   |                      ^^^^^^
 
 error: aborting due to previous error
 

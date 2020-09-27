@@ -21,7 +21,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |   let v = s[..2];
    |       ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
 help: consider borrowing here

@@ -1,5 +1,6 @@
 //! WASI-specific extensions to general I/O primitives
 
+#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "wasi_ext", issue = "none")]
 
 use crate::fs;

@@ -45,15 +45,12 @@ impl EarlyLintPass for DoubleParens {
             return;
         }
 
+        let msg: &str = "consider removing unnecessary double parentheses";
+
         match expr.kind {
             ExprKind::Paren(ref in_paren) => match in_paren.kind {
                 ExprKind::Paren(_) | ExprKind::Tup(_) => {
-                    span_lint(
-                        cx,
-                        DOUBLE_PARENS,
-                        expr.span,
-                        "Consider removing unnecessary double parentheses",
-                    );
+                    span_lint(cx, DOUBLE_PARENS, expr.span, &msg);
                 },
                 _ => {},
             },
@@ -61,12 +58,7 @@ impl EarlyLintPass for DoubleParens {
                 if params.len() == 1 {
                     let param = &params[0];
                     if let ExprKind::Paren(_) = param.kind {
-                        span_lint(
-                            cx,
-                            DOUBLE_PARENS,
-                            param.span,
-                            "Consider removing unnecessary double parentheses",
-                        );
+                        span_lint(cx, DOUBLE_PARENS, param.span, &msg);
                     }
                 }
             },
@@ -74,12 +66,7 @@ impl EarlyLintPass for DoubleParens {
                 if params.len() == 2 {
                     let param = &params[1];
                     if let ExprKind::Paren(_) = param.kind {
-                        span_lint(
-                            cx,
-                            DOUBLE_PARENS,
-                            param.span,
-                            "Consider removing unnecessary double parentheses",
-                        );
+                        span_lint(cx, DOUBLE_PARENS, param.span, &msg);
                     }
                 }
             },

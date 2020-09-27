@@ -52,7 +52,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
                 Err(e) => {
                     println!(
                         "warning: source code was requested to be rendered, \
-                              but processing `{}` had an error: {}",
+                         but processing `{}` had an error: {}",
                         item.source.filename, e
                     );
                     println!("         skipping rendering of source code");

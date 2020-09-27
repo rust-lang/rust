@@ -1,11 +1,11 @@
-error[E0277]: `std::string::String` is not an iterator
+error[E0277]: `String` is not an iterator
   --> $DIR/string.rs:2:14
    |
 LL |     for _ in "".to_owned() {}
-   |              ^^^^^^^^^^^^^ `std::string::String` is not an iterator; try calling `.chars()` or `.bytes()`
+   |              ^^^^^^^^^^^^^ `String` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `std::string::String`
-   = note: required by `std::iter::IntoIterator::into_iter`
+   = help: the trait `Iterator` is not implemented for `String`
+   = note: required by `into_iter`
 
 error[E0277]: `&str` is not an iterator
   --> $DIR/string.rs:4:14
@@ -13,8 +13,8 @@ error[E0277]: `&str` is not an iterator
 LL |     for _ in "" {}
    |              ^^ `&str` is not an iterator; try calling `.chars()` or `.bytes()`
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `&str`
-   = note: required by `std::iter::IntoIterator::into_iter`
+   = help: the trait `Iterator` is not implemented for `&str`
+   = note: required by `into_iter`
 
 error: aborting due to 2 previous errors
 

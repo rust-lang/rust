@@ -129,9 +129,10 @@ pre {
 	color: #ffb44c;
 }
 
-.line-numbers span { color: #5c6773ab; }
+.line-numbers span { color: #5c6773; }
 .line-numbers .line-highlighted {
-	background-color: rgba(255, 236, 164, 0.06) !important;
+	color: #708090;
+	background-color: rgba(255, 236, 164, 0.06);
 	padding-right: 4px;
 	border-right: 1px solid #ffb44c;
 }
@@ -495,6 +496,7 @@ kbd {
 #theme-picker, #settings-menu, .help-button {
 	border-color: #5c6773;
 	background-color: #0f1419;
+	color: #fff;
 }
 
 #theme-picker > img, #settings-menu > img {
@@ -513,11 +515,11 @@ kbd {
 }
 
 #theme-choices > button:not(:first-child) {
-	border-top-color: #c5c5c5;
+	border-top-color: #5c6773;
 }
 
 #theme-choices > button:hover, #theme-choices > button:focus {
-	background-color: rgba(70, 70, 70, 0.33);
+	background-color: rgba(110, 110, 110, 0.33);
 }
 
 @media (max-width: 700px) {

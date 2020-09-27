@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `[std::string::String]` cannot be known at compilation time
+error[E0277]: the size for values of type `[String]` cannot be known at compilation time
   --> $DIR/issue-22874.rs:2:11
    |
 LL |     rows: [[String]],
    |           ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[std::string::String]`
+   = help: the trait `Sized` is not implemented for `[String]`
    = note: slice and array elements must have `Sized` type
 
 error: aborting due to previous error

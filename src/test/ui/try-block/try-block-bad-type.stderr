@@ -2,44 +2,44 @@ error[E0277]: `?` couldn't convert the error to `i32`
   --> $DIR/try-block-bad-type.rs:7:16
    |
 LL |         Err("")?;
-   |                ^ the trait `std::convert::From<&str>` is not implemented for `i32`
+   |                ^ the trait `From<&str>` is not implemented for `i32`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following implementations were found:
-             <i32 as std::convert::From<bool>>
-             <i32 as std::convert::From<i16>>
-             <i32 as std::convert::From<i8>>
-             <i32 as std::convert::From<std::num::NonZeroI32>>
+             <i32 as From<NonZeroI32>>
+             <i32 as From<bool>>
+             <i32 as From<i16>>
+             <i32 as From<i8>>
            and 2 others
-   = note: required by `std::convert::From::from`
+   = note: required by `from`
 
-error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == &str`
+error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as Try>::Ok == &str`
   --> $DIR/try-block-bad-type.rs:12:9
    |
 LL |         ""
    |         ^^ expected `i32`, found `&str`
 
-error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == ()`
+error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as Try>::Ok == ()`
   --> $DIR/try-block-bad-type.rs:15:39
    |
 LL |     let res: Result<i32, i32> = try { };
    |                                       ^ expected `i32`, found `()`
 
-error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
+error[E0277]: the trait bound `(): Try` is not satisfied
   --> $DIR/try-block-bad-type.rs:17:23
    |
 LL |     let res: () = try { };
-   |                       ^^^ the trait `std::ops::Try` is not implemented for `()`
+   |                       ^^^ the trait `Try` is not implemented for `()`
    |
-   = note: required by `std::ops::Try::from_ok`
+   = note: required by `from_ok`
 
-error[E0277]: the trait bound `i32: std::ops::Try` is not satisfied
+error[E0277]: the trait bound `i32: Try` is not satisfied
   --> $DIR/try-block-bad-type.rs:19:24
    |
 LL |     let res: i32 = try { 5 };
-   |                        ^^^^^ the trait `std::ops::Try` is not implemented for `i32`
+   |                        ^^^^^ the trait `Try` is not implemented for `i32`
    |
-   = note: required by `std::ops::Try::from_ok`
+   = note: required by `from_ok`
 
 error: aborting due to 5 previous errors
 

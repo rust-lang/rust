@@ -1,3 +1,6 @@
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod tests;
+
 use crate::fmt;
 use crate::marker;
 use crate::ops::Deref;
@@ -34,9 +37,7 @@ impl<T> RefUnwindSafe for ReentrantMutex<T> {}
 /// guarded data.
 #[must_use = "if unused the ReentrantMutex will immediately unlock"]
 pub struct ReentrantMutexGuard<'a, T: 'a> {
-    // funny underscores due to how Deref currently works (it disregards field
-    // privacy).
-    __lock: &'a ReentrantMutex<T>,
+    lock: &'a ReentrantMutex<T>,
 }
 
 impl<T> !marker::Send for ReentrantMutexGuard<'_, T> {}
@@ -126,7 +127,7 @@ impl<T: fmt::Debug + 'static> fmt::Debug for ReentrantMutex<T> {
 
 impl<'mutex, T> ReentrantMutexGuard<'mutex, T> {
     fn new(lock: &'mutex ReentrantMutex<T>) -> ReentrantMutexGuard<'mutex, T> {
-        ReentrantMutexGuard { __lock: lock }
+        ReentrantMutexGuard { lock }
     }
 }
 
@@ -134,7 +135,7 @@ impl<T> Deref for ReentrantMutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &self.__lock.data
+        &self.lock.data
     }
 }
 
@@ -142,83 +143,7 @@ impl<T> Drop for ReentrantMutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            self.__lock.inner.unlock();
-        }
-    }
-}
-
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests {
-    use crate::cell::RefCell;
-    use crate::sync::Arc;
-    use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-    use crate::thread;
-
-    #[test]
-    fn smoke() {
-        let m = unsafe {
-            let m = ReentrantMutex::new(());
-            m.init();
-            m
-        };
-        {
-            let a = m.lock();
-            {
-                let b = m.lock();
-                {
-                    let c = m.lock();
-                    assert_eq!(*c, ());
-                }
-                assert_eq!(*b, ());
-            }
-            assert_eq!(*a, ());
-        }
-    }
-
-    #[test]
-    fn is_mutex() {
-        let m = unsafe {
-            let m = Arc::new(ReentrantMutex::new(RefCell::new(0)));
-            m.init();
-            m
-        };
-        let m2 = m.clone();
-        let lock = m.lock();
-        let child = thread::spawn(move || {
-            let lock = m2.lock();
-            assert_eq!(*lock.borrow(), 4950);
-        });
-        for i in 0..100 {
-            let lock = m.lock();
-            *lock.borrow_mut() += i;
-        }
-        drop(lock);
-        child.join().unwrap();
-    }
-
-    #[test]
-    fn trylock_works() {
-        let m = unsafe {
-            let m = Arc::new(ReentrantMutex::new(()));
-            m.init();
-            m
-        };
-        let m2 = m.clone();
-        let _lock = m.try_lock();
-        let _lock2 = m.try_lock();
-        thread::spawn(move || {
-            let lock = m2.try_lock();
-            assert!(lock.is_none());
-        })
-        .join()
-        .unwrap();
-        let _lock3 = m.try_lock();
-    }
-
-    pub struct Answer<'a>(pub ReentrantMutexGuard<'a, RefCell<u32>>);
-    impl Drop for Answer<'_> {
-        fn drop(&mut self) {
-            *self.0.borrow_mut() = 42;
+            self.lock.inner.unlock();
         }
     }
 }

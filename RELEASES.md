@@ -10,7 +10,7 @@ Language
   function's caller's location information for panic messages.][72445]
 - [Recursively indexing into tuples no longer needs parentheses.][71322] E.g.
   `x.0.0` over `(x.0).0`.
-- [`mem::transmute` can now be used in static and constants.][72920] **Note**
+- [`mem::transmute` can now be used in statics and constants.][72920] **Note**
   You currently can't use `mem::transmute` in constant functions.
 
 Compiler
@@ -51,7 +51,7 @@ Compatibility Notes
 -------------------
 - [The target configuration option `abi_blacklist` has been renamed
   to `unsupported_abis`.][74150] The old name will still continue to work.
-- [Rustc will now warn if you have a C-like enum that implements `Drop`.][72331]
+- [Rustc will now warn if you cast a C-like enum that implements `Drop`.][72331]
   This was previously accepted but will become a hard error in a future release.
 - [Rustc will fail to compile if you have a struct with
   `#[repr(i128)]` or `#[repr(u128)]`.][74109] This representation is currently only
@@ -68,7 +68,19 @@ Compatibility Notes
 - [Rustc now correctly relates the lifetime of an existential associated
   type.][71896] This fixes some edge cases where `rustc` would erroneously allow
   you to pass a shorter lifetime than expected.
+- [Rustc now dynamically links to `libz` (also called `zlib`) on Linux.][74420]
+  The library will need to be installed for `rustc` to work, even though we
+  expect it to be already available on most systems.
+- [Tests annotated with `#[should_panic]` are broken on ARMv7 while running
+  under QEMU.][74820]
+- [Pretty printing of some tokens in procedural macros changed.][75453] The
+  exact output returned by rustc's pretty printing is an unstable
+  implementation detail: we recommend any macro relying on it to switch to a
+  more robust parsing system.
 
+[75453]: https://github.com/rust-lang/rust/issues/75453/
+[74820]: https://github.com/rust-lang/rust/issues/74820/
+[74420]: https://github.com/rust-lang/rust/issues/74420/
 [74109]: https://github.com/rust-lang/rust/pull/74109/
 [74150]: https://github.com/rust-lang/rust/pull/74150/
 [73862]: https://github.com/rust-lang/rust/pull/73862/

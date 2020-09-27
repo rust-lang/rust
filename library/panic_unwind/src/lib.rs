@@ -18,8 +18,8 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/"
 )]
 #![feature(core_intrinsics)]
+#![feature(int_bits_const)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(nll)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
@@ -65,7 +65,7 @@ cfg_if::cfg_if! {
         // - os=none ("bare metal" targets)
         // - os=uefi
         // - nvptx64-nvidia-cuda
-        // - avr-unknown-unknown
+        // - arch=avr
         #[path = "dummy.rs"]
         mod real_imp;
     }
@@ -88,6 +88,9 @@ extern "C" {
     /// Handler in libstd called when a panic object is dropped outside of
     /// `catch_unwind`.
     fn __rust_drop_panic() -> !;
+
+    /// Handler in libstd called when a foreign exception is caught.
+    fn __rust_foreign_exception() -> !;
 }
 
 mod dwarf;

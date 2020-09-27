@@ -1,10 +1,10 @@
-error[E0369]: no implementation for `std::string::String ^ std::string::String`
+error[E0369]: no implementation for `String ^ String`
   --> $DIR/binop-bitxor-str.rs:3:37
    |
 LL | fn main() { let x = "a".to_string() ^ "b".to_string(); }
-   |                     --------------- ^ --------------- std::string::String
+   |                     --------------- ^ --------------- String
    |                     |
-   |                     std::string::String
+   |                     String
 
 error: aborting due to previous error
 

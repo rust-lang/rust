@@ -17,6 +17,15 @@ error[E0027]: pattern does not mention field `present`
    |
 LL |     let Foo { #[cfg(any())] present: () } = foo;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `present`
+   |
+help: include the missing field in the pattern
+   |
+LL |     let Foo { present } = foo;
+   |             ^^^^^^^^^^^
+help: if you don't care about this missing field, you can explicitely ignore it
+   |
+LL |     let Foo { .. } = foo;
+   |             ^^^^^^
 
 error[E0026]: struct `Foo` does not have a field named `absent`
   --> $DIR/struct-field-cfg.rs:16:42

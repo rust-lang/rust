@@ -8,26 +8,26 @@ LL |     drop(m);
 LL |     match m { _ => { } } // #53114: should eventually be accepted too
    |           ^ value used here after move
 
-error[E0382]: use of moved value: `mm`
+error[E0382]: use of partially moved value: `mm`
   --> $DIR/issue-53114-borrow-checks.rs:27:11
    |
 LL |     match mm { (_x, _) => { } }
-   |                 -- value moved here
+   |                 -- value partially moved here
 LL |     match mm { (_, _y) => { } }
    |           ^^ value used here after partial move
    |
-   = note: move occurs because `mm.0` has type `M`, which does not implement the `Copy` trait
+   = note: partial move occurs because `mm.0` has type `M`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `mm`
+error[E0382]: use of partially moved value: `mm`
   --> $DIR/issue-53114-borrow-checks.rs:29:11
    |
 LL |     match mm { (_, _y) => { } }
-   |                    -- value moved here
+   |                    -- value partially moved here
 LL |
 LL |     match mm { (_, _) => { } }
    |           ^^ value used here after partial move
    |
-   = note: move occurs because `mm.1` has type `M`, which does not implement the `Copy` trait
+   = note: partial move occurs because `mm.1` has type `M`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `m`
   --> $DIR/issue-53114-borrow-checks.rs:36:16
@@ -39,26 +39,26 @@ LL |     drop(m);
 LL |     if let _ = m { } // #53114: should eventually be accepted too
    |                ^ value used here after move
 
-error[E0382]: use of moved value: `mm`
+error[E0382]: use of partially moved value: `mm`
   --> $DIR/issue-53114-borrow-checks.rs:41:22
    |
 LL |     if let (_x, _) = mm { }
-   |             -- value moved here
+   |             -- value partially moved here
 LL |     if let (_, _y) = mm { }
    |                      ^^ value used here after partial move
    |
-   = note: move occurs because `mm.0` has type `M`, which does not implement the `Copy` trait
+   = note: partial move occurs because `mm.0` has type `M`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `mm`
+error[E0382]: use of partially moved value: `mm`
   --> $DIR/issue-53114-borrow-checks.rs:43:21
    |
 LL |     if let (_, _y) = mm { }
-   |                -- value moved here
+   |                -- value partially moved here
 LL |
 LL |     if let (_, _) = mm { }
    |                     ^^ value used here after partial move
    |
-   = note: move occurs because `mm.1` has type `M`, which does not implement the `Copy` trait
+   = note: partial move occurs because `mm.1` has type `M`, which does not implement the `Copy` trait
 
 error: aborting due to 6 previous errors
 

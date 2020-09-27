@@ -30,13 +30,13 @@
 //! [`OsString`] is the Rust wrapper for owned strings in the
 //! preferred representation of the operating system. On Windows,
 //! this struct gets augmented with an implementation of the
-//! [`OsStringExt`] trait, which has a [`from_wide`] method. This
+//! [`OsStringExt`] trait, which has a [`OsStringExt::from_wide`] method. This
 //! lets you create an [`OsString`] from a `&[u16]` slice; presumably
 //! you get such a slice out of a `WCHAR` Windows API.
 //!
 //! Similarly, [`OsStr`] is the Rust wrapper for borrowed strings from
 //! preferred representation of the operating system. On Windows, the
-//! [`OsStrExt`] trait provides the [`encode_wide`] method, which
+//! [`OsStrExt`] trait provides the [`OsStrExt::encode_wide`] method, which
 //! outputs an [`EncodeWide`] iterator. You can [`collect`] this
 //! iterator, for example, to obtain a `Vec<u16>`; you can later get a
 //! pointer to this vector's contents and feed it to Windows APIs.
@@ -47,15 +47,8 @@
 //! ill-formed UTF-16.
 //!
 //! [ill-formed-utf-16]: https://simonsapin.github.io/wtf-8/#ill-formed-utf-16
-//! [`OsString`]: ../../../ffi/struct.OsString.html
-//! [`OsStr`]: ../../../ffi/struct.OsStr.html
-//! [`OsStringExt`]: trait.OsStringExt.html
-//! [`OsStrExt`]: trait.OsStrExt.html
-//! [`EncodeWide`]: struct.EncodeWide.html
-//! [`from_wide`]: trait.OsStringExt.html#tymethod.from_wide
-//! [`encode_wide`]: trait.OsStrExt.html#tymethod.encode_wide
-//! [`collect`]: ../../../iter/trait.Iterator.html#method.collect
-//! [U+FFFD]: ../../../char/constant.REPLACEMENT_CHARACTER.html
+//! [`collect`]: crate::iter::Iterator::collect
+//! [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -68,14 +61,12 @@ use crate::sys_common::{AsInner, FromInner};
 pub use crate::sys_common::wtf8::EncodeWide;
 
 /// Windows-specific extensions to [`OsString`].
-///
-/// [`OsString`]: ../../../../std/ffi/struct.OsString.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStringExt {
     /// Creates an `OsString` from a potentially ill-formed UTF-16 slice of
     /// 16-bit code units.
     ///
-    /// This is lossless: calling [`encode_wide`] on the resulting string
+    /// This is lossless: calling [`OsStrExt::encode_wide`] on the resulting string
     /// will always return the original code units.
     ///
     /// # Examples
@@ -89,8 +80,6 @@ pub trait OsStringExt {
     ///
     /// let string = OsString::from_wide(&source[..]);
     /// ```
-    ///
-    /// [`encode_wide`]: ./trait.OsStrExt.html#tymethod.encode_wide
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from_wide(wide: &[u16]) -> Self;
 }
@@ -103,14 +92,12 @@ impl OsStringExt for OsString {
 }
 
 /// Windows-specific extensions to [`OsStr`].
-///
-/// [`OsStr`]: ../../../../std/ffi/struct.OsStr.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStrExt {
     /// Re-encodes an `OsStr` as a wide character sequence, i.e., potentially
     /// ill-formed UTF-16.
     ///
-    /// This is lossless: calling [`OsString::from_wide`] and then
+    /// This is lossless: calling [`OsStringExt::from_wide`] and then
     /// `encode_wide` on the result will yield the original code units.
     /// Note that the encoding does not add a final null terminator.
     ///
@@ -128,8 +115,6 @@ pub trait OsStrExt {
     /// let result: Vec<u16> = string.encode_wide().collect();
     /// assert_eq!(&source[..], &result[..]);
     /// ```
-    ///
-    /// [`OsString::from_wide`]: ./trait.OsStringExt.html#tymethod.from_wide
     #[stable(feature = "rust1", since = "1.0.0")]
     fn encode_wide(&self) -> EncodeWide<'_>;
 }

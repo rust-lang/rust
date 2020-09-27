@@ -1,0 +1,10 @@
+error: avoid using `collect()` when not needed
+  --> $DIR/ice-5872.rs:4:39
+   |
+LL |     let _ = vec![1, 2, 3].into_iter().collect::<Vec<_>>().is_empty();
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+   |
+   = note: `-D clippy::needless-collect` implied by `-D warnings`
+
+error: aborting due to previous error
+

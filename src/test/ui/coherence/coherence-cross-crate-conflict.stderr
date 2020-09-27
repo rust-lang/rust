@@ -5,7 +5,7 @@ LL | impl<A> Foo for A {
    | ^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `trait_impl_conflict`:
-           - impl trait_impl_conflict::Foo for isize;
+           - impl Foo for isize;
 
 error[E0210]: type parameter `A` must be used as the type parameter for some local type (e.g., `MyStruct<A>`)
   --> $DIR/coherence-cross-crate-conflict.rs:9:6

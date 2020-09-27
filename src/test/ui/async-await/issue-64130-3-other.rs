@@ -22,5 +22,5 @@ async fn baz() { }
 
 fn main() {
     is_qux(bar());
-    //~^ ERROR the trait bound `Foo: Qux` is not satisfied in `impl std::future::Future`
+    //~^ ERROR the trait bound `Foo: Qux` is not satisfied in `impl Future`
 }

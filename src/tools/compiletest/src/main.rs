@@ -9,7 +9,6 @@ use crate::common::{expected_output_path, output_base_dir, output_relative_path,
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, Pretty, TestPaths};
 use crate::util::logv;
 use getopts::Options;
-use log::*;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -18,6 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 use test::ColorConfig;
+use tracing::*;
 use walkdir::WalkDir;
 
 use self::header::EarlyProps;
@@ -163,7 +163,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
-    let cdb = analyze_cdb(matches.opt_str("cdb"), &target);
+    let (cdb, cdb_version) = analyze_cdb(matches.opt_str("cdb"), &target);
     let (gdb, gdb_version, gdb_native_rust) =
         analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
     let (lldb_version, lldb_native_rust) = matches
@@ -216,6 +216,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
+        cdb_version,
         gdb,
         gdb_version,
         gdb_native_rust,
@@ -240,7 +241,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
         cflags: matches.opt_str("cflags").unwrap(),
-        ar: matches.opt_str("ar").unwrap_or("ar".into()),
+        ar: matches.opt_str("ar").unwrap_or_else(|| String::from("ar")),
         linker: matches.opt_str("linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
@@ -361,17 +362,13 @@ pub fn run_tests(config: Config) {
 }
 
 fn configure_cdb(config: &Config) -> Option<Config> {
-    if config.cdb.is_none() {
-        return None;
-    }
+    config.cdb.as_ref()?;
 
     Some(Config { debugger: Some(Debugger::Cdb), ..config.clone() })
 }
 
 fn configure_gdb(config: &Config) -> Option<Config> {
-    if config.gdb_version.is_none() {
-        return None;
-    }
+    config.gdb_version?;
 
     if util::matches_env(&config.target, "msvc") {
         return None;
@@ -405,9 +402,7 @@ fn configure_gdb(config: &Config) -> Option<Config> {
 }
 
 fn configure_lldb(config: &Config) -> Option<Config> {
-    if config.lldb_python_dir.is_none() {
-        return None;
-    }
+    config.lldb_python_dir.as_ref()?;
 
     if let Some(350) = config.lldb_version {
         println!(
@@ -455,7 +450,7 @@ pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(config);
     collect_tests_from_dir(config, &config.src_base, &PathBuf::new(), &inputs, tests)
-        .expect(&format!("Could not read tests from {}", config.src_base.display()));
+        .unwrap_or_else(|_| panic!("Could not read tests from {}", config.src_base.display()));
 }
 
 /// Returns a stamp constructed from input files common to all test cases.
@@ -588,7 +583,7 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
     let revisions = if early_props.revisions.is_empty() || config.mode == Mode::Incremental {
         vec![None]
     } else {
-        early_props.revisions.iter().map(|r| Some(r)).collect()
+        early_props.revisions.iter().map(Some).collect()
     };
     revisions
         .into_iter()
@@ -735,24 +730,24 @@ fn make_test_closure(
 
 /// Returns `true` if the given target is an Android target for the
 /// purposes of GDB testing.
-fn is_android_gdb_target(target: &String) -> bool {
-    match &target[..] {
-        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => true,
-        _ => false,
-    }
+fn is_android_gdb_target(target: &str) -> bool {
+    matches!(
+        &target[..],
+        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android"
+    )
 }
 
 /// Returns `true` if the given target is a MSVC target for the purpouses of CDB testing.
-fn is_pc_windows_msvc_target(target: &String) -> bool {
+fn is_pc_windows_msvc_target(target: &str) -> bool {
     target.ends_with("-pc-windows-msvc")
 }
 
-fn find_cdb(target: &String) -> Option<OsString> {
+fn find_cdb(target: &str) -> Option<OsString> {
     if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
         return None;
     }
 
-    let pf86 = env::var_os("ProgramFiles(x86)").or(env::var_os("ProgramFiles"))?;
+    let pf86 = env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?;
     let cdb_arch = if cfg!(target_arch = "x86") {
         "x86"
     } else if cfg!(target_arch = "x86_64") {
@@ -779,14 +774,36 @@ fn find_cdb(target: &String) -> Option<OsString> {
 }
 
 /// Returns Path to CDB
-fn analyze_cdb(cdb: Option<String>, target: &String) -> Option<OsString> {
-    cdb.map(|s| OsString::from(s)).or(find_cdb(target))
+fn analyze_cdb(cdb: Option<String>, target: &str) -> (Option<OsString>, Option<[u16; 4]>) {
+    let cdb = cdb.map(OsString::from).or_else(|| find_cdb(target));
+
+    let mut version = None;
+    if let Some(cdb) = cdb.as_ref() {
+        if let Ok(output) = Command::new(cdb).arg("/version").output() {
+            if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+                version = extract_cdb_version(&first_line);
+            }
+        }
+    }
+
+    (cdb, version)
+}
+
+fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
+    // Example full_version_line: "cdb version 10.0.18362.1"
+    let version = full_version_line.rsplit(' ').next()?;
+    let mut components = version.split('.');
+    let major: u16 = components.next().unwrap().parse().unwrap();
+    let minor: u16 = components.next().unwrap().parse().unwrap();
+    let patch: u16 = components.next().unwrap_or("0").parse().unwrap();
+    let build: u16 = components.next().unwrap_or("0").parse().unwrap();
+    Some([major, minor, patch, build])
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
 fn analyze_gdb(
     gdb: Option<String>,
-    target: &String,
+    target: &str,
     android_cross_path: &PathBuf,
 ) -> (Option<String>, Option<u32>, bool) {
     #[cfg(not(windows))]

@@ -96,5 +96,11 @@ help: or try being explicit if you are sure, that you want to clone a reference
 LL |         let _ = &<&[u8]>::clone(encoded);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: using `.clone()` on a ref-counted pointer
+  --> $DIR/unnecessary_clone.rs:108:14
+   |
+LL |         Some(try_opt!(Some(rc)).clone())
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `Rc::<u8>::clone(&try_opt!(Some(rc)))`
+
+error: aborting due to 12 previous errors
 

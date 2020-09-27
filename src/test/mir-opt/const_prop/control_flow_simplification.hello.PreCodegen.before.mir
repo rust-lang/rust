@@ -5,12 +5,6 @@ fn hello() -> () {
 
     bb0: {
         _0 = const ();                   // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/control-flow-simplification.rs:12:5: 14:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
     }
 }

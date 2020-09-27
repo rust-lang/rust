@@ -53,8 +53,10 @@ pub static LICENSE_MIT: &[u8] = include_bytes!("static/LICENSE-MIT.txt");
 
 /// The contents of `rust-logo.png`, the default icon of the documentation.
 pub static RUST_LOGO: &[u8] = include_bytes!("static/rust-logo.png");
-/// The contents of `favicon.ico`, the default favicon of the documentation.
-pub static RUST_FAVICON: &[u8] = include_bytes!("static/favicon.ico");
+/// The default documentation favicons (SVG and PNG fallbacks)
+pub static RUST_FAVICON_SVG: &[u8] = include_bytes!("static/favicon.svg");
+pub static RUST_FAVICON_PNG_16: &[u8] = include_bytes!("static/favicon-16x16.png");
+pub static RUST_FAVICON_PNG_32: &[u8] = include_bytes!("static/favicon-32x32.png");
 
 /// The built-in themes given to every documentation site.
 pub mod themes {

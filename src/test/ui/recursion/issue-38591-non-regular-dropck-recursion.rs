@@ -2,7 +2,9 @@
 // no free regions or type parameters.
 // Codegen however, has to error for the infinitely many `drop_in_place`
 // functions it has been asked to create.
+
 // build-fail
+// normalize-stderr-test: ".nll/" -> "/"
 
 struct S<T> {
     t: T,

@@ -11,13 +11,6 @@
           _2 = _1;                         // scope 0 at $DIR/mult_by_zero.rs:5:3: 5:4
 -         _0 = Mul(move _2, const 0_i32);  // scope 0 at $DIR/mult_by_zero.rs:5:3: 5:8
 +         _0 = const 0_i32;                // scope 0 at $DIR/mult_by_zero.rs:5:3: 5:8
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000000))
-                                           // mir::Constant
--                                          // + span: $DIR/mult_by_zero.rs:5:7: 5:8
-+                                          // + span: $DIR/mult_by_zero.rs:5:3: 5:8
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
           StorageDead(_2);                 // scope 0 at $DIR/mult_by_zero.rs:5:7: 5:8
           return;                          // scope 0 at $DIR/mult_by_zero.rs:6:2: 6:2
       }

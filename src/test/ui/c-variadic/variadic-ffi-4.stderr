@@ -2,7 +2,7 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:8:5
    |
 LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
-   |                                     --            -- has type `core::ffi::VaListImpl<'1>`
+   |                                     --            -- has type `VaListImpl<'1>`
    |                                     |
    |                                     lifetime `'f` defined here
 LL |     ap
@@ -12,7 +12,7 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:8:5
    |
 LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
-   |                                     --            -- has type `core::ffi::VaListImpl<'1>`
+   |                                     --            -- has type `VaListImpl<'1>`
    |                                     |
    |                                     lifetime `'f` defined here
 LL |     ap
@@ -22,7 +22,7 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:14:5
    |
 LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaListImpl<'static> {
-   |                                               -- has type `core::ffi::VaListImpl<'1>`
+   |                                               -- has type `VaListImpl<'1>`
 LL |     ap
    |     ^^ returning this value requires that `'1` must outlive `'static`
 
@@ -32,16 +32,16 @@ error: lifetime may not live long enough
 LL |     let _ = ap.with_copy(|ap| ap);
    |                           --- ^^ returning this value requires that `'1` must outlive `'2`
    |                           | |
-   |                           | return type of closure is core::ffi::VaList<'2, '_>
-   |                           has type `core::ffi::VaList<'1, '_>`
+   |                           | return type of closure is VaList<'2, '_>
+   |                           has type `VaList<'1, '_>`
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:22:5
    |
 LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
+   |                                               -------                   ------- has type `VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'1>`
+   |                                               has type `&mut VaListImpl<'1>`
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'1` must outlive `'2`
 
@@ -49,9 +49,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:22:5
    |
 LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
+   |                                               -------                   ------- has type `VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'1>`
+   |                                               has type `&mut VaListImpl<'1>`
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'2` must outlive `'1`
 
@@ -59,9 +59,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:28:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
+   |                                               -------                   ------- has type `VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'1>`
+   |                                               has type `&mut VaListImpl<'1>`
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
@@ -69,9 +69,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:28:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
+   |                                               -------                   ------- has type `VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'1>`
+   |                                               has type `&mut VaListImpl<'1>`
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'2` must outlive `'1`
 
@@ -93,9 +93,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:35:12
    |
 LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
+   |                                               -------                   ------- has type `VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'1>`
+   |                                               has type `&mut VaListImpl<'1>`
 LL |     *ap0 = ap1.clone();
    |            ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
@@ -103,9 +103,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:35:12
    |
 LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
+   |                                               -------                   ------- has type `VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'1>`
+   |                                               has type `&mut VaListImpl<'1>`
 LL |     *ap0 = ap1.clone();
    |            ^^^^^^^^^^^ argument requires that `'2` must outlive `'1`
 

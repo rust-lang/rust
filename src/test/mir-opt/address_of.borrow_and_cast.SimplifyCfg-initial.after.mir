@@ -39,12 +39,6 @@ fn borrow_and_cast(_1: i32) -> () {
         FakeRead(ForLet, _6);            // scope 2 at $DIR/address-of.rs:44:9: 44:10
         StorageDead(_7);                 // scope 2 at $DIR/address-of.rs:44:31: 44:32
         _0 = const ();                   // scope 0 at $DIR/address-of.rs:41:32: 45:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/address-of.rs:41:32: 45:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_6);                 // scope 2 at $DIR/address-of.rs:45:1: 45:2
         StorageDead(_4);                 // scope 1 at $DIR/address-of.rs:45:1: 45:2
         StorageDead(_2);                 // scope 0 at $DIR/address-of.rs:45:1: 45:2

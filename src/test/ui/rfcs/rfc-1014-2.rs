@@ -23,7 +23,8 @@ fn close_stdout() {
 #[cfg(windows)]
 fn main() {
     close_stdout();
-    println!("hello world");
+    println!("hello");
+    println!("world");
 }
 
 #[cfg(not(windows))]

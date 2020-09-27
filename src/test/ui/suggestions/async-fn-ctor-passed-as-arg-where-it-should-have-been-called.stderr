@@ -1,4 +1,4 @@
-error[E0277]: `fn() -> impl std::future::Future {foo}` is not a future
+error[E0277]: `fn() -> impl Future {foo}` is not a future
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:10:9
    |
 LL | async fn foo() {}
@@ -8,9 +8,9 @@ LL | fn bar(f: impl Future<Output=()>) {}
    |                ----------------- required by this bound in `bar`
 ...
 LL |     bar(foo);
-   |         ^^^ `fn() -> impl std::future::Future {foo}` is not a future
+   |         ^^^ `fn() -> impl Future {foo}` is not a future
    |
-   = help: the trait `std::future::Future` is not implemented for `fn() -> impl std::future::Future {foo}`
+   = help: the trait `Future` is not implemented for `fn() -> impl Future {foo}`
 help: use parentheses to call the function
    |
 LL |     bar(foo());
@@ -27,7 +27,7 @@ LL |     let async_closure = async || ();
 LL |     bar(async_closure);
    |         ^^^^^^^^^^^^^ `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:36]` is not a future
    |
-   = help: the trait `std::future::Future` is not implemented for `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:36]`
+   = help: the trait `Future` is not implemented for `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:36]`
 help: use parentheses to call the closure
    |
 LL |     bar(async_closure());

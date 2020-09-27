@@ -14,6 +14,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
       libc6-dev \
       libc6-dev-armhf-cross \
       make \
+      ninja-build \
       python3 \
       qemu-system-arm \
       xz-utils

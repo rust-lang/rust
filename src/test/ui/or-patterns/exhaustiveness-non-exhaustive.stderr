@@ -23,7 +23,7 @@ LL |     match (Some(0u8),) {
    |           ^^^^^^^^^^^^ pattern `(Some(2_u8..=u8::MAX))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `(std::option::Option<u8>,)`
+   = note: the matched value is of type `(Option<u8>,)`
 
 error: aborting due to 3 previous errors
 

@@ -5,8 +5,7 @@ LL | / fn f<I>(i: I)
 LL | | where
 LL | |     I: IntoIterator,
 LL | |     I::Item: for<'a> Into<&'a ()>,
-LL | | {}
-   | |__- defined here
+   | |__________________________________- defined here
 ...
 LL |       f(&[f()]);
    |           ^-- supplied 0 arguments

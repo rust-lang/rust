@@ -8,9 +8,9 @@ LL |       let _x: Box<dyn Fn() -> Result<(), ()>> = || {
 LL | |         Err(())?;
 LL | |         Ok(())
 LL | |     };
-   | |_____^ expected struct `std::boxed::Box`, found closure
+   | |_____^ expected struct `Box`, found closure
    |
-   = note: expected struct `std::boxed::Box<dyn std::ops::Fn() -> std::result::Result<(), ()>>`
+   = note: expected struct `Box<dyn Fn() -> std::result::Result<(), ()>>`
              found closure `[closure@$DIR/suggest-box.rs:4:47: 7:6]`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`

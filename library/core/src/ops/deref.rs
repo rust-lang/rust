@@ -28,7 +28,6 @@
 /// [method resolution] and [type coercions].
 ///
 /// [book]: ../../book/ch15-02-deref.html
-/// [`DerefMut`]: trait.DerefMut.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
 /// [method resolution]: ../../reference/expressions/method-call-expr.html
@@ -64,11 +63,13 @@
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "deref_target"]
     type Target: ?Sized;
 
     /// Dereferences the value.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "deref_method"]
     fn deref(&self) -> &Self::Target;
 }
 
@@ -125,7 +126,6 @@ impl<T: ?Sized> Deref for &mut T {
 /// [method resolution] and [type coercions].
 ///
 /// [book]: ../../book/ch15-02-deref.html
-/// [`Deref`]: trait.Deref.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
 /// [method resolution]: ../../reference/expressions/method-call-expr.html

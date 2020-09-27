@@ -9,7 +9,7 @@ use crate::clean::types::GetDefId;
 use crate::clean::{self, AttributesExt};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::render::{plain_summary_line, shorten};
+use crate::html::render::{plain_text_summary, shorten};
 use crate::html::render::{Generic, IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
@@ -78,7 +78,7 @@ pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: shorten(plain_summary_line(item.doc_value())),
+                desc: shorten(plain_text_summary(item.doc_value())),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -127,7 +127,7 @@ pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let crate_doc = krate
         .module
         .as_ref()
-        .map(|module| shorten(plain_summary_line(module.doc_value())))
+        .map(|module| shorten(plain_text_summary(module.doc_value())))
         .unwrap_or(String::new());
 
     #[derive(Serialize)]
@@ -200,10 +200,12 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
     match *clean_type {
         clean::ResolvedPath { ref path, .. } => {
             let segments = &path.segments;
-            let path_segment = segments.iter().last().unwrap_or_else(|| panic!(
+            let path_segment = segments.iter().last().unwrap_or_else(|| {
+                panic!(
                 "get_index_type_name(clean_type: {:?}, accept_generic: {:?}) had length zero path",
                 clean_type, accept_generic
-            ));
+            )
+            });
             Some(path_segment.name.clone())
         }
         clean::Generic(ref s) if accept_generic => Some(s.clone()),

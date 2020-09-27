@@ -1,6 +1,5 @@
 // run-pass
 // Test inclusive range syntax.
-#![feature(range_is_empty)]
 #![allow(unused_braces)]
 #![allow(unused_comparisons)]
 

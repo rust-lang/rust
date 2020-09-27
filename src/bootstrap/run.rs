@@ -10,7 +10,7 @@ impl Step for ExpandYamlAnchors {
 
     /// Runs the `expand-yaml_anchors` tool.
     ///
-    /// This tool in `src/tools` read the CI configuration files written in YAML and expands the
+    /// This tool in `src/tools` reads the CI configuration files written in YAML and expands the
     /// anchors in them, since GitHub Actions doesn't support them.
     fn run(self, builder: &Builder<'_>) {
         builder.info("Expanding YAML anchors in the GitHub Actions configuration");

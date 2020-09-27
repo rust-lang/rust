@@ -6,8 +6,8 @@ struct S {
 
 impl S {
     const fn foo(&mut self, x: u32) {
+        //~^ ERROR mutable references
         self.state = x;
-        //~^ contains unimplemented expression
     }
 }
 

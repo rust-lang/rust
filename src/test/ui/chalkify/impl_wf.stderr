@@ -7,7 +7,7 @@ LL | trait Foo: Sized { }
 LL | impl Foo for str { }
    |      ^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
 
 error[E0277]: the trait bound `f32: Foo` is not satisfied
   --> $DIR/impl_wf.rs:27:17

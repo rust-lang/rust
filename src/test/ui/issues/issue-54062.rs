@@ -8,6 +8,6 @@ fn main() {}
 
 fn testing(test: Test) {
     let _ = test.comps.inner.lock().unwrap();
-    //~^ ERROR: field `inner` of struct `std::sync::Mutex` is private
+    //~^ ERROR: field `inner` of struct `Mutex` is private
     //~| ERROR: no method named `unwrap` found
 }

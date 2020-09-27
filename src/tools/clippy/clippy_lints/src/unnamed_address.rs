@@ -65,14 +65,14 @@ impl LateLintPass<'_> for UnnamedAddress {
         }
 
         fn is_trait_ptr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-            match cx.typeck_results().expr_ty_adjusted(expr).kind {
+            match cx.typeck_results().expr_ty_adjusted(expr).kind() {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) => ty.is_trait(),
                 _ => false,
             }
         }
 
         fn is_fn_def(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-            matches!(cx.typeck_results().expr_ty(expr).kind, ty::FnDef(..))
+            matches!(cx.typeck_results().expr_ty(expr).kind(), ty::FnDef(..))
         }
 
         if_chain! {

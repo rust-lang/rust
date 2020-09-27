@@ -28,11 +28,11 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeFrom { start: 1 });
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeFrom`
+   |                expected reference, found struct `RangeFrom`
    |                help: consider borrowing here: `&std::ops::RangeFrom { start: 1 }`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeFrom<{integer}>`
+                 found struct `RangeFrom<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:31:16
@@ -40,11 +40,11 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeFrom { start: 1 });
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeFrom`
+   |                expected reference, found struct `RangeFrom`
    |                help: consider borrowing here: `&::std::ops::RangeFrom { start: 1 }`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeFrom<{integer}>`
+                 found struct `RangeFrom<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:36:16
@@ -52,11 +52,11 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeFull {});
    |                ^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeFull`
+   |                expected reference, found struct `RangeFull`
    |                help: consider borrowing here: `&std::ops::RangeFull {}`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeFull`
+                 found struct `RangeFull`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:41:16
@@ -64,11 +64,11 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeFull {});
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeFull`
+   |                expected reference, found struct `RangeFull`
    |                help: consider borrowing here: `&::std::ops::RangeFull {}`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeFull`
+                 found struct `RangeFull`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:46:16
@@ -76,11 +76,11 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeInclusive::new(0, 1));
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeInclusive`
+   |                expected reference, found struct `RangeInclusive`
    |                help: consider borrowing here: `&std::ops::RangeInclusive::new(0, 1)`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeInclusive<{integer}>`
+                 found struct `RangeInclusive<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:51:16
@@ -88,11 +88,11 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeInclusive::new(0, 1));
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeInclusive`
+   |                expected reference, found struct `RangeInclusive`
    |                help: consider borrowing here: `&::std::ops::RangeInclusive::new(0, 1)`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeInclusive<{integer}>`
+                 found struct `RangeInclusive<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:56:16
@@ -100,11 +100,11 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeTo { end: 5 });
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeTo`
+   |                expected reference, found struct `RangeTo`
    |                help: consider borrowing here: `&std::ops::RangeTo { end: 5 }`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeTo<{integer}>`
+                 found struct `RangeTo<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:61:16
@@ -112,11 +112,11 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeTo { end: 5 });
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeTo`
+   |                expected reference, found struct `RangeTo`
    |                help: consider borrowing here: `&::std::ops::RangeTo { end: 5 }`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeTo<{integer}>`
+                 found struct `RangeTo<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:66:16
@@ -124,11 +124,11 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeToInclusive { end: 5 });
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeToInclusive`
+   |                expected reference, found struct `RangeToInclusive`
    |                help: consider borrowing here: `&std::ops::RangeToInclusive { end: 5 }`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeToInclusive<{integer}>`
+                 found struct `RangeToInclusive<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-literals.rs:71:16
@@ -136,11 +136,11 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeToInclusive { end: 5 });
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeToInclusive`
+   |                expected reference, found struct `RangeToInclusive`
    |                help: consider borrowing here: `&::std::ops::RangeToInclusive { end: 5 }`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeToInclusive<{integer}>`
+                 found struct `RangeToInclusive<{integer}>`
 
 error: aborting due to 12 previous errors
 

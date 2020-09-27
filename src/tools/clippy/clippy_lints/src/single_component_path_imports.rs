@@ -1,6 +1,6 @@
 use crate::utils::{in_macro, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc_ast::ast::{Item, ItemKind, UseTreeKind};
+use rustc_ast::{Item, ItemKind, UseTreeKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -41,7 +41,7 @@ impl EarlyLintPass for SingleComponentPathImports {
         if_chain! {
             if !in_macro(item.span);
             if cx.sess.opts.edition == Edition::Edition2018;
-            if !item.vis.node.is_pub();
+            if !item.vis.kind.is_pub();
             if let ItemKind::Use(use_tree) = &item.kind;
             if let segments = &use_tree.prefix.segments;
             if segments.len() == 1;

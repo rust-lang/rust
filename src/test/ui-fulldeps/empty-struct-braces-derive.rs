@@ -3,18 +3,18 @@
 
 #![feature(rustc_private)]
 
+extern crate rustc_macros;
 extern crate rustc_serialize;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
-         Default, Debug, RustcEncodable, RustcDecodable)]
+use rustc_macros::{Decodable, Encodable};
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encodable, Decodable)]
 struct S {}
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
-         Default, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encodable, Decodable)]
 struct Z();
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
-         Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
 enum E {
     V {},
     U,

@@ -45,7 +45,7 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Std {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
         });
     }
@@ -59,7 +59,9 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
-        if builder.config.keep_stage.contains(&compiler.stage) {
+        if builder.config.keep_stage.contains(&compiler.stage)
+            || builder.config.keep_stage_std.contains(&compiler.stage)
+        {
             builder.info("Warning: Using a potentially old libstd. This may not behave well.");
             builder.ensure(StdLink { compiler, target_compiler: compiler, target });
             return;
@@ -385,7 +387,7 @@ impl Step for StartupObjects {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(StartupObjects {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
         });
     }
@@ -449,12 +451,12 @@ impl Step for Rustc {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/rustc")
+        run.path("compiler/rustc")
     }
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustc {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
         });
     }
@@ -472,6 +474,7 @@ impl Step for Rustc {
 
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old librustc. This may not behave well.");
+            builder.info("Warning: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
             builder.ensure(RustcLink { compiler, target_compiler: compiler, target });
             return;
         }
@@ -524,7 +527,7 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         .arg("--features")
         .arg(builder.rustc_features())
         .arg("--manifest-path")
-        .arg(builder.src.join("src/rustc/Cargo.toml"));
+        .arg(builder.src.join("compiler/rustc/Cargo.toml"));
     rustc_cargo_env(builder, cargo, target);
 }
 
@@ -560,7 +563,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     // Pass down configuration from the LLVM build into the build of
-    // librustc_llvm and librustc_codegen_llvm.
+    // rustc_llvm and rustc_codegen_llvm.
     //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
     // build. If we are in a check build we still go ahead here presuming we've
@@ -579,7 +582,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             cargo.env("CFG_LLVM_ROOT", s);
         }
-        // Some LLVM linker flags (-L and -l) may be needed to link librustc_llvm.
+        // Some LLVM linker flags (-L and -l) may be needed to link rustc_llvm.
         if let Some(ref s) = builder.config.llvm_ldflags {
             cargo.env("LLVM_LINKER_FLAGS", s);
         }
@@ -593,7 +596,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             let file = compiler_file(builder, builder.cxx(target).unwrap(), target, "libstdc++.a");
             cargo.env("LLVM_STATIC_STDCPP", file);
         }
-        if builder.config.llvm_link_shared || builder.config.llvm_thin_lto {
+        if builder.config.llvm_link_shared {
             cargo.env("LLVM_LINK_SHARED", "1");
         }
         if builder.config.llvm_use_libcxx {
@@ -819,7 +822,7 @@ impl Step for Assemble {
 
         // Link the compiler binary itself into place
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
-        let rustc = out_dir.join(exe("rustc_binary", host));
+        let rustc = out_dir.join(exe("rustc-main", host));
         let bindir = sysroot.join("bin");
         t!(fs::create_dir_all(&bindir));
         let compiler = builder.rustc(target_compiler);

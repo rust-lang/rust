@@ -22,4 +22,4 @@ The TLS data must not be in a library loaded after startup (via `dlopen`).
 but not in a shared library, and is accessed only from that executable.
 
 `rustc` and LLVM may use a more optimized model than specified if they know that we are producing
-and executable rather than a library, or that the `static` item is private enough.
+an executable rather than a library, or that the `static` item is private enough.

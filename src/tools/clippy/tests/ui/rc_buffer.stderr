@@ -1,0 +1,52 @@
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:10:11
+   |
+LL |     bad1: Rc<String>,
+   |           ^^^^^^^^^^ help: try: `Rc<str>`
+   |
+   = note: `-D clippy::rc-buffer` implied by `-D warnings`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:11:11
+   |
+LL |     bad2: Rc<PathBuf>,
+   |           ^^^^^^^^^^^ help: try: `Rc<std::path::Path>`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:12:11
+   |
+LL |     bad3: Rc<Vec<u8>>,
+   |           ^^^^^^^^^^^ help: try: `Rc<[u8]>`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:13:11
+   |
+LL |     bad4: Rc<OsString>,
+   |           ^^^^^^^^^^^^ help: try: `Rc<std::ffi::OsStr>`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:19:17
+   |
+LL | fn func_bad1(_: Rc<String>) {}
+   |                 ^^^^^^^^^^ help: try: `Rc<str>`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:20:17
+   |
+LL | fn func_bad2(_: Rc<PathBuf>) {}
+   |                 ^^^^^^^^^^^ help: try: `Rc<std::path::Path>`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:21:17
+   |
+LL | fn func_bad3(_: Rc<Vec<u8>>) {}
+   |                 ^^^^^^^^^^^ help: try: `Rc<[u8]>`
+
+error: usage of `Rc<T>` when T is a buffer type
+  --> $DIR/rc_buffer.rs:22:17
+   |
+LL | fn func_bad4(_: Rc<OsString>) {}
+   |                 ^^^^^^^^^^^^ help: try: `Rc<std::ffi::OsStr>`
+
+error: aborting due to 8 previous errors
+

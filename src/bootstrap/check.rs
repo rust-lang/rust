@@ -66,6 +66,43 @@ impl Step for Std {
         let libdir = builder.sysroot_libdir(compiler, target);
         let hostdir = builder.sysroot_libdir(compiler, compiler.host);
         add_to_sysroot(&builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
+
+        // Then run cargo again, once we've put the rmeta files for the library
+        // crates into the sysroot. This is needed because e.g., core's tests
+        // depend on `libtest` -- Cargo presumes it will exist, but it doesn't
+        // since we initialize with an empty sysroot.
+        //
+        // Currently only the "libtest" tree of crates does this.
+
+        let mut cargo = builder.cargo(
+            compiler,
+            Mode::Std,
+            SourceType::InTree,
+            target,
+            cargo_subcommand(builder.kind),
+        );
+        std_cargo(builder, target, compiler.stage, &mut cargo);
+        cargo.arg("--all-targets");
+
+        // Explicitly pass -p for all dependencies krates -- this will force cargo
+        // to also check the tests/benches/examples for these crates, rather
+        // than just the leaf crate.
+        for krate in builder.in_tree_crates("test") {
+            cargo.arg("-p").arg(krate.name);
+        }
+
+        builder.info(&format!(
+            "Checking std test/bench/example targets ({} -> {})",
+            &compiler.host, target
+        ));
+        run_cargo(
+            builder,
+            cargo,
+            args(builder.kind),
+            &libstd_test_stamp(builder, compiler, target),
+            vec![],
+            true,
+        );
     }
 }
 
@@ -106,6 +143,14 @@ impl Step for Rustc {
             cargo_subcommand(builder.kind),
         );
         rustc_cargo(builder, &mut cargo, target);
+        cargo.arg("--all-targets");
+
+        // Explicitly pass -p for all compiler krates -- this will force cargo
+        // to also check the tests/benches/examples for these crates, rather
+        // than just the leaf crate.
+        for krate in builder.in_tree_crates("rustc-main") {
+            cargo.arg("-p").arg(krate.name);
+        }
 
         builder.info(&format!("Checking compiler artifacts ({} -> {})", &compiler.host, target));
         run_cargo(
@@ -149,7 +194,7 @@ macro_rules! tool_check_step {
 
                 builder.ensure(Rustc { target });
 
-                let cargo = prepare_tool_cargo(
+                let mut cargo = prepare_tool_cargo(
                     builder,
                     compiler,
                     Mode::ToolRustc,
@@ -160,12 +205,14 @@ macro_rules! tool_check_step {
                     &[],
                 );
 
-                println!(
+                cargo.arg("--all-targets");
+
+                builder.info(&format!(
                     "Checking {} artifacts ({} -> {})",
                     stringify!($name).to_lowercase(),
                     &compiler.host.triple,
                     target.triple
-                );
+                ));
                 run_cargo(
                     builder,
                     cargo,
@@ -202,10 +249,22 @@ tool_check_step!(Rustdoc, "src/tools/rustdoc", SourceType::InTree);
 // rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
 
+tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree);
+
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
     builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check.stamp")
+}
+
+/// Cargo's output path for the standard library in a given stage, compiled
+/// by a particular compiler for the specified target.
+fn libstd_test_stamp(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+) -> PathBuf {
+    builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check-test.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular

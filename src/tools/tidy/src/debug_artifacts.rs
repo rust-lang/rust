@@ -1,4 +1,4 @@
-//! Tidy check to prevent creation of unnecessary debug artifacts.
+//! Tidy check to prevent creation of unnecessary debug artifacts while running tests.
 
 use std::path::{Path, PathBuf};
 

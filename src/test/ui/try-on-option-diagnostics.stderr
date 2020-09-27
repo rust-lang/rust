@@ -1,4 +1,4 @@
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-on-option-diagnostics.rs:7:5
    |
 LL | / fn a_function() -> u32 {
@@ -9,10 +9,10 @@ LL | |     22
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `u32`
-   = note: required by `std::ops::Try::from_error`
+   = help: the trait `Try` is not implemented for `u32`
+   = note: required by `from_error`
 
-error[E0277]: the `?` operator can only be used in a closure that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+error[E0277]: the `?` operator can only be used in a closure that returns `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-on-option-diagnostics.rs:14:9
    |
 LL |       let a_closure = || {
@@ -24,10 +24,10 @@ LL | |         22
 LL | |     };
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `{integer}`
-   = note: required by `std::ops::Try::from_error`
+   = help: the trait `Try` is not implemented for `{integer}`
+   = note: required by `from_error`
 
-error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-on-option-diagnostics.rs:26:13
    |
 LL | /         fn a_method() {
@@ -37,10 +37,10 @@ LL | |             x?;
 LL | |         }
    | |_________- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `()`
-   = note: required by `std::ops::Try::from_error`
+   = help: the trait `Try` is not implemented for `()`
+   = note: required by `from_error`
 
-error[E0277]: the `?` operator can only be used in a trait method that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+error[E0277]: the `?` operator can only be used in a trait method that returns `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-on-option-diagnostics.rs:39:13
    |
 LL | /         fn a_trait_method() {
@@ -50,8 +50,8 @@ LL | |             x?;
 LL | |         }
    | |_________- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `()`
-   = note: required by `std::ops::Try::from_error`
+   = help: the trait `Try` is not implemented for `()`
+   = note: required by `from_error`
 
 error: aborting due to 4 previous errors
 

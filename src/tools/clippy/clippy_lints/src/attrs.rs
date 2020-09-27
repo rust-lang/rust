@@ -1,13 +1,12 @@
 //! checks for attributes
 
-use crate::reexport::Name;
 use crate::utils::{
     first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
@@ -72,8 +71,9 @@ declare_clippy_lint! {
     /// **What it does:** Checks for `extern crate` and `use` items annotated with
     /// lint attributes.
     ///
-    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]` and
-    /// `#[allow(unreachable_pub)]` on `use` items and `#[allow(unused_imports)]` on
+    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]`,
+    /// `#[allow(unreachable_pub)]`, `#[allow(clippy::wildcard_imports)]` and
+    /// `#[allow(clippy::enum_glob_use)]` on `use` items and `#[allow(unused_imports)]` on
     /// `extern crate` items with a `#[macro_use]` attribute.
     ///
     /// **Why is this bad?** Lint attributes have no effect on crate imports. Most
@@ -319,7 +319,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         if let Some(ident) = attr.ident() {
                             match &*ident.as_str() {
                                 "allow" | "warn" | "deny" | "forbid" => {
-                                    // permit `unused_imports`, `deprecated` and `unreachable_pub` for `use` items
+                                    // permit `unused_imports`, `deprecated`, `unreachable_pub`,
+                                    // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
                                     // and `unused_imports` for `extern crate` items with `macro_use`
                                     for lint in lint_list {
                                         match item.kind {
@@ -328,6 +329,9 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                                     || is_word(lint, sym!(deprecated))
                                                     || is_word(lint, sym!(unreachable_pub))
                                                     || is_word(lint, sym!(unused))
+                                                    || extract_clippy_lint(lint)
+                                                        .map_or(false, |s| s == "wildcard_imports")
+                                                    || extract_clippy_lint(lint).map_or(false, |s| s == "enum_glob_use")
                                                 {
                                                     return;
                                                 }
@@ -388,24 +392,25 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     }
 }
 
-fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
-    fn extract_name(lint: &NestedMetaItem) -> Option<SymbolStr> {
-        if_chain! {
-            if let Some(meta_item) = lint.meta_item();
-            if meta_item.path.segments.len() > 1;
-            if let tool_name = meta_item.path.segments[0].ident;
-            if tool_name.as_str() == "clippy";
-            let lint_name = meta_item.path.segments.last().unwrap().ident.name;
-            then {
-                return Some(lint_name.as_str());
-            }
+/// Returns the lint name if it is clippy lint.
+fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
+    if_chain! {
+        if let Some(meta_item) = lint.meta_item();
+        if meta_item.path.segments.len() > 1;
+        if let tool_name = meta_item.path.segments[0].ident;
+        if tool_name.as_str() == "clippy";
+        let lint_name = meta_item.path.segments.last().unwrap().ident.name;
+        then {
+            return Some(lint_name.as_str());
         }
-        None
     }
+    None
+}
 
+fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
     let lint_store = cx.lints();
     for lint in items {
-        if let Some(lint_name) = extract_name(lint) {
+        if let Some(lint_name) = extract_clippy_lint(lint) {
             if let CheckLintNameResult::Tool(Err((None, _))) =
                 lint_store.check_lint_name(&lint_name, Some(sym!(clippy)))
             {
@@ -517,7 +522,7 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
     }
 }
 
-fn check_attrs(cx: &LateContext<'_>, span: Span, name: Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribute]) {
     if span.from_expansion() {
         return;
     }
@@ -571,7 +576,7 @@ declare_lint_pass!(EarlyAttributes => [
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::ast::Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
         check_empty_line_after_outer_attr(cx, item);
     }
 
@@ -581,7 +586,7 @@ impl EarlyLintPass for EarlyAttributes {
     }
 }
 
-fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::ast::Item) {
+fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
     for attr in &item.attrs {
         let attr_item = if let AttrKind::Normal(ref attr) = attr.kind {
             attr
@@ -606,7 +611,7 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::as
                         cx,
                         EMPTY_LINE_AFTER_OUTER_ATTR,
                         begin_of_attr_to_item,
-                        "Found an empty line after an outer attribute. \
+                        "found an empty line after an outer attribute. \
                         Perhaps you forgot to add a `!` to make it an inner attribute?",
                     );
                 }

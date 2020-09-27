@@ -15,14 +15,8 @@ LL | |     }
 note: the anonymous lifetime #2 defined on the method body at 28:5...
   --> $DIR/issue-20831-debruijn.rs:28:5
    |
-LL | /     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
-LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |
-LL | |
-...  |
-LL | |         self.sub = t;
-LL | |     }
-   | |_____^
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 26:6
   --> $DIR/issue-20831-debruijn.rs:26:6
    |
@@ -51,14 +45,8 @@ LL | impl<'a> Publisher<'a> for MyStruct<'a> {
 note: ...does not necessarily outlive the anonymous lifetime #2 defined on the method body at 28:5
   --> $DIR/issue-20831-debruijn.rs:28:5
    |
-LL | /     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
-LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |
-LL | |
-...  |
-LL | |         self.sub = t;
-LL | |     }
-   | |_____^
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
   --> $DIR/issue-20831-debruijn.rs:28:33
@@ -69,14 +57,8 @@ LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher
 note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the method body at 28:5...
   --> $DIR/issue-20831-debruijn.rs:28:5
    |
-LL | /     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
-LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |
-LL | |
-...  |
-LL | |         self.sub = t;
-LL | |     }
-   | |_____^
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...but the lifetime must also be valid for the lifetime `'a` as defined on the impl at 26:6...
   --> $DIR/issue-20831-debruijn.rs:26:6
    |
@@ -99,14 +81,8 @@ LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher
 note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the method body at 28:5...
   --> $DIR/issue-20831-debruijn.rs:28:5
    |
-LL | /     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
-LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |
-LL | |
-...  |
-LL | |         self.sub = t;
-LL | |     }
-   | |_____^
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...but the lifetime must also be valid for the lifetime `'a` as defined on the impl at 26:6...
   --> $DIR/issue-20831-debruijn.rs:26:6
    |

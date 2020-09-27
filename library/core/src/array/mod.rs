@@ -19,6 +19,20 @@ mod iter;
 #[unstable(feature = "array_value_iter", issue = "65798")]
 pub use iter::IntoIter;
 
+/// Converts a reference to `T` into a reference to an array of length 1 (without copying).
+#[unstable(feature = "array_from_ref", issue = "77101")]
+pub fn from_ref<T>(s: &T) -> &[T; 1] {
+    // SAFETY: Converting `&T` to `&[T; 1]` is sound.
+    unsafe { &*(s as *const T).cast::<[T; 1]>() }
+}
+
+/// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
+#[unstable(feature = "array_from_ref", issue = "77101")]
+pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
+    // SAFETY: Converting `&mut T` to `&mut [T; 1]` is sound.
+    unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
+}
+
 /// Utility trait implemented only on arrays of fixed size
 ///
 /// This trait can be used to implement other traits on fixed-size arrays
@@ -32,9 +46,6 @@ pub use iter::IntoIter;
 /// Note that the traits [`AsRef`] and [`AsMut`] provide similar methods for types that
 /// may not be fixed-size arrays. Implementors should prefer those traits
 /// instead.
-///
-/// [`AsRef`]: ../convert/trait.AsRef.html
-/// [`AsMut`]: ../convert/trait.AsMut.html
 #[unstable(feature = "fixed_size_array", issue = "27778")]
 pub unsafe trait FixedSizeArray<T> {
     /// Converts the array to immutable slice
@@ -364,3 +375,78 @@ macro_rules! array_impl_default {
 }
 
 array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+
+#[lang = "array"]
+impl<T, const N: usize> [T; N] {
+    /// Returns an array of the same size as `self`, with function `f` applied to each element
+    /// in order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_map)]
+    /// let x = [1, 2, 3];
+    /// let y = x.map(|v| v + 1);
+    /// assert_eq!(y, [2, 3, 4]);
+    ///
+    /// let x = [1, 2, 3];
+    /// let mut temp = 0;
+    /// let y = x.map(|v| { temp += 1; v * temp });
+    /// assert_eq!(y, [1, 4, 9]);
+    ///
+    /// let x = ["Ferris", "Bueller's", "Day", "Off"];
+    /// let y = x.map(|v| v.len());
+    /// assert_eq!(y, [6, 9, 3, 3]);
+    /// ```
+    #[unstable(feature = "array_map", issue = "75243")]
+    pub fn map<F, U>(self, mut f: F) -> [U; N]
+    where
+        F: FnMut(T) -> U,
+    {
+        use crate::mem::MaybeUninit;
+        struct Guard<T, const N: usize> {
+            dst: *mut T,
+            initialized: usize,
+        }
+
+        impl<T, const N: usize> Drop for Guard<T, N> {
+            fn drop(&mut self) {
+                debug_assert!(self.initialized <= N);
+
+                let initialized_part =
+                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.initialized);
+                // SAFETY: this raw slice will contain only initialized objects
+                // that's why, it is allowed to drop it.
+                unsafe {
+                    crate::ptr::drop_in_place(initialized_part);
+                }
+            }
+        }
+        let mut dst = MaybeUninit::uninit_array::<N>();
+        let mut guard: Guard<U, N> =
+            Guard { dst: MaybeUninit::slice_as_mut_ptr(&mut dst), initialized: 0 };
+        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
+            dst.write(f(src));
+            guard.initialized += 1;
+        }
+        // FIXME: Convert to crate::mem::transmute once it works with generics.
+        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
+        crate::mem::forget(guard);
+        // SAFETY: At this point we've properly initialized the whole array
+        // and we just need to cast it to the correct type.
+        unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
+    }
+
+    /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn as_slice(&self) -> &[T] {
+        self
+    }
+
+    /// Returns a mutable slice containing the entire array. Equivalent to
+    /// `&mut s[..]`.
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        self
+    }
+}

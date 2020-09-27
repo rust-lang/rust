@@ -1,28 +1,28 @@
-error[E0382]: use of moved value: `s`
+error[E0382]: use of partially moved value: `s`
   --> $DIR/move-in-pattern-mut.rs:18:9
    |
 LL |     if let Some(mut x) = s {
-   |                 ----- value moved here
+   |                 ----- value partially moved here
 ...
 LL |     foo(s);
    |         ^ value used here after partial move
    |
-   = note: move occurs because value has type `S`, which does not implement the `Copy` trait
+   = note: partial move occurs because value has type `S`, which does not implement the `Copy` trait
 help: borrow this field in the pattern to avoid moving `s.0`
    |
 LL |     if let Some(ref mut x) = s {
    |                 ^^^
 
-error[E0382]: use of moved value: `e`
+error[E0382]: use of partially moved value: `e`
   --> $DIR/move-in-pattern-mut.rs:22:9
    |
 LL |     let E::V { s: mut x } = e;
-   |                   ----- value moved here
+   |                   ----- value partially moved here
 LL |     x = S;
 LL |     bar(e);
    |         ^ value used here after partial move
    |
-   = note: move occurs because value has type `S`, which does not implement the `Copy` trait
+   = note: partial move occurs because value has type `S`, which does not implement the `Copy` trait
 help: borrow this field in the pattern to avoid moving `e.s`
    |
 LL |     let E::V { s: ref mut x } = e;

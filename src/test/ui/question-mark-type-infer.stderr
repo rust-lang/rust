@@ -4,7 +4,7 @@ error[E0284]: type annotations needed
 LL |     l.iter().map(f).collect()?
    |                     ^^^^^^^ cannot infer type
    |
-   = note: cannot satisfy `<_ as std::ops::Try>::Ok == _`
+   = note: cannot satisfy `<_ as Try>::Ok == _`
 help: consider specifying the type argument in the method call
    |
 LL |     l.iter().map(f).collect::<B>()?

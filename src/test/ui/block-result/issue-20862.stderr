@@ -12,16 +12,13 @@ LL |     |y| x + y
 error[E0618]: expected function, found `()`
   --> $DIR/issue-20862.rs:7:13
    |
-LL | / fn foo(x: i32) {
-LL | |     |y| x + y
-LL | |
-LL | | }
-   | |_- `foo` defined here returns `()`
+LL | fn foo(x: i32) {
+   | -------------- `foo` defined here returns `()`
 ...
-LL |       let x = foo(5)(2);
-   |               ^^^^^^---
-   |               |
-   |               call expression requires function
+LL |     let x = foo(5)(2);
+   |             ^^^^^^---
+   |             |
+   |             call expression requires function
 
 error: aborting due to 2 previous errors
 

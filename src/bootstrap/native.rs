@@ -19,7 +19,6 @@ use std::process::Command;
 use build_helper::{output, t};
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::channel;
 use crate::config::TargetSelection;
 use crate::util::{self, exe};
 use crate::GitRepo;
@@ -56,7 +55,7 @@ pub fn prebuilt_llvm_config(
     let out_dir = builder.llvm_out(target);
 
     let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-    if !builder.config.build.contains("msvc") || builder.config.ninja {
+    if !builder.config.build.contains("msvc") || builder.ninja() {
         llvm_config_ret_dir.push("build");
     }
     llvm_config_ret_dir.push("bin");
@@ -129,6 +128,12 @@ impl Step for Llvm {
                 Err(m) => m,
             };
 
+        if builder.config.llvm_link_shared
+            && (target.contains("windows") || target.contains("apple-darwin"))
+        {
+            panic!("shared linking to LLVM is not currently supported on {}", target.triple);
+        }
+
         builder.info(&format!("Building LLVM for {}", target));
         t!(stamp.remove());
         let _time = util::timeit(&builder);
@@ -169,7 +174,6 @@ impl Step for Llvm {
             .define("LLVM_INCLUDE_TESTS", "OFF")
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
-            .define("WITH_POLLY", "OFF")
             .define("LLVM_ENABLE_TERMINFO", "OFF")
             .define("LLVM_ENABLE_LIBEDIT", "OFF")
             .define("LLVM_ENABLE_BINDINGS", "OFF")
@@ -178,11 +182,9 @@ impl Step for Llvm {
             .define("LLVM_TARGET_ARCH", target_native.split('-').next().unwrap())
             .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native);
 
-        if !target.contains("netbsd") {
+        if target != "aarch64-apple-darwin" {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
-            // FIXME: Enable zlib on NetBSD too
-            // https://github.com/rust-lang/rust/pull/72696#issuecomment-641517185
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
@@ -208,7 +210,10 @@ impl Step for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
-        if builder.llvm_link_tools_dynamically(target) {
+        //
+        // If we're not linking rustc to a dynamic LLVM, though, then don't link
+        // tools to it.
+        if builder.llvm_link_tools_dynamically(target) && builder.config.llvm_link_shared {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
@@ -282,14 +287,6 @@ impl Step for Llvm {
                 "LLVM_CONFIG_PATH",
                 host_bin.join("llvm-config").with_extension(EXE_EXTENSION),
             );
-
-            if target.contains("netbsd") {
-                cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
-            } else if target.contains("freebsd") {
-                cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
-            } else if target.contains("windows") {
-                cfg.define("CMAKE_SYSTEM_NAME", "Windows");
-            }
         }
 
         if let Some(ref suffix) = builder.config.llvm_version_suffix {
@@ -303,7 +300,7 @@ impl Step for Llvm {
             // release number on the dev channel.
             cfg.define("LLVM_VERSION_SUFFIX", "-rust-dev");
         } else {
-            let suffix = format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel);
+            let suffix = format!("-rust-{}-{}", builder.version, builder.config.channel);
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
@@ -313,10 +310,6 @@ impl Step for Llvm {
 
         if let Some(true) = builder.config.llvm_allow_old_toolchain {
             cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
-        }
-
-        if let Some(ref python) = builder.config.python {
-            cfg.define("PYTHON_EXECUTABLE", python);
         }
 
         configure_cmake(builder, target, &mut cfg, true);
@@ -373,10 +366,26 @@ fn configure_cmake(
     // own build directories.
     cfg.env("DESTDIR", "");
 
-    if builder.config.ninja {
+    if builder.ninja() {
         cfg.generator("Ninja");
     }
     cfg.target(&target.triple).host(&builder.config.build.triple);
+
+    if target != builder.config.build {
+        if target.contains("netbsd") {
+            cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
+        } else if target.contains("freebsd") {
+            cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
+        } else if target.contains("windows") {
+            cfg.define("CMAKE_SYSTEM_NAME", "Windows");
+        }
+        // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
+        // that case like CMake we cannot easily determine system version either.
+        //
+        // Since, the LLVM itself makes rather limited use of version checks in
+        // CMakeFiles (and then only in tests), and so far no issues have been
+        // reported, the system version is currently left unset.
+    }
 
     let sanitize_cc = |cc: &Path| {
         if target.contains("msvc") {
@@ -389,7 +398,7 @@ fn configure_cmake(
     // MSVC with CMake uses msbuild by default which doesn't respect these
     // vars that we'd otherwise configure. In that case we just skip this
     // entirely.
-    if target.contains("msvc") && !builder.config.ninja {
+    if target.contains("msvc") && !builder.ninja() {
         return;
     }
 
@@ -399,7 +408,7 @@ fn configure_cmake(
     };
 
     // Handle msvc + ninja + ccache specially (this is what the bots use)
-    if target.contains("msvc") && builder.config.ninja && builder.config.ccache.is_some() {
+    if target.contains("msvc") && builder.ninja() && builder.config.ccache.is_some() {
         let mut wrap_cc = env::current_exe().expect("failed to get cwd");
         wrap_cc.set_file_name("sccache-plus-cl.exe");
 
@@ -446,7 +455,8 @@ fn configure_cmake(
             }
         }
         cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
-            .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
+            .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx))
+            .define("CMAKE_ASM_COMPILER", sanitize_cc(cc));
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
@@ -758,7 +768,7 @@ fn supported_sanitizers(
 ) -> Vec<SanitizerRuntime> {
     let darwin_libs = |os: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
-            .into_iter()
+            .iter()
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
                 path: out_dir
@@ -770,7 +780,7 @@ fn supported_sanitizers(
 
     let common_libs = |os: &str, arch: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
-            .into_iter()
+            .iter()
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{}-{}", c, arch),
                 path: out_dir.join(&format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
@@ -786,6 +796,7 @@ fn supported_sanitizers(
         }
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
+        "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64", &["asan", "msan", "tsan"]),
         "x86_64-unknown-linux-gnu" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }

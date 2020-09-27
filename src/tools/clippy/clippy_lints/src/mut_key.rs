@@ -1,4 +1,4 @@
-use crate::utils::{match_def_path, paths, span_lint, trait_ref_of_method, walk_ptrs_ty};
+use crate::utils::{match_def_path, paths, span_lint, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{Adt, Array, RawPtr, Ref, Slice, Tuple, Ty, TypeAndMut};
@@ -12,8 +12,10 @@ declare_clippy_lint! {
     /// `BtreeSet` rely on either the hash or the order of keys be unchanging,
     /// so having types with interior mutability is a bad idea.
     ///
-    /// **Known problems:** We don't currently account for `Rc` or `Arc`, so
-    /// this may yield false positives.
+    /// **Known problems:** It's correct to use a struct, that contains interior mutability
+    /// as a key, when its `Hash` implementation doesn't access any of the interior mutable types.
+    /// However, this lint is unable to recognize this, so it causes a false positive in theses cases.
+    /// The `bytes` crate is a great example of this.
     ///
     /// **Example:**
     /// ```rust
@@ -96,8 +98,8 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
 // We want to lint 1. sets or maps with 2. not immutable key types and 3. no unerased
 // generics (because the compiler cannot ensure immutability for unknown types).
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
-    let ty = walk_ptrs_ty(ty);
-    if let Adt(def, substs) = ty.kind {
+    let ty = ty.peel_refs();
+    if let Adt(def, substs) = ty.kind() {
         if [&paths::HASHMAP, &paths::BTREEMAP, &paths::HASHSET, &paths::BTREESET]
             .iter()
             .any(|path| match_def_path(cx, def.did, &**path))
@@ -109,7 +111,7 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
 }
 
 fn is_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
-    match ty.kind {
+    match *ty.kind() {
         RawPtr(TypeAndMut { ty: inner_ty, mutbl }) | Ref(_, inner_ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span)
         },

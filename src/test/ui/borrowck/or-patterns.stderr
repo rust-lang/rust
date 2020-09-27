@@ -7,7 +7,7 @@ LL |     }
 LL |     &x.0 .0;
    |     ^^^^^^^ value borrowed here after move
    |
-   = note: move occurs because `x.0.0` has type `std::string::String`, which does not implement the `Copy` trait
+   = note: move occurs because `x.0.0` has type `String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x.0.1`
   --> $DIR/or-patterns.rs:12:5
@@ -18,7 +18,7 @@ LL |         ((y, _) | (_, y),) => (),
 LL |     &x.0 .1;
    |     ^^^^^^^ value borrowed here after move
    |
-   = note: move occurs because `x.0.1` has type `std::string::String`, which does not implement the `Copy` trait
+   = note: move occurs because `x.0.1` has type `String`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `x.0.0` as mutable because it is also borrowed as immutable
   --> $DIR/or-patterns.rs:20:5
@@ -76,7 +76,7 @@ LL |     let ((y, _) | (_, y),) = x;
 LL |     &x.0 .0;
    |     ^^^^^^^ value borrowed here after move
    |
-   = note: move occurs because `x.0.0` has type `std::string::String`, which does not implement the `Copy` trait
+   = note: move occurs because `x.0.0` has type `String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x.0.1`
   --> $DIR/or-patterns.rs:42:5
@@ -87,7 +87,7 @@ LL |     let ((y, _) | (_, y),) = x;
 LL |     &x.0 .1;
    |     ^^^^^^^ value borrowed here after move
    |
-   = note: move occurs because `x.0.1` has type `std::string::String`, which does not implement the `Copy` trait
+   = note: move occurs because `x.0.1` has type `String`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `x.0.0` as mutable because it is also borrowed as immutable
   --> $DIR/or-patterns.rs:48:5

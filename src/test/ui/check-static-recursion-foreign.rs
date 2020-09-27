@@ -1,6 +1,5 @@
 // run-pass
 
-#![allow(dead_code)]
 // Static recursion check shouldn't fail when given a foreign item (#18279)
 
 // aux-build:check_static_recursion_foreign_helper.rs
@@ -15,12 +14,10 @@ extern crate libc;
 
 use libc::c_int;
 
-#[link_name = "check_static_recursion_foreign_helper"]
 extern "C" {
-    #[allow(dead_code)]
     static test_static: c_int;
 }
 
-static B: &'static c_int = unsafe { &test_static };
+pub static B: &'static c_int = unsafe { &test_static };
 
 pub fn main() {}

@@ -1,8 +1,8 @@
 error[E0382]: borrow of moved value: `arc_v`
-  --> $DIR/no-capture-arc.rs:14:18
+  --> $DIR/no-capture-arc.rs:14:16
    |
 LL |     let arc_v = Arc::new(v);
-   |         ----- move occurs because `arc_v` has type `std::sync::Arc<std::vec::Vec<i32>>`, which does not implement the `Copy` trait
+   |         ----- move occurs because `arc_v` has type `Arc<Vec<i32>>`, which does not implement the `Copy` trait
 LL | 
 LL |     thread::spawn(move|| {
    |                   ------ value moved into closure here
@@ -10,7 +10,14 @@ LL |         assert_eq!((*arc_v)[3], 4);
    |                      ----- variable moved due to use in closure
 ...
 LL |     assert_eq!((*arc_v)[2], 3);
-   |                  ^^^^^ value borrowed here after move
+   |                ^^^^^^^^ value borrowed here after move
+   |
+   = note: borrow occurs due to deref coercion to `Vec<i32>`
+note: deref defined here
+  --> $SRC_DIR/alloc/src/sync.rs:LL:COL
+   |
+LL |     type Target = T;
+   |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

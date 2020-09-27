@@ -1,5 +1,5 @@
-// Test that the initial version of Rust coverage injects count_code_region() placeholder calls,
-// at the top of each function. The placeholders are later converted into LLVM instrprof.increment
+// Test that the initial version of Rust coverage injects Coverage statements at the top of each
+// function. The Coverage Counter statements are later converted into LLVM instrprof.increment
 // intrinsics, during codegen.
 
 // needs-profiler-support

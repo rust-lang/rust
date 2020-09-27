@@ -23,7 +23,6 @@ fn lgamma(n: c_double, value: &mut isize) -> c_double {
 mod m {
     use libc::{c_double, c_int};
 
-    #[link_name = "m"]
     extern {
         #[cfg(any(all(unix, not(target_os = "vxworks")), target_os = "cloudabi"))]
         #[link_name="lgamma_r"]

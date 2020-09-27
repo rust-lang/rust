@@ -108,6 +108,23 @@ macro_rules! check {
     };
 }
 
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt $mov:literal) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            // Hack to avoid function merging
+            extern "Rust" {
+                fn dont_merge(s: &str);
+            }
+            dont_merge(stringify!($func));
+
+            let y;
+            asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
+
 // CHECK-LABEL: reg_i8:
 // CHECK: @APP
 // CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
@@ -413,3 +430,123 @@ check!(qreg_low4_i64x2 i64x2 qreg_low4 "vmov");
 // CHECK: vorr q{{[0-9]+}}, q{{[0-9]+}}, q{{[0-9]+}}
 // CHECK: @NO_APP
 check!(qreg_low4_f32x4 f32x4 qreg_low4 "vmov");
+
+// CHECK-LABEL: r0_i8:
+// CHECK: @APP
+// CHECK: mov r0, r0
+// CHECK: @NO_APP
+check_reg!(r0_i8 i8 "r0" "mov");
+
+// CHECK-LABEL: r0_i16:
+// CHECK: @APP
+// CHECK: mov r0, r0
+// CHECK: @NO_APP
+check_reg!(r0_i16 i16 "r0" "mov");
+
+// CHECK-LABEL: r0_i32:
+// CHECK: @APP
+// CHECK: mov r0, r0
+// CHECK: @NO_APP
+check_reg!(r0_i32 i32 "r0" "mov");
+
+// CHECK-LABEL: r0_f32:
+// CHECK: @APP
+// CHECK: mov r0, r0
+// CHECK: @NO_APP
+check_reg!(r0_f32 f32 "r0" "mov");
+
+// CHECK-LABEL: r0_ptr:
+// CHECK: @APP
+// CHECK: mov r0, r0
+// CHECK: @NO_APP
+check_reg!(r0_ptr ptr "r0" "mov");
+
+// CHECK-LABEL: s0_i32:
+// CHECK: @APP
+// CHECK: vmov.f32 s0, s0
+// CHECK: @NO_APP
+check_reg!(s0_i32 i32 "s0" "vmov.f32");
+
+// CHECK-LABEL: s0_f32:
+// CHECK: @APP
+// CHECK: vmov.f32 s0, s0
+// CHECK: @NO_APP
+check_reg!(s0_f32 f32 "s0" "vmov.f32");
+
+// CHECK-LABEL: s0_ptr:
+// CHECK: @APP
+// CHECK: vmov.f32 s0, s0
+// CHECK: @NO_APP
+check_reg!(s0_ptr ptr "s0" "vmov.f32");
+
+// CHECK-LABEL: d0_i64:
+// CHECK: @APP
+// CHECK: vmov.f64 d0, d0
+// CHECK: @NO_APP
+check_reg!(d0_i64 i64 "d0" "vmov.f64");
+
+// CHECK-LABEL: d0_f64:
+// CHECK: @APP
+// CHECK: vmov.f64 d0, d0
+// CHECK: @NO_APP
+check_reg!(d0_f64 f64 "d0" "vmov.f64");
+
+// CHECK-LABEL: d0_i8x8:
+// CHECK: @APP
+// CHECK: vmov.f64 d0, d0
+// CHECK: @NO_APP
+check_reg!(d0_i8x8 i8x8 "d0" "vmov.f64");
+
+// CHECK-LABEL: d0_i16x4:
+// CHECK: @APP
+// CHECK: vmov.f64 d0, d0
+// CHECK: @NO_APP
+check_reg!(d0_i16x4 i16x4 "d0" "vmov.f64");
+
+// CHECK-LABEL: d0_i32x2:
+// CHECK: @APP
+// CHECK: vmov.f64 d0, d0
+// CHECK: @NO_APP
+check_reg!(d0_i32x2 i32x2 "d0" "vmov.f64");
+
+// CHECK-LABEL: d0_i64x1:
+// CHECK: @APP
+// CHECK: vmov.f64 d0, d0
+// CHECK: @NO_APP
+check_reg!(d0_i64x1 i64x1 "d0" "vmov.f64");
+
+// CHECK-LABEL: d0_f32x2:
+// CHECK: @APP
+// CHECK: vmov.f64 d0, d0
+// CHECK: @NO_APP
+check_reg!(d0_f32x2 f32x2 "d0" "vmov.f64");
+
+// CHECK-LABEL: q0_i8x16:
+// CHECK: @APP
+// CHECK: vorr q0, q0, q0
+// CHECK: @NO_APP
+check_reg!(q0_i8x16 i8x16 "q0" "vmov");
+
+// CHECK-LABEL: q0_i16x8:
+// CHECK: @APP
+// CHECK: vorr q0, q0, q0
+// CHECK: @NO_APP
+check_reg!(q0_i16x8 i16x8 "q0" "vmov");
+
+// CHECK-LABEL: q0_i32x4:
+// CHECK: @APP
+// CHECK: vorr q0, q0, q0
+// CHECK: @NO_APP
+check_reg!(q0_i32x4 i32x4 "q0" "vmov");
+
+// CHECK-LABEL: q0_i64x2:
+// CHECK: @APP
+// CHECK: vorr q0, q0, q0
+// CHECK: @NO_APP
+check_reg!(q0_i64x2 i64x2 "q0" "vmov");
+
+// CHECK-LABEL: q0_f32x4:
+// CHECK: @APP
+// CHECK: vorr q0, q0, q0
+// CHECK: @NO_APP
+check_reg!(q0_f32x4 f32x4 "q0" "vmov");

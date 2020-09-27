@@ -4,7 +4,7 @@ error[E0277]: no implementation for `{integer} >> char`
 LL |     22 >> p.char;
    |        ^^ no implementation for `{integer} >> char`
    |
-   = help: the trait `std::ops::Shr<char>` is not implemented for `{integer}`
+   = help: the trait `Shr<char>` is not implemented for `{integer}`
 
 error[E0277]: no implementation for `{integer} >> &str`
   --> $DIR/shift-various-bad-types.rs:12:8
@@ -12,7 +12,7 @@ error[E0277]: no implementation for `{integer} >> &str`
 LL |     22 >> p.str;
    |        ^^ no implementation for `{integer} >> &str`
    |
-   = help: the trait `std::ops::Shr<&str>` is not implemented for `{integer}`
+   = help: the trait `Shr<&str>` is not implemented for `{integer}`
 
 error[E0277]: no implementation for `{integer} >> &Panolpy`
   --> $DIR/shift-various-bad-types.rs:15:8
@@ -20,7 +20,7 @@ error[E0277]: no implementation for `{integer} >> &Panolpy`
 LL |     22 >> p;
    |        ^^ no implementation for `{integer} >> &Panolpy`
    |
-   = help: the trait `std::ops::Shr<&Panolpy>` is not implemented for `{integer}`
+   = help: the trait `Shr<&Panolpy>` is not implemented for `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/shift-various-bad-types.rs:25:18

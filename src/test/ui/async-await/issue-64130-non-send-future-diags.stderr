@@ -7,12 +7,12 @@ LL | fn is_send<T: Send>(t: T) { }
 LL |     is_send(foo());
    |     ^^^^^^^ future returned by `foo` is not `Send`
    |
-   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::sync::MutexGuard<'_, u32>`
+   = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, u32>`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-non-send-future-diags.rs:15:5
    |
 LL |     let g = x.lock().unwrap();
-   |         - has type `std::sync::MutexGuard<'_, u32>` which is not `Send`
+   |         - has type `MutexGuard<'_, u32>` which is not `Send`
 LL |     baz().await;
    |     ^^^^^^^^^^^ await occurs here, with `g` maybe used later
 LL | }

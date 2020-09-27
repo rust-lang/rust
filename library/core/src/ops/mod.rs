@@ -49,18 +49,18 @@
 //! }
 //!
 //! impl Add for Point {
-//!     type Output = Point;
+//!     type Output = Self;
 //!
-//!     fn add(self, other: Point) -> Point {
-//!         Point {x: self.x + other.x, y: self.y + other.y}
+//!     fn add(self, other: Self) -> Self {
+//!         Self {x: self.x + other.x, y: self.y + other.y}
 //!     }
 //! }
 //!
 //! impl Sub for Point {
-//!     type Output = Point;
+//!     type Output = Self;
 //!
-//!     fn sub(self, other: Point) -> Point {
-//!         Point {x: self.x - other.x, y: self.y - other.y}
+//!     fn sub(self, other: Self) -> Self {
+//!         Self {x: self.x - other.x, y: self.y - other.y}
 //!     }
 //! }
 //!
@@ -133,19 +133,14 @@
 //! // `consume_and_return_x` can no longer be invoked at this point
 //! ```
 //!
-//! [`Fn`]: trait.Fn.html
-//! [`FnMut`]: trait.FnMut.html
-//! [`FnOnce`]: trait.FnOnce.html
-//! [`Add`]: trait.Add.html
-//! [`Sub`]: trait.Sub.html
-//! [`Mul`]: trait.Mul.html
-//! [`clone`]: ../clone/trait.Clone.html#tymethod.clone
+//! [`clone`]: Clone::clone
 //! [operator precedence]: ../../reference/expressions.html#expression-precedence
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod arith;
 mod bit;
+mod control_flow;
 mod deref;
 mod drop;
 mod function;
@@ -197,3 +192,6 @@ pub use self::unsize::CoerceUnsized;
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 pub use self::unsize::DispatchFromDyn;
+
+#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+pub use self::control_flow::ControlFlow;

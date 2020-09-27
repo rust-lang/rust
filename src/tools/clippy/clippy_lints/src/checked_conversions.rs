@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
                     cx,
                     CHECKED_CONVERSIONS,
                     item.span,
-                    "Checked cast can be simplified.",
+                    "checked cast can be simplified",
                     "try",
                     format!("{}::try_from({}).is_ok()", to_type, snippet),
                     applicability,
