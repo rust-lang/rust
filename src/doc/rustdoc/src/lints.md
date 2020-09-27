@@ -62,6 +62,46 @@ help: to link to the function, add parentheses
 
 ```
 
+## private_intra_doc_links
+
+This lint **warns by default**. This lint detects when [intra-doc links] from public to private items.
+For example:
+
+```rust
+/// [private]
+pub fn public() {}
+fn private() {}
+```
+
+This gives a warning that the link will be broken when it appears in your documentation:
+
+```text
+warning: public documentation for `public` links to private item `private`
+ --> priv.rs:1:6
+  |
+1 | /// [private]
+  |      ^^^^^^^ this item is private
+  |
+  = note: `#[warn(private_intra_doc_links)]` on by default
+  = note: this link will resolve properly if you pass `--document-private-items`
+```
+
+Note that this has different behavior depending on whether you pass `--document-private-items` or not!
+If you document private items, then it will still generate a link, despite the warning:
+
+```text
+warning: public documentation for `public` links to private item `private`
+ --> priv.rs:1:6
+  |
+1 | /// [private]
+  |      ^^^^^^^ this item is private
+  |
+  = note: `#[warn(private_intra_doc_links)]` on by default
+  = note: this link resolves only because you passed `--document-private-items`, but will break without
+```
+
+[intra-doc links]: linking-to-items-by-name.html
+
 ## missing_docs
 
 This lint is **allowed by default**. It detects items missing documentation.
