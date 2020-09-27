@@ -604,6 +604,7 @@ struct Liveness<'a, 'tcx> {
     body_owner: LocalDefId,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     successors: IndexVec<LiveNode, LiveNode>,
     rwu_table: RWUTable,
 
@@ -626,6 +627,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, body_owner: LocalDefId) -> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
         let param_env = ir.tcx.param_env(body_owner);
+        let upvars = ir.tcx.upvars_mentioned(body_owner);
 
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
@@ -638,6 +640,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             body_owner,
             typeck_results,
             param_env,
+            upvars,
             successors: IndexVec::from_elem_n(INVALID_NODE, num_live_nodes),
             rwu_table: RWUTable::new(num_live_nodes * num_vars),
             closure_ln,
@@ -885,8 +888,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // if they are live on the entry to the closure, since only the closure
         // itself can access them on subsequent calls.
 
-        let upvars = self.ir.tcx.upvars_mentioned(self.body_owner);
-        if let Some(upvars) = upvars {
+        if let Some(upvars) = self.upvars {
             // Mark upvars captured by reference as used after closure exits.
             for (&var_hir_id, upvar) in upvars.iter().rev() {
                 let upvar_id = ty::UpvarId {
@@ -905,7 +907,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let succ = self.propagate_through_expr(&body.value, self.exit_ln);
 
-        if upvars.is_none() {
+        if self.upvars.is_none() {
             // Either not a closure, or closure without any captured variables.
             // No need to determine liveness of captured variables, since there
             // are none.
@@ -1560,7 +1562,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let upvars = match self.ir.tcx.upvars_mentioned(self.body_owner) {
+        let upvars = match self.upvars {
             None => return,
             Some(upvars) => upvars,
         };
