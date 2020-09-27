@@ -11,7 +11,10 @@ use rustc_hir::def::{
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
-use rustc_session::lint;
+use rustc_session::lint::{
+    builtin::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS},
+    Lint,
+};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::Symbol;
@@ -988,7 +991,7 @@ impl LinkCollector<'_, '_> {
         let report_mismatch = |specified: Disambiguator, resolved: Disambiguator| {
             // The resolved item did not match the disambiguator; give a better error than 'not found'
             let msg = format!("incompatible link kind for `{}`", path_str);
-            report_diagnostic(cx, &msg, &item, dox, &link_range, |diag, sp| {
+            let callback = |diag: &mut DiagnosticBuilder<'_>, sp| {
                 let note = format!(
                     "this link resolved to {} {}, which is not {} {}",
                     resolved.article(),
@@ -998,7 +1001,8 @@ impl LinkCollector<'_, '_> {
                 );
                 diag.note(&note);
                 suggest_disambiguator(resolved, diag, path_str, dox, sp, &link_range);
-            });
+            };
+            report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, &item, dox, &link_range, callback);
         };
         if let Res::PrimTy(..) = res {
             match disambiguator {
@@ -1055,7 +1059,6 @@ impl LinkCollector<'_, '_> {
                     && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
                 {
                     privacy_error(cx, &item, &path_str, dox, link_range);
-                    return;
                 }
             }
             let id = register_res(cx, res);
@@ -1417,6 +1420,7 @@ impl Suggestion {
 /// to it.
 fn report_diagnostic(
     cx: &DocContext<'_>,
+    lint: &'static Lint,
     msg: &str,
     item: &Item,
     dox: &str,
@@ -1435,7 +1439,7 @@ fn report_diagnostic(
     let attrs = &item.attrs;
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
-    cx.tcx.struct_span_lint_hir(lint::builtin::BROKEN_INTRA_DOC_LINKS, hir_id, sp, |lint| {
+    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
         let span = link_range
@@ -1482,6 +1486,7 @@ fn resolution_failure(
 ) {
     report_diagnostic(
         collector.cx,
+        BROKEN_INTRA_DOC_LINKS,
         &format!("unresolved link to `{}`", path_str),
         item,
         dox,
@@ -1695,7 +1700,7 @@ fn anchor_failure(
         ),
     };
 
-    report_diagnostic(cx, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "contains invalid anchor");
         }
@@ -1734,7 +1739,7 @@ fn ambiguity_error(
         }
     }
 
-    report_diagnostic(cx, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
         } else {
@@ -1784,7 +1789,7 @@ fn privacy_error(
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }
