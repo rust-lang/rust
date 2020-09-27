@@ -12,12 +12,12 @@ LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "
 
 warning: skipping const checks
    |
-help: skipping check for `const_fn` feature
+help: skipping check for `const_fn_fn_ptr_basics` feature
   --> $DIR/abi-mismatch.rs:9:23
    |
 LL | const fn call_rust_fn(my_fn: extern "Rust" fn()) {
    |                       ^^^^^
-help: skipping check for `const_fn` feature
+help: skipping check for `const_fn_fn_ptr_basics` feature
   --> $DIR/abi-mismatch.rs:10:5
    |
 LL |     my_fn();
