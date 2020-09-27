@@ -1655,10 +1655,10 @@ pub struct Impl {
 #[derive(Clone, Debug)]
 pub enum Import {
     // use source as str;
-    // The bool indicates wether it imports a macro or not.
+    // The bool indicates whether it imports a macro or not.
     Simple(String, ImportSource, bool),
     // use source::*;
-    // The bool indicates wether this is from an import.
+    // The bool indicates whether this is from an import.
     Glob(ImportSource, bool),
 }
 

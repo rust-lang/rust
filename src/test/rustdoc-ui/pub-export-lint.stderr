@@ -1,8 +1,8 @@
 error: unresolved link to `somewhere`
   --> $DIR/pub-export-lint.rs:3:6
    |
-LL | /// [somewhere]
-   |      ^^^^^^^^^ the module `pub_export_lint` contains no item named `somewhere`
+LL | /// [aloha]
+   |      ^^^^^ no item named `aloha` in scope
    |
 note: the lint level is defined here
   --> $DIR/pub-export-lint.rs:1:9
