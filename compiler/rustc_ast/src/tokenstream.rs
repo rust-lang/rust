@@ -318,6 +318,10 @@ impl TokenStream {
         }
     }
 
+    pub fn trees_ref(&self) -> CursorRef<'_> {
+        CursorRef::new(self)
+    }
+
     pub fn trees(&self) -> Cursor {
         self.clone().into_trees()
     }
@@ -408,6 +412,36 @@ impl TokenStreamBuilder {
     }
 }
 
+/// By-reference iterator over a `TokenStream`.
+#[derive(Clone)]
+pub struct CursorRef<'t> {
+    stream: &'t TokenStream,
+    index: usize,
+}
+
+impl<'t> CursorRef<'t> {
+    fn new(stream: &TokenStream) -> CursorRef<'_> {
+        CursorRef { stream, index: 0 }
+    }
+
+    fn next_with_spacing(&mut self) -> Option<&'t TreeAndSpacing> {
+        self.stream.0.get(self.index).map(|tree| {
+            self.index += 1;
+            tree
+        })
+    }
+}
+
+impl<'t> Iterator for CursorRef<'t> {
+    type Item = &'t TokenTree;
+
+    fn next(&mut self) -> Option<&'t TokenTree> {
+        self.next_with_spacing().map(|(tree, _)| tree)
+    }
+}
+
+/// Owning by-value iterator over a `TokenStream`.
+/// FIXME: Many uses of this can be replaced with by-reference iterator to avoid clones.
 #[derive(Clone)]
 pub struct Cursor {
     pub stream: TokenStream,

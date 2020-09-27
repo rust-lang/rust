@@ -1,0 +1,44 @@
+error: unexpected token: `(7u32)`
+  --> $DIR/key-value-expansion.rs:14:25
+   |
+LL |         #[rustc_dummy = $expr] // Any key-value attribute, not necessarily `doc`
+   |                         ^^^^^
+...
+LL | bug!((column!()));
+   | ------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected token: `"bug" + "found"`
+  --> $DIR/key-value-expansion.rs:31:17
+   |
+LL |         #[doc = $test]
+   |                 ^^^^^
+...
+LL | bug!();
+   | ------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected token: `{
+    let res =
+        ::alloc::fmt::format(::core::fmt::Arguments::new_v1(&[""],
+                                                            &match (&"u8",) {
+                                                                 (arg0,) =>
+                                                                 [::core::fmt::ArgumentV1::new(arg0,
+                                                                                               ::core::fmt::Display::fmt)],
+                                                             }));
+    res
+}.as_str()`
+  --> $DIR/key-value-expansion.rs:42:17
+   |
+LL |         #[doc = $x]
+   |                 ^^
+...
+LL | some_macro!(u8);
+   | ---------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

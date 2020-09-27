@@ -34,6 +34,13 @@ impl<A: Array> ExpectOne<A> for SmallVec<A> {
 }
 
 pub trait MutVisitor: Sized {
+    /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
+    /// used otherwise. Token visitor would be entirely separate from the regular visitor if
+    /// the marker didn't have to visit AST fragments in nonterminal tokens.
+    fn token_visiting_enabled(&self) -> bool {
+        false
+    }
+
     // Methods in this trait have one of three forms:
     //
     //   fn visit_t(&mut self, t: &mut T);                      // common
@@ -246,22 +253,6 @@ pub trait MutVisitor: Sized {
         noop_flat_map_generic_param(param, self)
     }
 
-    fn visit_tt(&mut self, tt: &mut TokenTree) {
-        noop_visit_tt(tt, self);
-    }
-
-    fn visit_tts(&mut self, tts: &mut TokenStream) {
-        noop_visit_tts(tts, self);
-    }
-
-    fn visit_token(&mut self, t: &mut Token) {
-        noop_visit_token(t, self);
-    }
-
-    fn visit_interpolated(&mut self, nt: &mut token::Nonterminal) {
-        noop_visit_interpolated(nt, self);
-    }
-
     fn visit_param_bound(&mut self, tpb: &mut GenericBound) {
         noop_visit_param_bound(tpb, self);
     }
@@ -375,11 +366,30 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
         MacArgs::Empty => {}
         MacArgs::Delimited(dspan, _delim, tokens) => {
             visit_delim_span(dspan, vis);
-            vis.visit_tts(tokens);
+            visit_tts(tokens, vis);
         }
         MacArgs::Eq(eq_span, tokens) => {
             vis.visit_span(eq_span);
-            vis.visit_tts(tokens);
+            visit_tts(tokens, vis);
+            // The value in `#[key = VALUE]` must be visited as an expression for backward
+            // compatibility, so that macros can be expanded in that position.
+            if !vis.token_visiting_enabled() {
+                if let Some(TokenTree::Token(token)) = tokens.trees_ref().next() {
+                    if let token::Interpolated(..) = token.kind {
+                        // ^^ Do not `make_mut` unless we have to.
+                        match Lrc::make_mut(&mut tokens.0).get_mut(0) {
+                            Some((TokenTree::Token(token), _spacing)) => match &mut token.kind {
+                                token::Interpolated(nt) => match Lrc::make_mut(nt) {
+                                    token::NtExpr(expr) => vis.visit_expr(expr),
+                                    t => panic!("unexpected token in key-value attribute: {:?}", t),
+                                },
+                                t => panic!("unexpected token in key-value attribute: {:?}", t),
+                            },
+                            t => panic!("unexpected token in key-value attribute: {:?}", t),
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -626,28 +636,33 @@ pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> Smal
     smallvec![param]
 }
 
-pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
     match tt {
         TokenTree::Token(token) => {
-            vis.visit_token(token);
+            visit_token(token, vis);
         }
         TokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
             vis.visit_span(open);
             vis.visit_span(close);
-            vis.visit_tts(tts);
+            visit_tts(tts, vis);
         }
     }
 }
 
-pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
-    let tts = Lrc::make_mut(tts);
-    visit_vec(tts, |(tree, _is_joint)| vis.visit_tt(tree));
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
+    if vis.token_visiting_enabled() {
+        let tts = Lrc::make_mut(tts);
+        visit_vec(tts, |(tree, _is_joint)| visit_tt(tree, vis));
+    }
 }
 
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 // Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
 // In practice the ident part is not actually used by specific visitors right now,
 // but there's a test below checking that it works.
-pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
+pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
     let Token { kind, span } = t;
     match kind {
         token::Ident(name, _) | token::Lifetime(name) => {
@@ -659,13 +674,14 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
         }
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);
-            vis.visit_interpolated(&mut nt);
+            visit_interpolated(&mut nt, vis);
         }
         _ => {}
     }
     vis.visit_span(span);
 }
 
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 /// Applies the visitor to elements of interpolated nodes.
 //
 // N.B., this can occur only when applying a visitor to partially expanded
@@ -689,7 +705,7 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
 // contain multiple items, but decided against it when I looked at
 // `parse_item_or_view_item` and tried to figure out what I would do with
 // multiple items there....
-pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
+pub fn visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
         token::NtItem(item) => visit_clobber(item, |item| {
             // This is probably okay, because the only visitors likely to
@@ -714,7 +730,7 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
             visit_mac_args(args, vis);
         }
         token::NtPath(path) => vis.visit_path(path),
-        token::NtTT(tt) => vis.visit_tt(tt),
+        token::NtTT(tt) => visit_tt(tt, vis),
         token::NtVis(visib) => vis.visit_vis(visib),
     }
 }

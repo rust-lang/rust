@@ -2275,64 +2275,56 @@ atomic_int! {
     "AtomicU128::new(0)",
     u128 AtomicU128 ATOMIC_U128_INIT
 }
-#[cfg(target_has_atomic_load_store = "ptr")]
-#[cfg(target_pointer_width = "16")]
-macro_rules! ptr_width {
-    () => {
-        2
-    };
+
+macro_rules! atomic_int_ptr_sized {
+    ( $($target_pointer_width:literal $align:literal)* ) => { $(
+        #[cfg(target_has_atomic_load_store = "ptr")]
+        #[cfg(target_pointer_width = $target_pointer_width)]
+        atomic_int! {
+            cfg(target_has_atomic = "ptr"),
+            cfg(target_has_atomic_equal_alignment = "ptr"),
+            stable(feature = "rust1", since = "1.0.0"),
+            stable(feature = "extended_compare_and_swap", since = "1.10.0"),
+            stable(feature = "atomic_debug", since = "1.3.0"),
+            stable(feature = "atomic_access", since = "1.15.0"),
+            stable(feature = "atomic_from", since = "1.23.0"),
+            stable(feature = "atomic_nand", since = "1.27.0"),
+            rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+            stable(feature = "rust1", since = "1.0.0"),
+            "isize", "../../../std/primitive.isize.html",
+            "",
+            atomic_min, atomic_max,
+            $align,
+            "AtomicIsize::new(0)",
+            isize AtomicIsize ATOMIC_ISIZE_INIT
+        }
+        #[cfg(target_has_atomic_load_store = "ptr")]
+        #[cfg(target_pointer_width = $target_pointer_width)]
+        atomic_int! {
+            cfg(target_has_atomic = "ptr"),
+            cfg(target_has_atomic_equal_alignment = "ptr"),
+            stable(feature = "rust1", since = "1.0.0"),
+            stable(feature = "extended_compare_and_swap", since = "1.10.0"),
+            stable(feature = "atomic_debug", since = "1.3.0"),
+            stable(feature = "atomic_access", since = "1.15.0"),
+            stable(feature = "atomic_from", since = "1.23.0"),
+            stable(feature = "atomic_nand", since = "1.27.0"),
+            rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+            stable(feature = "rust1", since = "1.0.0"),
+            "usize", "../../../std/primitive.usize.html",
+            "",
+            atomic_umin, atomic_umax,
+            $align,
+            "AtomicUsize::new(0)",
+            usize AtomicUsize ATOMIC_USIZE_INIT
+        }
+    )* };
 }
-#[cfg(target_has_atomic_load_store = "ptr")]
-#[cfg(target_pointer_width = "32")]
-macro_rules! ptr_width {
-    () => {
-        4
-    };
-}
-#[cfg(target_has_atomic_load_store = "ptr")]
-#[cfg(target_pointer_width = "64")]
-macro_rules! ptr_width {
-    () => {
-        8
-    };
-}
-#[cfg(target_has_atomic_load_store = "ptr")]
-atomic_int! {
-    cfg(target_has_atomic = "ptr"),
-    cfg(target_has_atomic_equal_alignment = "ptr"),
-    stable(feature = "rust1", since = "1.0.0"),
-    stable(feature = "extended_compare_and_swap", since = "1.10.0"),
-    stable(feature = "atomic_debug", since = "1.3.0"),
-    stable(feature = "atomic_access", since = "1.15.0"),
-    stable(feature = "atomic_from", since = "1.23.0"),
-    stable(feature = "atomic_nand", since = "1.27.0"),
-    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    stable(feature = "rust1", since = "1.0.0"),
-    "isize", "../../../std/primitive.isize.html",
-    "",
-    atomic_min, atomic_max,
-    ptr_width!(),
-    "AtomicIsize::new(0)",
-    isize AtomicIsize ATOMIC_ISIZE_INIT
-}
-#[cfg(target_has_atomic_load_store = "ptr")]
-atomic_int! {
-    cfg(target_has_atomic = "ptr"),
-    cfg(target_has_atomic_equal_alignment = "ptr"),
-    stable(feature = "rust1", since = "1.0.0"),
-    stable(feature = "extended_compare_and_swap", since = "1.10.0"),
-    stable(feature = "atomic_debug", since = "1.3.0"),
-    stable(feature = "atomic_access", since = "1.15.0"),
-    stable(feature = "atomic_from", since = "1.23.0"),
-    stable(feature = "atomic_nand", since = "1.27.0"),
-    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    stable(feature = "rust1", since = "1.0.0"),
-    "usize", "../../../std/primitive.usize.html",
-    "",
-    atomic_umin, atomic_umax,
-    ptr_width!(),
-    "AtomicUsize::new(0)",
-    usize AtomicUsize ATOMIC_USIZE_INIT
+
+atomic_int_ptr_sized! {
+    "16" 2
+    "32" 4
+    "64" 8
 }
 
 #[inline]

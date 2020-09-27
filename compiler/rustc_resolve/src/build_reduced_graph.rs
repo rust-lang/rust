@@ -15,7 +15,6 @@ use crate::{
 };
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 
-use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use rustc_ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
@@ -1393,16 +1392,6 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         }
 
         visit::walk_assoc_item(self, item, ctxt);
-    }
-
-    fn visit_token(&mut self, t: Token) {
-        if let token::Interpolated(nt) = t.kind {
-            if let token::NtExpr(ref expr) = *nt {
-                if let ast::ExprKind::MacCall(..) = expr.kind {
-                    self.visit_invoc(expr.id);
-                }
-            }
-        }
     }
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
