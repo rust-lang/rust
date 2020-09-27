@@ -2189,19 +2189,17 @@ impl<T> Drop for InPlaceDrop<T> {
 impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // It is common to pass a vector to a function which immediately
-        // re-collects as a vector. We can short circuit this if the IntoIter
-        // has not been advanced.
+        // re-collects as a vector. We can short circuit this behavior if
+        // the IntoIter has not been advanced.
         //
-        // If it has been advanced, we can also reuse the memory by moving the
-        // data to the front. But we only do so when the resulting Vec
-        // would have less unused capacity than growing a new Vec with the
-        // generic from_iter would. This limitation is not strictly necessary
-        // as Vec's allocation is intentionally unspecified.
-        // But it is a conservative choice.
+        // We reuse the original buffer if the iterator has not been advanced
+        // or if there is a small unused capacity if we reuse the buffer.
         let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
         if !has_advanced || iterator.len() >= iterator.cap / 2 {
             unsafe {
                 let it = ManuallyDrop::new(iterator);
+                // If it has been advanced, we reuse the memory by moving
+                // the data to the front.
                 if has_advanced {
                     ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
                 }
@@ -2209,9 +2207,13 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
             }
         }
 
+        // We use a conservative method to grow a new Vec with the generic
+        // from_iter if there is a large unused capacity after the
+        // optimization above. This limitation is not strictly necessary as
+        // Vec's allocation is intentionally unspecified.
         let mut vec = Vec::new();
-        // must delegate to spec_extend() since extend() itself delegates
-        // to spec_from for empty Vecs
+        // must delegate to spec_extend() since extend() itself delegates to spec_from for empty
+        // Vecs
         vec.spec_extend(iterator);
         vec
     }
