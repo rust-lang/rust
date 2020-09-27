@@ -1,7 +1,7 @@
 use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
-use crate::sys::unix::cvt;
+use crate::sys::cvt;
 use crate::{ascii, fmt, io, mem};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?

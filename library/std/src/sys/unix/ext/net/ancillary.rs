@@ -1,3 +1,4 @@
+use super::{sockaddr_un, SocketAddr};
 use crate::convert::TryFrom;
 use crate::io::{self, IoSliceMut};
 use crate::marker::PhantomData;
@@ -6,8 +7,7 @@ use crate::os::unix::io::RawFd;
 use crate::path::Path;
 use crate::ptr::read_unaligned;
 use crate::slice::from_raw_parts;
-use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
-use crate::sys::unix::net::Socket;
+use crate::sys::net::Socket;
 
 #[cfg(any(target_os = "android", target_os = "linux",))]
 use libc::{gid_t, pid_t, uid_t};

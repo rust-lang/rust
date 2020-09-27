@@ -1,3 +1,16 @@
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+use super::{
+    recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, sockaddr_un, SocketAddr,
+    SocketAncillary,
+};
 use crate::fmt;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
@@ -15,19 +28,6 @@ use crate::os::unix::ucred;
 use crate::path::Path;
 use crate::sys::cvt;
 use crate::sys::net::Socket;
-use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
-use crate::sys::unix::ext::net::ancillary::{
-    recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary,
-};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 

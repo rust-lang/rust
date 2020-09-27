@@ -7,12 +7,10 @@
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use crate::io::IoSliceMut;
-use crate::net::Shutdown;
-use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
-use crate::path::Path;
-use crate::sys::unix::cvt;
-use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
+use super::{
+    recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, sockaddr_un, SocketAddr,
+    SocketAncillary,
+};
 #[cfg(any(
     target_os = "android",
     target_os = "dragonfly",
@@ -22,10 +20,12 @@ use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use crate::sys::unix::ext::net::ancillary::{
-    recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary,
-};
-use crate::sys::unix::net::Socket;
+use crate::io::IoSliceMut;
+use crate::net::Shutdown;
+use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::path::Path;
+use crate::sys::cvt;
+use crate::sys::net::Socket;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 use crate::{fmt, io};
