@@ -1655,9 +1655,20 @@ pub struct Impl {
 #[derive(Clone, Debug)]
 pub enum Import {
     // use source as str;
-    Simple(String, ImportSource),
+    // The bool indicates wether it imports a macro or not.
+    Simple(String, ImportSource, bool),
     // use source::*;
-    Glob(ImportSource),
+    // The bool indicates wether this is from an import.
+    Glob(ImportSource, bool),
+}
+
+impl Import {
+    pub fn should_be_displayed(&self) -> bool {
+        match *self {
+            Self::Simple(_, _, is_macro) => !is_macro,
+            Self::Glob(_, is_from_import) => is_from_import,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

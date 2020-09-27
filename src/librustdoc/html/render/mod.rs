@@ -2074,12 +2074,14 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
             }
 
             clean::ImportItem(ref import) => {
-                write!(
-                    w,
-                    "<tr><td><code>{}{}</code></td></tr>",
-                    myitem.visibility.print_with_space(),
-                    import.print()
-                );
+                if import.should_be_displayed() {
+                    write!(
+                        w,
+                        "<tr><td><code>{}{}</code></td></tr>",
+                        myitem.visibility.print_with_space(),
+                        import.print()
+                    );
+                }
             }
 
             _ => {

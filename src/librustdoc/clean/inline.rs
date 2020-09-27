@@ -514,6 +514,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                                 },
                                 did: None,
                             },
+                            false,
                         )),
                     });
                 } else if let Some(i) =
