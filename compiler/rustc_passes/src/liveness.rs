@@ -165,6 +165,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
         visit_arm(self, a);
     }
+    fn visit_param(&mut self, p: &'tcx hir::Param<'tcx>) {
+        visit_param(self, p);
+    }
 }
 
 fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
@@ -334,21 +337,6 @@ fn visit_fn<'tcx>(
         }
     }
 
-    for param in body.params {
-        let is_shorthand = match param.pat.kind {
-            rustc_hir::PatKind::Struct(..) => true,
-            _ => false,
-        };
-        param.pat.each_binding(|_bm, hir_id, _x, ident| {
-            let var = if is_shorthand {
-                Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
-            } else {
-                Param(hir_id, ident.name)
-            };
-            fn_maps.add_variable(var);
-        })
-    }
-
     // gather up the various local variables, significant expressions,
     // and so forth:
     intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
@@ -413,6 +401,22 @@ fn visit_local<'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local<'tcx>) {
 fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     add_from_pat(ir, &arm.pat);
     intravisit::walk_arm(ir, arm);
+}
+
+fn visit_param<'tcx>(ir: &mut IrMaps<'tcx>, param: &'tcx hir::Param<'tcx>) {
+    let is_shorthand = match param.pat.kind {
+        rustc_hir::PatKind::Struct(..) => true,
+        _ => false,
+    };
+    param.pat.each_binding(|_bm, hir_id, _x, ident| {
+        let var = if is_shorthand {
+            Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
+        } else {
+            Param(hir_id, ident.name)
+        };
+        ir.add_variable(var);
+    });
+    intravisit::walk_param(ir, param);
 }
 
 fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
