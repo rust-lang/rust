@@ -235,29 +235,37 @@ impl GlobalState {
         let config = match self.config.flycheck.clone() {
             Some(it) => it,
             None => {
-                self.flycheck = None;
+                self.flycheck = Vec::new();
                 return;
             }
         };
 
         let sender = self.flycheck_sender.clone();
-        let sender = Box::new(move |msg| sender.send(msg).unwrap());
         self.flycheck = self
             .workspaces
             .iter()
-            // FIXME: Figure out the multi-workspace situation
-            .find_map(|w| match w {
-                ProjectWorkspace::Cargo { cargo, sysroot: _ } => Some(cargo.workspace_root()),
+            .enumerate()
+            .filter_map(|(id, w)| match w {
+                ProjectWorkspace::Cargo { cargo, sysroot: _ } => Some((id, cargo.workspace_root())),
                 ProjectWorkspace::Json { project, .. } => {
                     // Enable flychecks for json projects if a custom flycheck command was supplied
                     // in the workspace configuration.
                     match config {
-                        FlycheckConfig::CustomCommand { .. } => Some(project.path()),
+                        FlycheckConfig::CustomCommand { .. } => Some((id, project.path())),
                         _ => None,
                     }
                 }
             })
-            .map(move |root| FlycheckHandle::spawn(sender, config, root.to_path_buf().into()))
+            .map(|(id, root)| {
+                let sender = sender.clone();
+                FlycheckHandle::spawn(
+                    id,
+                    Box::new(move |msg| sender.send(msg).unwrap()),
+                    config.clone(),
+                    root.to_path_buf().into(),
+                )
+            })
+            .collect();
     }
 }
 
