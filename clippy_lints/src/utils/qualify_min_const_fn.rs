@@ -1,6 +1,9 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::*;
+use rustc_middle::mir::{
+    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
+    TerminatorKind,
+};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -208,8 +211,7 @@ fn check_statement(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, statemen
             check_rvalue(tcx, body, def_id, rval, span)
         },
 
-        StatementKind::FakeRead(_, place) => check_place(tcx, **place, span, body),
-
+        StatementKind::FakeRead(_, place) |
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } => check_place(tcx, **place, span, body),
 
@@ -237,7 +239,7 @@ fn check_operand(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, body: &
 
 fn check_place(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
     let mut cursor = place.projection.as_ref();
-    while let &[ref proj_base @ .., elem] = cursor {
+    while let [ref proj_base @ .., elem] = *cursor {
         cursor = proj_base;
         match elem {
             ProjectionElem::Field(..) => {
