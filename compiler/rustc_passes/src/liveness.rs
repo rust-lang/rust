@@ -168,10 +168,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 }
 
 fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().visit_item_likes_in_module(
-        module_def_id,
-        &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
-    );
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx).as_deep_visitor());
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -227,7 +224,6 @@ enum VarKind {
 
 struct IrMaps<'tcx> {
     tcx: TyCtxt<'tcx>,
-    body_owner: LocalDefId,
     live_node_map: HirIdMap<LiveNode>,
     variable_map: HirIdMap<Variable>,
     capture_info_map: HirIdMap<Rc<Vec<CaptureInfo>>>,
@@ -236,10 +232,9 @@ struct IrMaps<'tcx> {
 }
 
 impl IrMaps<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, body_owner: LocalDefId) -> IrMaps<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> IrMaps<'tcx> {
         IrMaps {
             tcx,
-            body_owner,
             live_node_map: HirIdMap::default(),
             variable_map: HirIdMap::default(),
             capture_info_map: Default::default(),
@@ -316,7 +311,7 @@ fn visit_fn<'tcx>(
 
     // swap in a new set of IR maps for this function body:
     let def_id = ir.tcx.hir().local_def_id(id);
-    let mut fn_maps = IrMaps::new(ir.tcx, def_id);
+    let mut fn_maps = IrMaps::new(ir.tcx);
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
@@ -448,10 +443,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
                 }));
             }
             ir.set_captures(expr.hir_id, call_caps);
-            let old_body_owner = ir.body_owner;
-            ir.body_owner = closure_def_id;
             intravisit::walk_expr(ir, expr);
-            ir.body_owner = old_body_owner;
         }
 
         // live nodes required for interesting control flow:
@@ -605,6 +597,7 @@ const ACC_USE: u32 = 4;
 
 struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
+    body_owner: LocalDefId,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     successors: IndexVec<LiveNode, LiveNode>,
@@ -626,9 +619,9 @@ struct Liveness<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn new(ir: &'a mut IrMaps<'tcx>, def_id: LocalDefId) -> Liveness<'a, 'tcx> {
-        let typeck_results = ir.tcx.typeck(def_id);
-        let param_env = ir.tcx.param_env(def_id);
+    fn new(ir: &'a mut IrMaps<'tcx>, body_owner: LocalDefId) -> Liveness<'a, 'tcx> {
+        let typeck_results = ir.tcx.typeck(body_owner);
+        let param_env = ir.tcx.param_env(body_owner);
 
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
@@ -638,6 +631,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         Liveness {
             ir,
+            body_owner,
             typeck_results,
             param_env,
             successors: IndexVec::from_elem_n(INVALID_NODE, num_live_nodes),
@@ -893,12 +887,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // if they are live on the entry to the closure, since only the closure
         // itself can access them on subsequent calls.
 
-        if let Some(upvars) = self.ir.tcx.upvars_mentioned(self.ir.body_owner) {
+        if let Some(upvars) = self.ir.tcx.upvars_mentioned(self.body_owner) {
             // Mark upvars captured by reference as used after closure exits.
             for (&var_hir_id, upvar) in upvars.iter().rev() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_hir_id },
-                    closure_expr_id: self.ir.body_owner,
+                    closure_expr_id: self.body_owner,
                 };
                 match self.typeck_results.upvar_capture(upvar_id) {
                     ty::UpvarCapture::ByRef(_) => {
@@ -1565,7 +1559,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let upvars = match self.ir.tcx.upvars_mentioned(self.ir.body_owner) {
+        let upvars = match self.ir.tcx.upvars_mentioned(self.body_owner) {
             None => return,
             Some(upvars) => upvars,
         };
@@ -1573,7 +1567,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
             let var = self.variable(var_hir_id, upvar.span);
             let upvar_id = ty::UpvarId {
                 var_path: ty::UpvarPath { hir_id: var_hir_id },
-                closure_expr_id: self.ir.body_owner,
+                closure_expr_id: self.body_owner,
             };
             match self.typeck_results.upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByValue(_) => {}
