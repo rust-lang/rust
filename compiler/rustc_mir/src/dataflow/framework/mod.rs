@@ -186,7 +186,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     ///
     /// Unlike the other edge-specific effects, which are allowed to mutate `Self::Domain`
     /// directly, overriders of this method must pass a callback to
-    /// [`SwitchIntEdgeEffects::apply`]. The callback will be run once for each outgoing edge and
+    /// `SwitchIntEdgeEffects::apply`. The callback will be run once for each outgoing edge and
     /// will have access to the dataflow state that will be propagated along that edge.
     ///
     /// This interface is somewhat more complex than the other visitor-like "effect" methods.
