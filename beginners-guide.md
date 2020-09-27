@@ -26,3 +26,40 @@ SIMD has a few special vocabulary terms you should know:
 * **Vertical:** When an operation is "vertical", each lane processes individually without regard to the other lanes in the same vector. For example, a "vertical add" between two vectors would add lane 0 in `a` with lane 0 in `b`, with the total in lane 0 of `out`, and then the same thing for lanes 1, 2, etc. Most SIMD operations are vertical operations, so if your problem is a vertical problem then you can probably solve it with SIMD.
 
 * **Horizontal:** When an operation is "horizontal", the lanes within a single vector interact in some way. A "horizontal add" might add up lane 0 of `a` with lane 1 of `a`, with the total in lane 0 of `out`.
+
+* **Target Feature:** Rust calls a CPU architecture extension a `target_feature`. Proper SIMD requires various CPU extensions to be enabled (details below). Don't confuse this with `feature`, which is a Cargo crate concept.
+
+## Target Features
+
+When using SIMD, you should be familiar with the CPU feature set that you're targeting.
+
+On `arm` and `aarch64` it's fairly simple. There's just one CPU feature that controls if SIMD is available: `neon` (or "NEON", all caps, as the ARM docs often put it). Neon registers are 128-bit, but they can also operate as 64-bit (the high lanes are just zeroed out).
+
+> By default, the `aarch64`, `arm`, and `thumb` Rust targets generally do not enable `neon` unless it's in the target string.
+
+On `x86` and `x86_64` it's slightly more complicated. The SIMD support is split into many levels:
+* 128-bit: `sse`, `sse2`, `sse3`, `ssse3` (not a typo!), `sse4.1`, `sse4.2`, `sse4a` (AMD only)
+* 256-bit (mostly): `avx`, `avx2`, `fma`
+* 512-bit (mostly): a *wide* range of `avx512` variations
+
+> By default, the `i686` and `x86_64` Rust targets enable `sse` and `sse2`.
+
+### Selecting Additional Target Features
+
+If you want to enable support for a target feature within your build, generally you should use a [target-feature](https://rust-lang.github.io/packed_simd/perf-guide/target-feature/rustflags.html#target-feature) setting within you `RUSTFLAGS` setting.
+
+If you know that you're targeting a specific CPU you can instead use the [target-cpu](https://rust-lang.github.io/packed_simd/perf-guide/target-feature/rustflags.html#target-cpu) flag and the compiler will enable the correct set of features for that CPU.
+
+The [Steam Hardware Survey](https://store.steampowered.com/hwsurvey/Steam-Hardware-Software-Survey-Welcome-to-Steam) is one of the few places with data on how common various CPU features are. The dataset is limited to "the kinds of computers owned by people who play computer games", so the info only covers `x86`/`x86_64`, and it also probably skews to slightly higher quality computers than average. Still, we can see that the `sse` levels have very high support, `avx` and `avx2` are quite common as well, and the `avx-512` family is still so early in adoption you can barely find it in consumer grade stuff.
+
+## Running a program compiled for a CPU feature level that the CPU doesn't support is automatic undefined behavior.
+
+This means that if you build your program with `avx` support enabled and run it on a CPU without `avx` support, it's **instantly** undefined behavior.
+
+Even without an `unsafe` block in sight.
+
+This is no bug in Rust, or soundness hole in the type system. You just plain can't make a CPU do what it doesn't know how to do.
+
+This is why the various Rust targets *don't* enable many CPU feature flags by default: requiring a more advanced CPU makes the final binary *less* portable.
+
+So please select an appropriate CPU feature level when building your programs.
