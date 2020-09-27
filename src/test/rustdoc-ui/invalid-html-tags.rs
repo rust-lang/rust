@@ -39,3 +39,25 @@ pub fn b() {}
 ///   <h3>
 //~^ ERROR unclosed HTML tag `h3`
 pub fn c() {}
+
+// Unclosed tags shouldn't warn if they are nested inside a <script> elem.
+/// <script>
+///   <h3><div>
+/// </script>
+/// <script>
+///   <div>
+///     <p>
+///   </div>
+/// </script>
+pub fn d() {}
+
+// Unclosed tags shouldn't warn if they are nested inside a <style> elem.
+/// <style>
+///   <h3><div>
+/// </style>
+/// <style>
+///   <div>
+///     <p>
+///   </div>
+/// </style>
+pub fn e() {}

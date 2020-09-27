@@ -48,8 +48,11 @@ fn drop_tag(
     if let Some(pos) = tags.iter().rev().position(|(t, _)| *t == tag_name) {
         // Because this is from a `rev` iterator, the position is reversed as well!
         let pos = tags.len() - 1 - pos;
+        // If the tag is nested inside a "<script>", not warning should be emitted.
+        let should_not_warn =
+            tags.iter().take(pos + 1).any(|(at, _)| at == "script" || at == "style");
         for (last_tag_name, last_tag_span) in tags.drain(pos + 1..) {
-            if ALLOWED_UNCLOSED.iter().any(|&at| at == &last_tag_name) {
+            if should_not_warn || ALLOWED_UNCLOSED.iter().any(|&at| at == &last_tag_name) {
                 continue;
             }
             // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
