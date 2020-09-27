@@ -1,0 +1,5 @@
+[workspace]
+
+members = [
+    "crates/core_simd",
+]
