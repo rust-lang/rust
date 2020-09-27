@@ -360,7 +360,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                     self.ast_region_to_region(&lt, Some(param)).into()
                 }
-                (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                (GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
+                    if *has_default {
+                        tcx.check_optional_stability(
+                            param.def_id,
+                            Some(arg.id()),
+                            arg.span(),
+                            |_, _| {
+                                // Default generic parameters may not be marked
+                                // with stability attributes, i.e. when the
+                                // default parameter was defined at the same time
+                                // as the rest of the type. As such, we ignore missing
+                                // stability attributes.
+                            },
+                        )
+                    }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.allow_ty_infer()) {
                         inferred_params.push(ty.span);
                         tcx.ty_error().into()

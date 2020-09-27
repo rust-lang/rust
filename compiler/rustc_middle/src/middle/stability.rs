@@ -392,9 +392,27 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If the item defined by `def_id` is unstable and the corresponding `#![feature]` does not
     /// exist, emits an error.
     ///
-    /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
-    /// not `None`, a deprecated lint attached to `id` will be emitted.
+    /// This function will also check if the item is deprecated.
+    /// If so, and `id` is not `None`, a deprecated lint attached to `id` will be emitted.
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
+        self.check_optional_stability(def_id, id, span, |span, def_id| {
+            // The API could be uncallable for other reasons, for example when a private module
+            // was referenced.
+            self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
+        })
+    }
+
+    /// Like `check_stability`, except that we permit items to have custom behaviour for
+    /// missing stability attributes (not necessarily just emit a `bug!`). This is necessary
+    /// for default generic parameters, which only have stability attributes if they were
+    /// added after the type on which they're defined.
+    pub fn check_optional_stability(
+        self,
+        def_id: DefId,
+        id: Option<HirId>,
+        span: Span,
+        unmarked: impl FnOnce(Span, DefId) -> (),
+    ) {
         let soft_handler = |lint, span, msg: &_| {
             self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
                 lint.build(msg).emit()
@@ -405,11 +423,7 @@ impl<'tcx> TyCtxt<'tcx> {
             EvalResult::Deny { feature, reason, issue, is_soft } => {
                 report_unstable(self.sess, feature, reason, issue, is_soft, span, soft_handler)
             }
-            EvalResult::Unmarked => {
-                // The API could be uncallable for other reasons, for example when a private module
-                // was referenced.
-                self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
-            }
+            EvalResult::Unmarked => unmarked(span, def_id),
         }
     }
 
