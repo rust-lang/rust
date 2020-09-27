@@ -226,6 +226,7 @@
 #![feature(asm)]
 #![feature(associated_type_bounds)]
 #![feature(atomic_mut_ptr)]
+#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]
