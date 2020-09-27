@@ -1,5 +1,3 @@
-// run-pass
-
 #[macro_use]
 extern crate clippy_mini_macro_test;
 
