@@ -14,7 +14,7 @@ The supported element types are as follows:
 * **Floating Point:** `f32`, `f64`
 * **Signed Integers:** `i8`, `i16`, `i32`, `i64`, `i128`, `isize`
 * **Unsigned Integers:** `u8`, `u16`, `u32`, `u64`, `u128`, `usize`
-* **Masks:** `mask8`, `mask16`, `mask32`, `mask64`, `masksize`
+* **Masks:** `mask8`, `mask16`, `mask32`, `mask64`, `mask128`, `masksize`
 
 Floating point, signed integers, and unsigned integers are the [primitive types](https://doc.rust-lang.org/core/primitive/index.html) you're already used to.
 The `mask` types are "truthy" values, but they use the number of bits in their name instead of just 1 bit like a normal `bool` uses.
