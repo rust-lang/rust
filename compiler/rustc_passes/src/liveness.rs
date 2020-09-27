@@ -355,7 +355,7 @@ fn visit_fn<'tcx>(
 
     // compute liveness
     let mut lsets = Liveness::new(&mut fn_maps, def_id);
-    let entry_ln = lsets.compute(fk, &body, sp, id);
+    let entry_ln = lsets.compute(&body, sp, id);
     lsets.log_liveness(entry_ln, id);
 
     // check for various error conditions
@@ -862,13 +862,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.rwu_table.assign_unpacked(idx, rwu);
     }
 
-    fn compute(
-        &mut self,
-        fk: FnKind<'_>,
-        body: &hir::Body<'_>,
-        span: Span,
-        id: hir::HirId,
-    ) -> LiveNode {
+    fn compute(&mut self, body: &hir::Body<'_>, span: Span, id: hir::HirId) -> LiveNode {
         debug!("compute: using id for body, {:?}", body.value);
 
         // # Liveness of captured variables
@@ -887,7 +881,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // if they are live on the entry to the closure, since only the closure
         // itself can access them on subsequent calls.
 
-        if let Some(upvars) = self.ir.tcx.upvars_mentioned(self.body_owner) {
+        let upvars = self.ir.tcx.upvars_mentioned(self.body_owner);
+        if let Some(upvars) = upvars {
             // Mark upvars captured by reference as used after closure exits.
             for (&var_hir_id, upvar) in upvars.iter().rev() {
                 let upvar_id = ty::UpvarId {
@@ -906,9 +901,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let succ = self.propagate_through_expr(&body.value, self.exit_ln);
 
-        match fk {
-            FnKind::Method(..) | FnKind::ItemFn(..) => return succ,
-            FnKind::Closure(..) => {}
+        if upvars.is_none() {
+            // Either not a closure, or closure without any captured variables.
+            // No need to determine liveness of captured variables, since there
+            // are none.
+            return succ;
         }
 
         let ty = self.typeck_results.node_type(id);
@@ -920,7 +917,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             },
             ty::Generator(..) => return succ,
             _ => {
-                span_bug!(span, "type of closure expr {:?} is not a closure {:?}", id, ty,);
+                span_bug!(span, "{} has upvars so it should have a closure type: {:?}", id, ty);
             }
         };
 
