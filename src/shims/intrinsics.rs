@@ -478,14 +478,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Other
-            "assume" => {
-                let &[cond] = check_arg_count(args)?;
-                let cond = this.read_scalar(cond)?.check_init()?.to_bool()?;
-                if !cond {
-                    throw_ub_format!("`assume` intrinsic called with `false`");
-                }
-            }
-
             "exact_div" => {
                 let &[num, denom] = check_arg_count(args)?;
                 this.exact_div(this.read_immediate(num)?, this.read_immediate(denom)?, dest)?;
