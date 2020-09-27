@@ -302,10 +302,6 @@ impl IrMaps<'tcx> {
     fn set_captures(&mut self, hir_id: HirId, cs: Vec<CaptureInfo>) {
         self.capture_info_map.insert(hir_id, Rc::new(cs));
     }
-
-    fn lnk(&self, ln: LiveNode) -> LiveNodeKind {
-        self.lnks[ln]
-    }
 }
 
 fn visit_fn<'tcx>(
@@ -691,7 +687,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn live_on_entry(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
         let reader = self.rwu_table.get_reader(self.idx(ln, var));
-        if reader.is_valid() { Some(self.ir.lnk(reader)) } else { None }
+        if reader.is_valid() { Some(self.ir.lnks[reader]) } else { None }
     }
 
     // Is this variable live on entry to any of its successor nodes?
@@ -708,7 +704,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn assigned_on_entry(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
         let writer = self.rwu_table.get_writer(self.idx(ln, var));
-        if writer.is_valid() { Some(self.ir.lnk(writer)) } else { None }
+        if writer.is_valid() { Some(self.ir.lnks[writer]) } else { None }
     }
 
     fn assigned_on_exit(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
@@ -746,7 +742,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut wr = Vec::new();
         {
             let wr = &mut wr as &mut dyn Write;
-            write!(wr, "[{:?} of kind {:?} reads", ln, self.ir.lnk(ln));
+            write!(wr, "[{:?} of kind {:?} reads", ln, self.ir.lnks[ln]);
             self.write_vars(wr, ln, |idx| self.rwu_table.get_reader(idx).is_valid());
             write!(wr, "  writes");
             self.write_vars(wr, ln, |idx| self.rwu_table.get_writer(idx).is_valid());
