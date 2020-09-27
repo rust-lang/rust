@@ -5,9 +5,8 @@ use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
-    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
-    SpanlessEq,
+    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -1121,8 +1120,8 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let (dst_offset, dst_limit) = print_offset_and_limit(&dst);
     let (src_offset, src_limit) = print_offset_and_limit(&src);
 
-    let dst_base_str = snippet_opt(cx, dst.base.span).unwrap_or_else(|| "???".into());
-    let src_base_str = snippet_opt(cx, src.base.span).unwrap_or_else(|| "???".into());
+    let dst_base_str = snippet(cx, dst.base.span, "???");
+    let src_base_str = snippet(cx, src.base.span, "???");
 
     let dst = if dst_offset.as_str() == "" && dst_limit.as_str() == "" {
         dst_base_str
@@ -1133,6 +1132,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
             dst_offset.maybe_par(),
             dst_limit.maybe_par()
         )
+        .into()
     };
 
     format!(
