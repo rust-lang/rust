@@ -1,5 +1,6 @@
 // normalize-stderr-test ".*rustlib" -> "RUSTLIB"
 // normalize-stderr-test "RUSTLIB/(.*):\d+:\d+ "-> "RUSTLIB/$1:LL:COL "
+// normalize-stderr-test "::<.*>" -> ""
 
 extern "Rust" {
     fn miri_get_backtrace(flags: u64) -> Box<[*mut ()]>;
