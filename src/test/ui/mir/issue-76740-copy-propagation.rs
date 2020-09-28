@@ -1,5 +1,5 @@
 // Regression test for issue #76740.
-// run-fail FIXME: change to run-pass once #76899 lands
+// run-pass
 // compile-flags: -Zmir-opt-level=3
 
 #[derive(Copy, Clone)]
