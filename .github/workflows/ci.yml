@@ -40,12 +40,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-latest-xl
-            env: {}
-          - name: x86_64-gnu-llvm-8
-            os: ubuntu-latest-xl
-            env: {}
           - name: x86_64-gnu
             os: ubuntu-latest-xl
             env: {}
