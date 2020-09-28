@@ -496,6 +496,13 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.cause.span,
                     ) {
                         Ok(()) => ProcessResult::Changed(vec![]),
+                        Err(ErrorHandled::TooGeneric) => {
+                            pending_obligation.stalled_on = substs
+                                .iter()
+                                .filter_map(|ty| TyOrConstInferVar::maybe_from_generic_arg(ty))
+                                .collect();
+                            ProcessResult::Unchanged
+                        }
                         Err(e) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(e))),
                     }
                 }
@@ -537,8 +544,10 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                                 Err(ErrorHandled::TooGeneric) => {
                                     stalled_on.append(
                                         &mut substs
-                                            .types()
-                                            .filter_map(|ty| TyOrConstInferVar::maybe_from_ty(ty))
+                                            .iter()
+                                            .filter_map(|arg| {
+                                                TyOrConstInferVar::maybe_from_generic_arg(arg)
+                                            })
                                             .collect(),
                                     );
                                     Err(ErrorHandled::TooGeneric)

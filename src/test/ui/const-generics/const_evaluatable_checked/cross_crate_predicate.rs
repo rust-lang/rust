@@ -5,10 +5,10 @@ extern crate const_evaluatable_lib;
 
 fn user<T>() {
     let _ = const_evaluatable_lib::test1::<T>();
-    //~^ ERROR constant expression depends
-    //~| ERROR constant expression depends
-    //~| ERROR constant expression depends
-    //~| ERROR constant expression depends
+    //~^ ERROR unconstrained generic constant
+    //~| ERROR unconstrained generic constant
+    //~| ERROR unconstrained generic constant
+    //~| ERROR unconstrained generic constant
 }
 
 fn main() {}
