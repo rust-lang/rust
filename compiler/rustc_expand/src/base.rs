@@ -312,7 +312,7 @@ where
         ts: TokenStream,
     ) -> Result<TokenStream, ErrorReported> {
         // FIXME setup implicit context in TLS before calling self.
-        Ok((*self)(ts))
+        Ok(self(ts))
     }
 }
 
@@ -338,7 +338,7 @@ where
         annotated: TokenStream,
     ) -> Result<TokenStream, ErrorReported> {
         // FIXME setup implicit context in TLS before calling self.
-        Ok((*self)(annotation, annotated))
+        Ok(self(annotation, annotated))
     }
 }
 
@@ -365,7 +365,7 @@ where
         span: Span,
         input: TokenStream,
     ) -> Box<dyn MacResult + 'cx> {
-        (*self)(ecx, span, input)
+        self(ecx, span, input)
     }
 }
 
