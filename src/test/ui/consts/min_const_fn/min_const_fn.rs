@@ -128,6 +128,6 @@ const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
 //~^ ERROR trait bounds other than `Sized`
 
 const fn no_fn_ptrs(_x: fn()) {}
-//~^ ERROR function pointers in const fn are unstable
+//~^ ERROR function pointer
 const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
-//~^ ERROR function pointers in const fn are unstable
+//~^ ERROR function pointer
