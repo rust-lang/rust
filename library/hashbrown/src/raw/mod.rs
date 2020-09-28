@@ -545,6 +545,20 @@ impl<T> RawTable<T> {
         item.drop();
     }
 
+    /// Finds and erases an element from the table, dropping it in place.
+    /// Returns true if an element was found.
+    #[cfg(feature = "raw")]
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn erase_entry(&mut self, hash: u64, eq: impl FnMut(&T) -> bool) -> bool {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        if let Some(bucket) = self.find(hash, eq) {
+            unsafe { self.erase(bucket) };
+            true
+        } else {
+            false
+        }
+    }
+
     /// Removes an element from the table, returning it.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::needless_pass_by_value)]
@@ -552,6 +566,16 @@ impl<T> RawTable<T> {
     pub unsafe fn remove(&mut self, item: Bucket<T>) -> T {
         self.erase_no_drop(&item);
         item.read()
+    }
+
+    /// Finds and removes an element from the table, returning it.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn remove_entry(&mut self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<T> {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.find(hash, eq) {
+            Some(bucket) => Some(unsafe { self.remove(bucket) }),
+            None => None,
+        }
     }
 
     /// Returns an iterator for a probe sequence on the table.
@@ -910,7 +934,7 @@ impl<T> RawTable<T> {
         }
     }
 
-    /// Inserts a new element into the table.
+    /// Inserts a new element into the table, and returns its raw bucket.
     ///
     /// This does not check if the given element already exists in the table.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -934,6 +958,14 @@ impl<T> RawTable<T> {
             self.items += 1;
             bucket
         }
+    }
+
+    /// Inserts a new element into the table, and returns a mutable reference to it.
+    ///
+    /// This does not check if the given element already exists in the table.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert_entry(&mut self, hash: u64, value: T, hasher: impl Fn(&T) -> u64) -> &mut T {
+        unsafe { self.insert(hash, value, hasher).as_mut() }
     }
 
     /// Inserts a new element into the table, without growing the table.
@@ -998,6 +1030,26 @@ impl<T> RawTable<T> {
                 }
             }
             None
+        }
+    }
+
+    /// Gets a reference to an element in the table.
+    #[inline]
+    pub fn get(&self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<&T> {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.find(hash, eq) {
+            Some(bucket) => Some(unsafe { bucket.as_ref() }),
+            None => None,
+        }
+    }
+
+    /// Gets a mutable reference to an element in the table.
+    #[inline]
+    pub fn get_mut(&mut self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<&mut T> {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.find(hash, eq) {
+            Some(bucket) => Some(unsafe { bucket.as_mut() }),
+            None => None,
         }
     }
 
