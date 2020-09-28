@@ -270,15 +270,12 @@ impl ItemScope {
 
     /// Marks everything that is not a procedural macro as private to `this_module`.
     pub(crate) fn censor_non_proc_macros(&mut self, this_module: ModuleId) {
-        for vis in self
-            .types
+        self.types
             .values_mut()
             .chain(self.values.values_mut())
             .map(|(_, v)| v)
             .chain(self.unnamed_trait_imports.values_mut())
-        {
-            *vis = Visibility::Module(this_module);
-        }
+            .for_each(|vis| *vis = Visibility::Module(this_module));
 
         for (mac, vis) in self.macros.values_mut() {
             if let MacroDefKind::ProcMacro(_) = mac.kind {
