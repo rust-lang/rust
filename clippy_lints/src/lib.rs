@@ -153,6 +153,7 @@ mod utils;
 mod approx_const;
 mod arithmetic;
 mod as_conversions;
+mod asm_syntax;
 mod assertions_on_constants;
 mod assign_ops;
 mod async_yields_async;
@@ -487,6 +488,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &arithmetic::FLOAT_ARITHMETIC,
         &arithmetic::INTEGER_ARITHMETIC,
         &as_conversions::AS_CONVERSIONS,
+        &asm_syntax::INLINE_ASM_X86_ATT_SYNTAX,
+        &asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX,
         &assertions_on_constants::ASSERTIONS_ON_CONSTANTS,
         &assign_ops::ASSIGN_OP_PATTERN,
         &assign_ops::MISREFACTORED_ASSIGN_OP,
@@ -1123,12 +1126,16 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
     let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
+    store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
+    store.register_early_pass(|| box asm_syntax::InlineAsmX86IntelSyntax);
 
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
         LintId::of(&arithmetic::INTEGER_ARITHMETIC),
         LintId::of(&as_conversions::AS_CONVERSIONS),
+        LintId::of(&asm_syntax::INLINE_ASM_X86_ATT_SYNTAX),
+        LintId::of(&asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX),
         LintId::of(&create_dir::CREATE_DIR),
         LintId::of(&dbg_macro::DBG_MACRO),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),

@@ -900,6 +900,20 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "attrs",
     },
     Lint {
+        name: "inline_asm_x86_att_syntax",
+        group: "restriction",
+        desc: "prefer Intel x86 assembly syntax",
+        deprecation: None,
+        module: "asm_syntax",
+    },
+    Lint {
+        name: "inline_asm_x86_intel_syntax",
+        group: "restriction",
+        desc: "prefer AT&T x86 assembly syntax",
+        deprecation: None,
+        module: "asm_syntax",
+    },
+    Lint {
         name: "inline_fn_without_body",
         group: "correctness",
         desc: "use of `#[inline]` on trait methods without bodies",
