@@ -71,7 +71,7 @@ fn default_config() -> compiletest::Config {
     }
 
     config.target_rustcflags = Some(format!(
-        "-L {0} -L {1} -Dwarnings -Zui-testing {2}",
+        "--emit=metadata -L {0} -L {1} -Dwarnings -Zui-testing {2}",
         host_lib().join("deps").display(),
         cargo::TARGET_LIB.join("deps").display(),
         third_party_crates(),
