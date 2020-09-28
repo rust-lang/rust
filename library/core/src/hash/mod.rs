@@ -82,6 +82,7 @@
 use crate::fmt;
 use crate::marker;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
 pub use self::sip::SipHasher;
@@ -201,6 +202,7 @@ pub(crate) mod macros {
         /* compiler built-in */
     }
 }
+#[allow(missing_docs)]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(inline)]
 pub use macros::Hash;

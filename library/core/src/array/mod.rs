@@ -16,6 +16,7 @@ use crate::slice::{Iter, IterMut};
 
 mod iter;
 
+#[allow(missing_docs)]
 #[unstable(feature = "array_value_iter", issue = "65798")]
 pub use iter::IntoIter;
 

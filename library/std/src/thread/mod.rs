@@ -176,6 +176,8 @@ use crate::time::Duration;
 #[macro_use]
 mod local;
 
+#[allow(missing_docs)]
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 

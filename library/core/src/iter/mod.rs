@@ -308,9 +308,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
 
+#[allow(missing_docs)]
 #[unstable(
     feature = "step_trait",
     reason = "likely to be replaced by finer-grained traits",
@@ -318,52 +320,74 @@ pub use self::traits::Iterator;
 )]
 pub use self::range::Step;
 
+#[allow(missing_docs)]
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub use self::sources::{empty, Empty};
+#[allow(missing_docs)]
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub use self::sources::{from_fn, FromFn};
+#[allow(missing_docs)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::sources::{once, Once};
+#[allow(missing_docs)]
 #[stable(feature = "iter_once_with", since = "1.43.0")]
 pub use self::sources::{once_with, OnceWith};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{repeat, Repeat};
+#[allow(missing_docs)]
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub use self::sources::{repeat_with, RepeatWith};
+#[allow(missing_docs)]
 #[stable(feature = "iter_successors", since = "1.34.0")]
 pub use self::sources::{successors, Successors};
 
+#[allow(missing_docs)]
 #[stable(feature = "fused", since = "1.26.0")]
 pub use self::traits::FusedIterator;
+#[allow(missing_docs)]
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{DoubleEndedIterator, Extend, FromIterator, IntoIterator};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{ExactSizeIterator, Product, Sum};
 
+#[allow(missing_docs)]
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::traits::InPlaceIterable;
 
+#[allow(missing_docs)]
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
+#[allow(missing_docs)]
 #[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::adapters::Copied;
+#[allow(missing_docs)]
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
 
+#[allow(missing_docs)]
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::adapters::MapWhile;
+#[allow(missing_docs)]
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::adapters::SourceIter;
+#[allow(missing_docs)]
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
+#[allow(missing_docs)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::adapters::TrustedRandomAccess;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Chain, Cycle, Enumerate, Filter, FilterMap, Map, Rev, Zip};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{FlatMap, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Fuse, Inspect};
 

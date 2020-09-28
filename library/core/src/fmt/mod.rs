@@ -29,6 +29,7 @@ pub enum Alignment {
     Center,
 }
 
+#[allow(missing_docs)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
@@ -597,6 +598,7 @@ pub(crate) mod macros {
         /* compiler built-in */
     }
 }
+#[allow(missing_docs)]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(inline)]
 pub use macros::Debug;

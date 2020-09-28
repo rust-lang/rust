@@ -40,33 +40,47 @@ use crate::slice::{Concat, Join, SliceIndex};
 use crate::string::String;
 use crate::vec::Vec;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
+#[allow(missing_docs)]
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
+#[allow(missing_docs)]
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::SplitWhitespace;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8, from_utf8_mut, Bytes, CharIndices, Chars};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
+#[allow(missing_docs)]
 #[stable(feature = "str_escape", since = "1.34.0")]
 pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{FromStr, Utf8Error};
+#[allow(missing_docs)]
 #[allow(deprecated)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Lines, LinesAny};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{MatchIndices, RMatchIndices};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Matches, RMatches};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplit, Split};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitN, SplitN};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitTerminator, SplitTerminator};
 

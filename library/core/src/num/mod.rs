@@ -45,24 +45,31 @@ mod error;
 mod nonzero;
 mod wrapping;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use wrapping::Wrapping;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use dec2flt::ParseFloatError;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
 
+#[allow(missing_docs)]
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
+#[allow(missing_docs)]
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
 pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
 
+#[allow(missing_docs)]
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
 
+#[allow(missing_docs)]
 #[unstable(feature = "int_error_matching", issue = "22639")]
 pub use error::IntErrorKind;
 

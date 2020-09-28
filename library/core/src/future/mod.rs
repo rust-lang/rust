@@ -15,17 +15,22 @@ mod pending;
 mod poll_fn;
 mod ready;
 
+#[allow(missing_docs)]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use self::future::Future;
 
+#[allow(missing_docs)]
 #[unstable(feature = "into_future", issue = "67644")]
 pub use into_future::IntoFuture;
 
+#[allow(missing_docs)]
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub use pending::{pending, Pending};
+#[allow(missing_docs)]
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub use ready::{ready, Ready};
 
+#[allow(missing_docs)]
 #[unstable(feature = "future_poll_fn", issue = "72302")]
 pub use poll_fn::{poll_fn, PollFn};
 

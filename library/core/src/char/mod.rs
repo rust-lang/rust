@@ -24,22 +24,30 @@ mod decode;
 mod methods;
 
 // stable re-exports
+#[allow(missing_docs)]
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
 pub use self::convert::from_u32_unchecked;
+#[allow(missing_docs)]
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use self::convert::CharTryFromError;
+#[allow(missing_docs)]
 #[stable(feature = "char_from_str", since = "1.20.0")]
 pub use self::convert::ParseCharError;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::convert::{from_digit, from_u32};
+#[allow(missing_docs)]
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 pub use self::decode::{decode_utf16, DecodeUtf16, DecodeUtf16Error};
+#[allow(missing_docs)]
 #[stable(feature = "unicode_version", since = "1.45.0")]
 pub use crate::unicode::UNICODE_VERSION;
 
 // perma-unstable re-exports
+#[allow(missing_docs)]
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf16_raw;
+#[allow(missing_docs)]
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf8_raw;
 

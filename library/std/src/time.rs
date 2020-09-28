@@ -23,6 +23,7 @@ use crate::sys::time;
 use crate::sys_common::mutex::Mutex;
 use crate::sys_common::FromInner;
 
+#[allow(missing_docs)]
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
 

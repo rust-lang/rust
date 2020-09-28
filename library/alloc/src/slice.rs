@@ -91,32 +91,46 @@ use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
+#[allow(missing_docs)]
 #[unstable(feature = "slice_check_range", issue = "76393")]
 pub use core::slice::check_range;
+#[allow(missing_docs)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use core::slice::ArrayChunks;
+#[allow(missing_docs)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use core::slice::ArrayChunksMut;
+#[allow(missing_docs)]
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use core::slice::ArrayWindows;
+#[allow(missing_docs)]
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
+#[allow(missing_docs)]
 #[stable(feature = "from_ref", since = "1.28.0")]
 pub use core::slice::{from_mut, from_ref};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Chunks, Windows};
+#[allow(missing_docs)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 pub use core::slice::{ChunksExact, ChunksExactMut};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{ChunksMut, Split, SplitMut};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Iter, IterMut};
+#[allow(missing_docs)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub use core::slice::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
+#[allow(missing_docs)]
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 pub use core::slice::{RSplit, RSplitMut};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{RSplitN, RSplitNMut, SplitN, SplitNMut};
 

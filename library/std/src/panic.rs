@@ -17,9 +17,11 @@ use crate::sync::{Arc, Mutex, RwLock};
 use crate::task::{Context, Poll};
 use crate::thread::Result;
 
+#[allow(missing_docs)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use crate::panicking::{set_hook, take_hook};
 
+#[allow(missing_docs)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use core::panic::{Location, PanicInfo};
 

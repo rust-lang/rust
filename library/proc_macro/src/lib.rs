@@ -38,6 +38,7 @@ pub mod bridge;
 
 mod diagnostic;
 
+#[allow(missing_docs)]
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
@@ -168,6 +169,7 @@ impl Default for TokenStream {
     }
 }
 
+#[allow(missing_docs)]
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub use quote::{quote, quote_span};
 

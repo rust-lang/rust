@@ -10,6 +10,7 @@ pub mod vec_deque;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_map {
     //! A map based on a B-Tree.
+    #[allow(missing_docs)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::btree::map::*;
 }
@@ -17,26 +18,32 @@ pub mod btree_map {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_set {
     //! A set based on a B-Tree.
+    #[allow(missing_docs)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::btree::set::*;
 }
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use binary_heap::BinaryHeap;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use btree_map::BTreeMap;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use btree_set::BTreeSet;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use linked_list::LinkedList;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use vec_deque::VecDeque;

@@ -151,22 +151,30 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::sync::{Arc, Weak};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::barrier::{Barrier, BarrierWaitResult};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::condvar::{Condvar, WaitTimeoutResult};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::mutex::{Mutex, MutexGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 #[allow(deprecated)]
 pub use self::once::{Once, OnceState, ONCE_INIT};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::sys_common::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 

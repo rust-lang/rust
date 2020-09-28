@@ -287,5 +287,6 @@ pub mod primitive;
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 
+#[allow(missing_docs)]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use core_arch::arch;

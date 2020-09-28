@@ -521,24 +521,34 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[allow(missing_docs)]
 #[unstable(feature = "fmt_internals", issue = "none")]
 pub use core::fmt::rt;
+#[allow(missing_docs)]
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 pub use core::fmt::Alignment;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{write, ArgumentV1, Arguments};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Binary, Octal};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Debug, Display};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Formatter, Result, Write};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerExp, UpperExp};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerHex, Pointer, UpperHex};
 

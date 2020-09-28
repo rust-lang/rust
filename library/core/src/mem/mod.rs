@@ -14,13 +14,16 @@ use crate::marker::{Copy, DiscriminantKind, Sized};
 use crate::ptr;
 
 mod manually_drop;
+#[allow(missing_docs)]
 #[stable(feature = "manually_drop", since = "1.20.0")]
 pub use manually_drop::ManuallyDrop;
 
 mod maybe_uninit;
+#[allow(missing_docs)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::transmute;

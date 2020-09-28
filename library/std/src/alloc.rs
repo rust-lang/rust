@@ -65,6 +65,7 @@ use core::{mem, ptr};
 
 use crate::sys_common::util::dumb_print;
 
+#[allow(missing_docs)]
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use alloc_crate::alloc::*;

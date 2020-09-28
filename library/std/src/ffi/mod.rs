@@ -143,19 +143,25 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[allow(missing_docs)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub use self::c_str::FromBytesWithNulError;
+#[allow(missing_docs)]
 #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
 pub use self::c_str::FromVecWithNulError;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::c_str::{CStr, CString, IntoStringError, NulError};
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::os_str::{OsStr, OsString};
 
+#[allow(missing_docs)]
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
 
+#[allow(missing_docs)]
 #[unstable(
     feature = "c_variadic",
     reason = "the `c_variadic` feature has not been properly tested on \

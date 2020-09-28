@@ -364,89 +364,131 @@ mod macros;
 pub mod prelude;
 
 // Public module declarations and re-exports
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::borrow;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::boxed;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::fmt;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::format;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::rc;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::slice;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::str;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::string;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::vec;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
+#[allow(missing_docs)]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 #[doc(no_inline)]
 pub use core::arch;
+#[allow(missing_docs)]
 #[stable(feature = "core_array", since = "1.36.0")]
 pub use core::array;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cell;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::clone;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cmp;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::convert;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::default;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::hash;
+#[allow(missing_docs)]
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
+#[allow(missing_docs)]
 #[stable(feature = "i128", since = "1.26.0")]
 pub use core::i128;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i16;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i32;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i8;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::isize;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::marker;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::mem;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ops;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::option;
+#[allow(missing_docs)]
 #[stable(feature = "pin", since = "1.33.0")]
 pub use core::pin;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::raw;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
+#[allow(missing_docs)]
 #[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u16;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u32;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u64;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u8;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
 
@@ -479,10 +521,12 @@ pub mod lazy;
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
 
+    #[allow(missing_docs)]
     #[doc(inline)]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub use core::task::*;
 
+    #[allow(missing_docs)]
     #[doc(inline)]
     #[unstable(feature = "wake_trait", issue = "69912")]
     pub use alloc::task::*;
@@ -529,7 +573,7 @@ pub use std_detect::detect;
 
 // Re-export macros defined in libcore.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, missing_docs)]
 pub use core::{
     assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
     unimplemented, unreachable, write, writeln,
@@ -537,13 +581,14 @@ pub use core::{
 
 // Re-export built-in macros defined through libcore.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated)]
+#[allow(deprecated, missing_docs)]
 pub use core::{
     asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
     format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
     module_path, option_env, stringify, trace_macros,
 };
 
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
 

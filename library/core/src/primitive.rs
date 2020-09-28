@@ -31,37 +31,54 @@
 //! # trait QueryId { const SOME_PROPERTY: core::primitive::bool; }
 //! ```
 
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use bool;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use char;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use f32;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use f64;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i128;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i16;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i32;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i64;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i8;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use isize;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use str;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u128;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u16;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u32;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u64;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use u8;
+#[allow(missing_docs)]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use usize;

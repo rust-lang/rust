@@ -22,6 +22,7 @@ use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
+#[allow(missing_docs)]
 #[stable(feature = "drain", since = "1.6.0")]
 pub use self::drain::Drain;
 

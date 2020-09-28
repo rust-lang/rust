@@ -66,23 +66,28 @@ use crate::hash;
 use crate::intrinsics::{self, abort, is_aligned_and_not_null, is_nonoverlapping};
 use crate::mem::{self, MaybeUninit};
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::copy_nonoverlapping;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::copy;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;
 
 mod non_null;
+#[allow(missing_docs)]
 #[stable(feature = "nonnull", since = "1.25.0")]
 pub use non_null::NonNull;
 
 mod unique;
+#[allow(missing_docs)]
 #[unstable(feature = "ptr_internals", issue = "none")]
 pub use unique::Unique;
 

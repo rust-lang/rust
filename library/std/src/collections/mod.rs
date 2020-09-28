@@ -400,24 +400,32 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.26.0")]
 #[doc(hidden)]
 pub use crate::ops::Bound;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{binary_heap, btree_map, btree_set};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{linked_list, vec_deque};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{BTreeMap, BTreeSet, BinaryHeap};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{LinkedList, VecDeque};
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_map::HashMap;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_set::HashSet;
 
+#[allow(missing_docs)]
 #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 pub use alloc_crate::collections::TryReserveError;
 
@@ -426,6 +434,7 @@ mod hash;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
+    #[allow(missing_docs)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::map::*;
 }
@@ -433,6 +442,7 @@ pub mod hash_map {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_set {
     //! A hash set implemented as a `HashMap` where the value is `()`.
+    #[allow(missing_docs)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::set::*;
 }

@@ -39,6 +39,7 @@ use crate::hash::{Hash, Hasher};
 
 mod num;
 
+#[allow(missing_docs)]
 #[unstable(feature = "convert_float_to_int", issue = "67057")]
 pub use num::FloatToInt;
 

@@ -41,8 +41,10 @@
 use std::io::prelude::*;
 use std::io::{self, Stderr, Stdout};
 
+#[allow(missing_docs)]
 pub use terminfo::TerminfoTerminal;
 #[cfg(windows)]
+#[allow(missing_docs)]
 pub use win::WinConsole;
 
 pub mod terminfo;

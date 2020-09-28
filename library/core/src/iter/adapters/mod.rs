@@ -13,13 +13,18 @@ mod flatten;
 mod fuse;
 mod zip;
 
+#[allow(missing_docs)]
 pub use self::chain::Chain;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::flatten::{FlatMap, Flatten};
+#[allow(missing_docs)]
 pub use self::fuse::Fuse;
 use self::zip::try_get_unchecked;
+#[allow(missing_docs)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::zip::TrustedRandomAccess;
+#[allow(missing_docs)]
 pub use self::zip::Zip;
 
 /// This trait provides transitive access to source-stage in an interator-adapter pipeline

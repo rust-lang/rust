@@ -34,44 +34,58 @@ mod raw;
 mod rotate;
 mod sort;
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Chunks, ChunksMut, Windows};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Iter, IterMut};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{RSplitN, RSplitNMut, Split, SplitMut, SplitN, SplitNMut};
 
+#[allow(missing_docs)]
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 pub use iter::{RSplit, RSplitMut};
 
+#[allow(missing_docs)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 pub use iter::{ChunksExact, ChunksExactMut};
 
+#[allow(missing_docs)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub use iter::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
 
+#[allow(missing_docs)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use iter::{ArrayChunks, ArrayChunksMut};
 
+#[allow(missing_docs)]
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
 
+#[allow(missing_docs)]
 #[unstable(feature = "split_inclusive", issue = "72360")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use raw::{from_raw_parts, from_raw_parts_mut};
 
+#[allow(missing_docs)]
 #[stable(feature = "from_ref", since = "1.28.0")]
 pub use raw::{from_mut, from_ref};
 
 // This function is public only because there is no other way to unit test heapsort.
+#[allow(missing_docs)]
 #[unstable(feature = "sort_internals", reason = "internal to sort module", issue = "none")]
 pub use sort::heapsort;
 
+#[allow(missing_docs)]
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 
+#[allow(missing_docs)]
 #[unstable(feature = "slice_check_range", issue = "76393")]
 pub use index::check_range;
 

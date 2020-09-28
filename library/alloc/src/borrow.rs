@@ -6,6 +6,7 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::{Add, AddAssign, Deref};
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::borrow::{Borrow, BorrowMut};
 

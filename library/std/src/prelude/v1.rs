@@ -5,37 +5,46 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 // Re-exported core operators
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::marker::{Send, Sized, Sync, Unpin};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::ops::{Drop, Fn, FnMut, FnOnce};
 
 // Re-exported functions
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::mem::drop;
 
 // Re-exported types and traits
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::convert::{AsMut, AsRef, From, Into};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::iter::{DoubleEndedIterator, ExactSizeIterator};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::iter::{Extend, IntoIterator, Iterator};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::option::Option::{self, None, Some};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::result::Result::{self, Err, Ok};
 
 // Re-exported built-in macros
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow(missing_docs)]
 #[allow(deprecated)]
 #[doc(no_inline)]
 pub use core::prelude::v1::{
@@ -67,15 +76,19 @@ pub use core::prelude::v1::cfg_accessible;
 // Those files are duplicated rather than using glob imports
 // because we want docs to show these re-exports as pointing to within `std`.
 
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::borrow::ToOwned;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::boxed::Box;
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::string::{String, ToString};
+#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::vec::Vec;

@@ -13,6 +13,7 @@ use crate::{
     sync::Once,
 };
 
+#[allow(missing_docs)]
 #[doc(inline)]
 #[unstable(feature = "once_cell", issue = "74465")]
 pub use core::lazy::*;
