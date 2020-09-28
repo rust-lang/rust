@@ -910,9 +910,9 @@ pub fn read_line() -> Result<String> {
     match stdin().read_line(&mut input)? {
         0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly")),
         _ => {
-            if Some('\n') == input.chars().next_back() {
+            if input.ends_with('\n') {
                 input.pop();
-                if Some('\r') == input.chars().next_back() {
+                if cfg!(windows) && input.ends_with('\r') {
                     input.pop();
                 }
             }
