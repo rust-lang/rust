@@ -337,7 +337,7 @@ pub unsafe trait AllocRef {
     ///
     /// The returned adaptor also implements `AllocRef` and will simply borrow this.
     #[inline(always)]
-    fn by_ref(&mut self) -> &Self {
+    fn by_ref(&self) -> &Self {
         self
     }
 }
