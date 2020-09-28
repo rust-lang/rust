@@ -15,7 +15,9 @@ export SRC=.
 # the environment
 rustup self uninstall -y || true
 if [ -z "${IMAGE+x}" ]; then
-    src/ci/run.sh
+    if ! src/ci/run.sh; then
+        cat build/x86_64-unknown-linux-gnu/test/codegen/issue-75742-format_without_fmt_args/issue-75742-format_without_fmt_args.ll
+    fi
 else
     src/ci/docker/run.sh "${IMAGE}"
 fi
