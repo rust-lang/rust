@@ -411,3 +411,6 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::rust_panic_without_hook(payload)
 }
+
+#[cfg(test)]
+mod tests;
