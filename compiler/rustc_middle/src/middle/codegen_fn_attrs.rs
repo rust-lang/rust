@@ -79,6 +79,9 @@ bitflags! {
         /// #[ffi_const]: applies clang's `const` attribute to a foreign function
         /// declaration.
         const FFI_CONST                 = 1 << 13;
+        /// #[cmse_nonsecure_entry]: with a TrustZone-M extension, declare a
+        /// function as an entry function from Non-Secure code.
+        const CMSE_NONSECURE_ENTRY      = 1 << 14;
     }
 }
 

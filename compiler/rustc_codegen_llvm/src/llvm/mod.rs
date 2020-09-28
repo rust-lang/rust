@@ -37,6 +37,12 @@ pub fn AddFunctionAttrStringValue(llfn: &'a Value, idx: AttributePlace, attr: &C
     }
 }
 
+pub fn AddFunctionAttrString(llfn: &'a Value, idx: AttributePlace, attr: &CStr) {
+    unsafe {
+        LLVMRustAddFunctionAttrStringValue(llfn, idx.as_uint(), attr.as_ptr(), std::ptr::null())
+    }
+}
+
 #[derive(Copy, Clone)]
 pub enum AttributePlace {
     ReturnValue,

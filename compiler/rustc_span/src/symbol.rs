@@ -337,6 +337,7 @@ symbols! {
         closure_to_fn_coercion,
         cmp,
         cmpxchg16b_target_feature,
+        cmse_nonsecure_entry,
         coerce_unsized,
         cold,
         column,
