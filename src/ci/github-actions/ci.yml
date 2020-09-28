@@ -279,9 +279,7 @@ jobs:
           - name: x86_64-gnu-llvm-8
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-tools
-            env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+          - name: x86_64-gnu
             <<: *job-linux-xl
 
   try:
