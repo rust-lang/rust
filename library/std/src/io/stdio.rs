@@ -917,7 +917,7 @@ pub fn read_line() -> Result<String> {
                 }
             }
             Ok(input)
-        },
+        }
     }
 }
 
