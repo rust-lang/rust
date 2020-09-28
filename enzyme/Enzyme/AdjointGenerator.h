@@ -2262,7 +2262,7 @@ public:
 
     bool subdretptr = (subretType == DIFFE_TYPE::DUP_ARG ||
                        subretType == DIFFE_TYPE::DUP_NONEED) &&
-                      replaceFunction;
+                      replaceFunction && (call.getNumUses() != 0);
     bool subtopLevel = replaceFunction || !modifyPrimal;
     if (called) {
       newcalled = CreatePrimalAndGradient(
@@ -2368,6 +2368,10 @@ public:
     }
 
     if (diffes->getType()->isVoidTy()) {
+      if (structidx != 0) {
+        llvm::errs() << *gutils->oldFunc->getParent() << "\n";
+        llvm::errs() << "diffes: " << *diffes << " structidx=" << structidx << " retUsed=" << retUsed << " subretptr=" << subdretptr << "\n";
+      }
       assert(structidx == 0);
     } else {
       assert(cast<StructType>(diffes->getType())->getNumElements() ==

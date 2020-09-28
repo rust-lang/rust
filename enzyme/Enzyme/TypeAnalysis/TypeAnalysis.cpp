@@ -154,9 +154,9 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
         return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
       }
 
-      // 0-value bytes are considered integral since they cannot possibly
-      // represent a float or pointer
-      if (ci->getType()->getBitWidth() == 8 && ci->getLimitedValue() == 0) {
+      // Values of size < 16 (half size) are considered integral 
+      // since they cannot possibly represent a float or pointer
+      if (ci->getType()->getBitWidth() < 16) {
         return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
       }
       // All other constant-ints could be any type
@@ -209,10 +209,10 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
 }
 
 TypeTree TypeAnalyzer::getAnalysis(Value *Val) {
-  // Single byte integers must be integral, since it cannot
-  // possibly represent a float or pointer
-  if (Val->getType()->isIntegerTy() &&
-      cast<IntegerType>(Val->getType())->getBitWidth() == 1)
+  // Integers with fewer than 16 bits (size of half)
+  // must be integral, since it cannot possibly represent a float or pointer
+  if (!isa<UndefValue>(Val) && Val->getType()->isIntegerTy() &&
+      cast<IntegerType>(Val->getType())->getBitWidth() < 16)
     return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
 
   if (auto C = dyn_cast<Constant>(Val)) {
@@ -368,6 +368,8 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
       Invalid = true;
       return;
     }
+    llvm::errs() << *fntypeinfo.Function << "\n";
+    dump();
     llvm::errs() << "Illegal updateAnalysis prev:" << analysis[Val].str() << " new: " << Data.str() << "\n";
     llvm::errs() << "val: " << *Val;
     if (Origin) llvm::errs() << " origin=" << *Origin;

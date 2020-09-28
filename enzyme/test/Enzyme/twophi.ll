@@ -41,32 +41,23 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br i1 %cmp.i, label %one.i, label %two.i
 
 ; CHECK: one.i:                                            ; preds = %two.i, %entry
-; CHECK-NEXT:   %_cache.0.i = phi i1 [ false, %entry ], [ true, %two.i ]
-; CHECK-NEXT:   %phi1.i = phi i64 [ 0, %entry ], [ %phi2.i, %two.i ]
+; CHECK:   %phi1.i = phi i64 [ 0, %entry ], [ %phi2.i, %two.i ]
 ; CHECK-NEXT:   %cmp1.i = icmp eq i64 %n, 1
 ; CHECK-NEXT:   br i1 %cmp1.i, label %end.i, label %two.i
 
 ; CHECK: two.i:                                            ; preds = %one.i, %entry
-; CHECK-NEXT:   %_cache1.0.i = phi i1 [ true, %one.i ], [ false, %entry ]
-; CHECK-NEXT:   %phi2.i = phi i64 [ 12, %entry ], [ %phi1.i, %one.i ]
+; CHECK:   %phi2.i = phi i64 [ 12, %entry ], [ %phi1.i, %one.i ]
 ; CHECK-NEXT:   %cmp2.i = icmp eq i64 %n, 2
 ; CHECK-NEXT:   br i1 %cmp2.i, label %end.i, label %one.i
 
 ; CHECK: end.i:                                            ; preds = %two.i, %one.i
-; CHECK-NEXT:   %_cache2.0.i = phi i1 [ false, %one.i ], [ true, %two.i ]
-; CHECK-NEXT:   %_cache1.1.i = phi i1 [ true, %one.i ], [ %_cache1.0.i, %two.i ]
-; CHECK-NEXT:   %_cache.1.i = phi i1 [ %_cache.0.i, %one.i ], [ true, %two.i ]
-; CHECK-NEXT:   %phi3.i = phi i64 [ %phi1.i, %one.i ], [ %phi2.i, %two.i ]
+; CHECK:   %phi3.i = phi i64 [ %phi1.i, %one.i ], [ %phi2.i, %two.i ]
 ; CHECK-NEXT:   store i64 %phi3.i, i64* %xp
 ; CHECK-NEXT:   store i64 %phi3.i, i64* %x
-; CHECK-NEXT:   %brmerge.i = or i1 %_cache2.0.i, %_cache.1.i
-; CHECK-NEXT:   br i1 %brmerge.i, label %inverttwo.i, label %diffesum.exit
+; CHECK:   br i1 %brmerge.i, label %inverttwo.i, label %diffesum.exit
 
 ; CHECK: inverttwo.i:                                      ; preds = %end.i, %inverttwo.i
-; CHECK-NEXT:   %_cache1.1.not.i = xor i1 %_cache1.1.i, true
-; CHECK-NEXT:   %_cache.1.not.i = xor i1 %_cache.1.i, true
-; CHECK-NEXT:   %brmerge3.i = or i1 %_cache1.1.not.i, %_cache.1.not.i
-; CHECK-NEXT:   br i1 %brmerge3.i, label %diffesum.exit, label %inverttwo.i
+; CHECK:   br i1 %brmerge3.i, label %diffesum.exit, label %inverttwo.i
 
 ; CHECK: diffesum.exit:                                    ; preds = %inverttwo.i, %end.i
 ; CHECK-NEXT:   ret void

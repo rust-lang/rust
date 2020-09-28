@@ -516,6 +516,10 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
       DIFFE_TYPE typ;
       if (a.getType()->isFPOrFPVectorTy()) {
         typ = DIFFE_TYPE::OUT_DIFF;
+      } else if (a.getType()->isIntegerTy() && cast<IntegerType>(a.getType())->getBitWidth() < 16) {
+        typ = DIFFE_TYPE::CONSTANT;
+      } else if (a.getType()->isVoidTy() || a.getType()->isEmptyTy()) {
+        typ = DIFFE_TYPE::CONSTANT;
       } else {
         typ = DIFFE_TYPE::DUP_ARG;
       }
@@ -525,7 +529,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     DIFFE_TYPE retType = fn->getReturnType()->isFPOrFPVectorTy()
                              ? DIFFE_TYPE::OUT_DIFF
                              : DIFFE_TYPE::DUP_ARG;
-    if (fn->getReturnType()->isVoidTy() || fn->getReturnType()->isEmptyTy())
+    if (fn->getReturnType()->isVoidTy() || fn->getReturnType()->isEmptyTy() ||
+        (fn->getReturnType()->isIntegerTy() && cast<IntegerType>(fn->getReturnType())->getBitWidth() < 16))
       retType = DIFFE_TYPE::CONSTANT;
 
     auto &augdata = CreateAugmentedPrimal(

@@ -527,6 +527,7 @@ getDefaultFunctionTypeForAugmentation(FunctionType *called, bool returnUsed,
   }
 
   auto ret = called->getReturnType();
+  // TODO CONSIDER a.getType()->isIntegerTy() && cast<IntegerType>(a.getType())->getBitWidth() < 16
   outs.push_back(Type::getInt8PtrTy(called->getContext()));
   if (!ret->isVoidTy() && !ret->isEmptyTy()) {
     if (returnUsed) {
@@ -545,6 +546,8 @@ std::pair<SmallVector<Type *, 4>, SmallVector<Type *, 4>>
 getDefaultFunctionTypeForGradient(FunctionType *called, DIFFE_TYPE retType) {
   SmallVector<Type *, 4> args;
   SmallVector<Type *, 4> outs;
+    // TODO CONSIDER a.getType()->isIntegerTy() && cast<IntegerType>(a.getType())->getBitWidth() < 16
+
   for (auto &argType : called->params()) {
     args.push_back(argType);
 
@@ -1989,7 +1992,8 @@ Function *CreatePrimalAndGradient(
       topLevel, todiff, TLI, TA, AA, retType, constant_args,
       returnValue ? (dretPtr ? ReturnType::ArgsWithTwoReturns
                              : ReturnType::ArgsWithReturn)
-                  : ReturnType::Args,
+                  : (dretPtr ? ReturnType::ArgsWithReturn
+                             : ReturnType::Args),
       additionalArg);
   insert_or_assign2<CacheKey, Function*>(cachedfunctions, tup, gutils->newFunc);
 
@@ -2167,15 +2171,14 @@ Function *CreatePrimalAndGradient(
   if (returnValue) {
     retAlloca = IRBuilder<>(&gutils->newFunc->getEntryBlock().front())
                     .CreateAlloca(todiff->getReturnType(), nullptr, "toreturn");
-    if (dretPtr &&
-        (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) &&
-        !topLevel) {
-      dretAlloca =
-          IRBuilder<>(&gutils->newFunc->getEntryBlock().front())
-              .CreateAlloca(todiff->getReturnType(), nullptr, "dtoreturn");
-    }
   }
-
+  if (dretPtr) {
+    assert(retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED);
+    assert(topLevel);
+    dretAlloca =
+        IRBuilder<>(&gutils->newFunc->getEntryBlock().front())
+            .CreateAlloca(todiff->getReturnType(), nullptr, "dtoreturn");
+  }
   for (BasicBlock &oBB : *gutils->oldFunc) {
     if (ReturnInst *orig = dyn_cast<ReturnInst>(oBB.getTerminator())) {
       ReturnInst *op = cast<ReturnInst>(gutils->getNewFromOriginal(orig));
@@ -2187,11 +2190,11 @@ Function *CreatePrimalAndGradient(
         StoreInst *si = rb.CreateStore(
             gutils->getNewFromOriginal(orig->getReturnValue()), retAlloca);
         replacedReturns[orig] = si;
+      }
 
-        if (dretAlloca && !gutils->isConstantValue(orig->getReturnValue())) {
-          rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb),
-                         dretAlloca);
-        }
+      if (dretAlloca && !gutils->isConstantValue(orig->getReturnValue())) {
+        rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb),
+                        dretAlloca);
       }
 
       if (retType == DIFFE_TYPE::OUT_DIFF) {

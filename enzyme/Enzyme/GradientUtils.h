@@ -936,11 +936,11 @@ public:
         OrigLI(OrigDT), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI),
         inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
 
-        ATA.constants.insert(constants_.begin(), constants_.end()),
-        ATA.nonconstant.insert(nonconstant_.begin(), nonconstant_.end()),
-        ATA.constants.insert(constantvalues_.begin(), constantvalues_.end()),
+        ATA.constants.insert(constants_.begin(), constants_.end());
+        ATA.nonconstant.insert(nonconstant_.begin(), nonconstant_.end());
+        ATA.constantvals.insert(constantvalues_.begin(), constantvalues_.end());
         //nonconstant vals
-        ATA.retvals.insert(returnvals_.begin(), returnvals_.end()),
+        ATA.retvals.insert(returnvals_.begin(), returnvals_.end());
 
     invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
