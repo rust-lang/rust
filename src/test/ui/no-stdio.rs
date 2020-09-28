@@ -36,6 +36,16 @@ unsafe fn without_stdio<R, F: FnOnce() -> R>(f: F) -> R {
     return r
 }
 
+#[cfg(unix)]
+fn assert_fd_is_valid(fd: libc::c_int) {
+    if unsafe { libc::fcntl(fd, libc::F_GETFD) == -1 } {
+        panic!("file descriptor {} is not valid: {}", fd, io::Error::last_os_error());
+    }
+}
+
+#[cfg(windows)]
+fn assert_fd_is_valid(_fd: libc::c_int) {}
+
 #[cfg(windows)]
 unsafe fn without_stdio<R, F: FnOnce() -> R>(f: F) -> R {
     type DWORD = u32;
@@ -77,10 +87,18 @@ unsafe fn without_stdio<R, F: FnOnce() -> R>(f: F) -> R {
 
 fn main() {
     if env::args().len() > 1 {
+        // Writing to stdout & stderr should not panic.
         println!("test");
         assert!(io::stdout().write(b"test\n").is_ok());
         assert!(io::stderr().write(b"test\n").is_ok());
+
+        // Stdin should be at EOF.
         assert_eq!(io::stdin().read(&mut [0; 10]).unwrap(), 0);
+
+        // Standard file descriptors should be valid on UNIX:
+        assert_fd_is_valid(0);
+        assert_fd_is_valid(1);
+        assert_fd_is_valid(2);
         return
     }
 
@@ -109,12 +127,12 @@ fn main() {
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .status().unwrap();
-    assert!(status.success(), "{:?} isn't a success", status);
+    assert!(status.success(), "{} isn't a success", status);
 
     // Finally, close everything then spawn a child to make sure everything is
     // *still* ok.
     let status = unsafe {
         without_stdio(|| Command::new(&me).arg("next").status())
     }.unwrap();
-    assert!(status.success(), "{:?} isn't a success", status);
+    assert!(status.success(), "{} isn't a success", status);
 }
