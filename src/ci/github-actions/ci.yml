@@ -273,11 +273,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-xl
+          # - name: mingw-check
+          #   <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-8
-            <<: *job-linux-xl
+          # - name: x86_64-gnu-llvm-8
+          #   <<: *job-linux-xl
 
           - name: x86_64-gnu
             <<: *job-linux-xl
