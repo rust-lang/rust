@@ -1,10 +1,27 @@
 warning: skipping const checks
    |
+help: skipping check for `const_fn_fn_ptr_basics` feature
+  --> $DIR/caller-location-fnptr-rt-ctfe-equiv.rs:20:9
+   |
+LL |     let ptr: fn() -> L = attributed;
+   |         ^^^
+help: skipping check for `const_fn_fn_ptr_basics` feature
+  --> $DIR/caller-location-fnptr-rt-ctfe-equiv.rs:21:5
+   |
+LL |     ptr()
+   |     ^^^
+help: skipping check for `const_fn_fn_ptr_basics` feature
+  --> $DIR/caller-location-fnptr-rt-ctfe-equiv.rs:20:26
+   |
+LL |     let ptr: fn() -> L = attributed;
+   |                          ^^^^^^^^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/caller-location-fnptr-rt-ctfe-equiv.rs:21:5
    |
 LL |     ptr()
    |     ^^^^^
 
-warning: 1 warning emitted
+error: `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
+
+error: aborting due to previous error; 1 warning emitted
 
