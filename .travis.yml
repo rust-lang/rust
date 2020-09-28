@@ -6,53 +6,62 @@ matrix:
   fast_finish: true
   include:
     # Linux (x86_64)
+
     - name: "x86_64-unknown-linux-gnu"
       os: linux
       arch: amd64
       env:
         - TARGET=x86_64-unknown-linux-gnu
+
     - name: "x86_64-unknown-linux-gnu+sse"
       os: linux
       arch: amd64
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - TARGET_FEATURE=sse
+
     - name: "x86_64-unknown-linux-gnu+sse2"
       os: linux
       arch: amd64
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - TARGET_FEATURE=sse2
+
     - name: "x86_64-unknown-linux-gnu+sse3"
       os: linux
       arch: amd64
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - TARGET_FEATURE=sse3
+
     - name: "x86_64-unknown-linux-gnu+sse4.1"
       os: linux
       arch: amd64
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - TARGET_FEATURE=sse4.1
+
     - name: "x86_64-unknown-linux-gnu+sse4.2"
       os: linux
       arch: amd64
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - TARGET_FEATURE=sse4.2
+
     - name: "x86_64-unknown-linux-gnu+avx"
       os: linux
       arch: amd64
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - TARGET_FEATURE=avx
+
     - name: "x86_64-unknown-linux-gnu+avx2"
       os: linux
       arch: amd64
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - TARGET_FEATURE=avx2
+
     - name: "x86_64-unknown-linux-gnu+avx512vl"
       os: linux
       arch: amd64
@@ -61,17 +70,20 @@ matrix:
         - TARGET_FEATURE=avx512vl
 
     # Linux (aarch64)
+
     - name: "aarch64-unknown-linux-gnu"
       os: linux
       arch: arm64
       env:
         - TARGET=aarch64-unknown-linux-gnu
+
     - name: "aarch64-unknown-linux-gnu+neon"
       os: linux
       arch: arm64
       env:
         - TARGET=aarch64-unknown-linux-gnu
         - TARGET_FEATURE=neon
+
     - name: "aarch64-unknown-linux-gnu+sve"
       os: linux
       arch: arm64
@@ -80,11 +92,13 @@ matrix:
         - TARGET_FEATURE=sve
 
     # Linux (powerpc64)
+
     - name: "powerpc64le-unknown-linux-gnu"
       os: linux
       arch: ppc64le
       env:
         - TARGET=powerpc64le-unknown-linux-gnu
+
     - name: "powerpc64le-unknown-linux-gnu+vsx"
       os: linux
       arch: ppc64le
@@ -93,51 +107,60 @@ matrix:
         - TARGET_FEATURE=vsx
 
     # Windows (x86_64)
+
     - name: "x86_64-pc-windows-msvc"
       os: windows
       arch: amd64
       env: TARGET=x86_64-pc-windows-msvc
     
     # Windows (i686)
+
     - name: "i686-pc-windows-msvc"
       os: windows
       env: TARGET=i686-pc-windows-msvc
+
     - name: "i686-pc-windows-msvc+sse"
       os: windows
       arch: amd64
       env:
         - TARGET=i686-pc-windows-msvc
         - TARGET_FEATURE=sse
+
     - name: "i686-pc-windows-msvc+sse2"
       os: windows
       arch: amd64
       env:
         - TARGET=i686-pc-windows-msvc
         - TARGET_FEATURE=sse2
+
     - name: "i686-pc-windows-msvc+sse3"
       os: windows
       arch: amd64
       env:
         - TARGET=i686-pc-windows-msvc
         - TARGET_FEATURE=sse3
+
     - name: "i686-pc-windows-msvc+sse4.1"
       os: windows
       arch: amd64
       env:
         - TARGET=i686-pc-windows-msvc
         - TARGET_FEATURE=sse4.1
+
     - name: "i686-pc-windows-msvc+sse4.2"
       os: windows
       arch: amd64
       env:
         - TARGET=i686-pc-windows-msvc
         - TARGET_FEATURE=sse4.2
+
     - name: "i686-pc-windows-msvc+avx"
       os: windows
       arch: amd64
       env:
         - TARGET=i686-pc-windows-msvc
         - TARGET_FEATURE=avx
+
     - name: "i686-pc-windows-msvc+avx2"
       os: windows
       arch: amd64
@@ -145,7 +168,63 @@ matrix:
         - TARGET=i686-pc-windows-msvc
         - TARGET_FEATURE=avx2
 
+    # Windows (i586)
+
+    - name: "i586-pc-windows-msvc"
+      os: windows
+      env: TARGET=i586-pc-windows-msvc
+
+    - name: "i586-pc-windows-msvc+sse"
+      os: windows
+      arch: amd64
+      env:
+        - TARGET=i586-pc-windows-msvc
+        - TARGET_FEATURE=sse
+
+    - name: "i586-pc-windows-msvc+sse2"
+      os: windows
+      arch: amd64
+      env:
+        - TARGET=i586-pc-windows-msvc
+        - TARGET_FEATURE=sse2
+
+    - name: "i586-pc-windows-msvc+sse3"
+      os: windows
+      arch: amd64
+      env:
+        - TARGET=i586-pc-windows-msvc
+        - TARGET_FEATURE=sse3
+
+    - name: "i586-pc-windows-msvc+sse4.1"
+      os: windows
+      arch: amd64
+      env:
+        - TARGET=i586-pc-windows-msvc
+        - TARGET_FEATURE=sse4.1
+
+    - name: "i586-pc-windows-msvc+sse4.2"
+      os: windows
+      arch: amd64
+      env:
+        - TARGET=i586-pc-windows-msvc
+        - TARGET_FEATURE=sse4.2
+
+    - name: "i586-pc-windows-msvc+avx"
+      os: windows
+      arch: amd64
+      env:
+        - TARGET=i586-pc-windows-msvc
+        - TARGET_FEATURE=avx
+
+    - name: "i586-pc-windows-msvc+avx2"
+      os: windows
+      arch: amd64
+      env:
+        - TARGET=i586-pc-windows-msvc
+        - TARGET_FEATURE=avx2
+
     # OSX (x86_64)
+
     - name: "x86_64-apple-darwin"
       os: osx
       arch: amd64
