@@ -5,106 +5,125 @@ LL | struct S1 { f: dyn Iterator<Item: Copy> }
    |                             ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:7:33
+  --> $DIR/inside-adt.rs:6:33
    |
 LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                 ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:10:29
+  --> $DIR/inside-adt.rs:8:29
    |
 LL | struct S3 { f: dyn Iterator<Item: 'static> }
    |                             ^^^^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:14:26
+  --> $DIR/inside-adt.rs:11:26
    |
 LL | enum E1 { V(dyn Iterator<Item: Copy>) }
    |                          ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:17:30
+  --> $DIR/inside-adt.rs:14:30
    |
 LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
    |                              ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:20:26
+  --> $DIR/inside-adt.rs:16:26
    |
 LL | enum E3 { V(dyn Iterator<Item: 'static>) }
    |                          ^^^^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:24:28
+  --> $DIR/inside-adt.rs:20:28
    |
 LL | union U1 { f: dyn Iterator<Item: Copy> }
    |                            ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:27:32
+  --> $DIR/inside-adt.rs:23:32
    |
 LL | union U2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:30:28
+  --> $DIR/inside-adt.rs:25:28
    |
 LL | union U3 { f: dyn Iterator<Item: 'static> }
    |                            ^^^^^^^^^^^^^
 
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:4:29
-   |
-LL | struct S1 { f: dyn Iterator<Item: Copy> }
-   |                             ^^^^^^^^^^
-
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:7:33
-   |
-LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
-   |                                 ^^^^^^^^^^
-
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:10:29
-   |
-LL | struct S3 { f: dyn Iterator<Item: 'static> }
-   |                             ^^^^^^^^^^^^^
-
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:14:26
+error[E0277]: the size for values of type `(dyn Iterator<Item = impl Copy> + 'static)` cannot be known at compilation time
+  --> $DIR/inside-adt.rs:11:13
    |
 LL | enum E1 { V(dyn Iterator<Item: Copy>) }
-   |                          ^^^^^^^^^^
-
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:17:30
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
-   |                              ^^^^^^^^^^
+   = help: the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Copy> + 'static)`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL | enum E1 { V(&dyn Iterator<Item: Copy>) }
+   |             ^
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL | enum E1 { V(Box<dyn Iterator<Item: Copy>>) }
+   |             ^^^^                        ^
 
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:20:26
+error[E0277]: the size for values of type `(dyn Iterator<Item = impl Sized> + 'static)` cannot be known at compilation time
+  --> $DIR/inside-adt.rs:16:13
    |
 LL | enum E3 { V(dyn Iterator<Item: 'static>) }
-   |                          ^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Sized> + 'static)`
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL | enum E3 { V(&dyn Iterator<Item: 'static>) }
+   |             ^
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL | enum E3 { V(Box<dyn Iterator<Item: 'static>>) }
+   |             ^^^^                           ^
 
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:24:28
+error[E0277]: the size for values of type `(dyn Iterator<Item = impl Copy> + 'static)` cannot be known at compilation time
+  --> $DIR/inside-adt.rs:20:15
    |
 LL | union U1 { f: dyn Iterator<Item: Copy> }
-   |                            ^^^^^^^^^^
-
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:27:32
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-LL | union U2 { f: Box<dyn Iterator<Item: Copy>> }
-   |                                ^^^^^^^^^^
+   = help: the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Copy> + 'static)`
+   = note: no field of a union may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL | union U1 { f: &dyn Iterator<Item: Copy> }
+   |               ^
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL | union U1 { f: Box<dyn Iterator<Item: Copy>> }
+   |               ^^^^                        ^
 
-error: could not find defining uses
-  --> $DIR/inside-adt.rs:30:28
+error[E0277]: the size for values of type `(dyn Iterator<Item = impl Sized> + 'static)` cannot be known at compilation time
+  --> $DIR/inside-adt.rs:25:15
    |
 LL | union U3 { f: dyn Iterator<Item: 'static> }
-   |                            ^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Sized> + 'static)`
+   = note: no field of a union may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL | union U3 { f: &dyn Iterator<Item: 'static> }
+   |               ^
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL | union U3 { f: Box<dyn Iterator<Item: 'static>> }
+   |               ^^^^                           ^
 
-error: aborting due to 18 previous errors
+error: aborting due to 13 previous errors
 
+For more information about this error, try `rustc --explain E0277`.

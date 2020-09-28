@@ -21,7 +21,7 @@ use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::ConstEvalResult;
+use rustc_middle::mir::interpret::EvalToConstValueResult;
 use rustc_middle::traits::select;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
@@ -1163,7 +1163,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             GenericParamDefKind::Const { .. } => {
                 let origin = ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::ConstParameterDefinition(param.name),
+                    kind: ConstVariableOriginKind::ConstParameterDefinition(
+                        param.name,
+                        param.def_id,
+                    ),
                     span,
                 };
                 let const_var_id =
@@ -1275,7 +1278,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Gives temporary access to the region constraint data.
-    #[allow(non_camel_case_types)] // bug with impl trait
     pub fn with_region_constraints<R>(
         &self,
         op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
@@ -1542,7 +1544,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         promoted: Option<mir::Promoted>,
         span: Option<Span>,
-    ) -> ConstEvalResult<'tcx> {
+    ) -> EvalToConstValueResult<'tcx> {
         let mut original_values = OriginalQueryValues::default();
         let canonical = self.canonicalize_query(&(param_env, substs), &mut original_values);
 

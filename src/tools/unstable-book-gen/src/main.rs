@@ -27,12 +27,12 @@ macro_rules! t {
 
 fn generate_stub_issue(path: &Path, name: &str, issue: u32) {
     let mut file = t!(File::create(path));
-    t!(file.write_fmt(format_args!(include_str!("stub-issue.md"), name = name, issue = issue)));
+    t!(write!(file, include_str!("stub-issue.md"), name = name, issue = issue));
 }
 
 fn generate_stub_no_issue(path: &Path, name: &str) {
     let mut file = t!(File::create(path));
-    t!(file.write_fmt(format_args!(include_str!("stub-no-issue.md"), name = name)));
+    t!(write!(file, include_str!("stub-no-issue.md"), name = name));
 }
 
 fn set_to_summary_str(set: &BTreeSet<String>, dir: &str) -> String {

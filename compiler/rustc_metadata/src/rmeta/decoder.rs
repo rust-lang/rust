@@ -11,6 +11,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, OnceCell};
+use rustc_errors::ErrorReported;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
@@ -562,6 +563,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     }
 }
 
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [mir::abstract_const::Node<'tcx>] {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+        ty::codec::RefDecodable::decode(d)
+    }
+}
+
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
         ty::codec::RefDecodable::decode(d)
@@ -700,7 +707,11 @@ impl CrateRoot<'_> {
 
 impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn is_proc_macro(&self, id: DefIndex) -> bool {
-        self.root.proc_macro_data.and_then(|data| data.decode(self).find(|x| *x == id)).is_some()
+        self.root
+            .proc_macro_data
+            .as_ref()
+            .and_then(|data| data.macros.decode(self).find(|x| *x == id))
+            .is_some()
     }
 
     fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind> {
@@ -722,7 +733,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn raw_proc_macro(&self, id: DefIndex) -> &ProcMacro {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
         // with items in 'raw_proc_macros'.
-        let pos = self.root.proc_macro_data.unwrap().decode(self).position(|i| i == id).unwrap();
+        let pos = self
+            .root
+            .proc_macro_data
+            .as_ref()
+            .unwrap()
+            .macros
+            .decode(self)
+            .position(|i| i == id)
+            .unwrap();
         &self.raw_proc_macros.unwrap()[pos]
     }
 
@@ -759,7 +778,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_span(&self, index: DefIndex, sess: &Session) -> Span {
-        self.root.tables.span.get(self, index).unwrap().decode((self, sess))
+        self.root
+            .tables
+            .span
+            .get(self, index)
+            .unwrap_or_else(|| panic!("Missing span for {:?}", index))
+            .decode((self, sess))
     }
 
     fn load_proc_macro(&self, id: DefIndex, sess: &Session) -> SyntaxExtension {
@@ -935,7 +959,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_stability(&self, id: DefIndex) -> Option<attr::Stability> {
         match self.is_proc_macro(id) {
-            true => self.root.proc_macro_stability,
+            true => self.root.proc_macro_data.as_ref().unwrap().stability,
             false => self.root.tables.stability.get(self, id).map(|stab| stab.decode(self)),
         }
     }
@@ -1028,24 +1052,20 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     where
         F: FnMut(Export<hir::HirId>),
     {
-        if let Some(proc_macros_ids) = self.root.proc_macro_data.map(|d| d.decode(self)) {
+        if let Some(data) = &self.root.proc_macro_data {
             /* If we are loading as a proc macro, we want to return the view of this crate
              * as a proc macro crate.
              */
             if id == CRATE_DEF_INDEX {
-                for def_index in proc_macros_ids {
+                let macros = data.macros.decode(self);
+                for def_index in macros {
                     let raw_macro = self.raw_proc_macro(def_index);
                     let res = Res::Def(
                         DefKind::Macro(macro_kind(raw_macro)),
                         self.local_def_id(def_index),
                     );
                     let ident = self.item_ident(def_index, sess);
-                    callback(Export {
-                        ident,
-                        res,
-                        vis: ty::Visibility::Public,
-                        span: self.get_span(def_index, sess),
-                    });
+                    callback(Export { ident, res, vis: ty::Visibility::Public, span: ident.span });
                 }
             }
             return;
@@ -1189,6 +1209,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
             .decode((self, tcx))
+    }
+
+    fn get_mir_abstract_const(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        id: DefIndex,
+    ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
+        self.root
+            .tables
+            .mir_abstract_consts
+            .get(self, id)
+            .filter(|_| !self.is_proc_macro(id))
+            .map_or(Ok(None), |v| Ok(Some(v.decode((self, tcx)))))
     }
 
     fn get_unused_generic_params(&self, id: DefIndex) -> FiniteBitSet<u32> {
@@ -1539,12 +1572,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn all_def_path_hashes_and_def_ids(&self) -> Vec<(DefPathHash, DefId)> {
         let mut def_path_hashes = self.def_path_hash_cache.lock();
-        (0..self.num_def_ids())
-            .map(|index| {
-                let index = DefIndex::from_usize(index);
-                (self.def_path_hash_unlocked(index, &mut def_path_hashes), self.local_def_id(index))
-            })
-            .collect()
+        let mut def_index_to_data = |index| {
+            (self.def_path_hash_unlocked(index, &mut def_path_hashes), self.local_def_id(index))
+        };
+        if let Some(data) = &self.root.proc_macro_data {
+            std::iter::once(CRATE_DEF_INDEX)
+                .chain(data.macros.decode(self))
+                .map(def_index_to_data)
+                .collect()
+        } else {
+            (0..self.num_def_ids())
+                .map(|index| def_index_to_data(DefIndex::from_usize(index)))
+                .collect()
+        }
     }
 
     /// Get the `DepNodeIndex` corresponding this crate. The result of this

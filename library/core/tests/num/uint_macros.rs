@@ -4,7 +4,6 @@ macro_rules! uint_module {
         mod tests {
             use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
             use core::$T_i::*;
-            use std::mem;
             use std::str::FromStr;
 
             use crate::num;
@@ -47,30 +46,27 @@ macro_rules! uint_module {
 
             #[test]
             fn test_count_zeros() {
-                let bits = mem::size_of::<$T>() * 8;
-                assert!(A.count_zeros() == bits as u32 - 3);
-                assert!(B.count_zeros() == bits as u32 - 2);
-                assert!(C.count_zeros() == bits as u32 - 5);
+                assert!(A.count_zeros() == $T::BITS - 3);
+                assert!(B.count_zeros() == $T::BITS - 2);
+                assert!(C.count_zeros() == $T::BITS - 5);
             }
 
             #[test]
             fn test_leading_trailing_ones() {
-                let bits = (mem::size_of::<$T>() * 8) as u32;
-
                 let a: $T = 0b0101_1111;
                 assert_eq!(a.trailing_ones(), 5);
-                assert_eq!((!a).leading_ones(), bits - 7);
+                assert_eq!((!a).leading_ones(), $T::BITS - 7);
 
                 assert_eq!(a.reverse_bits().leading_ones(), 5);
 
-                assert_eq!(_1.leading_ones(), bits);
-                assert_eq!(_1.trailing_ones(), bits);
+                assert_eq!(_1.leading_ones(), $T::BITS);
+                assert_eq!(_1.trailing_ones(), $T::BITS);
 
                 assert_eq!((_1 << 1).trailing_ones(), 0);
                 assert_eq!((_1 >> 1).leading_ones(), 0);
 
-                assert_eq!((_1 << 1).leading_ones(), bits - 1);
-                assert_eq!((_1 >> 1).trailing_ones(), bits - 1);
+                assert_eq!((_1 << 1).leading_ones(), $T::BITS - 1);
+                assert_eq!((_1 >> 1).trailing_ones(), $T::BITS - 1);
 
                 assert_eq!(_0.leading_ones(), 0);
                 assert_eq!(_0.trailing_ones(), 0);

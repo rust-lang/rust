@@ -232,16 +232,16 @@ impl<T: ?Sized> RefUnwindSafe for RwLock<T> {}
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl RefUnwindSafe for atomic::AtomicIsize {}
 #[cfg(target_has_atomic_load_store = "8")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicI8 {}
 #[cfg(target_has_atomic_load_store = "16")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicI16 {}
 #[cfg(target_has_atomic_load_store = "32")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicI32 {}
 #[cfg(target_has_atomic_load_store = "64")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicI64 {}
 #[cfg(target_has_atomic_load_store = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
@@ -251,16 +251,16 @@ impl RefUnwindSafe for atomic::AtomicI128 {}
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl RefUnwindSafe for atomic::AtomicUsize {}
 #[cfg(target_has_atomic_load_store = "8")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicU8 {}
 #[cfg(target_has_atomic_load_store = "16")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicU16 {}
 #[cfg(target_has_atomic_load_store = "32")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicU32 {}
 #[cfg(target_has_atomic_load_store = "64")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicU64 {}
 #[cfg(target_has_atomic_load_store = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]

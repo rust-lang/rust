@@ -1,4 +1,4 @@
-error: `Foo::f#hola` contains an anchor, but links to struct fields are already anchored
+error: `Foo::f#hola` contains an anchor, but links to fields are already anchored
   --> $DIR/intra-links-anchors.rs:25:15
    |
 LL | /// Or maybe [Foo::f#hola].
@@ -16,13 +16,13 @@ error: `hello#people#!` contains multiple anchors
 LL | /// Another anchor error: [hello#people#!].
    |                            ^^^^^^^^^^^^^^ contains invalid anchor
 
-error: `Enum::A#whatever` contains an anchor, but links to enum variants are already anchored
+error: `Enum::A#whatever` contains an anchor, but links to variants are already anchored
   --> $DIR/intra-links-anchors.rs:37:28
    |
 LL | /// Damn enum's variants: [Enum::A#whatever].
    |                            ^^^^^^^^^^^^^^^^ contains invalid anchor
 
-error: `u32#hello` contains an anchor, but links to primitive types are already anchored
+error: `u32#hello` contains an anchor, but links to builtin types are already anchored
   --> $DIR/intra-links-anchors.rs:43:6
    |
 LL | /// [u32#hello]

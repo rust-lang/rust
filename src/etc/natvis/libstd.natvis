@@ -5,7 +5,7 @@
 
     Current std impls:
       std::collections::hash::set::HashSet<K, S>      is implemented in terms of...
-      std::collections::hash::map::HashMap<K, V, S>   is implemented in terms of...
+      hashbrown::set::HashSet<K, S>                   is implemented in terms of...
       hashbrown::map::HashMap<K, V, S>                is implemented in terms of...
       hashbrown::raw::RawTable<(K, V)>
 
@@ -50,22 +50,22 @@
   </Type>
 
   <Type Name="std::collections::hash::set::HashSet&lt;*,*&gt;">
-    <DisplayString>{{ size={map.base.table.items} }}</DisplayString>
+    <DisplayString>{{ size={base.map.table.items} }}</DisplayString>
     <Expand>
-      <Item Name="[size]">map.base.table.items</Item>
-      <Item Name="[capacity]">map.base.table.items + map.base.table.growth_left</Item>
-      <Item Name="[state]">map.base.hash_builder</Item>
+      <Item Name="[size]">base.map.table.items</Item>
+      <Item Name="[capacity]">base.map.table.items + base.map.table.growth_left</Item>
+      <Item Name="[state]">base.map.hash_builder</Item>
 
       <CustomListItems>
         <Variable Name="i" InitialValue="0" />
-        <Variable Name="n" InitialValue="map.base.table.items" />
-        <Size>map.base.table.items</Size>
+        <Variable Name="n" InitialValue="base.map.table.items" />
+        <Size>base.map.table.items</Size>
         <Loop>
           <Break Condition="n == 0" />
-          <If Condition="(map.base.table.ctrl.pointer[i] &amp; 0x80) == 0">
+          <If Condition="(base.map.table.ctrl.pointer[i] &amp; 0x80) == 0">
             <!-- Bucket is populated -->
             <Exec>n--</Exec>
-            <Item>(($T1*)map.base.table.ctrl.pointer)[-(i + 1)]</Item>
+            <Item>(($T1*)base.map.table.ctrl.pointer)[-(i + 1)]</Item>
           </If>
           <Exec>i++</Exec>
         </Loop>

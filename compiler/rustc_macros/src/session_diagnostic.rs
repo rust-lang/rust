@@ -1,11 +1,9 @@
 #![deny(unused_must_use)]
-use quote::format_ident;
-use quote::quote;
-
 use proc_macro::Diagnostic;
+use quote::{format_ident, quote};
 use syn::spanned::Spanned;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 
 /// Implements #[derive(SessionDiagnostic)], which allows for errors to be specified as a struct, independent
 /// from the actual diagnostics emitting code.
@@ -577,7 +575,10 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
     /// ```
     /// This function builds the entire call to format!.
     fn build_format(&self, input: &String, span: proc_macro2::Span) -> proc_macro2::TokenStream {
-        let mut referenced_fields: HashSet<String> = HashSet::new();
+        // This set is used later to generate the final format string. To keep builds reproducible,
+        // the iteration order needs to be deterministic, hence why we use a BTreeSet here instead
+        // of a HashSet.
+        let mut referenced_fields: BTreeSet<String> = BTreeSet::new();
 
         // At this point, we can start parsing the format string.
         let mut it = input.chars().peekable();

@@ -1531,6 +1531,11 @@ impl<T: Send> error::Error for TrySendError<T> {
 
 #[stable(feature = "mpsc_error_conversions", since = "1.24.0")]
 impl<T> From<SendError<T>> for TrySendError<T> {
+    /// Converts a `SendError<T>` into a `TrySendError<T>`.
+    ///
+    /// This conversion always returns a `TrySendError::Disconnected` containing the data in the `SendError<T>`.
+    ///
+    /// No data is allocated on the heap.
     fn from(err: SendError<T>) -> TrySendError<T> {
         match err {
             SendError(t) => TrySendError::Disconnected(t),
@@ -1576,6 +1581,11 @@ impl error::Error for TryRecvError {
 
 #[stable(feature = "mpsc_error_conversions", since = "1.24.0")]
 impl From<RecvError> for TryRecvError {
+    /// Converts a `RecvError` into a `TryRecvError`.
+    ///
+    /// This conversion always returns `TryRecvError::Disconnected`.
+    ///
+    /// No data is allocated on the heap.
     fn from(err: RecvError) -> TryRecvError {
         match err {
             RecvError => TryRecvError::Disconnected,
@@ -1606,6 +1616,11 @@ impl error::Error for RecvTimeoutError {
 
 #[stable(feature = "mpsc_error_conversions", since = "1.24.0")]
 impl From<RecvError> for RecvTimeoutError {
+    /// Converts a `RecvError` into a `RecvTimeoutError`.
+    ///
+    /// This conversion always returns `RecvTimeoutError::Disconnected`.
+    ///
+    /// No data is allocated on the heap.
     fn from(err: RecvError) -> RecvTimeoutError {
         match err {
             RecvError => RecvTimeoutError::Disconnected,

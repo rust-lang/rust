@@ -693,8 +693,14 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
         // Desugared from `impl Trait`, so visited by the function's return type.
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) => {}
 
-        hir::ItemKind::OpaqueTy(..)
-        | hir::ItemKind::TyAlias(..)
+        // Don't call `type_of` on opaque types, since that depends on type
+        // checking function bodies. `check_item_type` ensures that it's called
+        // instead.
+        hir::ItemKind::OpaqueTy(..) => {
+            tcx.ensure().generics_of(def_id);
+            tcx.ensure().predicates_of(def_id);
+        }
+        hir::ItemKind::TyAlias(..)
         | hir::ItemKind::Static(..)
         | hir::ItemKind::Const(..)
         | hir::ItemKind::Fn(..) => {
@@ -1672,6 +1678,7 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
                 .alloc_from_iter(result.predicates.iter().chain(inferred_outlives).copied());
         }
     }
+
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
 }
@@ -1713,29 +1720,6 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     debug!("explicit_predicates_of(def_id={:?})", def_id);
 
-    /// A data structure with unique elements, which preserves order of insertion.
-    /// Preserving the order of insertion is important here so as not to break
-    /// compile-fail UI tests.
-    struct UniquePredicates<'tcx> {
-        predicates: FxIndexSet<(ty::Predicate<'tcx>, Span)>,
-    }
-
-    impl<'tcx> UniquePredicates<'tcx> {
-        fn new() -> Self {
-            UniquePredicates { predicates: FxIndexSet::default() }
-        }
-
-        fn push(&mut self, value: (ty::Predicate<'tcx>, Span)) {
-            self.predicates.insert(value);
-        }
-
-        fn extend<I: IntoIterator<Item = (ty::Predicate<'tcx>, Span)>>(&mut self, iter: I) {
-            for value in iter {
-                self.push(value);
-            }
-        }
-    }
-
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let node = tcx.hir().get(hir_id);
 
@@ -1748,7 +1732,10 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
 
-    let mut predicates = UniquePredicates::new();
+    // We use an `IndexSet` to preserves order of insertion.
+    // Preserving the order of insertion is important here so as not to break
+    // compile-fail UI tests.
+    let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
     let ast_generics = match node {
         Node::TraitItem(item) => {
@@ -1850,7 +1837,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
-        predicates.push((
+        predicates.insert((
             trait_ref.to_poly_trait_ref().without_const().to_predicate(tcx),
             tcx.def_span(def_id),
         ));
@@ -1874,7 +1861,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                     hir::GenericBound::Outlives(lt) => {
                         let bound = AstConv::ast_region_to_region(&icx, &lt, None);
                         let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
-                        predicates.push((outlives.to_predicate(tcx), lt.span));
+                        predicates.insert((outlives.to_predicate(tcx), lt.span));
                     }
                     _ => bug!(),
                 });
@@ -1929,7 +1916,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         let span = bound_pred.bounded_ty.span;
                         let re_root_empty = tcx.lifetimes.re_root_empty;
                         let predicate = ty::OutlivesPredicate(ty, re_root_empty);
-                        predicates.push((
+                        predicates.insert((
                             ty::PredicateAtom::TypeOutlives(predicate)
                                 .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                             span,
@@ -1973,11 +1960,11 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
                         &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
-                            predicates.push((
+                            predicates.insert((
                                 ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, region))
                                     .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                                 lifetime.span,
-                            ))
+                            ));
                         }
                     }
                 }
@@ -2022,7 +2009,11 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         }))
     }
 
-    let mut predicates: Vec<_> = predicates.predicates.into_iter().collect();
+    if tcx.features().const_evaluatable_checked {
+        predicates.extend(const_evaluatable_predicates_of(tcx, def_id.expect_local()));
+    }
+
+    let mut predicates: Vec<_> = predicates.into_iter().collect();
 
     // Subtle: before we store the predicates into the tcx, we
     // sort them so that predicates like `T: Foo<Item=U>` come
@@ -2046,6 +2037,97 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     };
     debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
+}
+
+fn const_evaluatable_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> FxIndexSet<(ty::Predicate<'tcx>, Span)> {
+    struct ConstCollector<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        preds: FxIndexSet<(ty::Predicate<'tcx>, Span)>,
+    }
+
+    impl<'tcx> intravisit::Visitor<'tcx> for ConstCollector<'tcx> {
+        type Map = Map<'tcx>;
+
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+            intravisit::NestedVisitorMap::None
+        }
+
+        fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+            let def_id = self.tcx.hir().local_def_id(c.hir_id);
+            let ct = ty::Const::from_anon_const(self.tcx, def_id);
+            if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
+                let span = self.tcx.hir().span(c.hir_id);
+                self.preds.insert((
+                    ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),
+                    span,
+                ));
+            }
+        }
+
+        // Look into `TyAlias`.
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+            use ty::fold::{TypeFoldable, TypeVisitor};
+            struct TyAliasVisitor<'a, 'tcx> {
+                tcx: TyCtxt<'tcx>,
+                preds: &'a mut FxIndexSet<(ty::Predicate<'tcx>, Span)>,
+                span: Span,
+            }
+
+            impl<'a, 'tcx> TypeVisitor<'tcx> for TyAliasVisitor<'a, 'tcx> {
+                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> bool {
+                    if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
+                        self.preds.insert((
+                            ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),
+                            self.span,
+                        ));
+                    }
+                    false
+                }
+            }
+
+            if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind {
+                if let Res::Def(DefKind::TyAlias, def_id) = path.res {
+                    let mut visitor =
+                        TyAliasVisitor { tcx: self.tcx, preds: &mut self.preds, span: path.span };
+                    self.tcx.type_of(def_id).visit_with(&mut visitor);
+                }
+            }
+
+            intravisit::walk_ty(self, ty)
+        }
+    }
+
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let node = tcx.hir().get(hir_id);
+
+    let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
+    if let hir::Node::Item(item) = node {
+        if let hir::ItemKind::Impl { ref of_trait, ref self_ty, .. } = item.kind {
+            if let Some(of_trait) = of_trait {
+                warn!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
+                collector.visit_trait_ref(of_trait);
+            }
+
+            warn!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
+            collector.visit_ty(self_ty);
+        }
+    }
+
+    if let Some(generics) = node.generics() {
+        warn!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
+        collector.visit_generics(generics);
+    }
+
+    if let Some(fn_sig) = tcx.hir().fn_sig_by_hir_id(hir_id) {
+        warn!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
+        collector.visit_fn_decl(fn_sig.decl);
+    }
+    warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
+
+    collector.preds
 }
 
 fn projection_ty_from_predicates(
@@ -2302,8 +2384,8 @@ fn from_target_feature(
                         item.span(),
                         format!("`{}` is not valid for this target", feature),
                     );
-                    if feature.starts_with('+') {
-                        let valid = supported_target_features.contains_key(&feature[1..]);
+                    if let Some(stripped) = feature.strip_prefix('+') {
+                        let valid = supported_target_features.contains_key(stripped);
                         if valid {
                             err.help("consider removing the leading `+` in the feature name");
                         }
@@ -2322,7 +2404,6 @@ fn from_target_feature(
                 Some(sym::mips_target_feature) => rust_features.mips_target_feature,
                 Some(sym::riscv_target_feature) => rust_features.riscv_target_feature,
                 Some(sym::avx512_target_feature) => rust_features.avx512_target_feature,
-                Some(sym::mmx_target_feature) => rust_features.mmx_target_feature,
                 Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
                 Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
                 Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
@@ -2486,10 +2567,17 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.export_name = Some(s);
             }
         } else if tcx.sess.check_name(attr, sym::target_feature) {
-            if !tcx.features().target_feature_11 {
-                check_target_feature_safe_fn(tcx, id, attr.span);
-            } else if let Some(local_id) = id.as_local() {
-                if tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
+            if !tcx.is_closure(id) && tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
+                if !tcx.features().target_feature_11 {
+                    let mut err = feature_err(
+                        &tcx.sess.parse_sess,
+                        sym::target_feature_11,
+                        attr.span,
+                        "`#[target_feature(..)]` can only be applied to `unsafe` functions",
+                    );
+                    err.span_label(tcx.def_span(id), "not an `unsafe` function");
+                    err.emit();
+                } else if let Some(local_id) = id.as_local() {
                     check_target_feature_trait_unsafe(tcx, local_id, attr.span);
                 }
             }
@@ -2743,21 +2831,6 @@ fn check_link_name_xor_ordinal(
         tcx.sess.span_err(span, msg);
     } else {
         tcx.sess.err(msg);
-    }
-}
-
-/// Checks the function annotated with `#[target_feature]` is unsafe,
-/// reporting an error if it isn't.
-fn check_target_feature_safe_fn(tcx: TyCtxt<'_>, id: DefId, attr_span: Span) {
-    if tcx.is_closure(id) || tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
-        let mut err = feature_err(
-            &tcx.sess.parse_sess,
-            sym::target_feature_11,
-            attr_span,
-            "`#[target_feature(..)]` can only be applied to `unsafe` functions",
-        );
-        err.span_label(tcx.def_span(id), "not an `unsafe` function");
-        err.emit();
     }
 }
 

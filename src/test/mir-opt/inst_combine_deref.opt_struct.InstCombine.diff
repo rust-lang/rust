@@ -1,0 +1,44 @@
+- // MIR for `opt_struct` before InstCombine
++ // MIR for `opt_struct` after InstCombine
+  
+  fn opt_struct(_1: S) -> u64 {
+      debug s => _1;                       // in scope 0 at $DIR/inst_combine_deref.rs:30:15: 30:16
+      let mut _0: u64;                     // return place in scope 0 at $DIR/inst_combine_deref.rs:30:24: 30:27
+      let _2: &u64;                        // in scope 0 at $DIR/inst_combine_deref.rs:31:9: 31:10
+      let mut _5: u64;                     // in scope 0 at $DIR/inst_combine_deref.rs:34:5: 34:7
+      let mut _6: u64;                     // in scope 0 at $DIR/inst_combine_deref.rs:34:10: 34:11
+      scope 1 {
+          debug a => _2;                   // in scope 1 at $DIR/inst_combine_deref.rs:31:9: 31:10
+          let _3: &u64;                    // in scope 1 at $DIR/inst_combine_deref.rs:32:9: 32:10
+          scope 2 {
+              debug b => _3;               // in scope 2 at $DIR/inst_combine_deref.rs:32:9: 32:10
+              let _4: u64;                 // in scope 2 at $DIR/inst_combine_deref.rs:33:9: 33:10
+              scope 3 {
+                  debug x => _4;           // in scope 3 at $DIR/inst_combine_deref.rs:33:9: 33:10
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/inst_combine_deref.rs:31:9: 31:10
+          _2 = &(_1.0: u64);               // scope 0 at $DIR/inst_combine_deref.rs:31:13: 31:17
+          StorageLive(_3);                 // scope 1 at $DIR/inst_combine_deref.rs:32:9: 32:10
+          _3 = &(_1.1: u64);               // scope 1 at $DIR/inst_combine_deref.rs:32:13: 32:17
+          StorageLive(_4);                 // scope 2 at $DIR/inst_combine_deref.rs:33:9: 33:10
+-         _4 = (*_2);                      // scope 2 at $DIR/inst_combine_deref.rs:33:13: 33:15
++         _4 = (_1.0: u64);                // scope 2 at $DIR/inst_combine_deref.rs:33:13: 33:15
+          StorageLive(_5);                 // scope 3 at $DIR/inst_combine_deref.rs:34:5: 34:7
+-         _5 = (*_3);                      // scope 3 at $DIR/inst_combine_deref.rs:34:5: 34:7
++         _5 = (_1.1: u64);                // scope 3 at $DIR/inst_combine_deref.rs:34:5: 34:7
+          StorageLive(_6);                 // scope 3 at $DIR/inst_combine_deref.rs:34:10: 34:11
+          _6 = _4;                         // scope 3 at $DIR/inst_combine_deref.rs:34:10: 34:11
+          _0 = Add(move _5, move _6);      // scope 3 at $DIR/inst_combine_deref.rs:34:5: 34:11
+          StorageDead(_6);                 // scope 3 at $DIR/inst_combine_deref.rs:34:10: 34:11
+          StorageDead(_5);                 // scope 3 at $DIR/inst_combine_deref.rs:34:10: 34:11
+          StorageDead(_4);                 // scope 2 at $DIR/inst_combine_deref.rs:35:1: 35:2
+          StorageDead(_3);                 // scope 1 at $DIR/inst_combine_deref.rs:35:1: 35:2
+          StorageDead(_2);                 // scope 0 at $DIR/inst_combine_deref.rs:35:1: 35:2
+          return;                          // scope 0 at $DIR/inst_combine_deref.rs:35:2: 35:2
+      }
+  }
+  

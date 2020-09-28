@@ -28,7 +28,7 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
         span: ident.span,
         tokens: None,
     });
-    let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID };
+    let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID, tokens: None };
     Param {
         attrs: AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
@@ -75,7 +75,12 @@ impl RecoverQPath for Ty {
         Some(P(self.clone()))
     }
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
-        Self { span: path.span, kind: TyKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
+        Self {
+            span: path.span,
+            kind: TyKind::Path(qself, path),
+            id: ast::DUMMY_NODE_ID,
+            tokens: None,
+        }
     }
 }
 
@@ -548,6 +553,52 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// When writing a turbofish with multiple type parameters missing the leading `::`, we will
+    /// encounter a parse error when encountering the first `,`.
+    pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
+        &mut self,
+        mut e: DiagnosticBuilder<'a>,
+        expr: &mut P<Expr>,
+    ) -> PResult<'a, ()> {
+        if let ExprKind::Binary(binop, _, _) = &expr.kind {
+            if let ast::BinOpKind::Lt = binop.node {
+                if self.eat(&token::Comma) {
+                    let x = self.parse_seq_to_before_end(
+                        &token::Gt,
+                        SeqSep::trailing_allowed(token::Comma),
+                        |p| p.parse_ty(),
+                    );
+                    match x {
+                        Ok((_, _, false)) => {
+                            self.bump(); // `>`
+                            match self.parse_expr() {
+                                Ok(_) => {
+                                    e.span_suggestion_verbose(
+                                        binop.span.shrink_to_lo(),
+                                        "use `::<...>` instead of `<...>` to specify type arguments",
+                                        "::".to_string(),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    e.emit();
+                                    *expr = self.mk_expr_err(expr.span.to(self.prev_token.span));
+                                    return Ok(());
+                                }
+                                Err(mut err) => {
+                                    err.cancel();
+                                }
+                            }
+                        }
+                        Err(mut err) => {
+                            err.cancel();
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Err(e)
+    }
+
     /// Check to see if a pair of chained operators looks like an attempt at chained comparison,
     /// e.g. `1 < x <= 3`. If so, suggest either splitting the comparison into two, or
     /// parenthesising the leftmost comparison.
@@ -896,7 +947,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<T>> {
         self.expect(&token::ModSep)?;
 
-        let mut path = ast::Path { segments: Vec::new(), span: DUMMY_SP };
+        let mut path = ast::Path { segments: Vec::new(), span: DUMMY_SP, tokens: None };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE)?;
         path.span = ty_span.to(self.prev_token.span);
 

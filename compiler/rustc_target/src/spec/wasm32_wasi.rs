@@ -30,7 +30,7 @@
 //! ## No interop with C required
 //!
 //! By default the `crt-static` target feature is enabled, and when enabled
-//! this means that the the bundled version of `libc.a` found in `liblibc.rlib`
+//! this means that the bundled version of `libc.a` found in `liblibc.rlib`
 //! is used. This isn't intended really for interoperation with a C because it
 //! may be the case that Rust's bundled C library is incompatible with a
 //! foreign-compiled C library. In this use case, though, we use `rust-lld` and

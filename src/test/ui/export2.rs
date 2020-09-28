@@ -1,5 +1,5 @@
 mod foo {
-    pub fn x() { bar::x(); } //~ ERROR failed to resolve: use of undeclared type or module `bar`
+    pub fn x() { bar::x(); } //~ ERROR failed to resolve: use of undeclared crate or module `bar`
 }
 
 mod bar {

@@ -488,18 +488,16 @@ impl<'tcx> Visitor<'tcx> for HirTraitObjectVisitor {
     }
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
-        match t.kind {
-            TyKind::TraitObject(
-                poly_trait_refs,
-                Lifetime { name: LifetimeName::ImplicitObjectLifetimeDefault, .. },
-            ) => {
-                for ptr in poly_trait_refs {
-                    if Some(self.1) == ptr.trait_ref.trait_def_id() {
-                        self.0.push(ptr.span);
-                    }
+        if let TyKind::TraitObject(
+            poly_trait_refs,
+            Lifetime { name: LifetimeName::ImplicitObjectLifetimeDefault, .. },
+        ) = t.kind
+        {
+            for ptr in poly_trait_refs {
+                if Some(self.1) == ptr.trait_ref.trait_def_id() {
+                    self.0.push(ptr.span);
                 }
             }
-            _ => {}
         }
         walk_ty(self, t);
     }

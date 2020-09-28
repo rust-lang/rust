@@ -62,10 +62,6 @@ pub enum InstanceDef<'tcx> {
     /// `<fn() as FnTrait>::call_*` (generated `FnTrait` implementation for `fn()` pointers).
     ///
     /// `DefId` is `FnTrait::call_*`.
-    ///
-    /// NB: the (`fn` pointer) type must currently be monomorphic to avoid double substitution
-    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
-    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     FnPtrShim(DefId, Ty<'tcx>),
 
     /// Dynamic dispatch to `<dyn Trait as Trait>::fn`.
@@ -87,10 +83,6 @@ pub enum InstanceDef<'tcx> {
     /// The `DefId` is for `core::ptr::drop_in_place`.
     /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
     /// glue.
-    ///
-    /// NB: the type must currently be monomorphic to avoid double substitution
-    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
-    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     /// Compiler-generated `<T as Clone>::clone` implementation.
@@ -99,10 +91,6 @@ pub enum InstanceDef<'tcx> {
     /// Additionally, arrays, tuples, and closures get a `Clone` shim even if they aren't `Copy`.
     ///
     /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
-    ///
-    /// NB: the type must currently be monomorphic to avoid double substitution
-    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
-    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     CloneShim(DefId, Ty<'tcx>),
 }
 
@@ -241,6 +229,27 @@ impl<'tcx> InstanceDef<'tcx> {
                 tcx.codegen_fn_attrs(def.did).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
             _ => false,
+        }
+    }
+
+    /// Returns `true` when the MIR body associated with this instance should be monomorphized
+    /// by its users (e.g. codegen or miri) by substituting the `substs` from `Instance` (see
+    /// `Instance::substs_for_mir_body`).
+    ///
+    /// Otherwise, returns `false` only for some kinds of shims where the construction of the MIR
+    /// body should perform necessary substitutions.
+    pub fn has_polymorphic_mir_body(&self) -> bool {
+        match *self {
+            InstanceDef::CloneShim(..)
+            | InstanceDef::FnPtrShim(..)
+            | InstanceDef::DropGlue(_, Some(_)) => false,
+            InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::DropGlue(..)
+            | InstanceDef::Item(_)
+            | InstanceDef::Intrinsic(..)
+            | InstanceDef::ReifyShim(..)
+            | InstanceDef::Virtual(..)
+            | InstanceDef::VtableShim(..) => true,
         }
     }
 }
@@ -440,30 +449,18 @@ impl<'tcx> Instance<'tcx> {
         Instance { def, substs }
     }
 
-    /// FIXME(#69925) Depending on the kind of `InstanceDef`, the MIR body associated with an
+    /// Depending on the kind of `InstanceDef`, the MIR body associated with an
     /// instance is expressed in terms of the generic parameters of `self.def_id()`, and in other
     /// cases the MIR body is expressed in terms of the types found in the substitution array.
     /// In the former case, we want to substitute those generic types and replace them with the
     /// values from the substs when monomorphizing the function body. But in the latter case, we
     /// don't want to do that substitution, since it has already been done effectively.
     ///
-    /// This function returns `Some(substs)` in the former case and None otherwise -- i.e., if
+    /// This function returns `Some(substs)` in the former case and `None` otherwise -- i.e., if
     /// this function returns `None`, then the MIR body does not require substitution during
-    /// monomorphization.
+    /// codegen.
     pub fn substs_for_mir_body(&self) -> Option<SubstsRef<'tcx>> {
-        match self.def {
-            InstanceDef::CloneShim(..)
-            | InstanceDef::DropGlue(_, Some(_)) => None,
-            InstanceDef::ClosureOnceShim { .. }
-            | InstanceDef::DropGlue(..)
-            // FIXME(#69925): `FnPtrShim` should be in the other branch.
-            | InstanceDef::FnPtrShim(..)
-            | InstanceDef::Item(_)
-            | InstanceDef::Intrinsic(..)
-            | InstanceDef::ReifyShim(..)
-            | InstanceDef::Virtual(..)
-            | InstanceDef::VtableShim(..) => Some(self.substs),
-        }
+        if self.def.has_polymorphic_mir_body() { Some(self.substs) } else { None }
     }
 
     /// Returns a new `Instance` where generic parameters in `instance.substs` are replaced by

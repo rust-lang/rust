@@ -1,6 +1,8 @@
 use crate::utils::match_var;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_hir::intravisit;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, HirId, Path};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -107,4 +109,68 @@ pub fn is_unused<'tcx>(ident: &'tcx Ident, body: &'tcx Expr<'_>) -> bool {
     };
     walk_expr(&mut visitor, body);
     !visitor.used
+}
+
+pub struct ParamBindingIdCollector {
+    binding_hir_ids: Vec<hir::HirId>,
+}
+impl<'tcx> ParamBindingIdCollector {
+    fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<hir::HirId> {
+        let mut finder = ParamBindingIdCollector {
+            binding_hir_ids: Vec::new(),
+        };
+        finder.visit_body(body);
+        finder.binding_hir_ids
+    }
+}
+impl<'tcx> intravisit::Visitor<'tcx> for ParamBindingIdCollector {
+    type Map = Map<'tcx>;
+
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+        if let hir::PatKind::Binding(_, hir_id, ..) = param.pat.kind {
+            self.binding_hir_ids.push(hir_id);
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::None
+    }
+}
+
+pub struct BindingUsageFinder<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    binding_ids: Vec<hir::HirId>,
+    usage_found: bool,
+}
+impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
+    pub fn are_params_used(cx: &'a LateContext<'tcx>, body: &'tcx hir::Body<'tcx>) -> bool {
+        let mut finder = BindingUsageFinder {
+            cx,
+            binding_ids: ParamBindingIdCollector::collect_binding_hir_ids(body),
+            usage_found: false,
+        };
+        finder.visit_body(body);
+        finder.usage_found
+    }
+}
+impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        if !self.usage_found {
+            intravisit::walk_expr(self, expr);
+        }
+    }
+
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
+        if let hir::def::Res::Local(id) = path.res {
+            if self.binding_ids.contains(&id) {
+                self.usage_found = true;
+            }
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    }
 }

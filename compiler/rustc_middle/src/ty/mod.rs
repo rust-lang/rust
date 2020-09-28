@@ -682,25 +682,31 @@ pub enum BorrowKind {
     /// implicit closure bindings. It is needed when the closure
     /// is borrowing or mutating a mutable referent, e.g.:
     ///
-    ///    let x: &mut isize = ...;
-    ///    let y = || *x += 5;
+    /// ```
+    /// let x: &mut isize = ...;
+    /// let y = || *x += 5;
+    /// ```
     ///
     /// If we were to try to translate this closure into a more explicit
     /// form, we'd encounter an error with the code as written:
     ///
-    ///    struct Env { x: & &mut isize }
-    ///    let x: &mut isize = ...;
-    ///    let y = (&mut Env { &x }, fn_ptr);  // Closure is pair of env and fn
-    ///    fn fn_ptr(env: &mut Env) { **env.x += 5; }
+    /// ```
+    /// struct Env { x: & &mut isize }
+    /// let x: &mut isize = ...;
+    /// let y = (&mut Env { &x }, fn_ptr);  // Closure is pair of env and fn
+    /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
+    /// ```
     ///
     /// This is then illegal because you cannot mutate a `&mut` found
     /// in an aliasable location. To solve, you'd have to translate with
     /// an `&mut` borrow:
     ///
-    ///    struct Env { x: & &mut isize }
-    ///    let x: &mut isize = ...;
-    ///    let y = (&mut Env { &mut x }, fn_ptr); // changed from &x to &mut x
-    ///    fn fn_ptr(env: &mut Env) { **env.x += 5; }
+    /// ```
+    /// struct Env { x: & &mut isize }
+    /// let x: &mut isize = ...;
+    /// let y = (&mut Env { &mut x }, fn_ptr); // changed from &x to &mut x
+    /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
+    /// ```
     ///
     /// Now the assignment to `**env.x` is legal, but creating a
     /// mutable pointer to `x` is not because `x` is not mutable. We
@@ -1155,6 +1161,11 @@ pub enum PredicateAtom<'tcx> {
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
+
+    /// Represents a type found in the environment that we can use for implied bounds.
+    ///
+    /// Only used for Chalk.
+    TypeWellFormedFromEnv(Ty<'tcx>),
 }
 
 impl<'tcx> PredicateAtom<'tcx> {
@@ -1450,7 +1461,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateAtom::ClosureKind(..)
             | PredicateAtom::TypeOutlives(..)
             | PredicateAtom::ConstEvaluatable(..)
-            | PredicateAtom::ConstEquate(..) => None,
+            | PredicateAtom::ConstEquate(..)
+            | PredicateAtom::TypeWellFormedFromEnv(..) => None,
         }
     }
 
@@ -1465,7 +1477,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateAtom::ObjectSafe(..)
             | PredicateAtom::ClosureKind(..)
             | PredicateAtom::ConstEvaluatable(..)
-            | PredicateAtom::ConstEquate(..) => None,
+            | PredicateAtom::ConstEquate(..)
+            | PredicateAtom::TypeWellFormedFromEnv(..) => None,
         }
     }
 }
@@ -1739,10 +1752,8 @@ pub struct ParamEnv<'tcx> {
     /// Note: This is packed, use the reveal() method to access it.
     packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, traits::Reveal, true>,
 
-    /// If this `ParamEnv` comes from a call to `tcx.param_env(def_id)`,
-    /// register that `def_id` (useful for transitioning to the chalk trait
-    /// solver).
-    pub def_id: Option<DefId>,
+    /// FIXME: This field is not used, but removing it causes a performance degradation. See #76913.
+    unused_field: Option<DefId>,
 }
 
 unsafe impl rustc_data_structures::tagged_ptr::Tag for traits::Reveal {
@@ -1767,7 +1778,6 @@ impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
         f.debug_struct("ParamEnv")
             .field("caller_bounds", &self.caller_bounds())
             .field("reveal", &self.reveal())
-            .field("def_id", &self.def_id)
             .finish()
     }
 }
@@ -1776,23 +1786,16 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.caller_bounds().hash_stable(hcx, hasher);
         self.reveal().hash_stable(hcx, hasher);
-        self.def_id.hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
     fn super_fold_with<F: ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        ParamEnv::new(
-            self.caller_bounds().fold_with(folder),
-            self.reveal().fold_with(folder),
-            self.def_id.fold_with(folder),
-        )
+        ParamEnv::new(self.caller_bounds().fold_with(folder), self.reveal().fold_with(folder))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.caller_bounds().visit_with(visitor)
-            || self.reveal().visit_with(visitor)
-            || self.def_id.visit_with(visitor)
+        self.caller_bounds().visit_with(visitor) || self.reveal().visit_with(visitor)
     }
 }
 
@@ -1803,7 +1806,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// type-checking.
     #[inline]
     pub fn empty() -> Self {
-        Self::new(List::empty(), Reveal::UserFacing, None)
+        Self::new(List::empty(), Reveal::UserFacing)
     }
 
     #[inline]
@@ -1825,17 +1828,13 @@ impl<'tcx> ParamEnv<'tcx> {
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
-        Self::new(List::empty(), Reveal::All, None)
+        Self::new(List::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(
-        caller_bounds: &'tcx List<Predicate<'tcx>>,
-        reveal: Reveal,
-        def_id: Option<DefId>,
-    ) -> Self {
-        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal), def_id }
+    pub fn new(caller_bounds: &'tcx List<Predicate<'tcx>>, reveal: Reveal) -> Self {
+        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal), unused_field: None }
     }
 
     pub fn with_user_facing(mut self) -> Self {
@@ -1857,12 +1856,12 @@ impl<'tcx> ParamEnv<'tcx> {
             return self;
         }
 
-        ParamEnv::new(tcx.normalize_opaque_types(self.caller_bounds()), Reveal::All, self.def_id)
+        ParamEnv::new(tcx.normalize_opaque_types(self.caller_bounds()), Reveal::All)
     }
 
     /// Returns this same environment but with no caller bounds.
     pub fn without_caller_bounds(self) -> Self {
-        Self::new(List::empty(), self.reveal(), self.def_id)
+        Self::new(List::empty(), self.reveal())
     }
 
     /// Creates a suitable environment in which to perform trait
@@ -2009,7 +2008,7 @@ pub struct VariantDef {
     flags: VariantFlags,
 }
 
-impl<'tcx> VariantDef {
+impl VariantDef {
     /// Creates a new `VariantDef`.
     ///
     /// `variant_did` is the `DefId` that identifies the enum variant (if this `VariantDef`
@@ -2074,19 +2073,6 @@ impl<'tcx> VariantDef {
     #[inline]
     pub fn is_recovered(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_RECOVERED)
-    }
-
-    /// `repr(transparent)` structs can have a single non-ZST field, this function returns that
-    /// field.
-    pub fn transparent_newtype_field(&self, tcx: TyCtxt<'tcx>) -> Option<&FieldDef> {
-        for field in &self.fields {
-            let field_ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, self.def_id));
-            if !field_ty.is_zst(tcx, self.def_id) {
-                return Some(field);
-            }
-        }
-
-        None
     }
 }
 
@@ -2695,7 +2681,7 @@ impl<'tcx> ClosureKind {
         }
     }
 
-    /// Returns `true` if this a type that impls this closure kind
+    /// Returns `true` if a type that impls this closure kind
     /// must also implement `other`.
     pub fn extends(self, other: ty::ClosureKind) -> bool {
         match (self, other) {

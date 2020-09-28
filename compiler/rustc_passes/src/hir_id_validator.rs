@@ -112,14 +112,14 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                 missing_items.push(format!(
                     "[local_id: {}, owner: {}]",
                     local_id,
-                    self.hir_map.def_path(owner).to_string_no_crate()
+                    self.hir_map.def_path(owner).to_string_no_crate_verbose()
                 ));
             }
             self.error(|| {
                 format!(
                     "ItemLocalIds not assigned densely in {}. \
                 Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
-                    self.hir_map.def_path(owner).to_string_no_crate(),
+                    self.hir_map.def_path(owner).to_string_no_crate_verbose(),
                     max,
                     missing_items,
                     self.hir_ids_seen
@@ -148,8 +148,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
                     self.hir_map.node_to_string(hir_id),
-                    self.hir_map.def_path(hir_id.owner).to_string_no_crate(),
-                    self.hir_map.def_path(owner).to_string_no_crate()
+                    self.hir_map.def_path(hir_id.owner).to_string_no_crate_verbose(),
+                    self.hir_map.def_path(owner).to_string_no_crate_verbose()
                 )
             });
         }

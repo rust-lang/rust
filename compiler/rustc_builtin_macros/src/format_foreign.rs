@@ -166,14 +166,14 @@ pub mod printf {
             let cap = self.span.len() + if has_options { 2 } else { 0 };
             let mut s = String::with_capacity(cap);
 
-            s.push_str("{");
+            s.push('{');
 
             if let Some(arg) = self.parameter {
                 write!(s, "{}", arg.checked_sub(1)?).ok()?;
             }
 
             if has_options {
-                s.push_str(":");
+                s.push(':');
 
                 let align = if let Some(fill) = fill {
                     s.push_str(fill);
@@ -191,11 +191,11 @@ pub mod printf {
                 }
 
                 if alt {
-                    s.push_str("#");
+                    s.push('#');
                 }
 
                 if zero_fill {
-                    s.push_str("0");
+                    s.push('0');
                 }
 
                 if let Some(width) = width {
@@ -203,7 +203,7 @@ pub mod printf {
                 }
 
                 if let Some(precision) = precision {
-                    s.push_str(".");
+                    s.push('.');
                     precision.translate(&mut s).ok()?;
                 }
 
@@ -212,7 +212,7 @@ pub mod printf {
                 }
             }
 
-            s.push_str("}");
+            s.push('}');
             Some(s)
         }
     }
@@ -518,8 +518,7 @@ pub mod printf {
                         .and_then(|end| end.at_next_cp())
                         .map(|end| (next.slice_between(end).unwrap(), end));
                     let end = match end {
-                        Some(("32", end)) => end,
-                        Some(("64", end)) => end,
+                        Some(("32" | "64", end)) => end,
                         _ => next,
                     };
                     state = Type;

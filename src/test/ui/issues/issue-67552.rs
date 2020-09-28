@@ -1,4 +1,5 @@
 // build-fail
+// normalize-stderr-test: ".nll/" -> "/"
 
 fn main() {
     rec(Empty);

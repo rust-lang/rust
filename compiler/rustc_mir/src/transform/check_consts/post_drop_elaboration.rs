@@ -11,8 +11,13 @@ use super::ConstCx;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
 /// elaboration.
-pub fn checking_enabled(tcx: TyCtxt<'tcx>) -> bool {
-    tcx.features().const_precise_live_drops
+pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
+    // Const-stable functions must always use the stable live drop checker.
+    if ccx.is_const_stable_const_fn() {
+        return false;
+    }
+
+    ccx.tcx.features().const_precise_live_drops
 }
 
 /// Look for live drops in a const context.
@@ -25,11 +30,10 @@ pub fn check_live_drops(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mir::Body<
         return;
     }
 
-    if !checking_enabled(tcx) {
+    let ccx = ConstCx { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
+    if !checking_enabled(&ccx) {
         return;
     }
-
-    let ccx = ConstCx { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
 
     let mut visitor = CheckLiveDrops { ccx: &ccx, qualifs: Qualifs::default() };
 
@@ -52,7 +56,7 @@ impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
 
 impl CheckLiveDrops<'mir, 'tcx> {
     fn check_live_drop(&self, span: Span) {
-        ops::non_const(self.ccx, ops::LiveDrop(None), span);
+        ops::non_const(self.ccx, ops::LiveDrop { dropped_at: None }, span);
     }
 }
 

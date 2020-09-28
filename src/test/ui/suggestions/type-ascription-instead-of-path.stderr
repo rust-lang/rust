@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: use of undeclared type or module `io`
+error[E0433]: failed to resolve: use of undeclared crate or module `io`
   --> $DIR/type-ascription-instead-of-path.rs:2:9
    |
 LL |     std:io::stdin();
-   |         ^^ use of undeclared type or module `io`
+   |         ^^ use of undeclared crate or module `io`
 
 error[E0423]: expected value, found crate `std`
   --> $DIR/type-ascription-instead-of-path.rs:2:5

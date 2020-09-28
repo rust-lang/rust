@@ -1,7 +1,6 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     differing_macro_contexts, eq_expr_value, is_type_diagnostic_item, snippet_with_applicability, span_lint_and_then,
-    walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -194,7 +193,7 @@ fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<
     if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.kind {
         if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.kind {
             if eq_expr_value(cx, lhs1, lhs2) {
-                let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(lhs1));
+                let ty = cx.typeck_results().expr_ty(lhs1).peel_refs();
 
                 if matches!(ty.kind(), ty::Slice(_))
                     || matches!(ty.kind(), ty::Array(_, _))

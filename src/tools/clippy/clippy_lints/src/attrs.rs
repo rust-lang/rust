@@ -71,8 +71,9 @@ declare_clippy_lint! {
     /// **What it does:** Checks for `extern crate` and `use` items annotated with
     /// lint attributes.
     ///
-    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]` and
-    /// `#[allow(unreachable_pub)]` on `use` items and `#[allow(unused_imports)]` on
+    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]`,
+    /// `#[allow(unreachable_pub)]`, `#[allow(clippy::wildcard_imports)]` and
+    /// `#[allow(clippy::enum_glob_use)]` on `use` items and `#[allow(unused_imports)]` on
     /// `extern crate` items with a `#[macro_use]` attribute.
     ///
     /// **Why is this bad?** Lint attributes have no effect on crate imports. Most
@@ -318,7 +319,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         if let Some(ident) = attr.ident() {
                             match &*ident.as_str() {
                                 "allow" | "warn" | "deny" | "forbid" => {
-                                    // permit `unused_imports`, `deprecated` and `unreachable_pub` for `use` items
+                                    // permit `unused_imports`, `deprecated`, `unreachable_pub`,
+                                    // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
                                     // and `unused_imports` for `extern crate` items with `macro_use`
                                     for lint in lint_list {
                                         match item.kind {
@@ -327,6 +329,9 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                                     || is_word(lint, sym!(deprecated))
                                                     || is_word(lint, sym!(unreachable_pub))
                                                     || is_word(lint, sym!(unused))
+                                                    || extract_clippy_lint(lint)
+                                                        .map_or(false, |s| s == "wildcard_imports")
+                                                    || extract_clippy_lint(lint).map_or(false, |s| s == "enum_glob_use")
                                                 {
                                                     return;
                                                 }
@@ -387,24 +392,25 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     }
 }
 
-fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
-    fn extract_name(lint: &NestedMetaItem) -> Option<SymbolStr> {
-        if_chain! {
-            if let Some(meta_item) = lint.meta_item();
-            if meta_item.path.segments.len() > 1;
-            if let tool_name = meta_item.path.segments[0].ident;
-            if tool_name.as_str() == "clippy";
-            let lint_name = meta_item.path.segments.last().unwrap().ident.name;
-            then {
-                return Some(lint_name.as_str());
-            }
+/// Returns the lint name if it is clippy lint.
+fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
+    if_chain! {
+        if let Some(meta_item) = lint.meta_item();
+        if meta_item.path.segments.len() > 1;
+        if let tool_name = meta_item.path.segments[0].ident;
+        if tool_name.as_str() == "clippy";
+        let lint_name = meta_item.path.segments.last().unwrap().ident.name;
+        then {
+            return Some(lint_name.as_str());
         }
-        None
     }
+    None
+}
 
+fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
     let lint_store = cx.lints();
     for lint in items {
-        if let Some(lint_name) = extract_name(lint) {
+        if let Some(lint_name) = extract_clippy_lint(lint) {
             if let CheckLintNameResult::Tool(Err((None, _))) =
                 lint_store.check_lint_name(&lint_name, Some(sym!(clippy)))
             {

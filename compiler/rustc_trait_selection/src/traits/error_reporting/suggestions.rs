@@ -483,7 +483,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
 
         if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
-            let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty);
+            let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty, span);
             if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                 // Re-add the `&`
                 let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });

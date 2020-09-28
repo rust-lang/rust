@@ -122,7 +122,7 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
 
 fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: &VariantData) {
     fn is_private(field: &StructField) -> bool {
-        matches!(field.vis.node, VisibilityKind::Inherited)
+        matches!(field.vis.kind, VisibilityKind::Inherited)
     }
 
     fn is_non_exhaustive_marker(field: &StructField) -> bool {
@@ -141,7 +141,7 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
 
     let fields = data.fields();
     let private_fields = fields.iter().filter(|f| is_private(f)).count();
-    let public_fields = fields.iter().filter(|f| f.vis.node.is_pub()).count();
+    let public_fields = fields.iter().filter(|f| f.vis.kind.is_pub()).count();
 
     if_chain! {
         if private_fields == 1 && public_fields >= 1 && public_fields == fields.len() - 1;

@@ -1,0 +1,14 @@
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/issue-62504.rs:19:25
+   |
+LL |         ArrayHolder([0; Self::SIZE])
+   |                         ^^^^^^^^^^
+   |
+note: not a concrete type
+  --> $DIR/issue-62504.rs:17:22
+   |
+LL | impl<const X: usize> ArrayHolder<X> {
+   |                      ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

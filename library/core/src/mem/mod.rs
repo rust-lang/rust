@@ -31,10 +31,10 @@ pub use crate::intrinsics::transmute;
 /// forever in an unreachable state. However, it does not guarantee that pointers
 /// to this memory will remain valid.
 ///
-/// * If you want to leak memory, see [`Box::leak`][leak].
-/// * If you want to obtain a raw pointer to the memory, see [`Box::into_raw`][into_raw].
+/// * If you want to leak memory, see [`Box::leak`].
+/// * If you want to obtain a raw pointer to the memory, see [`Box::into_raw`].
 /// * If you want to dispose of a value properly, running its destructor, see
-/// [`mem::drop`][drop].
+/// [`mem::drop`].
 ///
 /// # Safety
 ///
@@ -132,15 +132,11 @@ pub use crate::intrinsics::transmute;
 /// ownership to `s` — the final step of interacting with `v` to dispose of it without
 /// running its destructor is entirely avoided.
 ///
-/// [drop]: fn.drop.html
-/// [uninit]: fn.uninitialized.html
-/// [clone]: ../clone/trait.Clone.html
-/// [swap]: fn.swap.html
-/// [box]: ../../std/boxed/struct.Box.html
-/// [leak]: ../../std/boxed/struct.Box.html#method.leak
-/// [into_raw]: ../../std/boxed/struct.Box.html#method.into_raw
+/// [`Box`]: ../../std/boxed/struct.Box.html
+/// [`Box::leak`]: ../../std/boxed/struct.Box.html#method.leak
+/// [`Box::into_raw`]: ../../std/boxed/struct.Box.html#method.into_raw
+/// [`mem::drop`]: drop
 /// [ub]: ../../reference/behavior-considered-undefined.html
-/// [`ManuallyDrop`]: struct.ManuallyDrop.html
 #[inline]
 #[rustc_const_stable(feature = "const_forget", since = "1.46.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -152,8 +148,6 @@ pub const fn forget<T>(t: T) {
 ///
 /// This function is just a shim intended to be removed when the `unsized_locals` feature gets
 /// stabilized.
-///
-/// [`forget`]: fn.forget.html
 #[inline]
 #[unstable(feature = "forget_unsized", issue = "none")]
 pub fn forget_unsized<T: ?Sized>(t: T) {
@@ -301,7 +295,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// assert_eq!(2, mem::size_of::<ExampleUnion>());
 /// ```
 ///
-/// [alignment]: ./fn.align_of.html
+/// [alignment]: align_of
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
@@ -365,7 +359,6 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
-/// [`size_of_val`]: ../../core/mem/fn.size_of_val.html
 ///
 /// # Examples
 ///
@@ -501,7 +494,6 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
-/// [`align_of_val`]: ../../core/mem/fn.align_of_val.html
 ///
 /// # Examples
 ///
@@ -540,7 +532,7 @@ pub unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 /// `needs_drop` explicitly. Types like [`HashMap`], on the other hand, have to drop
 /// values one at a time and should use this API.
 ///
-/// [`drop_in_place`]: ../ptr/fn.drop_in_place.html
+/// [`drop_in_place`]: crate::ptr::drop_in_place
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 ///
 /// # Examples
@@ -595,9 +587,9 @@ pub const fn needs_drop<T>() -> bool {
 /// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
 /// It is useful for FFI sometimes, but should generally be avoided.
 ///
-/// [zeroed]: union.MaybeUninit.html#method.zeroed
+/// [zeroed]: MaybeUninit::zeroed
 /// [ub]: ../../reference/behavior-considered-undefined.html
-/// [inv]: union.MaybeUninit.html#initialization-invariant
+/// [inv]: MaybeUninit#initialization-invariant
 ///
 /// # Examples
 ///
@@ -650,10 +642,10 @@ pub unsafe fn zeroed<T>() -> T {
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
 /// until they are, it is advisable to avoid them.)
 ///
-/// [`MaybeUninit<T>`]: union.MaybeUninit.html
-/// [uninit]: union.MaybeUninit.html#method.uninit
-/// [assume_init]: union.MaybeUninit.html#method.assume_init
-/// [inv]: union.MaybeUninit.html#initialization-invariant
+/// [`MaybeUninit<T>`]: MaybeUninit
+/// [uninit]: MaybeUninit::uninit
+/// [assume_init]: MaybeUninit::assume_init
+/// [inv]: MaybeUninit#initialization-invariant
 #[inline(always)]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -686,9 +678,6 @@ pub unsafe fn uninitialized<T>() -> T {
 /// assert_eq!(42, x);
 /// assert_eq!(5, y);
 /// ```
-///
-/// [`replace`]: fn.replace.html
-/// [`take`]: fn.take.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
@@ -754,10 +743,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// assert_eq!(buffer.get_and_reset(), vec![0, 1]);
 /// assert_eq!(buffer.buf.len(), 0);
 /// ```
-///
-/// [`Clone`]: ../../std/clone/trait.Clone.html
-/// [`replace`]: fn.replace.html
-/// [`swap`]: fn.swap.html
 #[inline]
 #[stable(feature = "mem_take", since = "1.40.0")]
 pub fn take<T: Default>(dest: &mut T) -> T {
@@ -822,10 +807,6 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// assert_eq!(buffer.replace_index(0, 2), 0);
 /// assert_eq!(buffer.buf[0], 2);
 /// ```
-///
-/// [`Clone`]: ../../std/clone/trait.Clone.html
-/// [`swap`]: fn.swap.html
-/// [`take`]: fn.take.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
@@ -851,7 +832,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// Because `_x` is moved into the function, it is automatically dropped before
 /// the function returns.
 ///
-/// [drop]: ../ops/trait.Drop.html
+/// [drop]: Drop
 ///
 /// # Examples
 ///
@@ -894,8 +875,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// println!("x: {}, y: {}", x, y.0); // still available
 /// ```
 ///
-/// [`RefCell`]: ../../std/cell/struct.RefCell.html
-/// [`Copy`]: ../../std/marker/trait.Copy.html
+/// [`RefCell`]: crate::cell::RefCell
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) {}
@@ -914,7 +894,6 @@ pub fn drop<T>(_x: T) {}
 /// `T`.
 ///
 /// [ub]: ../../reference/behavior-considered-undefined.html
-/// [size_of]: fn.size_of.html
 ///
 /// # Examples
 ///
@@ -960,8 +939,6 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 /// Opaque type representing the discriminant of an enum.
 ///
 /// See the [`discriminant`] function in this module for more information.
-///
-/// [`discriminant`]: fn.discriminant.html
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
 

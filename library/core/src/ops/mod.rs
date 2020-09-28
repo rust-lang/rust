@@ -49,18 +49,18 @@
 //! }
 //!
 //! impl Add for Point {
-//!     type Output = Point;
+//!     type Output = Self;
 //!
-//!     fn add(self, other: Point) -> Point {
-//!         Point {x: self.x + other.x, y: self.y + other.y}
+//!     fn add(self, other: Self) -> Self {
+//!         Self {x: self.x + other.x, y: self.y + other.y}
 //!     }
 //! }
 //!
 //! impl Sub for Point {
-//!     type Output = Point;
+//!     type Output = Self;
 //!
-//!     fn sub(self, other: Point) -> Point {
-//!         Point {x: self.x - other.x, y: self.y - other.y}
+//!     fn sub(self, other: Self) -> Self {
+//!         Self {x: self.x - other.x, y: self.y - other.y}
 //!     }
 //! }
 //!

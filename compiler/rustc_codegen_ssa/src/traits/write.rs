@@ -13,6 +13,12 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     type ThinData: Send + Sync;
     type ThinBuffer: ThinBufferMethods;
 
+    /// Merge all modules into main_module and returning it
+    fn run_link(
+        cgcx: &CodegenContext<Self>,
+        diag_handler: &Handler,
+        modules: Vec<ModuleCodegen<Self::Module>>,
+    ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     /// Performs fat LTO by merging all modules into a single one and returning it
     /// for further optimization.
     fn run_fat_lto(

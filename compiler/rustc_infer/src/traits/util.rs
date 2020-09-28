@@ -236,6 +236,9 @@ impl Elaborator<'tcx> {
                         .map(|predicate| predicate_obligation(predicate, None)),
                 );
             }
+            ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                // Nothing to elaborate
+            }
         }
     }
 }

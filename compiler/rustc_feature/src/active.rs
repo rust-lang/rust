@@ -229,7 +229,6 @@ declare_features! (
     (active, powerpc_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
-    (active, mmx_target_feature, "1.27.0", Some(44839), None),
     (active, sse4a_target_feature, "1.27.0", Some(44839), None),
     (active, tbm_target_feature, "1.27.0", Some(44839), None),
     (active, wasm_target_feature, "1.30.0", Some(44839), None),
@@ -403,9 +402,6 @@ declare_features! (
 
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
-
-    /// Allows `#[doc(alias = "...")]`.
-    (active, doc_alias, "1.27.0", Some(50146), None),
 
     /// Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
@@ -585,6 +581,12 @@ declare_features! (
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
+    /// Allows non trivial generic constants which have to be manually propageted upwards.
+    (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
+
+    /// Allows basic arithmetic on floating point types in a `const fn`.
+    (active, const_fn_floating_point_arithmetic, "1.48.0", Some(57241), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -600,6 +602,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics,
     sym::let_chains,
     sym::raw_dylib,
+    sym::const_evaluatable_checked,
     sym::const_trait_impl,
     sym::const_trait_bound_opt_out,
     sym::lazy_normalization_consts,
@@ -607,6 +610,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
 ];
 
 /// Some features are not allowed to be used together at the same time, if
-/// the two are present, produce an error
+/// the two are present, produce an error.
 pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] =
     &[(sym::const_generics, sym::min_const_generics)];

@@ -3,12 +3,12 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(bindings_after_at)]
-#![feature(try_blocks)]
+#![feature(iter_order_by)]
 #![feature(or_patterns)]
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, IsJoint, TokenStream, TokenTree};
+use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
+use rustc_ast::tokenstream::{self, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
@@ -109,7 +109,7 @@ pub fn maybe_new_parser_from_source_str(
 }
 
 /// Creates a new parser, handling errors as appropriate if the file doesn't exist.
-/// If a span is given, that is used on an error as the as the source of the problem.
+/// If a span is given, that is used on an error as the source of the problem.
 pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Span>) -> Parser<'a> {
     source_file_to_parser(sess, file_to_source_file(sess, path, sp))
 }
@@ -200,8 +200,13 @@ pub fn maybe_file_to_stream(
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
-    let srdr = lexer::StringReader::new(sess, source_file, override_span);
-    let (token_trees, unmatched_braces) = srdr.into_token_trees();
+    let src = source_file.src.as_ref().unwrap_or_else(|| {
+        sess.span_diagnostic
+            .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
+    });
+
+    let (token_trees, unmatched_braces) =
+        lexer::parse_token_trees(sess, src.as_str(), source_file.start_pos, override_span);
 
     match token_trees {
         Ok(stream) => Ok((stream, unmatched_braces)),
@@ -263,27 +268,38 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         Nonterminal::NtItem(ref item) => {
             prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
         }
+        Nonterminal::NtBlock(ref block) => block.tokens.clone(),
+        Nonterminal::NtStmt(ref stmt) => {
+            // FIXME: We currently only collect tokens for `:stmt`
+            // matchers in `macro_rules!` macros. When we start collecting
+            // tokens for attributes on statements, we will need to prepend
+            // attributes here
+            stmt.tokens.clone()
+        }
         Nonterminal::NtPat(ref pat) => pat.tokens.clone(),
+        Nonterminal::NtTy(ref ty) => ty.tokens.clone(),
         Nonterminal::NtIdent(ident, is_raw) => {
             Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
         }
         Nonterminal::NtLifetime(ident) => {
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
+        Nonterminal::NtMeta(ref attr) => attr.tokens.clone(),
+        Nonterminal::NtPath(ref path) => path.tokens.clone(),
+        Nonterminal::NtVis(ref vis) => vis.tokens.clone(),
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
-        Nonterminal::NtExpr(ref expr) => {
+        Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             if expr.tokens.is_none() {
                 debug!("missing tokens for expr {:?}", expr);
             }
             prepend_attrs(sess, &expr.attrs, expr.tokens.as_ref(), span)
         }
-        _ => None,
     };
 
     // FIXME(#43081): Avoid this pretty-print + reparse hack
     let source = pprust::nonterminal_to_string(nt);
     let filename = FileName::macro_expansion_source_code(&source);
-    let tokens_for_real = parse_stream_from_source_str(filename, source, sess, Some(span));
+    let reparsed_tokens = parse_stream_from_source_str(filename, source, sess, Some(span));
 
     // During early phases of the compiler the AST could get modified
     // directly (e.g., attributes added or removed) and the internal cache
@@ -309,7 +325,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // modifications, including adding/removing typically non-semantic
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
-        if tokenstream_probably_equal_for_proc_macro(&tokens, &tokens_for_real, sess) {
+        if tokenstream_probably_equal_for_proc_macro(&tokens, &reparsed_tokens, sess) {
             return tokens;
         }
         info!(
@@ -317,9 +333,9 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
                 going with stringified version"
         );
         info!("cached tokens: {:?}", tokens);
-        info!("reparsed tokens: {:?}", tokens_for_real);
+        info!("reparsed tokens: {:?}", reparsed_tokens);
     }
-    tokens_for_real
+    reparsed_tokens
 }
 
 // See comments in `Nonterminal::to_tokenstream` for why we care about
@@ -328,8 +344,8 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
 // This is otherwise the same as `eq_unspanned`, only recursing with a
 // different method.
 pub fn tokenstream_probably_equal_for_proc_macro(
-    first: &TokenStream,
-    other: &TokenStream,
+    tokens: &TokenStream,
+    reparsed_tokens: &TokenStream,
     sess: &ParseSess,
 ) -> bool {
     // When checking for `probably_eq`, we ignore certain tokens that aren't
@@ -343,11 +359,14 @@ pub fn tokenstream_probably_equal_for_proc_macro(
                 // The pretty printer tends to add trailing commas to
                 // everything, and in particular, after struct fields.
                 | token::Comma
-                // The pretty printer emits `NoDelim` as whitespace.
-                | token::OpenDelim(DelimToken::NoDelim)
-                | token::CloseDelim(DelimToken::NoDelim)
                 // The pretty printer collapses many semicolons into one.
                 | token::Semi
+                // We don't preserve leading `|` tokens in patterns, so
+                // we ignore them entirely
+                | token::BinOp(token::BinOpToken::Or)
+                // We don't preserve trailing '+' tokens in trait bounds,
+                // so we ignore them entirely
+                | token::BinOp(token::BinOpToken::Plus)
                 // The pretty printer can turn `$crate` into `::crate_name`
                 | token::ModSep = token.kind {
                 return false;
@@ -432,20 +451,17 @@ pub fn tokenstream_probably_equal_for_proc_macro(
             // issue #75734 tracks resolving this.
             nt_to_tokenstream(nt, sess, *span).into_trees()
         } else {
-            TokenStream::new(vec![(tree, IsJoint::NonJoint)]).into_trees()
+            TokenStream::new(vec![(tree, Spacing::Alone)]).into_trees()
         }
     };
 
     // Break tokens after we expand any nonterminals, so that we break tokens
     // that are produced as a result of nonterminal expansion.
-    let mut t1 = first.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
-    let mut t2 = other.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
-    for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
-        if !tokentree_probably_equal_for_proc_macro(&t1, &t2, sess) {
-            return false;
-        }
-    }
-    t1.next().is_none() && t2.next().is_none()
+    let tokens = tokens.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
+    let reparsed_tokens =
+        reparsed_tokens.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
+
+    tokens.eq_by(reparsed_tokens, |t, rt| tokentree_probably_equal_for_proc_macro(&t, &rt, sess))
 }
 
 // See comments in `Nonterminal::to_tokenstream` for why we care about
@@ -454,16 +470,20 @@ pub fn tokenstream_probably_equal_for_proc_macro(
 // This is otherwise the same as `eq_unspanned`, only recursing with a
 // different method.
 pub fn tokentree_probably_equal_for_proc_macro(
-    first: &TokenTree,
-    other: &TokenTree,
+    token: &TokenTree,
+    reparsed_token: &TokenTree,
     sess: &ParseSess,
 ) -> bool {
-    match (first, other) {
-        (TokenTree::Token(token), TokenTree::Token(token2)) => {
-            token_probably_equal_for_proc_macro(token, token2)
+    match (token, reparsed_token) {
+        (TokenTree::Token(token), TokenTree::Token(reparsed_token)) => {
+            token_probably_equal_for_proc_macro(token, reparsed_token)
         }
-        (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
-            delim == delim2 && tokenstream_probably_equal_for_proc_macro(&tts, &tts2, sess)
+        (
+            TokenTree::Delimited(_, delim, tokens),
+            TokenTree::Delimited(_, reparsed_delim, reparsed_tokens),
+        ) => {
+            delim == reparsed_delim
+                && tokenstream_probably_equal_for_proc_macro(tokens, reparsed_tokens, sess)
         }
         _ => false,
     }

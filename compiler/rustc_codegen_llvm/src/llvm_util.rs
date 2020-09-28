@@ -203,7 +203,6 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("fma", None),
     ("fxsr", None),
     ("lzcnt", None),
-    ("mmx", Some(sym::mmx_target_feature)),
     ("movbe", Some(sym::movbe_target_feature)),
     ("pclmulqdq", None),
     ("popcnt", None),

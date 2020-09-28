@@ -1,3 +1,4 @@
+mod borrow;
 pub mod map;
 mod navigate;
 mod node;
@@ -13,6 +14,9 @@ trait Recover<Q: ?Sized> {
     fn replace(&mut self, key: Self::Key) -> Option<Self::Key>;
 }
 
+/// Same purpose as `Option::unwrap` but doesn't always guarantee a panic
+/// if the option contains no value.
+/// SAFETY: the caller must ensure that the option contains a value.
 #[inline(always)]
 pub unsafe fn unwrap_unchecked<T>(val: Option<T>) -> T {
     val.unwrap_or_else(|| {

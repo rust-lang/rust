@@ -11,7 +11,6 @@ use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size};
 
-#[allow(dead_code)]
 fn round_pointer_up_to_alignment(
     bx: &mut Builder<'a, 'll, 'tcx>,
     addr: &'ll Value,

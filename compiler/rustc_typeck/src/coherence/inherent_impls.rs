@@ -308,18 +308,25 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
             }
             ty::Error(_) => {}
             _ => {
-                struct_span_err!(
+                let mut err = struct_span_err!(
                     self.tcx.sess,
                     ty.span,
                     E0118,
-                    "no base type found for inherent implementation"
-                )
-                .span_label(ty.span, "impl requires a base type")
-                .note(
-                    "either implement a trait on it or create a newtype \
-                       to wrap it instead",
-                )
-                .emit();
+                    "no nominal type found for inherent implementation"
+                );
+
+                err.span_label(ty.span, "impl requires a nominal type")
+                    .note("either implement a trait on it or create a newtype to wrap it instead");
+
+                if let ty::Ref(_, subty, _) = self_ty.kind() {
+                    err.note(&format!(
+                        "you could also try moving the reference to \
+                            uses of `{}` (such as `self`) within the implementation",
+                        subty
+                    ));
+                }
+
+                err.emit();
             }
         }
     }

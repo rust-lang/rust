@@ -61,15 +61,15 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
     let median = bs.ns_iter_summ.median as usize;
     let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
 
-    output
-        .write_fmt(format_args!(
-            "{:>11} ns/iter (+/- {})",
-            fmt_thousands_sep(median, ','),
-            fmt_thousands_sep(deviation, ',')
-        ))
-        .unwrap();
+    write!(
+        output,
+        "{:>11} ns/iter (+/- {})",
+        fmt_thousands_sep(median, ','),
+        fmt_thousands_sep(deviation, ',')
+    )
+    .unwrap();
     if bs.mb_s != 0 {
-        output.write_fmt(format_args!(" = {} MB/s", bs.mb_s)).unwrap();
+        write!(output, " = {} MB/s", bs.mb_s).unwrap();
     }
     output
 }
@@ -83,9 +83,9 @@ fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
         let base = 10_usize.pow(pow);
         if pow == 0 || trailing || n / base != 0 {
             if !trailing {
-                output.write_fmt(format_args!("{}", n / base)).unwrap();
+                write!(output, "{}", n / base).unwrap();
             } else {
-                output.write_fmt(format_args!("{:03}", n / base)).unwrap();
+                write!(output, "{:03}", n / base).unwrap();
             }
             if pow != 0 {
                 output.push(sep);
@@ -98,10 +98,6 @@ fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
     output
 }
 
-fn ns_from_dur(dur: Duration) -> u64 {
-    dur.as_secs() * 1_000_000_000 + (dur.subsec_nanos() as u64)
-}
-
 fn ns_iter_inner<T, F>(inner: &mut F, k: u64) -> u64
 where
     F: FnMut() -> T,
@@ -110,7 +106,7 @@ where
     for _ in 0..k {
         black_box(inner());
     }
-    ns_from_dur(start.elapsed())
+    start.elapsed().as_nanos() as u64
 }
 
 pub fn iter<T, F>(inner: &mut F) -> stats::Summary

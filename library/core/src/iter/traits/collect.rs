@@ -1,20 +1,14 @@
-/// Conversion from an `Iterator`.
+/// Conversion from an [`Iterator`].
 ///
 /// By implementing `FromIterator` for a type, you define how it will be
 /// created from an iterator. This is common for types which describe a
 /// collection of some kind.
 ///
-/// `FromIterator`'s [`from_iter`] is rarely called explicitly, and is instead
-/// used through [`Iterator`]'s [`collect`] method. See [`collect`]'s
+/// [`FromIterator::from_iter()`] is rarely called explicitly, and is instead
+/// used through [`Iterator::collect()`] method. See [`Iterator::collect()`]'s
 /// documentation for more examples.
 ///
-/// [`from_iter`]: #tymethod.from_iter
-/// [`Iterator`]: trait.Iterator.html
-/// [`collect`]: trait.Iterator.html#method.collect
-///
 /// See also: [`IntoIterator`].
-///
-/// [`IntoIterator`]: trait.IntoIterator.html
 ///
 /// # Examples
 ///
@@ -30,7 +24,7 @@
 /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
 /// ```
 ///
-/// Using [`collect`] to implicitly use `FromIterator`:
+/// Using [`Iterator::collect()`] to implicitly use `FromIterator`:
 ///
 /// ```
 /// let five_fives = std::iter::repeat(5).take(5);
@@ -119,7 +113,7 @@ pub trait FromIterator<A>: Sized {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
-/// Conversion into an `Iterator`.
+/// Conversion into an [`Iterator`].
 ///
 /// By implementing `IntoIterator` for a type, you define how it will be
 /// converted to an iterator. This is common for types which describe a
@@ -129,8 +123,6 @@ pub trait FromIterator<A>: Sized {
 /// with Rust's `for` loop syntax](index.html#for-loops-and-intoiterator).
 ///
 /// See also: [`FromIterator`].
-///
-/// [`FromIterator`]: trait.FromIterator.html
 ///
 /// # Examples
 ///
@@ -326,7 +318,7 @@ pub trait Extend<A> {
     /// As this is the only required method for this trait, the [trait-level] docs
     /// contain more details.
     ///
-    /// [trait-level]: trait.Extend.html
+    /// [trait-level]: Extend
     ///
     /// # Examples
     ///

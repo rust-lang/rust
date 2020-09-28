@@ -21,7 +21,6 @@ use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
 use std::ffi::CStr;
-use std::iter::TrustedLen;
 use std::ops::{Deref, Range};
 use std::ptr;
 use tracing::debug;
@@ -179,7 +178,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         v: &'ll Value,
         else_llbb: &'ll BasicBlock,
-        cases: impl ExactSizeIterator<Item = (u128, &'ll BasicBlock)> + TrustedLen,
+        cases: impl ExactSizeIterator<Item = (u128, &'ll BasicBlock)>,
     ) {
         let switch =
             unsafe { llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, cases.len() as c_uint) };
@@ -931,7 +930,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildSelect(self.llbuilder, cond, then_val, else_val, UNNAMED) }
     }
 
-    #[allow(dead_code)]
     fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildVAArg(self.llbuilder, list, ty, UNNAMED) }
     }

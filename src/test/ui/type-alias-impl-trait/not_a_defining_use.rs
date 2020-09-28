@@ -7,6 +7,7 @@ fn main() {}
 type Two<T, U> = impl Debug;
 
 fn two<T: Debug>(t: T) -> Two<T, u32> {
+    //~^ ERROR non-defining opaque type use in defining scope
     (t, 4i8)
 }
 
@@ -24,9 +25,7 @@ impl Bar for u32 {
     const FOO: i32 = 42;
 }
 
-// this should work! But it requires `two` and `three` not to be defining uses,
-// just restricting uses
-fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> { //~ concrete type differs from previous
+fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
     (t, <U as Bar>::FOO)
 }
 

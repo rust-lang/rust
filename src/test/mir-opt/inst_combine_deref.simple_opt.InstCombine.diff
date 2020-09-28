@@ -1,0 +1,34 @@
+- // MIR for `simple_opt` before InstCombine
++ // MIR for `simple_opt` after InstCombine
+  
+  fn simple_opt() -> u64 {
+      let mut _0: u64;                     // return place in scope 0 at $DIR/inst_combine_deref.rs:3:20: 3:23
+      let _1: u64;                         // in scope 0 at $DIR/inst_combine_deref.rs:4:9: 4:10
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/inst_combine_deref.rs:4:9: 4:10
+          let _2: &u64;                    // in scope 1 at $DIR/inst_combine_deref.rs:5:9: 5:10
+          scope 2 {
+              debug y => _2;               // in scope 2 at $DIR/inst_combine_deref.rs:5:9: 5:10
+              let _3: u64;                 // in scope 2 at $DIR/inst_combine_deref.rs:6:9: 6:10
+              scope 3 {
+                  debug z => _3;           // in scope 3 at $DIR/inst_combine_deref.rs:6:9: 6:10
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inst_combine_deref.rs:4:9: 4:10
+          _1 = const 5_u64;                // scope 0 at $DIR/inst_combine_deref.rs:4:13: 4:14
+          StorageLive(_2);                 // scope 1 at $DIR/inst_combine_deref.rs:5:9: 5:10
+          _2 = &_1;                        // scope 1 at $DIR/inst_combine_deref.rs:5:13: 5:15
+          StorageLive(_3);                 // scope 2 at $DIR/inst_combine_deref.rs:6:9: 6:10
+-         _3 = (*_2);                      // scope 2 at $DIR/inst_combine_deref.rs:6:13: 6:15
++         _3 = _1;                         // scope 2 at $DIR/inst_combine_deref.rs:6:13: 6:15
+          _0 = _3;                         // scope 3 at $DIR/inst_combine_deref.rs:7:5: 7:6
+          StorageDead(_3);                 // scope 2 at $DIR/inst_combine_deref.rs:8:1: 8:2
+          StorageDead(_2);                 // scope 1 at $DIR/inst_combine_deref.rs:8:1: 8:2
+          StorageDead(_1);                 // scope 0 at $DIR/inst_combine_deref.rs:8:1: 8:2
+          return;                          // scope 0 at $DIR/inst_combine_deref.rs:8:2: 8:2
+      }
+  }
+  

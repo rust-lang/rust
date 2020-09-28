@@ -4,16 +4,15 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(negative_impls)]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
 #![feature(min_specialization)]
 #![feature(option_expect_none)]
-#![feature(refcell_take)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -544,6 +543,12 @@ impl Span {
     }
 
     /// Returns a `Span` that would enclose both `self` and `end`.
+    ///
+    /// ```text
+    ///     ____             ___
+    ///     self lorem ipsum end
+    ///     ^^^^^^^^^^^^^^^^^^^^
+    /// ```
     pub fn to(self, end: Span) -> Span {
         let span_data = self.data();
         let end_data = end.data();
@@ -567,6 +572,12 @@ impl Span {
     }
 
     /// Returns a `Span` between the end of `self` to the beginning of `end`.
+    ///
+    /// ```text
+    ///     ____             ___
+    ///     self lorem ipsum end
+    ///         ^^^^^^^^^^^^^
+    /// ```
     pub fn between(self, end: Span) -> Span {
         let span = self.data();
         let end = end.data();
@@ -577,7 +588,13 @@ impl Span {
         )
     }
 
-    /// Returns a `Span` between the beginning of `self` to the beginning of `end`.
+    /// Returns a `Span` from the beginning of `self` until the beginning of `end`.
+    ///
+    /// ```text
+    ///     ____             ___
+    ///     self lorem ipsum end
+    ///     ^^^^^^^^^^^^^^^^^
+    /// ```
     pub fn until(self, end: Span) -> Span {
         let span = self.data();
         let end = end.data();
@@ -1140,7 +1157,12 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     let max_line_length = if lines.len() == 1 {
                         0
                     } else {
-                        lines.windows(2).map(|w| w[1] - w[0]).map(|bp| bp.to_usize()).max().unwrap()
+                        lines
+                            .array_windows()
+                            .map(|&[fst, snd]| snd - fst)
+                            .map(|bp| bp.to_usize())
+                            .max()
+                            .unwrap()
                     };
 
                     let bytes_per_diff: u8 = match max_line_length {
@@ -1155,7 +1177,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     // Encode the first element.
                     lines[0].encode(s)?;
 
-                    let diff_iter = (&lines[..]).windows(2).map(|w| (w[1] - w[0]));
+                    let diff_iter = lines[..].array_windows().map(|&[fst, snd]| snd - fst);
 
                     match bytes_per_diff {
                         1 => {
@@ -1536,58 +1558,71 @@ pub trait Pos {
     fn to_u32(&self) -> u32;
 }
 
-/// A byte offset. Keep this small (currently 32-bits), as AST contains
-/// a lot of them.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
-pub struct BytePos(pub u32);
+macro_rules! impl_pos {
+    (
+        $(
+            $(#[$attr:meta])*
+            $vis:vis struct $ident:ident($inner_vis:vis $inner_ty:ty);
+        )*
+    ) => {
+        $(
+            $(#[$attr])*
+            $vis struct $ident($inner_vis $inner_ty);
 
-/// A character offset. Because of multibyte UTF-8 characters, a byte offset
-/// is not equivalent to a character offset. The `SourceMap` will convert `BytePos`
-/// values to `CharPos` values as necessary.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct CharPos(pub usize);
+            impl Pos for $ident {
+                #[inline(always)]
+                fn from_usize(n: usize) -> $ident {
+                    $ident(n as $inner_ty)
+                }
 
-// FIXME: lots of boilerplate in these impls, but so far my attempts to fix
-// have been unsuccessful.
+                #[inline(always)]
+                fn to_usize(&self) -> usize {
+                    self.0 as usize
+                }
 
-impl Pos for BytePos {
-    #[inline(always)]
-    fn from_usize(n: usize) -> BytePos {
-        BytePos(n as u32)
-    }
+                #[inline(always)]
+                fn from_u32(n: u32) -> $ident {
+                    $ident(n as $inner_ty)
+                }
 
-    #[inline(always)]
-    fn to_usize(&self) -> usize {
-        self.0 as usize
-    }
+                #[inline(always)]
+                fn to_u32(&self) -> u32 {
+                    self.0 as u32
+                }
+            }
 
-    #[inline(always)]
-    fn from_u32(n: u32) -> BytePos {
-        BytePos(n)
-    }
+            impl Add for $ident {
+                type Output = $ident;
 
-    #[inline(always)]
-    fn to_u32(&self) -> u32 {
-        self.0
-    }
+                #[inline(always)]
+                fn add(self, rhs: $ident) -> $ident {
+                    $ident(self.0 + rhs.0)
+                }
+            }
+
+            impl Sub for $ident {
+                type Output = $ident;
+
+                #[inline(always)]
+                fn sub(self, rhs: $ident) -> $ident {
+                    $ident(self.0 - rhs.0)
+                }
+            }
+        )*
+    };
 }
 
-impl Add for BytePos {
-    type Output = BytePos;
+impl_pos! {
+    /// A byte offset. Keep this small (currently 32-bits), as AST contains
+    /// a lot of them.
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+    pub struct BytePos(pub u32);
 
-    #[inline(always)]
-    fn add(self, rhs: BytePos) -> BytePos {
-        BytePos((self.to_usize() + rhs.to_usize()) as u32)
-    }
-}
-
-impl Sub for BytePos {
-    type Output = BytePos;
-
-    #[inline(always)]
-    fn sub(self, rhs: BytePos) -> BytePos {
-        BytePos((self.to_usize() - rhs.to_usize()) as u32)
-    }
+    /// A character offset. Because of multibyte UTF-8 characters, a byte offset
+    /// is not equivalent to a character offset. The `SourceMap` will convert `BytePos`
+    /// values to `CharPos` values as necessary.
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+    pub struct CharPos(pub usize);
 }
 
 impl<S: rustc_serialize::Encoder> Encodable<S> for BytePos {
@@ -1599,46 +1634,6 @@ impl<S: rustc_serialize::Encoder> Encodable<S> for BytePos {
 impl<D: rustc_serialize::Decoder> Decodable<D> for BytePos {
     fn decode(d: &mut D) -> Result<BytePos, D::Error> {
         Ok(BytePos(d.read_u32()?))
-    }
-}
-
-impl Pos for CharPos {
-    #[inline(always)]
-    fn from_usize(n: usize) -> CharPos {
-        CharPos(n)
-    }
-
-    #[inline(always)]
-    fn to_usize(&self) -> usize {
-        self.0
-    }
-
-    #[inline(always)]
-    fn from_u32(n: u32) -> CharPos {
-        CharPos(n as usize)
-    }
-
-    #[inline(always)]
-    fn to_u32(&self) -> u32 {
-        self.0 as u32
-    }
-}
-
-impl Add for CharPos {
-    type Output = CharPos;
-
-    #[inline(always)]
-    fn add(self, rhs: CharPos) -> CharPos {
-        CharPos(self.to_usize() + rhs.to_usize())
-    }
-}
-
-impl Sub for CharPos {
-    type Output = CharPos;
-
-    #[inline(always)]
-    fn sub(self, rhs: CharPos) -> CharPos {
-        CharPos(self.to_usize() - rhs.to_usize())
     }
 }
 

@@ -7,6 +7,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
+use build_helper::t;
 use getopts::Options;
 
 use crate::builder::Builder;
@@ -19,9 +20,10 @@ pub struct Flags {
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Vec<u32>,
+    pub keep_stage_std: Vec<u32>,
 
-    pub host: Vec<TargetSelection>,
-    pub target: Vec<TargetSelection>,
+    pub host: Option<Vec<TargetSelection>>,
+    pub target: Option<Vec<TargetSelection>>,
     pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
@@ -88,6 +90,9 @@ pub enum Subcommand {
     Run {
         paths: Vec<PathBuf>,
     },
+    Setup {
+        path: String,
+    },
 }
 
 impl Default for Subcommand {
@@ -98,7 +103,6 @@ impl Default for Subcommand {
 
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
-        let mut extra_help = String::new();
         let mut subcommand_help = String::from(
             "\
 Usage: x.py <subcommand> [options] [<paths>...]
@@ -145,6 +149,13 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             (pass multiple times to keep e.g., both stages 0 and 1)",
             "N",
         );
+        opts.optmulti(
+            "",
+            "keep-stage-std",
+            "stage(s) of the standard library to keep without recompiling \
+            (pass multiple times to keep e.g., both stages 0 and 1)",
+            "N",
+        );
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         let j_msg = format!(
             "number of jobs to run in parallel; \
@@ -170,16 +181,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "VALUE",
         );
 
-        // fn usage()
-        let usage =
-            |exit_code: i32, opts: &Options, subcommand_help: &str, extra_help: &str| -> ! {
-                println!("{}", opts.usage(subcommand_help));
-                if !extra_help.is_empty() {
-                    println!("{}", extra_help);
-                }
-                process::exit(exit_code);
-            };
-
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
         // the subcommand. Therefore we must manually identify the subcommand first, so that we can
@@ -202,6 +203,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 || (s == "install")
                 || (s == "run")
                 || (s == "r")
+                || (s == "setup")
         });
         let subcommand = match subcommand {
             Some(s) => s,
@@ -263,12 +265,38 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             _ => {}
         };
 
+        // fn usage()
+        let usage = |exit_code: i32, opts: &Options, verbose: bool, subcommand_help: &str| -> ! {
+            let mut extra_help = String::new();
+
+            // All subcommands except `clean` can have an optional "Available paths" section
+            if verbose {
+                let config = Config::parse(&["build".to_string()]);
+                let build = Build::new(config);
+
+                let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
+                extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
+            } else if !(subcommand.as_str() == "clean" || subcommand.as_str() == "fmt") {
+                extra_help.push_str(
+                    format!("Run `./x.py {} -h -v` to see a list of available paths.", subcommand)
+                        .as_str(),
+                );
+            }
+
+            println!("{}", opts.usage(subcommand_help));
+            if !extra_help.is_empty() {
+                println!("{}", extra_help);
+            }
+            process::exit(exit_code);
+        };
+
         // Done specifying what options are possible, so do the getopts parsing
         let matches = opts.parse(&args[..]).unwrap_or_else(|e| {
             // Invalid argument/option format
             println!("\n{}\n", e);
-            usage(1, &opts, &subcommand_help, &extra_help);
+            usage(1, &opts, false, &subcommand_help);
         });
+
         // Extra sanity check to make sure we didn't hit this crazy corner case:
         //
         //     ./x.py --frobulate clean build
@@ -430,30 +458,28 @@ Arguments:
     At least a tool needs to be called.",
                 );
             }
+            "setup" => {
+                subcommand_help.push_str(
+                    "\n
+Arguments:
+    This subcommand accepts a 'profile' to use for builds. For example:
+
+        ./x.py setup library
+
+    The profile is optional and you will be prompted interactively if it is not given.",
+                );
+            }
             _ => {}
         };
         // Get any optional paths which occur after the subcommand
-        let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
+        let mut paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
         let cfg_file = env::var_os("BOOTSTRAP_CONFIG").map(PathBuf::from);
-
-        // All subcommands except `clean` can have an optional "Available paths" section
-        if matches.opt_present("verbose") {
-            let config = Config::parse(&["build".to_string()]);
-            let build = Build::new(config);
-
-            let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
-            extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
-        } else if !(subcommand.as_str() == "clean" || subcommand.as_str() == "fmt") {
-            extra_help.push_str(
-                format!("Run `./x.py {} -h -v` to see a list of available paths.", subcommand)
-                    .as_str(),
-            );
-        }
+        let verbose = matches.opt_present("verbose");
 
         // User passed in -h/--help?
         if matches.opt_present("help") {
-            usage(0, &opts, &subcommand_help, &extra_help);
+            usage(0, &opts, verbose, &subcommand_help);
         }
 
         let cmd = match subcommand.as_str() {
@@ -483,7 +509,7 @@ Arguments:
             "clean" => {
                 if !paths.is_empty() {
                     println!("\nclean does not take a path argument\n");
-                    usage(1, &opts, &subcommand_help, &extra_help);
+                    usage(1, &opts, verbose, &subcommand_help);
                 }
 
                 Subcommand::Clean { all: matches.opt_present("all") }
@@ -494,12 +520,26 @@ Arguments:
             "run" | "r" => {
                 if paths.is_empty() {
                     println!("\nrun requires at least a path!\n");
-                    usage(1, &opts, &subcommand_help, &extra_help);
+                    usage(1, &opts, verbose, &subcommand_help);
                 }
                 Subcommand::Run { paths }
             }
+            "setup" => {
+                let path = if paths.len() > 1 {
+                    println!("\nat most one profile can be passed to setup\n");
+                    usage(1, &opts, verbose, &subcommand_help)
+                } else if let Some(path) = paths.pop() {
+                    t!(path.into_os_string().into_string().map_err(|path| format!(
+                        "{} is not a valid UTF8 string",
+                        path.to_string_lossy()
+                    )))
+                } else {
+                    t!(crate::setup::interactive_path())
+                };
+                Subcommand::Setup { path }
+            }
             _ => {
-                usage(1, &opts, &subcommand_help, &extra_help);
+                usage(1, &opts, verbose, &subcommand_help);
             }
         };
 
@@ -508,7 +548,9 @@ Arguments:
                 println!("--stage not supported for x.py check, always treated as stage 0");
                 process::exit(1);
             }
-            if matches.opt_str("keep-stage").is_some() {
+            if matches.opt_str("keep-stage").is_some()
+                || matches.opt_str("keep-stage-std").is_some()
+            {
                 println!("--keep-stage not supported for x.py check, only one stage available");
                 process::exit(1);
             }
@@ -526,14 +568,31 @@ Arguments:
                 .into_iter()
                 .map(|j| j.parse().expect("`keep-stage` should be a number"))
                 .collect(),
-            host: split(&matches.opt_strs("host"))
+            keep_stage_std: matches
+                .opt_strs("keep-stage-std")
                 .into_iter()
-                .map(|x| TargetSelection::from_user(&x))
-                .collect::<Vec<_>>(),
-            target: split(&matches.opt_strs("target"))
-                .into_iter()
-                .map(|x| TargetSelection::from_user(&x))
-                .collect::<Vec<_>>(),
+                .map(|j| j.parse().expect("`keep-stage-std` should be a number"))
+                .collect(),
+            host: if matches.opt_present("host") {
+                Some(
+                    split(&matches.opt_strs("host"))
+                        .into_iter()
+                        .map(|x| TargetSelection::from_user(&x))
+                        .collect::<Vec<_>>(),
+                )
+            } else {
+                None
+            },
+            target: if matches.opt_present("target") {
+                Some(
+                    split(&matches.opt_strs("target"))
+                        .into_iter()
+                        .map(|x| TargetSelection::from_user(&x))
+                        .collect::<Vec<_>>(),
+                )
+            } else {
+                None
+            },
             config: cfg_file,
             jobs: matches.opt_str("jobs").map(|j| j.parse().expect("`jobs` should be a number")),
             cmd,

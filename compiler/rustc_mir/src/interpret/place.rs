@@ -13,9 +13,9 @@ use rustc_target::abi::{Abi, Align, FieldsShape, TagEncoding};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
-    mir_assign_valid_types, truncate, AllocId, AllocMap, Allocation, AllocationExtra, ImmTy,
-    Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer,
-    PointerArithmetic, RawConst, Scalar, ScalarMaybeUninit,
+    mir_assign_valid_types, truncate, AllocId, AllocMap, Allocation, AllocationExtra, ConstAlloc,
+    ImmTy, Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand,
+    Pointer, PointerArithmetic, Scalar, ScalarMaybeUninit,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -551,7 +551,7 @@ where
                 let n = base.len(self)?;
                 if n < min_length {
                     // This can only be reached in ConstProp and non-rustc-MIR.
-                    throw_ub!(BoundsCheckFailed { len: min_length.into(), index: n });
+                    throw_ub!(BoundsCheckFailed { len: min_length, index: n });
                 }
 
                 let index = if from_end {
@@ -565,9 +565,7 @@ where
                 self.mplace_index(base, index)?
             }
 
-            Subslice { from, to, from_end } => {
-                self.mplace_subslice(base, u64::from(from), u64::from(to), from_end)?
-            }
+            Subslice { from, to, from_end } => self.mplace_subslice(base, from, to, from_end)?,
         })
     }
 
@@ -1122,7 +1120,7 @@ where
 
     pub fn raw_const_to_mplace(
         &self,
-        raw: RawConst<'tcx>,
+        raw: ConstAlloc<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // This must be an allocation in `tcx`
         let _ = self.tcx.global_alloc(raw.alloc_id);

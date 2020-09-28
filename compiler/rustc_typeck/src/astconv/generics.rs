@@ -3,7 +3,7 @@ use crate::astconv::{
 };
 use crate::errors::AssocTypeBindingNotAllowed;
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{pluralize, struct_span_err, DiagnosticId, ErrorReported};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GenericArg, GenericArgs};
@@ -368,7 +368,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if position != GenericArgPosition::Type && !args.bindings.is_empty() {
-            Self::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
+            AstConv::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
         }
 
         let explicit_late_bound =
@@ -393,7 +393,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             if silent {
-                return Err(true);
+                return Err((0i32, None));
             }
 
             // Unfortunately lifetime and type parameter mismatches are typically styled
@@ -442,16 +442,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             for span in spans {
                 err.span_label(span, label.as_str());
             }
-            err.emit();
 
-            Err(true)
+            assert_ne!(bound, provided);
+            Err((bound as i32 - provided as i32, Some(err)))
         };
 
-        let mut arg_count_correct = Ok(());
         let mut unexpected_spans = vec![];
 
+        let mut lifetime_count_correct = Ok(());
         if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
-            arg_count_correct = check_kind_count(
+            lifetime_count_correct = check_kind_count(
                 "lifetime",
                 param_counts.lifetimes,
                 param_counts.lifetimes,
@@ -459,12 +459,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 0,
                 &mut unexpected_spans,
                 explicit_late_bound == ExplicitLateBound::Yes,
-            )
-            .and(arg_count_correct);
+            );
         }
+
         // FIXME(const_generics:defaults)
+        let mut const_count_correct = Ok(());
         if !infer_args || arg_counts.consts > param_counts.consts {
-            arg_count_correct = check_kind_count(
+            const_count_correct = check_kind_count(
                 "const",
                 param_counts.consts,
                 param_counts.consts,
@@ -472,13 +473,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 arg_counts.lifetimes + arg_counts.types,
                 &mut unexpected_spans,
                 false,
-            )
-            .and(arg_count_correct);
+            );
         }
+
         // Note that type errors are currently be emitted *after* const errors.
+        let mut type_count_correct = Ok(());
         if !infer_args || arg_counts.types > param_counts.types - defaults.types - has_self as usize
         {
-            arg_count_correct = check_kind_count(
+            type_count_correct = check_kind_count(
                 "type",
                 param_counts.types - defaults.types - has_self as usize,
                 param_counts.types - has_self as usize,
@@ -486,14 +488,54 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 arg_counts.lifetimes,
                 &mut unexpected_spans,
                 false,
-            )
-            .and(arg_count_correct);
+            );
         }
+
+        // Emit a help message if it's possible that a type could be surrounded in braces
+        if let Err((c_mismatch, Some(ref mut _const_err))) = const_count_correct {
+            if let Err((_, Some(ref mut type_err))) = type_count_correct {
+                let possible_matches = args.args[arg_counts.lifetimes..]
+                    .iter()
+                    .filter(|arg| {
+                        matches!(
+                            arg,
+                            GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. })
+                        )
+                    })
+                    .take(c_mismatch.max(0) as usize);
+                for arg in possible_matches {
+                    let suggestions = vec![
+                        (arg.span().shrink_to_lo(), String::from("{ ")),
+                        (arg.span().shrink_to_hi(), String::from(" }")),
+                    ];
+                    type_err.multipart_suggestion(
+                        "If this generic argument was intended as a const parameter, \
+                        try surrounding it with braces:",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+
+        let emit_correct =
+            |correct: Result<(), (_, Option<rustc_errors::DiagnosticBuilder<'_>>)>| match correct {
+                Ok(()) => Ok(()),
+                Err((_, None)) => Err(()),
+                Err((_, Some(mut err))) => {
+                    err.emit();
+                    Err(())
+                }
+            };
+
+        let arg_count_correct = emit_correct(lifetime_count_correct)
+            .and(emit_correct(const_count_correct))
+            .and(emit_correct(type_count_correct));
 
         GenericArgCountResult {
             explicit_late_bound,
-            correct: arg_count_correct.map_err(|reported_err| GenericArgCountMismatch {
-                reported: if reported_err { Some(ErrorReported) } else { None },
+            correct: arg_count_correct.map_err(|()| GenericArgCountMismatch {
+                reported: Some(ErrorReported),
                 invalid_args: unexpected_spans,
             }),
         }

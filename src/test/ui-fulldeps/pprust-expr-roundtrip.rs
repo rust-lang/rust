@@ -62,7 +62,7 @@ fn expr(kind: ExprKind) -> P<Expr> {
 
 fn make_x() -> P<Expr> {
     let seg = PathSegment::from_ident(Ident::from_str("x"));
-    let path = Path { segments: vec![seg], span: DUMMY_SP };
+    let path = Path { segments: vec![seg], span: DUMMY_SP, tokens: None };
     expr(ExprKind::Path(None, path))
 }
 
@@ -113,6 +113,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                     id: DUMMY_NODE_ID,
                     rules: BlockCheckMode::Default,
                     span: DUMMY_SP,
+                    tokens: None,
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             },

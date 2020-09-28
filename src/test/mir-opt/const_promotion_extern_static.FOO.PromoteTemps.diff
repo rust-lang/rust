@@ -24,7 +24,7 @@
 -                                          // + ty: &i32
 -                                          // + val: Value(Scalar(alloc2))
 +                                          // + ty: &[&i32; 1]
-+                                          // + val: Unevaluated(WithOptConstParam { did: DefId(0:7 ~ const_promotion_extern_static[317d]::FOO[0]), const_param_did: None }, [], Some(promoted[0]))
++                                          // + val: Unevaluated(WithOptConstParam { did: DefId(0:7 ~ const_promotion_extern_static[317d]::FOO), const_param_did: None }, [], Some(promoted[0]))
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:13:42: 13:43
 -                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc2)) }
@@ -32,7 +32,7 @@
 -         _3 = [move _4];                  // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
 -         _2 = &_3;                        // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
 +                                          // + span: $DIR/const-promotion-extern-static.rs:13:31: 13:46
-+                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(WithOptConstParam { did: DefId(0:7 ~ const_promotion_extern_static[317d]::FOO[0]), const_param_did: None }, [], Some(promoted[0])) }
++                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(WithOptConstParam { did: DefId(0:7 ~ const_promotion_extern_static[317d]::FOO), const_param_did: None }, [], Some(promoted[0])) }
 +         _2 = &(*_6);                     // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
           _1 = move _2 as &[&i32] (Pointer(Unsize)); // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
           _0 = core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1]; // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55

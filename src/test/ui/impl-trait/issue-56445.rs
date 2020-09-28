@@ -5,8 +5,7 @@
 
 use std::marker::PhantomData;
 
-pub struct S<'a>
-{
+pub struct S<'a> {
     pub m1: PhantomData<&'a u8>,
     pub m2: [u8; S::size()],
 }

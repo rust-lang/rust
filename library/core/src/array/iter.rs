@@ -103,7 +103,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
             // dead now (i.e. do not touch). As `idx` was the start of the
             // alive-zone, the alive zone is now `data[alive]` again, restoring
             // all invariants.
-            unsafe { self.data.get_unchecked(idx).read() }
+            unsafe { self.data.get_unchecked(idx).assume_init_read() }
         })
     }
 
@@ -136,7 +136,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
             // dead now (i.e. do not touch). As `idx` was the end of the
             // alive-zone, the alive zone is now `data[alive]` again, restoring
             // all invariants.
-            unsafe { self.data.get_unchecked(idx).read() }
+            unsafe { self.data.get_unchecked(idx).assume_init_read() }
         })
     }
 }

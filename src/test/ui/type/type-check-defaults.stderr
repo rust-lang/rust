@@ -56,8 +56,8 @@ LL | trait Base<T = String>: Super<T> { }
    |
 help: consider further restricting type parameter `T`
    |
-LL | trait Base<T = String>: Super<T>, T: Copy { }
-   |                                 ^^^^^^^^^
+LL | trait Base<T = String>: Super<T> where T: Copy { }
+   |                                  ^^^^^^^^^^^^^
 
 error[E0277]: cannot add `u8` to `i32`
   --> $DIR/type-check-defaults.rs:24:66

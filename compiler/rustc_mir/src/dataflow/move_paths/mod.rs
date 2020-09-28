@@ -144,7 +144,6 @@ impl<'tcx> fmt::Display for MovePath<'tcx> {
     }
 }
 
-#[allow(unused)]
 struct MovePathLinearIter<'a, 'tcx, F> {
     next: Option<(MovePathIndex, &'a MovePath<'tcx>)>,
     fetch_next: F,

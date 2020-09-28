@@ -39,19 +39,19 @@ crate enum PatternError {
     NonConstPath(Span),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 crate enum BindingMode {
     ByValue,
     ByRef(BorrowKind),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 crate struct FieldPat<'tcx> {
     crate field: Field,
     crate pattern: Pat<'tcx>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 crate struct Pat<'tcx> {
     crate ty: Ty<'tcx>,
     crate span: Span,
@@ -116,7 +116,7 @@ crate struct Ascription<'tcx> {
     crate user_ty_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 crate enum PatKind<'tcx> {
     Wild,
 

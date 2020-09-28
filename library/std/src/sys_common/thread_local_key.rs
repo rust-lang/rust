@@ -117,6 +117,7 @@ pub struct Key {
 pub const INIT: StaticKey = StaticKey::new(None);
 
 impl StaticKey {
+    #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
     pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> StaticKey {
         StaticKey { key: atomic::AtomicUsize::new(0), dtor }
     }

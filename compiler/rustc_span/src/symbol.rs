@@ -110,7 +110,7 @@ symbols! {
     // called `sym::proc_macro` because then it's easy to mistakenly think it
     // represents "proc_macro".
     //
-    // As well as the symbols listed, there are symbols for the the strings
+    // As well as the symbols listed, there are symbols for the strings
     // "0", "1", ..., "9", which are accessible via `sym::integer`.
     //
     // The proc macro will abort if symbols are not in alphabetical order (as
@@ -333,6 +333,7 @@ symbols! {
         clone,
         clone_closures,
         clone_from,
+        closure,
         closure_to_fn_coercion,
         cmp,
         cmpxchg16b_target_feature,
@@ -348,8 +349,10 @@ symbols! {
         const_compare_raw_pointers,
         const_constructor,
         const_eval_limit,
+        const_evaluatable_checked,
         const_extern_fn,
         const_fn,
+        const_fn_floating_point_arithmetic,
         const_fn_transmute,
         const_fn_union,
         const_generics,
@@ -368,6 +371,8 @@ symbols! {
         const_trait_bound_opt_out,
         const_trait_impl,
         const_transmute,
+        constant,
+        constructor,
         contents,
         context,
         convert,
@@ -415,7 +420,9 @@ symbols! {
         deny,
         deprecated,
         deref,
+        deref_method,
         deref_mut,
+        deref_target,
         derive,
         diagnostic,
         direct,
@@ -435,13 +442,6 @@ symbols! {
         document_private_items,
         dotdot_in_tuple_patterns,
         dotdoteq_in_patterns,
-        double_braced_closure: "{{closure}}",
-        double_braced_constant: "{{constant}}",
-        double_braced_constructor: "{{constructor}}",
-        double_braced_crate: "{{crate}}",
-        double_braced_impl: "{{impl}}",
-        double_braced_misc: "{{misc}}",
-        double_braced_opaque: "{{opaque}}",
         drop,
         drop_in_place,
         drop_types_in_const,
@@ -676,7 +676,7 @@ symbols! {
         minnumf32,
         minnumf64,
         mips_target_feature,
-        mmx_target_feature,
+        misc,
         module,
         module_path,
         more_struct_aliases,
@@ -1069,6 +1069,7 @@ symbols! {
         target_feature,
         target_feature_11,
         target_has_atomic,
+        target_has_atomic_equal_alignment,
         target_has_atomic_load_store,
         target_os,
         target_pointer_width,

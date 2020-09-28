@@ -160,7 +160,7 @@ fn main() {
     match &0 {
         &42 => {}
         &FOO => {} //~ ERROR unreachable pattern
-        BAR => {} // Not detected as unreachable because `try_eval_bits` fails on `BAR`.
+        BAR => {} //~ ERROR unreachable pattern
         _ => {}
     }
 

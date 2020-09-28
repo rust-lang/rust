@@ -501,7 +501,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn later_use_kind(
         &self,
         borrow: &BorrowData<'tcx>,
-        use_spans: UseSpans,
+        use_spans: UseSpans<'tcx>,
         location: Location,
     ) -> (LaterUseKind, Span) {
         match use_spans {

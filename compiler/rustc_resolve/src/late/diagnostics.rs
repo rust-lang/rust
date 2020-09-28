@@ -83,13 +83,14 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     let enum_path = ast::Path {
         span: suggestion.path.span,
         segments: suggestion.path.segments[0..path_len - 1].to_vec(),
+        tokens: None,
     };
     let enum_path_string = path_names_to_string(&enum_path);
 
     (variant_path_string, enum_path_string)
 }
 
-impl<'a> LateResolutionVisitor<'a, '_, '_> {
+impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     fn def_span(&self, def_id: DefId) -> Option<Span> {
         match def_id.krate {
             LOCAL_CRATE => self.r.opt_span(def_id),
@@ -622,12 +623,12 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         );
                     }
                 }
-                PathSource::Expr(_) | PathSource::TupleStruct(_) | PathSource::Pat => {
+                PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                     let span = match &source {
                         PathSource::Expr(Some(Expr {
                             span, kind: ExprKind::Call(_, _), ..
                         }))
-                        | PathSource::TupleStruct(span) => {
+                        | PathSource::TupleStruct(span, _) => {
                             // We want the main underline to cover the suggested code as well for
                             // cleaner output.
                             err.set_span(*span);
@@ -639,7 +640,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         err.span_label(span, &format!("`{}` defined here", path_str));
                     }
                     let (tail, descr, applicability) = match source {
-                        PathSource::Pat | PathSource::TupleStruct(_) => {
+                        PathSource::Pat | PathSource::TupleStruct(..) => {
                             ("", "pattern", Applicability::MachineApplicable)
                         }
                         _ => (": val", "literal", Applicability::HasPlaceholders),
@@ -704,7 +705,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             }
             (
                 Res::Def(DefKind::Enum, def_id),
-                PathSource::TupleStruct(_) | PathSource::Expr(..),
+                PathSource::TupleStruct(..) | PathSource::Expr(..),
             ) => {
                 if self
                     .diagnostic_metadata
@@ -744,15 +745,50 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 }
             }
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
-                if let Some((ctor_def, ctor_vis)) = self.r.struct_constructors.get(&def_id).cloned()
+                if let Some((ctor_def, ctor_vis, fields)) =
+                    self.r.struct_constructors.get(&def_id).cloned()
                 {
                     let accessible_ctor =
                         self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
                     if is_expected(ctor_def) && !accessible_ctor {
-                        err.span_label(
-                            span,
-                            "constructor is not visible here due to private fields".to_string(),
-                        );
+                        let mut better_diag = false;
+                        if let PathSource::TupleStruct(_, pattern_spans) = source {
+                            if pattern_spans.len() > 0 && fields.len() == pattern_spans.len() {
+                                let non_visible_spans: Vec<Span> = fields
+                                    .iter()
+                                    .zip(pattern_spans.iter())
+                                    .filter_map(|(vis, span)| {
+                                        match self
+                                            .r
+                                            .is_accessible_from(*vis, self.parent_scope.module)
+                                        {
+                                            true => None,
+                                            false => Some(*span),
+                                        }
+                                    })
+                                    .collect();
+                                // Extra check to be sure
+                                if non_visible_spans.len() > 0 {
+                                    let mut m: rustc_span::MultiSpan =
+                                        non_visible_spans.clone().into();
+                                    non_visible_spans.into_iter().for_each(|s| {
+                                        m.push_span_label(s, "private field".to_string())
+                                    });
+                                    err.span_note(
+                                        m,
+                                        "constructor is not visible here due to private fields",
+                                    );
+                                    better_diag = true;
+                                }
+                            }
+                        }
+
+                        if !better_diag {
+                            err.span_label(
+                                span,
+                                "constructor is not visible here due to private fields".to_string(),
+                            );
+                        }
                     }
                 } else {
                     bad_struct_syntax_suggestion(def_id);
@@ -1065,7 +1101,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     path_segments.push(ast::PathSegment::from_ident(ident));
                     let module_def_id = module.def_id().unwrap();
                     if module_def_id == def_id {
-                        let path = Path { span: name_binding.span, segments: path_segments };
+                        let path =
+                            Path { span: name_binding.span, segments: path_segments, tokens: None };
                         result = Some((
                             module,
                             ImportSuggestion {
@@ -1095,7 +1132,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 if let Res::Def(DefKind::Variant, _) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
                     segms.push(ast::PathSegment::from_ident(ident));
-                    variants.push(Path { span: name_binding.span, segments: segms });
+                    variants.push(Path { span: name_binding.span, segments: segms, tokens: None });
                 }
             });
             variants
@@ -1381,13 +1418,13 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         if snippet.starts_with('&') && !snippet.starts_with("&'") {
                             introduce_suggestion
                                 .push((param.span, format!("&{} {}", lt_name, &snippet[1..])));
-                        } else if snippet.starts_with("&'_ ") {
+                        } else if let Some(stripped) = snippet.strip_prefix("&'_ ") {
                             introduce_suggestion
-                                .push((param.span, format!("&{} {}", lt_name, &snippet[4..])));
+                                .push((param.span, format!("&{} {}", lt_name, stripped)));
                         }
                     }
                 }
-                introduce_suggestion.push((*for_span, for_sugg.to_string()));
+                introduce_suggestion.push((*for_span, for_sugg));
                 introduce_suggestion.push((span, formatter(&lt_name)));
                 err.multipart_suggestion(&msg, introduce_suggestion, Applicability::MaybeIncorrect);
             }
@@ -1497,7 +1534,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             }
         };
 
-        let lifetime_names: Vec<_> = lifetime_names.into_iter().collect();
+        let lifetime_names: Vec<_> = lifetime_names.iter().collect();
         match (&lifetime_names[..], snippet.as_deref()) {
             ([name], Some("&")) => {
                 suggest_existing(err, &name.as_str()[..], &|name| format!("&{} ", name));

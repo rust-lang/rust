@@ -8,6 +8,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+arrayvec = { version = "0.5.1", default-features = false }
 ena = "0.14"
 indexmap = "1.5.1"
 tracing = "0.1"
@@ -26,11 +27,11 @@ rustc_index = { path = "../rustc_index", package = "rustc_index" }
 bitflags = "1.2.1"
 measureme = "0.7.1"
 libc = "0.2"
-stacker = "0.1.11"
+stacker = "0.1.12"
 tempfile = "3.0.5"
 
 [dependencies.parking_lot]
-version = "0.10"
+version = "0.11"
 features = ["nightly"]
 
 [target.'cfg(windows)'.dependencies]

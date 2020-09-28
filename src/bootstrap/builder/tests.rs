@@ -2,14 +2,17 @@ use super::*;
 use crate::config::{Config, TargetSelection};
 use std::thread;
 
-fn configure(host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::default_opts();
+fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
+    let mut config = Config::parse(&[cmd.to_owned()]);
     // don't save toolstates
     config.save_toolstates = None;
     config.skip_only_host_steps = false;
     config.dry_run = true;
     config.ninja_in_file = false;
     // try to avoid spurious failures in dist where we create/delete each others file
+    config.out = PathBuf::from(env::var_os("BOOTSTRAP_OUTPUT_DIRECTORY").unwrap());
+    config.initial_rustc = PathBuf::from(env::var_os("RUSTC").unwrap());
+    config.initial_cargo = PathBuf::from(env::var_os("BOOTSTRAP_INITIAL_CARGO").unwrap());
     let dir = config
         .out
         .join("tmp-rustbuild-tests")
@@ -42,7 +45,7 @@ mod defaults {
 
     #[test]
     fn build_default() {
-        let build = Build::new(configure(&[], &[]));
+        let build = Build::new(configure("build", &[], &[]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
@@ -70,7 +73,7 @@ mod defaults {
 
     #[test]
     fn build_stage_0() {
-        let config = Config { stage: Some(0), ..configure(&[], &[]) };
+        let config = Config { stage: 0, ..configure("build", &[], &[]) };
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
@@ -91,8 +94,56 @@ mod defaults {
     }
 
     #[test]
+    fn build_cross_compile() {
+        let config = Config { stage: 1, ..configure("build", &["B"], &["B"]) };
+        let build = Build::new(config);
+        let mut builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
+
+        let a = TargetSelection::from_user("A");
+        let b = TargetSelection::from_user("B");
+
+        // Ideally, this build wouldn't actually have `target: a`
+        // rustdoc/rustcc/std here (the user only requested a host=B build, so
+        // there's not really a need for us to build for target A in this case
+        // (since we're producing stage 1 libraries/binaries).  But currently
+        // rustbuild is just a bit buggy here; this should be fixed though.
+        assert_eq!(
+            first(builder.cache.all::<compile::Std>()),
+            &[
+                compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 0 }, target: b },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+            ]
+        );
+        assert_eq!(
+            first(builder.cache.all::<compile::Assemble>()),
+            &[
+                compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
+                compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
+                compile::Assemble { target_compiler: Compiler { host: b, stage: 1 } },
+            ]
+        );
+        assert_eq!(
+            first(builder.cache.all::<tool::Rustdoc>()),
+            &[
+                tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } },
+                tool::Rustdoc { compiler: Compiler { host: b, stage: 1 } },
+            ],
+        );
+        assert_eq!(
+            first(builder.cache.all::<compile::Rustc>()),
+            &[
+                compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
+                compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: b },
+            ]
+        );
+    }
+
+    #[test]
     fn doc_default() {
-        let mut config = configure(&[], &[]);
+        let mut config = configure("doc", &[], &[]);
         config.compiler_docs = true;
         config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
         let build = Build::new(config);
@@ -126,7 +177,7 @@ mod dist {
     use pretty_assertions::assert_eq;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
-        Config { stage: Some(2), ..super::configure(host, target) }
+        Config { stage: 2, ..super::configure("dist", host, target) }
     }
 
     #[test]
@@ -216,6 +267,16 @@ mod dist {
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
             ]
+        );
+        assert_eq!(
+            first(builder.cache.all::<compile::Std>()),
+            &[
+                compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
+            ],
         );
         assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
     }
@@ -384,12 +445,9 @@ mod dist {
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: c },
             ]
         );
         assert!(!builder.cache.all::<compile::Assemble>().is_empty());
@@ -399,10 +457,8 @@ mod dist {
                 compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 2 }, target: a },
-                compile::Rustc { compiler: Compiler { host: b, stage: 2 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: b },
                 compile::Rustc { compiler: Compiler { host: a, stage: 2 }, target: b },
-                compile::Rustc { compiler: Compiler { host: b, stage: 2 }, target: b },
             ]
         );
     }
@@ -425,12 +481,9 @@ mod dist {
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: c },
             ]
         );
         assert_eq!(
@@ -439,7 +492,6 @@ mod dist {
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 2 } },
-                compile::Assemble { target_compiler: Compiler { host: b, stage: 2 } },
             ]
         );
         assert_eq!(
@@ -447,7 +499,6 @@ mod dist {
             &[
                 compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: a },
-                compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: b },
             ]
         );
     }
@@ -455,7 +506,7 @@ mod dist {
     #[test]
     fn test_with_no_doc_stage0() {
         let mut config = configure(&[], &[]);
-        config.stage = Some(0);
+        config.stage = 0;
         config.cmd = Subcommand::Test {
             paths: vec!["library/std".into()],
             test_args: vec![],

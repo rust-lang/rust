@@ -12,6 +12,7 @@ use rustc_middle::hir::map::Map;
 use rustc_span::Span;
 
 pub(crate) struct OptionAndThenSome;
+
 impl BindInsteadOfMap for OptionAndThenSome {
     const TYPE_NAME: &'static str = "Option";
     const TYPE_QPATH: &'static [&'static str] = &paths::OPTION;
@@ -24,6 +25,7 @@ impl BindInsteadOfMap for OptionAndThenSome {
 }
 
 pub(crate) struct ResultAndThenOk;
+
 impl BindInsteadOfMap for ResultAndThenOk {
     const TYPE_NAME: &'static str = "Result";
     const TYPE_QPATH: &'static [&'static str] = &paths::RESULT;
@@ -36,6 +38,7 @@ impl BindInsteadOfMap for ResultAndThenOk {
 }
 
 pub(crate) struct ResultOrElseErrInfo;
+
 impl BindInsteadOfMap for ResultOrElseErrInfo {
     const TYPE_NAME: &'static str = "Result";
     const TYPE_QPATH: &'static [&'static str] = &paths::RESULT;
@@ -120,9 +123,9 @@ pub(crate) trait BindInsteadOfMap {
         }
     }
 
-    fn lint_closure(cx: &LateContext<'_>, expr: &hir::Expr<'_>, closure_expr: &hir::Expr<'_>) {
+    fn lint_closure(cx: &LateContext<'_>, expr: &hir::Expr<'_>, closure_expr: &hir::Expr<'_>) -> bool {
         let mut suggs = Vec::new();
-        let can_sugg = find_all_ret_expressions(cx, closure_expr, |ret_expr| {
+        let can_sugg: bool = find_all_ret_expressions(cx, closure_expr, |ret_expr| {
             if_chain! {
                 if !in_macro(ret_expr.span);
                 if let hir::ExprKind::Call(ref func_path, ref args) = ret_expr.kind;
@@ -153,12 +156,13 @@ pub(crate) trait BindInsteadOfMap {
                 )
             });
         }
+        can_sugg
     }
 
     /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
-    fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) -> bool {
         if !match_type(cx, cx.typeck_results().expr_ty(&args[0]), Self::TYPE_QPATH) {
-            return;
+            return false;
         }
 
         match args[1].kind {
@@ -166,8 +170,10 @@ pub(crate) trait BindInsteadOfMap {
                 let closure_body = cx.tcx.hir().body(body_id);
                 let closure_expr = remove_blocks(&closure_body.value);
 
-                if !Self::lint_closure_autofixable(cx, expr, args, closure_expr, closure_args_span) {
-                    Self::lint_closure(cx, expr, closure_expr);
+                if Self::lint_closure_autofixable(cx, expr, args, closure_expr, closure_args_span) {
+                    true
+                } else {
+                    Self::lint_closure(cx, expr, closure_expr)
                 }
             },
             // `_.and_then(Some)` case, which is no-op.
@@ -181,8 +187,9 @@ pub(crate) trait BindInsteadOfMap {
                     snippet(cx, args[0].span, "..").into(),
                     Applicability::MachineApplicable,
                 );
+                true
             },
-            _ => {},
+            _ => false,
         }
     }
 }

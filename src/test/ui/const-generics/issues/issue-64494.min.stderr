@@ -4,7 +4,7 @@ error: generic parameters must not be used inside of non trivial constant values
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    |                                      ^^^^^^ non-trivial anonymous constants must not depend on the parameter `T`
    |
-   = help: it is currently only allowed to use either `T` or `{ T }` as generic constants
+   = note: type parameters are currently not permitted in anonymous constants
 
 error: generic parameters must not be used inside of non trivial constant values
   --> $DIR/issue-64494.rs:19:38
@@ -12,7 +12,7 @@ error: generic parameters must not be used inside of non trivial constant values
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
    |                                      ^^^^^^ non-trivial anonymous constants must not depend on the parameter `T`
    |
-   = help: it is currently only allowed to use either `T` or `{ T }` as generic constants
+   = note: type parameters are currently not permitted in anonymous constants
 
 error[E0119]: conflicting implementations of trait `MyTrait`:
   --> $DIR/issue-64494.rs:19:1

@@ -272,7 +272,7 @@
 //! * [DOT language](http://www.graphviz.org/doc/info/lang.html)
 
 #![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 #![feature(nll)]
@@ -591,14 +591,15 @@ pub trait GraphWalk<'a> {
     fn target(&'a self, edge: &Self::Edge) -> Self::Node;
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum RenderOption {
     NoEdgeLabels,
     NoNodeLabels,
     NoEdgeStyles,
     NoNodeStyles,
 
-    Monospace,
+    Fontname(String),
+    DarkTheme,
 }
 
 /// Returns vec holding all the default render options.
@@ -630,10 +631,26 @@ where
     writeln!(w, "digraph {} {{", g.graph_id().as_slice())?;
 
     // Global graph properties
-    if options.contains(&RenderOption::Monospace) {
-        writeln!(w, r#"    graph[fontname="monospace"];"#)?;
-        writeln!(w, r#"    node[fontname="monospace"];"#)?;
-        writeln!(w, r#"    edge[fontname="monospace"];"#)?;
+    let mut graph_attrs = Vec::new();
+    let mut content_attrs = Vec::new();
+    let font;
+    if let Some(fontname) = options.iter().find_map(|option| {
+        if let RenderOption::Fontname(fontname) = option { Some(fontname) } else { None }
+    }) {
+        font = format!(r#"fontname="{}""#, fontname);
+        graph_attrs.push(&font[..]);
+        content_attrs.push(&font[..]);
+    }
+    if options.contains(&RenderOption::DarkTheme) {
+        graph_attrs.push(r#"bgcolor="black""#);
+        content_attrs.push(r#"color="white""#);
+        content_attrs.push(r#"fontcolor="white""#);
+    }
+    if !(graph_attrs.is_empty() && content_attrs.is_empty()) {
+        writeln!(w, r#"    graph[{}];"#, graph_attrs.join(" "))?;
+        let content_attrs_str = content_attrs.join(" ");
+        writeln!(w, r#"    node[{}];"#, content_attrs_str)?;
+        writeln!(w, r#"    edge[{}];"#, content_attrs_str)?;
     }
 
     for n in g.nodes().iter() {

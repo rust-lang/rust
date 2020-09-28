@@ -1,0 +1,28 @@
+- // MIR for `encode` before SimplifyBranchSame
++ // MIR for `encode` after SimplifyBranchSame
+  
+  fn encode(_1: Type) -> Type {
+      debug v => _1;                       // in scope 0 at $DIR/76803_regression.rs:10:15: 10:16
+      let mut _0: Type;                    // return place in scope 0 at $DIR/76803_regression.rs:10:27: 10:31
+      let mut _2: isize;                   // in scope 0 at $DIR/76803_regression.rs:12:9: 12:16
+  
+      bb0: {
+          _2 = discriminant(_1);           // scope 0 at $DIR/76803_regression.rs:12:9: 12:16
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/76803_regression.rs:12:9: 12:16
+      }
+  
+      bb1: {
+          _0 = move _1;                    // scope 0 at $DIR/76803_regression.rs:13:14: 13:15
+          goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
+      }
+  
+      bb2: {
+          discriminant(_0) = 1;            // scope 0 at $DIR/76803_regression.rs:12:20: 12:27
+          goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
+      }
+  
+      bb3: {
+          return;                          // scope 0 at $DIR/76803_regression.rs:15:2: 15:2
+      }
+  }
+  

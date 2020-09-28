@@ -1,7 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
     is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet,
-    span_lint_and_then, walk_ptrs_ty,
+    span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -90,7 +90,7 @@ fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &
         if let PatKind::Tuple(ref pats, None) = arms[0].pat.kind;
         if pats.len() == 1;
         then {
-            let ty = walk_ptrs_ty(cx.typeck_results().pat_ty(&pats[0]));
+            let ty = cx.typeck_results().pat_ty(&pats[0]).peel_refs();
             if *ty.kind() != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym!(string_type)) {
                 return None;
             }

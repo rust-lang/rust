@@ -9,11 +9,8 @@ use crate::ops::Try;
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 ///
-/// This `struct` is created by the [`fuse`] method on [`Iterator`]. See its
-/// documentation for more.
-///
-/// [`fuse`]: trait.Iterator.html#method.fuse
-/// [`Iterator`]: trait.Iterator.html
+/// This `struct` is created by [`Iterator::fuse`]. See its documentation
+/// for more.
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -118,12 +115,13 @@ where
     }
 
     #[inline]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {
         match self.iter {
-            // SAFETY: the caller must uphold the contract for `Iterator::get_unchecked`.
+            // SAFETY: the caller must uphold the contract for
+            // `Iterator::__iterator_get_unchecked`.
             Some(ref mut iter) => unsafe { try_get_unchecked(iter, idx) },
             // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
             None => unsafe { intrinsics::unreachable() },
@@ -530,7 +528,7 @@ where
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
         match self.iter {
-            // Safety: unsafe function forwarding to unsafe function with the same requirements
+            // SAFETY: unsafe function forwarding to unsafe function with the same requirements
             Some(ref mut iter) => unsafe { SourceIter::as_inner(iter) },
             // SAFETY: the specialized iterator never sets `None`
             None => unsafe { intrinsics::unreachable() },

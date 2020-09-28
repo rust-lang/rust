@@ -1,7 +1,6 @@
 use super::*;
 
 use rustc_ast as ast;
-use rustc_span::source_map::respan;
 use rustc_span::symbol::Ident;
 use rustc_span::with_default_session_globals;
 
@@ -45,7 +44,11 @@ fn test_variant_to_string() {
 
         let var = ast::Variant {
             ident,
-            vis: respan(rustc_span::DUMMY_SP, ast::VisibilityKind::Inherited),
+            vis: ast::Visibility {
+                span: rustc_span::DUMMY_SP,
+                kind: ast::VisibilityKind::Inherited,
+                tokens: None,
+            },
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
             data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),

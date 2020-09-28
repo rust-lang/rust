@@ -18,7 +18,6 @@ use build_helper::{output, t};
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::channel;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::tool::{self, Tool};
@@ -323,8 +322,8 @@ fn make_win_dist(
     // Warn windows-gnu users that the bundled GCC cannot compile C files
     builder.create(
         &target_bin_dir.join("GCC-WARNING.txt"),
-        "gcc.exe contained in this folder cannot be used for compiling C files - it is only\
-         used as a linker. In order to be able to compile projects containing C code use\
+        "gcc.exe contained in this folder cannot be used for compiling C files - it is only \
+         used as a linker. In order to be able to compile projects containing C code use \
          the GCC provided by MinGW or Cygwin.",
     );
 
@@ -569,7 +568,7 @@ impl Step for Rustc {
                     &page_dst,
                     &[
                         ("<INSERT DATE HERE>", &month_year),
-                        ("<INSERT VERSION HERE>", channel::CFG_RELEASE_NUM),
+                        ("<INSERT VERSION HERE>", &builder.version),
                     ],
                 );
             }
@@ -605,7 +604,9 @@ impl Step for DebuggerScripts {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(DebuggerScripts {
-            sysroot: run.builder.sysroot(run.builder.compiler(run.builder.top_stage, run.host)),
+            sysroot: run
+                .builder
+                .sysroot(run.builder.compiler(run.builder.top_stage, run.build_triple())),
             host: run.target,
         });
     }
@@ -790,6 +791,18 @@ impl Step for RustcDev {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
         copy_target_libs(builder, target, &image, &stamp);
+
+        // Copy compiler sources.
+        let dst_src = image.join("lib/rustlib/rustc-src/rust");
+        t!(fs::create_dir_all(&dst_src));
+
+        let src_files = ["Cargo.lock"];
+        // This is the reduced set of paths which will become the rustc-dev component
+        // (essentially the compiler crates and all of their path dependencies).
+        copy_src_dirs(builder, &builder.src, &["compiler"], &[], &dst_src);
+        for file in src_files.iter() {
+            builder.copy(&builder.src.join(file), &dst_src.join(file));
+        }
 
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
@@ -1020,7 +1033,7 @@ impl Step for Src {
         copy_src_dirs(
             builder,
             &builder.src,
-            &["library"],
+            &["library", "src/llvm-project/libunwind"],
             &[
                 // not needed and contains symlinks which rustup currently
                 // chokes on when unpacking.
@@ -2287,9 +2300,9 @@ impl Step for Extended {
 }
 
 fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
-    let mut parts = channel::CFG_RELEASE_NUM.split('.');
+    let mut parts = builder.version.split('.');
     cmd.env("CFG_RELEASE_INFO", builder.rust_version())
-        .env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM)
+        .env("CFG_RELEASE_NUM", &builder.version)
         .env("CFG_RELEASE", builder.rust_release())
         .env("CFG_VER_MAJOR", parts.next().unwrap())
         .env("CFG_VER_MINOR", parts.next().unwrap())
@@ -2380,26 +2393,29 @@ impl Step for HashSign {
 /// Note: This function does not yet support Windows, but we also don't support
 ///       linking LLVM tools dynamically on Windows yet.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) {
-    let src_libdir = builder.llvm_out(target).join("lib");
+    if !builder.config.llvm_link_shared {
+        // We do not need to copy LLVM files into the sysroot if it is not
+        // dynamically linked; it is already included into librustc_llvm
+        // statically.
+        return;
+    }
 
+    // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
+    // instead of libLLVM-11-rust-....dylib, as on linux. It's not entirely
+    // clear why this is the case, though. llvm-config will emit the versioned
+    // paths and we don't want those in the sysroot (as we're expecting
+    // unversioned paths).
     if target.contains("apple-darwin") {
+        let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
-        return;
-    }
-
-    // Usually libLLVM.so is a symlink to something like libLLVM-6.0.so.
-    // Since tools link to the latter rather than the former, we have to
-    // follow the symlink to find out what to distribute.
-    let llvm_dylib_path = src_libdir.join("libLLVM.so");
-    if llvm_dylib_path.exists() {
-        let llvm_dylib_path = llvm_dylib_path.canonicalize().unwrap_or_else(|e| {
-            panic!("dist: Error calling canonicalize path `{}`: {}", llvm_dylib_path.display(), e);
-        });
-
-        builder.install(&llvm_dylib_path, dst_libdir, 0o644);
+    } else if let Ok(llvm_config) = crate::native::prebuilt_llvm_config(builder, target) {
+        let files = output(Command::new(llvm_config).arg("--libfiles"));
+        for file in files.lines() {
+            builder.install(Path::new(file), dst_libdir, 0o644);
+        }
     }
 }
 
@@ -2524,6 +2540,14 @@ impl Step for RustDev {
     fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let target = self.target;
 
+        /* run only if llvm-config isn't used */
+        if let Some(config) = builder.config.target_config.get(&target) {
+            if let Some(ref _s) = config.llvm_config {
+                builder.info(&format!("Skipping RustDev ({}): external LLVM", target));
+                return None;
+            }
+        }
+
         builder.info(&format!("Dist RustDev ({})", target));
         let _time = timeit(builder);
         let src = builder.src.join("src/llvm-project/llvm");
@@ -2536,6 +2560,7 @@ impl Step for RustDev {
         // Prepare the image directory
         let dst_bindir = image.join("bin");
         t!(fs::create_dir_all(&dst_bindir));
+
         let exe = builder.llvm_out(target).join("bin").join(exe("llvm-config", target));
         builder.install(&exe, &dst_bindir, 0o755);
         builder.install(&builder.llvm_filecheck(target), &dst_bindir, 0o755);

@@ -425,25 +425,27 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let alloc_kind = self.ecx.tcx.get_global_alloc(ptr.alloc_id);
                 if let Some(GlobalAlloc::Static(did)) = alloc_kind {
                     assert!(!self.ecx.tcx.is_thread_local_static(did));
-                    // See const_eval::machine::MemoryExtra::can_access_statics for why
-                    // this check is so important.
-                    // This check is reachable when the const just referenced the static,
-                    // but never read it (so we never entered `before_access_global`).
-                    // We also need to do it here instead of going on to avoid running
-                    // into the `before_access_global` check during validation.
-                    if !self.may_ref_to_static && self.ecx.tcx.is_static(did) {
+                    assert!(self.ecx.tcx.is_static(did));
+                    if self.may_ref_to_static {
+                        // We skip checking other statics. These statics must be sound by
+                        // themselves, and the only way to get broken statics here is by using
+                        // unsafe code.
+                        // The reasons we don't check other statics is twofold. For one, in all
+                        // sound cases, the static was already validated on its own, and second, we
+                        // trigger cycle errors if we try to compute the value of the other static
+                        // and that static refers back to us.
+                        // We might miss const-invalid data,
+                        // but things are still sound otherwise (in particular re: consts
+                        // referring to statics).
+                        return Ok(());
+                    } else {
+                        // See const_eval::machine::MemoryExtra::can_access_statics for why
+                        // this check is so important.
+                        // This check is reachable when the const just referenced the static,
+                        // but never read it (so we never entered `before_access_global`).
                         throw_validation_failure!(self.path,
                             { "a {} pointing to a static variable", kind }
                         );
-                    }
-                    // `extern static` cannot be validated as they have no body.
-                    // FIXME: Statics from other crates are also skipped.
-                    // They might be checked at a different type, but for now we
-                    // want to avoid recursing too deeply.  We might miss const-invalid data,
-                    // but things are still sound otherwise (in particular re: consts
-                    // referring to statics).
-                    if !did.is_local() || self.ecx.tcx.is_foreign_item(did) {
-                        return Ok(());
                     }
                 }
             }

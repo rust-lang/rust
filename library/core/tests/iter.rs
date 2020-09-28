@@ -474,7 +474,7 @@ fn test_iterator_step_by_nth_overflow() {
     }
 
     let mut it = Test(0);
-    let root = usize::MAX >> (::std::mem::size_of::<usize>() * 8 / 2);
+    let root = usize::MAX >> (usize::BITS / 2);
     let n = root + 20;
     (&mut it).step_by(n).nth(n);
     assert_eq!(it.0, n as Bigger * n as Bigger);
