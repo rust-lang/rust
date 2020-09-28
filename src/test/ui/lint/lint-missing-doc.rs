@@ -177,10 +177,12 @@ mod internal_impl {
 }
 /// dox
 pub mod public_interface {
-    pub use internal_impl::documented as foo;
-    pub use internal_impl::undocumented1 as bar;
+    pub use internal_impl::documented as foo; //~ ERROR: missing documentation
+    pub use internal_impl::undocumented1 as bar; //~ ERROR: missing documentation
     pub use internal_impl::{documented, undocumented2};
-    pub use internal_impl::globbed::*;
+    //~^ ERROR: missing documentation
+    //~^^ ERROR: missing documentation
+    pub use internal_impl::globbed::*; //~ ERROR: missing documentation
 }
 
 extern "C" {
@@ -199,5 +201,7 @@ extern "C" {
     pub type ExternTyUndocumented;
     //~^ ERROR: missing documentation for a foreign type
 }
+
+pub use std::str; //~ ERROR: missing documentation for a reexported item
 
 fn main() {}
