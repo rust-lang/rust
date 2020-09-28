@@ -45,7 +45,7 @@
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 
-#include "ActiveVariable.h"
+#include "ActivityAnalysis.h"
 #include "EnzymeLogic.h"
 #include "GradientUtils.h"
 #include "Utils.h"

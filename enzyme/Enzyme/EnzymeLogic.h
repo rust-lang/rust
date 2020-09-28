@@ -42,7 +42,7 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
-#include "ActiveVariable.h"
+#include "ActivityAnalysis.h"
 #include "TypeAnalysis/TypeAnalysis.h"
 #include "Utils.h"
 

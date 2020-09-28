@@ -33,7 +33,7 @@
 
 #include <llvm/Config/llvm-config.h>
 
-#include "ActiveVariable.h"
+#include "ActivityAnalysis.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 #include "Utils.h"
 
@@ -59,7 +59,7 @@
 
 #include "llvm/Support/ErrorHandling.h"
 
-#include "ActiveVariable.h"
+#include "ActivityAnalysis.h"
 #include "EnzymeLogic.h"
 
 using namespace llvm;
@@ -146,10 +146,7 @@ public:
   DominatorTree DT;
   DominatorTree OrigDT;
   PostDominatorTree OrigPDT;
-  SmallPtrSet<Value *, 4> constants;
-  SmallPtrSet<Value *, 20> nonconstant;
-  SmallPtrSet<Value *, 4> constant_values;
-  SmallPtrSet<Value *, 2> nonconstant_values;
+  ActivityAnalyzer ATA;
   LoopInfo OrigLI;
   LoopInfo LI;
   AssumptionCache AC;
@@ -290,10 +287,10 @@ public:
   void erase(Instruction *I) {
     assert(I);
     invertedPointers.erase(I);
-    constants.erase(I);
-    constant_values.erase(I);
-    nonconstant.erase(I);
-    nonconstant_values.erase(I);
+    //constants.erase(I);
+    //constant_values.erase(I);
+    //nonconstant.erase(I);
+    //nonconstant_values.erase(I);
     if (scopeMap.find(I) != scopeMap.end()) {
       scopeFrees.erase(scopeMap[I].first);
       scopeAllocs.erase(scopeMap[I].first);
@@ -935,12 +932,16 @@ public:
                 ValueToValueMapTy &originalToNewFn_, DerivativeMode mode)
       : mode(mode), newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(),
         DT(*newFunc_), OrigDT(*oldFunc_), OrigPDT(*oldFunc_),
-        constants(constants_.begin(), constants_.end()),
-        nonconstant(nonconstant_.begin(), nonconstant_.end()),
-        constant_values(constantvalues_.begin(), constantvalues_.end()),
-        nonconstant_values(returnvals_.begin(), returnvals_.end()),
+        ATA(AA_, 3),
         OrigLI(OrigDT), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI),
         inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
+
+        ATA.constants.insert(constants_.begin(), constants_.end()),
+        ATA.nonconstant.insert(nonconstant_.begin(), nonconstant_.end()),
+        ATA.constants.insert(constantvalues_.begin(), constantvalues_.end()),
+        //nonconstant vals
+        ATA.retvals.insert(returnvals_.begin(), returnvals_.end()),
+
     invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
     for (BasicBlock &BB : *newFunc) {
@@ -1019,16 +1020,14 @@ public:
     cast<Value>(val);
     if (auto inst = dyn_cast<Instruction>(val))
       assert(inst->getParent()->getParent() == oldFunc);
-    return isconstantValueM(TR, val, constants, nonconstant, constant_values,
-                            nonconstant_values, AA);
+    return ATA.isconstantValueM(TR, val);
   };
 
   bool isConstantInstructionInternal(Instruction *val, AAResults &AA,
                                      TypeResults &TR) {
     cast<Instruction>(val);
     assert(val->getParent()->getParent() == oldFunc);
-    return isconstantM(TR, val, constants, nonconstant, constant_values,
-                       nonconstant_values, AA);
+    return ATA.isconstantM(TR, val);
   }
 
   void eraseFictiousPHIs() {
@@ -1050,8 +1049,8 @@ public:
 
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
     for (auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); ++a) {
-      if (constants.find(a) == constants.end() &&
-          nonconstant.find(a) == nonconstant.end())
+      if (ATA.constants.find(a) == ATA.constants.end() &&
+          ATA.nonconstant.find(a) == ATA.nonconstant.end())
         continue;
 
       bool const_value = isConstantValueInternal(a, AA, TR);
