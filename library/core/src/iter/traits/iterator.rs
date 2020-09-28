@@ -1976,6 +1976,8 @@ pub trait Iterator {
     /// // they're the same
     /// assert_eq!(result, result2);
     /// ```
+    #[doc(alias = "reduce")]
+    #[doc(alias = "inject")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fold<B, F>(mut self, init: B, mut f: F) -> B
