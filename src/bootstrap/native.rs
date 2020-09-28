@@ -630,7 +630,14 @@ impl Step for TestHelpers {
         if builder.config.dry_run {
             return;
         }
-        let target = self.target;
+        // The x86_64-fortanix-unknown-sgx target doesn't have a working C
+        // toolchain. However, some x86_64 ELF objects can be linked
+        // without issues. Use this hack to compile the test helpers.
+        let target = if self.target == "x86_64-fortanix-unknown-sgx" {
+            TargetSelection::from_user("x86_64-unknown-linux-gnu")
+        } else {
+            self.target
+        };
         let dst = builder.test_helpers_out(target);
         let src = builder.src.join("src/test/auxiliary/rust_test_helpers.c");
         if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
@@ -654,7 +661,6 @@ impl Step for TestHelpers {
             }
             cfg.compiler(builder.cc(target));
         }
-
         cfg.cargo_metadata(false)
             .out_dir(&dst)
             .target(&target.triple)
