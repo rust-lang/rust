@@ -7,7 +7,7 @@
 // can depend on this fact and will thus do unsound things when it is violated.
 // See https://github.com/rust-lang/rust/issues/71078 for more details.
 
-static FOO: () = FOO; //~ cycle detected when const-evaluating `FOO`
+static FOO: () = FOO; //~ cycle detected when const-evaluating + checking `FOO`
 
 fn main() {
     FOO

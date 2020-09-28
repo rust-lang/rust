@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: use of undeclared type or module `foo`
-  --> $DIR/export-fully-qualified.rs:6:20
+error[E0433]: failed to resolve: use of undeclared crate or module `foo`
+  --> $DIR/export-fully-qualified.rs:8:20
    |
 LL |     pub fn bar() { foo::baz(); }
-   |                    ^^^ use of undeclared type or module `foo`
+   |                    ^^^ use of undeclared crate or module `foo`
 
 error: aborting due to previous error
 

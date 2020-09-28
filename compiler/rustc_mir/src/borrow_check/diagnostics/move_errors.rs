@@ -47,7 +47,7 @@ enum GroupedMoveError<'tcx> {
     // Everything that isn't from pattern matching.
     OtherIllegalMove {
         original_path: Place<'tcx>,
-        use_spans: UseSpans,
+        use_spans: UseSpans<'tcx>,
         kind: IllegalMoveOriginKind<'tcx>,
     },
 }
@@ -222,7 +222,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let (mut err, err_span) = {
             let (span, use_spans, original_path, kind): (
                 Span,
-                Option<UseSpans>,
+                Option<UseSpans<'tcx>>,
                 Place<'tcx>,
                 &IllegalMoveOriginKind<'_>,
             ) = match error {
@@ -291,7 +291,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         move_place: Place<'tcx>,
         deref_target_place: Place<'tcx>,
         span: Span,
-        use_spans: Option<UseSpans>,
+        use_spans: Option<UseSpans<'tcx>>,
     ) -> DiagnosticBuilder<'a> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -492,8 +492,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             {
                 if let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
                 {
-                    if pat_snippet.starts_with('&') {
-                        let pat_snippet = pat_snippet[1..].trim_start();
+                    if let Some(stripped) = pat_snippet.strip_prefix('&') {
+                        let pat_snippet = stripped.trim_start();
                         let (suggestion, to_remove) = if pat_snippet.starts_with("mut")
                             && pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
                         {

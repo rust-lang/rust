@@ -42,10 +42,13 @@ fn main() {
     if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
-    if let Some(linker) = env::var_os("RUSTC_TARGET_LINKER") {
+    if let Some(linker) = env::var_os("RUSTDOC_LINKER") {
         let mut arg = OsString::from("-Clinker=");
         arg.push(&linker);
         cmd.arg(arg);
+    }
+    if env::var_os("RUSTDOC_FUSE_LD_LLD").is_some() {
+        cmd.arg("-Clink-args=-fuse-ld=lld");
     }
 
     // Needed to be able to run all rustdoc tests.

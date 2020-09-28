@@ -1,7 +1,7 @@
 //! Compiler intrinsics.
 //!
-//! The corresponding definitions are in `librustc_codegen_llvm/intrinsic.rs`.
-//! The corresponding const implementations are in `librustc_mir/interpret/intrinsics.rs`
+//! The corresponding definitions are in `compiler/rustc_codegen_llvm/src/intrinsic.rs`.
+//! The corresponding const implementations are in `compiler/rustc_mir/src/interpret/intrinsics.rs`
 //!
 //! # Const intrinsics
 //!
@@ -10,7 +10,7 @@
 //!
 //! In order to make an intrinsic usable at compile-time, one needs to copy the implementation
 //! from https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs to
-//! `librustc_mir/interpret/intrinsics.rs` and add a
+//! `compiler/rustc_mir/src/interpret/intrinsics.rs` and add a
 //! `#[rustc_const_unstable(feature = "foo", issue = "01234")]` to the intrinsic.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
@@ -733,6 +733,7 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_assume", issue = "76972")]
     pub fn assume(b: bool);
 
     /// Hints to the compiler that branch condition is likely to be true.
@@ -807,7 +808,7 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     ///
     /// The stabilized version of this intrinsic is [`crate::any::TypeId::of`].
-    #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
+    #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -904,7 +905,7 @@ extern "rust-intrinsic" {
     /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
     ///
     /// let num = unsafe {
-    ///     std::mem::transmute::<[u8; 4], u32>(raw_bytes);
+    ///     std::mem::transmute::<[u8; 4], u32>(raw_bytes)
     /// };
     ///
     /// // use `u32::from_ne_bytes` instead
@@ -1071,6 +1072,7 @@ extern "rust-intrinsic" {
     // NOTE: While this makes the intrinsic const stable, we have some custom code in const fn
     // checks that prevent its use within `const fn`.
     #[rustc_const_stable(feature = "const_transmute", since = "1.46.0")]
+    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "transmute")]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop

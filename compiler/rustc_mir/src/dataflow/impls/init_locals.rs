@@ -97,7 +97,6 @@ where
             PlaceContext::NonUse(
                 NonUseContext::StorageLive
                 | NonUseContext::AscribeUserTy
-                | NonUseContext::Coverage
                 | NonUseContext::VarDebugInfo,
             )
             | PlaceContext::NonMutatingUse(

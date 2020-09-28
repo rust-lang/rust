@@ -9,10 +9,41 @@
 # a custom configuration file can also be specified with `--config` to the build
 # system.
 
+# Keeps track of the last version of `x.py` used.
+# If it does not match the version that is currently running,
+# `x.py` will prompt you to update it and read the changelog.
+# See `src/bootstrap/CHANGELOG.md` for more information.
+changelog-seen = 1
+
+# =============================================================================
+# Global Settings
+# =============================================================================
+
+# Use different pre-set defaults than the global defaults.
+#
+# See `src/bootstrap/defaults` for more information.
+# Note that this has no default value (x.py uses the defaults in `config.toml.example`).
+#profile = <none>
+
 # =============================================================================
 # Tweaking how LLVM is compiled
 # =============================================================================
 [llvm]
+
+# Whether to use Rust CI built LLVM instead of locally building it.
+#
+# Unless you're developing for a target where Rust CI doesn't build a compiler
+# toolchain or changing LLVM locally, you probably want to set this to true.
+#
+# It's currently false by default due to being newly added; please file bugs if
+# enabling this did not work for you on x86_64-unknown-linux-gnu.
+# Other target triples are currently not supported; see #77084.
+#
+# We also currently only support this when building LLVM for the build triple.
+#
+# Note that many of the LLVM options are not currently supported for
+# downloading. Currently only the "assertions" option can be toggled.
+#download-ci-llvm = false
 
 # Indicates whether LLVM rebuild should be skipped when running bootstrap. If
 # this is `false` then the compiler's LLVM will be rebuilt whenever the built
@@ -45,7 +76,7 @@
 # this flag will indicate that this version check should not be done.
 #version-check = true
 
-# Link libstdc++ statically into the librustc_llvm instead of relying on a
+# Link libstdc++ statically into the rustc_llvm instead of relying on a
 # dynamic version to be available.
 #static-libstdcpp = false
 
@@ -111,6 +142,23 @@
 # General build configuration options
 # =============================================================================
 [build]
+# The default stage to use for the `doc` subcommand
+#doc-stage = 0
+
+# The default stage to use for the `build` subcommand
+#build-stage = 1
+
+# The default stage to use for the `test` subcommand
+#test-stage = 1
+
+# The default stage to use for the `dist` subcommand
+#dist-stage = 2
+
+# The default stage to use for the `install` subcommand
+#install-stage = 2
+
+# The default stage to use for the `bench` subcommand
+#bench-stage = 2
 
 # Build triple for the original snapshot compiler. This must be a compiler that
 # nightlies are already produced for. The current platform must be able to run
@@ -120,19 +168,18 @@
 # Defaults to host platform
 #build = "x86_64-unknown-linux-gnu"
 
-# In addition to the build triple, other triples to produce full compiler
-# toolchains for. Each of these triples will be bootstrapped from the build
-# triple and then will continue to bootstrap themselves. This platform must
-# currently be able to run all of the triples provided here.
+# Which triples to produce a compiler toolchain for. Each of these triples will
+# be bootstrapped from the build triple themselves.
 #
 # Defaults to just the build triple
 #host = ["x86_64-unknown-linux-gnu"]
 
-# In addition to all host triples, other triples to produce the standard library
-# for. Each host triple will be used to produce a copy of the standard library
-# for each target triple.
+# Which triples to build libraries (core/alloc/std/test/proc_macro) for. Each of
+# these triples will be bootstrapped from the build triple themselves.
 #
-# Defaults to just the build triple
+# Defaults to `host`. If you set this explicitly, you likely want to add all
+# host triples to this list as well in order for those host toolchains to be
+# able to compile programs for their native target.
 #target = ["x86_64-unknown-linux-gnu"]
 
 # Use this directory to store build artifacts.
@@ -309,7 +356,9 @@
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
 # compiler.
-#codegen-units = 1
+#
+# Uses the rustc defaults: https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
+#codegen-units = if incremental { 256 } else { 16 }
 
 # Sets the number of codegen units to build the standard library with,
 # regardless of what the codegen-unit setting for the rest of the compiler is.
@@ -321,13 +370,19 @@
 # binary, otherwise they are omitted.
 #
 # Defaults to rust.debug value
-#debug-assertions = false
+#debug-assertions = debug
 
 # Whether or not debug assertions are enabled for the standard library.
 # Overrides the `debug-assertions` option, if defined.
 #
 # Defaults to rust.debug-assertions value
-#debug-assertions-std = false
+#debug-assertions-std = debug-assertions
+
+# Whether or not to leave debug! and trace! calls in the rust binary.
+# Overrides the `debug-assertions` option, if defined.
+#
+# Defaults to rust.debug-assertions value
+#debug-logging = debug-assertions
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
@@ -371,6 +426,7 @@
 #incremental = false
 
 # Build a multi-threaded rustc
+# FIXME(#75760): Some UI tests fail when this option is enabled.
 #parallel-compiler = false
 
 # The default linker that will be hard-coded into the generated compiler for
@@ -392,7 +448,7 @@
 # desired in distributions, for example.
 #rpath = true
 
-# Emits extra output from tests so test failures are debuggable just from logfiles.
+# Prints each test name as it is executed, to help debug issues in the test harness itself.
 #verbose-tests = false
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
@@ -429,7 +485,7 @@
 # supported platforms. The LLD from the bootstrap distribution will be used
 # and not the LLD compiled during the bootstrap.
 #
-# LLD will not be used if we're cross linking or running tests.
+# LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
 #use-lld = false

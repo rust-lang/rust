@@ -193,6 +193,22 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     }
 }
 
+impl<'tcx> Key
+    for (
+        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+    )
+{
+    type CacheSelector = DefaultCacheSelector;
+
+    fn query_crate(&self) -> CrateNum {
+        (self.0).0.did.krate
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        (self.0).0.did.default_span(tcx)
+    }
+}
+
 impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector;
 

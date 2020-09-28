@@ -8,6 +8,6 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-arrayvec = "0.5.1"
+arrayvec = { version = "0.5.1", default-features = false }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_macros = { path = "../rustc_macros" }

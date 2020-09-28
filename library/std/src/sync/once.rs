@@ -95,10 +95,7 @@ use crate::thread::{self, Thread};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
-/// functionality. This type can only be constructed with the [`Once::new`]
-/// constructor.
-///
-/// [`Once::new`]: struct.Once.html#method.new
+/// functionality. This type can only be constructed with [`Once::new()`].
 ///
 /// # Examples
 ///
@@ -126,11 +123,8 @@ unsafe impl Sync for Once {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Send for Once {}
 
-/// State yielded to [`call_once_force`]’s closure parameter. The state can be
-/// used to query the poison status of the [`Once`].
-///
-/// [`call_once_force`]: struct.Once.html#method.call_once_force
-/// [`Once`]: struct.Once.html
+/// State yielded to [`Once::call_once_force()`]’s closure parameter. The state
+/// can be used to query the poison status of the [`Once`].
 #[unstable(feature = "once_poison", issue = "33577")]
 #[derive(Debug)]
 pub struct OnceState {
@@ -139,8 +133,6 @@ pub struct OnceState {
 }
 
 /// Initialization value for static [`Once`] values.
-///
-/// [`Once`]: struct.Once.html
 ///
 /// # Examples
 ///
@@ -191,6 +183,7 @@ struct WaiterQueue<'a> {
 
 impl Once {
     /// Creates a new `Once` value.
+    #[inline]
     #[stable(feature = "once_new", since = "1.2.0")]
     #[rustc_const_stable(feature = "const_once_new", since = "1.32.0")]
     pub const fn new() -> Once {
@@ -211,7 +204,7 @@ impl Once {
     /// happens-before relation between the closure and code executing after the
     /// return).
     ///
-    /// If the given closure recursively invokes `call_once` on the same `Once`
+    /// If the given closure recursively invokes `call_once` on the same [`Once`]
     /// instance the exact behavior is not specified, allowed outcomes are
     /// a panic or a deadlock.
     ///
@@ -248,7 +241,7 @@ impl Once {
     ///
     /// The closure `f` will only be executed once if this is called
     /// concurrently amongst many threads. If that closure panics, however, then
-    /// it will *poison* this `Once` instance, causing all future invocations of
+    /// it will *poison* this [`Once`] instance, causing all future invocations of
     /// `call_once` to also panic.
     ///
     /// This is similar to [poisoning with mutexes][poison].
@@ -268,21 +261,21 @@ impl Once {
         self.call_inner(false, &mut |_| f.take().unwrap()());
     }
 
-    /// Performs the same function as [`call_once`] except ignores poisoning.
+    /// Performs the same function as [`call_once()`] except ignores poisoning.
     ///
-    /// Unlike [`call_once`], if this `Once` has been poisoned (i.e., a previous
-    /// call to `call_once` or `call_once_force` caused a panic), calling
-    /// `call_once_force` will still invoke the closure `f` and will _not_
-    /// result in an immediate panic. If `f` panics, the `Once` will remain
-    /// in a poison state. If `f` does _not_ panic, the `Once` will no
-    /// longer be in a poison state and all future calls to `call_once` or
-    /// `call_once_force` will be no-ops.
+    /// Unlike [`call_once()`], if this [`Once`] has been poisoned (i.e., a previous
+    /// call to [`call_once()`] or [`call_once_force()`] caused a panic), calling
+    /// [`call_once_force()`] will still invoke the closure `f` and will _not_
+    /// result in an immediate panic. If `f` panics, the [`Once`] will remain
+    /// in a poison state. If `f` does _not_ panic, the [`Once`] will no
+    /// longer be in a poison state and all future calls to [`call_once()`] or
+    /// [`call_once_force()`] will be no-ops.
     ///
     /// The closure `f` is yielded a [`OnceState`] structure which can be used
-    /// to query the poison status of the `Once`.
+    /// to query the poison status of the [`Once`].
     ///
-    /// [`call_once`]: struct.Once.html#method.call_once
-    /// [`OnceState`]: struct.OnceState.html
+    /// [`call_once()`]: Once::call_once
+    /// [`call_once_force()`]: Once::call_once_force
     ///
     /// # Examples
     ///
@@ -328,17 +321,19 @@ impl Once {
         self.call_inner(true, &mut |p| f.take().unwrap()(p));
     }
 
-    /// Returns `true` if some `call_once` call has completed
+    /// Returns `true` if some [`call_once()`] call has completed
     /// successfully. Specifically, `is_completed` will return false in
     /// the following situations:
-    ///   * `call_once` was not called at all,
-    ///   * `call_once` was called, but has not yet completed,
-    ///   * the `Once` instance is poisoned
+    ///   * [`call_once()`] was not called at all,
+    ///   * [`call_once()`] was called, but has not yet completed,
+    ///   * the [`Once`] instance is poisoned
     ///
-    /// This function returning `false` does not mean that `Once` has not been
+    /// This function returning `false` does not mean that [`Once`] has not been
     /// executed. For example, it may have been executed in the time between
     /// when `is_completed` starts executing and when it returns, in which case
     /// the `false` return value would be stale (but still permissible).
+    ///
+    /// [`call_once()`]: Once::call_once
     ///
     /// # Examples
     ///
@@ -518,14 +513,11 @@ impl Drop for WaiterQueue<'_> {
 
 impl OnceState {
     /// Returns `true` if the associated [`Once`] was poisoned prior to the
-    /// invocation of the closure passed to [`call_once_force`].
-    ///
-    /// [`call_once_force`]: struct.Once.html#method.call_once_force
-    /// [`Once`]: struct.Once.html
+    /// invocation of the closure passed to [`Once::call_once_force()`].
     ///
     /// # Examples
     ///
-    /// A poisoned `Once`:
+    /// A poisoned [`Once`]:
     ///
     /// ```
     /// #![feature(once_poison)]
@@ -546,7 +538,7 @@ impl OnceState {
     /// });
     /// ```
     ///
-    /// An unpoisoned `Once`:
+    /// An unpoisoned [`Once`]:
     ///
     /// ```
     /// #![feature(once_poison)]
@@ -564,8 +556,6 @@ impl OnceState {
     }
 
     /// Poison the associated [`Once`] without explicitly panicking.
-    ///
-    /// [`Once`]: struct.Once.html
     // NOTE: This is currently only exposed for the `lazy` module
     pub(crate) fn poison(&self) {
         self.set_state_on_drop_to.set(POISONED);

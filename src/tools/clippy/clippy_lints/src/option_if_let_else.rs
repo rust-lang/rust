@@ -1,6 +1,7 @@
 use crate::utils;
+use crate::utils::eager_or_lazy;
 use crate::utils::sugg::Sugg;
-use crate::utils::{match_type, paths, span_lint_and_sugg};
+use crate::utils::{is_type_diagnostic_item, paths, span_lint_and_sugg};
 use if_chain::if_chain;
 
 use rustc_errors::Applicability;
@@ -13,22 +14,16 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// **What it does:**
     /// Lints usage of  `if let Some(v) = ... { y } else { x }` which is more
-    /// idiomatically done with `Option::map_or` (if the else bit is a simple
-    /// expression) or `Option::map_or_else` (if the else bit is a longer
-    /// block).
+    /// idiomatically done with `Option::map_or` (if the else bit is a pure
+    /// expression) or `Option::map_or_else` (if the else bit is an impure
+    /// expresion).
     ///
     /// **Why is this bad?**
     /// Using the dedicated functions of the Option type is clearer and
     /// more concise than an if let expression.
     ///
     /// **Known problems:**
-    /// This lint uses whether the block is just an expression or if it has
-    /// more statements to decide whether to use `Option::map_or` or
-    /// `Option::map_or_else`. If you have a single expression which calls
-    /// an expensive function, then it would be more efficient to use
-    /// `Option::map_or_else`, but this lint would suggest `Option::map_or`.
-    ///
-    /// Also, this lint uses a deliberately conservative metric for checking
+    /// This lint uses a deliberately conservative metric for checking
     /// if the inside of either body contains breaks or continues which will
     /// cause it to not suggest a fix if either block contains a loop with
     /// continues or breaks contained within the loop.
@@ -73,7 +68,7 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
         path.ident.name.to_ident_string() == "ok"
-            && match_type(cx, &cx.typeck_results().expr_ty(&receiver), &paths::RESULT)
+            && is_type_diagnostic_item(cx, &cx.typeck_results().expr_ty(&receiver), sym!(result_type))
     } else {
         false
     }
@@ -92,6 +87,7 @@ struct OptionIfLetElseOccurence {
 struct ReturnBreakContinueMacroVisitor {
     seen_return_break_continue: bool,
 }
+
 impl ReturnBreakContinueMacroVisitor {
     fn new() -> ReturnBreakContinueMacroVisitor {
         ReturnBreakContinueMacroVisitor {
@@ -99,6 +95,7 @@ impl ReturnBreakContinueMacroVisitor {
         }
     }
 }
+
 impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
     type Map = Map<'tcx>;
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -157,7 +154,7 @@ fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
 }
 
 /// If this is the else body of an if/else expression, then we need to wrap
-/// it in curcly braces. Otherwise, we don't.
+/// it in curly braces. Otherwise, we don't.
 fn should_wrap_in_braces(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     utils::get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
         if let Some(Expr {
@@ -199,7 +196,10 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
 /// If this expression is the option if let/else construct we're detecting, then
 /// this function returns an `OptionIfLetElseOccurence` struct with details if
 /// this construct is found, or None if this construct is not found.
-fn detect_option_if_let_else(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<OptionIfLetElseOccurence> {
+fn detect_option_if_let_else<'tcx>(
+    cx: &'_ LateContext<'tcx>,
+    expr: &'_ Expr<'tcx>,
+) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
         if !utils::in_macro(expr.span); // Don't lint macros, because it behaves weirdly
         if let ExprKind::Match(cond_expr, arms, MatchSource::IfLetDesugar{contains_else_clause: true}) = &expr.kind;
@@ -214,10 +214,7 @@ fn detect_option_if_let_else(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Op
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_arm(&arms[0])?;
             let none_body = extract_body_from_arm(&arms[1])?;
-            let method_sugg = match &none_body.kind {
-                ExprKind::Block(..) => "map_or_else",
-                _ => "map_or",
-            };
+            let method_sugg = if eager_or_lazy::is_eagerness_candidate(cx, none_body) { "map_or" } else { "map_or_else" };
             let capture_name = id.name.to_ident_string();
             let wrap_braces = should_wrap_in_braces(cx, expr);
             let (as_ref, as_mut) = match &cond_expr.kind {
@@ -243,8 +240,8 @@ fn detect_option_if_let_else(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Op
     }
 }
 
-impl<'a> LateLintPass<'a> for OptionIfLetElse {
-    fn check_expr(&mut self, cx: &LateContext<'a>, expr: &Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for OptionIfLetElse {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if let Some(detection) = detect_option_if_let_else(cx, expr) {
             span_lint_and_sugg(
                 cx,

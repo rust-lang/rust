@@ -5,6 +5,7 @@
 // This test case should either run-pass or be rejected at compile time.
 // Currently we just disallow this usage and require pattern is monomorphic.
 
+#![feature(const_type_id)]
 #![feature(const_type_name)]
 
 use std::any::{self, TypeId};

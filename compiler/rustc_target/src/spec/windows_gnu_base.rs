@@ -23,6 +23,7 @@ pub fn opts() -> TargetOptions {
         "-lmsvcrt".to_string(),
         "-lmingwex".to_string(),
         "-lmingw32".to_string(),
+        "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
         // mingw's msvcrt is a weird hybrid import library and static library.
         // And it seems that the linker fails to use import symbols from msvcrt
         // that are required from functions in msvcrt in certain cases. For example
@@ -41,8 +42,6 @@ pub fn opts() -> TargetOptions {
         // the shared libgcc_s-dw2-1.dll. This is required to support
         // unwinding across DLL boundaries.
         "-lgcc_s".to_string(),
-        "-lgcc".to_string(),
-        "-lkernel32".to_string(),
     ];
     late_link_args_dynamic.insert(LinkerFlavor::Gcc, dynamic_unwind_libs.clone());
     late_link_args_dynamic.insert(LinkerFlavor::Lld(LldFlavor::Ld), dynamic_unwind_libs);
@@ -54,10 +53,6 @@ pub fn opts() -> TargetOptions {
         // boundaries when unwinding across FFI boundaries.
         "-lgcc_eh".to_string(),
         "-l:libpthread.a".to_string(),
-        "-lgcc".to_string(),
-        // libpthread depends on libmsvcrt, so we need to link it *again*.
-        "-lmsvcrt".to_string(),
-        "-lkernel32".to_string(),
     ];
     late_link_args_static.insert(LinkerFlavor::Gcc, static_unwind_libs.clone());
     late_link_args_static.insert(LinkerFlavor::Lld(LldFlavor::Ld), static_unwind_libs);

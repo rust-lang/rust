@@ -90,7 +90,7 @@ declare_clippy_lint! {
     /// if x & 0b1111 == 0 { }
     /// ```
     pub VERBOSE_BIT_MASK,
-    style,
+    pedantic,
     "expressions where a bit mask is less readable than the corresponding method call"
 }
 

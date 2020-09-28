@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
@@ -438,7 +438,7 @@ impl<'tcx> SaveContext<'tcx> {
                                     .next()
                                     .map(|item| item.def_id);
                             }
-                            qualname.push_str(">");
+                            qualname.push('>');
 
                             (qualname, trait_id, decl_id, docs, attrs)
                         }

@@ -3,6 +3,7 @@
 
 use crate::ty;
 use crate::ty::subst::{GenericArg, GenericArgKind};
+use rustc_data_structures::mini_set::MiniSet;
 use smallvec::{self, SmallVec};
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
@@ -12,11 +13,20 @@ type TypeWalkerStack<'tcx> = SmallVec<[GenericArg<'tcx>; 8]>;
 pub struct TypeWalker<'tcx> {
     stack: TypeWalkerStack<'tcx>,
     last_subtree: usize,
+    visited: MiniSet<GenericArg<'tcx>>,
 }
 
+/// An iterator for walking the type tree.
+///
+/// It's very easy to produce a deeply
+/// nested type tree with a lot of
+/// identical subtrees. In order to work efficiently
+/// in this situation walker only visits each type once.
+/// It maintains a set of visited types and
+/// skips any types that are already there.
 impl<'tcx> TypeWalker<'tcx> {
-    pub fn new(root: GenericArg<'tcx>) -> TypeWalker<'tcx> {
-        TypeWalker { stack: smallvec![root], last_subtree: 1 }
+    pub fn new(root: GenericArg<'tcx>) -> Self {
+        Self { stack: smallvec![root], last_subtree: 1, visited: MiniSet::new() }
     }
 
     /// Skips the subtree corresponding to the last type
@@ -41,11 +51,15 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
 
     fn next(&mut self) -> Option<GenericArg<'tcx>> {
         debug!("next(): stack={:?}", self.stack);
-        let next = self.stack.pop()?;
-        self.last_subtree = self.stack.len();
-        push_inner(&mut self.stack, next);
-        debug!("next: stack={:?}", self.stack);
-        Some(next)
+        loop {
+            let next = self.stack.pop()?;
+            self.last_subtree = self.stack.len();
+            if self.visited.insert(next) {
+                push_inner(&mut self.stack, next);
+                debug!("next: stack={:?}", self.stack);
+                return Some(next);
+            }
+        }
     }
 }
 
@@ -67,9 +81,17 @@ impl GenericArg<'tcx> {
     /// Iterator that walks the immediate children of `self`. Hence
     /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
     /// (but not `i32`, like `walk`).
-    pub fn walk_shallow(self) -> impl Iterator<Item = GenericArg<'tcx>> {
+    ///
+    /// Iterator only walks items once.
+    /// It accepts visited set, updates it with all visited types
+    /// and skips any types that are already there.
+    pub fn walk_shallow(
+        self,
+        visited: &mut MiniSet<GenericArg<'tcx>>,
+    ) -> impl Iterator<Item = GenericArg<'tcx>> {
         let mut stack = SmallVec::new();
         push_inner(&mut stack, self);
+        stack.retain(|a| visited.insert(*a));
         stack.into_iter()
     }
 }

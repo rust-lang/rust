@@ -10,5 +10,7 @@ impl<T: ?Sized> L<T> {
 }
 
 impl<T> X<T, [u8; L::<T>::S]> {}
+//~^ WARN cannot use constants which depend on generic parameters
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 fn main() {}

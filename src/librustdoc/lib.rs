@@ -16,6 +16,16 @@
 
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate tracing;
+
+// N.B. these need `extern crate` even in 2018 edition
+// because they're loaded implicitly from the sysroot.
+// The reason they're loaded from the sysroot is because
+// the rustdoc artifacts aren't stored in rustc's cargo target directory.
+// So if `rustc` was specified in Cargo.toml, this would spuriously rebuild crates.
+//
+// Dependencies listed in Cargo.toml do not need `extern crate`.
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
@@ -42,8 +52,6 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 extern crate test as testing;
-#[macro_use]
-extern crate tracing;
 
 use std::default::Default;
 use std::env;

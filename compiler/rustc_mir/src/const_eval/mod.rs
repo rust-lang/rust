@@ -2,11 +2,14 @@
 
 use std::convert::TryFrom;
 
+use rustc_hir::Mutability;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
-use crate::interpret::{intern_const_alloc_recursive, ConstValue, InternKind, InterpCx};
+use crate::interpret::{
+    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, MemPlaceMeta, Scalar,
+};
 
 mod error;
 mod eval_queries;
@@ -66,4 +69,40 @@ pub(crate) fn destructure_const<'tcx>(
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 
     mir::DestructuredConst { variant, fields }
+}
+
+pub(crate) fn deref_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    val: &'tcx ty::Const<'tcx>,
+) -> &'tcx ty::Const<'tcx> {
+    trace!("deref_const: {:?}", val);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let op = ecx.const_to_op(val, None).unwrap();
+    let mplace = ecx.deref_operand(op).unwrap();
+    if let Scalar::Ptr(ptr) = mplace.ptr {
+        assert_eq!(
+            ecx.memory.get_raw(ptr.alloc_id).unwrap().mutability,
+            Mutability::Not,
+            "deref_const cannot be used with mutable allocations as \
+            that could allow pattern matching to observe mutable statics",
+        );
+    }
+
+    let ty = match mplace.meta {
+        MemPlaceMeta::None => mplace.layout.ty,
+        MemPlaceMeta::Poison => bug!("poison metadata in `deref_const`: {:#?}", mplace),
+        // In case of unsized types, figure out the real type behind.
+        MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind() {
+            ty::Str => bug!("there's no sized equivalent of a `str`"),
+            ty::Slice(elem_ty) => tcx.mk_array(elem_ty, scalar.to_machine_usize(&tcx).unwrap()),
+            _ => bug!(
+                "type {} should not have metadata, but had {:?}",
+                mplace.layout.ty,
+                mplace.meta
+            ),
+        },
+    };
+
+    tcx.mk_const(ty::Const { val: ty::ConstKind::Value(op_to_const(&ecx, mplace.into())), ty })
 }

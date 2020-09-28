@@ -32,3 +32,17 @@ pub struct UnixToken;
 
 Here, the respective tokens can only be used by dependent crates on their respective platforms, but
 they will both appear in documentation.
+
+## Add aliases for an item in documentation search
+
+This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
+`doc(alias)` attribute. Example:
+
+```rust,no_run
+#[doc(alias = "x")]
+#[doc(alias = "big")]
+pub struct BigX;
+```
+
+Then, when looking for it through the `rustdoc` search, if you enter "x" or
+"big", search will show the `BigX` struct first.

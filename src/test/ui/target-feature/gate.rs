@@ -19,7 +19,6 @@
 // gate-test-aarch64_target_feature
 // gate-test-hexagon_target_feature
 // gate-test-mips_target_feature
-// gate-test-mmx_target_feature
 // gate-test-wasm_target_feature
 // gate-test-adx_target_feature
 // gate-test-cmpxchg16b_target_feature
@@ -30,7 +29,6 @@
 
 #[target_feature(enable = "avx512bw")]
 //~^ ERROR: currently unstable
-unsafe fn foo() {
-}
+unsafe fn foo() {}
 
 fn main() {}

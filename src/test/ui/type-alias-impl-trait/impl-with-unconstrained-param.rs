@@ -9,10 +9,9 @@ trait X {
 }
 
 impl<T> X for () {
+    //~^ ERROR the type parameter `T` is not constrained
     type I = impl Sized;
-    //~^ ERROR could not find defining uses
     fn f() -> Self::I {}
-    //~^ ERROR type annotations needed
 }
 
 fn main() {}

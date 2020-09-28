@@ -5,61 +5,61 @@ LL |     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"
    |                                    ^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:45:28
+  --> $DIR/reject_non_structural.rs:44:28
    |
 LL |     match Some(NoDerive) { FIELD => dbg!(FIELD), _ => panic!("whoops"), };
    |                            ^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:51:27
+  --> $DIR/reject_non_structural.rs:49:27
    |
 LL |     match Some(NoDerive) {INDIRECT => dbg!(INDIRECT), _ => panic!("whoops"), };
    |                           ^^^^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:56:36
+  --> $DIR/reject_non_structural.rs:53:36
    |
 LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoops"), };
    |                                    ^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:61:28
+  --> $DIR/reject_non_structural.rs:57:28
    |
 LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:66:36
+  --> $DIR/reject_non_structural.rs:61:36
    |
 LL |     match [None, Some(NoDerive)] { ARRAY => dbg!(ARRAY), _ => panic!("whoops"), };
    |                                    ^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:71:33
+  --> $DIR/reject_non_structural.rs:65:33
    |
 LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
    |                                 ^^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:71:33
+  --> $DIR/reject_non_structural.rs:65:33
    |
 LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
    |                                 ^^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:79:28
+  --> $DIR/reject_non_structural.rs:71:28
    |
 LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:84:28
+  --> $DIR/reject_non_structural.rs:75:28
    |
 LL |     match Some(NoDerive) { BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
    |                            ^^^^^
 
 warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:89:29
+  --> $DIR/reject_non_structural.rs:79:29
    |
 LL |     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
    |                             ^^^^^^^
@@ -72,65 +72,5 @@ LL | #![warn(indirect_structural_match)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:40:36
-   |
-LL |     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"), };
-   |                                    ^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:45:28
-   |
-LL |     match Some(NoDerive) { FIELD => dbg!(FIELD), _ => panic!("whoops"), };
-   |                            ^^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:51:27
-   |
-LL |     match Some(NoDerive) {INDIRECT => dbg!(INDIRECT), _ => panic!("whoops"), };
-   |                           ^^^^^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:56:36
-   |
-LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoops"), };
-   |                                    ^^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:61:28
-   |
-LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
-   |                            ^^^^^^^^^^^^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:66:36
-   |
-LL |     match [None, Some(NoDerive)] { ARRAY => dbg!(ARRAY), _ => panic!("whoops"), };
-   |                                    ^^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:71:33
-   |
-LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
-   |                                 ^^^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:71:33
-   |
-LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
-   |                                 ^^^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:79:28
-   |
-LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
-   |                            ^^^^^^^^^^^^^^^
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:84:28
-   |
-LL |     match Some(NoDerive) { BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
-   |                            ^^^^^
-
-error: aborting due to 20 previous errors; 1 warning emitted
+error: aborting due to 10 previous errors; 1 warning emitted
 

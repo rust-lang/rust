@@ -1,7 +1,6 @@
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 use rustc_attr as attr;
@@ -97,6 +96,15 @@ where
                 ty.visit_with(self)
             }
             ty::PredicateAtom::RegionOutlives(..) => false,
+            ty::PredicateAtom::ConstEvaluatable(..)
+                if self.def_id_visitor.tcx().features().const_evaluatable_checked =>
+            {
+                // FIXME(const_evaluatable_checked): If the constant used here depends on a
+                // private function we may have to do something here...
+                //
+                // For now, let's just pretend that everything is fine.
+                false
+            }
             _ => bug!("unexpected predicate: {:?}", predicate),
         }
     }

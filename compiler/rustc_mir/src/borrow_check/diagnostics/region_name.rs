@@ -396,7 +396,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ) -> Option<RegionNameHighlight> {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(needle_fr, counter);
-        let type_name = self.infcx.extract_type_name(&ty, Some(highlight)).0;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(ty.into(), Some(highlight)).name;
 
         debug!(
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
@@ -404,7 +405,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         );
         if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
-
             Some(RegionNameHighlight::CannotMatchHirTy(span, type_name))
         } else {
             None
@@ -646,7 +646,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
-        let type_name = self.infcx.extract_type_name(&return_ty, Some(highlight)).0;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(return_ty.into(), Some(highlight)).name;
 
         let mir_hir_id = tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
 
@@ -698,7 +699,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
-        let type_name = self.infcx.extract_type_name(&yield_ty, Some(highlight)).0;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(yield_ty.into(), Some(highlight)).name;
 
         let mir_hir_id = tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
 

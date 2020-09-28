@@ -14,7 +14,6 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::DiagnosticBuilder;
 use rustc_expand::base::{self, *};
-use rustc_span::source_map::respan;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use smallvec::smallvec;
@@ -30,7 +29,11 @@ pub fn expand_global_asm<'cx>(
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
             kind: ast::ItemKind::GlobalAsm(P(global_asm)),
-            vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            vis: ast::Visibility {
+                span: sp.shrink_to_lo(),
+                kind: ast::VisibilityKind::Inherited,
+                tokens: None,
+            },
             span: cx.with_def_site_ctxt(sp),
             tokens: None,
         })]),

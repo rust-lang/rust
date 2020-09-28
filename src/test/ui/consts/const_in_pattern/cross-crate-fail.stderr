@@ -5,22 +5,10 @@ LL |         consts::SOME => panic!(),
    |         ^^^^^^^^^^^^
 
 error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/cross-crate-fail.rs:21:9
+  --> $DIR/cross-crate-fail.rs:20:9
    |
 LL |         <Defaulted as consts::AssocConst>::SOME  => panic!(),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/cross-crate-fail.rs:13:9
-   |
-LL |         consts::SOME => panic!(),
-   |         ^^^^^^^^^^^^
-
-error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/cross-crate-fail.rs:21:9
-   |
-LL |         <Defaulted as consts::AssocConst>::SOME  => panic!(),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

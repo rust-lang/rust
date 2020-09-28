@@ -1,3 +1,5 @@
+//! Linux-specific extensions to primitives in the `std::fs` module.
+
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
 use crate::fs::Metadata;

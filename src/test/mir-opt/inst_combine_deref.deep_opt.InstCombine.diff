@@ -1,0 +1,92 @@
+- // MIR for `deep_opt` before InstCombine
++ // MIR for `deep_opt` after InstCombine
+  
+  fn deep_opt() -> (u64, u64, u64) {
+      let mut _0: (u64, u64, u64);         // return place in scope 0 at $DIR/inst_combine_deref.rs:11:18: 11:33
+      let _1: u64;                         // in scope 0 at $DIR/inst_combine_deref.rs:12:9: 12:11
+      let mut _10: u64;                    // in scope 0 at $DIR/inst_combine_deref.rs:21:6: 21:8
+      let mut _11: u64;                    // in scope 0 at $DIR/inst_combine_deref.rs:21:10: 21:12
+      let mut _12: u64;                    // in scope 0 at $DIR/inst_combine_deref.rs:21:14: 21:16
+      scope 1 {
+          debug x1 => _1;                  // in scope 1 at $DIR/inst_combine_deref.rs:12:9: 12:11
+          let _2: u64;                     // in scope 1 at $DIR/inst_combine_deref.rs:13:9: 13:11
+          scope 2 {
+              debug x2 => _2;              // in scope 2 at $DIR/inst_combine_deref.rs:13:9: 13:11
+              let _3: u64;                 // in scope 2 at $DIR/inst_combine_deref.rs:14:9: 14:11
+              scope 3 {
+                  debug x3 => _3;          // in scope 3 at $DIR/inst_combine_deref.rs:14:9: 14:11
+                  let _4: &u64;            // in scope 3 at $DIR/inst_combine_deref.rs:15:9: 15:11
+                  scope 4 {
+                      debug y1 => _4;      // in scope 4 at $DIR/inst_combine_deref.rs:15:9: 15:11
+                      let _5: &u64;        // in scope 4 at $DIR/inst_combine_deref.rs:16:9: 16:11
+                      scope 5 {
+                          debug y2 => _5;  // in scope 5 at $DIR/inst_combine_deref.rs:16:9: 16:11
+                          let _6: &u64;    // in scope 5 at $DIR/inst_combine_deref.rs:17:9: 17:11
+                          scope 6 {
+                              debug y3 => _6; // in scope 6 at $DIR/inst_combine_deref.rs:17:9: 17:11
+                              let _7: u64; // in scope 6 at $DIR/inst_combine_deref.rs:18:9: 18:11
+                              scope 7 {
+                                  debug z1 => _7; // in scope 7 at $DIR/inst_combine_deref.rs:18:9: 18:11
+                                  let _8: u64; // in scope 7 at $DIR/inst_combine_deref.rs:19:9: 19:11
+                                  scope 8 {
+                                      debug z2 => _8; // in scope 8 at $DIR/inst_combine_deref.rs:19:9: 19:11
+                                      let _9: u64; // in scope 8 at $DIR/inst_combine_deref.rs:20:9: 20:11
+                                      scope 9 {
+                                          debug z3 => _9; // in scope 9 at $DIR/inst_combine_deref.rs:20:9: 20:11
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inst_combine_deref.rs:12:9: 12:11
+          _1 = const 1_u64;                // scope 0 at $DIR/inst_combine_deref.rs:12:14: 12:15
+          StorageLive(_2);                 // scope 1 at $DIR/inst_combine_deref.rs:13:9: 13:11
+          _2 = const 2_u64;                // scope 1 at $DIR/inst_combine_deref.rs:13:14: 13:15
+          StorageLive(_3);                 // scope 2 at $DIR/inst_combine_deref.rs:14:9: 14:11
+          _3 = const 3_u64;                // scope 2 at $DIR/inst_combine_deref.rs:14:14: 14:15
+          StorageLive(_4);                 // scope 3 at $DIR/inst_combine_deref.rs:15:9: 15:11
+          _4 = &_1;                        // scope 3 at $DIR/inst_combine_deref.rs:15:14: 15:17
+          StorageLive(_5);                 // scope 4 at $DIR/inst_combine_deref.rs:16:9: 16:11
+          _5 = &_2;                        // scope 4 at $DIR/inst_combine_deref.rs:16:14: 16:17
+          StorageLive(_6);                 // scope 5 at $DIR/inst_combine_deref.rs:17:9: 17:11
+          _6 = &_3;                        // scope 5 at $DIR/inst_combine_deref.rs:17:14: 17:17
+          StorageLive(_7);                 // scope 6 at $DIR/inst_combine_deref.rs:18:9: 18:11
+-         _7 = (*_4);                      // scope 6 at $DIR/inst_combine_deref.rs:18:14: 18:17
++         _7 = _1;                         // scope 6 at $DIR/inst_combine_deref.rs:18:14: 18:17
+          StorageLive(_8);                 // scope 7 at $DIR/inst_combine_deref.rs:19:9: 19:11
+-         _8 = (*_5);                      // scope 7 at $DIR/inst_combine_deref.rs:19:14: 19:17
++         _8 = _2;                         // scope 7 at $DIR/inst_combine_deref.rs:19:14: 19:17
+          StorageLive(_9);                 // scope 8 at $DIR/inst_combine_deref.rs:20:9: 20:11
+-         _9 = (*_6);                      // scope 8 at $DIR/inst_combine_deref.rs:20:14: 20:17
++         _9 = _3;                         // scope 8 at $DIR/inst_combine_deref.rs:20:14: 20:17
+          StorageLive(_10);                // scope 9 at $DIR/inst_combine_deref.rs:21:6: 21:8
+          _10 = _7;                        // scope 9 at $DIR/inst_combine_deref.rs:21:6: 21:8
+          StorageLive(_11);                // scope 9 at $DIR/inst_combine_deref.rs:21:10: 21:12
+          _11 = _8;                        // scope 9 at $DIR/inst_combine_deref.rs:21:10: 21:12
+          StorageLive(_12);                // scope 9 at $DIR/inst_combine_deref.rs:21:14: 21:16
+          _12 = _9;                        // scope 9 at $DIR/inst_combine_deref.rs:21:14: 21:16
+          (_0.0: u64) = move _10;          // scope 9 at $DIR/inst_combine_deref.rs:21:5: 21:17
+          (_0.1: u64) = move _11;          // scope 9 at $DIR/inst_combine_deref.rs:21:5: 21:17
+          (_0.2: u64) = move _12;          // scope 9 at $DIR/inst_combine_deref.rs:21:5: 21:17
+          StorageDead(_12);                // scope 9 at $DIR/inst_combine_deref.rs:21:16: 21:17
+          StorageDead(_11);                // scope 9 at $DIR/inst_combine_deref.rs:21:16: 21:17
+          StorageDead(_10);                // scope 9 at $DIR/inst_combine_deref.rs:21:16: 21:17
+          StorageDead(_9);                 // scope 8 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          StorageDead(_8);                 // scope 7 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          StorageDead(_7);                 // scope 6 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          StorageDead(_6);                 // scope 5 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          StorageDead(_5);                 // scope 4 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          StorageDead(_4);                 // scope 3 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          StorageDead(_3);                 // scope 2 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          StorageDead(_2);                 // scope 1 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          StorageDead(_1);                 // scope 0 at $DIR/inst_combine_deref.rs:22:1: 22:2
+          return;                          // scope 0 at $DIR/inst_combine_deref.rs:22:2: 22:2
+      }
+  }
+  

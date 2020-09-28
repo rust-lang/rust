@@ -218,7 +218,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         speculative: bool,
     ) -> Result<ty::Visibility, VisResolutionError<'ast>> {
         let parent_scope = &self.parent_scope;
-        match vis.node {
+        match vis.kind {
             ast::VisibilityKind::Public => Ok(ty::Visibility::Public),
             ast::VisibilityKind::Crate(..) => {
                 Ok(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)))
@@ -395,7 +395,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         // so prefixes are prepended with crate root segment if necessary.
         // The root is prepended lazily, when the first non-empty prefix or terminating glob
         // appears, so imports in braced groups can have roots prepended independently.
-        let is_glob = if let ast::UseTreeKind::Glob = use_tree.kind { true } else { false };
+        let is_glob = matches!(use_tree.kind, ast::UseTreeKind::Glob);
         let crate_root = match prefix_iter.peek() {
             Some(seg) if !seg.ident.is_path_segment_keyword() && seg.ident.span.rust_2015() => {
                 Some(seg.ident.span.ctxt())
@@ -796,23 +796,26 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         vis
                     };
 
+                    let mut ret_fields = Vec::with_capacity(vdata.fields().len());
+
                     for field in vdata.fields() {
                         // NOTE: The field may be an expansion placeholder, but expansion sets
                         // correct visibilities for unnamed field placeholders specifically, so the
                         // constructor visibility should still be determined correctly.
-                        if let Ok(field_vis) = self.resolve_visibility_speculative(&field.vis, true)
-                        {
-                            if ctor_vis.is_at_least(field_vis, &*self.r) {
-                                ctor_vis = field_vis;
-                            }
+                        let field_vis = self
+                            .resolve_visibility_speculative(&field.vis, true)
+                            .unwrap_or(ty::Visibility::Public);
+                        if ctor_vis.is_at_least(field_vis, &*self.r) {
+                            ctor_vis = field_vis;
                         }
+                        ret_fields.push(field_vis);
                     }
                     let ctor_res = Res::Def(
                         DefKind::Ctor(CtorOf::Struct, CtorKind::from_ast(vdata)),
                         self.r.local_def_id(ctor_node_id).to_def_id(),
                     );
                     self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
-                    self.r.struct_constructors.insert(def_id, (ctor_res, ctor_vis));
+                    self.r.struct_constructors.insert(def_id, (ctor_res, ctor_vis, ret_fields));
                 }
             }
 
@@ -964,7 +967,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
                 let parent = cstore.def_key(def_id).parent;
                 if let Some(struct_def_id) = parent.map(|index| DefId { index, ..def_id }) {
-                    self.r.struct_constructors.insert(struct_def_id, (res, vis));
+                    self.r.struct_constructors.insert(struct_def_id, (res, vis, vec![]));
                 }
             }
             _ => {}

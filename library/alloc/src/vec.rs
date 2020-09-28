@@ -55,6 +55,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::cmp::{self, Ordering};
+use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
@@ -174,7 +175,9 @@ use crate::raw_vec::RawVec;
 ///
 /// // ... and that's all!
 /// // you can also do it like this:
-/// let x : &[usize] = &v;
+/// let u: &[usize] = &v;
+/// // or like this:
+/// let u: &[_] = &v;
 /// ```
 ///
 /// In Rust, it's more common to pass slices as arguments rather than vectors
@@ -409,7 +412,7 @@ impl<T> Vec<T> {
     ///   (at least, it's highly likely to be incorrect if it wasn't).
     /// * `T` needs to have the same size and alignment as what `ptr` was allocated with.
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
-    ///   needs to be equal to satsify the [`dealloc`] requirement that memory must be
+    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
@@ -1310,7 +1313,7 @@ impl<T> Vec<T> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let Range { start, end } = self.check_range(range);
+        let Range { start, end } = slice::check_range(len, range);
 
         unsafe {
             // set self.vec length's to start, to be safe in case Drain is leaked
@@ -1408,6 +1411,11 @@ impl<T> Vec<T> {
 
         if at > self.len() {
             assert_failed(at, self.len());
+        }
+
+        if at == 0 {
+            // the new vector can take over the original buffer and avoid the copy
+            return mem::replace(self, Vec::with_capacity(self.capacity()));
         }
 
         let other_len = self.len - at;
@@ -2091,7 +2099,6 @@ impl<T> Extend<T> for Vec<T> {
 /// |  slice::Iter                    |  |                     |
 /// |  Iterator<Item = &Clone>        |  +---------------------+
 /// +---------------------------------+
-///
 /// ```
 trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
@@ -2747,6 +2754,57 @@ impl From<&str> for Vec<u8> {
     }
 }
 
+#[stable(feature = "array_try_from_vec", since = "1.48.0")]
+impl<T, const N: usize> TryFrom<Vec<T>> for [T; N] {
+    type Error = Vec<T>;
+
+    /// Gets the entire contents of the `Vec<T>` as an array,
+    /// if its size exactly matches that of the requested array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::convert::TryInto;
+    /// assert_eq!(vec![1, 2, 3].try_into(), Ok([1, 2, 3]));
+    /// assert_eq!(<Vec<i32>>::new().try_into(), Ok([]));
+    /// ```
+    ///
+    /// If the length doesn't match, the input comes back in `Err`:
+    /// ```
+    /// use std::convert::TryInto;
+    /// let r: Result<[i32; 4], _> = (0..10).collect::<Vec<_>>().try_into();
+    /// assert_eq!(r, Err(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
+    /// ```
+    ///
+    /// If you're fine with just getting a prefix of the `Vec<T>`,
+    /// you can call [`.truncate(N)`](Vec::truncate) first.
+    /// ```
+    /// use std::convert::TryInto;
+    /// let mut v = String::from("hello world").into_bytes();
+    /// v.sort();
+    /// v.truncate(2);
+    /// let [a, b]: [_; 2] = v.try_into().unwrap();
+    /// assert_eq!(a, b' ');
+    /// assert_eq!(b, b'd');
+    /// ```
+    fn try_from(mut vec: Vec<T>) -> Result<[T; N], Vec<T>> {
+        if vec.len() != N {
+            return Err(vec);
+        }
+
+        // SAFETY: `.set_len(0)` is always sound.
+        unsafe { vec.set_len(0) };
+
+        // SAFETY: A `Vec`'s pointer is always aligned properly, and
+        // the alignment the array needs is the same as the items.
+        // We checked earlier that we have sufficient items.
+        // The items will not double-drop as the `set_len`
+        // tells the `Vec` not to also drop them.
+        let array = unsafe { ptr::read(vec.as_ptr() as *const [T; N]) };
+        Ok(array)
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
@@ -2790,6 +2848,13 @@ where
 ///
 /// This `struct` is created by the `into_iter` method on [`Vec`] (provided
 /// by the [`IntoIterator`] trait).
+///
+/// # Example
+///
+/// ```
+/// let v = vec![0, 1, 2];
+/// let iter: std::vec::IntoIter<_> = v.into_iter();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     buf: NonNull<T>,
@@ -2882,25 +2947,21 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        unsafe {
-            if self.ptr as *const _ == self.end {
-                None
-            } else {
-                if mem::size_of::<T>() == 0 {
-                    // purposefully don't use 'ptr.offset' because for
-                    // vectors with 0-size elements this would return the
-                    // same pointer.
-                    self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
+        if self.ptr as *const _ == self.end {
+            None
+        } else if mem::size_of::<T>() == 0 {
+            // purposefully don't use 'ptr.offset' because for
+            // vectors with 0-size elements this would return the
+            // same pointer.
+            self.ptr = unsafe { arith_offset(self.ptr as *const i8, 1) as *mut T };
 
-                    // Make up a value of this ZST.
-                    Some(mem::zeroed())
-                } else {
-                    let old = self.ptr;
-                    self.ptr = self.ptr.offset(1);
+            // Make up a value of this ZST.
+            Some(unsafe { mem::zeroed() })
+        } else {
+            let old = self.ptr;
+            self.ptr = unsafe { self.ptr.offset(1) };
 
-                    Some(ptr::read(old))
-                }
-            }
+            Some(unsafe { ptr::read(old) })
         }
     }
 
@@ -2919,12 +2980,18 @@ impl<T> Iterator for IntoIter<T> {
         self.len()
     }
 
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {
-        // SAFETY: the caller must uphold the contract for
-        // `Iterator::get_unchecked`.
+        // SAFETY: the caller must guarantee that `i` is in bounds of the
+        // `Vec<T>`, so `i` cannot overflow an `isize`, and the `self.ptr.add(i)`
+        // is guaranteed to pointer to an element of the `Vec<T>` and
+        // thus guaranteed to be valid to dereference.
+        //
+        // Also note the implementation of `Self: TrustedRandomAccess` requires
+        // that `T: Copy` so reading elements from the buffer doesn't invalidate
+        // them for `Drop`.
         unsafe {
             if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
         }
@@ -2935,22 +3002,18 @@ impl<T> Iterator for IntoIter<T> {
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        unsafe {
-            if self.end == self.ptr {
-                None
-            } else {
-                if mem::size_of::<T>() == 0 {
-                    // See above for why 'ptr.offset' isn't used
-                    self.end = arith_offset(self.end as *const i8, -1) as *mut T;
+        if self.end == self.ptr {
+            None
+        } else if mem::size_of::<T>() == 0 {
+            // See above for why 'ptr.offset' isn't used
+            self.end = unsafe { arith_offset(self.end as *const i8, -1) as *mut T };
 
-                    // Make up a value of this ZST.
-                    Some(mem::zeroed())
-                } else {
-                    self.end = self.end.offset(-1);
+            // Make up a value of this ZST.
+            Some(unsafe { mem::zeroed() })
+        } else {
+            self.end = unsafe { self.end.offset(-1) };
 
-                    Some(ptr::read(self.end))
-                }
-            }
+            Some(unsafe { ptr::read(self.end) })
         }
     }
 }
@@ -3040,6 +3103,14 @@ impl<T> AsIntoIter for IntoIter<T> {
 /// A draining iterator for `Vec<T>`.
 ///
 /// This `struct` is created by [`Vec::drain`].
+/// See its documentation for more.
+///
+/// # Example
+///
+/// ```
+/// let mut v = vec![0, 1, 2];
+/// let iter: std::vec::Drain<_> = v.drain(..);
+/// ```
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
@@ -3169,6 +3240,14 @@ impl<T> FusedIterator for Drain<'_, T> {}
 ///
 /// This struct is created by [`Vec::splice()`].
 /// See its documentation for more.
+///
+/// # Example
+///
+/// ```
+/// let mut v = vec![0, 1, 2];
+/// let new = [7, 8];
+/// let iter: std::vec::Splice<_> = v.splice(1.., new.iter().cloned());
+/// ```
 #[derive(Debug)]
 #[stable(feature = "vec_splice", since = "1.21.0")]
 pub struct Splice<'a, I: Iterator + 'a> {
@@ -3285,6 +3364,15 @@ impl<T> Drain<'_, T> {
 ///
 /// This struct is created by [`Vec::drain_filter`].
 /// See its documentation for more.
+///
+/// # Example
+///
+/// ```
+/// #![feature(drain_filter)]
+///
+/// let mut v = vec![0, 1, 2];
+/// let iter: std::vec::DrainFilter<_, _> = v.drain_filter(|x| *x % 2 == 0);
+/// ```
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
 pub struct DrainFilter<'a, T, F>

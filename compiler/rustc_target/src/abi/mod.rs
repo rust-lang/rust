@@ -1135,16 +1135,31 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             Abi::Scalar(s) => scalar_allows_raw_init(s),
             Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
             Abi::Vector { element: s, count } => *count == 0 || scalar_allows_raw_init(s),
-            Abi::Aggregate { .. } => true, // Cannot be excluded *right now*.
+            Abi::Aggregate { .. } => true, // Fields are checked below.
         };
         if !valid {
             // This is definitely not okay.
-            trace!("might_permit_raw_init({:?}, zero={}): not valid", self.layout, zero);
             return Ok(false);
         }
 
-        // If we have not found an error yet, we need to recursively descend.
-        // FIXME(#66151): For now, we are conservative and do not do this.
+        // If we have not found an error yet, we need to recursively descend into fields.
+        match &self.fields {
+            FieldsShape::Primitive | FieldsShape::Union { .. } => {}
+            FieldsShape::Array { .. } => {
+                // FIXME(#66151): For now, we are conservative and do not check arrays.
+            }
+            FieldsShape::Arbitrary { offsets, .. } => {
+                for idx in 0..offsets.len() {
+                    let field = self.field(cx, idx).to_result()?;
+                    if !field.might_permit_raw_init(cx, zero)? {
+                        // We found a field that is unhappy with this kind of initialization.
+                        return Ok(false);
+                    }
+                }
+            }
+        }
+
+        // FIXME(#66151): For now, we are conservative and do not check `self.variants`.
         Ok(true)
     }
 }

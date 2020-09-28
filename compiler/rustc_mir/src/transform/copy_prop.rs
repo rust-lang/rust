@@ -31,9 +31,11 @@ pub struct CopyPropagation;
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        let opts = &tcx.sess.opts.debugging_opts;
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
-        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
+        // FIXME(76740): This optimization is buggy and can cause unsoundness.
+        if opts.mir_opt_level <= 1 || !opts.unsound_mir_opts {
             return;
         }
 

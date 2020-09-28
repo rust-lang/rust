@@ -3,8 +3,10 @@
 
 /// [`std::collections::BTreeMap::into_iter`]
 /// [`String::from`] is ambiguous as to which `From` impl
+/// [Vec::into_iter()] uses a disambiguator
 // @has 'intra_link_associated_items/fn.foo.html' '//a[@href="https://doc.rust-lang.org/nightly/alloc/collections/btree/map/struct.BTreeMap.html#method.into_iter"]' 'std::collections::BTreeMap::into_iter'
 // @has 'intra_link_associated_items/fn.foo.html' '//a[@href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html#method.from"]' 'String::from'
+// @has 'intra_link_associated_items/fn.foo.html' '//a[@href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html#method.into_iter"]' 'Vec::into_iter'
 pub fn foo() {}
 
 /// Link to [MyStruct], [link from struct][MyStruct::method], [MyStruct::clone], [MyStruct::Input]

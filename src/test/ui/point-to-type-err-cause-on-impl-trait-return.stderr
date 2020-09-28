@@ -12,12 +12,21 @@ LL |     1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn foo() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         return Box::new(0i32);
+LL |     }
+LL |     Box::new(1u32)
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:13:16
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:12:16
    |
 LL | fn bar() -> impl std::fmt::Display {
    |             ---------------------- expected because this return type...
@@ -30,12 +39,21 @@ LL |         return 1u32;
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn bar() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         return Box::new(0i32);
+LL |     } else {
+LL |         return Box::new(1u32);
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:22:9
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:20:9
    |
 LL | fn baz() -> impl std::fmt::Display {
    |             ---------------------- expected because this return type...
@@ -48,12 +66,21 @@ LL |         1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn baz() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         return Box::new(0i32);
+LL |     } else {
+LL |         Box::new(1u32)
+   |
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:31:9
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:28:9
    |
 LL | /     if false {
 LL | |         0i32
@@ -61,12 +88,22 @@ LL | |         0i32
 LL | |     } else {
 LL | |         1u32
    | |         ^^^^ expected `i32`, found `u32`
-LL | |
 LL | |     }
    | |_____- `if` and `else` have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn qux() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         Box::new(0i32)
+LL |     } else {
+LL |         Box::new(1u32)
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:39:14
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:35:14
    |
 LL | fn bat() -> impl std::fmt::Display {
    |             ---------------------- expected because this return type...
@@ -78,17 +115,24 @@ LL |         _ => 1u32,
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn bat() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         0 => return Box::new(0i32),
+LL |         _ => Box::new(1u32),
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:45:5
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:40:5
    |
 LL |   fn can() -> impl std::fmt::Display {
    |               ---------------------- expected because this return type...
 LL | /     match 13 {
-LL | |
 LL | |         0 => return 0i32,
    | |                     ---- ...is found to be `i32` here
 LL | |         1 => 1u32,
@@ -98,12 +142,23 @@ LL | |     }
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn can() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |     Box::new(match 13 {
+LL |         0 => return Box::new(0i32),
+LL |         1 => 1u32,
+LL |         _ => 2u32,
+LL |     })
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:59:13
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:53:13
    |
 LL | fn cat() -> impl std::fmt::Display {
    |             ---------------------- expected because this return type...
@@ -116,10 +171,148 @@ LL |             1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn cat() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |             return Box::new(0i32);
+LL |         }
+LL |         _ => {
+LL |             Box::new(1u32)
+   |
 
-error: aborting due to 7 previous errors
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:61:14
+   |
+LL | /     match 13 {
+LL | |         0 => 0i32,
+   | |              ---- this is found to be of type `i32`
+LL | |         1 => 1u32,
+   | |              ^^^^ expected `i32`, found `u32`
+LL | |         _ => 2u32,
+LL | |     }
+   | |_____- `match` arms have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn dog() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         0 => Box::new(0i32),
+LL |         1 => Box::new(1u32),
+   |
 
-For more information about this error, try `rustc --explain E0308`.
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:97:9
+   |
+LL | /     if let Some(42) = Some(42) {
+LL | |         0i32
+   | |         ---- expected because of this
+LL | |     } else {
+LL | |         1u32
+   | |         ^^^^ expected `i32`, found `u32`
+LL | |     }
+   | |_____- `if` and `else` have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn apt() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         Box::new(0i32)
+LL |     } else {
+LL |         Box::new(1u32)
+   |
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:66:13
+   |
+LL | fn hat() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
+   = note: if all the returned values were of the same type you could use `impl std::fmt::Display` as the return type
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+   = note: you can create a new `enum` with a variant for each returned type
+help: return a boxed trait object instead
+   |
+LL | fn hat() -> Box<dyn std::fmt::Display> {
+LL |     match 13 {
+LL |         0 => {
+LL |             return Box::new(0i32);
+LL |         }
+LL |         _ => {
+ ...
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:80:14
+   |
+LL | /     match 13 {
+LL | |         0 => 0i32,
+   | |              ---- this is found to be of type `i32`
+LL | |         1 => 1u32,
+   | |              ^^^^ expected `i32`, found `u32`
+LL | |         _ => 2u32,
+LL | |     }
+   | |_____- `match` arms have incompatible types
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
+   |
+LL | fn pug() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
+   = note: if all the returned values were of the same type you could use `impl std::fmt::Display` as the return type
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+   = note: you can create a new `enum` with a variant for each returned type
+help: return a boxed trait object instead
+   |
+LL | fn pug() -> Box<dyn std::fmt::Display> {
+LL |     match 13 {
+LL |         0 => Box::new(0i32),
+LL |         1 => Box::new(1u32),
+LL |         _ => Box::new(2u32),
+   |
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:89:9
+   |
+LL | /     if false {
+LL | |         0i32
+   | |         ---- expected because of this
+LL | |     } else {
+LL | |         1u32
+   | |         ^^^^ expected `i32`, found `u32`
+LL | |     }
+   | |_____- `if` and `else` have incompatible types
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:85:13
+   |
+LL | fn man() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
+   = note: if all the returned values were of the same type you could use `impl std::fmt::Display` as the return type
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+   = note: you can create a new `enum` with a variant for each returned type
+help: return a boxed trait object instead
+   |
+LL | fn man() -> Box<dyn std::fmt::Display> {
+LL |     if false {
+LL |         Box::new(0i32)
+LL |     } else {
+LL |         Box::new(1u32)
+   |
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0308, E0746.
+For more information about an error, try `rustc --explain E0308`.

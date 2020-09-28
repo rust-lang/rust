@@ -387,7 +387,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let ReturnConstraint::ClosureUpvar(upvar) = kind {
             let def_id = match self.regioncx.universal_regions().defining_ty {
                 DefiningTy::Closure(def_id, _) => def_id,
-                ty @ _ => bug!("unexpected DefiningTy {:?}", ty),
+                ty => bug!("unexpected DefiningTy {:?}", ty),
             };
 
             let upvar_def_span = self.infcx.tcx.hir().span(upvar);

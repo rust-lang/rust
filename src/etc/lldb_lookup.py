@@ -94,7 +94,7 @@ def synthetic_lookup(valobj, dict):
     if rust_type == RustType.STD_HASH_SET:
         hash_map = valobj.GetChildAtIndex(0)
         if is_hashbrown_hashmap(hash_map):
-            return StdHashMapSyntheticProvider(hash_map, dict, show_values=False)
+            return StdHashMapSyntheticProvider(valobj, dict, show_values=False)
         else:
             return StdOldHashMapSyntheticProvider(hash_map, dict, show_values=False)
 

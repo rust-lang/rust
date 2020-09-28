@@ -2,7 +2,7 @@ use crate::base::ExtCtxt;
 
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
+use rustc_ast::tokenstream::{self, DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
@@ -47,26 +47,15 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl
-    FromInternal<(
-        TreeAndJoint,
-        Option<&'_ tokenstream::TokenTree>,
-        &'_ ParseSess,
-        &'_ mut Vec<Self>,
-    )> for TokenTree<Group, Punct, Ident, Literal>
+impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
+    for TokenTree<Group, Punct, Ident, Literal>
 {
     fn from_internal(
-        ((tree, is_joint), look_ahead, sess, stack): (
-            TreeAndJoint,
-            Option<&tokenstream::TokenTree>,
-            &ParseSess,
-            &mut Vec<Self>,
-        ),
+        ((tree, spacing), sess, stack): (TreeAndSpacing, &ParseSess, &mut Vec<Self>),
     ) -> Self {
         use rustc_ast::token::*;
 
-        let joint = is_joint == Joint
-            && matches!(look_ahead, Some(tokenstream::TokenTree::Token(t)) if t.is_op());
+        let joint = spacing == Joint;
         let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
@@ -272,7 +261,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
         };
 
         let tree = tokenstream::TokenTree::token(kind, span);
-        TokenStream::new(vec![(tree, if joint { Joint } else { NonJoint })])
+        TokenStream::new(vec![(tree, if joint { Joint } else { Alone })])
     }
 }
 
@@ -455,9 +444,8 @@ impl server::TokenStreamIter for Rustc<'_> {
     ) -> Option<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
-                let next = iter.cursor.next_with_joint()?;
-                let lookahead = iter.cursor.look_ahead(0);
-                Some(TokenTree::from_internal((next, lookahead, self.sess, &mut iter.stack)))
+                let next = iter.cursor.next_with_spacing()?;
+                Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
             })?;
             // A hack used to pass AST fragments to attribute and derive macros
             // as a single nonterminal token instead of a token stream.
@@ -596,12 +584,12 @@ impl server::Literal for Rustc<'_> {
 
         let start = match start {
             Bound::Included(lo) => lo,
-            Bound::Excluded(lo) => lo + 1,
+            Bound::Excluded(lo) => lo.checked_add(1)?,
             Bound::Unbounded => 0,
         };
 
         let end = match end {
-            Bound::Included(hi) => hi + 1,
+            Bound::Included(hi) => hi.checked_add(1)?,
             Bound::Excluded(hi) => hi,
             Bound::Unbounded => length,
         };

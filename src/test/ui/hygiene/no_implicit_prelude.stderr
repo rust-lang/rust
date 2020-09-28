@@ -6,7 +6,7 @@ LL |         assert_eq!(0, 0);
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: use of undeclared type or module `Vec`
+error[E0433]: failed to resolve: use of undeclared type `Vec`
   --> $DIR/no_implicit_prelude.rs:11:9
    |
 LL |     fn f() { ::bar::m!(); }

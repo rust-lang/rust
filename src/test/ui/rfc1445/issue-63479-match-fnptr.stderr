@@ -1,0 +1,16 @@
+warning: function pointers and unsized pointers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/issue-63479-match-fnptr.rs:35:7
+   |
+LL |     B(TEST) => println!("matched"),
+   |       ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-63479-match-fnptr.rs:8:9
+   |
+LL | #![warn(pointer_structural_match)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: 1 warning emitted
+

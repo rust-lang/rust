@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -23,18 +21,82 @@ use std::cmp;
 use tracing::debug;
 
 declare_lint! {
+    /// The `unused_comparisons` lint detects comparisons made useless by
+    /// limits of the types involved.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn foo(x: u8) {
+    ///     x >= 0;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A useless comparison may indicate a mistake, and should be fixed or
+    /// removed.
     UNUSED_COMPARISONS,
     Warn,
     "comparisons made useless by limits of the types involved"
 }
 
 declare_lint! {
+    /// The `overflowing_literals` lint detects literal out of range for its
+    /// type.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// let x: u8 = 1000;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It is usually a mistake to use a literal that overflows the type where
+    /// it is used. Either use a literal that is within range, or change the
+    /// type to be within the range of the literal.
     OVERFLOWING_LITERALS,
     Deny,
     "literal out of range for its type"
 }
 
 declare_lint! {
+    /// The `variant_size_differences` lint detects enums with widely varying
+    /// variant sizes.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(variant_size_differences)]
+    /// enum En {
+    ///     V0(u8),
+    ///     VBig([u8; 1024]),
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It can be a mistake to add a variant to an enum that is much larger
+    /// than the other variants, bloating the overall size required for all
+    /// variants. This can impact performance and memory usage. This is
+    /// triggered if one variant is more than 3 times larger than the
+    /// second-largest variant.
+    ///
+    /// Consider placing the large variant's contents on the heap (for example
+    /// via [`Box`]) to keep the overall size of the enum itself down.
+    ///
+    /// This lint is "allow" by default because it can be noisy, and may not be
+    /// an actual problem. Decisions about this should be guided with
+    /// profiling and benchmarking.
+    ///
+    /// [`Box`]: https://doc.rust-lang.org/std/boxed/index.html
     VARIANT_SIZE_DIFFERENCES,
     Allow,
     "detects enums with widely varying variant sizes"
@@ -495,6 +557,27 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
 }
 
 declare_lint! {
+    /// The `improper_ctypes` lint detects incorrect use of types in foreign
+    /// modules.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// extern "C" {
+    ///     static STATIC: String;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler has several checks to verify that types used in `extern`
+    /// blocks are safe and follow certain rules to ensure proper
+    /// compatibility with the foreign interfaces. This lint is issued when it
+    /// detects a probable mistake in a definition. The lint usually should
+    /// provide a description of the issue, along with possibly a hint on how
+    /// to resolve it.
     IMPROPER_CTYPES,
     Warn,
     "proper use of libc types in foreign modules"
@@ -503,6 +586,27 @@ declare_lint! {
 declare_lint_pass!(ImproperCTypesDeclarations => [IMPROPER_CTYPES]);
 
 declare_lint! {
+    /// The `improper_ctypes_definitions` lint detects incorrect use of
+    /// [`extern` function] definitions.
+    ///
+    /// [`extern` function]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// pub extern "C" fn str_type(p: &str) { }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// There are many parameter and return types that may be specified in an
+    /// `extern` function that are not compatible with the given ABI. This
+    /// lint is an alert that these types should not be used. The lint usually
+    /// should provide a description of the issue, along with possibly a hint
+    /// on how to resolve it.
     IMPROPER_CTYPES_DEFINITIONS,
     Warn,
     "proper use of libc types in foreign item definitions"
@@ -533,6 +637,26 @@ crate fn nonnull_optimization_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, def: &ty::AdtD
         .any(|a| tcx.sess.check_name(a, sym::rustc_nonnull_optimization_guaranteed))
 }
 
+/// `repr(transparent)` structs can have a single non-ZST field, this function returns that
+/// field.
+pub fn transparent_newtype_field<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    variant: &'a ty::VariantDef,
+) -> Option<&'a ty::FieldDef> {
+    let param_env = tcx.param_env(variant.def_id);
+    for field in &variant.fields {
+        let field_ty = tcx.type_of(field.did);
+        let is_zst =
+            tcx.layout_of(param_env.and(field_ty)).map(|layout| layout.is_zst()).unwrap_or(false);
+
+        if !is_zst {
+            return Some(field);
+        }
+    }
+
+    None
+}
+
 /// Is type known to be non-null?
 crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
     let tcx = cx.tcx;
@@ -548,7 +672,7 @@ crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: C
             }
 
             for variant in &def.variants {
-                if let Some(field) = variant.transparent_newtype_field(tcx) {
+                if let Some(field) = transparent_newtype_field(cx.tcx, variant) {
                     if ty_is_known_nonnull(cx, field.ty(tcx, substs), mode) {
                         return true;
                     }
@@ -569,7 +693,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
         ty::Adt(field_def, field_substs) => {
             let inner_field_ty = {
                 let first_non_zst_ty =
-                    field_def.variants.iter().filter_map(|v| v.transparent_newtype_field(tcx));
+                    field_def.variants.iter().filter_map(|v| transparent_newtype_field(cx.tcx, v));
                 debug_assert_eq!(
                     first_non_zst_ty.clone().count(),
                     1,
@@ -607,7 +731,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 }
 
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
-/// can, return the the type that `ty` can be safely converted to, otherwise return `None`.
+/// can, return the type that `ty` can be safely converted to, otherwise return `None`.
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero*`,
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
 /// FIXME: This duplicates code in codegen.
@@ -710,7 +834,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if def.repr.transparent() {
             // Can assume that only one field is not a ZST, so only check
             // that field's type for FFI-safety.
-            if let Some(field) = variant.transparent_newtype_field(self.cx.tcx) {
+            if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
                 self.check_field_type_for_ffi(cache, field, substs)
             } else {
                 bug!("malformed transparent type");

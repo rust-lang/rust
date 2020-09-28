@@ -62,7 +62,7 @@ target | std | host | notes
 `aarch64-linux-android` | ✓ |  | ARM64 Android
 `aarch64-pc-windows-msvc` | ✓ |  | ARM64 Windows MSVC
 `aarch64-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (kernel 4.2, glibc 2.17)
-`aarch64-unknown-linux-musl` | ✓ |  | ARM64 Linux with MUSL
+`aarch64-unknown-linux-musl` | ✓ | ✓ | ARM64 Linux with MUSL
 `aarch64-unknown-none` | * |  | Bare ARM64, hardfloat
 `aarch64-unknown-none-softfloat` | * |  | Bare ARM64, softfloat
 `arm-linux-androideabi` | ✓ |  | ARMv7 Android
@@ -195,6 +195,7 @@ target | std | host | notes
 `powerpc64-unknown-linux-musl` | ? |  |
 `powerpc64-wrs-vxworks` | ? |  |
 `powerpc64le-unknown-linux-musl` | ? |  |
+`riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
 `sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
 `sparc64-unknown-openbsd` | ? |  |

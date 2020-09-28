@@ -55,18 +55,22 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
         };
 
         let dis_buffer = &mut [0u8; 16];
+        let crate_name;
+        let other_name;
         let name;
         let dis;
         let end_index;
 
         match def_key.disambiguated_data.data {
             DefPathData::CrateRoot => {
-                name = self.tcx.original_crate_name(def_id.krate);
+                crate_name = self.tcx.original_crate_name(def_id.krate).as_str();
+                name = &*crate_name;
                 dis = "";
                 end_index = 3;
             }
             other => {
-                name = other.as_symbol();
+                other_name = other.to_string();
+                name = other_name.as_str();
                 if def_key.disambiguated_data.disambiguator == 0 {
                     dis = "";
                     end_index = 3;
@@ -80,7 +84,6 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
             }
         }
 
-        let name = &*name.as_str();
         let components = [
             StringComponent::Ref(parent_string_id),
             StringComponent::Value("::"),

@@ -4,8 +4,8 @@ use super::{MirPass, MirSource};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::{
     mir::{
-        AggregateKind, BasicBlock, Body, Location, MirPhase, Operand, Rvalue, Statement,
-        StatementKind, Terminator, TerminatorKind,
+        AggregateKind, BasicBlock, Body, BorrowKind, Location, MirPhase, Operand, Rvalue,
+        Statement, StatementKind, Terminator, TerminatorKind,
     },
     ty::{
         self,
@@ -274,7 +274,31 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         }
                     }
+                    Rvalue::Ref(_, BorrowKind::Shallow, _) => {
+                        if self.mir_phase > MirPhase::DropLowering {
+                            self.fail(
+                                location,
+                                "`Assign` statement with a `Shallow` borrow should have been removed after drop lowering phase",
+                            );
+                        }
+                    }
                     _ => {}
+                }
+            }
+            StatementKind::AscribeUserType(..) => {
+                if self.mir_phase > MirPhase::DropLowering {
+                    self.fail(
+                        location,
+                        "`AscribeUserType` should have been removed after drop lowering phase",
+                    );
+                }
+            }
+            StatementKind::FakeRead(..) => {
+                if self.mir_phase > MirPhase::DropLowering {
+                    self.fail(
+                        location,
+                        "`FakeRead` should have been removed after drop lowering phase",
+                    );
                 }
             }
             _ => {}

@@ -7,7 +7,6 @@ use rustc_ast::attr;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_session::Session;
-use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -35,7 +34,11 @@ pub fn expand_test_case(
     let sp = ecx.with_def_site_ctxt(attr_sp);
     let mut item = anno_item.expect_item();
     item = item.map(|mut item| {
-        item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
+        item.vis = ast::Visibility {
+            span: item.vis.span,
+            kind: ast::VisibilityKind::Public,
+            tokens: None,
+        };
         item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
         item.attrs.push(ecx.attribute(ecx.meta_word(sp, sym::rustc_test_marker)));
         item
@@ -292,7 +295,7 @@ pub fn expand_test_or_bench(
         ),
     );
     test_const = test_const.map(|mut tc| {
-        tc.vis.node = ast::VisibilityKind::Public;
+        tc.vis.kind = ast::VisibilityKind::Public;
         tc
     });
 

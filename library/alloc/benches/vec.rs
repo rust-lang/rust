@@ -1,4 +1,4 @@
-use rand::prelude::*;
+use rand::RngCore;
 use std::iter::{repeat, FromIterator};
 use test::{black_box, Bencher};
 
@@ -241,7 +241,7 @@ fn bench_extend_recycle(b: &mut Bencher) {
     let mut data = vec![0; 1000];
 
     b.iter(|| {
-        let tmp = std::mem::replace(&mut data, Vec::new());
+        let tmp = std::mem::take(&mut data);
         let mut to_extend = black_box(Vec::new());
         to_extend.extend(tmp.into_iter());
         data = black_box(to_extend);
@@ -457,9 +457,7 @@ fn bench_clone_from_10_1000_0100(b: &mut Bencher) {
 }
 
 macro_rules! bench_in_place {
-    (
-        $($fname:ident, $type:ty , $count:expr, $init: expr);*
-    ) => {
+    ($($fname:ident, $type:ty, $count:expr, $init:expr);*) => {
         $(
             #[bench]
             fn $fname(b: &mut Bencher) {
@@ -467,7 +465,8 @@ macro_rules! bench_in_place {
                     let src: Vec<$type> = black_box(vec![$init; $count]);
                     let mut sink = src.into_iter()
                         .enumerate()
-                        .map(|(idx, e)| { (idx as $type) ^ e }).collect::<Vec<$type>>();
+                        .map(|(idx, e)| idx as $type ^ e)
+                        .collect::<Vec<$type>>();
                     black_box(sink.as_mut_ptr())
                 });
             }
@@ -476,32 +475,32 @@ macro_rules! bench_in_place {
 }
 
 bench_in_place![
-    bench_in_place_xxu8_i0_0010,     u8,     10, 0;
-    bench_in_place_xxu8_i0_0100,     u8,    100, 0;
-    bench_in_place_xxu8_i0_1000,     u8,   1000, 0;
-    bench_in_place_xxu8_i1_0010,     u8,     10, 1;
-    bench_in_place_xxu8_i1_0100,     u8,    100, 1;
-    bench_in_place_xxu8_i1_1000,     u8,   1000, 1;
-    bench_in_place_xu32_i0_0010,    u32,     10, 0;
-    bench_in_place_xu32_i0_0100,    u32,    100, 0;
-    bench_in_place_xu32_i0_1000,    u32,   1000, 0;
-    bench_in_place_xu32_i1_0010,    u32,     10, 1;
-    bench_in_place_xu32_i1_0100,    u32,    100, 1;
-    bench_in_place_xu32_i1_1000,    u32,   1000, 1;
-    bench_in_place_u128_i0_0010,   u128,     10, 0;
-    bench_in_place_u128_i0_0100,   u128,    100, 0;
-    bench_in_place_u128_i0_1000,   u128,   1000, 0;
-    bench_in_place_u128_i1_0010,   u128,     10, 1;
-    bench_in_place_u128_i1_0100,   u128,    100, 1;
-    bench_in_place_u128_i1_1000,   u128,   1000, 1
+    bench_in_place_xxu8_0010_i0,   u8,   10, 0;
+    bench_in_place_xxu8_0100_i0,   u8,  100, 0;
+    bench_in_place_xxu8_1000_i0,   u8, 1000, 0;
+    bench_in_place_xxu8_0010_i1,   u8,   10, 1;
+    bench_in_place_xxu8_0100_i1,   u8,  100, 1;
+    bench_in_place_xxu8_1000_i1,   u8, 1000, 1;
+    bench_in_place_xu32_0010_i0,  u32,   10, 0;
+    bench_in_place_xu32_0100_i0,  u32,  100, 0;
+    bench_in_place_xu32_1000_i0,  u32, 1000, 0;
+    bench_in_place_xu32_0010_i1,  u32,   10, 1;
+    bench_in_place_xu32_0100_i1,  u32,  100, 1;
+    bench_in_place_xu32_1000_i1,  u32, 1000, 1;
+    bench_in_place_u128_0010_i0, u128,   10, 0;
+    bench_in_place_u128_0100_i0, u128,  100, 0;
+    bench_in_place_u128_1000_i0, u128, 1000, 0;
+    bench_in_place_u128_0010_i1, u128,   10, 1;
+    bench_in_place_u128_0100_i1, u128,  100, 1;
+    bench_in_place_u128_1000_i1, u128, 1000, 1
 ];
 
 #[bench]
-fn bench_in_place_recycle(b: &mut test::Bencher) {
+fn bench_in_place_recycle(b: &mut Bencher) {
     let mut data = vec![0; 1000];
 
     b.iter(|| {
-        let tmp = std::mem::replace(&mut data, Vec::new());
+        let tmp = std::mem::take(&mut data);
         data = black_box(
             tmp.into_iter()
                 .enumerate()
@@ -514,14 +513,14 @@ fn bench_in_place_recycle(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_in_place_zip_recycle(b: &mut test::Bencher) {
+fn bench_in_place_zip_recycle(b: &mut Bencher) {
     let mut data = vec![0u8; 1000];
     let mut rng = rand::thread_rng();
     let mut subst = vec![0u8; 1000];
     rng.fill_bytes(&mut subst[..]);
 
     b.iter(|| {
-        let tmp = std::mem::replace(&mut data, Vec::new());
+        let tmp = std::mem::take(&mut data);
         let mangled = tmp
             .into_iter()
             .zip(subst.iter().copied())
@@ -534,7 +533,7 @@ fn bench_in_place_zip_recycle(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_in_place_zip_iter_mut(b: &mut test::Bencher) {
+fn bench_in_place_zip_iter_mut(b: &mut Bencher) {
     let mut data = vec![0u8; 256];
     let mut rng = rand::thread_rng();
     let mut subst = vec![0u8; 1000];
@@ -559,7 +558,7 @@ impl Drop for Droppable {
 }
 
 #[bench]
-fn bench_in_place_collect_droppable(b: &mut test::Bencher) {
+fn bench_in_place_collect_droppable(b: &mut Bencher) {
     let v: Vec<Droppable> = std::iter::repeat_with(|| Droppable(0)).take(1000).collect();
     b.iter(|| {
         v.clone()
@@ -572,13 +571,13 @@ fn bench_in_place_collect_droppable(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_chain_collect(b: &mut test::Bencher) {
+fn bench_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| data.iter().cloned().chain([1].iter().cloned()).collect::<Vec<_>>());
 }
 
 #[bench]
-fn bench_chain_chain_collect(b: &mut test::Bencher) {
+fn bench_chain_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         data.iter()
@@ -590,7 +589,7 @@ fn bench_chain_chain_collect(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_nest_chain_chain_collect(b: &mut test::Bencher) {
+fn bench_nest_chain_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         data.iter().cloned().chain([1].iter().chain([2].iter()).cloned()).collect::<Vec<_>>()
@@ -617,12 +616,12 @@ pub fn map_fast(l: &[(u32, u32)]) -> Vec<u32> {
 const LEN: usize = 16384;
 
 #[bench]
-fn bench_range_map_collect(b: &mut test::Bencher) {
+fn bench_range_map_collect(b: &mut Bencher) {
     b.iter(|| (0..LEN).map(|_| u32::default()).collect::<Vec<_>>());
 }
 
 #[bench]
-fn bench_chain_extend_ref(b: &mut test::Bencher) {
+fn bench_chain_extend_ref(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         let mut v = Vec::<u32>::with_capacity(data.len() + 1);
@@ -632,7 +631,7 @@ fn bench_chain_extend_ref(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_chain_extend_value(b: &mut test::Bencher) {
+fn bench_chain_extend_value(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         let mut v = Vec::<u32>::with_capacity(data.len() + 1);
@@ -642,7 +641,7 @@ fn bench_chain_extend_value(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_rev_1(b: &mut test::Bencher) {
+fn bench_rev_1(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
         let mut v = Vec::<u32>::new();
@@ -652,13 +651,13 @@ fn bench_rev_1(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_rev_2(b: &mut test::Bencher) {
+fn bench_rev_2(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| example_plain_slow(&data));
 }
 
 #[bench]
-fn bench_map_regular(b: &mut test::Bencher) {
+fn bench_map_regular(b: &mut Bencher) {
     let data = black_box([(0, 0); LEN]);
     b.iter(|| {
         let mut v = Vec::<u32>::new();
@@ -668,7 +667,7 @@ fn bench_map_regular(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_map_fast(b: &mut test::Bencher) {
+fn bench_map_fast(b: &mut Bencher) {
     let data = black_box([(0, 0); LEN]);
     b.iter(|| map_fast(&data));
 }

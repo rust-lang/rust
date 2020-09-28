@@ -1,0 +1,13 @@
+[package]
+name = "lint-docs"
+version = "0.1.0"
+authors = ["The Rust Project Developers"]
+edition = "2018"
+description = "A script to extract the lint documentation for the rustc book."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde_json = "1.0.57"
+tempfile = "3.1.0"
+walkdir = "2.3.1"

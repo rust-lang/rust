@@ -35,7 +35,7 @@ pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
 pub use self::coverageinfo::{CoverageInfoBuilderMethods, CoverageInfoMethods};
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
-pub use self::declare::{DeclareMethods, PreDefineMethods};
+pub use self::declare::PreDefineMethods;
 pub use self::intrinsic::IntrinsicCallMethods;
 pub use self::misc::MiscMethods;
 pub use self::statics::{StaticBuilderMethods, StaticMethods};
@@ -60,7 +60,6 @@ pub trait CodegenMethods<'tcx>:
     + StaticMethods
     + CoverageInfoMethods
     + DebugInfoMethods<'tcx>
-    + DeclareMethods<'tcx>
     + AsmMethods
     + PreDefineMethods<'tcx>
     + HasParamEnv<'tcx>
@@ -77,7 +76,6 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + StaticMethods
         + CoverageInfoMethods
         + DebugInfoMethods<'tcx>
-        + DeclareMethods<'tcx>
         + AsmMethods
         + PreDefineMethods<'tcx>
         + HasParamEnv<'tcx>

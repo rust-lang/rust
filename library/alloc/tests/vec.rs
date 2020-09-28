@@ -3,6 +3,7 @@ use std::collections::TryReserveError::*;
 use std::fmt::Debug;
 use std::iter::InPlaceIterable;
 use std::mem::size_of;
+use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
 use std::vec::{Drain, IntoIter};
@@ -647,9 +648,33 @@ fn test_drain_max_vec_size() {
 
 #[test]
 #[should_panic]
+fn test_drain_index_overflow() {
+    let mut v = Vec::<()>::with_capacity(usize::MAX);
+    unsafe {
+        v.set_len(usize::MAX);
+    }
+    v.drain(0..=usize::MAX);
+}
+
+#[test]
+#[should_panic]
 fn test_drain_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     v.drain(5..=5);
+}
+
+#[test]
+#[should_panic]
+fn test_drain_start_overflow() {
+    let mut v = vec![1, 2, 3];
+    v.drain((Excluded(usize::MAX), Included(0)));
+}
+
+#[test]
+#[should_panic]
+fn test_drain_end_overflow() {
+    let mut v = vec![1, 2, 3];
+    v.drain((Included(0), Included(usize::MAX)));
 }
 
 #[test]
@@ -772,9 +797,23 @@ fn test_append() {
 #[test]
 fn test_split_off() {
     let mut vec = vec![1, 2, 3, 4, 5, 6];
+    let orig_capacity = vec.capacity();
     let vec2 = vec.split_off(4);
     assert_eq!(vec, [1, 2, 3, 4]);
     assert_eq!(vec2, [5, 6]);
+    assert_eq!(vec.capacity(), orig_capacity);
+}
+
+#[test]
+fn test_split_off_take_all() {
+    let mut vec = vec![1, 2, 3, 4, 5, 6];
+    let orig_ptr = vec.as_ptr();
+    let orig_capacity = vec.capacity();
+    let vec2 = vec.split_off(0);
+    assert_eq!(vec, []);
+    assert_eq!(vec2, [1, 2, 3, 4, 5, 6]);
+    assert_eq!(vec.capacity(), orig_capacity);
+    assert_eq!(vec2.as_ptr(), orig_ptr);
 }
 
 #[test]
@@ -880,7 +919,7 @@ fn test_from_iter_partially_drained_in_place_specialization() {
 #[test]
 fn test_from_iter_specialization_with_iterator_adapters() {
     fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {};
-    let src: Vec<usize> = vec![0usize; 65535];
+    let src: Vec<usize> = vec![0usize; 256];
     let srcptr = src.as_ptr();
     let iter = src
         .into_iter()
@@ -1302,7 +1341,7 @@ fn test_try_reserve() {
     // on 64-bit, we assume the OS will give an OOM for such a ridiculous size.
     // Any platform that succeeds for these requests is technically broken with
     // ptr::offset because LLVM is the worst.
-    let guards_against_isize = size_of::<usize>() < 8;
+    let guards_against_isize = usize::BITS < 64;
 
     {
         // Note: basic stuff is checked by test_reserve
@@ -1511,6 +1550,9 @@ fn test_stable_pointers() {
     // Test that, if we reserved enough space, adding and removing elements does not
     // invalidate references into the vector (such as `v0`).  This test also
     // runs in Miri, which would detect such problems.
+    // Note that this test does *not* constitute a stable guarantee that all these functions do not
+    // reallocate! Only what is explicitly documented at
+    // <https://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#guarantees> is stably guaranteed.
     let mut v = Vec::with_capacity(128);
     v.push(13);
 

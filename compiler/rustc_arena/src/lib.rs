@@ -8,16 +8,13 @@
 //! This crate implements several kinds of arena.
 
 #![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
-#![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![feature(raw_vec_internals)]
+#![feature(new_uninit)]
+#![feature(maybe_uninit_slice)]
 #![cfg_attr(test, feature(test))]
-#![allow(deprecated)]
-
-extern crate alloc;
 
 use rustc_data_structures::cold_path;
 use smallvec::SmallVec;
@@ -25,13 +22,10 @@ use smallvec::SmallVec;
 use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
 use std::cmp;
-use std::intrinsics;
 use std::marker::{PhantomData, Send};
-use std::mem;
+use std::mem::{self, MaybeUninit};
 use std::ptr;
 use std::slice;
-
-use alloc::raw_vec::RawVec;
 
 /// An arena that can hold objects of only one type.
 pub struct TypedArena<T> {
@@ -52,7 +46,7 @@ pub struct TypedArena<T> {
 
 struct TypedArenaChunk<T> {
     /// The raw storage for the arena chunk.
-    storage: RawVec<T>,
+    storage: Box<[MaybeUninit<T>]>,
     /// The number of valid entries in the chunk.
     entries: usize,
 }
@@ -60,7 +54,7 @@ struct TypedArenaChunk<T> {
 impl<T> TypedArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> TypedArenaChunk<T> {
-        TypedArenaChunk { storage: RawVec::with_capacity(capacity), entries: 0 }
+        TypedArenaChunk { storage: Box::new_uninit_slice(capacity), entries: 0 }
     }
 
     /// Destroys this arena chunk.
@@ -69,30 +63,25 @@ impl<T> TypedArenaChunk<T> {
         // The branch on needs_drop() is an -O1 performance optimization.
         // Without the branch, dropping TypedArena<u8> takes linear time.
         if mem::needs_drop::<T>() {
-            let mut start = self.start();
-            // Destroy all allocated objects.
-            for _ in 0..len {
-                ptr::drop_in_place(start);
-                start = start.offset(1);
-            }
+            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut self.storage[..len]));
         }
     }
 
     // Returns a pointer to the first allocated object.
     #[inline]
-    fn start(&self) -> *mut T {
-        self.storage.ptr()
+    fn start(&mut self) -> *mut T {
+        MaybeUninit::slice_as_mut_ptr(&mut self.storage)
     }
 
     // Returns a pointer to the end of the allocated space.
     #[inline]
-    fn end(&self) -> *mut T {
+    fn end(&mut self) -> *mut T {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 // A pointer as large as possible for zero-sized elements.
                 !0 as *mut T
             } else {
-                self.start().add(self.storage.capacity())
+                self.start().add(self.storage.len())
             }
         }
     }
@@ -130,7 +119,7 @@ impl<T> TypedArena<T> {
 
         unsafe {
             if mem::size_of::<T>() == 0 {
-                self.ptr.set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1) as *mut T);
+                self.ptr.set((self.ptr.get() as *mut u8).wrapping_offset(1) as *mut T);
                 let ptr = mem::align_of::<T>() as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
@@ -226,10 +215,10 @@ impl<T> TypedArena<T> {
                 let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
                 last_chunk.entries = used_bytes / mem::size_of::<T>();
 
-                // If the previous chunk's capacity is less than HUGE_PAGE
+                // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = last_chunk.storage.capacity();
+                new_cap = last_chunk.storage.len();
                 if new_cap < HUGE_PAGE / elem_size {
                     new_cap = new_cap.checked_mul(2).unwrap();
                 }
@@ -239,7 +228,7 @@ impl<T> TypedArena<T> {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let chunk = TypedArenaChunk::<T>::new(new_cap);
+            let mut chunk = TypedArenaChunk::<T>::new(new_cap);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
@@ -301,7 +290,7 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
                     chunk.destroy(chunk.entries);
                 }
             }
-            // RawVec handles deallocation of `last_chunk` and `self.chunks`.
+            // Box handles deallocation of `last_chunk` and `self.chunks`.
         }
     }
 }
@@ -309,11 +298,13 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
 unsafe impl<T: Send> Send for TypedArena<T> {}
 
 pub struct DroplessArena {
-    /// A pointer to the next object to be allocated.
-    ptr: Cell<*mut u8>,
+    /// A pointer to the start of the free space.
+    start: Cell<*mut u8>,
 
-    /// A pointer to the end of the allocated area. When this pointer is
-    /// reached, a new chunk is allocated.
+    /// A pointer to the end of free space.
+    ///
+    /// The allocation proceeds from the end of the chunk towards the start.
+    /// When this pointer crosses the start pointer, a new chunk is allocated.
     end: Cell<*mut u8>,
 
     /// A vector of arena chunks.
@@ -326,7 +317,7 @@ impl Default for DroplessArena {
     #[inline]
     fn default() -> DroplessArena {
         DroplessArena {
-            ptr: Cell::new(ptr::null_mut()),
+            start: Cell::new(ptr::null_mut()),
             end: Cell::new(ptr::null_mut()),
             chunks: Default::default(),
         }
@@ -344,10 +335,10 @@ impl DroplessArena {
                 // There is no need to update `last_chunk.entries` because that
                 // field isn't used by `DroplessArena`.
 
-                // If the previous chunk's capacity is less than HUGE_PAGE
+                // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = last_chunk.storage.capacity();
+                new_cap = last_chunk.storage.len();
                 if new_cap < HUGE_PAGE {
                     new_cap = new_cap.checked_mul(2).unwrap();
                 }
@@ -357,8 +348,8 @@ impl DroplessArena {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let chunk = TypedArenaChunk::<u8>::new(new_cap);
-            self.ptr.set(chunk.start());
+            let mut chunk = TypedArenaChunk::<u8>::new(new_cap);
+            self.start.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
         }
@@ -369,24 +360,17 @@ impl DroplessArena {
     /// request.
     #[inline]
     fn alloc_raw_without_grow(&self, layout: Layout) -> Option<*mut u8> {
-        let ptr = self.ptr.get() as usize;
+        let start = self.start.get() as usize;
         let end = self.end.get() as usize;
+
         let align = layout.align();
         let bytes = layout.size();
-        // The allocation request fits into the current chunk iff:
-        //
-        // let aligned = align_to(ptr, align);
-        // ptr <= aligned && aligned + bytes <= end
-        //
-        // Except that we work with fixed width integers and need to be careful
-        // about potential overflow in the calcuation. If the overflow does
-        // happen, then we definitely don't have enough free and need to grow
-        // the arena.
-        let aligned = ptr.checked_add(align - 1)? & !(align - 1);
-        let new_ptr = aligned.checked_add(bytes)?;
-        if new_ptr <= end {
-            self.ptr.set(new_ptr as *mut u8);
-            Some(aligned as *mut u8)
+
+        let new_end = end.checked_sub(bytes)? & !(align - 1);
+        if start <= new_end {
+            let new_end = new_end as *mut u8;
+            self.end.set(new_end);
+            Some(new_end)
         } else {
             None
         }

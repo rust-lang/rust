@@ -321,7 +321,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let target_block = self.cfg.start_new_block();
             let mut schedule_drops = true;
             // We keep a stack of all of the bindings and type asciptions
-            // from the the parent candidates that we visit, that also need to
+            // from the parent candidates that we visit, that also need to
             // be bound for each candidate.
             traverse_candidate(
                 candidate,
@@ -1793,7 +1793,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .flat_map(|(bindings, _)| bindings)
                     .chain(&candidate.bindings)
                     .filter(|binding| {
-                        if let BindingMode::ByValue = binding.binding_mode { true } else { false }
+                        matches!(binding.binding_mode, BindingMode::ByValue )
                     });
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.

@@ -9,13 +9,14 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Generics, HirId, Item, StructField, Variant};
+use rustc_hir::{Generics, HirId, Item, StructField, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{DeprecationEntry, Index};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
+use rustc_session::lint::builtin::INEFFECTIVE_UNSTABLE_TRAIT_IMPL;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -34,6 +35,24 @@ enum AnnotationKind {
     Prohibited,
     // Annotation itself is useless, but it can be propagated to children
     Container,
+}
+
+/// Whether to inherit deprecation flags for nested items. In most cases, we do want to inherit
+/// deprecation, because nested items rarely have individual deprecation attributes, and so
+/// should be treated as deprecated if their parent is. However, default generic parameters
+/// have separate deprecation attributes from their parents, so we do not wish to inherit
+/// deprecation in this case. For example, inheriting deprecation for `T` in `Foo<T>`
+/// would cause a duplicate warning arising from both `Foo` and `T` being deprecated.
+#[derive(Clone)]
+enum InheritDeprecation {
+    Yes,
+    No,
+}
+
+impl InheritDeprecation {
+    fn yes(&self) -> bool {
+        matches!(self, InheritDeprecation::Yes)
+    }
 }
 
 // A private tree-walker for producing an Index.
@@ -55,6 +74,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         attrs: &[Attribute],
         item_sp: Span,
         kind: AnnotationKind,
+        inherit_deprecation: InheritDeprecation,
         visit_children: F,
     ) where
         F: FnOnce(&mut Self),
@@ -62,7 +82,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         debug!("annotate(id = {:?}, attrs = {:?})", hir_id, attrs);
         let mut did_error = false;
         if !self.tcx.features().staged_api {
-            did_error = self.forbid_staged_api_attrs(hir_id, attrs);
+            did_error = self.forbid_staged_api_attrs(hir_id, attrs, inherit_deprecation.clone());
         }
 
         let depr =
@@ -79,9 +99,11 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             let depr_entry = DeprecationEntry::local(depr.clone(), hir_id);
             self.index.depr_map.insert(hir_id, depr_entry);
         } else if let Some(parent_depr) = self.parent_depr.clone() {
-            is_deprecated = true;
-            info!("tagging child {:?} as deprecated from parent", hir_id);
-            self.index.depr_map.insert(hir_id, parent_depr);
+            if inherit_deprecation.yes() {
+                is_deprecated = true;
+                info!("tagging child {:?} as deprecated from parent", hir_id);
+                self.index.depr_map.insert(hir_id, parent_depr);
+            }
         }
 
         if self.tcx.features().staged_api {
@@ -185,7 +207,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if stab.is_none() {
             debug!("annotate: stab not found, parent = {:?}", self.parent_stab);
             if let Some(stab) = self.parent_stab {
-                if stab.level.is_unstable() {
+                if inherit_deprecation.yes() && stab.level.is_unstable() {
                     self.index.stab_map.insert(hir_id, stab);
                 }
             }
@@ -236,7 +258,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     }
 
     // returns true if an error occurred, used to suppress some spurious errors
-    fn forbid_staged_api_attrs(&mut self, hir_id: HirId, attrs: &[Attribute]) -> bool {
+    fn forbid_staged_api_attrs(
+        &mut self,
+        hir_id: HirId,
+        attrs: &[Attribute],
+        inherit_deprecation: InheritDeprecation,
+    ) -> bool {
         // Emit errors for non-staged-api crates.
         let unstable_attrs = [
             sym::unstable,
@@ -264,7 +291,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         // Propagate unstability.  This can happen even for non-staged-api crates in case
         // -Zforce-unstable-if-unmarked is set.
         if let Some(stab) = self.parent_stab {
-            if stab.level.is_unstable() {
+            if inherit_deprecation.yes() && stab.level.is_unstable() {
                 self.index.stab_map.insert(hir_id, stab);
             }
         }
@@ -300,54 +327,119 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             }
             hir::ItemKind::Struct(ref sd, _) => {
                 if let Some(ctor_hir_id) = sd.ctor_hir_id() {
-                    self.annotate(ctor_hir_id, &i.attrs, i.span, AnnotationKind::Required, |_| {})
+                    self.annotate(
+                        ctor_hir_id,
+                        &i.attrs,
+                        i.span,
+                        AnnotationKind::Required,
+                        InheritDeprecation::Yes,
+                        |_| {},
+                    )
                 }
             }
             _ => {}
         }
 
-        self.annotate(i.hir_id, &i.attrs, i.span, kind, |v| intravisit::walk_item(v, i));
+        self.annotate(i.hir_id, &i.attrs, i.span, kind, InheritDeprecation::Yes, |v| {
+            intravisit::walk_item(v, i)
+        });
         self.in_trait_impl = orig_in_trait_impl;
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
-        self.annotate(ti.hir_id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
-            intravisit::walk_trait_item(v, ti);
-        });
+        self.annotate(
+            ti.hir_id,
+            &ti.attrs,
+            ti.span,
+            AnnotationKind::Required,
+            InheritDeprecation::Yes,
+            |v| {
+                intravisit::walk_trait_item(v, ti);
+            },
+        );
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let kind =
             if self.in_trait_impl { AnnotationKind::Prohibited } else { AnnotationKind::Required };
-        self.annotate(ii.hir_id, &ii.attrs, ii.span, kind, |v| {
+        self.annotate(ii.hir_id, &ii.attrs, ii.span, kind, InheritDeprecation::Yes, |v| {
             intravisit::walk_impl_item(v, ii);
         });
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics<'tcx>, item_id: HirId) {
-        self.annotate(var.id, &var.attrs, var.span, AnnotationKind::Required, |v| {
-            if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
-                v.annotate(ctor_hir_id, &var.attrs, var.span, AnnotationKind::Required, |_| {});
-            }
+        self.annotate(
+            var.id,
+            &var.attrs,
+            var.span,
+            AnnotationKind::Required,
+            InheritDeprecation::Yes,
+            |v| {
+                if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
+                    v.annotate(
+                        ctor_hir_id,
+                        &var.attrs,
+                        var.span,
+                        AnnotationKind::Required,
+                        InheritDeprecation::Yes,
+                        |_| {},
+                    );
+                }
 
-            intravisit::walk_variant(v, var, g, item_id)
-        })
+                intravisit::walk_variant(v, var, g, item_id)
+            },
+        )
     }
 
     fn visit_struct_field(&mut self, s: &'tcx StructField<'tcx>) {
-        self.annotate(s.hir_id, &s.attrs, s.span, AnnotationKind::Required, |v| {
-            intravisit::walk_struct_field(v, s);
-        });
+        self.annotate(
+            s.hir_id,
+            &s.attrs,
+            s.span,
+            AnnotationKind::Required,
+            InheritDeprecation::Yes,
+            |v| {
+                intravisit::walk_struct_field(v, s);
+            },
+        );
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
-        self.annotate(i.hir_id, &i.attrs, i.span, AnnotationKind::Required, |v| {
-            intravisit::walk_foreign_item(v, i);
-        });
+        self.annotate(
+            i.hir_id,
+            &i.attrs,
+            i.span,
+            AnnotationKind::Required,
+            InheritDeprecation::Yes,
+            |v| {
+                intravisit::walk_foreign_item(v, i);
+            },
+        );
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
-        self.annotate(md.hir_id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
+        self.annotate(
+            md.hir_id,
+            &md.attrs,
+            md.span,
+            AnnotationKind::Required,
+            InheritDeprecation::Yes,
+            |_| {},
+        );
+    }
+
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        let kind = match &p.kind {
+            // FIXME(const_generics:defaults)
+            hir::GenericParamKind::Type { default, .. } if default.is_some() => {
+                AnnotationKind::Container
+            }
+            _ => AnnotationKind::Prohibited,
+        };
+
+        self.annotate(p.hir_id, &p.attrs, p.span, kind, InheritDeprecation::No, |v| {
+            intravisit::walk_generic_param(v, p);
+        });
     }
 }
 
@@ -367,6 +459,21 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             self.tcx.sess.span_err(span, &format!("{} has missing stability attribute", descr));
         }
     }
+
+    fn check_missing_const_stability(&self, hir_id: HirId, span: Span) {
+        let stab_map = self.tcx.stability();
+        let stab = stab_map.local_stability(hir_id);
+        if stab.map_or(false, |stab| stab.level.is_stable()) {
+            let const_stab = stab_map.local_const_stability(hir_id);
+            if const_stab.is_none() {
+                self.tcx.sess.span_err(
+                    span,
+                    "`#[stable]` const functions must also be either \
+                    `#[rustc_const_stable]` or `#[rustc_const_unstable]`",
+                );
+            }
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
@@ -377,14 +484,23 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
-        match i.kind {
-            // Inherent impls and foreign modules serve only as containers for other items,
-            // they don't have their own stability. They still can be annotated as unstable
-            // and propagate this unstability to children, but this annotation is completely
-            // optional. They inherit stability from their parents when unannotated.
-            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {}
+        // Inherent impls and foreign modules serve only as containers for other items,
+        // they don't have their own stability. They still can be annotated as unstable
+        // and propagate this unstability to children, but this annotation is completely
+        // optional. They inherit stability from their parents when unannotated.
+        if !matches!(
+            i.kind,
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..)
+        ) {
+            self.check_missing_stability(i.hir_id, i.span);
+        }
 
-            _ => self.check_missing_stability(i.hir_id, i.span),
+        // Ensure `const fn` that are `stable` have one of `rustc_const_unstable` or
+        // `rustc_const_stable`.
+        if self.tcx.features().staged_api
+            && matches!(&i.kind, hir::ItemKind::Fn(sig, ..) if sig.header.is_const())
+        {
+            self.check_missing_const_stability(i.hir_id, i.span);
         }
 
         intravisit::walk_item(self, i)
@@ -421,6 +537,10 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.check_missing_stability(md.hir_id, md.span);
     }
+
+    // Note that we don't need to `check_missing_stability` for default generic parameters,
+    // as we assume that any default generic parameters without attributes are automatically
+    // stable (assuming they have not inherited instability from their parent).
 }
 
 fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
@@ -483,6 +603,7 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
             &krate.item.attrs,
             krate.item.span,
             AnnotationKind::Required,
+            InheritDeprecation::Yes,
             |v| intravisit::walk_crate(v, krate),
         );
     }
@@ -538,7 +659,37 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl { of_trait: Some(ref t), items, .. } => {
+            hir::ItemKind::Impl { of_trait: Some(ref t), self_ty, items, .. } => {
+                if self.tcx.features().staged_api {
+                    // If this impl block has an #[unstable] attribute, give an
+                    // error if all involved types and traits are stable, because
+                    // it will have no effect.
+                    // See: https://github.com/rust-lang/rust/issues/55436
+                    if let (Some(Stability { level: attr::Unstable { .. }, .. }), _) =
+                        attr::find_stability(&self.tcx.sess, &item.attrs, item.span)
+                    {
+                        let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
+                        c.visit_ty(self_ty);
+                        c.visit_trait_ref(t);
+                        if c.fully_stable {
+                            let span = item
+                                .attrs
+                                .iter()
+                                .find(|a| a.has_name(sym::unstable))
+                                .map_or(item.span, |a| a.span);
+                            self.tcx.struct_span_lint_hir(
+                                INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+                                item.hir_id,
+                                span,
+                                |lint| lint
+                                    .build("an `#[unstable]` annotation here has no effect")
+                                    .note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")
+                                    .emit()
+                            );
+                        }
+                    }
+                }
+
                 if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
                     for impl_item_ref in items {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
@@ -595,6 +746,44 @@ impl Visitor<'tcx> for Checker<'tcx> {
             self.tcx.check_stability(def_id, Some(id), path.span)
         }
         intravisit::walk_path(self, path)
+    }
+}
+
+struct CheckTraitImplStable<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    fully_stable: bool,
+}
+
+impl Visitor<'tcx> for CheckTraitImplStable<'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _id: hir::HirId) {
+        if let Some(def_id) = path.res.opt_def_id() {
+            if let Some(stab) = self.tcx.lookup_stability(def_id) {
+                self.fully_stable &= stab.level.is_stable();
+            }
+        }
+        intravisit::walk_path(self, path)
+    }
+
+    fn visit_trait_ref(&mut self, t: &'tcx TraitRef<'tcx>) {
+        if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
+            if let Some(stab) = self.tcx.lookup_stability(trait_did) {
+                self.fully_stable &= stab.level.is_stable();
+            }
+        }
+        intravisit::walk_trait_ref(self, t)
+    }
+
+    fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
+        if let TyKind::Never = t.kind {
+            self.fully_stable = false;
+        }
+        intravisit::walk_ty(self, t)
     }
 }
 

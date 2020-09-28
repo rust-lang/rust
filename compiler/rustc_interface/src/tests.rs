@@ -40,6 +40,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
         DiagnosticOutput::Default,
         Default::default(),
         None,
+        None,
     );
     (sess, cfg)
 }

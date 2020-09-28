@@ -8,7 +8,7 @@
 //!
 //! Type-relative name resolution (methods, fields, associated items) happens in `librustc_typeck`.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
@@ -221,7 +221,7 @@ enum ResolutionError<'a> {
     /// generic parameters must not be used inside of non trivial constant values.
     ///
     /// This error is only emitted when using `min_const_generics`.
-    ParamInNonTrivialAnonConst(Symbol),
+    ParamInNonTrivialAnonConst { name: Symbol, is_type: bool },
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
@@ -534,11 +534,8 @@ impl<'a> ModuleData<'a> {
                 if ns != TypeNS {
                     return;
                 }
-                match binding.res() {
-                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
-                        collected_traits.push((name, binding))
-                    }
-                    _ => (),
+                if let Res::Def(DefKind::Trait | DefKind::TraitAlias, _) = binding.res() {
+                    collected_traits.push((name, binding))
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
@@ -1005,7 +1002,8 @@ pub struct Resolver<'a> {
 
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
-    struct_constructors: DefIdMap<(Res, ty::Visibility)>,
+    /// Also includes of list of each fields visibility
+    struct_constructors: DefIdMap<(Res, ty::Visibility, Vec<ty::Visibility>)>,
 
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
@@ -1042,6 +1040,7 @@ pub struct ResolverArenas<'a> {
     name_resolutions: TypedArena<RefCell<NameResolution<'a>>>,
     macro_rules_bindings: TypedArena<MacroRulesBinding<'a>>,
     ast_paths: TypedArena<ast::Path>,
+    pattern_spans: TypedArena<Span>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1072,6 +1071,9 @@ impl<'a> ResolverArenas<'a> {
     }
     fn alloc_ast_paths(&'a self, paths: &[ast::Path]) -> &'a [ast::Path] {
         self.ast_paths.alloc_from_iter(paths.iter().cloned())
+    }
+    fn alloc_pattern_spans(&'a self, spans: impl Iterator<Item = Span>) -> &'a [Span] {
+        self.pattern_spans.alloc_from_iter(spans)
     }
 }
 
@@ -2413,7 +2415,14 @@ impl<'a> Resolver<'a> {
                             (format!("maybe a missing crate `{}`?", ident), None)
                         }
                     } else if i == 0 {
-                        (format!("use of undeclared type or module `{}`", ident), None)
+                        if ident
+                            .name
+                            .with(|n| n.chars().next().map_or(false, |c| c.is_ascii_uppercase()))
+                        {
+                            (format!("use of undeclared type `{}`", ident), None)
+                        } else {
+                            (format!("use of undeclared crate or module `{}`", ident), None)
+                        }
                     } else {
                         let mut msg =
                             format!("could not find `{}` in `{}`", ident, path[i - 1].ident);
@@ -2527,7 +2536,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         rib_index: usize,
         rib_ident: Ident,
-        res: Res,
+        mut res: Res,
         record_used: bool,
         span: Span,
         all_ribs: &[Rib<'a>],
@@ -2617,13 +2626,23 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind(trivial) => {
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !trivial && self.session.features_untracked().min_const_generics {
-                                if record_used {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInNonTrivialAnonConst(rib_ident.name),
-                                    );
+                                // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
+                                // we can't easily tell if it's generic at this stage, so we instead remember
+                                // this and then enforce the self type to be concrete later on.
+                                if let Res::SelfTy(trait_def, Some((impl_def, _))) = res {
+                                    res = Res::SelfTy(trait_def, Some((impl_def, true)));
+                                } else {
+                                    if record_used {
+                                        self.report_error(
+                                            span,
+                                            ResolutionError::ParamInNonTrivialAnonConst {
+                                                name: rib_ident.name,
+                                                is_type: true,
+                                            },
+                                        );
+                                    }
+                                    return Res::Err;
                                 }
-                                return Res::Err;
                             }
 
                             if in_ty_param_default {
@@ -2697,7 +2716,10 @@ impl<'a> Resolver<'a> {
                                 if record_used {
                                     self.report_error(
                                         span,
-                                        ResolutionError::ParamInNonTrivialAnonConst(rib_ident.name),
+                                        ResolutionError::ParamInNonTrivialAnonConst {
+                                            name: rib_ident.name,
+                                            is_type: false,
+                                        },
                                     );
                                 }
                                 return Res::Err;
@@ -3182,6 +3204,7 @@ impl<'a> Resolver<'a> {
                     .chain(path_str.split("::").skip(1).map(Ident::from_str))
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
+                tokens: None,
             }
         } else {
             ast::Path {
@@ -3191,6 +3214,7 @@ impl<'a> Resolver<'a> {
                     .map(Ident::from_str)
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
+                tokens: None,
             }
         };
         let module = self.get_module(module_id);

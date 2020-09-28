@@ -362,15 +362,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn replace_prefix<A, B, C>(&self, s: A, old: B, new: C) -> Option<String>
-    where
-        A: AsRef<str>,
-        B: AsRef<str>,
-        C: AsRef<str>,
-    {
-        let s = s.as_ref();
-        let old = old.as_ref();
-        if s.starts_with(old) { Some(new.as_ref().to_owned() + &s[old.len()..]) } else { None }
+    fn replace_prefix(&self, s: &str, old: &str, new: &str) -> Option<String> {
+        if let Some(stripped) = s.strip_prefix(old) {
+            Some(new.to_string() + stripped)
+        } else {
+            None
+        }
     }
 
     /// This function is used to determine potential "simple" improvements or users' errors and
@@ -418,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = self.replace_prefix(src, "b\"", "\"") {
+                            if let Some(src) = self.replace_prefix(&src, "b\"", "\"") {
                                 return Some((
                                     sp,
                                     "consider removing the leading `b`",
@@ -432,7 +429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = self.replace_prefix(src, "\"", "b\"") {
+                            if let Some(src) = self.replace_prefix(&src, "\"", "b\"") {
                                 return Some((
                                     sp,
                                     "consider adding a leading `b`",
@@ -557,7 +554,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
                     if let Ok(src) = sm.span_to_snippet(sp) {
-                        if let Some(src) = self.replace_prefix(src, "&", "") {
+                        if let Some(src) = self.replace_prefix(&src, "&", "") {
                             return Some((
                                 sp,
                                 "consider removing the borrow",
@@ -594,7 +591,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     match mutbl_a {
                                         hir::Mutability::Mut => {
                                             if let Some(s) =
-                                                self.replace_prefix(src, "&mut ", new_prefix)
+                                                self.replace_prefix(&src, "&mut ", &new_prefix)
                                             {
                                                 Some((s, Applicability::MachineApplicable))
                                             } else {
@@ -603,7 +600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         }
                                         hir::Mutability::Not => {
                                             if let Some(s) =
-                                                self.replace_prefix(src, "&", new_prefix)
+                                                self.replace_prefix(&src, "&", &new_prefix)
                                             {
                                                 Some((s, Applicability::Unspecified))
                                             } else {
@@ -617,7 +614,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     match mutbl_a {
                                         hir::Mutability::Mut => {
                                             if let Some(s) =
-                                                self.replace_prefix(src, "&mut ", new_prefix)
+                                                self.replace_prefix(&src, "&mut ", &new_prefix)
                                             {
                                                 Some((s, Applicability::MachineApplicable))
                                             } else {
@@ -626,7 +623,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         }
                                         hir::Mutability::Not => {
                                             if let Some(s) =
-                                                self.replace_prefix(src, "&", new_prefix)
+                                                self.replace_prefix(&src, "&", &new_prefix)
                                             {
                                                 Some((s, Applicability::MachineApplicable))
                                             } else {

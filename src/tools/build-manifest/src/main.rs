@@ -16,6 +16,7 @@ use std::process::{Command, Stdio};
 
 static HOSTS: &[&str] = &[
     "aarch64-unknown-linux-gnu",
+    "aarch64-unknown-linux-musl",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",
     "armv7-unknown-linux-gnueabihf",
@@ -110,6 +111,7 @@ static TARGETS: &[&str] = &[
     "riscv32i-unknown-none-elf",
     "riscv32imc-unknown-none-elf",
     "riscv32imac-unknown-none-elf",
+    "riscv32gc-unknown-linux-gnu",
     "riscv64imac-unknown-none-elf",
     "riscv64gc-unknown-none-elf",
     "riscv64gc-unknown-linux-gnu",

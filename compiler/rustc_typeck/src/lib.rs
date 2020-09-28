@@ -55,8 +55,7 @@ This API is completely unstable and subject to change.
 
 */
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![allow(non_camel_case_types)]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
@@ -360,7 +359,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
-    // FIXME(matthewjasper) We shouldn't need to do this.
+    // FIXME(matthewjasper) We shouldn't need to use `track_errors`.
     tcx.sess.track_errors(|| {
         tcx.sess.time("type_collecting", || {
             for &module in tcx.hir().krate().modules.keys() {

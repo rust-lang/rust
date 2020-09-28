@@ -103,7 +103,8 @@ fn compute_implied_outlives_bounds<'tcx>(
                     | ty::PredicateAtom::ClosureKind(..)
                     | ty::PredicateAtom::ObjectSafe(..)
                     | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..) => vec![],
+                    | ty::PredicateAtom::ConstEquate(..)
+                    | ty::PredicateAtom::TypeWellFormedFromEnv(..) => vec![],
                     ty::PredicateAtom::WellFormed(arg) => {
                         wf_args.push(arg);
                         vec![]

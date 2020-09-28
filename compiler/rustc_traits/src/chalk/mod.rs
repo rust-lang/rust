@@ -1,8 +1,7 @@
 //! Calls `chalk-solve` to solve a `ty::Predicate`
 //!
-//! In order to call `chalk-solve`, this file must convert a
-//! `ChalkCanonicalGoal` into a Chalk ucanonical goal. It then calls Chalk, and
-//! converts the answer back into rustc solution.
+//! In order to call `chalk-solve`, this file must convert a `CanonicalChalkEnvironmentAndGoal` into
+//! a Chalk uncanonical goal. It then calls Chalk, and converts the answer back into rustc solution.
 
 crate mod db;
 crate mod lowering;
@@ -20,7 +19,7 @@ use rustc_middle::ty::{self, BoundVar, ParamTy, TyCtxt, TypeFoldable};
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalVarValues, Certainty, QueryRegionConstraints, QueryResponse,
 };
-use rustc_infer::traits::{self, ChalkCanonicalGoal};
+use rustc_infer::traits::{self, CanonicalChalkEnvironmentAndGoal};
 
 use crate::chalk::db::RustIrDatabase as ChalkRustIrDatabase;
 use crate::chalk::lowering::{
@@ -35,7 +34,7 @@ crate fn provide(p: &mut Providers) {
 
 crate fn evaluate_goal<'tcx>(
     tcx: TyCtxt<'tcx>,
-    obligation: ChalkCanonicalGoal<'tcx>,
+    obligation: CanonicalChalkEnvironmentAndGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, traits::query::NoSolution> {
     let interner = ChalkRustInterner { tcx };
 

@@ -404,9 +404,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[stable(feature = "rwlock_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
-        // We know statically that there are no other references to `self`, so
-        // there's no need to lock the inner lock.
-        let data = unsafe { &mut *self.data.get() };
+        let data = self.data.get_mut();
         poison::map_result(self.poison.borrow(), |_| data)
     }
 }

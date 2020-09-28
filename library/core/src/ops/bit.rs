@@ -15,7 +15,7 @@
 /// }
 ///
 /// impl Not for Answer {
-///     type Output = Answer;
+///     type Output = Self;
 ///
 ///     fn not(self) -> Self::Output {
 ///         match self {
@@ -36,6 +36,15 @@ pub trait Not {
     type Output;
 
     /// Performs the unary `!` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(!true, false);
+    /// assert_eq!(!false, true);
+    /// assert_eq!(!1u8, 254);
+    /// assert_eq!(!0u8, 255);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn not(self) -> Self::Output;
@@ -76,7 +85,7 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///
 ///     // rhs is the "right-hand side" of the expression `a & b`
 ///     fn bitand(self, rhs: Self) -> Self::Output {
-///         Scalar(self.0 & rhs.0)
+///         Self(self.0 & rhs.0)
 ///     }
 /// }
 ///
@@ -97,10 +106,13 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitAnd for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitand(self, BooleanVector(rhs): Self) -> Self::Output {
-///         let BooleanVector(lhs) = self;
+///     fn bitand(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         BooleanVector(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x && *y).collect())
+///         Self(lhs.iter()
+///                 .zip(rhs.iter())
+///                 .map(|(x, y)| *x && *y)
+///                 .collect())
 ///     }
 /// }
 ///
@@ -122,6 +134,15 @@ pub trait BitAnd<Rhs = Self> {
     type Output;
 
     /// Performs the `&` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(true & false, false);
+    /// assert_eq!(true & true, true);
+    /// assert_eq!(5u8 & 1u8, 1);
+    /// assert_eq!(5u8 & 2u8, 0);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitand(self, rhs: Rhs) -> Self::Output;
@@ -161,8 +182,8 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     type Output = Self;
 ///
 ///     // rhs is the "right-hand side" of the expression `a | b`
-///     fn bitor(self, rhs: Self) -> Self {
-///         Scalar(self.0 | rhs.0)
+///     fn bitor(self, rhs: Self) -> Self::Output {
+///         Self(self.0 | rhs.0)
 ///     }
 /// }
 ///
@@ -183,10 +204,10 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitOr for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitor(self, BooleanVector(rhs): Self) -> Self::Output {
-///         let BooleanVector(lhs) = self;
+///     fn bitor(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         BooleanVector(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x || *y).collect())
+///         Self(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x || *y).collect())
 ///     }
 /// }
 ///
@@ -208,6 +229,15 @@ pub trait BitOr<Rhs = Self> {
     type Output;
 
     /// Performs the `|` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(true | false, true);
+    /// assert_eq!(false | false, false);
+    /// assert_eq!(5u8 | 1u8, 5);
+    /// assert_eq!(5u8 | 2u8, 7);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitor(self, rhs: Rhs) -> Self::Output;
@@ -248,7 +278,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///
 ///     // rhs is the "right-hand side" of the expression `a ^ b`
 ///     fn bitxor(self, rhs: Self) -> Self::Output {
-///         Scalar(self.0 ^ rhs.0)
+///         Self(self.0 ^ rhs.0)
 ///     }
 /// }
 ///
@@ -269,13 +299,13 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitXor for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitxor(self, BooleanVector(rhs): Self) -> Self::Output {
-///         let BooleanVector(lhs) = self;
+///     fn bitxor(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         BooleanVector(lhs.iter()
-///                          .zip(rhs.iter())
-///                          .map(|(x, y)| (*x || *y) && !(*x && *y))
-///                          .collect())
+///         Self(lhs.iter()
+///                 .zip(rhs.iter())
+///                 .map(|(x, y)| (*x || *y) && !(*x && *y))
+///                 .collect())
 ///     }
 /// }
 ///
@@ -297,6 +327,15 @@ pub trait BitXor<Rhs = Self> {
     type Output;
 
     /// Performs the `^` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(true ^ false, true);
+    /// assert_eq!(true ^ true, false);
+    /// assert_eq!(5u8 ^ 1u8, 4);
+    /// assert_eq!(5u8 ^ 2u8, 7);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitxor(self, rhs: Rhs) -> Self::Output;
@@ -339,9 +378,9 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl Shl<Scalar> for Scalar {
 ///     type Output = Self;
 ///
-///     fn shl(self, Scalar(rhs): Self) -> Scalar {
-///         let Scalar(lhs) = self;
-///         Scalar(lhs << rhs)
+///     fn shl(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
+///         Self(lhs << rhs)
 ///     }
 /// }
 ///
@@ -364,10 +403,10 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     fn shl(self, rhs: usize) -> Self::Output {
 ///         // Rotate the vector by `rhs` places.
 ///         let (a, b) = self.vec.split_at(rhs);
-///         let mut spun_vector: Vec<T> = vec![];
+///         let mut spun_vector = vec![];
 ///         spun_vector.extend_from_slice(b);
 ///         spun_vector.extend_from_slice(a);
-///         SpinVector { vec: spun_vector }
+///         Self { vec: spun_vector }
 ///     }
 /// }
 ///
@@ -387,6 +426,13 @@ pub trait Shl<Rhs = Self> {
     type Output;
 
     /// Performs the `<<` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(5u8 << 1, 10);
+    /// assert_eq!(1u8 << 1, 2);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn shl(self, rhs: Rhs) -> Self::Output;
@@ -450,9 +496,9 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 /// impl Shr<Scalar> for Scalar {
 ///     type Output = Self;
 ///
-///     fn shr(self, Scalar(rhs): Self) -> Scalar {
-///         let Scalar(lhs) = self;
-///         Scalar(lhs >> rhs)
+///     fn shr(self, Self(rhs): Self) -> Self::Output {
+///         let Self(lhs) = self;
+///         Self(lhs >> rhs)
 ///     }
 /// }
 ///
@@ -475,10 +521,10 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 ///     fn shr(self, rhs: usize) -> Self::Output {
 ///         // Rotate the vector by `rhs` places.
 ///         let (a, b) = self.vec.split_at(self.vec.len() - rhs);
-///         let mut spun_vector: Vec<T> = vec![];
+///         let mut spun_vector = vec![];
 ///         spun_vector.extend_from_slice(b);
 ///         spun_vector.extend_from_slice(a);
-///         SpinVector { vec: spun_vector }
+///         Self { vec: spun_vector }
 ///     }
 /// }
 ///
@@ -498,6 +544,13 @@ pub trait Shr<Rhs = Self> {
     type Output;
 
     /// Performs the `>>` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(5u8 >> 1, 2);
+    /// assert_eq!(2u8 >> 1, 1);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn shr(self, rhs: Rhs) -> Self::Output;
@@ -556,7 +609,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 /// impl BitAndAssign for Scalar {
 ///     // rhs is the "right-hand side" of the expression `a &= b`
 ///     fn bitand_assign(&mut self, rhs: Self) {
-///         *self = Scalar(self.0 & rhs.0)
+///         *self = Self(self.0 & rhs.0)
 ///     }
 /// }
 ///
@@ -590,11 +643,11 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 ///     // `rhs` is the "right-hand side" of the expression `a &= b`.
 ///     fn bitand_assign(&mut self, rhs: Self) {
 ///         assert_eq!(self.0.len(), rhs.0.len());
-///         *self = BooleanVector(self.0
-///                                   .iter()
-///                                   .zip(rhs.0.iter())
-///                                   .map(|(x, y)| *x && *y)
-///                                   .collect());
+///         *self = Self(self.0
+///                          .iter()
+///                          .zip(rhs.0.iter())
+///                          .map(|(x, y)| *x && *y)
+///                          .collect());
 ///     }
 /// }
 ///
@@ -612,6 +665,26 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 )]
 pub trait BitAndAssign<Rhs = Self> {
     /// Performs the `&=` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = true;
+    /// x &= false;
+    /// assert_eq!(x, false);
+    ///
+    /// let mut x = true;
+    /// x &= true;
+    /// assert_eq!(x, true);
+    ///
+    /// let mut x: u8 = 5;
+    /// x &= 1;
+    /// assert_eq!(x, 1);
+    ///
+    /// let mut x: u8 = 5;
+    /// x &= 2;
+    /// assert_eq!(x, 0);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitand_assign(&mut self, rhs: Rhs);
 }
@@ -663,6 +736,26 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 )]
 pub trait BitOrAssign<Rhs = Self> {
     /// Performs the `|=` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = true;
+    /// x |= false;
+    /// assert_eq!(x, true);
+    ///
+    /// let mut x = false;
+    /// x |= false;
+    /// assert_eq!(x, false);
+    ///
+    /// let mut x: u8 = 5;
+    /// x |= 1;
+    /// assert_eq!(x, 5);
+    ///
+    /// let mut x: u8 = 5;
+    /// x |= 2;
+    /// assert_eq!(x, 7);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitor_assign(&mut self, rhs: Rhs);
 }
@@ -714,6 +807,26 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 )]
 pub trait BitXorAssign<Rhs = Self> {
     /// Performs the `^=` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = true;
+    /// x ^= false;
+    /// assert_eq!(x, true);
+    ///
+    /// let mut x = true;
+    /// x ^= true;
+    /// assert_eq!(x, false);
+    ///
+    /// let mut x: u8 = 5;
+    /// x ^= 1;
+    /// assert_eq!(x, 4);
+    ///
+    /// let mut x: u8 = 5;
+    /// x ^= 2;
+    /// assert_eq!(x, 7);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitxor_assign(&mut self, rhs: Rhs);
 }
@@ -763,6 +876,18 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 )]
 pub trait ShlAssign<Rhs = Self> {
     /// Performs the `<<=` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x: u8 = 5;
+    /// x <<= 1;
+    /// assert_eq!(x, 10);
+    ///
+    /// let mut x: u8 = 1;
+    /// x <<= 1;
+    /// assert_eq!(x, 2);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn shl_assign(&mut self, rhs: Rhs);
 }
@@ -833,6 +958,18 @@ shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 )]
 pub trait ShrAssign<Rhs = Self> {
     /// Performs the `>>=` operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x: u8 = 5;
+    /// x >>= 1;
+    /// assert_eq!(x, 2);
+    ///
+    /// let mut x: u8 = 2;
+    /// x >>= 1;
+    /// assert_eq!(x, 1);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn shr_assign(&mut self, rhs: Rhs);
 }

@@ -10,7 +10,7 @@ fn main() -> () {
     let mut _7: &mut i32;                // in scope 0 at $DIR/retag.rs:32:29: 32:35
     let mut _9: &mut i32;                // in scope 0 at $DIR/retag.rs:33:19: 33:20
     let mut _12: *mut i32;               // in scope 0 at $DIR/retag.rs:36:18: 36:29
-    let mut _14: [closure@main::{{closure}}#0]; // in scope 0 at $DIR/retag.rs:40:31: 43:6
+    let mut _14: [closure@main::{closure#0}]; // in scope 0 at $DIR/retag.rs:40:31: 43:6
     let mut _16: for<'r> fn(&'r i32) -> &'r i32; // in scope 0 at $DIR/retag.rs:44:14: 44:15
     let mut _17: &i32;                   // in scope 0 at $DIR/retag.rs:44:16: 44:18
     let _18: &i32;                       // in scope 0 at $DIR/retag.rs:44:16: 44:18
@@ -118,9 +118,9 @@ fn main() -> () {
         StorageDead(_2);                 // scope 1 at $DIR/retag.rs:37:5: 37:6
         StorageLive(_13);                // scope 1 at $DIR/retag.rs:40:9: 40:10
         StorageLive(_14);                // scope 1 at $DIR/retag.rs:40:31: 43:6
-        _14 = [closure@main::{{closure}}#0]; // scope 1 at $DIR/retag.rs:40:31: 43:6
+        _14 = [closure@main::{closure#0}]; // scope 1 at $DIR/retag.rs:40:31: 43:6
                                          // closure
-                                         // + def_id: DefId(0:14 ~ retag[317d]::main[0]::{{closure}}[0])
+                                         // + def_id: DefId(0:14 ~ retag[317d]::main::{closure#0})
                                          // + substs: [
                                          //     i8,
                                          //     for<'r> extern "rust-call" fn((&'r i32,)) -> &'r i32,
@@ -157,10 +157,10 @@ fn main() -> () {
         _27 = const main::promoted[0];   // scope 7 at $DIR/retag.rs:47:21: 47:23
                                          // ty::Const
                                          // + ty: &i32
-                                         // + val: Unevaluated(WithOptConstParam { did: DefId(0:13 ~ retag[317d]::main[0]), const_param_did: None }, [], Some(promoted[0]))
+                                         // + val: Unevaluated(WithOptConstParam { did: DefId(0:13 ~ retag[317d]::main), const_param_did: None }, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:47:21: 47:23
-                                         // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:13 ~ retag[317d]::main[0]), const_param_did: None }, [], Some(promoted[0])) }
+                                         // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:13 ~ retag[317d]::main), const_param_did: None }, [], Some(promoted[0])) }
         Retag(_27);                      // scope 7 at $DIR/retag.rs:47:21: 47:23
         _23 = &(*_27);                   // scope 7 at $DIR/retag.rs:47:21: 47:23
         Retag(_23);                      // scope 7 at $DIR/retag.rs:47:21: 47:23

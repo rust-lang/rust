@@ -12,8 +12,7 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(bindings_after_at)]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -23,7 +22,6 @@
 #![feature(never_type)]
 #![feature(or_patterns)]
 #![feature(in_band_lifetimes)]
-#![feature(crate_visibility_modifier)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

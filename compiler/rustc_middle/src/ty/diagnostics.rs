@@ -202,33 +202,59 @@ pub fn suggest_constraining_type_param(
         //    Suggestion:
         //      fn foo<T>(t: T) where T: Foo, T: Bar {... }
         //                                          - insert: `, T: Zar`
+        //
+        // Additionally, there may be no `where` clause whatsoever in the case that this was
+        // reached because the generic parameter has a default:
+        //
+        //    Message:
+        //      trait Foo<T=()> {... }
+        //             - help: consider further restricting this type parameter with `where T: Zar`
+        //
+        //    Suggestion:
+        //      trait Foo<T=()> where T: Zar {... }
+        //                     - insert: `where T: Zar`
 
-        let mut param_spans = Vec::new();
+        if matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. })
+            && generics.where_clause.predicates.len() == 0
+        {
+            // Suggest a bound, but there is no existing `where` clause *and* the type param has a
+            // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
+            err.span_suggestion_verbose(
+                generics.where_clause.tail_span_for_suggestion(),
+                &msg_restrict_type_further,
+                format!(" where {}: {}", param_name, constraint),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            let mut param_spans = Vec::new();
 
-        for predicate in generics.where_clause.predicates {
-            if let WherePredicate::BoundPredicate(WhereBoundPredicate {
-                span, bounded_ty, ..
-            }) = predicate
-            {
-                if let TyKind::Path(QPath::Resolved(_, path)) = &bounded_ty.kind {
-                    if let Some(segment) = path.segments.first() {
-                        if segment.ident.to_string() == param_name {
-                            param_spans.push(span);
+            for predicate in generics.where_clause.predicates {
+                if let WherePredicate::BoundPredicate(WhereBoundPredicate {
+                    span,
+                    bounded_ty,
+                    ..
+                }) = predicate
+                {
+                    if let TyKind::Path(QPath::Resolved(_, path)) = &bounded_ty.kind {
+                        if let Some(segment) = path.segments.first() {
+                            if segment.ident.to_string() == param_name {
+                                param_spans.push(span);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        match &param_spans[..] {
-            &[&param_span] => suggest_restrict(param_span.shrink_to_hi()),
-            _ => {
-                err.span_suggestion_verbose(
-                    generics.where_clause.tail_span_for_suggestion(),
-                    &msg_restrict_type_further,
-                    format!(", {}: {}", param_name, constraint),
-                    Applicability::MachineApplicable,
-                );
+            match &param_spans[..] {
+                &[&param_span] => suggest_restrict(param_span.shrink_to_hi()),
+                _ => {
+                    err.span_suggestion_verbose(
+                        generics.where_clause.tail_span_for_suggestion(),
+                        &msg_restrict_type_further,
+                        format!(", {}: {}", param_name, constraint),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
 

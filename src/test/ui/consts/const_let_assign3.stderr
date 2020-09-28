@@ -1,9 +1,10 @@
-error[E0019]: constant function contains unimplemented expression type
-  --> $DIR/const_let_assign3.rs:9:9
+error[E0658]: mutable references are not allowed in constant functions
+  --> $DIR/const_let_assign3.rs:8:18
    |
-LL |         self.state = x;
-   |         ^^^^^^^^^^^^^^
+LL |     const fn foo(&mut self, x: u32) {
+   |                  ^^^^^^^^^
    |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0764]: mutable references are not allowed in constants
@@ -28,5 +29,5 @@ LL |     *y = 42;
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0019, E0764.
+Some errors have detailed explanations: E0019, E0658, E0764.
 For more information about an error, try `rustc --explain E0019`.
