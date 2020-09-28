@@ -16,10 +16,10 @@ use hir_expand::{
     proc_macro::ProcMacroExpander,
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
-use rustc_hash::FxHashMap;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
 use test_utils::mark;
+use tt::{Leaf, TokenTree};
 
 use crate::{
     attr::Attrs,
@@ -87,6 +87,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
         mod_dirs: FxHashMap::default(),
         cfg_options,
         proc_macros,
+        exports_proc_macros: false,
         from_glob_import: Default::default(),
     };
     collector.collect();
@@ -202,7 +203,12 @@ struct DefCollector<'a> {
     unexpanded_attribute_macros: Vec<DeriveDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
+    /// List of procedural macros defined by this crate. This is read from the dynamic library
+    /// built by the build system, and is the list of proc. macros we can actually expand. It is
+    /// empty when proc. macro support is disabled (in which case we still do name resolution for
+    /// them).
     proc_macros: Vec<(Name, ProcMacroExpander)>,
+    exports_proc_macros: bool,
     from_glob_import: PerNsGlobImports,
 }
 
@@ -261,24 +267,56 @@ impl DefCollector<'_> {
         }
         self.unresolved_imports = unresolved_imports;
 
-        // Record proc-macros
-        self.collect_proc_macro();
+        // FIXME: This condition should instead check if this is a `proc-macro` type crate.
+        if self.exports_proc_macros {
+            // A crate exporting procedural macros is not allowed to export anything else.
+            //
+            // Additionally, while the proc macro entry points must be `pub`, they are not publicly
+            // exported in type/value namespace. This function reduces the visibility of all items
+            // in the crate root that aren't proc macros.
+            let root = self.def_map.root;
+            let root = &mut self.def_map.modules[root];
+            root.scope.censor_non_proc_macros(ModuleId {
+                krate: self.def_map.krate,
+                local_id: self.def_map.root,
+            });
+        }
     }
 
-    fn collect_proc_macro(&mut self) {
-        let proc_macros = std::mem::take(&mut self.proc_macros);
-        for (name, expander) in proc_macros {
-            let krate = self.def_map.krate;
-
-            let macro_id = MacroDefId {
+    /// Adds a definition of procedural macro `name` to the root module.
+    ///
+    /// # Notes on procedural macro resolution
+    ///
+    /// Procedural macro functionality is provided by the build system: It has to build the proc
+    /// macro and pass the resulting dynamic library to rust-analyzer.
+    ///
+    /// When procedural macro support is enabled, the list of proc macros exported by a crate is
+    /// known before we resolve names in the crate. This list is stored in `self.proc_macros` and is
+    /// derived from the dynamic library.
+    ///
+    /// However, we *also* would like to be able to at least *resolve* macros on our own, without
+    /// help by the build system. So, when the macro isn't found in `self.proc_macros`, we instead
+    /// use a dummy expander that always errors. This comes with the drawback of macros potentially
+    /// going out of sync with what the build system sees (since we resolve using VFS state, but
+    /// Cargo builds only on-disk files). We could and probably should add diagnostics for that.
+    fn resolve_proc_macro(&mut self, name: &Name) {
+        self.exports_proc_macros = true;
+        let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
+            Some((_, expander)) => MacroDefId {
                 ast_id: None,
-                krate: Some(krate),
-                kind: MacroDefKind::ProcMacro(expander),
+                krate: Some(self.def_map.krate),
+                kind: MacroDefKind::ProcMacro(*expander),
                 local_inner: false,
-            };
+            },
+            None => MacroDefId {
+                ast_id: None,
+                krate: Some(self.def_map.krate),
+                kind: MacroDefKind::ProcMacro(ProcMacroExpander::dummy(self.def_map.krate)),
+                local_inner: false,
+            },
+        };
 
-            self.define_proc_macro(name.clone(), macro_id);
-        }
+        self.define_proc_macro(name.clone(), macro_def);
     }
 
     /// Define a macro with `macro_rules`.
@@ -917,6 +955,9 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::Function(id) => {
                     let func = &self.item_tree[id];
+
+                    self.collect_proc_macro_def(&func.name, attrs);
+
                     def = Some(DefData {
                         id: FunctionLoc {
                             container: container.into(),
@@ -1177,6 +1218,30 @@ impl ModCollector<'_, '_> {
         }
     }
 
+    /// If `attrs` registers a procedural macro, collects its definition.
+    fn collect_proc_macro_def(&mut self, func_name: &Name, attrs: &Attrs) {
+        // FIXME: this should only be done in the root module of `proc-macro` crates, not everywhere
+        // FIXME: distinguish the type of macro
+        let macro_name = if attrs.by_key("proc_macro").exists()
+            || attrs.by_key("proc_macro_attribute").exists()
+        {
+            func_name.clone()
+        } else {
+            let derive = attrs.by_key("proc_macro_derive");
+            if let Some(arg) = derive.tt_values().next() {
+                if let [TokenTree::Leaf(Leaf::Ident(trait_name))] = &*arg.token_trees {
+                    trait_name.as_name()
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        };
+
+        self.def_collector.resolve_proc_macro(&macro_name);
+    }
+
     fn collect_macro(&mut self, mac: &MacroCall) {
         let mut ast_id = AstIdWithPath::new(self.file_id, mac.ast_id, mac.path.clone());
 
@@ -1283,6 +1348,7 @@ mod tests {
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
             proc_macros: Default::default(),
+            exports_proc_macros: false,
             from_glob_import: Default::default(),
         };
         collector.collect();

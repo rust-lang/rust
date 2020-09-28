@@ -7,7 +7,7 @@ use tt::buffer::{Cursor, TokenBuffer};
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ProcMacroExpander {
     krate: CrateId,
-    proc_macro_id: ProcMacroId,
+    proc_macro_id: Option<ProcMacroId>,
 }
 
 macro_rules! err {
@@ -20,8 +20,14 @@ macro_rules! err {
 }
 
 impl ProcMacroExpander {
-    pub fn new(krate: CrateId, proc_macro_id: ProcMacroId) -> ProcMacroExpander {
-        ProcMacroExpander { krate, proc_macro_id }
+    pub fn new(krate: CrateId, proc_macro_id: ProcMacroId) -> Self {
+        Self { krate, proc_macro_id: Some(proc_macro_id) }
+    }
+
+    pub fn dummy(krate: CrateId) -> Self {
+        // FIXME: Should store the name for better errors
+        // FIXME: I think this is the second layer of "dummy" expansion, we should reduce that
+        Self { krate, proc_macro_id: None }
     }
 
     pub fn expand(
@@ -30,17 +36,22 @@ impl ProcMacroExpander {
         _id: LazyMacroId,
         tt: &tt::Subtree,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
-        let krate_graph = db.crate_graph();
-        let proc_macro = krate_graph[self.krate]
-            .proc_macro
-            .get(self.proc_macro_id.0 as usize)
-            .clone()
-            .ok_or_else(|| err!("No derive macro found."))?;
+        match self.proc_macro_id {
+            Some(id) => {
+                let krate_graph = db.crate_graph();
+                let proc_macro = krate_graph[self.krate]
+                    .proc_macro
+                    .get(id.0 as usize)
+                    .clone()
+                    .ok_or_else(|| err!("No derive macro found."))?;
 
-        let tt = remove_derive_attrs(tt)
-            .ok_or_else(|| err!("Fail to remove derive for custom derive"))?;
+                let tt = remove_derive_attrs(tt)
+                    .ok_or_else(|| err!("Fail to remove derive for custom derive"))?;
 
-        proc_macro.expander.expand(&tt, None).map_err(mbe::ExpandError::from)
+                proc_macro.expander.expand(&tt, None).map_err(mbe::ExpandError::from)
+            }
+            None => Err(err!("Unresolved proc macro")),
+        }
     }
 }
 

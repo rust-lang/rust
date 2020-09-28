@@ -667,3 +667,76 @@ b! { static = #[] (); }
         "#]],
     );
 }
+
+#[test]
+fn resolves_proc_macros() {
+    check(
+        r"
+        struct TokenStream;
+
+        #[proc_macro]
+        pub fn function_like_macro(args: TokenStream) -> TokenStream {
+            args
+        }
+
+        #[proc_macro_attribute]
+        pub fn attribute_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
+            item
+        }
+
+        #[proc_macro_derive(DummyTrait)]
+        pub fn derive_macro(_item: TokenStream) -> TokenStream {
+            TokenStream
+        }
+        ",
+        expect![[r#"
+            crate
+            DummyTrait: m
+            TokenStream: t v
+            attribute_macro: v m
+            derive_macro: v
+            function_like_macro: v m
+        "#]],
+    );
+}
+
+#[test]
+fn proc_macro_censoring() {
+    // Make sure that only proc macros are publicly exported from proc-macro crates.
+
+    check(
+        r"
+        //- /main.rs crate:main deps:macros
+        pub use macros::*;
+
+        //- /macros.rs crate:macros
+        pub struct TokenStream;
+
+        #[proc_macro]
+        pub fn function_like_macro(args: TokenStream) -> TokenStream {
+            args
+        }
+
+        #[proc_macro_attribute]
+        pub fn attribute_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
+            item
+        }
+
+        #[proc_macro_derive(DummyTrait)]
+        pub fn derive_macro(_item: TokenStream) -> TokenStream {
+            TokenStream
+        }
+
+        #[macro_export]
+        macro_rules! mbe {
+            () => {};
+        }
+        ",
+        expect![[r#"
+            crate
+            DummyTrait: m
+            attribute_macro: m
+            function_like_macro: m
+        "#]],
+    );
+}
