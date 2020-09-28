@@ -63,9 +63,17 @@ pub fn create_session(
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    make_codegen_backend: Option<
+        Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
+    >,
     descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
-    let codegen_backend = get_codegen_backend(&sopts);
+    let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
+        make_codegen_backend(&sopts)
+    } else {
+        get_codegen_backend(&sopts)
+    };
+
     // target_override is documented to be called before init(), so this is okay
     let target_override = codegen_backend.target_override(&sopts);
 
