@@ -46,13 +46,31 @@ LL | | }
    | |_^
 
 error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
-  --> $DIR/await_holding_refcell_ref.rs:46:13
+  --> $DIR/await_holding_refcell_ref.rs:45:9
+   |
+LL |     let b = x.borrow_mut();
+   |         ^
+   |
+note: these are all the await points this ref is held through
+  --> $DIR/await_holding_refcell_ref.rs:45:5
+   |
+LL | /     let b = x.borrow_mut();
+LL | |
+LL | |     let second = baz().await;
+LL | |
+...  |
+LL | |     first + second + third
+LL | | }
+   | |_^
+
+error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
+  --> $DIR/await_holding_refcell_ref.rs:60:13
    |
 LL |         let b = x.borrow_mut();
    |             ^
    |
 note: these are all the await points this ref is held through
-  --> $DIR/await_holding_refcell_ref.rs:46:9
+  --> $DIR/await_holding_refcell_ref.rs:60:9
    |
 LL | /         let b = x.borrow_mut();
 LL | |         baz().await
@@ -60,18 +78,18 @@ LL | |     };
    | |_____^
 
 error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
-  --> $DIR/await_holding_refcell_ref.rs:58:13
+  --> $DIR/await_holding_refcell_ref.rs:72:13
    |
 LL |         let b = x.borrow_mut();
    |             ^
    |
 note: these are all the await points this ref is held through
-  --> $DIR/await_holding_refcell_ref.rs:58:9
+  --> $DIR/await_holding_refcell_ref.rs:72:9
    |
 LL | /         let b = x.borrow_mut();
 LL | |         baz().await
 LL | |     }
    | |_____^
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
