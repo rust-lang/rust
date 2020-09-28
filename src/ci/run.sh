@@ -8,7 +8,7 @@ fi
 
 if [ "$NO_CHANGE_USER" = "" ]; then
   if [ "$LOCAL_USER_ID" != "" ]; then
-    useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
+    useradd --shell /bin/bash -u "$LOCAL_USER_ID" -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
@@ -32,7 +32,7 @@ if [ "$SET_HARD_RLIMIT_STACK" = "1" ]; then
   fi
 fi
 
-ci_dir=`cd $(dirname $0) && pwd`
+ci_dir=$(cd "$(dirname "$0")" && pwd)
 source "$ci_dir/shared.sh"
 
 if command -v python > /dev/null; then
@@ -119,6 +119,9 @@ datecheck() {
 datecheck
 trap datecheck EXIT
 print_ll_files() {
+  if [[ $RUST_CHECK_TARGET != x86_64-unknown-linux-gnu ]]; then
+    return
+  fi
   echo "== printing ll file =="
   cat build/x86_64-unknown-linux-gnu/test/codegen/issue-75742-format_without_fmt_args/*.ll
   echo "== end =="
@@ -132,13 +135,13 @@ trap print_ll_files EXIT
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  $SRC/configure --enable-parallel-compiler
+  "$SRC"/configure --enable-parallel-compiler
   CARGO_INCREMENTAL=0 $PYTHON ../x.py check
   rm -f config.toml
   rm -rf build
 fi
 
-$SRC/configure $RUST_CONFIGURE_ARGS
+"$SRC"/configure "$RUST_CONFIGURE_ARGS"
 
 retry make prepare
 
@@ -153,7 +156,7 @@ if isMacOS; then
 else
     cat /proc/cpuinfo || true
     cat /proc/meminfo || true
-    ncpus=$(grep processor /proc/cpuinfo | wc -l)
+    ncpus=$(grep -c processor /proc/cpuinfo)
 fi
 
 if [ -n "$SCRIPT" ]; then
@@ -161,7 +164,7 @@ if [ -n "$SCRIPT" ]; then
 else
   do_make() {
     echo "make -j $ncpus $1"
-    make -j $ncpus $1
+    make -j "$ncpus" "$1"
     local retval=$?
     return $retval
   }
