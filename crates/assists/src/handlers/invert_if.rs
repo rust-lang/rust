@@ -49,13 +49,14 @@ pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         ast::ElseBranch::IfExpr(_) => return None,
     };
 
-    let cond_range = cond.syntax().text_range();
-    let flip_cond = invert_boolean_expression(cond);
-    let else_node = else_block.syntax();
-    let else_range = else_node.text_range();
-    let then_range = then_node.text_range();
     acc.add(AssistId("invert_if", AssistKind::RefactorRewrite), "Invert if", if_range, |edit| {
-        edit.replace(cond_range, flip_cond.syntax().text());
+        let flip_cond = invert_boolean_expression(cond.clone());
+        edit.replace_ast(cond, flip_cond);
+
+        let else_node = else_block.syntax();
+        let else_range = else_node.text_range();
+        let then_range = then_node.text_range();
+
         edit.replace(else_range, then_node.text());
         edit.replace(then_range, else_node.text());
     })
