@@ -566,13 +566,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)
             | hir::ItemKind::Const(..)
-            | hir::ItemKind::Static(..) => {}
+            | hir::ItemKind::Static(..)
+            | hir::ItemKind::Use(..) => {}
 
             _ => return,
         };
 
         let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (mut article, mut desc) = cx.tcx.article_and_description(def_id.to_def_id());
+
+        if matches!(it.kind, hir::ItemKind::Use(..))
+            && matches!(it.vis.node, hir::VisibilityKind::Public)
+        {
+            article = "a";
+            desc = "reexported item";
+        }
 
         self.check_missing_docs_attrs(cx, Some(it.hir_id), &it.attrs, it.span, article, desc);
     }
