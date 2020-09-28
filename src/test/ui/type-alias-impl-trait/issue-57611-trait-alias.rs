@@ -22,6 +22,6 @@ impl Foo for X {
     }
 }
 
-trait Baz<A, B> = Fn(&A) -> &B;
+trait Baz<A: ?Sized, B: ?Sized> = Fn(&A) -> &B;
 
 fn main() {}

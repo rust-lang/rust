@@ -60,11 +60,8 @@ fn FW3<T>() where T: Iterator<Item: 'static, Item: 'static> {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 
 fn FRPIT1() -> impl Iterator<Item: Copy, Item: Send> { iter::empty() }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 fn FRPIT2() -> impl Iterator<Item: Copy, Item: Copy> { iter::empty() }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 fn FRPIT3() -> impl Iterator<Item: 'static, Item: 'static> { iter::empty() }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 fn FAPIT1(_: impl Iterator<Item: Copy, Item: Send>) {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 fn FAPIT2(_: impl Iterator<Item: Copy, Item: Copy>) {}
@@ -107,28 +104,16 @@ type TAW3<T> where T: Iterator<Item: 'static, Item: 'static> = T;
 
 type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
 type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
 type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
 type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 
 trait TRI1<T: Iterator<Item: Copy, Item: Send>> {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
@@ -166,15 +151,9 @@ trait TRA3 { type A: Iterator<Item: 'static, Item: 'static>; }
 
 type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 type TADyn2 = Box<dyn Iterator<Item: Copy, Item: Copy>>;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 type TADyn3 = dyn Iterator<Item: 'static, Item: 'static>;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 
 fn main() {}

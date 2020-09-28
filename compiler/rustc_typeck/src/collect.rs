@@ -693,8 +693,14 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
         // Desugared from `impl Trait`, so visited by the function's return type.
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) => {}
 
-        hir::ItemKind::OpaqueTy(..)
-        | hir::ItemKind::TyAlias(..)
+        // Don't call `type_of` on opaque types, since that depends on type
+        // checking function bodies. `check_item_type` ensures that it's called
+        // instead.
+        hir::ItemKind::OpaqueTy(..) => {
+            tcx.ensure().generics_of(def_id);
+            tcx.ensure().predicates_of(def_id);
+        }
+        hir::ItemKind::TyAlias(..)
         | hir::ItemKind::Static(..)
         | hir::ItemKind::Const(..)
         | hir::ItemKind::Fn(..) => {

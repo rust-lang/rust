@@ -1,8 +1,7 @@
 // ignore-tidy-linelength
 #![feature(type_alias_impl_trait)]
 
-pub trait Bar
-{
+pub trait Bar {
     type E: Copy;
 
     fn foo<T>() -> Self::E;
@@ -14,7 +13,8 @@ impl<S: Default> Bar for S {
     //~^^ ERROR the trait bound `T: Copy` is not satisfied in `(S, T)` [E0277]
 
     fn foo<T: Default>() -> Self::E {
-    //~^ ERROR type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+        //~^ ERROR type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+        //~| ERROR impl has stricter requirements than trait
         (S::default(), T::default())
     }
 }
