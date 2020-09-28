@@ -1,0 +1,4 @@
+$DIR/backtrace-api.rs:21:59 (func_c)
+$DIR/backtrace-api.rs:20:53 (func_b::<u8>)
+$DIR/backtrace-api.rs:19:50 (func_a)
+$DIR/backtrace-api.rs:25:18 (main)

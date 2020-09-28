@@ -266,6 +266,34 @@ extern "Rust" {
     /// `ptr` has to point to the beginning of an allocated block.
     fn miri_static_root(ptr: *const u8);
 
+    /// Miri-provided extern function to obtain a backtrace of the current call stack.
+    /// This returns a boxed slice of pointers - each pointer is an opaque value
+    /// that is only useful when passed to `miri_resolve_frame`
+    /// The `flags` argument must be `0`.
+    fn miri_get_backtrace(flags: u64) -> Box<[*mut ()]>;
+
+    /// Miri-provided extern function to resolve a frame pointer obtained
+    /// from `miri_get_backtrace`. The `flags` argument must be `0`,
+    /// and `MiriFrame` should be declared as follows:
+    ///
+    /// ```rust
+    /// #[repr(C)]
+    /// struct MiriFrame {
+    ///     // The name of the function being executed, encoded in UTF-8
+    ///     name: Box<[u8]>,
+    ///     // The filename of the function being executed, encoded in UTF-8
+    ///     filename: Box<[u8]>,
+    ///     // The line number currently being executed in `filename`, starting from '1'.
+    ///     lineno: u32,
+    ///     // The column number currently being executed in `filename`, starting from '1'.
+    ///     colno: u32,
+    /// }
+    /// ```
+    ///
+    /// The fields must be declared in exactly the same order as they appear in `MiriFrame` above.
+    /// This function can be called on any thread (not just the one which obtained `frame`).
+    fn miri_resolve_frame(frame: *mut (), flags: u64) -> MiriFrame;
+
     /// Miri-provided extern function to begin unwinding with the given payload.
     ///
     /// This is internal and unstable and should not be used; we give it here

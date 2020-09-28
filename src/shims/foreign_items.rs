@@ -3,12 +3,14 @@ use std::{convert::{TryInto, TryFrom}, iter};
 use log::trace;
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::{mir, ty};
+use rustc_middle::mir;
 use rustc_target::{abi::{Align, Size}, spec::PanicStrategy};
+use rustc_middle::ty;
 use rustc_apfloat::Float;
 use rustc_span::symbol::sym;
 
 use crate::*;
+use super::backtrace::EvalContextExt as _;
 use helpers::check_arg_count;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -210,6 +212,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
                 this.machine.static_roots.push(ptr.alloc_id);
             }
+
+            // Obtains a Miri backtrace. See the README for details.
+            "miri_get_backtrace" => {
+                this.handle_miri_get_backtrace(args, dest)?;
+            }
+
+            // Resolves a Miri backtrace frame. See the README for details.
+            "miri_resolve_frame" => {
+                this.handle_miri_resolve_frame(args, dest)?;
+            }
+
 
             // Standard C allocation
             "malloc" => {
