@@ -118,6 +118,12 @@ datecheck() {
 }
 datecheck
 trap datecheck EXIT
+print_ll_files() {
+  echo "== printing ll file =="
+  cat build/x86_64-unknown-linux-gnu/test/codegen/issue-75742-format_without_fmt_args/*.ll
+  echo "== end =="
+}
+trap print_ll_files EXIT
 
 # We've had problems in the past of shell scripts leaking fds into the sccache
 # server (#48192) which causes Cargo to erroneously think that a build script
