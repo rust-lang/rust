@@ -1160,7 +1160,10 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_optimized_mir(&mut self, def_id: LocalDefId) {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
-            record!(self.tables.is_trivial_mir[def_id.to_def_id()] <- self.tcx.is_trivial_mir(def_id));
+            if self.tcx.is_trivial_mir(def_id) {
+                record!(self.tables.is_trivial_mir[def_id.to_def_id()] <- true);
+            }
+
             record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
 
             let unused = self.tcx.unused_generic_params(def_id);
