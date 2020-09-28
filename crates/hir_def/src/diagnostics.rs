@@ -69,4 +69,11 @@ impl Diagnostic for UnresolvedImport {
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }
+    fn is_experimental(&self) -> bool {
+        // This currently results in false positives in the following cases:
+        // - `cfg_if!`-generated code in libstd (we don't load the sysroot correctly)
+        // - `core::arch` (we don't handle `#[path = "../<path>"]` correctly)
+        // - proc macros and/or proc macro generated code
+        true
+    }
 }
