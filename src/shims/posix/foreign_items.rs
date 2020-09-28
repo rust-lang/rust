@@ -123,6 +123,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.fdatasync(fd)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "readlink" => {
+                let &[pathname, buf, bufsize] = check_arg_count(args)?;
+                let result = this.readlink(pathname, buf, bufsize)?;
+                this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
+            }
 
             // Allocation
             "posix_memalign" => {

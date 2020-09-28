@@ -118,22 +118,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         scalar: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-        #[cfg(unix)]
-        fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-            Ok(os_str.as_bytes())
-        }
-        #[cfg(not(unix))]
-        fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-            // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
-            // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
-            // valid.
-            os_str
-                .to_str()
-                .map(|s| s.as_bytes())
-                .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
-        }
 
-        let bytes = os_str_to_bytes(os_str)?;
+        let bytes = self.os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
         let string_length = u64::try_from(bytes.len()).unwrap();
@@ -265,4 +251,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let os_str = convert_path_separator(Cow::Borrowed(path.as_os_str()), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
         this.write_os_str_to_wide_str(&os_str, scalar, size)
     }
+
+    #[cfg(unix)]
+    fn os_str_to_bytes<'a>(&mut self, os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+        Ok(os_str.as_bytes())
+    }
+
+    #[cfg(not(unix))]
+    fn os_str_to_bytes<'a>(&mut self, os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+        // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
+        // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
+        // valid.
+        os_str
+            .to_str()
+            .map(|s| s.as_bytes())
+            .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
+    }
+
 }

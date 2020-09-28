@@ -1,11 +1,17 @@
 // ignore-windows: File handling is not implemented yet
 // compile-flags: -Zmiri-disable-isolation
 
+#![feature(rustc_private)]
+
 use std::fs::{
     File, create_dir, OpenOptions, read_dir, remove_dir, remove_dir_all, remove_file, rename,
 };
-use std::io::{Read, Write, ErrorKind, Result, Seek, SeekFrom};
+use std::ffi::CString;
+use std::io::{Read, Write, Error, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
+
+extern crate libc;
+
 
 fn main() {
     test_file();
@@ -215,6 +221,43 @@ fn test_symlink() {
     let mut contents = Vec::new();
     symlink_file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+
+        let expected_path = path.as_os_str().as_bytes();
+
+        // Test that the expected string gets written to a buffer of proper
+        // length, and that a trailing null byte is not written
+        let symlink_c_str = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+        let symlink_c_ptr = symlink_c_str.as_ptr();
+
+        // Make the buf one byte larger than it needs to be,
+        // and check that the last byte is not overwritten
+        let mut large_buf = vec![0xFF; expected_path.len() + 1];
+        let res = unsafe { libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len()) };
+        assert_eq!(res, large_buf.len() as isize - 1);
+        // Check that the resovled path was properly written into the buf
+        assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
+        assert_eq!(large_buf.last(), Some(&0xFF));
+
+        // Test that the resolved path is truncated if the provided buffer
+        // is too small.
+        let mut small_buf = [0u8; 2];
+        let res = unsafe { libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len()) };
+        assert_eq!(res, small_buf.len() as isize);
+        assert_eq!(small_buf, &expected_path[..small_buf.len()]);
+
+        // Test that we report a proper error for a missing path.
+        let bad_path = CString::new("MIRI_MISSING_FILE_NAME").unwrap();
+        let res = unsafe { libc::readlink(bad_path.as_ptr(), small_buf.as_mut_ptr().cast(), small_buf.len()) };
+        assert_eq!(res, -1);
+        assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+    }
+
+
     // Test that metadata of a symbolic link is correct.
     check_metadata(bytes, &symlink_path).unwrap();
     // Test that the metadata of a symbolic link is correct when not following it.
