@@ -1,5 +1,8 @@
 #![deny(invalid_html_tags)]
 
+//! <p>💩<p>
+//~^ ERROR unclosed HTML tag `p`
+
 /// <img><input>
 /// <script>
 /// <img><input>
@@ -38,6 +41,8 @@ pub fn b() {}
 //~^ ERROR unclosed HTML tag `div`
 ///   <h3>
 //~^ ERROR unclosed HTML tag `h3`
+/// <script
+//~^ ERROR unclosed HTML tag `script`
 pub fn c() {}
 
 // Unclosed tags shouldn't warn if they are nested inside a <script> elem.
@@ -55,7 +60,7 @@ pub fn d() {}
 /// <style>
 ///   <h3><div>
 /// </style>
-/// <style>
+/// <stYle>
 ///   <div>
 ///     <p>
 ///   </div>

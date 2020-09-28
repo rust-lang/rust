@@ -45,14 +45,22 @@ fn drop_tag(
     range: Range<usize>,
     f: &impl Fn(&str, &Range<usize>),
 ) {
-    if let Some(pos) = tags.iter().rev().position(|(t, _)| *t == tag_name) {
+    let tag_name_low = tag_name.to_lowercase();
+    if let Some(pos) = tags.iter().rev().position(|(t, _)| t.to_lowercase() == tag_name_low) {
         // Because this is from a `rev` iterator, the position is reversed as well!
         let pos = tags.len() - 1 - pos;
-        // If the tag is nested inside a "<script>", not warning should be emitted.
-        let should_not_warn =
-            tags.iter().take(pos + 1).any(|(at, _)| at == "script" || at == "style");
+        // If the tag is nested inside a "<script>" or a "<style>" tag, no warning should
+        // be emitted.
+        let should_not_warn = tags.iter().take(pos + 1).any(|(at, _)| {
+            let at = at.to_lowercase();
+            at == "script" || at == "style"
+        });
         for (last_tag_name, last_tag_span) in tags.drain(pos + 1..) {
-            if should_not_warn || ALLOWED_UNCLOSED.iter().any(|&at| at == &last_tag_name) {
+            if should_not_warn {
+                continue;
+            }
+            let last_tag_name_low = last_tag_name.to_lowercase();
+            if ALLOWED_UNCLOSED.iter().any(|&at| at == &last_tag_name_low) {
                 continue;
             }
             // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
@@ -77,21 +85,29 @@ fn extract_tag(
 ) {
     let mut iter = text.chars().enumerate().peekable();
 
-    while let Some((start_pos, c)) = iter.next() {
+    'top: while let Some((start_pos, c)) = iter.next() {
         if c == '<' {
             let mut tag_name = String::new();
             let mut is_closing = false;
-            while let Some((pos, c)) = iter.peek() {
+            let mut prev_pos = start_pos;
+            loop {
+                let (pos, c) = match iter.peek() {
+                    Some((pos, c)) => (*pos, *c),
+                    // In case we reached the of the doc comment, we want to check that it's an
+                    // unclosed HTML tag. For example "/// <h3".
+                    None => (prev_pos, '\0'),
+                };
+                prev_pos = pos;
                 // Checking if this is a closing tag (like `</a>` for `<a>`).
-                if *c == '/' && tag_name.is_empty() {
+                if c == '/' && tag_name.is_empty() {
                     is_closing = true;
-                } else if c.is_ascii_alphanumeric() && !c.is_ascii_uppercase() {
-                    tag_name.push(*c);
+                } else if c.is_ascii_alphanumeric() {
+                    tag_name.push(c);
                 } else {
                     if !tag_name.is_empty() {
                         let mut r =
                             Range { start: range.start + start_pos, end: range.start + pos };
-                        if *c == '>' {
+                        if c == '>' {
                             // In case we have a tag without attribute, we can consider the span to
                             // refer to it fully.
                             r.end += 1;
@@ -102,10 +118,19 @@ fn extract_tag(
                             tags.push((tag_name, r));
                         }
                     }
-                    break;
+                    continue 'top;
                 }
-                iter.next();
+                // Some chars like 💩 are longer than 1 character, so we need to skip the other
+                // bytes as well to prevent stopping "in the middle" of a char.
+                for _ in 0..c.len_utf8() {
+                    iter.next();
+                }
             }
+        }
+        // Some chars like 💩 are longer than 1 character, so we need to skip the other
+        // bytes as well to prevent stopping "in the middle" of a char.
+        for _ in 0..c.len_utf8() - 1 {
+            iter.next();
         }
     }
 }
@@ -143,9 +168,10 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
                 }
             }
 
-            for (tag, range) in
-                tags.iter().filter(|(t, _)| ALLOWED_UNCLOSED.iter().find(|&at| at == t).is_none())
-            {
+            for (tag, range) in tags.iter().filter(|(t, _)| {
+                let t = t.to_lowercase();
+                ALLOWED_UNCLOSED.iter().find(|&&at| at == t).is_none()
+            }) {
                 report_diag(&format!("unclosed HTML tag `{}`", tag), range);
             }
         }
