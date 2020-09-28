@@ -909,7 +909,15 @@ pub fn read_line() -> Result<String> {
     let mut input = String::new();
     match stdin().read_line(&mut input)? {
         0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly")),
-        _ => Ok(input.trim_end_matches(&['\n', '\r'][..]).to_owned()),
+        _ => {
+            if Some('\n') == input.chars().next_back() {
+                input.pop();
+                if Some('\r') == input.chars().next_back() {
+                    input.pop();
+                }
+            }
+            Ok(input)
+        },
     }
 }
 
