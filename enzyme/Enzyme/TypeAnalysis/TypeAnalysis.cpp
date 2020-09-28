@@ -619,8 +619,6 @@ void TypeAnalyzer::visitValue(Value &val) {
   if (!isa<Argument>(&val) && !isa<Instruction>(&val))
     return;
 
-  // TODO perhaps add no users integral here
-
   if (auto inst = dyn_cast<Instruction>(&val)) {
     visit(*inst);
   }
@@ -727,10 +725,10 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
   //  pointer and not int (whereas nullptr is a pointer) However if we are
   //  inbounds you are only allowed to have nullptr[0] or nullptr[nullptr],
   //  making this valid
-  // TODO note that we don't force the inttype::pointer (commented below)
-  // assuming nullptr[nullptr] doesn't occur in practice
-  // if (gep.isInBounds() && pointerAnalysis[{}] == BaseType::Pointer) {
-  if (direction & UP) {
+  // Assuming nullptr[nullptr] doesn't occur in practice, the following
+  // is valid. We could make it always valid by checking the pointer
+  // operand explicitly is a pointer.
+ if (direction & UP) {
     if (gep.isInBounds()) {
       for (auto &ind : gep.indices()) {
         updateAnalysis(ind, TypeTree(BaseType::Integer).Only(-1), &gep);
@@ -1260,6 +1258,14 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
 
 void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   switch (I.getIntrinsicID()) {
+  case Intrinsic::ctpop:
+  case Intrinsic::ctlz:
+  case Intrinsic::cttz:
+    // No direction check as always valid
+    updateAnalysis(
+        &I, TypeTree(BaseType::Integer).Only(-1), &I);
+    return;
+
   case Intrinsic::log:
   case Intrinsic::log2:
   case Intrinsic::log10:

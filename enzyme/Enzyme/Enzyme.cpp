@@ -95,7 +95,6 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
       } else if (MS == "diffe_dupnoneed") {
         ty = DIFFE_TYPE::DUP_NONEED;
       } else if (MS == "diffe_out") {
-        llvm::errs() << "saw metadata for diffe_out\n";
         ty = DIFFE_TYPE::OUT_DIFF;
       } else if (MS == "diffe_const") {
         ty = DIFFE_TYPE::CONSTANT;
