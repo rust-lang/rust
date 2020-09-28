@@ -150,7 +150,7 @@ else
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
 
-if [ ! -z "$SCRIPT" ]; then
+if [ -n "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"
 else
   do_make() {
