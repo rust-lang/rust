@@ -539,12 +539,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?
-            }
-            Ok(())
-        })
+        let slice: &[T] = self;
+        slice.encode(s)
     }
 }
 
@@ -560,22 +556,18 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
     }
 }
 
-impl<S: Encoder> Encodable<S> for [u8; 20] {
+impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?
-            }
-            Ok(())
-        })
+        let slice: &[T] = self;
+        slice.encode(s)
     }
 }
 
-impl<D: Decoder> Decodable<D> for [u8; 20] {
-    fn decode(d: &mut D) -> Result<[u8; 20], D::Error> {
+impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
+    fn decode(d: &mut D) -> Result<[u8; N], D::Error> {
         d.read_seq(|d, len| {
-            assert!(len == 20);
-            let mut v = [0u8; 20];
+            assert!(len == N);
+            let mut v = [0u8; N];
             for i in 0..len {
                 v[i] = d.read_seq_elt(i, |d| Decodable::decode(d))?;
             }
@@ -589,12 +581,8 @@ where
     [T]: ToOwned<Owned = Vec<T>>,
 {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?
-            }
-            Ok(())
-        })
+        let slice: &[T] = self;
+        slice.encode(s)
     }
 }
 
