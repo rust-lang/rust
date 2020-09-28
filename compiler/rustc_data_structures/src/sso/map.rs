@@ -7,6 +7,25 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 use std::ops::Index;
 
+// For pointer-sized arguments arrays
+// are faster than set/map for up to 64
+// arguments.
+//
+// On the other hand such a big array
+// hurts cache performance, makes passing
+// sso structures around very expensive.
+//
+// Biggest performance benefit is gained
+// for reasonably small arrays that stay
+// small in vast majority of cases.
+//
+// '8' is choosen as a sane default, to be
+// reevaluated later.
+//
+// Note: As of now ArrayVec design prevents
+//       us from making it user-customizable.
+const SSO_ARRAY_SIZE: usize = 8;
+
 /// Small-storage-optimized implementation of a map.
 ///
 /// Stores elements in a small array up to a certain length
@@ -26,7 +45,7 @@ use std::ops::Index;
 ///   Vacant/Occupied entries and related
 #[derive(Clone)]
 pub enum SsoHashMap<K, V> {
-    Array(ArrayVec<[(K, V); 8]>),
+    Array(ArrayVec<[(K, V); SSO_ARRAY_SIZE]>),
     Map(FxHashMap<K, V>),
 }
 
@@ -39,9 +58,8 @@ impl<K, V> SsoHashMap<K, V> {
 
     /// Creates an empty `SsoHashMap` with the specified capacity.
     pub fn with_capacity(cap: usize) -> Self {
-        let array = ArrayVec::new();
-        if array.capacity() >= cap {
-            SsoHashMap::Array(array)
+        if cap <= SSO_ARRAY_SIZE {
+            Self::new()
         } else {
             SsoHashMap::Map(FxHashMap::with_capacity_and_hasher(cap, Default::default()))
         }
@@ -59,7 +77,7 @@ impl<K, V> SsoHashMap<K, V> {
     /// Returns the number of elements the map can hold without reallocating.
     pub fn capacity(&self) -> usize {
         match self {
-            SsoHashMap::Array(array) => array.capacity(),
+            SsoHashMap::Array(_) => SSO_ARRAY_SIZE,
             SsoHashMap::Map(map) => map.capacity(),
         }
     }
@@ -149,7 +167,7 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     pub fn reserve(&mut self, additional: usize) {
         match self {
             SsoHashMap::Array(array) => {
-                if array.capacity() < (array.len() + additional) {
+                if SSO_ARRAY_SIZE < (array.len() + additional) {
                     let mut map: FxHashMap<K, V> = array.drain(..).collect();
                     map.reserve(additional);
                     *self = SsoHashMap::Map(map);
@@ -164,10 +182,8 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     /// and possibly leaving some space in accordance with the resize policy.
     pub fn shrink_to_fit(&mut self) {
         if let SsoHashMap::Map(map) = self {
-            let mut array = ArrayVec::new();
-            if map.len() <= array.capacity() {
-                array.extend(map.drain());
-                *self = SsoHashMap::Array(array);
+            if map.len() <= SSO_ARRAY_SIZE {
+                *self = SsoHashMap::Array(map.drain().collect());
             } else {
                 map.shrink_to_fit();
             }
@@ -361,7 +377,7 @@ impl<K: Eq + Hash, V> Extend<(K, V)> for SsoHashMap<K, V> {
     fn extend_reserve(&mut self, additional: usize) {
         match self {
             SsoHashMap::Array(array) => {
-                if array.capacity() < (array.len() + additional) {
+                if SSO_ARRAY_SIZE < (array.len() + additional) {
                     let mut map: FxHashMap<K, V> = array.drain(..).collect();
                     map.extend_reserve(additional);
                     *self = SsoHashMap::Map(map);
@@ -517,8 +533,9 @@ impl<'a, K: Eq + Hash, V> Entry<'a, K, V> {
                 let index = if let Some(index) = found_index {
                     index
                 } else {
+                    let index = array.len();
                     array.try_push((self.key, default())).unwrap();
-                    array.len() - 1
+                    index
                 };
                 &mut array[index].1
             }
