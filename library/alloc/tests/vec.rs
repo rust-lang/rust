@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::collections::TryReserveError::*;
 use std::fmt::Debug;
 use std::iter::InPlaceIterable;
@@ -1830,4 +1831,83 @@ fn partialeq_vec_full() {
     assert_partial_eq_valid!(slicemut2,slicemut3; vec2,vec3);
     assert_partial_eq_valid!(vec2,vec3; array2,array3);
     assert_partial_eq_valid!(vec2,vec3; arrayref2,arrayref3);
+}
+
+#[test]
+fn test_vec_cycle() {
+    #[derive(Debug)]
+    struct C<'a> {
+        v: Vec<Cell<Option<&'a C<'a>>>>,
+    }
+
+    impl<'a> C<'a> {
+        fn new() -> C<'a> {
+            C { v: Vec::new() }
+        }
+    }
+
+    let mut c1 = C::new();
+    let mut c2 = C::new();
+    let mut c3 = C::new();
+
+    // Push
+    c1.v.push(Cell::new(None));
+    c1.v.push(Cell::new(None));
+
+    c2.v.push(Cell::new(None));
+    c2.v.push(Cell::new(None));
+
+    c3.v.push(Cell::new(None));
+    c3.v.push(Cell::new(None));
+
+    // Set
+    c1.v[0].set(Some(&c2));
+    c1.v[1].set(Some(&c3));
+
+    c2.v[0].set(Some(&c2));
+    c2.v[1].set(Some(&c3));
+
+    c3.v[0].set(Some(&c1));
+    c3.v[1].set(Some(&c2));
+}
+
+#[test]
+fn test_vec_cycle_wrapped() {
+    struct Refs<'a> {
+        v: Vec<Cell<Option<&'a C<'a>>>>,
+    }
+
+    struct C<'a> {
+        refs: Refs<'a>,
+    }
+
+    impl<'a> Refs<'a> {
+        fn new() -> Refs<'a> {
+            Refs { v: Vec::new() }
+        }
+    }
+
+    impl<'a> C<'a> {
+        fn new() -> C<'a> {
+            C { refs: Refs::new() }
+        }
+    }
+
+    let mut c1 = C::new();
+    let mut c2 = C::new();
+    let mut c3 = C::new();
+
+    c1.refs.v.push(Cell::new(None));
+    c1.refs.v.push(Cell::new(None));
+    c2.refs.v.push(Cell::new(None));
+    c2.refs.v.push(Cell::new(None));
+    c3.refs.v.push(Cell::new(None));
+    c3.refs.v.push(Cell::new(None));
+
+    c1.refs.v[0].set(Some(&c2));
+    c1.refs.v[1].set(Some(&c3));
+    c2.refs.v[0].set(Some(&c2));
+    c2.refs.v[1].set(Some(&c3));
+    c3.refs.v[0].set(Some(&c1));
+    c3.refs.v[1].set(Some(&c2));
 }
