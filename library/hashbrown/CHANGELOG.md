@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.9.1] - 2020-09-28
+
+## Added
+- Added safe methods to `RawTable` (#202):
+  - `get`: `find` and `as_ref`
+  - `get_mut`: `find` and `as_mut`
+  - `insert_entry`: `insert` and `as_mut`
+  - `remove_entry`: `find` and `remove`
+  - `erase_entry`: `find` and `erase`
+
+## Changed
+- Removed `from_key_hashed_nocheck`'s `Q: Hash`. (#200)
+- Made `RawTable::drain` safe. (#201)
+
 ## [v0.9.0] - 2020-09-03
 
 ### Fixed
@@ -249,7 +263,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.9.1...HEAD
+[v0.9.1]: https://github.com/rust-lang/hashbrown/compare/v0.9.0...v0.9.1
 [v0.9.0]: https://github.com/rust-lang/hashbrown/compare/v0.8.2...v0.9.0
 [v0.8.2]: https://github.com/rust-lang/hashbrown/compare/v0.8.1...v0.8.2
 [v0.8.1]: https://github.com/rust-lang/hashbrown/compare/v0.8.0...v0.8.1
