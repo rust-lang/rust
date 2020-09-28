@@ -769,34 +769,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
             let lhs_ty = self.check_expr(&lhs);
             let rhs_ty = self.check_expr(&rhs);
-            if self.can_coerce(lhs_ty, rhs_ty) {
-                if !lhs.is_syntactic_place_expr() {
-                    // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
-                    if let hir::Node::Expr(hir::Expr {
-                        kind: ExprKind::Match(_, _, hir::MatchSource::IfDesugar { .. }),
-                        ..
-                    }) = self.tcx.hir().get(
-                        self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(expr.hir_id)),
-                    ) {
-                        // Likely `if let` intended.
-                        err.span_suggestion_verbose(
-                            expr.span.shrink_to_lo(),
-                            "you might have meant to use pattern matching",
-                            "let ".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+            let (applicability, eq) = if self.can_coerce(rhs_ty, lhs_ty) {
+                (Applicability::MachineApplicable, true)
+            } else {
+                (Applicability::MaybeIncorrect, false)
+            };
+            if !lhs.is_syntactic_place_expr() {
+                // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
+                if let hir::Node::Expr(hir::Expr {
+                    kind:
+                        ExprKind::Match(
+                            _,
+                            _,
+                            hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar,
+                        ),
+                    ..
+                }) = self.tcx.hir().get(
+                    self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(expr.hir_id)),
+                ) {
+                    // Likely `if let` intended.
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_lo(),
+                        "you might have meant to use pattern matching",
+                        "let ".to_string(),
+                        applicability,
+                    );
                 }
+            }
+            if eq {
                 err.span_suggestion_verbose(
                     *span,
                     "you might have meant to compare for equality",
                     "==".to_string(),
-                    Applicability::MaybeIncorrect,
+                    applicability,
                 );
-            } else {
-                // Do this to cause extra errors about the assignment.
-                let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-                let _ = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
             }
 
             if self.sess().if_let_suggestions.borrow().get(&expr.span).is_some() {
