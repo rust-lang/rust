@@ -12,7 +12,7 @@ pub trait T: Sized {
 
 impl T for u32 {
     const N: usize = {
-        let a = 0; // FIXME should warn about unused variable
+        let a = 0; //~ WARN unused variable: `a`
         4
     };
 
