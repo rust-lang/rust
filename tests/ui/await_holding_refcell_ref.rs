@@ -61,11 +61,11 @@ fn block_bad(x: &RefCell<u32>) -> impl std::future::Future<Output = u32> + '_ {
 }
 
 fn main() {
-    let m = RefCell::new(100);
-    good(&m);
-    bad(&m);
-    bad_mut(&m);
-    also_bad(&m);
-    not_good(&m);
-    block_bad(&m);
+    let rc = RefCell::new(100);
+    good(&rc);
+    bad(&rc);
+    bad_mut(&rc);
+    also_bad(&rc);
+    not_good(&rc);
+    block_bad(&rc);
 }
