@@ -203,6 +203,10 @@ struct DefCollector<'a> {
     unexpanded_attribute_macros: Vec<DeriveDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
+    /// List of procedural macros defined by this crate. This is read from the dynamic library
+    /// built by the build system, and is the list of proc. macros we can actually expand. It is
+    /// empty when proc. macro support is disabled (in which case we still do name resolution for
+    /// them).
     proc_macros: Vec<(Name, ProcMacroExpander)>,
     exports_proc_macros: bool,
     from_glob_import: PerNsGlobImports,
@@ -279,6 +283,22 @@ impl DefCollector<'_> {
         }
     }
 
+    /// Adds a definition of procedural macro `name` to the root module.
+    ///
+    /// # Notes on procedural macro resolution
+    ///
+    /// Procedural macro functionality is provided by the build system: It has to build the proc
+    /// macro and pass the resulting dynamic library to rust-analyzer.
+    ///
+    /// When procedural macro support is enabled, the list of proc macros exported by a crate is
+    /// known before we resolve names in the crate. This list is stored in `self.proc_macros` and is
+    /// derived from the dynamic library.
+    ///
+    /// However, we *also* would like to be able to at least *resolve* macros on our own, without
+    /// help by the build system. So, when the macro isn't found in `self.proc_macros`, we instead
+    /// use a dummy expander that always errors. This comes with the drawback of macros potentially
+    /// going out of sync with what the build system sees (since we resolve using VFS state, but
+    /// Cargo builds only on-disk files). We could and probably should add diagnostics for that.
     fn resolve_proc_macro(&mut self, name: &Name) {
         self.exports_proc_macros = true;
         let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
