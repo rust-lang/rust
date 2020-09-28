@@ -5,7 +5,7 @@ LL | const fn foo() { (||{})() }
    |                  ^^^^^^^^
 
 error: function pointers are not allowed in const fn
-  --> $DIR/issue-56164.rs:8:5
+  --> $DIR/issue-56164.rs:7:5
    |
 LL |     input()
    |     ^^^^^^^

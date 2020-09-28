@@ -83,6 +83,7 @@
 #![feature(const_fn_union)]
 #![feature(const_fn)]
 #![cfg_attr(not(bootstrap), feature(const_fn_floating_point_arithmetic))]
+#![cfg_attr(not(bootstrap), feature(const_fn_fn_ptr_basics))]
 #![feature(const_generics)]
 #![feature(const_option)]
 #![feature(const_precise_live_drops)]

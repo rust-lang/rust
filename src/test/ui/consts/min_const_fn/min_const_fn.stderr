@@ -209,23 +209,23 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: function pointers in const fn are unstable
+error[E0658]: function pointers cannot appear in constant functions
   --> $DIR/min_const_fn.rs:130:21
    |
 LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
-error[E0723]: function pointers in const fn are unstable
+error[E0658]: function pointers cannot appear in constant functions
   --> $DIR/min_const_fn.rs:132:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
 error: aborting due to 26 previous errors
 

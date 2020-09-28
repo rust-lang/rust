@@ -213,11 +213,21 @@ impl NonConstOp for FnPtrCast {
     const STOPS_CONST_CHECKING: bool = true;
 
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        mcf_status_in_item(ccx)
+        if ccx.const_kind() != hir::ConstContext::ConstFn {
+            Status::Allowed
+        } else {
+            Status::Unstable(sym::const_fn_fn_ptr_basics)
+        }
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        mcf_emit_error(ccx, span, "function pointer casts are not allowed in const fn");
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_fn_fn_ptr_basics,
+            span,
+            &format!("function pointer casts are not allowed in {}s", ccx.const_kind()),
+        )
+        .emit()
     }
 }
 
@@ -596,17 +606,21 @@ pub mod ty {
         const STOPS_CONST_CHECKING: bool = true;
 
         fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-            // FIXME: This attribute a hack to allow the specialization of the `futures` API. See
-            // #59739. We should have a proper feature gate for this.
-            if ccx.tcx.has_attr(ccx.def_id.to_def_id(), sym::rustc_allow_const_fn_ptr) {
+            if ccx.const_kind() != hir::ConstContext::ConstFn {
                 Status::Allowed
             } else {
-                mcf_status_in_item(ccx)
+                Status::Unstable(sym::const_fn_fn_ptr_basics)
             }
         }
 
         fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-            mcf_emit_error(ccx, span, "function pointers in const fn are unstable");
+            feature_err(
+                &ccx.tcx.sess.parse_sess,
+                sym::const_fn_fn_ptr_basics,
+                span,
+                &format!("function pointers cannot appear in {}s", ccx.const_kind()),
+            )
+            .emit()
         }
     }
 
