@@ -138,6 +138,7 @@ export class Config {
             run: this.get<boolean>("lens.run"),
             debug: this.get<boolean>("lens.debug"),
             implementations: this.get<boolean>("lens.implementations"),
+            methodReferences: this.get<boolean>("lens.methodReferences"),
         };
     }
 

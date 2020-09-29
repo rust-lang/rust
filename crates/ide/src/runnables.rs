@@ -203,7 +203,7 @@ impl TestAttr {
 ///
 /// It may produce false positives, for example, `#[wasm_bindgen_test]` requires a different command to run the test,
 /// but it's better than not to have the runnables for the tests at all.
-fn has_test_related_attribute(fn_def: &ast::Fn) -> bool {
+pub(crate) fn has_test_related_attribute(fn_def: &ast::Fn) -> bool {
     fn_def
         .attrs()
         .filter_map(|attr| attr.path())

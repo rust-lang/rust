@@ -74,19 +74,18 @@ pub struct LensConfig {
     pub run: bool,
     pub debug: bool,
     pub implementations: bool,
+    pub method_refs: bool,
 }
 
 impl Default for LensConfig {
     fn default() -> Self {
-        Self { run: true, debug: true, implementations: true }
+        Self { run: true, debug: true, implementations: true, method_refs: false }
     }
 }
 
 impl LensConfig {
-    pub const NO_LENS: LensConfig = Self { run: false, debug: false, implementations: false };
-
     pub fn any(&self) -> bool {
-        self.implementations || self.runnable()
+        self.implementations || self.runnable() || self.references()
     }
 
     pub fn none(&self) -> bool {
@@ -95,6 +94,10 @@ impl LensConfig {
 
     pub fn runnable(&self) -> bool {
         self.run || self.debug
+    }
+
+    pub fn references(&self) -> bool {
+        self.method_refs
     }
 }
 
@@ -278,6 +281,7 @@ impl Config {
             run: data.lens_enable && data.lens_run,
             debug: data.lens_enable && data.lens_debug,
             implementations: data.lens_enable && data.lens_implementations,
+            method_refs: data.lens_enable && data.lens_methodReferences,
         };
 
         if !data.linkedProjects.is_empty() {
@@ -459,10 +463,11 @@ config_data! {
         inlayHints_parameterHints: bool     = true,
         inlayHints_typeHints: bool          = true,
 
-        lens_debug: bool           = true,
-        lens_enable: bool          = true,
-        lens_implementations: bool = true,
-        lens_run: bool             = true,
+        lens_debug: bool            = true,
+        lens_enable: bool           = true,
+        lens_implementations: bool  = true,
+        lens_run: bool              = true,
+        lens_methodReferences: bool = false,
 
         linkedProjects: Vec<ManifestOrProjectJson> = Vec::new(),
         lruCapacity: Option<usize>                 = None,

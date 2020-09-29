@@ -11,6 +11,7 @@ use ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
     RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
+use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
@@ -952,6 +953,22 @@ pub(crate) fn handle_code_lens(
                 }),
         );
     }
+
+    if snap.config.lens.references() {
+        lenses.extend(snap.analysis.find_all_methods(file_id)?.into_iter().map(|it| {
+            let range = to_proto::range(&line_index, it.range);
+            let position = to_proto::position(&line_index, it.range.start());
+            let lens_params =
+                lsp_types::TextDocumentPositionParams::new(params.text_document.clone(), position);
+
+            CodeLens {
+                range,
+                command: None,
+                data: Some(to_value(CodeLensResolveData::References(lens_params)).unwrap()),
+            }
+        }));
+    }
+
     Ok(Some(lenses))
 }
 
@@ -959,6 +976,7 @@ pub(crate) fn handle_code_lens(
 #[serde(rename_all = "camelCase")]
 enum CodeLensResolveData {
     Impls(lsp_types::request::GotoImplementationParams),
+    References(lsp_types::TextDocumentPositionParams),
 }
 
 pub(crate) fn handle_code_lens_resolve(
@@ -988,6 +1006,34 @@ pub(crate) fn handle_code_lens_resolve(
                 code_lens.range.start,
                 locations,
             );
+            Ok(CodeLens { range: code_lens.range, command: Some(cmd), data: None })
+        }
+        Some(CodeLensResolveData::References(doc_position)) => {
+            let position = from_proto::file_position(&snap, doc_position.clone())?;
+            let locations = snap
+                .analysis
+                .find_all_refs(position, None)
+                .unwrap_or(None)
+                .map(|r| {
+                    r.references()
+                        .iter()
+                        .filter_map(|it| to_proto::location(&snap, it.file_range).ok())
+                        .collect_vec()
+                })
+                .unwrap_or_default();
+
+            let title = reference_title(locations.len());
+            let cmd = if locations.is_empty() {
+                Command { title, command: "".into(), arguments: None }
+            } else {
+                show_references_command(
+                    title,
+                    &doc_position.text_document.uri,
+                    code_lens.range.start,
+                    locations,
+                )
+            };
+
             Ok(CodeLens { range: code_lens.range, command: Some(cmd), data: None })
         }
         None => Ok(CodeLens {
@@ -1245,6 +1291,14 @@ fn implementation_title(count: usize) -> String {
         "1 implementation".into()
     } else {
         format!("{} implementations", count)
+    }
+}
+
+fn reference_title(count: usize) -> String {
+    if count == 1 {
+        "1 reference".into()
+    } else {
+        format!("{} references", count)
     }
 }
 

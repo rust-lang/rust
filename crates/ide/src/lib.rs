@@ -38,6 +38,7 @@ mod join_lines;
 mod matching_brace;
 mod parent_module;
 mod references;
+mod fn_references;
 mod runnables;
 mod status;
 mod syntax_highlighting;
@@ -367,6 +368,11 @@ impl Analysis {
         self.with_db(|db| {
             references::find_all_refs(&Semantics::new(db), position, search_scope).map(|it| it.info)
         })
+    }
+
+    /// Finds all methods and free functions for the file. Does not return tests!
+    pub fn find_all_methods(&self, file_id: FileId) -> Cancelable<Vec<FileRange>> {
+        self.with_db(|db| fn_references::find_all_methods(db, file_id))
     }
 
     /// Returns a short text describing element at position.
