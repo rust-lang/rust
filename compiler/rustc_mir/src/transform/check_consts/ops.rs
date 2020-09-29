@@ -33,7 +33,12 @@ pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) -> boo
                         concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
                         Applicability::HasPlaceholders,
                     )
-                    .note("otherwise `#[allow_internal_unstable]` can be used to bypass stability checks")
+                    .span_suggestion(
+                        ccx.body.span,
+                        "otherwise `#[allow_internal_unstable]` can be used to bypass stability checks",
+                        format!("#[allow_internal_unstable({})]", gate),
+                        Applicability:: MaybeIncorrect,
+                    )
                     .emit();
             }
 

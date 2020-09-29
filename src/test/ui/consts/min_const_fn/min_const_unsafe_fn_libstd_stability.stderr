@@ -20,10 +20,13 @@ error: const-stable function cannot use `#[feature(const_fn_floating_point_arith
 LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
    |                                 ^^^^^^^^^^^^^
    |
-   = note: otherwise `#[allow_internal_unstable]` can be used to bypass stability checks
 help: if it is not part of the public API, make this function unstably const
    |
 LL | #[rustc_const_unstable(feature = "...", issue = "...")]
+   |
+help: otherwise `#[allow_internal_unstable]` can be used to bypass stability checks
+   |
+LL | #[allow_internal_unstable(const_fn_floating_point_arithmetic)]
    |
 
 error: `foo2_gated` is not yet stable as a const fn
