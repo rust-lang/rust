@@ -259,14 +259,18 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
 #[cfg_attr(feature = "inline-more", inline)]
 #[cfg(not(feature = "nightly"))]
 fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
+    calculate_layout_(mem::align_of::<T>(), mem::size_of::<T>(), buckets)
+}
+
+#[cfg_attr(feature = "inline-more", inline)]
+#[cfg(not(feature = "nightly"))]
+fn calculate_layout_(align_of: usize, size_of: usize, buckets: usize) -> Option<(Layout, usize)> {
     debug_assert!(buckets.is_power_of_two());
 
     // Manual layout calculation since Layout methods are not yet stable.
-    let ctrl_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
-    let ctrl_offset = mem::size_of::<T>()
-        .checked_mul(buckets)?
-        .checked_add(ctrl_align - 1)?
-        & !(ctrl_align - 1);
+    let ctrl_align = usize::max(align_of, Group::WIDTH);
+    let ctrl_offset =
+        size_of.checked_mul(buckets)?.checked_add(ctrl_align - 1)? & !(ctrl_align - 1);
     let len = ctrl_offset.checked_add(buckets + Group::WIDTH)?;
 
     Some((
