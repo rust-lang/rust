@@ -21,8 +21,8 @@ adding a new command-line argument.
   if it is too ambiguous what multiple flags would mean.
 - Always give options a long descriptive name, if only for more understandable
   compiler scripts.
-- The `--verbose` flag is for adding verbose information to `rustc` output
-  when not compiling a program. For example, using it with the `--version`
+- The `--verbose` flag is for adding verbose information to `rustc`
+  output. For example, using it with the `--version`
   flag gives information about the hashes of the compiler code.
 - Experimental flags and options must be guarded behind the `-Z
   unstable-options` flag.
