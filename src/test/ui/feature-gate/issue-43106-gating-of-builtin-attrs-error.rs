@@ -7,6 +7,28 @@
 
 // ignore-tidy-linelength
 
+#![deny(unused_attributes)]
+//~^ NOTE not a function or static
+//~^^ NOTE the lint level is defined here
+//~^^^ NOTE not an `extern crate` item
+//~^^^^ NOTE not a function or static
+//~^^^^^ NOTE not a function or closure
+
+#![macro_export]
+#![main]
+#![start]
+#![repr()]
+#![path = "3800"]
+#![automatically_derived]
+#![no_mangle]
+//~^ ERROR attribute should be applied to a function or static
+//~^^ WARN
+#![no_link]
+//~^ ERROR: attribute should be applied to an `extern crate` item
+#![export_name = "2200"]
+//~^ ERROR: attribute should be applied to a function or static
+#![inline]
+//~^ ERROR: attribute should be applied to function or closure
 #[inline]
 //~^ ERROR attribute should be applied to function or closure
 mod inline {

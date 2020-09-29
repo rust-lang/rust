@@ -1,5 +1,5 @@
 error: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:19:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:41:5
    |
 LL |     #[inline = "2100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     #[inline = "2100"] fn f() { }
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:10:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:32:1
    |
 LL |   #[inline]
    |   ^^^^^^^^^
@@ -24,7 +24,7 @@ LL | | }
    | |_- not a function or closure
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:38:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:60:1
    |
 LL |   #[no_link]
    |   ^^^^^^^^^^
@@ -39,7 +39,7 @@ LL | | }
    | |_- not an `extern crate` item
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:64:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:86:1
    |
 LL |   #[export_name = "2200"]
    |   ^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,84 +53,151 @@ LL | |
 LL | | }
    | |_- not a function or static
 
+error: attribute should be applied to a function or static
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:23:1
+   |
+LL | / #![deny(unused_attributes)]
+LL | |
+LL | |
+LL | |
+...  |
+LL | | #![no_mangle]
+   | | ^^^^^^^^^^^^^
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________- not a function or static
+   |
+note: the lint level is defined here
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:10:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: attribute should be applied to an `extern crate` item
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:26:1
+   |
+LL | / #![deny(unused_attributes)]
+LL | |
+LL | |
+LL | |
+...  |
+LL | | #![no_link]
+   | | ^^^^^^^^^^^
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________- not an `extern crate` item
+
+error: attribute should be applied to a function or static
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:28:1
+   |
+LL | / #![deny(unused_attributes)]
+LL | |
+LL | |
+LL | |
+...  |
+LL | | #![export_name = "2200"]
+   | | ^^^^^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________- not a function or static
+
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:15:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:30:1
+   |
+LL | / #![deny(unused_attributes)]
+LL | |
+LL | |
+LL | |
+...  |
+LL | | #![inline]
+   | | ^^^^^^^^^^
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:37:17
    |
 LL |     mod inner { #![inline] }
    |     ------------^^^^^^^^^^-- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:25:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:47:5
    |
 LL |     #[inline] struct S;
    |     ^^^^^^^^^ --------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:29:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:51:5
    |
 LL |     #[inline] type T = S;
    |     ^^^^^^^^^ ----------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:33:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:55:5
    |
 LL |     #[inline] impl S { }
    |     ^^^^^^^^^ ---------- not a function or closure
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:43:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:65:17
    |
 LL |     mod inner { #![no_link] }
    |     ------------^^^^^^^^^^^-- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:47:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:69:5
    |
 LL |     #[no_link] fn f() { }
    |     ^^^^^^^^^^ ---------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:51:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:73:5
    |
 LL |     #[no_link] struct S;
    |     ^^^^^^^^^^ --------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:55:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:77:5
    |
 LL |     #[no_link]type T = S;
    |     ^^^^^^^^^^----------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:59:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:81:5
    |
 LL |     #[no_link] impl S { }
    |     ^^^^^^^^^^ ---------- not an `extern crate` item
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:69:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:91:17
    |
 LL |     mod inner { #![export_name="2200"] }
    |     ------------^^^^^^^^^^^^^^^^^^^^^^-- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:75:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:97:5
    |
 LL |     #[export_name = "2200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ --------- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:79:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:101:5
    |
 LL |     #[export_name = "2200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ----------- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:83:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:105:5
    |
 LL |     #[export_name = "2200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------- not a function or static
 
-error: aborting due to 17 previous errors
+error: aborting due to 21 previous errors
 
 For more information about this error, try `rustc --explain E0518`.
