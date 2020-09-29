@@ -368,7 +368,7 @@ fn parse_reg<'a>(
     explicit_reg: &mut bool,
 ) -> Result<ast::InlineAsmRegOrRegClass, DiagnosticBuilder<'a>> {
     p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
-    let result = match p.token.kind {
+    let result = match p.token.uninterpolate().kind {
         token::Ident(name, false) => ast::InlineAsmRegOrRegClass::RegClass(name),
         token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
             *explicit_reg = true;
