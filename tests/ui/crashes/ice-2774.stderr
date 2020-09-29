@@ -1,5 +1,5 @@
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-  --> $DIR/ice-2774.rs:17:1
+  --> $DIR/ice-2774.rs:15:1
    |
 LL | pub fn add_barfoos_to_foos<'a>(bars: &HashSet<&'a Bar>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
