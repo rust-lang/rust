@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -11,13 +11,13 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
 };
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, TraitEngine};
 
 use std::ops::Deref;
 
-use super::ops::{self, NonConstOp};
+use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, Qualif};
@@ -277,8 +277,33 @@ impl Validator<'mir, 'tcx> {
             return;
         }
 
-        let err_emitted = ops::non_const(self.ccx, op, span);
-        if err_emitted && O::STOPS_CONST_CHECKING {
+        let gate = match op.status_in_item(self.ccx) {
+            Status::Allowed => return,
+
+            Status::Unstable(gate) if self.tcx.features().enabled(gate) => {
+                let unstable_in_stable = self.ccx.is_const_stable_const_fn()
+                    && !super::allow_internal_unstable(self.tcx, self.def_id.to_def_id(), gate);
+                if unstable_in_stable {
+                    emit_unstable_in_stable_error(self.ccx, span, gate);
+                }
+
+                return;
+            }
+
+            Status::Unstable(gate) => Some(gate),
+            Status::Forbidden => None,
+        };
+
+        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+            self.tcx.sess.miri_unleashed_feature(span, gate);
+            return;
+        }
+
+        let mut err = op.build_error(self.ccx, span);
+        assert!(err.is_error());
+        err.emit();
+
+        if O::STOPS_CONST_CHECKING {
             self.const_checking_stopped = true;
         }
     }
@@ -891,4 +916,26 @@ fn is_async_fn(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     hir_map
         .fn_sig_by_hir_id(hir_id)
         .map_or(false, |sig| sig.header.asyncness == hir::IsAsync::Async)
+}
+
+fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
+    ccx.tcx
+        .sess
+        .struct_span_err(
+            span,
+            &format!("const-stable function cannot use `#[feature({})]`", gate.as_str()),
+        )
+        .span_suggestion(
+            ccx.body.span,
+            "if it is not part of the public API, make this function unstably const",
+            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
+            Applicability::HasPlaceholders,
+        )
+        .span_suggestion(
+            ccx.body.span,
+            "otherwise `#[allow_internal_unstable]` can be used to bypass stability checks",
+            format!("#[allow_internal_unstable({})]", gate),
+            Applicability::MaybeIncorrect,
+        )
+        .emit();
 }

@@ -1,6 +1,6 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::config::nightly_options;
@@ -9,56 +9,6 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
 use super::ConstCx;
-
-/// Emits an error and returns `true` if `op` is not allowed in the given const context.
-pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) -> bool {
-    debug!("illegal_op: op={:?}", op);
-
-    let gate = match op.status_in_item(ccx) {
-        Status::Allowed => return false,
-
-        Status::Unstable(gate) if ccx.tcx.features().enabled(gate) => {
-            let unstable_in_stable = ccx.is_const_stable_const_fn()
-                && !super::allow_internal_unstable(ccx.tcx, ccx.def_id.to_def_id(), gate);
-
-            if unstable_in_stable {
-                ccx.tcx.sess
-                    .struct_span_err(
-                        span,
-                        &format!("const-stable function cannot use `#[feature({})]`", gate.as_str()),
-                    )
-                    .span_suggestion(
-                        ccx.body.span,
-                        "if it is not part of the public API, make this function unstably const",
-                        concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
-                        Applicability::HasPlaceholders,
-                    )
-                    .span_suggestion(
-                        ccx.body.span,
-                        "otherwise `#[allow_internal_unstable]` can be used to bypass stability checks",
-                        format!("#[allow_internal_unstable({})]", gate),
-                        Applicability:: MaybeIncorrect,
-                    )
-                    .emit();
-            }
-
-            return unstable_in_stable;
-        }
-
-        Status::Unstable(gate) => Some(gate),
-        Status::Forbidden => None,
-    };
-
-    if ccx.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-        ccx.tcx.sess.miri_unleashed_feature(span, gate);
-        return false;
-    }
-
-    let mut err = op.build_error(ccx, span);
-    assert!(err.is_error());
-    err.emit();
-    true
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
