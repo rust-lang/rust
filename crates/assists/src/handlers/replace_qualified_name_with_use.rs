@@ -1,11 +1,10 @@
-use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode, TextRange};
+use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode};
 use test_utils::mark;
 
 use crate::{
     utils::{insert_use, ImportScope},
     AssistContext, AssistId, AssistKind, Assists,
 };
-use ast::make;
 
 // Assist: replace_qualified_name_with_use
 //
@@ -33,15 +32,6 @@ pub(crate) fn replace_qualified_name_with_use(
         mark::hit!(dont_import_trivial_paths);
         return None;
     }
-    let path_to_import = path.to_string();
-    let path_to_import = match path.segment()?.generic_arg_list() {
-        Some(generic_args) => {
-            let generic_args_start =
-                generic_args.syntax().text_range().start() - path.syntax().text_range().start();
-            &path_to_import[TextRange::up_to(generic_args_start)]
-        }
-        None => path_to_import.as_str(),
-    };
 
     let target = path.syntax().text_range();
     let scope = ImportScope::find_insert_use_container(path.syntax(), ctx)?;
@@ -54,14 +44,10 @@ pub(crate) fn replace_qualified_name_with_use(
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
             let mut rewriter = SyntaxRewriter::default();
-            shorten_paths(&mut rewriter, syntax.clone(), path);
+            shorten_paths(&mut rewriter, syntax.clone(), &path);
             let rewritten_syntax = rewriter.rewrite(&syntax);
             if let Some(ref import_scope) = ImportScope::from(rewritten_syntax) {
-                let new_syntax = insert_use(
-                    import_scope,
-                    make::path_from_text(path_to_import),
-                    ctx.config.insert_use.merge,
-                );
+                let new_syntax = insert_use(import_scope, path, ctx.config.insert_use.merge);
                 builder.replace(syntax.text_range(), new_syntax.to_string())
             }
         },
@@ -69,7 +55,7 @@ pub(crate) fn replace_qualified_name_with_use(
 }
 
 /// Adds replacements to `re` that shorten `path` in all descendants of `node`.
-fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: ast::Path) {
+fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {
             match child {
@@ -82,10 +68,10 @@ fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path:
                 ast::Path(p) => {
                     match maybe_replace_path(rewriter, p.clone(), path.clone()) {
                         Some(()) => {},
-                        None => shorten_paths(rewriter, p.syntax().clone(), path.clone()),
+                        None => shorten_paths(rewriter, p.syntax().clone(), path),
                     }
                 },
-                _ => shorten_paths(rewriter, child, path.clone()),
+                _ => shorten_paths(rewriter, child, path),
             }
         }
     }

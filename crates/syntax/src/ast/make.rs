@@ -28,18 +28,41 @@ pub fn assoc_item_list() -> ast::AssocItemList {
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("use {};", name_ref))
 }
+
 pub fn path_segment_self() -> ast::PathSegment {
     ast_from_text("use self;")
 }
+
+pub fn path_segment_super() -> ast::PathSegment {
+    ast_from_text("use super;")
+}
+
+pub fn path_segment_crate() -> ast::PathSegment {
+    ast_from_text("use crate;")
+}
+
 pub fn path_unqualified(segment: ast::PathSegment) -> ast::Path {
-    path_from_text(&format!("use {}", segment))
+    ast_from_text(&format!("use {}", segment))
 }
+
 pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
-    path_from_text(&format!("{}::{}", qual, segment))
+    ast_from_text(&format!("{}::{}", qual, segment))
 }
-// FIXME: make this private
-pub fn path_from_text(text: &str) -> ast::Path {
-    ast_from_text(text)
+
+pub fn path_concat(first: ast::Path, second: ast::Path) -> ast::Path {
+    ast_from_text(&format!("{}::{}", first, second))
+}
+
+pub fn path_from_segments(
+    segments: impl IntoIterator<Item = ast::PathSegment>,
+    is_abs: bool,
+) -> ast::Path {
+    let segments = segments.into_iter().map(|it| it.syntax().clone()).join("::");
+    ast_from_text(&if is_abs {
+        format!("use ::{};", segments)
+    } else {
+        format!("use {};", segments)
+    })
 }
 
 pub fn glob_use_tree() -> ast::UseTree {
