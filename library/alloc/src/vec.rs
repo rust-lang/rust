@@ -2288,7 +2288,7 @@ where
             .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(dst_end))
             .unwrap();
         // iteration succeeded, don't drop head
-        let dst = mem::ManuallyDrop::new(sink).dst;
+        let dst = ManuallyDrop::new(sink).dst;
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
         // check if SourceIter contract was upheld
