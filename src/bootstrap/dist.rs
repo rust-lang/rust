@@ -26,24 +26,7 @@ use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
 use time::{self, Timespec};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
-    if component == "cargo" {
-        format!("{}-{}", component, builder.cargo_package_vers())
-    } else if component == "rls" {
-        format!("{}-{}", component, builder.rls_package_vers())
-    } else if component == "rust-analyzer" {
-        format!("{}-{}", component, builder.rust_analyzer_package_vers())
-    } else if component == "clippy" {
-        format!("{}-{}", component, builder.clippy_package_vers())
-    } else if component == "miri" {
-        format!("{}-{}", component, builder.miri_package_vers())
-    } else if component == "rustfmt" {
-        format!("{}-{}", component, builder.rustfmt_package_vers())
-    } else if component == "llvm-tools" {
-        format!("{}-{}", component, builder.llvm_tools_package_vers())
-    } else {
-        assert!(component.starts_with("rust"));
-        format!("{}-{}", component, builder.rust_package_vers())
-    }
+    format!("{}-{}", component, builder.rust_package_vers())
 }
 
 pub(crate) fn distdir(builder: &Builder<'_>) -> PathBuf {
