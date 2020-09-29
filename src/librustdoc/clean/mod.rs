@@ -2269,12 +2269,12 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                         visibility: self.vis.clean(cx),
                         stability: None,
                         deprecation: None,
-                        inner: ImportItem(Import::Glob(resolve_use_source(cx, path), false)),
+                        inner: ImportItem(Import::new_glob(resolve_use_source(cx, path), false)),
                     });
                     return items;
                 }
             }
-            Import::Glob(resolve_use_source(cx, path), true)
+            Import::new_glob(resolve_use_source(cx, path), true)
         } else {
             let name = self.name;
             if !please_inline {
@@ -2297,9 +2297,6 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                     Some(self.attrs),
                     &mut visited,
                 ) {
-                    // In case this is a macro, we don't want to show the reexport, only the macro
-                    // itself.
-                    let is_macro = matches!(path.res, Res::Def(DefKind::Macro(_), _));
                     items.push(Item {
                         name: None,
                         attrs: self.attrs.clean(cx),
@@ -2308,16 +2305,16 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                         visibility: self.vis.clean(cx),
                         stability: None,
                         deprecation: None,
-                        inner: ImportItem(Import::Simple(
+                        inner: ImportItem(Import::new_simple(
                             self.name.clean(cx),
                             resolve_use_source(cx, path),
-                            is_macro,
+                            false,
                         )),
                     });
                     return items;
                 }
             }
-            Import::Simple(name.clean(cx), resolve_use_source(cx, path), false)
+            Import::new_simple(name.clean(cx), resolve_use_source(cx, path), true)
         };
 
         vec![Item {

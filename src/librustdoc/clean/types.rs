@@ -177,6 +177,7 @@ impl Item {
     pub fn is_stripped(&self) -> bool {
         match self.inner {
             StrippedItem(..) => true,
+            ImportItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
@@ -1653,22 +1654,28 @@ pub struct Impl {
 }
 
 #[derive(Clone, Debug)]
-pub enum Import {
-    // use source as str;
-    // The bool indicates whether it imports a macro or not.
-    Simple(String, ImportSource, bool),
-    // use source::*;
-    // The bool indicates whether this is from an import.
-    Glob(ImportSource, bool),
+pub struct Import {
+    pub kind: ImportKind,
+    pub source: ImportSource,
+    pub should_be_displayed: bool,
 }
 
 impl Import {
-    pub fn should_be_displayed(&self) -> bool {
-        match *self {
-            Self::Simple(_, _, is_macro) => !is_macro,
-            Self::Glob(_, is_from_import) => is_from_import,
-        }
+    pub fn new_simple(name: String, source: ImportSource, should_be_displayed: bool) -> Self {
+        Self { kind: ImportKind::Simple(name), source, should_be_displayed }
     }
+
+    pub fn new_glob(source: ImportSource, should_be_displayed: bool) -> Self {
+        Self { kind: ImportKind::Glob, source, should_be_displayed }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum ImportKind {
+    // use source as str;
+    Simple(String),
+    // use source::*;
+    Glob,
 }
 
 #[derive(Clone, Debug)]

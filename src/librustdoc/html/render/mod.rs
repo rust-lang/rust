@@ -2074,14 +2074,12 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
             }
 
             clean::ImportItem(ref import) => {
-                if import.should_be_displayed() {
-                    write!(
-                        w,
-                        "<tr><td><code>{}{}</code></td></tr>",
-                        myitem.visibility.print_with_space(),
-                        import.print()
-                    );
-                }
+                write!(
+                    w,
+                    "<tr><td><code>{}{}</code></td></tr>",
+                    myitem.visibility.print_with_space(),
+                    import.print()
+                );
             }
 
             _ => {
@@ -4440,8 +4438,9 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
 fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     let mut sidebar = String::new();
 
-    if items.iter().any(|it| it.type_() == ItemType::ExternCrate || it.type_() == ItemType::Import)
-    {
+    if items.iter().any(|it| {
+        it.type_() == ItemType::ExternCrate || (it.type_() == ItemType::Import && !it.is_stripped())
+    }) {
         sidebar.push_str(&format!(
             "<li><a href=\"#{id}\">{name}</a></li>",
             id = "reexports",
