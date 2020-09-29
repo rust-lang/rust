@@ -2368,15 +2368,9 @@ impl Step for HashSign {
         cmd.arg(sign);
         cmd.arg(distdir(builder));
         cmd.arg(today.trim());
-        cmd.arg(builder.rust_package_vers());
         cmd.arg(addr);
-        cmd.arg(builder.package_vers(&builder.release_num("cargo")));
-        cmd.arg(builder.package_vers(&builder.release_num("rls")));
-        cmd.arg(builder.package_vers(&builder.release_num("rust-analyzer/crates/rust-analyzer")));
-        cmd.arg(builder.package_vers(&builder.release_num("clippy")));
-        cmd.arg(builder.package_vers(&builder.release_num("miri")));
-        cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
-        cmd.arg(builder.llvm_tools_package_vers());
+        cmd.arg(&builder.config.channel);
+        cmd.arg(&builder.src);
 
         builder.create_dir(&distdir(builder));
 
