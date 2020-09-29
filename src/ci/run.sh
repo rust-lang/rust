@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# no-op
+
 set -e
 
 if [ -n "$CI_JOB_NAME" ]; then
