@@ -368,6 +368,12 @@ impl<T> Bucket<T> {
     pub unsafe fn copy_from_nonoverlapping(&self, other: &Self) {
         self.as_ptr().copy_from_nonoverlapping(other.as_ptr(), 1);
     }
+
+    unsafe fn cast<U>(self) -> Bucket<U> {
+        Bucket {
+            ptr: self.ptr.cast(),
+        }
+    }
 }
 
 /// A raw hash table with an unsafe API.
@@ -769,25 +775,17 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             // that we haven't rehashed yet. We unfortunately can't preserve the
             // element since we lost their hash and have no way of recovering it
             // without risking another panic.
-            let mut guard = guard(self, |self_| {
-                if mem::needs_drop::<T>() {
-                    for i in 0..self_.buckets() {
-                        if *self_.table.ctrl(i) == DELETED {
-                            self_.table.set_ctrl(i, EMPTY);
-                            self_.bucket(i).drop();
-                            self_.table.items -= 1;
-                        }
-                    }
-                }
-                self_.table.growth_left =
-                    bucket_mask_to_capacity(self_.table.bucket_mask) - self_.table.items;
-            });
+            let mut guard =
+                self.table
+                    .rehash_panic_guard(mem::needs_drop::<T>(), |bucket: Bucket<u8>| {
+                        bucket.cast::<T>().drop();
+                    });
 
             // At this point, DELETED elements are elements that we haven't
             // rehashed yet. Find them and re-insert them at their ideal
             // position.
             'outer: for i in 0..guard.buckets() {
-                if *guard.table.ctrl(i) != DELETED {
+                if *guard.ctrl(i) != DELETED {
                     continue;
                 }
                 'inner: loop {
@@ -795,7 +793,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                     let item = guard.bucket(i);
                     let hash = hasher(item.as_ref());
 
-                    match guard.table.search_new_slot(i, hash) {
+                    match guard.search_new_slot(i, hash) {
                         Slot::Skip => continue 'outer,
                         Slot::Empty(new_i) => {
                             // If the target slot is empty, simply move the current
@@ -815,8 +813,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                 }
             }
 
-            guard.table.growth_left =
-                bucket_mask_to_capacity(guard.table.bucket_mask) - guard.table.items;
+            guard.growth_left = bucket_mask_to_capacity(guard.bucket_mask) - guard.items;
             mem::forget(guard);
         }
     }
@@ -1257,6 +1254,10 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    unsafe fn bucket<T>(&self, index: usize) -> Bucket<T> {
+        self.raw_bucket(index).cast::<T>()
+    }
+
     unsafe fn raw_bucket(&self, index: usize) -> Bucket<u8> {
         debug_assert_ne!(self.bucket_mask, 0);
         debug_assert!(index < self.buckets());
@@ -1368,6 +1369,25 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn is_empty_singleton(&self) -> bool {
         self.bucket_mask == 0
+    }
+
+    unsafe fn rehash_panic_guard<'s>(
+        &'s mut self,
+        needs_drop: bool,
+        drop: fn(Bucket<u8>),
+    ) -> crate::scopeguard::ScopeGuard<&mut Self, impl FnMut(&mut &'s mut Self) + 's> {
+        guard(self, move |self_| {
+            if needs_drop {
+                for i in 0..self_.buckets() {
+                    if *self_.ctrl(i) == DELETED {
+                        self_.set_ctrl(i, EMPTY);
+                        drop(self_.raw_bucket(i));
+                        self_.items -= 1;
+                    }
+                }
+            }
+            self_.growth_left = bucket_mask_to_capacity(self_.bucket_mask) - self_.items;
+        })
     }
 }
 
