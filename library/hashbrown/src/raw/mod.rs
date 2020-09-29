@@ -368,12 +368,6 @@ impl<T> Bucket<T> {
     pub unsafe fn copy_from_nonoverlapping(&self, other: &Self) {
         self.as_ptr().copy_from_nonoverlapping(other.as_ptr(), 1);
     }
-
-    unsafe fn cast<U>(self) -> Bucket<U> {
-        Bucket {
-            ptr: self.ptr.cast(),
-        }
-    }
 }
 
 /// A raw hash table with an unsafe API.
@@ -1643,12 +1637,17 @@ impl<T, A: Allocator + Clone> IntoIterator for RawTable<T, A> {
 /// Iterator over a sub-range of a table. Unlike `RawIter` this iterator does
 /// not track an item count.
 pub(crate) struct RawIterRange<T> {
+    // Pointer to the buckets for the current group.
+    data: Bucket<T>,
+
+    inner: RawIterRangeInner,
+}
+
+#[derive(Clone)]
+pub(crate) struct RawIterRangeInner {
     // Mask of full buckets in the current group. Bits are cleared from this
     // mask as each element is processed.
     current_group: BitMask,
-
-    // Pointer to the buckets for the current group.
-    data: Bucket<T>,
 
     // Pointer to the next group of control bytes,
     // Must be aligned to the group size.
@@ -1664,19 +1663,9 @@ impl<T> RawIterRange<T> {
     /// The control byte address must be aligned to the group size.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new(ctrl: *const u8, data: Bucket<T>, len: usize) -> Self {
-        debug_assert_ne!(len, 0);
-        debug_assert_eq!(ctrl as usize % Group::WIDTH, 0);
-        let end = ctrl.add(len);
-
-        // Load the first group and advance ctrl to point to the next group
-        let current_group = Group::load_aligned(ctrl).match_full();
-        let next_ctrl = ctrl.add(Group::WIDTH);
-
         Self {
-            current_group,
             data,
-            next_ctrl,
-            end,
+            inner: RawIterRangeInner::new(ctrl, len),
         }
     }
 
@@ -1725,6 +1714,61 @@ impl<T> RawIterRange<T> {
     }
 }
 
+impl RawIterRangeInner {
+    /// Returns a `RawIterRange` covering a subset of a table.
+    ///
+    /// The control byte address must be aligned to the group size.
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn new(ctrl: *const u8, len: usize) -> Self {
+        debug_assert_ne!(len, 0);
+        debug_assert_eq!(ctrl as usize % Group::WIDTH, 0);
+        let end = ctrl.add(len);
+
+        // Load the first group and advance ctrl to point to the next group
+        let current_group = Group::load_aligned(ctrl).match_full();
+        let next_ctrl = ctrl.add(Group::WIDTH);
+
+        Self {
+            current_group,
+            next_ctrl,
+            end,
+        }
+    }
+
+    fn next(&mut self) -> (usize, Option<usize>) {
+        unsafe {
+            let mut offset = 0;
+            loop {
+                if let Some(index) = self.current_group.lowest_set_bit() {
+                    self.current_group = self.current_group.remove_lowest_bit();
+                    return (offset, Some(index));
+                }
+
+                if self.next_ctrl >= self.end {
+                    return (offset, None);
+                }
+
+                // We might read past self.end up to the next group boundary,
+                // but this is fine because it only occurs on tables smaller
+                // than the group size where the trailing control bytes are all
+                // EMPTY. On larger tables self.end is guaranteed to be aligned
+                // to the group size (since tables are power-of-two sized).
+                self.current_group = Group::load_aligned(self.next_ctrl).match_full();
+                offset += Group::WIDTH;
+                self.next_ctrl = self.next_ctrl.add(Group::WIDTH);
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // We don't have an item count, so just guess based on the range size.
+        (
+            0,
+            Some(unsafe { offset_from(self.end, self.next_ctrl) + Group::WIDTH }),
+        )
+    }
+}
+
 // We make raw iterators unconditionally Send and Sync, and let the PhantomData
 // in the actual iterator implementations determine the real Send/Sync bounds.
 unsafe impl<T> Send for RawIterRange<T> {}
@@ -1735,9 +1779,7 @@ impl<T> Clone for RawIterRange<T> {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
-            next_ctrl: self.next_ctrl,
-            current_group: self.current_group,
-            end: self.end,
+            inner: self.inner.clone(),
         }
     }
 }
@@ -1748,35 +1790,18 @@ impl<T> Iterator for RawIterRange<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<Bucket<T>> {
         unsafe {
-            loop {
-                if let Some(index) = self.current_group.lowest_set_bit() {
-                    self.current_group = self.current_group.remove_lowest_bit();
-                    return Some(self.data.next_n(index));
-                }
-
-                if self.next_ctrl >= self.end {
-                    return None;
-                }
-
-                // We might read past self.end up to the next group boundary,
-                // but this is fine because it only occurs on tables smaller
-                // than the group size where the trailing control bytes are all
-                // EMPTY. On larger tables self.end is guaranteed to be aligned
-                // to the group size (since tables are power-of-two sized).
-                self.current_group = Group::load_aligned(self.next_ctrl).match_full();
-                self.data = self.data.next_n(Group::WIDTH);
-                self.next_ctrl = self.next_ctrl.add(Group::WIDTH);
+            let (offset, index) = self.inner.next();
+            self.data = self.data.next_n(offset);
+            match index {
+                Some(index) => Some(self.data.next_n(index)),
+                None => None,
             }
         }
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // We don't have an item count, so just guess based on the range size.
-        (
-            0,
-            Some(unsafe { offset_from(self.end, self.next_ctrl) + Group::WIDTH }),
-        )
+        self.inner.size_hint()
     }
 }
 
