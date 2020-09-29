@@ -48,7 +48,7 @@ use crate::intrinsics;
 pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
-    unsafe { intrinsics::unreachable() }
+    intrinsics::unreachable()
 }
 
 /// Emits a machine instruction hinting to the processor that it is running in busy-wait
