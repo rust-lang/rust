@@ -141,6 +141,9 @@ pub fn run_compiler(
     callbacks: &mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     emitter: Option<Box<dyn Write + Send>>,
+    make_codegen_backend: Option<
+        Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
+    >,
 ) -> interface::Result<()> {
     let mut args = Vec::new();
     for arg in at_args {
@@ -162,6 +165,11 @@ pub fn run_compiler(
     let sopts = config::build_session_options(&matches);
     let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
 
+    // We wrap `make_codegen_backend` in another `Option` such that `dummy_config` can take
+    // ownership of it when necessary, while also allowing the non-dummy config to take ownership
+    // when `dummy_config` is not used.
+    let mut make_codegen_backend = Some(make_codegen_backend);
+
     let mut dummy_config = |sopts, cfg, diagnostic_output| {
         let mut config = interface::Config {
             opts: sopts,
@@ -177,6 +185,7 @@ pub fn run_compiler(
             lint_caps: Default::default(),
             register_lints: None,
             override_queries: None,
+            make_codegen_backend: make_codegen_backend.take().unwrap(),
             registry: diagnostics_registry(),
         };
         callbacks.config(&mut config);
@@ -253,6 +262,7 @@ pub fn run_compiler(
         lint_caps: Default::default(),
         register_lints: None,
         override_queries: None,
+        make_codegen_backend: make_codegen_backend.unwrap(),
         registry: diagnostics_registry(),
     };
 
@@ -1265,7 +1275,7 @@ pub fn main() -> ! {
                 })
             })
             .collect::<Vec<_>>();
-        run_compiler(&args, &mut callbacks, None, None)
+        run_compiler(&args, &mut callbacks, None, None, None)
     });
     // The extra `\t` is necessary to align this label with the others.
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());

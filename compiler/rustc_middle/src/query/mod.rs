@@ -457,10 +457,6 @@ rustc_queries! {
             desc { |tcx| "checking if item is promotable: `{}`", tcx.def_path_str(key) }
         }
 
-        query const_fn_is_allowed_fn_ptr(key: DefId) -> bool {
-            desc { |tcx| "checking if const fn allows `fn()` types: `{}`", tcx.def_path_str(key) }
-        }
-
         /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
         query is_foreign_item(key: DefId) -> bool {
             desc { |tcx| "checking if `{}` is a foreign item", tcx.def_path_str(key) }

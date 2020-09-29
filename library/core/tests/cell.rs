@@ -304,6 +304,53 @@ fn cell_into_inner() {
 }
 
 #[test]
+fn cell_exterior() {
+    #[derive(Copy, Clone)]
+    #[allow(dead_code)]
+    struct Point {
+        x: isize,
+        y: isize,
+        z: isize,
+    }
+
+    fn f(p: &Cell<Point>) {
+        assert_eq!(p.get().z, 12);
+        p.set(Point { x: 10, y: 11, z: 13 });
+        assert_eq!(p.get().z, 13);
+    }
+
+    let a = Point { x: 10, y: 11, z: 12 };
+    let b = &Cell::new(a);
+    assert_eq!(b.get().z, 12);
+    f(b);
+    assert_eq!(a.z, 12);
+    assert_eq!(b.get().z, 13);
+}
+
+#[test]
+fn cell_does_not_clone() {
+    #[derive(Copy)]
+    #[allow(dead_code)]
+    struct Foo {
+        x: isize,
+    }
+
+    impl Clone for Foo {
+        fn clone(&self) -> Foo {
+            // Using Cell in any way should never cause clone() to be
+            // invoked -- after all, that would permit evil user code to
+            // abuse `Cell` and trigger crashes.
+
+            panic!();
+        }
+    }
+
+    let x = Cell::new(Foo { x: 22 });
+    let _y = x.get();
+    let _z = x.clone();
+}
+
+#[test]
 fn refcell_default() {
     let cell: RefCell<u64> = Default::default();
     assert_eq!(0, *cell.borrow());
@@ -366,4 +413,12 @@ fn refcell_replace_borrows() {
     let x = RefCell::new(0);
     let _b = x.borrow();
     x.replace(1);
+}
+
+#[test]
+fn refcell_format() {
+    let name = RefCell::new("rust");
+    let what = RefCell::new("rocks");
+    let msg = format!("{name} {}", &*what.borrow(), name = &*name.borrow());
+    assert_eq!(msg, "rust rocks".to_string());
 }

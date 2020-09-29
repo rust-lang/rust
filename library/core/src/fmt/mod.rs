@@ -2238,5 +2238,6 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
     }
 }
 
-// If you expected tests to be here, look instead at the ui/ifmt.rs test,
+// If you expected tests to be here, look instead at the core/tests/fmt.rs file,
 // it's a lot easier than creating all of the rt::Piece structures here.
+// There are also tests in the alloc crate, for those that need allocations.
