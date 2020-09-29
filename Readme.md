@@ -42,9 +42,9 @@ $ $cg_clif_dir/target/release/cg_clif my_crate.rs
 ### Jit mode
 
 In jit mode cg_clif will immediately execute your code without creating an executable file.
-This requires all dependencies to be available as dynamic library.
-The easiest way to achieve this is by creating a new dylib crate that has all your dependencies as dependencies of itself.
-Rustc will then link all your rlib dependencies into the dylib.
+
+> This requires all dependencies to be available as dynamic library.
+> The jit mode will probably need cargo integration to make this possible.
 
 ```bash
 $ $cg_clif_dir/cargo.sh jit
