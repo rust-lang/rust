@@ -2,18 +2,19 @@
 set -e
 
 # Build cg_clif
+export RUSTFLAGS="-Zrun_dsymutil=no"
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
-    cargo rustc --release -- -Zrun_dsymutil=no
+    cargo build --release
 else
     export CHANNEL='debug'
-    cargo rustc -- -Zrun_dsymutil=no
+    cargo build --bin cg_clif
 fi
 
 # Config
 source scripts/config.sh
 export CG_CLIF_INCR_CACHE_DISABLED=1
-RUSTC="rustc $RUSTFLAGS -L crate=target/out --out-dir target/out"
+RUSTC=$RUSTC" "$RUSTFLAGS" -L crate=target/out --out-dir target/out -Cdebuginfo=2"
 
 # Cleanup
 rm -r target/out || true
@@ -86,7 +87,7 @@ pushd simple-raytracer
 if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
     echo "[BENCH COMPILE] ebobby/simple-raytracer"
     hyperfine --runs ${RUN_RUNS:-10} --warmup 1 --prepare "cargo clean" \
-    "RUSTFLAGS='' cargo build" \
+    "RUSTC=rustc RUSTFLAGS='' cargo build" \
     "../cargo.sh build"
 
     echo "[BENCH RUN] ebobby/simple-raytracer"
