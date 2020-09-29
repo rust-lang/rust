@@ -46,6 +46,9 @@ opt-level = 3
 # Disabling optimizations for cg_clif itself makes compilation after a change faster.
 opt-level = 0
 
+[profile.release.package.rustc_codegen_cranelift]
+incremental = true
+
 # Disable optimizations and debuginfo of build scripts and some of the heavy build deps, as the
 # execution time of build scripts is so fast that optimizing them slows down the total build time.
 [profile.dev.build-override]

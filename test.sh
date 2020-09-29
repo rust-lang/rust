@@ -4,7 +4,7 @@ set -e
 # Build cg_clif
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo rustc --release -- -Zrun_dsymutil=no
+    cargo rustc --release -- -Zrun_dsymutil=no
 else
     export CHANNEL='debug'
     cargo rustc -- -Zrun_dsymutil=no
