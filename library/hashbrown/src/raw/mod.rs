@@ -783,43 +783,22 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                     let item = guard.bucket(i);
                     let hash = hasher(item.as_ref());
 
-                    // Search for a suitable place to put it
-                    let new_i = guard.table.find_insert_slot(hash);
-
-                    // Probing works by scanning through all of the control
-                    // bytes in groups, which may not be aligned to the group
-                    // size. If both the new and old position fall within the
-                    // same unaligned group, then there is no benefit in moving
-                    // it and we can just continue to the next item.
-                    let probe_index = |pos: usize| {
-                        (pos.wrapping_sub(guard.table.probe_seq(hash).pos)
-                            & guard.table.bucket_mask)
-                            / Group::WIDTH
-                    };
-                    if likely(probe_index(i) == probe_index(new_i)) {
-                        guard.table.set_ctrl(i, h2(hash));
-                        continue 'outer;
-                    }
-
-                    // We are moving the current item to a new position. Write
-                    // our H2 to the control byte of the new position.
-                    let prev_ctrl = *guard.table.ctrl(new_i);
-                    guard.table.set_ctrl(new_i, h2(hash));
-
-                    if prev_ctrl == EMPTY {
-                        // If the target slot is empty, simply move the current
-                        // element into the new slot and clear the old control
-                        // byte.
-                        guard.table.set_ctrl(i, EMPTY);
-                        guard.bucket(new_i).copy_from_nonoverlapping(&item);
-                        continue 'outer;
-                    } else {
-                        // If the target slot is occupied, swap the two elements
-                        // and then continue processing the element that we just
-                        // swapped into the old slot.
-                        debug_assert_eq!(prev_ctrl, DELETED);
-                        mem::swap(guard.bucket(new_i).as_mut(), item.as_mut());
-                        continue 'inner;
+                    match guard.table.search_new_slot(i, hash) {
+                        Slot::Skip => continue 'outer,
+                        Slot::Empty(new_i) => {
+                            // If the target slot is empty, simply move the current
+                            // element into the new slot and clear the old control
+                            // byte.
+                            guard.bucket(new_i).copy_from_nonoverlapping(&item);
+                            continue 'outer;
+                        }
+                        Slot::Occupied(new_i) => {
+                            // If the target slot is occupied, swap the two elements
+                            // and then continue processing the element that we just
+                            // swapped into the old slot.
+                            mem::swap(guard.bucket(new_i).as_mut(), item.as_mut());
+                            continue 'inner;
+                        }
                     }
                 }
             }
@@ -1251,6 +1230,46 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    unsafe fn raw_bucket(&self, index: usize) -> Bucket<u8> {
+        debug_assert_ne!(self.bucket_mask, 0);
+        debug_assert!(index < self.buckets());
+        Bucket::from_base_index(self.data_end(), index)
+    }
+
+    unsafe fn data_end(&self) -> NonNull<u8> {
+        NonNull::new_unchecked(self.ctrl.as_ptr())
+    }
+
+    unsafe fn search_new_slot(&mut self, i: usize, hash: u64) -> Slot {
+        // Search for a suitable place to put it
+        let new_i = self.find_insert_slot(hash);
+
+        // Probing works by scanning through all of the control
+        // bytes in groups, which may not be aligned to the group
+        // size. If both the new and old position fall within the
+        // same unaligned group, then there is no benefit in moving
+        // it and we can just continue to the next item.
+        let probe_index = |pos: usize| {
+            (pos.wrapping_sub(self.probe_seq(hash).pos) & self.bucket_mask) / Group::WIDTH
+        };
+        if likely(probe_index(i) == probe_index(new_i)) {
+            self.set_ctrl(i, h2(hash));
+            return Slot::Skip;
+        }
+
+        // We are moving the current item to a new position. Write
+        // our H2 to the control byte of the new position.
+        let prev_ctrl = *self.ctrl(new_i);
+        self.set_ctrl(new_i, h2(hash));
+        if prev_ctrl == EMPTY {
+            self.set_ctrl(i, EMPTY);
+            Slot::Empty(new_i)
+        } else {
+            debug_assert_eq!(prev_ctrl, DELETED);
+            Slot::Occupied(new_i)
+        }
+    }
+
     /// Returns an iterator-like object for a probe sequence on the table.
     ///
     /// This iterator never terminates, but is guaranteed to visit each bucket
@@ -1323,6 +1342,12 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     fn is_empty_singleton(&self) -> bool {
         self.bucket_mask == 0
     }
+}
+
+enum Slot {
+    Skip,
+    Empty(usize),
+    Occupied(usize),
 }
 
 impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
