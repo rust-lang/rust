@@ -197,6 +197,43 @@ fn frobnicate(walrus: Option<Walrus>) {
 }
 ```
 
+Avoid preconditions that spawn function boundaries:
+
+
+```rust
+// Good
+fn string_literal_contents(s: &str) -> Option<&str> {
+    if s.starts_with('"') && s.ends_with('"') {
+        Some(&s[1..s.len() - 1])
+    } else {
+        None
+    }
+}
+
+fn foo() {
+    let s: &str = ...;
+    if let Some(contents) = string_literal_contents(s) {
+
+    }
+}
+
+// Not as good
+fn is_string_literal(s: &str) -> Option<&str> {
+    s.starts_with('"') && s.ends_with('"')
+    Some()
+}
+
+fn foo() {
+    let s: &str = ...;
+    if is_string_literal(s) {
+        let contents = &s[1..s.len() - 1];
+    }
+}
+```
+
+In the "Not as good" version, the precondition that `1` is a valid char boundary is checked in `is_string_literal` and utilized in `foo`.
+In the "Good" version, precondition check and usage are checked in the same block, and then encoded in the types.
+
 # Early Returns
 
 Do use early returns
@@ -268,6 +305,21 @@ let (first_word, second_word) = match text.split_ascii_whitespace().collect_tupl
 let words = text.split_ascii_whitespace().collect::<Vec<_>>();
 if words.len() != 2 {
     return
+}
+```
+
+If allocation is inevitable, let the caller allocate the resource:
+
+```rust
+// Good
+fn frobnicate(s: String) {
+    ...
+}
+
+// Not as good
+fn frobnicate(s: &str) {
+    let s = s.to_string();
+    ...
 }
 ```
 
