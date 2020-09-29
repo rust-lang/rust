@@ -8,6 +8,13 @@ use std::ptr;
 #[cfg(test)]
 mod tests;
 
+/// When hashing something that ends up affecting properties like symbol names,
+/// we want these symbol names to be calculated independently of other factors
+/// like what architecture you're compiling *from*.
+///
+/// To that end, we always convert integers to little-endian format or handle
+/// them in an endian-independent way, and extend the architecture-dependent
+/// `isize` and `usize` types to 64 bits if needed before hashing.
 #[derive(Debug, Clone)]
 pub struct SipHasher128 {
     k0: u64,
@@ -125,15 +132,17 @@ impl SipHasher128 {
 
     // A specialized write function for values with size <= 8.
     //
-    // The hashing of multi-byte integers depends on endianness. E.g.:
-    // - little-endian: `write_u32(0xDDCCBBAA)` == `write([0xAA, 0xBB, 0xCC, 0xDD])`
-    // - big-endian:    `write_u32(0xDDCCBBAA)` == `write([0xDD, 0xCC, 0xBB, 0xAA])`
+    // The input must be zero-extended to 64-bits by the caller. The extension
+    // isn't hashed, but the implementation requires it for correctness.
     //
-    // This function does the right thing for little-endian hardware. On
-    // big-endian hardware `x` must be byte-swapped first to give the right
-    // behaviour. After any byte-swapping, the input must be zero-extended to
-    // 64-bits. The caller is responsible for the byte-swapping and
-    // zero-extension.
+    // This function, given the same integer type and value, has the same effect
+    // on both little- and big-endian hardware. It operates on values without
+    // depending on their sequence in memory, so is independent of endianness.
+    //
+    // The equivalent write() call *does* need the value's bytes converted to
+    // little-endian (without zero-extension) for equivalent behavior on little-
+    // and big-endian hardware, as write() *does* operate on byte sequences.
+    // I.e. write_u32(0xDDCCBBAA) == write(&0xDDCCBBAA_u32.to_le_bytes()).
     #[inline]
     fn short_write<T>(&mut self, _x: T, x: u64) {
         let size = mem::size_of::<T>();
@@ -167,12 +176,9 @@ impl SipHasher128 {
         //   left-shift it five bytes, giving 0xHHGG_FF00_0000_0000. We then
         //   bitwise-OR that value into `self.tail`, resulting in
         //   0xHHGG_FFEE_DDCC_BBAA. `self.tail` is now full, and we can use it
-        //   to update `self.state`. (As mentioned above, this assumes a
-        //   little-endian machine; on a big-endian machine we would have
-        //   byte-swapped 0xIIHH_GGFF in the caller, giving 0xFFGG_HHII, and we
-        //   would then end up bitwise-ORing 0xGGHH_II00_0000_0000 into
-        //   `self.tail`).
-        //
+        //   to update `self.state`. The analysis is the same whether we are on
+        //   a little-endian or big-endian machine, as the bitwise operations
+        //   are endian-independent.
         self.tail |= x << (8 * self.ntail);
         if size < needed {
             self.ntail += size;
@@ -186,8 +192,7 @@ impl SipHasher128 {
 
         // Continuing scenario 2: we have one byte left over from the input. We
         // set `self.ntail` to 1 and `self.tail` to `0x0000_0000_IIHH_GGFF >>
-        // 8*3`, which is 0x0000_0000_0000_00II. (Or on a big-endian machine
-        // the prior byte-swapping would leave us with 0x0000_0000_0000_00FF.)
+        // 8*3`, which is 0x0000_0000_0000_00II.
         //
         // The `if` is needed to avoid shifting by 64 bits, which Rust
         // complains about.
@@ -222,22 +227,30 @@ impl Hasher for SipHasher128 {
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.short_write(i, i.to_le() as u64);
+        self.short_write(i, i as u64);
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.short_write(i, i.to_le() as u64);
+        self.short_write(i, i as u64);
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.short_write(i, i.to_le() as u64);
+        self.short_write(i, i as u64);
+    }
+
+    #[inline]
+    fn write_u128(&mut self, i: u128) {
+        self.write(&i.to_le_bytes());
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.short_write(i, i.to_le() as u64);
+        // Always treat usize as u64 so we get the same results on 32 and 64 bit
+        // platforms. This is important for symbol hashes when cross compiling,
+        // for example.
+        self.write_u64(i as u64);
     }
 
     #[inline]
@@ -247,22 +260,31 @@ impl Hasher for SipHasher128 {
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.short_write(i, (i as u16).to_le() as u64);
+        self.short_write(i, i as u16 as u64);
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.short_write(i, (i as u32).to_le() as u64);
+        self.short_write(i, i as u32 as u64);
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.short_write(i, (i as u64).to_le() as u64);
+        self.short_write(i, i as u64);
+    }
+
+    #[inline]
+    fn write_i128(&mut self, i: i128) {
+        self.write(&i.to_le_bytes());
     }
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        self.short_write(i, (i as usize).to_le() as u64);
+        // Always treat isize as i64 so we get the same results on 32 and 64 bit
+        // platforms. This is important for symbol hashes when cross compiling,
+        // for example. Sign extending here is preferable as it means that the
+        // same negative number hashes the same on both 32 and 64 bit platforms.
+        self.write_i64(i as i64);
     }
 
     #[inline]
