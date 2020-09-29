@@ -6,7 +6,7 @@
 //!
 //! [spec]: https://github.com/WebAssembly/threads
 
-#![cfg(any(target_feature = "atomics", dox))]
+#![cfg(any(target_feature = "atomics", doc))]
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

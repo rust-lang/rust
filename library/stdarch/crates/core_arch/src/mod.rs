@@ -3,7 +3,7 @@
 #[macro_use]
 mod macros;
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64", dox))]
+#[cfg(any(target_arch = "arm", target_arch = "aarch64", doc))]
 mod acle;
 
 mod simd;
@@ -14,7 +14,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `x86` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "x86", dox))]
+    #[cfg(any(target_arch = "x86", doc))]
     #[doc(cfg(target_arch = "x86"))]
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub mod x86 {
@@ -25,7 +25,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `x86_64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "x86_64", dox))]
+    #[cfg(any(target_arch = "x86_64", doc))]
     #[doc(cfg(target_arch = "x86_64"))]
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub mod x86_64 {
@@ -38,7 +38,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `arm` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "arm", dox))]
+    #[cfg(any(target_arch = "arm", doc))]
     #[doc(cfg(target_arch = "arm"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod arm {
@@ -48,7 +48,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `aarch64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "aarch64", dox))]
+    #[cfg(any(target_arch = "aarch64", doc))]
     #[doc(cfg(target_arch = "aarch64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod aarch64 {
@@ -161,7 +161,7 @@ pub mod arch {
     /// > `-Ctarget-feature=+simd128,+unimplemented-simd128`. This second
     /// > feature enables more recent instructions implemented in LLVM which
     /// > haven't always had enough time to make their way to runtimes.
-    #[cfg(any(target_arch = "wasm32", dox))]
+    #[cfg(any(target_arch = "wasm32", doc))]
     #[doc(cfg(target_arch = "wasm32"))]
     #[stable(feature = "simd_wasm32", since = "1.33.0")]
     pub mod wasm32 {
@@ -172,7 +172,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `mips` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "mips", dox))]
+    #[cfg(any(target_arch = "mips", doc))]
     #[doc(cfg(target_arch = "mips"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod mips {
@@ -182,7 +182,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `mips64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "mips64", dox))]
+    #[cfg(any(target_arch = "mips64", doc))]
     #[doc(cfg(target_arch = "mips64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod mips64 {
@@ -192,7 +192,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `PowerPC` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "powerpc", dox))]
+    #[cfg(any(target_arch = "powerpc", doc))]
     #[doc(cfg(target_arch = "powerpc"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc {
@@ -202,7 +202,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `PowerPC64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "powerpc64", dox))]
+    #[cfg(any(target_arch = "powerpc64", doc))]
     #[doc(cfg(target_arch = "powerpc64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc64 {
@@ -212,7 +212,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `NVPTX` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "nvptx", target_arch = "nvptx64", dox))]
+    #[cfg(any(target_arch = "nvptx", target_arch = "nvptx64", doc))]
     #[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod nvptx {
@@ -222,36 +222,36 @@ pub mod arch {
 
 mod simd_llvm;
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64", dox))]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64", doc))]
 #[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
 mod x86;
-#[cfg(any(target_arch = "x86_64", dox))]
+#[cfg(any(target_arch = "x86_64", doc))]
 #[doc(cfg(target_arch = "x86_64"))]
 mod x86_64;
 
-#[cfg(any(target_arch = "aarch64", dox))]
+#[cfg(any(target_arch = "aarch64", doc))]
 #[doc(cfg(target_arch = "aarch64"))]
 mod aarch64;
-#[cfg(any(target_arch = "arm", target_arch = "aarch64", dox))]
+#[cfg(any(target_arch = "arm", target_arch = "aarch64", doc))]
 #[doc(cfg(any(target_arch = "arm", target_arch = "aarch64")))]
 mod arm;
 
-#[cfg(any(target_arch = "wasm32", dox))]
+#[cfg(any(target_arch = "wasm32", doc))]
 #[doc(cfg(target_arch = "wasm32"))]
 mod wasm32;
 
-#[cfg(any(target_arch = "mips", target_arch = "mips64", dox))]
+#[cfg(any(target_arch = "mips", target_arch = "mips64", doc))]
 #[doc(cfg(any(target_arch = "mips", target_arch = "mips64")))]
 mod mips;
 
-#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64", dox))]
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64", doc))]
 #[doc(cfg(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 mod powerpc;
 
-#[cfg(any(target_arch = "powerpc64", dox))]
+#[cfg(any(target_arch = "powerpc64", doc))]
 #[doc(cfg(target_arch = "powerpc64"))]
 mod powerpc64;
 
-#[cfg(any(target_arch = "nvptx", target_arch = "nvptx64", dox))]
+#[cfg(any(target_arch = "nvptx", target_arch = "nvptx64", doc))]
 #[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
 mod nvptx;

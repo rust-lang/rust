@@ -3,9 +3,9 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-#[cfg(any(target_feature = "atomics", dox))]
+#[cfg(any(target_feature = "atomics", doc))]
 mod atomic;
-#[cfg(any(target_feature = "atomics", dox))]
+#[cfg(any(target_feature = "atomics", doc))]
 pub use self::atomic::*;
 
 mod simd128;

@@ -19,9 +19,9 @@ mod v7;
 #[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
 pub use self::v7::*;
 
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", dox))]
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 mod neon;
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", dox))]
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 pub use self::neon::*;
 
 #[cfg(any(target_arch = "aarch64", target_feature = "v7"))]

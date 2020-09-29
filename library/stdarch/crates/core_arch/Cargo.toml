@@ -25,6 +25,3 @@ maintenance = { status = "experimental" }
 [dev-dependencies]
 stdarch-test = { version = "0.*", path = "../stdarch-test" }
 std_detect = { version = "0.*", path = "../std_detect" }
-
-[package.metadata.docs.rs]
-rustdoc-args = [ "--cfg", "dox" ]
