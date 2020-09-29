@@ -11,8 +11,8 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, QPath, Stmt, StmtKind, TraitFn,
-    TraitItem, TraitItemKind, TyKind, UnOp,
+    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt, StmtKind,
+    TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -31,12 +31,13 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
     last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
-    qpath_res, sext, snippet, snippet_block_with_applicability, snippet_opt, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
+    qpath_res, reindent_multiline, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
+    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// **Why is this bad?** `Vec` already keeps its contents in a separate area on
     /// the heap. So if you `Box` it, you just add another level of indirection
@@ -65,6 +66,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.
+    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// **Why is this bad?** `Vec` already keeps its contents in a separate area on
     /// the heap. So if you `Box` its contents, you just add another level of indirection.
@@ -167,6 +169,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `&Box<T>` anywhere in the code.
+    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// **Why is this bad?** Any `&Box<T>` can also be a `&T`, which is more
     /// general.
@@ -212,11 +215,42 @@ declare_clippy_lint! {
     "redundant allocation"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for `Rc<T>` and `Arc<T>` when `T` is a mutable buffer type such as `String` or `Vec`.
+    ///
+    /// **Why is this bad?** Expressions such as `Rc<String>` usually have no advantage over `Rc<str>`, since
+    /// it is larger and involves an extra level of indirection, and doesn't implement `Borrow<str>`.
+    ///
+    /// While mutating a buffer type would still be possible with `Rc::get_mut()`, it only
+    /// works if there are no additional references yet, which usually defeats the purpose of
+    /// enclosing it in a shared ownership type. Instead, additionally wrapping the inner
+    /// type with an interior mutable container (such as `RefCell` or `Mutex`) would normally
+    /// be used.
+    ///
+    /// **Known problems:** This pattern can be desirable to avoid the overhead of a `RefCell` or `Mutex` for
+    /// cases where mutation only happens before there are any additional references.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// # use std::rc::Rc;
+    /// fn foo(interned: Rc<String>) { ... }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust,ignore
+    /// fn foo(interned: Rc<str>) { ... }
+    /// ```
+    pub RC_BUFFER,
+    perf,
+    "shared ownership of a buffer type"
+}
+
 pub struct Types {
     vec_box_size_threshold: u64,
 }
 
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION]);
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
@@ -265,6 +299,19 @@ fn match_type_parameter(cx: &LateContext<'_>, qpath: &QPath<'_>, path: &[&str]) 
         then {
             return Some(ty.span);
         }
+    }
+    None
+}
+
+fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
+    if match_type_parameter(cx, qpath, &paths::STRING).is_some() {
+        return Some("str");
+    }
+    if match_type_parameter(cx, qpath, &paths::OS_STRING).is_some() {
+        return Some("std::ffi::OsStr");
+    }
+    if match_type_parameter(cx, qpath, &paths::PATH_BUF).is_some() {
+        return Some("std::path::Path");
     }
     None
 }
@@ -318,14 +365,15 @@ impl Types {
                 if let Some(def_id) = res.opt_def_id() {
                     if Some(def_id) == cx.tcx.lang_items().owned_box() {
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Box<&T>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
-                                Applicability::MachineApplicable,
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
                             );
                             return; // don't recurse into the type
                         }
@@ -342,14 +390,15 @@ impl Types {
                         }
                     } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
                         if let Some(span) = match_type_parameter(cx, qpath, &paths::RC) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<Rc<T>>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
-                                Applicability::MachineApplicable,
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
                             );
                             return; // don't recurse into the type
                         }
@@ -365,25 +414,109 @@ impl Types {
                                 GenericArg::Type(ty) => ty.span,
                                 _ => return,
                             };
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<Box<T>>`",
                                 "try",
-                                format!("Rc<{}>", snippet(cx, inner_span, "..")),
+                                format!(
+                                    "Rc<{}>",
+                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
+                                ),
+                                applicability,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if let Some(alternate) = match_buffer_type(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Rc<T>` when T is a buffer type",
+                                "try",
+                                format!("Rc<{}>", alternate),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
+                            let vec_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => match &ty.kind {
+                                    TyKind::Path(qpath) => qpath,
+                                    _ => return,
+                                },
+                                _ => return,
+                            };
+                            let inner_span = match &last_path_segment(&vec_ty).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => ty.span,
+                                _ => return,
+                            };
+                            let mut applicability = Applicability::MachineApplicable;
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Rc<T>` when T is a buffer type",
+                                "try",
+                                format!(
+                                    "Rc<[{}]>",
+                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
+                                ),
                                 Applicability::MachineApplicable,
                             );
                             return; // don't recurse into the type
                         }
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<&T>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
+                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                applicability,
+                            );
+                            return; // don't recurse into the type
+                        }
+                    } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
+                        if let Some(alternate) = match_buffer_type(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Arc<T>` when T is a buffer type",
+                                "try",
+                                format!("Arc<{}>", alternate),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
+                            let vec_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => match &ty.kind {
+                                    TyKind::Path(qpath) => qpath,
+                                    _ => return,
+                                },
+                                _ => return,
+                            };
+                            let inner_span = match &last_path_segment(&vec_ty).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => ty.span,
+                                _ => return,
+                            };
+                            let mut applicability = Applicability::MachineApplicable;
+                            span_lint_and_sugg(
+                                cx,
+                                RC_BUFFER,
+                                hir_ty.span,
+                                "usage of `Arc<T>` when T is a buffer type",
+                                "try",
+                                format!(
+                                    "Arc<[{}]>",
+                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
+                                ),
                                 Applicability::MachineApplicable,
                             );
                             return; // don't recurse into the type
@@ -543,7 +676,6 @@ impl Types {
                             // details.
                             return;
                         }
-                        let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
                             BORROWED_BOX,
@@ -553,8 +685,12 @@ impl Types {
                             format!(
                                 "&{}{}",
                                 ltopt,
-                                &snippet_with_applicability(cx, inner.span, "..", &mut applicability)
+                                &snippet(cx, inner.span, "..")
                             ),
+                            // To make this `MachineApplicable`, at least one needs to check if it isn't a trait item
+                            // because the trait impls of it will break otherwise;
+                            // and there may be other cases that result in invalid code.
+                            // For example, type coercion doesn't work nicely.
                             Applicability::Unspecified,
                         );
                         return; // don't recurse into the type
@@ -802,6 +938,45 @@ impl<'tcx> LateLintPass<'tcx> for UnitArg {
     }
 }
 
+fn fmt_stmts_and_call(
+    cx: &LateContext<'_>,
+    call_expr: &Expr<'_>,
+    call_snippet: &str,
+    args_snippets: &[impl AsRef<str>],
+    non_empty_block_args_snippets: &[impl AsRef<str>],
+) -> String {
+    let call_expr_indent = indent_of(cx, call_expr.span).unwrap_or(0);
+    let call_snippet_with_replacements = args_snippets
+        .iter()
+        .fold(call_snippet.to_owned(), |acc, arg| acc.replacen(arg.as_ref(), "()", 1));
+
+    let mut stmts_and_call = non_empty_block_args_snippets
+        .iter()
+        .map(|it| it.as_ref().to_owned())
+        .collect::<Vec<_>>();
+    stmts_and_call.push(call_snippet_with_replacements);
+    stmts_and_call = stmts_and_call
+        .into_iter()
+        .map(|v| reindent_multiline(v.into(), true, Some(call_expr_indent)).into_owned())
+        .collect();
+
+    let mut stmts_and_call_snippet = stmts_and_call.join(&format!("{}{}", ";\n", " ".repeat(call_expr_indent)));
+    // expr is not in a block statement or result expression position, wrap in a block
+    let parent_node = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(call_expr.hir_id));
+    if !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_))) {
+        let block_indent = call_expr_indent + 4;
+        stmts_and_call_snippet =
+            reindent_multiline(stmts_and_call_snippet.into(), true, Some(block_indent)).into_owned();
+        stmts_and_call_snippet = format!(
+            "{{\n{}{}\n{}}}",
+            " ".repeat(block_indent),
+            &stmts_and_call_snippet,
+            " ".repeat(call_expr_indent)
+        );
+    }
+    stmts_and_call_snippet
+}
+
 fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
     let (singular, plural) = if args_to_recover.len() > 1 {
@@ -844,43 +1019,52 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                         Applicability::MaybeIncorrect,
                     );
                     or = "or ";
+                    applicability = Applicability::MaybeIncorrect;
                 });
-            let sugg = args_to_recover
+
+            let arg_snippets: Vec<String> = args_to_recover
+                .iter()
+                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .collect();
+            let arg_snippets_without_empty_blocks: Vec<String> = args_to_recover
                 .iter()
                 .filter(|arg| !is_empty_block(arg))
-                .enumerate()
-                .map(|(i, arg)| {
-                    let indent = if i == 0 {
-                        0
-                    } else {
-                        indent_of(cx, expr.span).unwrap_or(0)
-                    };
-                    format!(
-                        "{}{};",
-                        " ".repeat(indent),
-                        snippet_block_with_applicability(cx, arg.span, "..", Some(expr.span), &mut applicability)
-                    )
-                })
-                .collect::<Vec<String>>();
-            let mut and = "";
-            if !sugg.is_empty() {
-                let plural = if sugg.len() > 1 { "s" } else { "" };
-                db.span_suggestion(
-                    expr.span.with_hi(expr.span.lo()),
-                    &format!("{}move the expression{} in front of the call...", or, plural),
-                    format!("{}\n", sugg.join("\n")),
-                    applicability,
+                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .collect();
+
+            if let Some(call_snippet) = snippet_opt(cx, expr.span) {
+                let sugg = fmt_stmts_and_call(
+                    cx,
+                    expr,
+                    &call_snippet,
+                    &arg_snippets,
+                    &arg_snippets_without_empty_blocks,
                 );
-                and = "...and "
+
+                if arg_snippets_without_empty_blocks.is_empty() {
+                    db.multipart_suggestion(
+                        &format!("use {}unit literal{} instead", singular, plural),
+                        args_to_recover
+                            .iter()
+                            .map(|arg| (arg.span, "()".to_string()))
+                            .collect::<Vec<_>>(),
+                        applicability,
+                    );
+                } else {
+                    let plural = arg_snippets_without_empty_blocks.len() > 1;
+                    let empty_or_s = if plural { "s" } else { "" };
+                    let it_or_them = if plural { "them" } else { "it" };
+                    db.span_suggestion(
+                        expr.span,
+                        &format!(
+                            "{}move the expression{} in front of the call and replace {} with the unit literal `()`",
+                            or, empty_or_s, it_or_them
+                        ),
+                        sugg,
+                        applicability,
+                    );
+                }
             }
-            db.multipart_suggestion(
-                &format!("{}use {}unit literal{} instead", and, singular, plural),
-                args_to_recover
-                    .iter()
-                    .map(|arg| (arg.span, "()".to_string()))
-                    .collect::<Vec<_>>(),
-                applicability,
-            );
         },
     );
 }
@@ -2055,6 +2239,7 @@ impl PartialOrd for FullInt {
         })
     }
 }
+
 impl Ord for FullInt {
     #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
