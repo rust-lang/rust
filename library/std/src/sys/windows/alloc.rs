@@ -1,6 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::ptr;
 use crate::sys::c;
 use crate::sys_common::alloc::{realloc_fallback, MIN_ALIGN};
 
@@ -10,7 +11,7 @@ struct Header(*mut u8);
 /// # Safety
 ///
 /// There must be a `Header` at `ptr.offset(-1)`.
-unsafe fn get_header<'a>(ptr: *mut u8) -> &'a mut Header {
+unsafe fn get_header<'a>(ptr: *mut u8) -> *mut Header {
     // SAFETY: the safety contract must be upheld by the caller
     unsafe { &mut *(ptr as *mut Header).offset(-1) }
 }
@@ -22,7 +23,7 @@ unsafe fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
     // SAFETY: the safety contract must be upheld by the caller
     unsafe {
         let aligned = ptr.add(align - (ptr as usize & (align - 1)));
-        *get_header(aligned) = Header(ptr);
+        ptr::write(get_header(aligned), Header(ptr));
         aligned
     }
 }
@@ -74,7 +75,7 @@ unsafe impl GlobalAlloc for System {
                 c::HeapFree(c::GetProcessHeap(), 0, ptr as c::LPVOID)
             } else {
                 let header = get_header(ptr);
-                c::HeapFree(c::GetProcessHeap(), 0, header.0 as c::LPVOID)
+                c::HeapFree(c::GetProcessHeap(), 0, (*header).0 as c::LPVOID)
             }
         };
         // SAFETY: `c::GetLastError()` cannot fail
