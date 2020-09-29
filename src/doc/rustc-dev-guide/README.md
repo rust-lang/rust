@@ -81,10 +81,18 @@ The build files are found in the `book` directory.
 We also test that line lengths are less than 100 columns. To test this locally,
 you can run `ci/check_line_lengths.sh`.
 
-You can also set this to run automatically with the following command:
+You can also set this to run automatically.
+
+On Linux:
 
 ```bash
 ln -s ../../ci/check_line_lengths.sh .git/hooks/pre-commit
+```
+
+On Windows:
+
+```powershell
+cd .git/hooks && New-Item -Path ../../.git_hooks/* -ItemType SymbolicLink -Value . && cd ../..
 ```
 
 ### Link Validations
