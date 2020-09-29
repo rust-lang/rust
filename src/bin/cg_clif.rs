@@ -50,7 +50,9 @@ fn main() {
     let mut callbacks = TimePassesCallbacks::default();
     rustc_driver::install_ice_hook();
     let exit_code = rustc_driver::catch_with_exit_code(|| {
-        let args = std::env::args_os()
+        let mut use_jit = false;
+
+        let mut args = std::env::args_os()
             .enumerate()
             .map(|(i, arg)| {
                 arg.into_string().unwrap_or_else(|arg| {
@@ -60,14 +62,29 @@ fn main() {
                     )
                 })
             })
+            .filter(|arg| {
+                if arg == "--jit" {
+                    use_jit = true;
+                    false
+                } else {
+                    true
+                }
+            })
             .collect::<Vec<_>>();
+        if use_jit {
+            args.push("-Cprefer-dynamic".to_string());
+        }
         rustc_driver::run_compiler(
             &args,
             &mut callbacks,
             None,
             None,
-            Some(Box::new(|_| {
-                rustc_codegen_cranelift::__rustc_codegen_backend()
+            Some(Box::new(move |_| {
+                Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
+                    config: rustc_codegen_cranelift::BackendConfig {
+                        use_jit,
+                    }
+                })
             })),
         )
     });

@@ -29,7 +29,7 @@ $RUSTC example/example.rs --crate-type lib --target $TARGET_TRIPLE
 
 if [[ "$JIT_SUPPORTED" = "1" ]]; then
     echo "[JIT] mini_core_hello_world"
-    CG_CLIF_JIT=1 CG_CLIF_JIT_ARGS="abc bcd" $RUSTC --crate-type bin -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target $HOST_TRIPLE
+    CG_CLIF_JIT_ARGS="abc bcd" $RUSTC --jit example/mini_core_hello_world.rs --cfg jit --target $HOST_TRIPLE
 else
     echo "[JIT] mini_core_hello_world (skipped)"
 fi
@@ -52,7 +52,7 @@ $RUN_WRAPPER ./target/out/alloc_example
 
 if [[ "$JIT_SUPPORTED" = "1" ]]; then
     echo "[JIT] std_example"
-    CG_CLIF_JIT=1 $RUSTC --crate-type bin -Cprefer-dynamic example/std_example.rs --target $HOST_TRIPLE
+    $RUSTC --jit example/std_example.rs --target $HOST_TRIPLE
 else
     echo "[JIT] std_example (skipped)"
 fi

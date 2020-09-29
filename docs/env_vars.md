@@ -1,8 +1,6 @@
 # List of env vars recognized by cg_clif
 
 <dl>
-    <dt>CG_CLIF_JIT</dt>
-    <dd>Enable JIT mode to immediately run a program instead of writing an executable file.</dd>
     <dt>CG_CLIF_JIT_ARGS</dt>
     <dd>When JIT mode is enable pass these arguments to the program.</dd>
     <dt>CG_CLIF_INCR_CACHE_DISABLED</dt>
