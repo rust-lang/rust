@@ -1751,9 +1751,6 @@ pub struct ParamEnv<'tcx> {
     ///
     /// Note: This is packed, use the reveal() method to access it.
     packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, traits::Reveal, true>,
-
-    /// FIXME: This field is not used, but removing it causes a performance degradation. See #76913.
-    unused_field: Option<DefId>,
 }
 
 unsafe impl rustc_data_structures::tagged_ptr::Tag for traits::Reveal {
@@ -1834,7 +1831,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Construct a trait environment with the given set of predicates.
     #[inline]
     pub fn new(caller_bounds: &'tcx List<Predicate<'tcx>>, reveal: Reveal) -> Self {
-        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal), unused_field: None }
+        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal) }
     }
 
     pub fn with_user_facing(mut self) -> Self {
