@@ -28,15 +28,13 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
     fx.bcx.ins().call(puts, &[msg_ptr]);
 }
 
-/// Use this when `rustc_codegen_llvm` would insert a call to the panic handler.
-///
-/// Trap code: user0
-pub(crate) fn trap_panic(
+/// Trap code: user1
+pub(crate) fn trap_abort(
     fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>,
     msg: impl AsRef<str>,
 ) {
     codegen_print(fx, msg.as_ref());
-    fx.bcx.ins().trap(TrapCode::User(0));
+    fx.bcx.ins().trap(TrapCode::User(1));
 }
 
 /// Use this for example when a function call should never return. This will fill the current block,

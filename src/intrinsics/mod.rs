@@ -413,13 +413,13 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             // Insert non returning intrinsics here
             match intrinsic {
                 "abort" => {
-                    trap_panic(fx, "Called intrinsic::abort.");
+                    trap_abort(fx, "Called intrinsic::abort.");
                 }
                 "unreachable" => {
                     trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
                 }
                 "transmute" => {
-                    trap_unreachable(fx, "[corruption] Transmuting to uninhabited type.");
+                    crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", span);
                 }
                 _ => unimplemented!("unsupported instrinsic {}", intrinsic),
             }
@@ -819,17 +819,29 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         assert_inhabited | assert_zero_valid | assert_uninit_valid, <T> () {
             let layout = fx.layout_of(T);
             if layout.abi.is_uninhabited() {
-                crate::trap::trap_panic(fx, &format!("attempted to instantiate uninhabited type `{}`", T));
+                crate::base::codegen_panic(
+                    fx,
+                    &format!("attempted to instantiate uninhabited type `{}`", T),
+                    span,
+                );
                 return;
             }
 
             if intrinsic == "assert_zero_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ true).unwrap() {
-                crate::trap::trap_panic(fx, &format!("attempted to zero-initialize type `{}`, which is invalid", T));
+                crate::base::codegen_panic(
+                    fx,
+                    &format!("attempted to zero-initialize type `{}`, which is invalid", T),
+                    span,
+                );
                 return;
             }
 
             if intrinsic == "assert_uninit_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ false).unwrap() {
-                crate::trap::trap_panic(fx, &format!("attempted to leave type `{}` uninitialized, which is invalid", T));
+                crate::base::codegen_panic(
+                    fx,
+                    &format!("attempted to leave type `{}` uninitialized, which is invalid", T),
+                    span,
+                );
                 return;
             }
         };

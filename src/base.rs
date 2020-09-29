@@ -274,47 +274,26 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 fx.bcx.switch_to_block(failure);
                 fx.bcx.ins().nop();
 
-                let location = fx
-                    .get_caller_location(bb_data.terminator().source_info.span)
-                    .load_scalar(fx);
-
-                let args;
-                let lang_item = match msg {
+                match msg {
                     AssertKind::BoundsCheck { ref len, ref index } => {
                         let len = trans_operand(fx, len).load_scalar(fx);
                         let index = trans_operand(fx, index).load_scalar(fx);
-                        args = [index, len, location];
-                        rustc_hir::LangItem::PanicBoundsCheck
+                        let location = fx
+                            .get_caller_location(bb_data.terminator().source_info.span)
+                            .load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            rustc_hir::LangItem::PanicBoundsCheck,
+                            &[index, len, location],
+                            bb_data.terminator().source_info.span,
+                        );
                     }
                     _ => {
                         let msg_str = msg.description();
-                        let msg_ptr = fx.anonymous_str("assert", msg_str);
-                        let msg_len = fx
-                            .bcx
-                            .ins()
-                            .iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
-                        args = [msg_ptr, msg_len, location];
-                        rustc_hir::LangItem::Panic
+                        codegen_panic(fx, msg_str, bb_data.terminator().source_info.span);
                     }
-                };
-
-                let def_id = fx.tcx.lang_items().require(lang_item).unwrap_or_else(|s| {
-                    fx.tcx
-                        .sess
-                        .span_fatal(bb_data.terminator().source_info.span, &s)
-                });
-
-                let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
-                let symbol_name = fx.tcx.symbol_name(instance).name;
-
-                fx.lib_call(
-                    &*symbol_name,
-                    vec![fx.pointer_type, fx.pointer_type, fx.pointer_type],
-                    vec![],
-                    &args,
-                );
-
-                crate::trap::trap_unreachable(fx, "panic lang item returned");
+                }
             }
 
             TerminatorKind::SwitchInt {
@@ -996,4 +975,46 @@ pub(crate) fn trans_operand<'tcx>(
         }
         Operand::Constant(const_) => crate::constant::trans_constant(fx, const_),
     }
+}
+
+pub(crate) fn codegen_panic<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    msg_str: &str,
+    span: Span,
+) {
+    let location = fx.get_caller_location(span).load_scalar(fx);
+
+    let msg_ptr = fx.anonymous_str("assert", msg_str);
+    let msg_len = fx
+        .bcx
+        .ins()
+        .iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
+    let args = [msg_ptr, msg_len, location];
+
+    codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, span);
+}
+
+pub(crate) fn codegen_panic_inner<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    lang_item: rustc_hir::LangItem,
+    args: &[Value],
+    span: Span,
+) {
+    let def_id = fx
+        .tcx
+        .lang_items()
+        .require(lang_item)
+        .unwrap_or_else(|s| fx.tcx.sess.span_fatal(span, &s));
+
+    let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
+    let symbol_name = fx.tcx.symbol_name(instance).name;
+
+    fx.lib_call(
+        &*symbol_name,
+        vec![fx.pointer_type, fx.pointer_type, fx.pointer_type],
+        vec![],
+        args,
+    );
+
+    crate::trap::trap_unreachable(fx, "panic lang item returned");
 }
