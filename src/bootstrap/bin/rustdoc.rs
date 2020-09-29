@@ -24,14 +24,10 @@ fn main() {
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir.clone()));
 
-    //FIXME(misdreavus): once stdsimd uses cfg(doc) instead of cfg(dox), remove the `--cfg dox`
-    //arguments here
     let mut cmd = Command::new(rustdoc);
     cmd.args(&args)
         .arg("--cfg")
         .arg(format!("stage{}", stage))
-        .arg("--cfg")
-        .arg("dox")
         .arg("--sysroot")
         .arg(&sysroot)
         .env(bootstrap::util::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
