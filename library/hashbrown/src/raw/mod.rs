@@ -809,15 +809,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             //
             // This guard is also used to free the old table on success, see
             // the comment at the bottom of this function.
-            let mut new_table = guard(new_table, |new_table| {
-                if !new_table.is_empty_singleton() {
-                    let (layout, ctrl_offset) = match calculate_layout::<T>(new_table.buckets()) {
-                        Some(lco) => lco,
-                        None => hint::unreachable_unchecked(),
-                    };
-                    new_table.free_buckets(layout, ctrl_offset);
-                }
-            });
+            let mut new_table = new_table.resize_panic_guard(calculate_layout::<T>);
 
             // Copy all elements to the new table.
             for item in self.iter() {
@@ -1377,6 +1369,21 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                 }
             }
             self_.growth_left = bucket_mask_to_capacity(self_.bucket_mask) - self_.items;
+        })
+    }
+
+    unsafe fn resize_panic_guard<'s>(
+        &'s mut self,
+        layout: fn(usize) -> Option<(Layout, usize)>,
+    ) -> crate::scopeguard::ScopeGuard<&mut Self, impl FnMut(&mut &'s mut Self) + 's> {
+        guard(self, move |self_| {
+            if !self_.is_empty_singleton() {
+                let (layout, ctrl_offset) = match layout(self_.buckets()) {
+                    Some(lco) => lco,
+                    None => hint::unreachable_unchecked(),
+                };
+                self_.free_buckets(layout, ctrl_offset);
+            }
         })
     }
 
