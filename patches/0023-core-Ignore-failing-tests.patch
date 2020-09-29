@@ -38,11 +38,14 @@ index 4bc44e9..8e3c7a4 100644
  // See note on above test for why `should_panic` is used.
  #[test]
  #[should_panic(expected = "test succeeded")]
-@@ -332,3 +333,4 @@ fn array_map_drop_safety() {
+@@ -332,6 +333,7 @@ fn array_map_drop_safety() {
      assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
      panic!("test succeeded")
  }
 +*/
+ 
+ #[test]
+ fn cell_allows_array_cycle() {
 diff --git a/library/core/tests/num/mod.rs b/library/core/tests/num/mod.rs
 index a17c094..5bb11d2 100644
 --- a/library/core/tests/num/mod.rs

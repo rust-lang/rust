@@ -390,12 +390,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     .link_section
                     .map(|s| s.as_str());
 
-                let const_ = tcx.const_eval_poly(def_id).unwrap();
-
-                let alloc = match const_ {
-                    ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => alloc,
-                    _ => bug!("static const eval returned {:#?}", const_),
-                };
+                let alloc = tcx.eval_static_initializer(def_id).unwrap();
 
                 let data_id = data_id_for_static(tcx, module, def_id, true);
                 (data_id, alloc, section_name)
