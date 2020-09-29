@@ -26,8 +26,11 @@ declare_clippy_lint! {
     /// complicated, while there is nothing out of the ordinary going on. Removing
     /// them leads to more readable code.
     ///
-    /// **Known problems:** Potential false negatives: we bail out if the function
-    /// has a `where` clause where lifetimes are mentioned.
+    /// **Known problems:**
+    /// - We bail out if the function has a `where` clause where lifetimes
+    /// are mentioned due to potenial false positives.
+    /// - Lifetime bounds such as `impl Foo + 'a` and `T: 'a` must be elided with the
+    /// placeholder notation `'_` because the fully elided notation leaves the type bound to `'static`.
     ///
     /// **Example:**
     /// ```rust
