@@ -252,7 +252,7 @@ impl Builder {
         }
         let manifest = self.build_manifest();
 
-        let rust_version = self.versions.package_version(&PkgType::Rust).unwrap();
+        let rust_version = self.versions.rustc_version();
         self.write_channel_files(self.versions.channel(), &manifest);
         if self.versions.channel() != rust_version {
             self.write_channel_files(&rust_version, &manifest);
