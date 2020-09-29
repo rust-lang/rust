@@ -570,7 +570,7 @@ pub(crate) fn handle_completion(
     let line_endings = snap.file_line_endings(position.file_id);
     let items: Vec<CompletionItem> = items
         .into_iter()
-        .map(|item| to_proto::completion_item(&line_index, line_endings, item))
+        .flat_map(|item| to_proto::completion_item(&line_index, line_endings, item))
         .collect();
 
     Ok(Some(items.into()))

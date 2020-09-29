@@ -160,7 +160,13 @@ pub(crate) fn completion_item(
     line_index: &LineIndex,
     line_endings: LineEndings,
     completion_item: CompletionItem,
-) -> lsp_types::CompletionItem {
+) -> Vec<lsp_types::CompletionItem> {
+    fn set_score(res: &mut lsp_types::CompletionItem, label: &str) {
+        res.preselect = Some(true);
+        // HACK: sort preselect items first
+        res.sort_text = Some(format!(" {}", label));
+    }
+
     let mut additional_text_edits = Vec::new();
     let mut text_edit = None;
     // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -200,9 +206,7 @@ pub(crate) fn completion_item(
     };
 
     if completion_item.score().is_some() {
-        res.preselect = Some(true);
-        // HACK: sort preselect items first
-        res.sort_text = Some(format!(" {}", completion_item.label()));
+        set_score(&mut res, completion_item.label());
     }
 
     if completion_item.deprecated() {
@@ -217,9 +221,22 @@ pub(crate) fn completion_item(
         });
     }
 
-    res.insert_text_format = Some(insert_text_format(completion_item.insert_text_format()));
+    let mut all_results = match completion_item.ref_match() {
+        Some(ref_match) => {
+            let mut refed = res.clone();
+            let (mutability, _score) = ref_match;
+            let label = format!("&{}{}", mutability.as_keyword_for_ref(), refed.label);
+            set_score(&mut refed, &label);
+            refed.label = label;
+            vec![res, refed]
+        }
+        None => vec![res],
+    };
 
-    res
+    for mut r in all_results.iter_mut() {
+        r.insert_text_format = Some(insert_text_format(completion_item.insert_text_format()));
+    }
+    all_results
 }
 
 pub(crate) fn signature_help(
@@ -774,6 +791,48 @@ mod tests {
     use ide::Analysis;
 
     use super::*;
+
+    #[test]
+    fn test_completion_with_ref() {
+        let fixture = r#"
+        struct Foo;
+        fn foo(arg: &Foo) {}
+        fn main() {
+            let arg = Foo;
+            foo(<|>)
+        }"#;
+
+        let (offset, text) = test_utils::extract_offset(fixture);
+        let line_index = LineIndex::new(&text);
+        let (analysis, file_id) = Analysis::from_single_file(text);
+        let completions: Vec<(String, Option<String>)> = analysis
+            .completions(
+                &ide::CompletionConfig::default(),
+                base_db::FilePosition { file_id, offset },
+            )
+            .unwrap()
+            .unwrap()
+            .into_iter()
+            .filter(|c| c.label().ends_with("arg"))
+            .map(|c| completion_item(&line_index, LineEndings::Unix, c))
+            .flat_map(|comps| comps.into_iter().map(|c| (c.label, c.sort_text)))
+            .collect();
+        expect_test::expect![[r#"
+            [
+                (
+                    "arg",
+                    None,
+                ),
+                (
+                    "&arg",
+                    Some(
+                        " &arg",
+                    ),
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&completions);
+    }
 
     #[test]
     fn conv_fold_line_folding_only_fixup() {

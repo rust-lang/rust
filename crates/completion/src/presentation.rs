@@ -1,7 +1,7 @@
 //! This modules takes care of rendering various definitions as completion items.
 //! It also handles scoring (sorting) completions.
 
-use hir::{HasAttrs, HasSource, HirDisplay, ModPath, ScopeDef, StructKind, Type};
+use hir::{HasAttrs, HasSource, HirDisplay, ModPath, Mutability, ScopeDef, StructKind, Type};
 use itertools::Itertools;
 use syntax::{ast::NameOwner, display::*};
 use test_utils::mark;
@@ -107,9 +107,16 @@ impl Completions {
             }
         };
 
+        let mut ref_match = None;
         if let ScopeDef::Local(local) = resolution {
-            if let Some(score) = compute_score(ctx, &local.ty(ctx.db), &local_name) {
-                completion_item = completion_item.set_score(score);
+            if let Some((active_name, active_type)) = ctx.active_name_and_type() {
+                let ty = local.ty(ctx.db);
+                if let Some(score) =
+                    compute_score_from_active(&active_type, &active_name, &ty, &local_name)
+                {
+                    completion_item = completion_item.set_score(score);
+                }
+                ref_match = refed_type_matches(&active_type, &active_name, &ty, &local_name);
             }
         }
 
@@ -131,7 +138,7 @@ impl Completions {
             }
         }
 
-        completion_item.kind(kind).set_documentation(docs).add_to(self)
+        completion_item.kind(kind).set_documentation(docs).set_ref_match(ref_match).add_to(self)
     }
 
     pub(crate) fn add_macro(
@@ -342,25 +349,15 @@ impl Completions {
     }
 }
 
-pub(crate) fn compute_score(
-    ctx: &CompletionContext,
+fn compute_score_from_active(
+    active_type: &Type,
+    active_name: &str,
     ty: &Type,
     name: &str,
 ) -> Option<CompletionScore> {
-    let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
-        mark::hit!(record_field_type_match);
-        let (struct_field, _local) = ctx.sema.resolve_record_field(record_field)?;
-        (struct_field.name(ctx.db).to_string(), struct_field.signature_ty(ctx.db))
-    } else if let Some(active_parameter) = &ctx.active_parameter {
-        mark::hit!(active_param_type_match);
-        (active_parameter.name.clone(), active_parameter.ty.clone())
-    } else {
-        return None;
-    };
-
     // Compute score
     // For the same type
-    if &active_type != ty {
+    if active_type != ty {
         return None;
     }
 
@@ -372,6 +369,24 @@ pub(crate) fn compute_score(
     }
 
     Some(res)
+}
+fn refed_type_matches(
+    active_type: &Type,
+    active_name: &str,
+    ty: &Type,
+    name: &str,
+) -> Option<(Mutability, CompletionScore)> {
+    let derefed_active = active_type.remove_ref()?;
+    let score = compute_score_from_active(&derefed_active, &active_name, &ty, &name)?;
+    Some((
+        if active_type.is_mutable_reference() { Mutability::Mut } else { Mutability::Shared },
+        score,
+    ))
+}
+
+fn compute_score(ctx: &CompletionContext, ty: &Type, name: &str) -> Option<CompletionScore> {
+    let (active_name, active_type) = ctx.active_name_and_type()?;
+    compute_score_from_active(&active_type, &active_name, ty, name)
 }
 
 enum Params {

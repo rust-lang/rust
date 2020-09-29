@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use hir::Documentation;
+use hir::{Documentation, Mutability};
 use syntax::TextRange;
 use text_edit::TextEdit;
 
@@ -56,6 +56,10 @@ pub struct CompletionItem {
 
     /// Score is useful to pre select or display in better order completion items
     score: Option<CompletionScore>,
+
+    /// Indicates that a reference or mutable reference to this variable is a
+    /// possible match.
+    ref_match: Option<(Mutability, CompletionScore)>,
 }
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
@@ -194,6 +198,7 @@ impl CompletionItem {
             deprecated: None,
             trigger_call_info: None,
             score: None,
+            ref_match: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -240,10 +245,15 @@ impl CompletionItem {
     pub fn trigger_call_info(&self) -> bool {
         self.trigger_call_info
     }
+
+    pub fn ref_match(&self) -> Option<(Mutability, CompletionScore)> {
+        self.ref_match
+    }
 }
 
 /// A helper to make `CompletionItem`s.
 #[must_use]
+#[derive(Clone)]
 pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
@@ -258,6 +268,7 @@ pub(crate) struct Builder {
     deprecated: Option<bool>,
     trigger_call_info: Option<bool>,
     score: Option<CompletionScore>,
+    ref_match: Option<(Mutability, CompletionScore)>,
 }
 
 impl Builder {
@@ -288,6 +299,7 @@ impl Builder {
             deprecated: self.deprecated.unwrap_or(false),
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
             score: self.score,
+            ref_match: self.ref_match,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -348,6 +360,13 @@ impl Builder {
     }
     pub(crate) fn trigger_call_info(mut self) -> Builder {
         self.trigger_call_info = Some(true);
+        self
+    }
+    pub(crate) fn set_ref_match(
+        mut self,
+        ref_match: Option<(Mutability, CompletionScore)>,
+    ) -> Builder {
+        self.ref_match = ref_match;
         self
     }
 }
