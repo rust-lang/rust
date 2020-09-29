@@ -344,6 +344,13 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
             .expect("non-UTF8 diagnostic");
             diag_handler.warn(&msg);
         }
+        llvm::diagnostic::Unsupported(diagnostic_ref) => {
+            let msg = llvm::build_string(|s| {
+                llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
+            })
+            .expect("non-UTF8 diagnostic");
+            diag_handler.err(&msg);
+        }
         llvm::diagnostic::UnknownDiagnostic(..) => {}
     }
 }

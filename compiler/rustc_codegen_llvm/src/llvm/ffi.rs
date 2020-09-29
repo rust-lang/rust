@@ -483,6 +483,7 @@ pub enum DiagnosticKind {
     OptimizationFailure,
     PGOProfile,
     Linker,
+    Unsupported,
 }
 
 /// LLVMRustDiagnosticLevel
