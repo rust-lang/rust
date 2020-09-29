@@ -5,6 +5,9 @@ use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::mem;
 
+#[cfg(test)]
+mod tests;
+
 /// When hashing something that ends up affecting properties like symbol names,
 /// we want these symbol names to be calculated independently of other factors
 /// like what architecture you're compiling *from*.
@@ -57,6 +60,9 @@ impl StableHasher {
     }
 }
 
+// SipHasher128 currently handles ensuring platform-independent results with
+// respect to endianness and `isize` and `usize` differences (to the extent
+// possible). The write functions below don't need handle this at this time.
 impl Hasher for StableHasher {
     fn finish(&self) -> u64 {
         panic!("use StableHasher::finalize instead");
@@ -74,30 +80,27 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.state.write_u16(i.to_le());
+        self.state.write_u16(i);
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.state.write_u32(i.to_le());
+        self.state.write_u32(i);
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.state.write_u64(i.to_le());
+        self.state.write_u64(i);
     }
 
     #[inline]
     fn write_u128(&mut self, i: u128) {
-        self.state.write_u128(i.to_le());
+        self.state.write_u128(i);
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        // Always treat usize as u64 so we get the same results on 32 and 64 bit
-        // platforms. This is important for symbol hashes when cross compiling,
-        // for example.
-        self.state.write_u64((i as u64).to_le());
+        self.state.write_usize(i);
     }
 
     #[inline]
@@ -107,30 +110,27 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.state.write_i16(i.to_le());
+        self.state.write_i16(i);
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.state.write_i32(i.to_le());
+        self.state.write_i32(i);
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.state.write_i64(i.to_le());
+        self.state.write_i64(i);
     }
 
     #[inline]
     fn write_i128(&mut self, i: i128) {
-        self.state.write_i128(i.to_le());
+        self.state.write_i128(i);
     }
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        // Always treat isize as i64 so we get the same results on 32 and 64 bit
-        // platforms. This is important for symbol hashes when cross compiling,
-        // for example.
-        self.state.write_i64((i as i64).to_le());
+        self.state.write_isize(i);
     }
 }
 
