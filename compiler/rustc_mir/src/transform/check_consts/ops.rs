@@ -515,8 +515,6 @@ pub mod ty {
     #[derive(Debug)]
     pub struct MutRef;
     impl NonConstOp for MutRef {
-        const STOPS_CONST_CHECKING: bool = true;
-
         fn status_in_item(&self, _ccx: &ConstCx<'_, '_>) -> Status {
             Status::Unstable(sym::const_mut_refs)
         }

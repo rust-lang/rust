@@ -13,15 +13,7 @@ LL |         unsafe { *b = 5; }
    = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
    = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/projection_qualif.rs:11:18
-   |
-LL |         unsafe { *b = 5; }
-   |                  ^^^^^^
-   |
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0019, E0658, E0764.
-For more information about an error, try `rustc --explain E0019`.
+Some errors have detailed explanations: E0658, E0764.
+For more information about an error, try `rustc --explain E0658`.
