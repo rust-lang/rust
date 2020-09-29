@@ -519,18 +519,12 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
         Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
             // This is the hottest path in this function.
             //
-            // If we find the value in the cache, then return it along
-            // with the obligations that went along with it. Note
-            // that, when using a fulfillment context, these
-            // obligations could in principle be ignored: they have
-            // already been registered when the cache entry was
-            // created (and hence the new ones will quickly be
-            // discarded as duplicated). But when doing trait
-            // evaluation this is not the case, and dropping the trait
-            // evaluations can causes ICEs (e.g., #43132).
+            // If we find the value in the cache, then the obligations
+            // have already been returned from the previous entry (and
+            // should therefore have been honored).
             debug!(?ty, "found normalized ty");
-            obligations.extend(ty.obligations);
-            return Ok(Some(ty.value));
+
+            return Ok(Some(ty));
         }
         Err(ProjectionCacheEntry::Error) => {
             debug!("opt_normalize_projection_type: found error");
