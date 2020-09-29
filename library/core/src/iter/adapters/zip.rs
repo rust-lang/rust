@@ -59,7 +59,7 @@ where
     }
 
     #[inline]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {
@@ -197,12 +197,14 @@ where
             let i = self.index;
             self.index += 1;
             // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
-            unsafe { Some((self.a.get_unchecked(i), self.b.get_unchecked(i))) }
+            unsafe {
+                Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
+            }
         } else if A::may_have_side_effect() && self.index < self.a.size() {
             // match the base implementation's potential side effects
             // SAFETY: we just checked that `self.index` < `self.a.len()`
             unsafe {
-                self.a.get_unchecked(self.index);
+                self.a.__iterator_get_unchecked(self.index);
             }
             self.index += 1;
             None
@@ -229,13 +231,13 @@ where
                 // ensures that `end` is smaller than or equal to `self.len`,
                 // so `i` is also smaller than `self.len`.
                 unsafe {
-                    self.a.get_unchecked(i);
+                    self.a.__iterator_get_unchecked(i);
                 }
             }
             if B::may_have_side_effect() {
                 // SAFETY: same as above.
                 unsafe {
-                    self.b.get_unchecked(i);
+                    self.b.__iterator_get_unchecked(i);
                 }
             }
         }
@@ -277,7 +279,9 @@ where
             let i = self.len;
             // SAFETY: `i` is smaller than the previous value of `self.len`,
             // which is also smaller than or equal to `self.a.len()` and `self.b.len()`
-            unsafe { Some((self.a.get_unchecked(i), self.b.get_unchecked(i))) }
+            unsafe {
+                Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
+            }
         } else {
             None
         }
@@ -287,7 +291,7 @@ where
     unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::get_unchecked`.
-        unsafe { (self.a.get_unchecked(idx), self.b.get_unchecked(idx)) }
+        unsafe { (self.a.__iterator_get_unchecked(idx), self.b.__iterator_get_unchecked(idx)) }
     }
 }
 
@@ -430,6 +434,6 @@ unsafe impl<I: Iterator + TrustedRandomAccess> SpecTrustedRandomAccess for I {
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::get_unchecked`.
-        unsafe { self.get_unchecked(index) }
+        unsafe { self.__iterator_get_unchecked(index) }
     }
 }

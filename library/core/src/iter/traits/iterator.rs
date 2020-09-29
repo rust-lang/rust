@@ -3251,7 +3251,7 @@ pub trait Iterator {
     #[inline]
     #[doc(hidden)]
     #[unstable(feature = "trusted_random_access", issue = "none")]
-    unsafe fn get_unchecked(&mut self, _idx: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, _idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {

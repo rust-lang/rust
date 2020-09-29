@@ -3922,7 +3922,7 @@ macro_rules! iterator {
             }
 
             #[doc(hidden)]
-            unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+            unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
                 // SAFETY: the caller must guarantee that `i` is in bounds of
                 // the underlying slice, so `i` cannot overflow an `isize`, and
                 // the returned references is guaranteed to refer to an element
@@ -5022,7 +5022,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // SAFETY: since the caller guarantees that `i` is in bounds,
         // which means that `i` cannot overflow an `isize`, and the
         // slice created by `from_raw_parts` is a subslice of `self.v`
@@ -5161,7 +5161,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
         let end = match start.checked_add(self.chunk_size) {
             None => self.v.len(),
@@ -5310,7 +5310,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
         let end = match start.checked_add(self.chunk_size) {
             None => self.v.len(),
@@ -5463,7 +5463,7 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
         // SAFETY: mostly identical to `Chunks::get_unchecked`.
         unsafe { from_raw_parts(self.v.as_ptr().add(start), self.chunk_size) }
@@ -5597,7 +5597,7 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
         // SAFETY: see comments for `ChunksMut::get_unchecked`.
         unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size) }
@@ -5723,10 +5723,10 @@ impl<'a, T, const N: usize> Iterator for ArrayChunks<'a, T, N> {
         self.iter.last()
     }
 
-    unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T; N] {
+    unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> &'a [T; N] {
         // SAFETY: The safety guarantees of `get_unchecked` are transferred to
         // the caller.
-        unsafe { self.iter.get_unchecked(i) }
+        unsafe { self.iter.__iterator_get_unchecked(i) }
     }
 }
 
@@ -5853,7 +5853,7 @@ impl<'a, T> Iterator for RChunks<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = match end.checked_sub(self.chunk_size) {
             None => 0,
@@ -5999,7 +5999,7 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = match end.checked_sub(self.chunk_size) {
             None => 0,
@@ -6145,7 +6145,7 @@ impl<'a, T> Iterator for RChunksExact<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = end - self.chunk_size;
         // SAFETY:
@@ -6286,7 +6286,7 @@ impl<'a, T> Iterator for RChunksExactMut<'a, T> {
     }
 
     #[doc(hidden)]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = end - self.chunk_size;
         // SAFETY: see comments for `RChunksMut::get_unchecked`.

@@ -215,7 +215,7 @@ where
         self.it.count()
     }
 
-    unsafe fn get_unchecked(&mut self, idx: usize) -> T
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccess,
     {
@@ -350,7 +350,7 @@ where
         self.it.map(T::clone).fold(init, f)
     }
 
-    unsafe fn get_unchecked(&mut self, idx: usize) -> T
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccess,
     {
@@ -865,7 +865,7 @@ where
         self.iter.fold(init, map_fold(self.f, g))
     }
 
-    unsafe fn get_unchecked(&mut self, idx: usize) -> B
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> B
     where
         Self: TrustedRandomAccess,
     {
@@ -1304,7 +1304,7 @@ where
         self.iter.fold(init, enumerate(self.count, fold))
     }
 
-    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
         Self: TrustedRandomAccess,
     {

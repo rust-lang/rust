@@ -807,7 +807,7 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     ///
     /// The stabilized version of this intrinsic is [`crate::any::TypeId::of`].
-    #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
+    #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
