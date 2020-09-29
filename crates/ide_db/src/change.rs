@@ -1,7 +1,7 @@
 //! Defines a unit of change that can applied to a state of IDE to get the next
 //! state. Changes are transactional.
 
-use std::{fmt, sync::Arc, time};
+use std::{fmt, sync::Arc};
 
 use base_db::{
     salsa::{Database, Durability, SweepStrategy},
@@ -81,8 +81,6 @@ impl fmt::Debug for RootChange {
     }
 }
 
-const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
-
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
         let _p = profile::span("RootDatabase::request_cancellation");
@@ -126,23 +124,12 @@ impl RootDatabase {
         }
     }
 
-    pub fn maybe_collect_garbage(&mut self) {
-        if cfg!(feature = "wasm") {
-            return;
-        }
-
-        if self.last_gc_check.elapsed() > GC_COOLDOWN {
-            self.last_gc_check = crate::wasm_shims::Instant::now();
-        }
-    }
-
     pub fn collect_garbage(&mut self) {
         if cfg!(feature = "wasm") {
             return;
         }
 
         let _p = profile::span("RootDatabase::collect_garbage");
-        self.last_gc = crate::wasm_shims::Instant::now();
 
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
 

@@ -189,19 +189,16 @@ impl GlobalState {
                 }
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
-            Event::Task(task) => {
-                match task {
-                    Task::Response(response) => self.respond(response),
-                    Task::Diagnostics(diagnostics_per_file) => {
-                        for (file_id, diagnostics) in diagnostics_per_file {
-                            self.diagnostics.set_native_diagnostics(file_id, diagnostics)
-                        }
+            Event::Task(task) => match task {
+                Task::Response(response) => self.respond(response),
+                Task::Diagnostics(diagnostics_per_file) => {
+                    for (file_id, diagnostics) in diagnostics_per_file {
+                        self.diagnostics.set_native_diagnostics(file_id, diagnostics)
                     }
-                    Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
-                    Task::Unit => (),
                 }
-                self.analysis_host.maybe_collect_garbage();
-            }
+                Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
+                Task::Unit => (),
+            },
             Event::Vfs(mut task) => {
                 let _p = profile::span("GlobalState::handle_event/vfs");
                 loop {

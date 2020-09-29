@@ -10,7 +10,6 @@ pub mod defs;
 pub mod search;
 pub mod imports_locator;
 pub mod source_change;
-mod wasm_shims;
 
 use std::{fmt, sync::Arc};
 
@@ -36,8 +35,6 @@ use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 )]
 pub struct RootDatabase {
     storage: salsa::Storage<RootDatabase>,
-    pub last_gc: crate::wasm_shims::Instant,
-    pub last_gc_check: crate::wasm_shims::Instant,
 }
 
 impl fmt::Debug for RootDatabase {
@@ -99,11 +96,7 @@ impl Default for RootDatabase {
 
 impl RootDatabase {
     pub fn new(lru_capacity: Option<usize>) -> RootDatabase {
-        let mut db = RootDatabase {
-            storage: salsa::Storage::default(),
-            last_gc: crate::wasm_shims::Instant::now(),
-            last_gc_check: crate::wasm_shims::Instant::now(),
-        };
+        let mut db = RootDatabase { storage: salsa::Storage::default() };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
@@ -121,11 +114,7 @@ impl RootDatabase {
 
 impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
-        salsa::Snapshot::new(RootDatabase {
-            storage: self.storage.snapshot(),
-            last_gc: self.last_gc,
-            last_gc_check: self.last_gc_check,
-        })
+        salsa::Snapshot::new(RootDatabase { storage: self.storage.snapshot() })
     }
 }
 
