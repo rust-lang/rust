@@ -576,6 +576,7 @@ function defocusSearchBar() {
         // suddenly your search is gone!
         if (search_input.value === "") {
             search_input.value = params.search || "";
+            search_input.focus();
         }
 
         /**
