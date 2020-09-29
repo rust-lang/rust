@@ -11,21 +11,23 @@ use crate::prelude::*;
 pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
-    // Rustc opens us without the RTLD_GLOBAL flag, so __cg_clif_global_atomic_mutex will not be
-    // exported. We fix this by opening ourself again as global.
-    // FIXME remove once atomic_shim is gone
-    let cg_dylib = std::ffi::OsString::from(
-        &tcx.sess
-            .opts
-            .debugging_opts
-            .codegen_backend
-            .as_ref()
-            .unwrap(),
-    );
-    std::mem::forget(
-        libloading::os::unix::Library::open(Some(cg_dylib), libc::RTLD_NOW | libc::RTLD_GLOBAL)
-            .unwrap(),
-    );
+    #[cfg(unix)]
+    unsafe {
+        // When not using our custom driver rustc will open us without the RTLD_GLOBAL flag, so
+        // __cg_clif_global_atomic_mutex will not be exported. We fix this by opening ourself again
+        // as global.
+        // FIXME remove once atomic_shim is gone
+
+        let mut dl_info: libc::Dl_info = std::mem::zeroed();
+        assert_ne!(
+            libc::dladdr(run_jit as *const libc::c_void, &mut dl_info),
+            0
+        );
+        assert_ne!(
+            libc::dlopen(dl_info.dli_fname, libc::RTLD_NOW | libc::RTLD_GLOBAL),
+            std::ptr::null_mut(),
+        );
+    }
 
     let imported_symbols = load_imported_symbols_for_jit(tcx);
 
