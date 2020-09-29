@@ -914,7 +914,7 @@ impl LinkCollector<'_, '_> {
                 parent_node
             };
 
-            let module_id = if let Some(id) = base_node {
+            let mut module_id = if let Some(id) = base_node {
                 id
             } else {
                 debug!("attempting to resolve item without parent module: {}", path_str);
@@ -937,6 +937,17 @@ impl LinkCollector<'_, '_> {
                     resolved_self = format!("{}::{}", name, &path_str[6..]);
                     path_str = &resolved_self;
                 }
+            } else if path_str.starts_with("crate::") {
+                use rustc_span::def_id::CRATE_DEF_INDEX;
+
+                // HACK(jynelson): rustc_resolve thinks that `crate` is the crate currently being documented.
+                // But rustdoc wants it to mean the crate this item was originally present in.
+                // To work around this, remove it and resolve relative to the crate root instead.
+                // HACK(jynelson)(2): If we just strip `crate::` then suddenly primitives become ambiguous
+                // (consider `crate::char`). Instead, change it to `self::`. This works because 'self' is now the crate root.
+                resolved_self = format!("self::{}", &path_str["crate::".len()..]);
+                path_str = &resolved_self;
+                module_id = DefId { krate: item.def_id.krate, index: CRATE_DEF_INDEX };
             }
 
             match self.resolve_with_disambiguator(
