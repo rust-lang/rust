@@ -101,8 +101,6 @@ pub trait NonConstOp: std::fmt::Debug {
 #[derive(Debug)]
 pub struct Abort;
 impl NonConstOp for Abort {
-    const STOPS_CONST_CHECKING: bool = true;
-
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
         mcf_status_in_item(ccx)
     }
@@ -115,8 +113,6 @@ impl NonConstOp for Abort {
 #[derive(Debug)]
 pub struct FloatingPointOp;
 impl NonConstOp for FloatingPointOp {
-    const STOPS_CONST_CHECKING: bool = true;
-
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
         if ccx.const_kind() == hir::ConstContext::ConstFn {
             Status::Unstable(sym::const_fn_floating_point_arithmetic)
@@ -133,20 +129,6 @@ impl NonConstOp for FloatingPointOp {
             &format!("floating point arithmetic is not allowed in {}s", ccx.const_kind()),
         )
         .emit();
-    }
-}
-
-#[derive(Debug)]
-pub struct NonPrimitiveOp;
-impl NonConstOp for NonPrimitiveOp {
-    const STOPS_CONST_CHECKING: bool = true;
-
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        mcf_status_in_item(ccx)
-    }
-
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        mcf_emit_error(ccx, span, "only int, `bool` and `char` operations are stable in const fn")
     }
 }
 
@@ -234,8 +216,6 @@ impl NonConstOp for FnPtrCast {
 #[derive(Debug)]
 pub struct Generator;
 impl NonConstOp for Generator {
-    const STOPS_CONST_CHECKING: bool = true;
-
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
         // FIXME: This means generator-only MIR is only forbidden in const fn. This is for
         // compatibility with the old code. Such MIR should be forbidden everywhere.
@@ -512,8 +492,6 @@ impl NonConstOp for ThreadLocalAccess {
 #[derive(Debug)]
 pub struct Transmute;
 impl NonConstOp for Transmute {
-    const STOPS_CONST_CHECKING: bool = true;
-
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
         if ccx.const_kind() != hir::ConstContext::ConstFn {
             Status::Allowed
@@ -660,8 +638,6 @@ pub mod ty {
     #[derive(Debug)]
     pub struct TraitBoundNotConst;
     impl NonConstOp for TraitBoundNotConst {
-        const STOPS_CONST_CHECKING: bool = true;
-
         fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
             Status::Unstable(sym::const_trait_bound_opt_out)
         }
