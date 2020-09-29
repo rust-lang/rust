@@ -7,5 +7,3 @@ pub use std::i32;
 // @!has 'foo/index.html' '//code' 'pub use self::string::String;'
 // @has 'foo/index.html' '//tr[@class="module-item"]' 'String'
 pub use std::string::String;
-// @!has 'foo/index.html' '//code' 'pub use self::string::*;'
-pub use std::string::*;

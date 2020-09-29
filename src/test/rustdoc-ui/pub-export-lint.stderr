@@ -1,4 +1,4 @@
-error: unresolved link to `somewhere`
+error: unresolved link to `aloha`
   --> $DIR/pub-export-lint.rs:3:6
    |
 LL | /// [aloha]
@@ -11,13 +11,5 @@ LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
-error: unresolved link to `aloha`
-  --> $DIR/pub-export-lint.rs:6:6
-   |
-LL | /// [aloha]
-   |      ^^^^^ the module `pub_export_lint` contains no item named `aloha`
-   |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

@@ -2260,17 +2260,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         let inner = if self.glob {
             if !denied {
                 let mut visited = FxHashSet::default();
-                if let Some(mut items) = inline::try_inline_glob(cx, path.res, &mut visited) {
-                    items.push(Item {
-                        name: None,
-                        attrs: self.attrs.clean(cx),
-                        source: self.span.clean(cx),
-                        def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
-                        visibility: self.vis.clean(cx),
-                        stability: None,
-                        deprecation: None,
-                        inner: ImportItem(Import::new_glob(resolve_use_source(cx, path), false)),
-                    });
+                if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited) {
                     return items;
                 }
             }
