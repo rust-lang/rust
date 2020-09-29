@@ -1214,7 +1214,9 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // If backtraces are enabled, also print the query stack
     let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
 
-    TyCtxt::try_print_query_stack(&handler, Some(2), Some(backtrace));
+    let num_frames = if backtrace { None } else { Some(2) };
+
+    TyCtxt::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
     unsafe {
