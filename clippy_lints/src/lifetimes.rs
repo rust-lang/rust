@@ -383,6 +383,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 let mut sub_visitor = RefVisitor::new(self.cx);
                 sub_visitor.visit_fn_decl(decl);
                 self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
+                return;
             },
             TyKind::TraitObject(bounds, ref lt) => {
                 if !lt.is_elided() {

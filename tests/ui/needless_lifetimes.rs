@@ -336,8 +336,24 @@ mod nested_elision_sites {
         |i| i
     }
     // lint
-    fn pointer_fn_elidable<'a>(f: fn(&i32) -> &i32, i: &'a i32) -> &'a i32 {
+    fn pointer_fn_elidable<'a>(i: &'a i32, f: fn(&i32) -> &i32) -> &'a i32 {
         f(i)
+    }
+
+    // don't lint
+    fn nested_fn_pointer_1<'a>(_: &'a i32) -> fn(fn(&'a i32) -> &'a i32) -> i32 {
+        |f| 42
+    }
+    fn nested_fn_pointer_2<'a>(_: &'a i32) -> impl Fn(fn(&'a i32)) {
+        |f| ()
+    }
+
+    // lint
+    fn nested_fn_pointer_3<'a>(_: &'a i32) -> fn(fn(&i32) -> &i32) -> i32 {
+        |f| 42
+    }
+    fn nested_fn_pointer_4<'a>(_: &'a i32) -> impl Fn(fn(&i32)) {
+        |f| ()
     }
 }
 
