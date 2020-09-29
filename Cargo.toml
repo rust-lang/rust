@@ -57,6 +57,23 @@ overflow-checks = false
 # per-crate configuration isn't specifiable in the environment.
 codegen-units = 10000
 
+[profile.release.package.rustc_middle]
+# This is a huge crate -- just source code is at 2 MB right now, pre-expansion.
+#
+# Try to split it up into more codegen units so that we hand LLVM smaller
+# modules (and get faster builds as a result). Hopefully, the size of the crate
+# means that it's somewhat unlikely that inlining etc would've happened anyway,
+# so we don't lose too much performance.
+codegen-units = 128
+
+# Same as rustc_middle.
+[profile.release.package.rustc_mir]
+codegen-units = 128
+
+# Same as rustc_middle.
+[profile.release.package.rustc_typeck]
+codegen-units = 128
+
 # These dependencies of the standard library implement symbolication for
 # backtraces on most platforms. Their debuginfo causes both linking to be slower
 # (more data to chew through) and binaries to be larger without really all that
