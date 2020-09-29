@@ -213,6 +213,22 @@ pub(crate) fn make_hasher<K: Hash, V>(
     move |val| make_hash(hash_builder, &val.0)
 }
 
+fn equivalent<Q, K, V>(k: &Q) -> impl Fn(&(K, V)) -> bool + '_
+where
+    K: Borrow<Q>,
+    Q: ?Sized + Eq,
+{
+    move |x| k.eq(x.0.borrow())
+}
+
+fn equivalent_single<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
+where
+    K: Borrow<Q>,
+    Q: ?Sized + Eq,
+{
+    move |x| k.eq(x.borrow())
+}
+
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
     let mut state = hash_builder.build_hasher();
@@ -771,7 +787,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V, S> {
         let hash = make_hash(&self.hash_builder, &key);
-        if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
+        if let Some(elem) = self.table.find(hash, equivalent(&key)) {
             Entry::Occupied(OccupiedEntry {
                 hash,
                 key: Some(key),
@@ -858,7 +874,7 @@ where
         Q: Hash + Eq,
     {
         let hash = make_hash(&self.hash_builder, k);
-        self.table.get(hash, |x| k.eq(x.0.borrow()))
+        self.table.get(hash, equivalent(k))
     }
 
     /// Returns the key-value pair corresponding to the supplied key, with a mutable reference to value.
@@ -966,7 +982,7 @@ where
         Q: Hash + Eq,
     {
         let hash = make_hash(&self.hash_builder, k);
-        self.table.get_mut(hash, |x| k.eq(x.0.borrow()))
+        self.table.get_mut(hash, equivalent(k))
     }
 
     /// Inserts a key-value pair into the map.
@@ -997,7 +1013,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         let hash = make_hash(&self.hash_builder, &k);
-        if let Some((_, item)) = self.table.get_mut(hash, |x| k.eq(&x.0)) {
+        if let Some((_, item)) = self.table.get_mut(hash, equivalent(&k)) {
             Some(mem::replace(item, v))
         } else {
             let hash_builder = &self.hash_builder;
@@ -1066,7 +1082,7 @@ where
         Q: Hash + Eq,
     {
         let hash = make_hash(&self.hash_builder, &k);
-        self.table.remove_entry(hash, |x| k.eq(x.0.borrow()))
+        self.table.remove_entry(hash, equivalent(k))
     }
 }
 
@@ -1533,7 +1549,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
         K: Borrow<Q>,
         Q: Eq,
     {
-        self.from_hash(hash, |q| q.borrow().eq(k))
+        self.from_hash(hash, equivalent_single(k))
     }
 }
 
@@ -1590,7 +1606,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
         K: Borrow<Q>,
         Q: Eq,
     {
-        self.from_hash(hash, |q| q.borrow().eq(k))
+        self.from_hash(hash, equivalent_single(k))
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
