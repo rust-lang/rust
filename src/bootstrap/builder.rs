@@ -850,7 +850,40 @@ impl<'a> Builder<'a> {
                 cargo.args(s.split_whitespace());
             }
             rustflags.env("RUSTFLAGS_BOOTSTRAP");
-            rustflags.arg("--cfg=bootstrap");
+            if cmd == "clippy" {
+                // clippy overwrites any sysroot we pass on the command line.
+                // Tell it to use the appropriate sysroot instead.
+                // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
+                // so it has no way of knowing the sysroot.
+                rustflags.arg("--sysroot");
+                rustflags.arg(
+                    self.sysroot(compiler)
+                        .as_os_str()
+                        .to_str()
+                        .expect("sysroot must be valid UTF-8"),
+                );
+                // Only run clippy on a very limited subset of crates (in particular, not build scripts).
+                cargo.arg("-Zunstable-options");
+                // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
+                let host_version = Command::new("rustc").arg("--version").output().map_err(|_| ());
+                if let Err(_) = host_version.and_then(|output| {
+                    if output.status.success()
+                        && t!(std::str::from_utf8(&output.stdout)).contains("nightly")
+                    {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
+                }) {
+                    eprintln!(
+                        "error: `x.py clippy` requires a nightly host `rustc` toolchain with the `clippy` component"
+                    );
+                    eprintln!("help: try `rustup default nightly`");
+                    std::process::exit(1);
+                }
+            } else {
+                rustflags.arg("--cfg=bootstrap");
+            }
         }
 
         if self.config.rust_new_symbol_mangling {
@@ -975,7 +1008,6 @@ impl<'a> Builder<'a> {
         // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
         cargo
             .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
-            .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
             .env("RUSTC_REAL", self.rustc(compiler))
             .env("RUSTC_STAGE", stage.to_string())
             .env("RUSTC_SYSROOT", &sysroot)
@@ -991,6 +1023,11 @@ impl<'a> Builder<'a> {
             )
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
             .env("RUSTC_BREAK_ON_ICE", "1");
+        // Clippy support is a hack and uses the default `cargo-clippy` in path.
+        // Don't override RUSTC so that the `cargo-clippy` in path will be run.
+        if cmd != "clippy" {
+            cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"));
+        }
 
         // Dealing with rpath here is a little special, so let's go into some
         // detail. First off, `-rpath` is a linker option on Unix platforms
