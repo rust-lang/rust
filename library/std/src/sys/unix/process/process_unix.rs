@@ -67,7 +67,7 @@ impl Command {
                     // pipe I/O up to PIPE_BUF bytes should be atomic, and then
                     // we want to be sure we *don't* run at_exit destructors as
                     // we're being torn down regardless
-                    assert!(output.write(&bytes).is_ok());
+                    rtassert!(output.write(&bytes).is_ok());
                     libc::_exit(1)
                 }
                 n => n,
