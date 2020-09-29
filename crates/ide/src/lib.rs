@@ -370,8 +370,12 @@ impl Analysis {
     }
 
     /// Returns a short text describing element at position.
-    pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<HoverResult>>> {
-        self.with_db(|db| hover::hover(db, position))
+    pub fn hover(
+        &self,
+        position: FilePosition,
+        links_in_hover: bool,
+    ) -> Cancelable<Option<RangeInfo<HoverResult>>> {
+        self.with_db(|db| hover::hover(db, position, links_in_hover))
     }
 
     /// Computes parameter information for the given call expression.

@@ -4,7 +4,7 @@
 
 use hir::{Adt, Crate, HasAttrs, ModuleDef};
 use ide_db::{defs::Definition, RootDatabase};
-use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
 use url::Url;
 
@@ -38,6 +38,41 @@ pub fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition)
             (target.to_string(), title.to_string())
         }
     });
+    let mut out = String::new();
+    let mut options = CmarkOptions::default();
+    options.code_block_backticks = 3;
+    cmark_with_options(doc, &mut out, None, options).ok();
+    out
+}
+
+/// Remove all links in markdown documentation.
+pub fn remove_links(markdown: &str) -> String {
+    let mut drop_link = false;
+
+    let mut opts = Options::empty();
+    opts.insert(Options::ENABLE_FOOTNOTES);
+
+    let doc = Parser::new_with_broken_link_callback(
+        markdown,
+        opts,
+        Some(&|_, _| Some((String::new(), String::new()))),
+    );
+    let doc = doc.filter_map(move |evt| match evt {
+        Event::Start(Tag::Link(link_type, ref target, ref title)) => {
+            if link_type == LinkType::Inline && target.contains("://") {
+                Some(Event::Start(Tag::Link(link_type, target.clone(), title.clone())))
+            } else {
+                drop_link = true;
+                None
+            }
+        }
+        Event::End(_) if drop_link => {
+            drop_link = false;
+            None
+        }
+        _ => Some(evt),
+    });
+
     let mut out = String::new();
     let mut options = CmarkOptions::default();
     options.code_block_backticks = 3;

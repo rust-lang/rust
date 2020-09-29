@@ -307,6 +307,7 @@ impl Config {
             run: data.hoverActions_enable && data.hoverActions_run,
             debug: data.hoverActions_enable && data.hoverActions_debug,
             goto_type_def: data.hoverActions_enable && data.hoverActions_gotoTypeDef,
+            links_in_hover: data.hoverActions_linksInHover,
         };
 
         log::info!("Config::update() = {:#?}", self);
@@ -451,6 +452,7 @@ config_data! {
         hoverActions_gotoTypeDef: bool     = true,
         hoverActions_implementations: bool = true,
         hoverActions_run: bool             = true,
+        hoverActions_linksInHover: bool    = true,
 
         inlayHints_chainingHints: bool      = true,
         inlayHints_maxLength: Option<usize> = None,
