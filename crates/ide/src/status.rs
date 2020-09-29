@@ -37,13 +37,12 @@ pub(crate) fn status(db: &RootDatabase) -> String {
     let macro_syntax_tree_stats = macro_syntax_tree_stats(db);
     let symbols_stats = LibrarySymbolsQuery.in_db(db).entries::<LibrarySymbolsStats>();
     format!(
-        "{}\n{}\n{}\n{} (macros)\n\n\nmemory:\n{}\ngc {:?} seconds ago",
+        "{}\n{}\n{}\n{} (macros)\n{} total\n",
         files_stats,
         symbols_stats,
         syntax_tree_stats,
         macro_syntax_tree_stats,
         memory_usage(),
-        db.last_gc.elapsed().as_secs(),
     )
 }
 
@@ -121,7 +120,7 @@ struct LibrarySymbolsStats {
 
 impl fmt::Display for LibrarySymbolsStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} ({}) symbols", self.total, self.size)
+        write!(fmt, "{} ({}) index symbols", self.total, self.size)
     }
 }
 

@@ -144,10 +144,6 @@ impl AnalysisHost {
         self.db.apply_change(change)
     }
 
-    pub fn maybe_collect_garbage(&mut self) {
-        self.db.maybe_collect_garbage();
-    }
-
     pub fn collect_garbage(&mut self) {
         self.db.collect_garbage();
     }
