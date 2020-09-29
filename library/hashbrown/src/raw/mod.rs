@@ -262,7 +262,7 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     calculate_layout_(mem::align_of::<T>(), mem::size_of::<T>(), buckets)
 }
 
-#[cfg_attr(feature = "inline-more", inline)]
+#[inline]
 #[cfg(not(feature = "nightly"))]
 fn calculate_layout_(align_of: usize, size_of: usize, buckets: usize) -> Option<(Layout, usize)> {
     debug_assert!(buckets.is_power_of_two());
@@ -377,6 +377,8 @@ pub struct RawTable<T, A: Allocator + Clone = Global> {
     marker: PhantomData<T>,
 }
 
+/// Non-generic part of `RawTable` which allows functions to be instantiated only once regardless
+/// of how many different key-value types are used.
 struct RawTableInner<A> {
     // Mask to get an index from a hash value. The value is one less than the
     // number of buckets in the table.
@@ -883,7 +885,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     pub fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
         unsafe {
             let index = self.table.find_insert_slot(hash);
-            let bucket = self.bucket(index);
+            let bucket = self.table.bucket(index);
 
             // If we are replacing a DELETED entry then we don't need to update
             // the load counter.
@@ -1139,6 +1141,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    #[inline]
     unsafe fn fallible_with_capacity_inner(
         alloc: A,
         buckets: usize,
@@ -1156,7 +1159,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// a new element.
     ///
     /// There must be at least 1 empty bucket in the table.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn find_insert_slot(&self, hash: u64) -> usize {
         let mut probe_seq = self.table.probe_seq(hash);
         loop {
@@ -1189,6 +1192,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    #[inline]
     fn prepare_rehash_in_place(&mut self) {
         unsafe {
             // Bulk convert all full control bytes to DELETED, and all DELETED
@@ -1212,16 +1216,19 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn bucket<T>(&self, index: usize) -> Bucket<T> {
         debug_assert_ne!(self.bucket_mask, 0);
         debug_assert!(index < self.buckets());
-        Bucket::from_base_index(self.data_end().cast::<T>(), index)
+        Bucket::from_base_index(self.data_end(), index)
     }
 
-    unsafe fn data_end(&self) -> NonNull<u8> {
-        NonNull::new_unchecked(self.ctrl.as_ptr())
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn data_end<T>(&self) -> NonNull<T> {
+        NonNull::new_unchecked(self.ctrl.as_ptr() as *mut T)
     }
 
+    #[inline]
     unsafe fn search_new_slot(&mut self, i: usize, hash: u64) -> Slot {
         // Search for a suitable place to put it
         let new_i = self.find_insert_slot(hash);
@@ -1257,7 +1264,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// This iterator never terminates, but is guaranteed to visit each bucket
     /// group exactly once. The loop using `probe_seq` must terminate upon
     /// reaching a group containing an empty bucket.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn probe_seq(&self, hash: u64) -> ProbeSeq {
         ProbeSeq {
             pos: h1(hash) & self.bucket_mask,
@@ -1267,7 +1274,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
     /// Sets a control byte, and possibly also the replicated control byte at
     /// the end of the array.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn set_ctrl(&self, index: usize, ctrl: u8) {
         // Replicate the first Group::WIDTH control bytes at the end of
         // the array without using a branch:
@@ -1294,23 +1301,23 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     }
 
     /// Returns a pointer to a control byte.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn ctrl(&self, index: usize) -> *mut u8 {
         debug_assert!(index < self.num_ctrl_bytes());
         self.ctrl.as_ptr().add(index)
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn buckets(&self) -> usize {
         self.bucket_mask + 1
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn num_ctrl_bytes(&self) -> usize {
         self.bucket_mask + 1 + Group::WIDTH
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn is_empty_singleton(&self) -> bool {
         self.bucket_mask == 0
     }
@@ -1319,6 +1326,8 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         (start..self.buckets()).find(|&i| *self.ctrl(i) == DELETED)
     }
 
+    #[allow(clippy::mut_mut)]
+    #[inline]
     unsafe fn rehash_panic_guard<'s>(
         &'s mut self,
         needs_drop: bool,
@@ -1338,6 +1347,8 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         })
     }
 
+    #[allow(clippy::mut_mut)]
+    #[inline]
     unsafe fn resize_panic_guard<'s>(
         &'s mut self,
         layout: fn(usize) -> Option<(Layout, usize)>,
@@ -1353,7 +1364,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         })
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn free_buckets(&mut self, layout: Layout, ctrl_offset: usize) {
         self.alloc.deallocate(
             NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)),
@@ -1362,7 +1373,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     }
 
     /// Marks all table buckets as empty without dropping their contents.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn clear_no_drop(&mut self) {
         if !self.is_empty_singleton() {
             unsafe {
@@ -1373,7 +1384,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         self.growth_left = bucket_mask_to_capacity(self.bucket_mask);
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn erase(&mut self, index: usize) {
         debug_assert!(is_full(*self.ctrl(index)));
         let index_before = index.wrapping_sub(Group::WIDTH) & self.bucket_mask;
@@ -1492,7 +1503,7 @@ impl<T: Copy, A: Allocator + Clone> RawTableClone for RawTable<T, A> {
             .copy_to_nonoverlapping(self.table.ctrl(0), self.table.num_ctrl_bytes());
         source
             .data_start()
-            .copy_to_nonoverlapping(self.data_start(), self.buckets());
+            .copy_to_nonoverlapping(self.data_start(), self.table.buckets());
 
         self.table.items = source.table.items;
         self.table.growth_left = source.table.growth_left;
@@ -1550,7 +1561,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
         // elements one by one. We don't do this if we have the same number of
         // buckets as the source since we can just copy the contents directly
         // in that case.
-        if self.buckets() != source.buckets()
+        if self.table.buckets() != source.table.buckets()
             && bucket_mask_to_capacity(self.table.bucket_mask) >= source.len()
         {
             self.clear();
@@ -1670,7 +1681,7 @@ impl<T> RawIterRange<T> {
     #[cfg(feature = "rayon")]
     pub(crate) fn split(mut self) -> (Self, Option<RawIterRange<T>>) {
         unsafe {
-            if self.end <= self.next_ctrl {
+            if self.inner.end <= self.inner.next_ctrl {
                 // Nothing to split if the group that we are current processing
                 // is the last one.
                 (self, None)
@@ -1678,7 +1689,7 @@ impl<T> RawIterRange<T> {
                 // len is the remaining number of elements after the group that
                 // we are currently processing. It must be a multiple of the
                 // group size (small tables are caught by the check above).
-                let len = offset_from(self.end, self.next_ctrl);
+                let len = offset_from(self.inner.end, self.inner.next_ctrl);
                 debug_assert_eq!(len % Group::WIDTH, 0);
 
                 // Split the remaining elements into two halves, but round the
@@ -1690,7 +1701,7 @@ impl<T> RawIterRange<T> {
                 let mid = (len / 2) & !(Group::WIDTH - 1);
 
                 let tail = Self::new(
-                    self.next_ctrl.add(mid),
+                    self.inner.next_ctrl.add(mid),
                     self.data.next_n(Group::WIDTH).next_n(mid),
                     len - mid,
                 );
@@ -1698,9 +1709,9 @@ impl<T> RawIterRange<T> {
                     self.data.next_n(Group::WIDTH).next_n(mid).ptr,
                     tail.data.ptr
                 );
-                debug_assert_eq!(self.end, tail.end);
-                self.end = self.next_ctrl.add(mid);
-                debug_assert_eq!(self.end.add(Group::WIDTH), tail.next_ctrl);
+                debug_assert_eq!(self.inner.end, tail.inner.end);
+                self.inner.end = self.inner.next_ctrl.add(mid);
+                debug_assert_eq!(self.inner.end.add(Group::WIDTH), tail.inner.next_ctrl);
                 (self, Some(tail))
             }
         }
@@ -1854,7 +1865,7 @@ impl<T> RawIter<T> {
                 return;
             }
 
-            if self.iter.next_ctrl < self.iter.end
+            if self.iter.inner.next_ctrl < self.iter.inner.end
                 && b.as_ptr() <= self.iter.data.next_n(Group::WIDTH).as_ptr()
             {
                 // The iterator has not yet reached the bucket's group.
@@ -1865,7 +1876,7 @@ impl<T> RawIter<T> {
                     // To do that, we need to find its control byte. We know that self.iter.data is
                     // at self.iter.next_ctrl - Group::WIDTH, so we work from there:
                     let offset = offset_from(self.iter.data.as_ptr(), b.as_ptr());
-                    let ctrl = self.iter.next_ctrl.sub(Group::WIDTH).add(offset);
+                    let ctrl = self.iter.inner.next_ctrl.sub(Group::WIDTH).add(offset);
                     // This method should be called _before_ a removal, or _after_ an insert,
                     // so in both cases the ctrl byte should indicate that the bucket is full.
                     assert!(is_full(*ctrl));
@@ -1888,7 +1899,7 @@ impl<T> RawIter<T> {
             //  - Otherwise, update the iterator cached group so that it won't
             //    yield a to-be-removed bucket, or _will_ yield a to-be-added bucket.
             //    We'll also need ot update the item count accordingly.
-            if let Some(index) = self.iter.current_group.lowest_set_bit() {
+            if let Some(index) = self.iter.inner.current_group.lowest_set_bit() {
                 let next_bucket = self.iter.data.next_n(index);
                 if b.as_ptr() > next_bucket.as_ptr() {
                     // The toggled bucket is "before" the bucket the iterator would yield next. We
@@ -1909,7 +1920,7 @@ impl<T> RawIter<T> {
                     // Instead, we _just_ flip the bit for the particular bucket the caller asked
                     // us to reflect.
                     let our_bit = offset_from(self.iter.data.as_ptr(), b.as_ptr());
-                    let was_full = self.iter.current_group.flip(our_bit);
+                    let was_full = self.iter.inner.current_group.flip(our_bit);
                     debug_assert_ne!(was_full, is_insert);
 
                     if is_insert {
@@ -1921,10 +1932,16 @@ impl<T> RawIter<T> {
                     if cfg!(debug_assertions) {
                         if b.as_ptr() == next_bucket.as_ptr() {
                             // The removed bucket should no longer be next
-                            debug_assert_ne!(self.iter.current_group.lowest_set_bit(), Some(index));
+                            debug_assert_ne!(
+                                self.iter.inner.current_group.lowest_set_bit(),
+                                Some(index)
+                            );
                         } else {
                             // We should not have changed what bucket comes next.
-                            debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
+                            debug_assert_eq!(
+                                self.iter.inner.current_group.lowest_set_bit(),
+                                Some(index)
+                            );
                         }
                     }
                 }
