@@ -1,5 +1,5 @@
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:15:5
+  --> $DIR/lint-const-item-mutation.rs:17:5
    |
 LL |     ARRAY[0] = 5;
    |     ^^^^^^^^^^^^
@@ -7,39 +7,39 @@ LL |     ARRAY[0] = 5;
    = note: `#[warn(const_item_mutation)]` on by default
    = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:11:1
+  --> $DIR/lint-const-item-mutation.rs:12:1
    |
 LL | const ARRAY: [u8; 1] = [25];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:16:5
+  --> $DIR/lint-const-item-mutation.rs:18:5
    |
 LL |     MY_STRUCT.field = false;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:12:1
+  --> $DIR/lint-const-item-mutation.rs:13:1
    |
-LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'] };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:17:5
+  --> $DIR/lint-const-item-mutation.rs:19:5
    |
 LL |     MY_STRUCT.inner_array[0] = 'b';
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:12:1
+  --> $DIR/lint-const-item-mutation.rs:13:1
    |
-LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'] };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:18:5
+  --> $DIR/lint-const-item-mutation.rs:20:5
    |
 LL |     MY_STRUCT.use_mut();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -47,18 +47,18 @@ LL |     MY_STRUCT.use_mut();
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: mutable reference created due to call to this method
-  --> $DIR/lint-const-item-mutation.rs:8:5
+  --> $DIR/lint-const-item-mutation.rs:9:5
    |
 LL |     fn use_mut(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:12:1
+  --> $DIR/lint-const-item-mutation.rs:13:1
    |
-LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'] };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:19:5
+  --> $DIR/lint-const-item-mutation.rs:21:5
    |
 LL |     &mut MY_STRUCT;
    |     ^^^^^^^^^^^^^^
@@ -66,13 +66,13 @@ LL |     &mut MY_STRUCT;
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:12:1
+  --> $DIR/lint-const-item-mutation.rs:13:1
    |
-LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'] };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:20:5
+  --> $DIR/lint-const-item-mutation.rs:22:5
    |
 LL |     (&mut MY_STRUCT).use_mut();
    |     ^^^^^^^^^^^^^^^^
@@ -80,10 +80,10 @@ LL |     (&mut MY_STRUCT).use_mut();
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:12:1
+  --> $DIR/lint-const-item-mutation.rs:13:1
    |
-LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'] };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: 6 warnings emitted
 
