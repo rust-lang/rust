@@ -1,6 +1,6 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::config::nightly_options;
@@ -49,7 +49,9 @@ pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) -> boo
         return false;
     }
 
-    op.emit_error(ccx, span);
+    let mut err = op.build_error(ccx, span);
+    assert!(err.is_error());
+    err.emit();
     true
 }
 
@@ -69,7 +71,7 @@ pub trait NonConstOp: std::fmt::Debug {
         Status::Forbidden
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -94,7 +96,8 @@ pub trait NonConstOp: std::fmt::Debug {
                       expression! However, you can use it anywhere else.",
             );
         }
-        err.emit();
+
+        err
     }
 }
 
@@ -105,8 +108,8 @@ impl NonConstOp for Abort {
         mcf_status_in_item(ccx)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        mcf_emit_error(ccx, span, "abort is not stable in const fn")
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        mcf_build_error(ccx, span, "abort is not stable in const fn")
     }
 }
 
@@ -121,14 +124,13 @@ impl NonConstOp for FloatingPointOp {
         }
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_floating_point_arithmetic,
             span,
             &format!("floating point arithmetic is not allowed in {}s", ccx.const_kind()),
         )
-        .emit();
     }
 }
 
@@ -136,10 +138,8 @@ impl NonConstOp for FloatingPointOp {
 #[derive(Debug)]
 pub struct FnCallIndirect;
 impl NonConstOp for FnCallIndirect {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        let mut err =
-            ccx.tcx.sess.struct_span_err(span, "function pointers are not allowed in const fn");
-        err.emit();
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        ccx.tcx.sess.struct_span_err(span, "function pointers are not allowed in const fn")
     }
 }
 
@@ -147,16 +147,15 @@ impl NonConstOp for FnCallIndirect {
 #[derive(Debug)]
 pub struct FnCallNonConst(pub DefId);
 impl NonConstOp for FnCallNonConst {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        let mut err = struct_span_err!(
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        struct_span_err!(
             ccx.tcx.sess,
             span,
             E0015,
             "calls in {}s are limited to constant functions, \
              tuple structs and tuple variants",
             ccx.const_kind(),
-        );
-        err.emit();
+        )
     }
 }
 
@@ -167,7 +166,7 @@ impl NonConstOp for FnCallNonConst {
 pub struct FnCallUnstable(pub DefId, pub Option<Symbol>);
 
 impl NonConstOp for FnCallUnstable {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let FnCallUnstable(def_id, feature) = *self;
 
         let mut err = ccx.tcx.sess.struct_span_err(
@@ -185,7 +184,8 @@ impl NonConstOp for FnCallUnstable {
                 ));
             }
         }
-        err.emit();
+
+        err
     }
 }
 
@@ -202,14 +202,13 @@ impl NonConstOp for FnPtrCast {
         }
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_fn_ptr_basics,
             span,
             &format!("function pointer casts are not allowed in {}s", ccx.const_kind()),
         )
-        .emit()
     }
 }
 
@@ -220,15 +219,15 @@ impl NonConstOp for Generator {
         Status::Forbidden
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        ccx.tcx.sess.struct_span_err(span, "Generators and `async` functions cannot be `const`").emit();
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        ccx.tcx.sess.struct_span_err(span, "Generators and `async` functions cannot be `const`")
     }
 }
 
 #[derive(Debug)]
 pub struct HeapAllocation;
 impl NonConstOp for HeapAllocation {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -245,7 +244,7 @@ impl NonConstOp for HeapAllocation {
                  be done at compile time.",
             );
         }
-        err.emit();
+        err
     }
 }
 
@@ -258,25 +257,25 @@ pub struct LiveDrop {
     pub dropped_at: Option<Span>,
 }
 impl NonConstOp for LiveDrop {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        let mut diagnostic = struct_span_err!(
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
             E0493,
             "destructors cannot be evaluated at compile-time"
         );
-        diagnostic.span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()));
+        err.span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()));
         if let Some(span) = self.dropped_at {
-            diagnostic.span_label(span, "value is dropped here");
+            err.span_label(span, "value is dropped here");
         }
-        diagnostic.emit();
+        err
     }
 }
 
 #[derive(Debug)]
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -284,7 +283,6 @@ impl NonConstOp for CellBorrow {
             "cannot borrow a constant which may contain \
             interior mutability, create a static instead"
         )
-        .emit();
     }
 }
 
@@ -300,7 +298,7 @@ impl NonConstOp for MutBorrow {
         }
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let mut err = if ccx.const_kind() == hir::ConstContext::ConstFn {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
@@ -331,7 +329,7 @@ impl NonConstOp for MutBorrow {
                       static mut or a global UnsafeCell.",
             );
         }
-        err.emit();
+        err
     }
 }
 
@@ -348,14 +346,13 @@ impl NonConstOp for MutAddressOf {
         }
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_mut_refs,
             span,
             &format!("`&raw mut` is not allowed in {}s", ccx.const_kind()),
         )
-        .emit();
     }
 }
 
@@ -374,21 +371,20 @@ impl NonConstOp for Panic {
         Status::Unstable(sym::const_panic)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_panic,
             span,
             &format!("panicking in {}s is unstable", ccx.const_kind()),
         )
-        .emit();
     }
 }
 
 #[derive(Debug)]
 pub struct RawPtrComparison;
 impl NonConstOp for RawPtrComparison {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let mut err = ccx
             .tcx
             .sess
@@ -397,7 +393,7 @@ impl NonConstOp for RawPtrComparison {
             "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> \
             for more information",
         );
-        err.emit();
+        err
     }
 }
 
@@ -408,14 +404,13 @@ impl NonConstOp for RawPtrDeref {
         Status::Unstable(sym::const_raw_ptr_deref)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_raw_ptr_deref,
             span,
             &format!("dereferencing raw pointers in {}s is unstable", ccx.const_kind(),),
         )
-        .emit();
     }
 }
 
@@ -426,14 +421,13 @@ impl NonConstOp for RawPtrToIntCast {
         Status::Unstable(sym::const_raw_ptr_to_usize_cast)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_raw_ptr_to_usize_cast,
             span,
             &format!("casting pointers to integers in {}s is unstable", ccx.const_kind(),),
         )
-        .emit();
     }
 }
 
@@ -449,7 +443,7 @@ impl NonConstOp for StaticAccess {
         }
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -467,7 +461,7 @@ impl NonConstOp for StaticAccess {
             );
             err.help("To fix this, the value can be extracted to a `const` and then used.");
         }
-        err.emit();
+        err
     }
 }
 
@@ -475,7 +469,7 @@ impl NonConstOp for StaticAccess {
 #[derive(Debug)]
 pub struct ThreadLocalAccess;
 impl NonConstOp for ThreadLocalAccess {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -483,7 +477,6 @@ impl NonConstOp for ThreadLocalAccess {
             "thread-local statics cannot be \
             accessed at compile-time"
         )
-        .emit();
     }
 }
 
@@ -498,15 +491,15 @@ impl NonConstOp for Transmute {
         }
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        feature_err(
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        let mut err = feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_transmute,
             span,
             &format!("`transmute` is not allowed in {}s", ccx.const_kind()),
-        )
-        .note("`transmute` is only allowed in constants and statics for now")
-        .emit();
+        );
+        err.note("`transmute` is only allowed in constants and statics for now");
+        err
     }
 }
 
@@ -522,14 +515,13 @@ impl NonConstOp for UnionAccess {
         }
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_union,
             span,
             "unions in const fn are unstable",
         )
-        .emit();
     }
 }
 
@@ -543,12 +535,12 @@ impl NonConstOp for UnsizingCast {
         mcf_status_in_item(ccx)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        mcf_emit_error(
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        mcf_build_error(
             ccx,
             span,
             "unsizing casts to types besides slices are not allowed in const fn",
-        );
+        )
     }
 }
 
@@ -565,14 +557,13 @@ pub mod ty {
             Status::Unstable(sym::const_mut_refs)
         }
 
-        fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+        fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_mut_refs,
                 span,
                 &format!("mutable references are not allowed in {}s", ccx.const_kind()),
             )
-            .emit()
         }
     }
 
@@ -589,14 +580,13 @@ pub mod ty {
             }
         }
 
-        fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+        fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_fn_fn_ptr_basics,
                 span,
                 &format!("function pointers cannot appear in {}s", ccx.const_kind()),
             )
-            .emit()
         }
     }
 
@@ -607,8 +597,8 @@ pub mod ty {
             mcf_status_in_item(ccx)
         }
 
-        fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-            mcf_emit_error(ccx, span, "`impl Trait` in const fn is unstable");
+        fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+            mcf_build_error(ccx, span, "`impl Trait` in const fn is unstable")
         }
     }
 
@@ -621,12 +611,12 @@ pub mod ty {
             mcf_status_in_item(ccx)
         }
 
-        fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-            mcf_emit_error(
+        fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+            mcf_build_error(
                 ccx,
                 span,
                 "trait bounds other than `Sized` on const fn parameters are unstable",
-            );
+            )
         }
     }
 
@@ -638,14 +628,13 @@ pub mod ty {
             Status::Unstable(sym::const_trait_bound_opt_out)
         }
 
-        fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+        fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_trait_bound_opt_out,
                 span,
                 "`?const Trait` syntax is unstable",
             )
-            .emit()
         }
     }
 }
@@ -658,12 +647,12 @@ fn mcf_status_in_item(ccx: &ConstCx<'_, '_>) -> Status {
     }
 }
 
-fn mcf_emit_error(ccx: &ConstCx<'_, '_>, span: Span, msg: &str) {
-    struct_span_err!(ccx.tcx.sess, span, E0723, "{}", msg)
-        .note(
-            "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
+fn mcf_build_error(ccx: &ConstCx<'_, 'tcx>, span: Span, msg: &str) -> DiagnosticBuilder<'tcx> {
+    let mut err = struct_span_err!(ccx.tcx.sess, span, E0723, "{}", msg);
+    err.note(
+        "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
              for more information",
-        )
-        .help("add `#![feature(const_fn)]` to the crate attributes to enable")
-        .emit();
+    );
+    err.help("add `#![feature(const_fn)]` to the crate attributes to enable");
+    err
 }
