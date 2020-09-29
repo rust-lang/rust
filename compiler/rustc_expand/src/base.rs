@@ -1,10 +1,9 @@
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirectoryOwnership;
 
-use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, TokenStream};
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
@@ -313,7 +312,7 @@ where
         ts: TokenStream,
     ) -> Result<TokenStream, ErrorReported> {
         // FIXME setup implicit context in TLS before calling self.
-        Ok((*self)(ts))
+        Ok(self(ts))
     }
 }
 
@@ -339,7 +338,7 @@ where
         annotated: TokenStream,
     ) -> Result<TokenStream, ErrorReported> {
         // FIXME setup implicit context in TLS before calling self.
-        Ok((*self)(annotation, annotated))
+        Ok(self(annotation, annotated))
     }
 }
 
@@ -364,31 +363,9 @@ where
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        mut input: TokenStream,
+        input: TokenStream,
     ) -> Box<dyn MacResult + 'cx> {
-        struct AvoidInterpolatedIdents;
-
-        impl MutVisitor for AvoidInterpolatedIdents {
-            fn visit_tt(&mut self, tt: &mut tokenstream::TokenTree) {
-                if let tokenstream::TokenTree::Token(token) = tt {
-                    if let token::Interpolated(nt) = &token.kind {
-                        if let token::NtIdent(ident, is_raw) = **nt {
-                            *tt = tokenstream::TokenTree::token(
-                                token::Ident(ident.name, is_raw),
-                                ident.span,
-                            );
-                        }
-                    }
-                }
-                mut_visit::noop_visit_tt(tt, self)
-            }
-
-            fn visit_mac(&mut self, mac: &mut ast::MacCall) {
-                mut_visit::noop_visit_mac(mac, self)
-            }
-        }
-        AvoidInterpolatedIdents.visit_tts(&mut input);
-        (*self)(ecx, span, input)
+        self(ecx, span, input)
     }
 }
 

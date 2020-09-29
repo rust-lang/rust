@@ -345,3 +345,32 @@ fn array_map_drop_safety() {
     assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
     panic!("test succeeded")
 }
+
+#[test]
+fn cell_allows_array_cycle() {
+    use core::cell::Cell;
+
+    #[derive(Debug)]
+    struct B<'a> {
+        a: [Cell<Option<&'a B<'a>>>; 2],
+    }
+
+    impl<'a> B<'a> {
+        fn new() -> B<'a> {
+            B { a: [Cell::new(None), Cell::new(None)] }
+        }
+    }
+
+    let b1 = B::new();
+    let b2 = B::new();
+    let b3 = B::new();
+
+    b1.a[0].set(Some(&b2));
+    b1.a[1].set(Some(&b3));
+
+    b2.a[0].set(Some(&b2));
+    b2.a[1].set(Some(&b3));
+
+    b3.a[0].set(Some(&b1));
+    b3.a[1].set(Some(&b2));
+}

@@ -95,6 +95,7 @@ pub fn run(options: Options) -> Result<(), ErrorReported> {
         lint_caps,
         register_lints: None,
         override_queries: None,
+        make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
     };
 

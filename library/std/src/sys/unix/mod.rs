@@ -93,60 +93,61 @@ pub fn init() {
         reset_sigpipe();
     }
 
-    // In the case when all file descriptors are open, the poll has been
-    // observed to perform better than fcntl (on GNU/Linux).
-    #[cfg(not(any(
-        miri,
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        // The poll on Darwin doesn't set POLLNVAL for closed fds.
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "redox",
-    )))]
-    unsafe fn sanitize_standard_fds() {
-        use crate::sys::os::errno;
-        let pfds: &mut [_] = &mut [
-            libc::pollfd { fd: 0, events: 0, revents: 0 },
-            libc::pollfd { fd: 1, events: 0, revents: 0 },
-            libc::pollfd { fd: 2, events: 0, revents: 0 },
-        ];
-        while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
-            if errno() == libc::EINTR {
-                continue;
-            }
-            libc::abort();
-        }
-        for pfd in pfds {
-            if pfd.revents & libc::POLLNVAL == 0 {
-                continue;
-            }
-            if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
-                // If the stream is closed but we failed to reopen it, abort the
-                // process. Otherwise we wouldn't preserve the safety of
-                // operations on the corresponding Rust object Stdin, Stdout, or
-                // Stderr.
-                libc::abort();
-            }
-        }
-    }
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "redox"))]
-    unsafe fn sanitize_standard_fds() {
-        use crate::sys::os::errno;
-        for fd in 0..3 {
-            if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+    cfg_if::cfg_if! {
+        if #[cfg(miri)] {
+            // The standard fds are always available in Miri.
+            unsafe fn sanitize_standard_fds() {}
+        } else if #[cfg(not(any(
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            // The poll on Darwin doesn't set POLLNVAL for closed fds.
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "redox",
+        )))] {
+            // In the case when all file descriptors are open, the poll has been
+            // observed to perform better than fcntl (on GNU/Linux).
+            unsafe fn sanitize_standard_fds() {
+                use crate::sys::os::errno;
+                let pfds: &mut [_] = &mut [
+                    libc::pollfd { fd: 0, events: 0, revents: 0 },
+                    libc::pollfd { fd: 1, events: 0, revents: 0 },
+                    libc::pollfd { fd: 2, events: 0, revents: 0 },
+                ];
+                while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
+                    if errno() == libc::EINTR {
+                        continue;
+                    }
                     libc::abort();
                 }
+                for pfd in pfds {
+                    if pfd.revents & libc::POLLNVAL == 0 {
+                        continue;
+                    }
+                    if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                        // If the stream is closed but we failed to reopen it, abort the
+                        // process. Otherwise we wouldn't preserve the safety of
+                        // operations on the corresponding Rust object Stdin, Stdout, or
+                        // Stderr.
+                        libc::abort();
+                    }
+                }
             }
+        } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "redox"))] {
+            unsafe fn sanitize_standard_fds() {
+                use crate::sys::os::errno;
+                for fd in 0..3 {
+                    if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
+                        if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                            libc::abort();
+                        }
+                    }
+                }
+            }
+        } else {
+            unsafe fn sanitize_standard_fds() {}
         }
     }
-    #[cfg(any(
-        // The standard fds are always available in Miri.
-        miri,
-        target_os = "emscripten",
-        target_os = "fuchsia"))]
-    unsafe fn sanitize_standard_fds() {}
 
     #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia")))]
     unsafe fn reset_sigpipe() {

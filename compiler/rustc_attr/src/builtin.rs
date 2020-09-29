@@ -145,8 +145,6 @@ pub struct ConstStability {
     pub feature: Symbol,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
-    /// whether the function has a `#[rustc_allow_const_fn_ptr]` attribute
-    pub allow_const_fn_ptr: bool,
 }
 
 /// The available stability levels.
@@ -190,7 +188,6 @@ where
     let mut stab: Option<Stability> = None;
     let mut const_stab: Option<ConstStability> = None;
     let mut promotable = false;
-    let mut allow_const_fn_ptr = false;
     let diagnostic = &sess.parse_sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
@@ -200,7 +197,6 @@ where
             sym::unstable,
             sym::stable,
             sym::rustc_promotable,
-            sym::rustc_allow_const_fn_ptr,
         ]
         .iter()
         .any(|&s| attr.has_name(s))
@@ -214,9 +210,6 @@ where
 
         if attr.has_name(sym::rustc_promotable) {
             promotable = true;
-        }
-        if attr.has_name(sym::rustc_allow_const_fn_ptr) {
-            allow_const_fn_ptr = true;
         }
         // attributes with data
         else if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta {
@@ -360,12 +353,8 @@ where
                             if sym::unstable == meta_name {
                                 stab = Some(Stability { level, feature });
                             } else {
-                                const_stab = Some(ConstStability {
-                                    level,
-                                    feature,
-                                    promotable: false,
-                                    allow_const_fn_ptr: false,
-                                });
+                                const_stab =
+                                    Some(ConstStability { level, feature, promotable: false });
                             }
                         }
                         (None, _, _) => {
@@ -440,12 +429,8 @@ where
                             if sym::stable == meta_name {
                                 stab = Some(Stability { level, feature });
                             } else {
-                                const_stab = Some(ConstStability {
-                                    level,
-                                    feature,
-                                    promotable: false,
-                                    allow_const_fn_ptr: false,
-                                });
+                                const_stab =
+                                    Some(ConstStability { level, feature, promotable: false });
                             }
                         }
                         (None, _) => {
@@ -464,18 +449,16 @@ where
     }
 
     // Merge the const-unstable info into the stability info
-    if promotable || allow_const_fn_ptr {
+    if promotable {
         if let Some(ref mut stab) = const_stab {
             stab.promotable = promotable;
-            stab.allow_const_fn_ptr = allow_const_fn_ptr;
         } else {
             struct_span_err!(
                 diagnostic,
                 item_sp,
                 E0717,
-                "rustc_promotable and rustc_allow_const_fn_ptr attributes \
-                      must be paired with either a rustc_const_unstable or a rustc_const_stable \
-                      attribute"
+                "`rustc_promotable` attribute must be paired with either a `rustc_const_unstable` \
+                or a `rustc_const_stable` attribute"
             )
             .emit();
         }

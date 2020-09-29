@@ -419,6 +419,7 @@ pub fn run_core(
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
+        make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
     };
 
