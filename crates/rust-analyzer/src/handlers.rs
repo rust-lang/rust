@@ -1022,11 +1022,12 @@ pub(crate) fn handle_code_lens_resolve(
                 })
                 .unwrap_or_default();
 
+            let title = reference_title(locations.len());
             let cmd = if locations.is_empty() {
-                Command { title: "No references".into(), command: "".into(), arguments: None }
+                Command { title, command: "".into(), arguments: None }
             } else {
                 show_references_command(
-                    reference_title(locations.len()),
+                    title,
                     &doc_position.text_document.uri,
                     code_lens.range.start,
                     locations,
