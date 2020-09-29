@@ -208,10 +208,13 @@ impl EarlyProps {
                 config.parse_name_value_directive(line, "needs-llvm-components")
             {
                 let components: HashSet<_> = config.llvm_components.split_whitespace().collect();
-                if !needed_components
+                if let Some(missing_component) = needed_components
                     .split_whitespace()
-                    .all(|needed_component| components.contains(needed_component))
+                    .find(|needed_component| !components.contains(needed_component))
                 {
+                    if env::var_os("COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS").is_some() {
+                        panic!("missing LLVM component: {}", missing_component);
+                    }
                     return true;
                 }
             }
