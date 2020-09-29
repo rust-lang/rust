@@ -181,7 +181,14 @@ impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
     }
 }
 
-struct CraneliftCodegenBackend;
+#[derive(Copy, Clone, Debug)]
+pub struct BackendConfig {
+    pub use_jit: bool,
+}
+
+pub struct CraneliftCodegenBackend {
+    pub config: BackendConfig,
+}
 
 impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
@@ -223,7 +230,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        let res = driver::codegen_crate(tcx, metadata, need_metadata_module);
+        let res = driver::codegen_crate(tcx, metadata, need_metadata_module, self.config);
 
         rustc_symbol_mangling::test::report_symbol_names(tcx);
 
@@ -345,5 +352,9 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend)
+    Box::new(CraneliftCodegenBackend {
+        config: BackendConfig {
+            use_jit: false,
+        }
+    })
 }

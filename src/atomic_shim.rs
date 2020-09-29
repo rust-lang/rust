@@ -10,10 +10,14 @@ use crate::prelude::*;
 pub static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t =
     libc::PTHREAD_MUTEX_INITIALIZER;
 
-pub(crate) fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut FunctionBuilder<'_>) {
-    if std::env::var("CG_CLIF_JIT").is_ok() {
+pub(crate) fn init_global_lock(
+    module: &mut Module<impl Backend>,
+    bcx: &mut FunctionBuilder<'_>,
+    use_jit: bool,
+) {
+    if use_jit {
         // When using JIT, dylibs won't find the __cg_clif_global_atomic_mutex data object defined here,
-        // so instead define it in the cg_clif dylib.
+        // so instead we define it in the cg_clif dylib.
 
         return;
     }
@@ -80,7 +84,7 @@ pub(crate) fn init_global_lock_constructor(
         let block = bcx.create_block();
         bcx.switch_to_block(block);
 
-        crate::atomic_shim::init_global_lock(module, &mut bcx);
+        crate::atomic_shim::init_global_lock(module, &mut bcx, false);
 
         bcx.ins().return_(&[]);
         bcx.seal_all_blocks();

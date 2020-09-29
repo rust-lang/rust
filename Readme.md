@@ -36,7 +36,24 @@ If you compiled cg_clif in debug mode (aka you didn't pass `--release` to `./tes
 > You should prefer using the Cargo method.
 
 ```bash
-$ rustc +$(cat $cg_clif_dir/rust-toolchain) -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/release/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
+$ $cg_clif_dir/target/release/cg_clif my_crate.rs
+```
+
+### Jit mode
+
+In jit mode cg_clif will immediately execute your code without creating an executable file.
+
+> This requires all dependencies to be available as dynamic library.
+> The jit mode will probably need cargo integration to make this possible.
+
+```bash
+$ $cg_clif_dir/cargo.sh jit
+```
+
+or
+
+```bash
+$ $cg_clif_dir/target/release/cg_clif --jit my_crate.rs
 ```
 
 ### Shell
@@ -45,7 +62,7 @@ These are a few functions that allow you to easily run rust code from the shell 
 
 ```bash
 function jit_naked() {
-    echo "$@" | CG_CLIF_JIT=1 rustc -Zcodegen-backend=$cg_clif_dir/target/release/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot - -Cprefer-dynamic
+    echo "$@" | $cg_clif_dir/target/release/cg_clif - --jit
 }
 
 function jit() {

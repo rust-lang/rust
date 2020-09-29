@@ -16,15 +16,19 @@ pub(crate) fn codegen_crate(
     tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
+    config: crate::BackendConfig,
 ) -> Box<dyn Any> {
     tcx.sess.abort_if_errors();
 
-    if std::env::var("CG_CLIF_JIT").is_ok()
-        && tcx
+    if config.use_jit {
+        let is_executable = tcx
             .sess
             .crate_types()
-            .contains(&rustc_session::config::CrateType::Executable)
-    {
+            .contains(&rustc_session::config::CrateType::Executable);
+        if !is_executable {
+            tcx.sess.fatal("can't jit non-executable crate");
+        }
+
         #[cfg(feature = "jit")]
         let _: ! = jit::run_jit(tcx);
 

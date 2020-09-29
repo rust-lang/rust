@@ -32,15 +32,18 @@ if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
    fi
 fi
 
-export RUSTFLAGS=$linker' -Ztrim-diagnostic-paths=no -Cpanic=abort -Cdebuginfo=2 -Zpanic-abort-tests -Zcodegen-backend='$(pwd)'/target/'$CHANNEL'/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$(pwd)'/build_sysroot/sysroot'
-export RUSTDOCFLAGS=$RUSTFLAGS
+export RUSTC=$(pwd)/"target/"$CHANNEL"/cg_clif"
+export RUSTFLAGS=$linker
+export RUSTDOCFLAGS=$linker' -Ztrim-diagnostic-paths=no -Cpanic=abort -Zpanic-abort-tests '\
+'-Zcodegen-backend='$(pwd)'/target/'$CHANNEL'/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$(pwd)'/build_sysroot/sysroot'
 
 # FIXME remove once the atomic shim is gone
 if [[ `uname` == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 
-export LD_LIBRARY_PATH="$(pwd)/target/out:$(pwd)/build_sysroot/sysroot/lib/rustlib/$TARGET_TRIPLE/lib"
+export LD_LIBRARY_PATH="$(pwd)/target/out:$(pwd)/build_sysroot/sysroot/lib/rustlib/"$TARGET_TRIPLE"/lib:\
+$(pwd)/target/"$CHANNEL":$(rustc --print sysroot)/lib"
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
 
 export CG_CLIF_DISPLAY_CG_TIME=1

@@ -11,21 +11,23 @@ use crate::prelude::*;
 pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
-    // Rustc opens us without the RTLD_GLOBAL flag, so __cg_clif_global_atomic_mutex will not be
-    // exported. We fix this by opening ourself again as global.
-    // FIXME remove once atomic_shim is gone
-    let cg_dylib = std::ffi::OsString::from(
-        &tcx.sess
-            .opts
-            .debugging_opts
-            .codegen_backend
-            .as_ref()
-            .unwrap(),
-    );
-    std::mem::forget(
-        libloading::os::unix::Library::open(Some(cg_dylib), libc::RTLD_NOW | libc::RTLD_GLOBAL)
-            .unwrap(),
-    );
+    #[cfg(unix)]
+    unsafe {
+        // When not using our custom driver rustc will open us without the RTLD_GLOBAL flag, so
+        // __cg_clif_global_atomic_mutex will not be exported. We fix this by opening ourself again
+        // as global.
+        // FIXME remove once atomic_shim is gone
+
+        let mut dl_info: libc::Dl_info = std::mem::zeroed();
+        assert_ne!(
+            libc::dladdr(run_jit as *const libc::c_void, &mut dl_info),
+            0
+        );
+        assert_ne!(
+            libc::dlopen(dl_info.dli_fname, libc::RTLD_NOW | libc::RTLD_GLOBAL),
+            std::ptr::null_mut(),
+        );
+    }
 
     let imported_symbols = load_imported_symbols_for_jit(tcx);
 
@@ -74,7 +76,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     if !global_asm.is_empty() {
         tcx.sess.fatal("Global asm is not supported in JIT mode");
     }
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context, true);
     crate::allocator::codegen(tcx, &mut jit_module, &mut unwind_context);
 
     jit_module.finalize_definitions();
@@ -85,7 +87,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
 
-    println!("Rustc codegen cranelift will JIT run the executable, because the CG_CLIF_JIT env var is set");
+    println!("Rustc codegen cranelift will JIT run the executable, because --jit was passed");
 
     let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
         unsafe { ::std::mem::transmute(finalized_main) };
