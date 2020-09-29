@@ -1300,49 +1300,49 @@ impl<O> AssertKind<O> {
         match self {
             BoundsCheck { ref len, ref index } => write!(
                 f,
-                "\"index out of bounds: the len is {{}} but the index is {{}}\", {:?}, {:?}",
+                "\"index out of bounds: the length is {{}} but the index is {{}}\", {:?}, {:?}",
                 len, index
             ),
 
             OverflowNeg(op) => {
-                write!(f, "\"attempt to negate {{}} which would overflow\", {:?}", op)
+                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {:?}", op)
             }
-            DivisionByZero(op) => write!(f, "\"attempt to divide {{}} by zero\", {:?}", op),
+            DivisionByZero(op) => write!(f, "\"attempt to divide `{{}}` by zero\", {:?}", op),
             RemainderByZero(op) => write!(
                 f,
-                "\"attempt to calculate the remainder of {{}} with a divisor of zero\", {:?}",
+                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {:?}",
                 op
             ),
             Overflow(BinOp::Add, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} + {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Sub, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} - {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Mul, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} * {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Div, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} / {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Rem, l, r) => write!(
                 f,
-                "\"attempt to compute the remainder of `{{}} % {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Shr, _, r) => {
-                write!(f, "\"attempt to shift right by {{}} which would overflow\", {:?}", r)
+                write!(f, "\"attempt to shift right by `{{}}`, which would overflow\", {:?}", r)
             }
             Overflow(BinOp::Shl, _, r) => {
-                write!(f, "\"attempt to shift left by {{}} which would overflow\", {:?}", r)
+                write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {:?}", r)
             }
             _ => write!(f, "\"{}\"", self.description()),
         }
@@ -1353,36 +1353,40 @@ impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AssertKind::*;
         match self {
-            BoundsCheck { ref len, ref index } => {
-                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
-            }
-            OverflowNeg(op) => write!(f, "attempt to negate {:#?} which would overflow", op),
-            DivisionByZero(op) => write!(f, "attempt to divide {:#?} by zero", op),
-            RemainderByZero(op) => {
-                write!(f, "attempt to calculate the remainder of {:#?} with a divisor of zero", op)
-            }
+            BoundsCheck { ref len, ref index } => write!(
+                f,
+                "index out of bounds: the length is {:?} but the index is {:?}",
+                len, index
+            ),
+            OverflowNeg(op) => write!(f, "attempt to negate `{:#?}`, which would overflow", op),
+            DivisionByZero(op) => write!(f, "attempt to divide `{:#?}` by zero", op),
+            RemainderByZero(op) => write!(
+                f,
+                "attempt to calculate the remainder of `{:#?}` with a divisor of zero",
+                op
+            ),
             Overflow(BinOp::Add, l, r) => {
-                write!(f, "attempt to compute `{:#?} + {:#?}` which would overflow", l, r)
+                write!(f, "attempt to compute `{:#?} + {:#?}`, which would overflow", l, r)
             }
             Overflow(BinOp::Sub, l, r) => {
-                write!(f, "attempt to compute `{:#?} - {:#?}` which would overflow", l, r)
+                write!(f, "attempt to compute `{:#?} - {:#?}`, which would overflow", l, r)
             }
             Overflow(BinOp::Mul, l, r) => {
-                write!(f, "attempt to compute `{:#?} * {:#?}` which would overflow", l, r)
+                write!(f, "attempt to compute `{:#?} * {:#?}`, which would overflow", l, r)
             }
             Overflow(BinOp::Div, l, r) => {
-                write!(f, "attempt to compute `{:#?} / {:#?}` which would overflow", l, r)
+                write!(f, "attempt to compute `{:#?} / {:#?}`, which would overflow", l, r)
             }
             Overflow(BinOp::Rem, l, r) => write!(
                 f,
-                "attempt to compute the remainder of `{:#?} % {:#?}` which would overflow",
+                "attempt to compute the remainder of `{:#?} % {:#?}`, which would overflow",
                 l, r
             ),
             Overflow(BinOp::Shr, _, r) => {
-                write!(f, "attempt to shift right by {:#?} which would overflow", r)
+                write!(f, "attempt to shift right by `{:#?}`, which would overflow", r)
             }
             Overflow(BinOp::Shl, _, r) => {
-                write!(f, "attempt to shift left by {:#?} which would overflow", r)
+                write!(f, "attempt to shift left by `{:#?}`, which would overflow", r)
             }
             _ => write!(f, "{}", self.description()),
         }

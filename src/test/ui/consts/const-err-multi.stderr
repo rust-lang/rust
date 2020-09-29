@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | pub const A: i8 = -std::i8::MIN;
    | ------------------^^^^^^^^^^^^^-
    |                   |
-   |                   attempt to negate i8::MIN which would overflow
+   |                   attempt to negate `i8::MIN`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-err-multi.rs:1:9

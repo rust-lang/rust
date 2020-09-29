@@ -118,7 +118,7 @@
     18:5-18:6: StorageDead: StorageDead(_8)
     9:5-18:6: Goto: goto -&gt; bb28">        </span><span class="code odd" style="--layer: 4" title="bb8: ../instrument-coverage/coverage_of_if_else.rs:10:9: 10:23:
     10:9-10:23: Assign: _7 = CheckedSub(_1, const 4_i32)
-    10:9-10:23: Assert: assert(!move (_7.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _1, const 4_i32) -&gt; [success: bb9, unwind: bb1]"><span class="annotation">8⦊</span>countdown -= 4<span class="annotation">⦉8</span></span><span class="code even" style="--layer: 3" title="bb25: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
+    10:9-10:23: Assert: assert(!move (_7.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _1, const 4_i32) -&gt; [success: bb9, unwind: bb1]"><span class="annotation">8⦊</span>countdown -= 4<span class="annotation">⦉8</span></span><span class="code even" style="--layer: 3" title="bb25: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
     15:9-15:23: Assign: _1 = move (_19.0: i32)
     11:29-16:6: Assign: _4 = const ()
     18:5-18:6: StorageDead: StorageDead(_8)
@@ -223,7 +223,7 @@
     14:9-14:10: StorageDead: StorageDead(_11)
     14:9-14:10: StorageDead: StorageDead(_10)
     15:9-15:23: Assign: _19 = CheckedSub(_1, const 5_i32)
-    15:9-15:23: Assert: assert(!move (_19.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _1, const 5_i32) -&gt; [success: bb25, unwind: bb1]"><span class="annotation">24⦊</span>}</span><span class="code odd" style="--layer: 5" title="bb22: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
+    15:9-15:23: Assert: assert(!move (_19.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _1, const 5_i32) -&gt; [success: bb25, unwind: bb1]"><span class="annotation">24⦊</span>}</span><span class="code odd" style="--layer: 5" title="bb22: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
     12:9-14:10: Assign: _10 = const ()
     12:9-14:10: Goto: goto -&gt; bb24"><span class="annotation">⦉22</span></span><span class="code even" style="--layer: 6" title="bb23: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
     13:13-13:26: Assign: _1 = const 0_i32
@@ -234,12 +234,12 @@
     14:9-14:10: StorageDead: StorageDead(_11)
     14:9-14:10: StorageDead: StorageDead(_10)
     15:9-15:23: Assign: _19 = CheckedSub(_1, const 5_i32)
-    15:9-15:23: Assert: assert(!move (_19.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _1, const 5_i32) -&gt; [success: bb25, unwind: bb1]"></span></span>
+    15:9-15:23: Assert: assert(!move (_19.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _1, const 5_i32) -&gt; [success: bb25, unwind: bb1]"></span></span>
 <span class="line"><span class="code odd" style="--layer: 8" title="bb24: ../instrument-coverage/coverage_of_if_else.rs:14:9: 15:23:
     14:9-14:10: StorageDead: StorageDead(_11)
     14:9-14:10: StorageDead: StorageDead(_10)
     15:9-15:23: Assign: _19 = CheckedSub(_1, const 5_i32)
-    15:9-15:23: Assert: assert(!move (_19.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _1, const 5_i32) -&gt; [success: bb25, unwind: bb1]">        countdown -= 5<span class="annotation">⦉24</span></span><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
+    15:9-15:23: Assert: assert(!move (_19.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _1, const 5_i32) -&gt; [success: bb25, unwind: bb1]">        countdown -= 5<span class="annotation">⦉24</span></span><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
     11:12-18:6: FalseEdge: falseEdge -&gt; [real: bb12, imaginary: bb11]">;</span></span>
 <span class="line"><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
     11:12-18:6: FalseEdge: falseEdge -&gt; [real: bb12, imaginary: bb11]">    } else {</span></span>
@@ -353,7 +353,7 @@
     25:22-27:6: Assign: _24 = const ()
     25:5-34:6: Goto: goto -&gt; bb53">        </span><span class="code odd" style="--layer: 9" title="bb35: ../instrument-coverage/coverage_of_if_else.rs:26:9: 26:23:
     26:9-26:23: Assign: _27 = CheckedSub(_21, const 4_i32)
-    26:9-26:23: Assert: assert(!move (_27.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _21, const 4_i32) -&gt; [success: bb36, unwind: bb1]"><span class="annotation">35⦊</span>countdown -= 4<span class="annotation">⦉35</span></span><span class="code even" style="--layer: 8" title="bb36: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
+    26:9-26:23: Assert: assert(!move (_27.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _21, const 4_i32) -&gt; [success: bb36, unwind: bb1]"><span class="annotation">35⦊</span>countdown -= 4<span class="annotation">⦉35</span></span><span class="code even" style="--layer: 8" title="bb36: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
     26:9-26:23: Assign: _21 = move (_27.0: i32)
     25:22-27:6: Assign: _24 = const ()
     25:5-34:6: Goto: goto -&gt; bb53">;</span></span>
@@ -459,7 +459,7 @@
     30:9-30:10: StorageDead: StorageDead(_31)
     30:9-30:10: StorageDead: StorageDead(_30)
     31:9-31:23: Assign: _39 = CheckedSub(_21, const 5_i32)
-    31:9-31:23: Assert: assert(!move (_39.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _21, const 5_i32) -&gt; [success: bb52, unwind: bb1]"><span class="annotation">51⦊</span>}</span><span class="code odd" style="--layer: 10" title="bb48: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
+    31:9-31:23: Assert: assert(!move (_39.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _21, const 5_i32) -&gt; [success: bb52, unwind: bb1]"><span class="annotation">51⦊</span>}</span><span class="code odd" style="--layer: 10" title="bb48: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
     28:9-30:10: FalseEdge: falseEdge -&gt; [real: bb50, imaginary: bb49]"><span class="annotation">⦉48</span></span><span class="code even" style="--layer: 11" title="bb50: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
     29:13-29:26: Assign: _21 = const 0_i32
     28:61-30:10: Assign: _30 = const ()
@@ -471,12 +471,12 @@
     30:9-30:10: StorageDead: StorageDead(_31)
     30:9-30:10: StorageDead: StorageDead(_30)
     31:9-31:23: Assign: _39 = CheckedSub(_21, const 5_i32)
-    31:9-31:23: Assert: assert(!move (_39.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _21, const 5_i32) -&gt; [success: bb52, unwind: bb1]"></span></span>
+    31:9-31:23: Assert: assert(!move (_39.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _21, const 5_i32) -&gt; [success: bb52, unwind: bb1]"></span></span>
 <span class="line"><span class="code odd" style="--layer: 13" title="bb51: ../instrument-coverage/coverage_of_if_else.rs:30:9: 31:23:
     30:9-30:10: StorageDead: StorageDead(_31)
     30:9-30:10: StorageDead: StorageDead(_30)
     31:9-31:23: Assign: _39 = CheckedSub(_21, const 5_i32)
-    31:9-31:23: Assert: assert(!move (_39.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _21, const 5_i32) -&gt; [success: bb52, unwind: bb1]">        countdown -= 5<span class="annotation">⦉51</span></span><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
+    31:9-31:23: Assert: assert(!move (_39.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _21, const 5_i32) -&gt; [success: bb52, unwind: bb1]">        countdown -= 5<span class="annotation">⦉51</span></span><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
     27:12-34:6: FalseEdge: falseEdge -&gt; [real: bb39, imaginary: bb38]">;</span></span>
 <span class="line"><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
     27:12-34:6: FalseEdge: falseEdge -&gt; [real: bb39, imaginary: bb38]">    } else {</span></span>
@@ -614,7 +614,7 @@
     50:5-50:6: StorageDead: StorageDead(_47)
     41:5-50:6: Goto: goto -&gt; bb78">        </span><span class="code odd" style="--layer: 14" title="bb60: ../instrument-coverage/coverage_of_if_else.rs:42:9: 42:23:
     42:9-42:23: Assign: _46 = CheckedSub(_41, const 4_i32)
-    42:9-42:23: Assert: assert(!move (_46.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _41, const 4_i32) -&gt; [success: bb61, unwind: bb1]"><span class="annotation">60⦊</span>countdown -= 4<span class="annotation">⦉60</span></span><span class="code even" style="--layer: 13" title="bb77: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
+    42:9-42:23: Assert: assert(!move (_46.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _41, const 4_i32) -&gt; [success: bb61, unwind: bb1]"><span class="annotation">60⦊</span>countdown -= 4<span class="annotation">⦉60</span></span><span class="code even" style="--layer: 13" title="bb77: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
     47:9-47:23: Assign: _41 = move (_58.0: i32)
     43:29-48:6: Assign: _0 = const ()
     50:5-50:6: StorageDead: StorageDead(_47)
@@ -719,7 +719,7 @@
     46:9-46:10: StorageDead: StorageDead(_50)
     46:9-46:10: StorageDead: StorageDead(_49)
     47:9-47:23: Assign: _58 = CheckedSub(_41, const 5_i32)
-    47:9-47:23: Assert: assert(!move (_58.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _41, const 5_i32) -&gt; [success: bb77, unwind: bb1]"><span class="annotation">76⦊</span>}</span><span class="code odd" style="--layer: 15" title="bb75: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
+    47:9-47:23: Assert: assert(!move (_58.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _41, const 5_i32) -&gt; [success: bb77, unwind: bb1]"><span class="annotation">76⦊</span>}</span><span class="code odd" style="--layer: 15" title="bb75: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
     45:13-45:26: Assign: _41 = const 0_i32
     44:61-46:10: Assign: _49 = const ()
     44:9-46:10: Goto: goto -&gt; bb76"><span class="annotation">⦉75</span></span><span class="code even" style="--layer: 16" title="bb74: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
@@ -730,12 +730,12 @@
     46:9-46:10: StorageDead: StorageDead(_50)
     46:9-46:10: StorageDead: StorageDead(_49)
     47:9-47:23: Assign: _58 = CheckedSub(_41, const 5_i32)
-    47:9-47:23: Assert: assert(!move (_58.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _41, const 5_i32) -&gt; [success: bb77, unwind: bb1]"></span></span>
+    47:9-47:23: Assert: assert(!move (_58.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _41, const 5_i32) -&gt; [success: bb77, unwind: bb1]"></span></span>
 <span class="line"><span class="code odd" style="--layer: 18" title="bb76: ../instrument-coverage/coverage_of_if_else.rs:46:9: 47:23:
     46:9-46:10: StorageDead: StorageDead(_50)
     46:9-46:10: StorageDead: StorageDead(_49)
     47:9-47:23: Assign: _58 = CheckedSub(_41, const 5_i32)
-    47:9-47:23: Assert: assert(!move (_58.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _41, const 5_i32) -&gt; [success: bb77, unwind: bb1]">        countdown -= 5<span class="annotation">⦉76</span></span><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
+    47:9-47:23: Assert: assert(!move (_58.1: bool), &quot;attempt to compute `{} - {}`, which would overflow&quot;, _41, const 5_i32) -&gt; [success: bb77, unwind: bb1]">        countdown -= 5<span class="annotation">⦉76</span></span><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
     43:12-50:6: FalseEdge: falseEdge -&gt; [real: bb64, imaginary: bb63]">;</span></span>
 <span class="line"><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
     43:12-50:6: FalseEdge: falseEdge -&gt; [real: bb64, imaginary: bb63]">    } else {</span></span>
