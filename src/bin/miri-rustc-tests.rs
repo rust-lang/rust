@@ -145,6 +145,7 @@ fn main() {
                 &mut MiriCompilerCalls { host_target },
                 None,
                 Some(Box::new(buf)),
+                None,
             );
         });
 
