@@ -539,27 +539,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     #[deprecated(since = "0.8.1", note = "use erase or remove instead")]
     pub unsafe fn erase_no_drop(&mut self, item: &Bucket<T>) {
         let index = self.bucket_index(item);
-        debug_assert!(is_full(*self.table.ctrl(index)));
-        let index_before = index.wrapping_sub(Group::WIDTH) & self.table.bucket_mask;
-        let empty_before = Group::load(self.table.ctrl(index_before)).match_empty();
-        let empty_after = Group::load(self.table.ctrl(index)).match_empty();
-
-        // If we are inside a continuous block of Group::WIDTH full or deleted
-        // cells then a probe window may have seen a full block when trying to
-        // insert. We therefore need to keep that block non-empty so that
-        // lookups will continue searching to the next probe window.
-        //
-        // Note that in this context `leading_zeros` refers to the bytes at the
-        // end of a group, while `trailing_zeros` refers to the bytes at the
-        // begining of a group.
-        let ctrl = if empty_before.leading_zeros() + empty_after.trailing_zeros() >= Group::WIDTH {
-            DELETED
-        } else {
-            self.table.growth_left += 1;
-            EMPTY
-        };
-        self.table.set_ctrl(index, ctrl);
-        self.table.items -= 1;
+        self.table.erase(index)
     }
 
     /// Erases an element from the table, dropping it in place.
@@ -999,13 +979,6 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         self.table.bucket_mask + 1
     }
 
-    /// Returns whether this table points to the empty singleton with a capacity
-    /// of 0.
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn is_empty_singleton(&self) -> bool {
-        self.table.bucket_mask == 0
-    }
-
     /// Returns an iterator over every element in the table. It is up to
     /// the caller to ensure that the `RawTable` outlives the `RawIter`.
     /// Because we cannot make the `next` method unsafe on the `RawIter`
@@ -1328,16 +1301,6 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
-    fn capacity(&self) -> usize {
-        self.items + self.growth_left
-    }
-
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn len(&self) -> usize {
-        self.items
-    }
-
-    #[cfg_attr(feature = "inline-more", inline)]
     fn buckets(&self) -> usize {
         self.bucket_mask + 1
     }
@@ -1409,6 +1372,31 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         self.items = 0;
         self.growth_left = bucket_mask_to_capacity(self.bucket_mask);
     }
+
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn erase(&mut self, index: usize) {
+        debug_assert!(is_full(*self.ctrl(index)));
+        let index_before = index.wrapping_sub(Group::WIDTH) & self.bucket_mask;
+        let empty_before = Group::load(self.ctrl(index_before)).match_empty();
+        let empty_after = Group::load(self.ctrl(index)).match_empty();
+
+        // If we are inside a continuous block of Group::WIDTH full or deleted
+        // cells then a probe window may have seen a full block when trying to
+        // insert. We therefore need to keep that block non-empty so that
+        // lookups will continue searching to the next probe window.
+        //
+        // Note that in this context `leading_zeros` refers to the bytes at the
+        // end of a group, while `trailing_zeros` refers to the bytes at the
+        // begining of a group.
+        let ctrl = if empty_before.leading_zeros() + empty_after.trailing_zeros() >= Group::WIDTH {
+            DELETED
+        } else {
+            self.growth_left += 1;
+            EMPTY
+        };
+        self.set_ctrl(index, ctrl);
+        self.items -= 1;
+    }
 }
 
 enum Slot {
@@ -1457,7 +1445,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                 // If necessary, resize our table to match the source.
                 if self.buckets() != source.buckets() {
                     // Skip our drop by using ptr::write.
-                    if !self.is_empty_singleton() {
+                    if !self.table.is_empty_singleton() {
                         self.free_buckets();
                     }
                     (self as *mut Self).write(
@@ -1605,7 +1593,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
 unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
-        if !self.is_empty_singleton() {
+        if !self.table.is_empty_singleton() {
             unsafe {
                 self.drop_elements();
                 self.free_buckets();
@@ -1617,7 +1605,7 @@ unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawTable<T, A> {
 impl<T, A: Allocator + Clone> Drop for RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
-        if !self.is_empty_singleton() {
+        if !self.table.is_empty_singleton() {
             unsafe {
                 self.drop_elements();
                 self.free_buckets();
