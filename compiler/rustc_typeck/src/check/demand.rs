@@ -753,16 +753,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let msg = format!(
-            "you can convert {} `{}` to `{}`",
+            "you can convert {} `{}` to {} `{}`",
             checked_ty.kind().article(),
             checked_ty,
-            expected_ty
+            expected_ty.kind().article(),
+            expected_ty,
         );
         let cast_msg = format!(
-            "you can cast {} `{} to `{}`",
+            "you can cast {} `{}` to {} `{}`",
             checked_ty.kind().article(),
             checked_ty,
-            expected_ty
+            expected_ty.kind().article(),
+            expected_ty,
         );
         let lit_msg = format!(
             "change the type of the numeric literal from `{}` to `{}`",
