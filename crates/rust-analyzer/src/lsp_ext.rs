@@ -11,9 +11,15 @@ use serde::{Deserialize, Serialize};
 pub enum AnalyzerStatus {}
 
 impl Request for AnalyzerStatus {
-    type Params = ();
+    type Params = AnalyzerStatusParams;
     type Result = String;
     const METHOD: &'static str = "rust-analyzer/analyzerStatus";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalyzerStatusParams {
+    pub text_document: Option<TextDocumentIdentifier>,
 }
 
 pub enum MemoryUsage {}

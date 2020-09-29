@@ -216,8 +216,8 @@ impl Analysis {
     }
 
     /// Debug info about the current state of the analysis.
-    pub fn status(&self) -> Cancelable<String> {
-        self.with_db(|db| status::status(&*db))
+    pub fn status(&self, file_id: Option<FileId>) -> Cancelable<String> {
+        self.with_db(|db| status::status(&*db, file_id))
     }
 
     pub fn prime_caches(&self, files: Vec<FileId>) -> Cancelable<()> {

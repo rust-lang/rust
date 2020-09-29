@@ -4,7 +4,10 @@
 
 import * as lc from "vscode-languageclient";
 
-export const analyzerStatus = new lc.RequestType0<string, void>("rust-analyzer/analyzerStatus");
+export interface AnalyzerStatusParams {
+    textDocument?: lc.TextDocumentIdentifier;
+}
+export const analyzerStatus = new lc.RequestType<AnalyzerStatusParams, string, void>("rust-analyzer/analyzerStatus");
 export const memoryUsage = new lc.RequestType0<string, void>("rust-analyzer/memoryUsage");
 
 export type Status = "loading" | "ready" | "invalid" | "needsReload";

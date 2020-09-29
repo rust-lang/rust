@@ -21,7 +21,12 @@ export function analyzerStatus(ctx: Ctx): Cmd {
         provideTextDocumentContent(_uri: vscode.Uri): vscode.ProviderResult<string> {
             if (!vscode.window.activeTextEditor) return '';
 
-            return ctx.client.sendRequest(ra.analyzerStatus);
+            const params: ra.AnalyzerStatusParams = {};
+            const doc = ctx.activeRustEditor?.document;
+            if (doc != null) {
+                params.textDocument = ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(doc);
+            }
+            return ctx.client.sendRequest(ra.analyzerStatus, params);
         }
 
         get onDidChange(): vscode.Event<vscode.Uri> {
@@ -94,7 +99,7 @@ export function matchingBrace(ctx: Ctx): Cmd {
         if (!editor || !client) return;
 
         const response = await client.sendRequest(ra.matchingBrace, {
-            textDocument: { uri: editor.document.uri.toString() },
+            textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
             positions: editor.selections.map(s =>
                 client.code2ProtocolConverter.asPosition(s.active),
             ),
@@ -118,7 +123,7 @@ export function joinLines(ctx: Ctx): Cmd {
 
         const items: lc.TextEdit[] = await client.sendRequest(ra.joinLines, {
             ranges: editor.selections.map((it) => client.code2ProtocolConverter.asRange(it)),
-            textDocument: { uri: editor.document.uri.toString() },
+            textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
         });
         editor.edit((builder) => {
             client.protocol2CodeConverter.asTextEdits(items).forEach((edit: any) => {
@@ -136,7 +141,7 @@ export function onEnter(ctx: Ctx): Cmd {
         if (!editor || !client) return false;
 
         const lcEdits = await client.sendRequest(ra.onEnter, {
-            textDocument: { uri: editor.document.uri.toString() },
+            textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
             position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
             ),
@@ -165,7 +170,7 @@ export function parentModule(ctx: Ctx): Cmd {
         if (!editor || !client) return;
 
         const response = await client.sendRequest(ra.parentModule, {
-            textDocument: { uri: editor.document.uri.toString() },
+            textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
             position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
             ),
@@ -191,7 +196,7 @@ export function ssr(ctx: Ctx): Cmd {
 
         const position = editor.selection.active;
         const selections = editor.selections;
-        const textDocument = { uri: editor.document.uri.toString() };
+        const textDocument = ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document);
 
         const options: vscode.InputBoxOptions = {
             value: "() ==>> ()",
@@ -339,7 +344,7 @@ export function expandMacro(ctx: Ctx): Cmd {
             const position = editor.selection.active;
 
             const expanded = await client.sendRequest(ra.expandMacro, {
-                textDocument: { uri: editor.document.uri.toString() },
+                textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
                 position,
             });
 

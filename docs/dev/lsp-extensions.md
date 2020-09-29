@@ -390,7 +390,14 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 
 **Method:** `rust-analyzer/analyzerStatus`
 
-**Request:** `null`
+**Request:**
+
+```typescript
+interface AnalyzerStatusParams {
+    /// If specified, show dependencies of the current file.
+    textDocument?: TextDocumentIdentifier;
+}
+```
 
 **Response:** `string`
 
