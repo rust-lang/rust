@@ -788,26 +788,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// If `hasher` panics then some the table's contents may be lost.
     fn rehash_in_place(&mut self, hasher: impl Fn(&T) -> u64) {
         unsafe {
-            // Bulk convert all full control bytes to DELETED, and all DELETED
-            // control bytes to EMPTY. This effectively frees up all buckets
-            // containing a DELETED entry.
-            for i in (0..self.buckets()).step_by(Group::WIDTH) {
-                let group = Group::load_aligned(self.table.ctrl(i));
-                let group = group.convert_special_to_empty_and_full_to_deleted();
-                group.store_aligned(self.table.ctrl(i));
-            }
-
-            // Fix up the trailing control bytes. See the comments in set_ctrl
-            // for the handling of tables smaller than the group width.
-            if self.buckets() < Group::WIDTH {
-                self.table
-                    .ctrl(0)
-                    .copy_to(self.table.ctrl(Group::WIDTH), self.buckets());
-            } else {
-                self.table
-                    .ctrl(0)
-                    .copy_to(self.table.ctrl(self.buckets()), Group::WIDTH);
-            }
+            self.table.prepare_rehash_in_place();
 
             // If the hash function panics then properly clean up any elements
             // that we haven't rehashed yet. We unfortunately can't preserve the
@@ -1223,6 +1204,7 @@ impl<A> RawTableInner<A> {
 }
 
 impl<A: Allocator + Clone> RawTableInner<A> {
+    #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new_uninitialized(
         alloc: A,
         buckets: usize,
@@ -1244,6 +1226,29 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             growth_left: bucket_mask_to_capacity(buckets - 1),
             alloc,
         })
+    }
+
+    fn prepare_rehash_in_place(&mut self) {
+        unsafe {
+            // Bulk convert all full control bytes to DELETED, and all DELETED
+            // control bytes to EMPTY. This effectively frees up all buckets
+            // containing a DELETED entry.
+            for i in (0..self.buckets()).step_by(Group::WIDTH) {
+                let group = Group::load_aligned(self.ctrl(i));
+                let group = group.convert_special_to_empty_and_full_to_deleted();
+                group.store_aligned(self.ctrl(i));
+            }
+
+            // Fix up the trailing control bytes. See the comments in set_ctrl
+            // for the handling of tables smaller than the group width.
+            if self.buckets() < Group::WIDTH {
+                self.ctrl(0)
+                    .copy_to(self.ctrl(Group::WIDTH), self.buckets());
+            } else {
+                self.ctrl(0)
+                    .copy_to(self.ctrl(self.buckets()), Group::WIDTH);
+            }
+        }
     }
 
     /// Returns an iterator-like object for a probe sequence on the table.
