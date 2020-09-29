@@ -12,7 +12,6 @@
 #![feature(negative_impls)]
 #![feature(nll)]
 #![feature(min_specialization)]
-#![feature(option_expect_none)]
 
 #[macro_use]
 extern crate rustc_macros;

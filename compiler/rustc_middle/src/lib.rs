@@ -37,7 +37,6 @@
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(once_cell)]
-#![feature(option_expect_none)]
 #![feature(or_patterns)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]

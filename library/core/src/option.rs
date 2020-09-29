@@ -1038,8 +1038,6 @@ impl<T: fmt::Debug> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_expect_none)]
-    ///
     /// use std::collections::HashMap;
     /// let mut squares = HashMap::new();
     /// for i in -10..=10 {
@@ -1049,8 +1047,6 @@ impl<T: fmt::Debug> Option<T> {
     /// ```
     ///
     /// ```{.should_panic}
-    /// #![feature(option_expect_none)]
-    ///
     /// use std::collections::HashMap;
     /// let mut sqrts = HashMap::new();
     /// for i in -10..=10 {
@@ -1061,7 +1057,7 @@ impl<T: fmt::Debug> Option<T> {
     /// ```
     #[inline]
     #[track_caller]
-    #[unstable(feature = "option_expect_none", reason = "newly added", issue = "62633")]
+    #[stable(feature = "option_expect_none", since = "1.49.0")]
     pub fn expect_none(self, msg: &str) {
         if let Some(val) = self {
             expect_none_failed(msg, &val);
@@ -1080,8 +1076,6 @@ impl<T: fmt::Debug> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_unwrap_none)]
-    ///
     /// use std::collections::HashMap;
     /// let mut squares = HashMap::new();
     /// for i in -10..=10 {
@@ -1091,8 +1085,6 @@ impl<T: fmt::Debug> Option<T> {
     /// ```
     ///
     /// ```{.should_panic}
-    /// #![feature(option_unwrap_none)]
-    ///
     /// use std::collections::HashMap;
     /// let mut sqrts = HashMap::new();
     /// for i in -10..=10 {
@@ -1103,7 +1095,7 @@ impl<T: fmt::Debug> Option<T> {
     /// ```
     #[inline]
     #[track_caller]
-    #[unstable(feature = "option_unwrap_none", reason = "newly added", issue = "62633")]
+    #[stable(feature = "option_unwrap_none", since = "1.49.0")]
     pub fn unwrap_none(self) {
         if let Some(val) = self {
             expect_none_failed("called `Option::unwrap_none()` on a `Some` value", &val);
