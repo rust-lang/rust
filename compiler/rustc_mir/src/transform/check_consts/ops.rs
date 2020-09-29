@@ -317,6 +317,15 @@ impl NonConstOp for MutDeref {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
         Status::Unstable(sym::const_mut_refs)
     }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_mut_refs,
+            span,
+            &format!("mutation through a reference is not allowed in {}s", ccx.const_kind()),
+        )
+    }
 }
 
 #[derive(Debug)]
