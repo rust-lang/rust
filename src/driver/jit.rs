@@ -76,7 +76,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     if !global_asm.is_empty() {
         tcx.sess.fatal("Global asm is not supported in JIT mode");
     }
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context, true);
     crate::allocator::codegen(tcx, &mut jit_module, &mut unwind_context);
 
     jit_module.finalize_definitions();

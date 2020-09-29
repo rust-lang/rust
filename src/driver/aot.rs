@@ -150,7 +150,7 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     super::codegen_mono_items(&mut cx, mono_items);
     let (mut module, global_asm, debug, mut unwind_context) =
         tcx.sess.time("finalize CodegenCx", || cx.finalize());
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context, false);
 
     let codegen_result = emit_module(
         tcx,
