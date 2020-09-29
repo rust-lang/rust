@@ -304,12 +304,11 @@ use std::iter::{FromIterator, IntoIterator};
 use std::ops::RangeInclusive;
 
 crate fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pat<'tcx>) -> Pat<'tcx> {
-    LiteralExpander { tcx: cx.tcx, param_env: cx.param_env }.fold_pattern(&pat)
+    LiteralExpander { tcx: cx.tcx }.fold_pattern(&pat)
 }
 
 struct LiteralExpander<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx> LiteralExpander<'tcx> {
@@ -328,40 +327,17 @@ impl<'tcx> LiteralExpander<'tcx> {
     ) -> ConstValue<'tcx> {
         debug!("fold_const_value_deref {:?} {:?} {:?}", val, rty, crty);
         match (val, &crty.kind(), &rty.kind()) {
-            // the easy case, deref a reference
-            (ConstValue::Scalar(p), x, y) if x == y => {
-                match p {
-                    Scalar::Ptr(p) => {
-                        let alloc = self.tcx.global_alloc(p.alloc_id).unwrap_memory();
-                        ConstValue::ByRef { alloc, offset: p.offset }
-                    }
-                    Scalar::Raw { .. } => {
-                        let layout = self.tcx.layout_of(self.param_env.and(rty)).unwrap();
-                        if layout.is_zst() {
-                            // Deref of a reference to a ZST is a nop.
-                            ConstValue::Scalar(Scalar::zst())
-                        } else {
-                            // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;`
-                            bug!("cannot deref {:#?}, {} -> {}", val, crty, rty);
-                        }
-                    }
-                }
-            }
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
+                assert_eq!(p.offset, Size::ZERO);
                 ConstValue::Slice {
                     data: self.tcx.global_alloc(p.alloc_id).unwrap_memory(),
-                    start: p.offset.bytes().try_into().unwrap(),
+                    start: 0,
                     end: n.eval_usize(self.tcx, ty::ParamEnv::empty()).try_into().unwrap(),
                 }
             }
-            // fat pointers stay the same
-            (ConstValue::Slice { .. }, _, _)
-            | (_, ty::Slice(_), ty::Slice(_))
-            | (_, ty::Str, ty::Str) => val,
-            // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;` being used
-            _ => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
+            _ => val,
         }
     }
 }
