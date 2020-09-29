@@ -5,6 +5,7 @@ use std::{
 };
 
 mod macros;
+pub mod panic_context;
 
 #[inline(always)]
 pub fn is_ci() -> bool {
