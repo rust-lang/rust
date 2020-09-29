@@ -23,3 +23,12 @@ fn test_splitpoint() {
         assert!(left_len + right_len == CAPACITY);
     }
 }
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_sizes() {
+    assert_eq!(core::mem::size_of::<LeafNode<(), ()>>(), 16);
+    assert_eq!(core::mem::size_of::<LeafNode<i64, i64>>(), 16 + CAPACITY * 8 * 2);
+    assert_eq!(core::mem::size_of::<InternalNode<(), ()>>(), 112);
+    assert_eq!(core::mem::size_of::<InternalNode<i64, i64>>(), 112 + CAPACITY * 8 * 2);
+}
