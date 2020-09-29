@@ -479,32 +479,10 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         capacity: usize,
         fallibility: Fallibility,
     ) -> Result<Self, TryReserveError> {
-        if capacity == 0 {
-            Ok(Self::new_in(alloc))
-        } else {
-            unsafe {
-                // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-                let buckets = match capacity_to_buckets(capacity) {
-                    Some(buckets) => buckets,
-                    None => return Err(fallibility.capacity_overflow()),
-                };
-                // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-                let (layout, ctrl_offset) = match calculate_layout::<T>(buckets) {
-                    Some(lco) => lco,
-                    None => return Err(fallibility.capacity_overflow()),
-                };
-                Ok(Self {
-                    table: RawTableInner::fallible_with_capacity(
-                        alloc,
-                        buckets,
-                        fallibility,
-                        layout,
-                        ctrl_offset,
-                    )?,
-                    marker: PhantomData,
-                })
-            }
-        }
+        Ok(Self {
+            table: RawTableInner::fallible_with_capacity::<T>(alloc, capacity, fallibility)?,
+            marker: PhantomData,
+        })
     }
 
     /// Attempts to allocate a new hash table using the given allocator, with at least enough
@@ -532,10 +510,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             Some(lco) => lco,
             None => hint::unreachable_unchecked(),
         };
-        self.table.alloc.deallocate(
-            NonNull::new_unchecked(self.table.ctrl.as_ptr().sub(ctrl_offset)),
-            layout,
-        );
+        self.table.free_buckets(layout, ctrl_offset)
     }
 
     /// Returns pointer to one past last element of data table.
@@ -831,10 +806,13 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             debug_assert!(self.table.items <= capacity);
 
             // Allocate and initialize the new table.
-            let mut new_table =
-                Self::fallible_with_capacity(self.table.alloc.clone(), capacity, fallibility)?;
-            new_table.table.growth_left -= self.table.items;
-            new_table.table.items = self.table.items;
+            let mut new_table = RawTableInner::fallible_with_capacity::<T>(
+                self.table.alloc.clone(),
+                capacity,
+                fallibility,
+            )?;
+            new_table.growth_left -= self.table.items;
+            new_table.items = self.table.items;
 
             // The hash function may panic, in which case we simply free the new
             // table without dropping any elements that may have been copied into
@@ -842,9 +820,13 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             //
             // This guard is also used to free the old table on success, see
             // the comment at the bottom of this function.
-            let mut new_table = guard(ManuallyDrop::new(new_table), |new_table| {
+            let mut new_table = guard(new_table, |new_table| {
                 if !new_table.is_empty_singleton() {
-                    new_table.free_buckets();
+                    let (layout, ctrl_offset) = match calculate_layout::<T>(new_table.buckets()) {
+                        Some(lco) => lco,
+                        None => hint::unreachable_unchecked(),
+                    };
+                    new_table.free_buckets(layout, ctrl_offset);
                 }
             });
 
@@ -857,8 +839,8 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                 // - there are no DELETED entries.
                 // - we know there is enough space in the table.
                 // - all elements are unique.
-                let index = new_table.table.find_insert_slot(hash);
-                new_table.table.set_ctrl(index, h2(hash));
+                let index = new_table.find_insert_slot(hash);
+                new_table.set_ctrl(index, h2(hash));
                 new_table.bucket(index).copy_from_nonoverlapping(&item);
             }
 
@@ -866,7 +848,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             // self with the new table. The old table will have its memory freed but
             // the items will not be dropped (since they have been moved into the
             // new table).
-            mem::swap(self, &mut new_table);
+            mem::swap(&mut self.table, &mut new_table);
 
             Ok(())
         }
@@ -1180,9 +1162,31 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         })
     }
 
-    /// Attempts to allocate a new hash table with at least enough capacity
-    /// for inserting the given number of elements without reallocating.
-    unsafe fn fallible_with_capacity(
+    fn fallible_with_capacity<T>(
+        alloc: A,
+        capacity: usize,
+        fallibility: Fallibility,
+    ) -> Result<Self, TryReserveError> {
+        if capacity == 0 {
+            Ok(Self::new_in(alloc))
+        } else {
+            unsafe {
+                // Avoid `Option::ok_or_else` because it bloats LLVM IR.
+                let buckets = match capacity_to_buckets(capacity) {
+                    Some(buckets) => buckets,
+                    None => return Err(fallibility.capacity_overflow()),
+                };
+                // Avoid `Option::ok_or_else` because it bloats LLVM IR.
+                let (layout, ctrl_offset) = match calculate_layout::<T>(buckets) {
+                    Some(lco) => lco,
+                    None => return Err(fallibility.capacity_overflow()),
+                };
+                Self::fallible_with_capacity_inner(alloc, buckets, fallibility, layout, ctrl_offset)
+            }
+        }
+    }
+
+    unsafe fn fallible_with_capacity_inner(
         alloc: A,
         buckets: usize,
         fallibility: Fallibility,
@@ -1385,6 +1389,14 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             }
             self_.growth_left = bucket_mask_to_capacity(self_.bucket_mask) - self_.items;
         })
+    }
+
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn free_buckets(&mut self, layout: Layout, ctrl_offset: usize) {
+        self.alloc.deallocate(
+            NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)),
+            layout,
+        );
     }
 }
 
