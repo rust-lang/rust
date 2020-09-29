@@ -38,10 +38,22 @@ use crate::{
     to_proto, LspError, Result,
 };
 
-pub(crate) fn handle_analyzer_status(snap: GlobalStateSnapshot, _: ()) -> Result<String> {
+pub(crate) fn handle_analyzer_status(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::AnalyzerStatusParams,
+) -> Result<String> {
     let _p = profile::span("handle_analyzer_status");
 
     let mut buf = String::new();
+
+    let mut file_id = None;
+    if let Some(tdi) = params.text_document {
+        match from_proto::file_id(&snap, &tdi.uri) {
+            Ok(it) => file_id = Some(it),
+            Err(_) => format_to!(buf, "file {} not found in vfs", tdi.uri),
+        }
+    }
+
     if snap.workspaces.is_empty() {
         buf.push_str("no workspaces\n")
     } else {
@@ -52,7 +64,10 @@ pub(crate) fn handle_analyzer_status(snap: GlobalStateSnapshot, _: ()) -> Result
     }
     buf.push_str("\nanalysis:\n");
     buf.push_str(
-        &snap.analysis.status().unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
+        &snap
+            .analysis
+            .status(file_id)
+            .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
     );
     format_to!(buf, "\n\nrequests:\n");
     let requests = snap.latest_requests.read();
