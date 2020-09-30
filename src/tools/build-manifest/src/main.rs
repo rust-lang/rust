@@ -232,26 +232,27 @@ struct Builder {
 
     input: PathBuf,
     output: PathBuf,
-    gpg_passphrase: String,
     digests: BTreeMap<String, String>,
     s3_address: String,
     date: String,
 
-    should_sign: bool,
+    legacy: bool,
+    legacy_gpg_passphrase: String,
 }
 
 fn main() {
-    // Avoid signing packages while manually testing
-    // Do NOT set this envvar in CI
-    let should_sign = env::var("BUILD_MANIFEST_DISABLE_SIGNING").is_err();
-
-    // Safety check to ensure signing is always enabled on CI
-    // The CI environment variable is set by both Travis and AppVeyor
-    if !should_sign && env::var("CI").is_ok() {
-        println!("The 'BUILD_MANIFEST_DISABLE_SIGNING' env var can't be enabled on CI.");
-        println!("If you're not running this on CI, unset the 'CI' env var.");
-        panic!();
-    }
+    // Up until Rust 1.48 the release process relied on build-manifest to create the SHA256
+    // checksums of released files and to sign the tarballs. That was moved over to promote-release
+    // in time for the branching of Rust 1.48, but the old release process still had to work the
+    // old way.
+    //
+    // When running build-manifest through the old ./x.py dist hash-and-sign the environment
+    // variable will be set, enabling the legacy behavior of generating the .sha256 files and
+    // signing the tarballs.
+    //
+    // Once the old release process is fully decommissioned, the environment variable, all the
+    // related code in this tool and ./x.py dist hash-and-sign can be removed.
+    let legacy = env::var("BUILD_MANIFEST_LEGACY").is_ok();
 
     let mut args = env::args().skip(1);
     let input = PathBuf::from(args.next().unwrap());
@@ -263,7 +264,7 @@ fn main() {
 
     // Do not ask for a passphrase while manually testing
     let mut passphrase = String::new();
-    if should_sign {
+    if legacy {
         // `x.py` passes the passphrase via stdin.
         t!(io::stdin().read_to_string(&mut passphrase));
     }
@@ -273,12 +274,12 @@ fn main() {
 
         input,
         output,
-        gpg_passphrase: passphrase,
         digests: BTreeMap::new(),
         s3_address,
         date,
 
-        should_sign,
+        legacy,
+        legacy_gpg_passphrase: passphrase,
     }
     .build();
 }
@@ -604,7 +605,7 @@ impl Builder {
     }
 
     fn sign(&self, path: &Path) {
-        if !self.should_sign {
+        if !self.legacy {
             return;
         }
 
@@ -627,7 +628,7 @@ impl Builder {
             .arg(path)
             .stdin(Stdio::piped());
         let mut child = t!(cmd.spawn());
-        t!(child.stdin.take().unwrap().write_all(self.gpg_passphrase.as_bytes()));
+        t!(child.stdin.take().unwrap().write_all(self.legacy_gpg_passphrase.as_bytes()));
         assert!(t!(child.wait()).success());
     }
 
