@@ -1,8 +1,8 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 use rustc_errors::struct_span_err;
-use rustc_hir::{self as hir, LangItem};
-use rustc_hir::{def_id::DefId, HirId};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -203,6 +203,13 @@ impl Validator<'mir, 'tcx> {
 
     pub fn check_body(&mut self) {
         let ConstCx { tcx, body, def_id, .. } = *self.ccx;
+
+        // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
+        // no need to emit duplicate errors here.
+        if is_async_fn(tcx, def_id) || body.generator_kind.is_some() {
+            tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
+            return;
+        }
 
         // The local type and predicate checks are not free and only relevant for `const fn`s.
         if self.const_kind() == hir::ConstContext::ConstFn {
@@ -876,4 +883,12 @@ fn place_as_reborrow(
 
 fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char()
+}
+
+fn is_async_fn(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    let hir_map = tcx.hir();
+    let hir_id = hir_map.local_def_id_to_hir_id(def_id);
+    hir_map
+        .fn_sig_by_hir_id(hir_id)
+        .map_or(false, |sig| sig.header.asyncness == hir::IsAsync::Async)
 }
