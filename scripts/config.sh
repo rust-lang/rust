@@ -32,6 +32,13 @@ if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
    fi
 fi
 
+if echo "$RUSTC_WRAPPER" | grep sccache; then
+echo
+echo -e "\x1b[1;93m=== Warning: Unset RUSTC_WRAPPER to prevent interference with sccache ===\x1b[0m"
+echo
+export RUSTC_WRAPPER=
+fi
+
 export RUSTC=$(pwd)/"target/"$CHANNEL"/cg_clif"
 export RUSTFLAGS=$linker
 export RUSTDOCFLAGS=$linker' -Ztrim-diagnostic-paths=no -Cpanic=abort -Zpanic-abort-tests '\
