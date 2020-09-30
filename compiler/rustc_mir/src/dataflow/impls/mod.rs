@@ -11,7 +11,7 @@ use super::MoveDataParamEnv;
 
 use crate::util::elaborate_drops::DropFlagState;
 
-use super::move_paths::{HasMoveData, InitIndex, InitKind, MoveData, MovePathIndex};
+use super::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use super::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
 
 use super::drop_flag_effects_for_function_entry;
@@ -362,40 +362,17 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             return;
         }
 
-        let enum_ = discr.place().and_then(|discr| {
-            switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
-        });
-
-        let (enum_place, enum_def) = match enum_ {
-            Some(x) => x,
-            None => return,
-        };
-
-        let mut discriminants = enum_def.discriminants(self.tcx);
-        edge_effects.apply(|trans, edge| {
-            let value = match edge.value {
-                Some(x) => x,
-                None => return,
-            };
-
-            // MIR building adds discriminants to the `values` array in the same order as they
-            // are yielded by `AdtDef::discriminants`. We rely on this to match each
-            // discriminant in `values` to its corresponding variant in linear time.
-            let (variant, _) = discriminants
-                .find(|&(_, discr)| discr.val == value)
-                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
-
-            // Kill all move paths that correspond to variants we know to be inactive along this
-            // particular outgoing edge of a `SwitchInt`.
-            drop_flag_effects::on_all_inactive_variants(
-                self.tcx,
-                self.body,
-                self.move_data(),
-                enum_place,
-                variant,
-                |mpi| trans.kill(mpi),
-            );
-        });
+        // Kill all move paths that correspond to variants we know to be inactive along a
+        // particular outgoing edge of a `SwitchInt`.
+        enum_discriminant_switch_inactive_variant_effects(
+            self.tcx,
+            self.body,
+            self.move_data(),
+            block,
+            discr,
+            edge_effects,
+            |trans, mpi| trans.kill(mpi),
+        );
     }
 }
 
@@ -481,40 +458,17 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             return;
         }
 
-        let enum_ = discr.place().and_then(|discr| {
-            switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
-        });
-
-        let (enum_place, enum_def) = match enum_ {
-            Some(x) => x,
-            None => return,
-        };
-
-        let mut discriminants = enum_def.discriminants(self.tcx);
-        edge_effects.apply(|trans, edge| {
-            let value = match edge.value {
-                Some(x) => x,
-                None => return,
-            };
-
-            // MIR building adds discriminants to the `values` array in the same order as they
-            // are yielded by `AdtDef::discriminants`. We rely on this to match each
-            // discriminant in `values` to its corresponding variant in linear time.
-            let (variant, _) = discriminants
-                .find(|&(_, discr)| discr.val == value)
-                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
-
-            // Mark all move paths that correspond to variants other than this one as maybe
-            // uninitialized (in reality, they are *definitely* uninitialized).
-            drop_flag_effects::on_all_inactive_variants(
-                self.tcx,
-                self.body,
-                self.move_data(),
-                enum_place,
-                variant,
-                |mpi| trans.gen(mpi),
-            );
-        });
+        // Mark all move paths that correspond to variants that are inactive along a given edge as
+        // maybe uninitialized (in reality, they are *definitely* uninitialized).
+        enum_discriminant_switch_inactive_variant_effects(
+            self.tcx,
+            self.body,
+            self.move_data(),
+            block,
+            discr,
+            edge_effects,
+            |trans, mpi| trans.gen(mpi),
+        );
     }
 }
 
@@ -714,4 +668,83 @@ fn switch_on_enum_discriminant(
 
         _ => None,
     }
+}
+
+fn enum_discriminant_switch_inactive_variant_effects<D>(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    move_data: &MoveData<'tcx>,
+    block: mir::BasicBlock,
+    discr: &mir::Operand<'tcx>,
+    edge_effects: &mut impl SwitchIntEdgeEffects<D>,
+    mut on_uninitialized_variant: impl FnMut(&mut D, MovePathIndex),
+) {
+    let enum_ =
+        discr.place().and_then(|discr| switch_on_enum_discriminant(tcx, body, &body[block], discr));
+
+    let (enum_place, enum_def) = match enum_ {
+        Some(x) => x,
+        None => return,
+    };
+
+    let enum_mpi = match move_data.rev_lookup.find(enum_place.as_ref()) {
+        LookupResult::Exact(mpi) => mpi,
+        LookupResult::Parent(_) => return,
+    };
+
+    let enum_path = &move_data.move_paths[enum_mpi];
+    let mut discriminants = enum_def.discriminants(tcx);
+
+    // `MovePathIndex`s for those variants with their own outgoing edge. These
+    // get marked as uninitialized along the "otherwise" edge.
+    let mut variant_mpis_with_edge = vec![];
+
+    edge_effects.apply(|trans, edge| {
+        if let Some(value) = edge.value {
+            // MIR building adds discriminants to the `values` array in the same order as they
+            // are yielded by `AdtDef::discriminants`. We rely on this to match each
+            // discriminant in `values` to its corresponding variant in linear time.
+            let (active_variant, _) = discriminants
+                .find(|&(_, discr)| discr.val == value)
+                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
+
+            for (variant_mpi, variant_path) in enum_path.children(&move_data.move_paths) {
+                // Because of the way we build the `MoveData` tree, each child should have exactly one more
+                // projection than `enum_place`. This additional projection must be a downcast since the
+                // base is an enum.
+                let (downcast, base_proj) = variant_path.place.projection.split_last().unwrap();
+                assert_eq!(enum_place.projection.len(), base_proj.len());
+
+                let variant_idx = match *downcast {
+                    mir::ProjectionElem::Downcast(_, idx) => idx,
+                    _ => unreachable!(),
+                };
+
+                if variant_idx == active_variant {
+                    // If this is the move path for the variant that is active along this edge
+                    // of the `SwitchInt` terminator, remember that it is not active as part of
+                    // the "otherwise" edge.
+                    variant_mpis_with_edge.push(variant_mpi);
+                } else {
+                    // Otherwise, it is the move path for an *inactive* variant. Mark it and
+                    // all of its descendants as uninitialzied.
+                    drop_flag_effects::on_all_children_bits(
+                        tcx,
+                        body,
+                        move_data,
+                        variant_mpi,
+                        |mpi| on_uninitialized_variant(trans, mpi),
+                    );
+                }
+            }
+        } else {
+            // We're on the otherwise branch. All variants that we visited above are known to be
+            // uninitialized.
+            for &variant_mpi in &variant_mpis_with_edge {
+                drop_flag_effects::on_all_children_bits(tcx, body, move_data, variant_mpi, |mpi| {
+                    on_uninitialized_variant(trans, mpi)
+                });
+            }
+        }
+    });
 }
