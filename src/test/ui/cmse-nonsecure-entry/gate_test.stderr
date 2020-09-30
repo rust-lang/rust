@@ -1,0 +1,19 @@
+error[E0658]: the `#[cmse_nonsecure_entry]` attribute is an experimental feature
+  --> $DIR/gate_test.rs:4:1
+   |
+LL | #[cmse_nonsecure_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #75835 <https://github.com/rust-lang/rust/issues/75835> for more information
+   = help: add `#![feature(cmse_nonsecure_entry)]` to the crate attributes to enable
+
+error[E0775]: `#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension
+  --> $DIR/gate_test.rs:4:1
+   |
+LL | #[cmse_nonsecure_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0658, E0775.
+For more information about an error, try `rustc --explain E0658`.

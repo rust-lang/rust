@@ -2543,6 +2543,21 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         } else if tcx.sess.check_name(attr, sym::used) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
+        } else if tcx.sess.check_name(attr, sym::cmse_nonsecure_entry) {
+            if tcx.fn_sig(id).abi() != abi::Abi::C {
+                struct_span_err!(
+                    tcx.sess,
+                    attr.span,
+                    E0776,
+                    "`#[cmse_nonsecure_entry]` requires C ABI"
+                )
+                .emit();
+            }
+            if !tcx.sess.target.target.llvm_target.contains("thumbv8m") {
+                struct_span_err!(tcx.sess, attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
+                    .emit();
+            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY;
         } else if tcx.sess.check_name(attr, sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if tcx.sess.check_name(attr, sym::track_caller) {
