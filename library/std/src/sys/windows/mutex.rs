@@ -29,7 +29,10 @@ pub struct Mutex {
     lock: AtomicUsize,
 }
 
-pub type MovableMutex = Box<Mutex>;
+// Windows SRW Locks are movable (while not borrowed).
+// ReentrantMutexes (in Inner) are not, but those are stored indirectly through
+// a Box, so do not move when the Mutex it self is moved.
+pub type MovableMutex = Mutex;
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
