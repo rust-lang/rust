@@ -137,7 +137,7 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
             LitKind::Int(a, _) => {
                 ret.push(a as usize);
             }
-            _ => return None,
+            _ => bug!("invalid arg index"),
         }
     }
     Some(ret)
