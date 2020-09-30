@@ -40,7 +40,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
         let opts_to_apply: Vec<OptimizationToApply<'tcx>> = bbs_with_switch
             .flat_map(|(bb_idx, bb)| {
                 let switch = bb.terminator();
-                let helper = Helper { body, tcx };
+                let helper = Helper { body };
                 let infos = helper.go(bb, switch)?;
                 Some(OptimizationToApply { infos, basic_block_first_switch: bb_idx })
             })
@@ -156,7 +156,6 @@ fn is_switch<'tcx>(terminator: &Terminator<'tcx>) -> bool {
 
 struct Helper<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
 }
 
 #[derive(Debug, Clone)]
@@ -172,8 +171,6 @@ struct SwitchDiscriminantInfo<'tcx> {
     discr_used_in_switch: Place<'tcx>,
     /// The place of the adt that has its discriminant read
     place_of_adt_discr_read: Place<'tcx>,
-    /// The type of the adt that has its discriminant read
-    type_adt_matched_on: Ty<'tcx>,
 }
 
 #[derive(Debug)]
@@ -293,8 +290,6 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                     _ => None,
                 }?;
 
-                let type_adt_matched_on = place_of_adt_discr_read.ty(self.body, self.tcx).ty;
-
                 Some(SwitchDiscriminantInfo {
                     discr_used_in_switch: discr.place()?,
                     discr_ty,
@@ -302,7 +297,6 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                     targets_with_values,
                     discr_source_info: discr_decl.source_info,
                     place_of_adt_discr_read,
-                    type_adt_matched_on,
                 })
             }
             _ => unreachable!("must only be passed terminator that is a switch"),
