@@ -2,8 +2,8 @@ use crate::{
     transform::{MirPass, MirSource},
     util::patch::MirPatch,
 };
+use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{mir::*, ty::ParamEnv};
 use std::{borrow::Cow, fmt::Debug};
 
 use super::simplify::simplify_cfg;
@@ -40,7 +40,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
         let opts_to_apply: Vec<OptimizationToApply<'tcx>> = bbs_with_switch
             .flat_map(|(bb_idx, bb)| {
                 let switch = bb.terminator();
-                let helper = Helper { body, tcx, param_env: tcx.param_env(source.def_id()) };
+                let helper = Helper { body, tcx };
                 let infos = helper.go(bb, switch)?;
                 Some(OptimizationToApply { infos, basic_block_first_switch: bb_idx })
             })
@@ -170,7 +170,6 @@ fn is_switch<'tcx>(terminator: &Terminator<'tcx>) -> bool {
 struct Helper<'a, 'tcx> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
 }
 
 #[derive(Debug, Clone)]
@@ -264,22 +263,6 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 trace!(
                     "NO: The second switch did not have only 1 target (besides otherwise) that had the same value as the value from the first switch that got us here"
                 );
-                return None;
-            }
-
-            // check that the value being matched on is the same. The
-            if this_bb_discr_info.targets_with_values.iter().find(|x| x.1 == value).is_none() {
-                trace!("NO: values being matched on are not the same");
-                return None;
-            }
-
-            // The layouts of the two ADTs have to be equal for this optimization to apply
-            let layout_of_adt =
-                |ty: Ty<'tcx>| self.tcx.layout_of(self.param_env.and(ty)).ok().map(|x| x.layout);
-            let layout_lhs = layout_of_adt(discr_info.type_adt_matched_on);
-            let layout_rhs = layout_of_adt(this_bb_discr_info.type_adt_matched_on);
-            if layout_lhs != layout_rhs {
-                trace!("NO: Layouts do not match. LHS: {:?}, RHS: {:?}", layout_lhs, layout_rhs);
                 return None;
             }
 

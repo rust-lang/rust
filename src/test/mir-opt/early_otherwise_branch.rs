@@ -26,7 +26,7 @@ enum MyOption2<T> {
     None,
 }
 
-// must optimize as the tag encoding of the discriminant are the same
+// must optimize as the discriminant values are the same
 // EMIT_MIR early_otherwise_branch.opt3.EarlyOtherwiseBranch.diff
 fn opt3(x: MyOption1<u32>, y: MyOption2<u32>) -> u32 {
     match (x, y) {
@@ -35,8 +35,28 @@ fn opt3(x: MyOption1<u32>, y: MyOption2<u32>) -> u32 {
     }
 }
 
+// must optimize as the discriminant values are the same
+// EMIT_MIR early_otherwise_branch.opt4.EarlyOtherwiseBranch.diff
+fn opt4(x: Result<u32, ()>, y: Option<u32>) -> u32 {
+    match (x, y) {
+        (Err(_), Some(_)) => 0,
+        _ => 1,
+    }
+}
+
+// must optimize as the discriminant values are the same
+// EMIT_MIR early_otherwise_branch.opt5.EarlyOtherwiseBranch.diff
+fn opt5(x: Option<u32>, y: Option<bool>) -> u32 {
+    match (x, y) {
+        (Some(a), Some(b)) => 0,
+        _ => 1,
+    }
+}
+
 fn main() {
     opt1(None, Some(0));
     opt2(None, Some(0));
     opt3(MyOption1::None, MyOption2::Some(0));
+    opt4(Ok(0), None);
+    opt5(None, Some(true));
 }
