@@ -940,7 +940,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %arrayidx.i.i763.1 = getelementptr inbounds double, double* %W, i64 2
 ; CHECK-NEXT:   %a9 = extractvalue { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg, 6
 ; CHECK-NEXT:   %a8 = extractvalue { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg, 5
-; CHECK-NEXT:   %a9.sink = select i1 %call365, <2 x double> %a8, <2 x double> %a9
+; CHECK-NEXT:   %a9.sink = select{{( fast)?}} i1 %call365, <2 x double> %a8, <2 x double> %a9
 ; CHECK-NEXT:   %"arrayidx.i769.1'ipg" = getelementptr inbounds double, double* %"b'", i64 1
 ; CHECK-NEXT:   %arrayidx.i769.1 = getelementptr inbounds double, double* %b, i64 1
 ; CHECK-NEXT:   %a11 = load double, double* %arrayidx.i769.1, align 8, !tbaa !15
@@ -963,8 +963,8 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   store double %7, double* %"arrayidx.i769.1'ipg", align 8
 ; CHECK-NEXT:   %m0diffea9.sink = fmul fast <2 x double> %differeturn, %vecinit1.i.i
 ; CHECK-NEXT:   %m1diffevecinit1.i.i = fmul fast <2 x double> %differeturn, %a9.sink
-; CHECK-NEXT:   %8 = select i1 %call365, <2 x double> zeroinitializer, <2 x double> %m0diffea9.sink
-; CHECK-NEXT:   %9 = select i1 %call365, <2 x double> %m0diffea9.sink, <2 x double> zeroinitializer
+; CHECK-NEXT:   %8 = select{{( fast)?}} i1 %call365, <2 x double> zeroinitializer, <2 x double> %m0diffea9.sink
+; CHECK-NEXT:   %9 = select{{( fast)?}} i1 %call365, <2 x double> %m0diffea9.sink, <2 x double> zeroinitializer
 ; CHECK-NEXT:   br i1 %call365, label %invertfor.body371, label %invertfor.body388
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body388, %invertfor.body371

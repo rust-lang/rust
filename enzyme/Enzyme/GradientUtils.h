@@ -146,7 +146,7 @@ public:
   DominatorTree DT;
   DominatorTree OrigDT;
   PostDominatorTree OrigPDT;
-  ActivityAnalyzer ATA;
+  std::shared_ptr<ActivityAnalyzer> ATA;
   LoopInfo OrigLI;
   LoopInfo LI;
   AssumptionCache AC;
@@ -931,13 +931,13 @@ public:
                 ValueToValueMapTy &originalToNewFn_, DerivativeMode mode)
       : mode(mode), newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(),
         DT(*newFunc_), OrigDT(*oldFunc_), OrigPDT(*oldFunc_),
-        ATA(AA_, TLI_, ActiveReturn, 3),
+        ATA(new ActivityAnalyzer(AA_, TLI_, ActiveReturn, 3)),
         OrigLI(OrigDT), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI),
         inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
 
-        ATA.constantvals.insert(constantvalues_.begin(), constantvalues_.end());
+        ATA->constantvals.insert(constantvalues_.begin(), constantvalues_.end());
         //nonconstant vals
-        ATA.retvals.insert(activevals_.begin(), activevals_.end());
+        ATA->retvals.insert(activevals_.begin(), activevals_.end());
 
     invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
@@ -1017,14 +1017,14 @@ public:
     cast<Value>(val);
     if (auto inst = dyn_cast<Instruction>(val))
       assert(inst->getParent()->getParent() == oldFunc);
-    return ATA.isconstantValueM(TR, val);
+    return ATA->isconstantValueM(TR, val);
   };
 
   bool isConstantInstructionInternal(Instruction *val, AAResults &AA,
                                      TypeResults &TR) {
     cast<Instruction>(val);
     assert(val->getParent()->getParent() == oldFunc);
-    return ATA.isconstantM(TR, val);
+    return ATA->isconstantM(TR, val);
   }
 
   void eraseFictiousPHIs() {
@@ -1046,8 +1046,8 @@ public:
 
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
     for (auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); ++a) {
-      if (ATA.constantvals.find(a) == ATA.constantvals.end() &&
-          ATA.retvals.find(a) == ATA.retvals.end())
+      if (ATA->constantvals.find(a) == ATA->constantvals.end() &&
+          ATA->retvals.find(a) == ATA->retvals.end())
         continue;
 
       bool const_value = isConstantValueInternal(a, AA, TR);

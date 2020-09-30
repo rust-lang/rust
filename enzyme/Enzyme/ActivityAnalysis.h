@@ -28,6 +28,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
 
 #include <llvm/Config/llvm-config.h>
 
@@ -44,8 +45,7 @@
 
 extern llvm::cl::opt<bool> printconst;
 extern llvm::cl::opt<bool> nonmarkedglobals_inactive;
-
-class ActivityAnalyzer {
+class ActivityAnalyzer : std::enable_shared_from_this<ActivityAnalyzer> {
 public:
     llvm::AAResults &AA;
     llvm::TargetLibraryInfo &TLI;
@@ -81,20 +81,6 @@ private:
             assert((directions & Other.directions) != 0);
 
         }
-    std::vector<uint8_t> DirectionStack;
-    void pushDirection(uint8_t NewDirection) {
-        assert(NewDirection != 0);
-        assert(NewDirection != 3);
-        assert((NewDirection & directions) == NewDirection);
-        assert((NewDirection & directions) != 0);
-        DirectionStack.push_back(directions);
-        directions = NewDirection;
-    }
-    void popDirection() {
-        assert(DirectionStack.size() > 0);
-        directions = DirectionStack.back();
-        DirectionStack.pop_back();
-    }
     void insertConstantsFrom(ActivityAnalyzer &Hypothesis) {
         constants.insert(Hypothesis.constants.begin(), Hypothesis.constants.end());
         constantvals.insert(Hypothesis.constantvals.begin(), Hypothesis.constantvals.end());

@@ -433,7 +433,7 @@ bool ActivityAnalyzer::isconstantM(TypeResults &TR, Instruction *inst) {
     llvm::errs() << "checking if is constant[" << (int)directions << "] "
                  << *inst << "\n";
 
-  std::unique_ptr<ActivityAnalyzer> DownHypothesis;
+  std::shared_ptr<ActivityAnalyzer> DownHypothesis;
   
   // If this instruction does not write memory to memory that outlives itself
   // (therefore propagating derivative information), and the return value of
@@ -464,24 +464,36 @@ bool ActivityAnalyzer::isconstantM(TypeResults &TR, Instruction *inst) {
     // we don't care about isConstantValue's explicit
     // ptr checks
     if ( (directions & DOWN) ) {
-      DownHypothesis = std::unique_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
-      DownHypothesis->constants.insert(inst);
-      assert(directions & DOWN);
-      if (DownHypothesis->isValueInactiveFromUsers(TR, inst)) {
-        if (printconst)
-          llvm::errs() << " constant instruction from users "
-                          "instruction "
-                      << *inst << "\n";
-        constants.insert(inst);
-        insertConstantsFrom(*DownHypothesis);
-        return true;
+      // The standard optimization wherein if we are nonphi and already set as such
+      // we don't need an inductive hypothesis and thus can simply use this object
+      if (directions == DOWN && !isa<PHINode>(inst)) {
+        if (isValueInactiveFromUsers(TR, inst)) {
+          if (printconst)
+            llvm::errs() << " constant instruction from users "
+                            "instruction "
+                        << *inst << "\n";
+          constants.insert(inst);
+          return true;
+        }
+      } else {
+        DownHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
+        DownHypothesis->constants.insert(inst);
+        if (DownHypothesis->isValueInactiveFromUsers(TR, inst)) {
+          if (printconst)
+            llvm::errs() << " constant instruction from users "
+                            "instruction "
+                        << *inst << "\n";
+          constants.insert(inst);
+          insertConstantsFrom(*DownHypothesis);
+          return true;
+        }
       }
     }
   }
 
-  std::unique_ptr<ActivityAnalyzer> UpHypothesis;
+  std::shared_ptr<ActivityAnalyzer> UpHypothesis;
   if ( (directions & UP) ) {
-    UpHypothesis = std::unique_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
+    UpHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
     UpHypothesis->constants.insert(inst);
     assert(directions & UP);
     if (UpHypothesis->isInstructionInactiveFromOrigin(TR, inst)) {
@@ -662,7 +674,7 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
   }
 
 
-  std::unique_ptr<ActivityAnalyzer> UpHypothesis;
+  std::shared_ptr<ActivityAnalyzer> UpHypothesis;
   
   // Handle types that could contain pointers
   //  Consider all types except
@@ -688,25 +700,41 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
     // If we know that our originator is constant from up,
     // we are definitionally constant
     if (directions & UP) {
-      UpHypothesis = std::unique_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
+
+      UpHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
       UpHypothesis->constantvals.insert(val);
 
       // If our origin is a load of a known inactive (say inactive argument), we are
       // also inactive
       if (auto LI = dyn_cast<LoadInst>(TmpOrig)) {
-        if (UpHypothesis->isconstantValueM(TR, LI->getPointerOperand())) {
-          constantvals.insert(val);
-          insertConstantsFrom(*UpHypothesis);
-          return true;
+
+        if (directions == UP) {
+          if (isconstantValueM(TR, LI->getPointerOperand())) {
+            constantvals.insert(val);
+            return true;
+          }
+        } else {
+          if (UpHypothesis->isconstantValueM(TR, LI->getPointerOperand())) {
+            constantvals.insert(val);
+            insertConstantsFrom(*UpHypothesis);
+            return true;
+          }
         }
       }
 
       // otherwise if the origin is a previously derived known constant value
       // assess
-      if (TmpOrig != val && UpHypothesis->isconstantValueM(TR, TmpOrig)) {
-        constantvals.insert(val);
-        insertConstantsFrom(*UpHypothesis);
-        return true;
+      if (directions == UP && !isa<PHINode>(TmpOrig)) {
+        if (TmpOrig != val && isconstantValueM(TR, TmpOrig)) {
+          constantvals.insert(val);
+          return true;
+        }
+      } else {
+        if (TmpOrig != val && UpHypothesis->isconstantValueM(TR, TmpOrig)) {
+          constantvals.insert(val);
+          insertConstantsFrom(*UpHypothesis);
+          return true;
+        }
       }
     }
 
@@ -730,8 +758,8 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
     // Assume the value (not instruction) is itself active
     // In spite of that can we show that there are either no active stores
     // or no active loads
-    ActivityAnalyzer Hypothesis(*this, directions);
-    Hypothesis.retvals.insert(val);
+    std::shared_ptr<ActivityAnalyzer> Hypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, directions));
+    Hypothesis->retvals.insert(val);
 
     llvm::Function* ParentF = nullptr;
     if(auto inst = dyn_cast<Instruction>(val))
@@ -805,11 +833,11 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
           llvm::errs() << "potential active load: " << I << "\n";
           if (auto LI = dyn_cast<LoadInst>(&I)) {
             // If the ref'ing value is a load check if the loaded value is active
-            potentiallyActiveLoad = !Hypothesis.isconstantValueM(TR, LI);
+            potentiallyActiveLoad = !Hypothesis->isconstantValueM(TR, LI);
           } else {
             // Otherwise fallback and check any part of the instruction is active
             // TODO: note that this can be optimized (especially for function calls)
-            potentiallyActiveLoad = !Hypothesis.isconstantM(TR, &I);
+            potentiallyActiveLoad = !Hypothesis->isconstantM(TR, &I);
           }
         }
         if (!potentialStore && isModSet(AARes)) {
@@ -821,7 +849,7 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
           } else {
             // Otherwise fallback and check if the instruction is active
             // TODO: note that this can be optimized (especially for function calls)
-            potentialStore = !Hypothesis.isconstantM(TR, &I);
+            potentialStore = !Hypothesis->isconstantM(TR, &I);
           }
         }
       }
@@ -830,7 +858,7 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
     if (printconst)
       llvm::errs() << " </MEMSEARCH" << (int)directions << ">" << *val << " potentiallyActiveLoad=" << potentiallyActiveLoad << " potentialStore=" << potentialStore << "\n";
     if (potentiallyActiveLoad && potentialStore) {
-      insertAllFrom(Hypothesis);
+      insertAllFrom(*Hypothesis);
       return false;
     } else {
       // We now know that there isn't a matching active load/store pair in this function
@@ -849,7 +877,7 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
 
       assert(UpHypothesis);
       //UpHypothesis.constantvals.insert(val);
-      UpHypothesis->insertConstantsFrom(Hypothesis);
+      UpHypothesis->insertConstantsFrom(*Hypothesis);
       assert(directions & UP);
       bool ActiveUp = !UpHypothesis->isInstructionInactiveFromOrigin(TR, val);
 
@@ -866,19 +894,19 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
 
       // TODO we never verify that an origin wasn't stored somewhere or returned.
       // to remedy correctness for now let's do something extremely simple
-      ActivityAnalyzer DownHypothesis(*this, DOWN);
-      DownHypothesis.constantvals.insert(val);
-      DownHypothesis.insertConstantsFrom(Hypothesis);
+      std::shared_ptr<ActivityAnalyzer> DownHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
+      DownHypothesis->constantvals.insert(val);
+      DownHypothesis->insertConstantsFrom(*Hypothesis);
       // TODO this is too conservative and will say stored when stored into, rahter than we store this
-      bool ActiveDown = DownHypothesis.isValueActivelyStoredOrReturned(TR, val);
+      bool ActiveDown = DownHypothesis->isValueActivelyStoredOrReturned(TR, val);
       // BEGIN TEMPORARY
 
       if (!ActiveDown && TmpOrig != val) {
 
         if (isa<Argument>(TmpOrig) || isa<GlobalVariable>(TmpOrig) || isa<AllocaInst>(TmpOrig) || (isCalledFunction(TmpOrig) && isAllocationFunction(*isCalledFunction(TmpOrig), TLI))) {
-          ActivityAnalyzer DownHypothesis2(DownHypothesis, DOWN);
-          DownHypothesis2.constantvals.insert(TmpOrig);
-          if (DownHypothesis2.isValueActivelyStoredOrReturned(TR, TmpOrig)) {
+          std::shared_ptr<ActivityAnalyzer> DownHypothesis2 = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*DownHypothesis, DOWN));
+          DownHypothesis2->constantvals.insert(TmpOrig);
+          if (DownHypothesis2->isValueActivelyStoredOrReturned(TR, TmpOrig)) {
             if (printconst)
             llvm::errs() << " active from ivasor: " << *TmpOrig << "\n";
             ActiveDown = true;
@@ -924,15 +952,15 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
 
       if (ActiveMemory) {
         retvals.insert(val);
-        assert(Hypothesis.directions == directions);
-        assert(Hypothesis.retvals.count(val));
-        insertAllFrom(Hypothesis);
+        assert(Hypothesis->directions == directions);
+        assert(Hypothesis->retvals.count(val));
+        insertAllFrom(*Hypothesis);
         return false;
       } else {
         constantvals.insert(val);
-        insertConstantsFrom(Hypothesis);
+        insertConstantsFrom(*Hypothesis);
         insertConstantsFrom(*UpHypothesis);
-        insertConstantsFrom(DownHypothesis);
+        insertConstantsFrom(*DownHypothesis);
         return true;
       }
     }
@@ -946,29 +974,53 @@ bool ActivityAnalyzer::isconstantValueM(TypeResults &TR, Value *val) {
   // is inactive, we are inactive
   // Since we won't look at uses to prove, we can inductively assume this is inactive
   if (directions & UP) {
-      UpHypothesis = std::unique_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
+
+    if (directions == UP && !isa<PHINode>(val)) {
+      if (isInstructionInactiveFromOrigin(TR, val)) {
+        constantvals.insert(val);
+        return true;
+      }
+    } else {
+      UpHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
       UpHypothesis->constantvals.insert(val);
-    if (UpHypothesis->isInstructionInactiveFromOrigin(TR, val)) {
-      insertConstantsFrom(*UpHypothesis);
-      constantvals.insert(val);
-      return true;
+      if (UpHypothesis->isInstructionInactiveFromOrigin(TR, val)) {
+        insertConstantsFrom(*UpHypothesis);
+        constantvals.insert(val);
+        return true;
+      }
     }
+
+
   }
 
   if (directions & DOWN) {
     // Not looking at users to prove inactive (definition of down)
     // If all users are inactive, this is therefore inactive. 
     // Since we won't look at origins to prove, we can inductively assume this is inactive
-    ActivityAnalyzer DownHypothesis(*this, DOWN);
-    DownHypothesis.constantvals.insert(val);
-
-    if (DownHypothesis.isValueInactiveFromUsers(TR, val)) {
-      insertConstantsFrom(DownHypothesis);
-      if (UpHypothesis)
-        insertConstantsFrom(*UpHypothesis);
-      constantvals.insert(val);
-      return true;
+    
+    // As an optimization if we are going down already
+    // and we won't use ourselves (done by PHI's), we
+    // dont need to inductively assume we're true
+    // and can instead use this object!
+    if (directions == DOWN && !isa<PHINode>(val)) {
+      if (isValueInactiveFromUsers(TR, val)) {
+        if (UpHypothesis)
+          insertConstantsFrom(*UpHypothesis);
+        constantvals.insert(val);
+        return true;
+      }
+    } else {
+      auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
+      DownHypothesis->constantvals.insert(val);
+      if (DownHypothesis->isValueInactiveFromUsers(TR, val)) {
+        insertConstantsFrom(*DownHypothesis);
+        if (UpHypothesis)
+          insertConstantsFrom(*UpHypothesis);
+        constantvals.insert(val);
+        return true;
+      }
     }
+
 
   }
 
@@ -1129,6 +1181,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
 bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* val) {
   // Must be an analyzer only searching down
   assert(directions == DOWN);
+  // To ensure we can call down
 
   if (printconst)
     llvm::errs() << " <Value USESEARCH" << (int)directions << ">" << *val
