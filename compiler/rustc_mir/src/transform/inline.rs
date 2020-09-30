@@ -874,6 +874,12 @@ pub fn is_trivial_mir(tcx: TyCtxt<'tcx>, did: DefId) -> bool {
         return true;
     }
 
+    use rustc_hir::def::DefKind;
+    if !matches!(tcx.def_kind(did), DefKind::Fn | DefKind::AssocFn) {
+        // Only inline functions, don't look at constants here.
+        return false;
+    }
+
     if let Some(did) = did.as_local() {
         let body = tcx
             .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did))
