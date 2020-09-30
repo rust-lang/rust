@@ -679,7 +679,7 @@ impl Subcommand {
 }
 
 fn split(s: &[String]) -> Vec<String> {
-    s.iter().flat_map(|s| s.split(',')).map(|s| s.to_string()).collect()
+    s.iter().flat_map(|s| s.split(',')).filter(|s| !s.is_empty()).map(|s| s.to_string()).collect()
 }
 
 fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {

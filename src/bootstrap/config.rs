@@ -66,8 +66,6 @@ pub struct Config {
     pub test_compare_mode: bool,
     pub llvm_libunwind: bool,
 
-    pub skip_only_host_steps: bool,
-
     pub on_fail: Option<String>,
     pub stage: u32,
     pub keep_stage: Vec<u32>,
@@ -585,11 +583,6 @@ impl Config {
         config.changelog_seen = toml.changelog_seen;
 
         let build = toml.build.unwrap_or_default();
-
-        // If --target was specified but --host wasn't specified, don't run any host-only tests.
-        let has_hosts = build.host.is_some() || flags.host.is_some();
-        let has_targets = build.target.is_some() || flags.target.is_some();
-        config.skip_only_host_steps = !has_hosts && has_targets;
 
         config.hosts = if let Some(arg_host) = flags.host {
             arg_host

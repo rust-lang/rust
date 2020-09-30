@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Non-breaking changes since the last major version]
 
+None.
+
+## [Version 2] - 2020-09-25
+
+- `host` now defaults to the value of `build` in all cases
+  + Previously `host` defaulted to an empty list when `target` was overridden, and to `build` otherwise
+
+### Non-breaking changes
+
 - Add `x.py setup` [#76631](https://github.com/rust-lang/rust/pull/76631)
 - Add a changelog for x.py [#76626](https://github.com/rust-lang/rust/pull/76626)
 - Optionally, download LLVM from CI on Linux and NixOS
@@ -21,7 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   [#77120](https://github.com/rust-lang/rust/pull/77120).
 
 
-## [Version 0] - 2020-09-11
+## [Version 1] - 2020-09-11
 
 This is the first changelog entry, and it does not attempt to be an exhaustive list of features in x.py.
 Instead, this documents the changes to bootstrap in the past 2 months.

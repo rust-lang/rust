@@ -34,7 +34,7 @@ ENV EMCC_CFLAGS=-O1
 # Emscripten installation is user-specific
 ENV NO_CHANGE_USER=1
 
-ENV SCRIPT python3 ../x.py --stage 2 test --target $TARGETS
+ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target $TARGETS
 
 # This is almost identical to the wasm32-unknown-emscripten target, so
 # running with assertions again is not useful

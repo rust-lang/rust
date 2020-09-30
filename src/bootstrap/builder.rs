@@ -172,15 +172,7 @@ impl StepDescription {
         }
 
         // Determine the targets participating in this rule.
-        let targets = if self.only_hosts {
-            if builder.config.skip_only_host_steps {
-                return; // don't run anything
-            } else {
-                &builder.hosts
-            }
-        } else {
-            &builder.targets
-        };
+        let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
 
         for target in targets {
             let run = RunConfig { builder, path: pathset.path(builder), target: *target };
