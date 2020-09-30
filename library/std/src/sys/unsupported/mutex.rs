@@ -4,7 +4,7 @@ pub struct Mutex {
     locked: UnsafeCell<bool>,
 }
 
-pub type MovableMutex = Box<Mutex>;
+pub type MovableMutex = Mutex;
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {} // no threads on this platform
