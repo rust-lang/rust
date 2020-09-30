@@ -9,14 +9,14 @@ type CondvarCheck = <mutex_imp::MovableMutex as check::CondvarCheck>::Check;
 
 /// An OS-based condition variable.
 pub struct Condvar {
-    inner: Box<imp::Condvar>,
+    inner: imp::MovableCondvar,
     check: CondvarCheck,
 }
 
 impl Condvar {
     /// Creates a new condition variable for use.
     pub fn new() -> Self {
-        let mut c = box imp::Condvar::new();
+        let mut c = imp::MovableCondvar::from(imp::Condvar::new());
         unsafe { c.init() };
         Self { inner: c, check: CondvarCheck::new() }
     }

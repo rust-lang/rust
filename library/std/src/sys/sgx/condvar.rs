@@ -7,6 +7,8 @@ pub struct Condvar {
     inner: SpinMutex<WaitVariable<()>>,
 }
 
+pub type MovableCondvar = Box<Condvar>;
+
 impl Condvar {
     pub const fn new() -> Condvar {
         Condvar { inner: SpinMutex::new(WaitVariable::new(())) }
