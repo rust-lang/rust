@@ -128,7 +128,8 @@ pub fn target_machine_factory(
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
     let use_softfp = sess.opts.cg.soft_float;
 
-    let ffunction_sections = false;
+    let ffunction_sections =
+        sess.target.target.options.function_sections && optlvl != config::OptLevel::No;
     let fdata_sections = ffunction_sections;
 
     let code_model = to_llvm_code_model(sess.code_model());
