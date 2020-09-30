@@ -2281,14 +2281,14 @@ where
 
         // use try-fold since
         // - it vectorizes better for some iterator adapters
-        // - unlike most internal iteration methods methods it only takes a &mut self
+        // - unlike most internal iteration methods, it only takes a &mut self
         // - it lets us thread the write pointer through its innards and get it back in the end
         let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
         let sink = iterator
             .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(dst_end))
             .unwrap();
         // iteration succeeded, don't drop head
-        let dst = mem::ManuallyDrop::new(sink).dst;
+        let dst = ManuallyDrop::new(sink).dst;
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
         // check if SourceIter contract was upheld

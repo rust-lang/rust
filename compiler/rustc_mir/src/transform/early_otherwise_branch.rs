@@ -91,7 +91,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             let not_equal_rvalue = Rvalue::BinaryOp(
                 not_equal,
                 Operand::Copy(Place::from(second_discriminant_temp)),
-                Operand::Copy(Place::from(first_descriminant_place)),
+                Operand::Copy(first_descriminant_place),
             );
             patch.add_statement(
                 end_of_block_location,
