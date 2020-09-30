@@ -62,8 +62,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // `self.constraints`, but we also want to be mutating
         // `self.member_constraints`. For now, just swap out the value
         // we want and replace at the end.
-        let mut tmp =
-            std::mem::replace(&mut self.constraints.member_constraints, Default::default());
+        let mut tmp = std::mem::take(&mut self.constraints.member_constraints);
         for member_constraint in member_constraints {
             tmp.push_constraint(member_constraint, |r| self.to_region_vid(r));
         }
