@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -15,6 +15,7 @@ use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, TraitEngine};
 
+use std::mem;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
@@ -181,6 +182,9 @@ pub struct Validator<'mir, 'tcx> {
     span: Span,
 
     const_checking_stopped: bool,
+
+    error_emitted: bool,
+    secondary_errors: Vec<Diagnostic>,
 }
 
 impl Deref for Validator<'mir, 'tcx> {
@@ -198,6 +202,8 @@ impl Validator<'mir, 'tcx> {
             ccx,
             qualifs: Default::default(),
             const_checking_stopped: false,
+            error_emitted: false,
+            secondary_errors: Vec::new(),
         }
     }
 
@@ -230,20 +236,20 @@ impl Validator<'mir, 'tcx> {
 
             self.check_item_predicates();
 
-            for local in &body.local_decls {
+            for (idx, local) in body.local_decls.iter_enumerated() {
                 if local.internal {
                     continue;
                 }
 
                 self.span = local.source_info.span;
-                self.check_local_or_return_ty(local.ty);
+                self.check_local_or_return_ty(local.ty, idx);
             }
 
             // impl trait is gone in MIR, so check the return type of a const fn by its signature
             // instead of the type of the return place.
             self.span = body.local_decls[RETURN_PLACE].source_info.span;
             let return_ty = tcx.fn_sig(def_id).output();
-            self.check_local_or_return_ty(return_ty.skip_binder());
+            self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
         self.visit_body(&body);
@@ -256,6 +262,17 @@ impl Validator<'mir, 'tcx> {
         if should_check_for_sync {
             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
             check_return_ty_is_sync(tcx, &body, hir_id);
+        }
+
+        // If we got through const-checking without emitting any "primary" errors, emit any
+        // "secondary" errors if they occurred.
+        let secondary_errors = mem::take(&mut self.secondary_errors);
+        if !self.error_emitted {
+            for error in secondary_errors {
+                self.tcx.sess.diagnostic().emit_diagnostic(&error);
+            }
+        } else {
+            assert!(self.tcx.sess.has_errors());
         }
     }
 
@@ -301,7 +318,15 @@ impl Validator<'mir, 'tcx> {
 
         let mut err = op.build_error(self.ccx, span);
         assert!(err.is_error());
-        err.emit();
+
+        match op.importance() {
+            ops::DiagnosticImportance::Primary => {
+                self.error_emitted = true;
+                err.emit();
+            }
+
+            ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),
+        }
 
         if O::STOPS_CONST_CHECKING {
             self.const_checking_stopped = true;
@@ -316,7 +341,9 @@ impl Validator<'mir, 'tcx> {
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
-    fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>) {
+    fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>, local: Local) {
+        let kind = self.body.local_kind(local);
+
         for ty in ty.walk() {
             let ty = match ty.unpack() {
                 GenericArgKind::Type(ty) => ty,
@@ -327,9 +354,9 @@ impl Validator<'mir, 'tcx> {
             };
 
             match *ty.kind() {
-                ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef),
+                ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
                 ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
-                ty::FnPtr(..) => self.check_op(ops::ty::FnPtr),
+                ty::FnPtr(..) => self.check_op(ops::ty::FnPtr(kind)),
 
                 ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {

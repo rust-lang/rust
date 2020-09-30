@@ -3,6 +3,7 @@
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir;
 use rustc_session::config::nightly_options;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
@@ -17,6 +18,15 @@ pub enum Status {
     Forbidden,
 }
 
+#[derive(Clone, Copy)]
+pub enum DiagnosticImportance {
+    /// An operation that must be removed for const-checking to pass.
+    Primary,
+
+    /// An operation that causes const-checking to fail, but is usually a side-effect of a `Primary` operation elsewhere.
+    Secondary,
+}
+
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
     const STOPS_CONST_CHECKING: bool = false;
@@ -24,6 +34,10 @@ pub trait NonConstOp: std::fmt::Debug {
     /// Returns an enum indicating whether this operation is allowed within the given item.
     fn status_in_item(&self, _ccx: &ConstCx<'_, '_>) -> Status {
         Status::Forbidden
+    }
+
+    fn importance(&self) -> DiagnosticImportance {
+        DiagnosticImportance::Primary
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
@@ -318,6 +332,11 @@ impl NonConstOp for MutDeref {
         Status::Unstable(sym::const_mut_refs)
     }
 
+    fn importance(&self) -> DiagnosticImportance {
+        // Usually a side-effect of a `MutBorrow` somewhere.
+        DiagnosticImportance::Secondary
+    }
+
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
@@ -513,10 +532,19 @@ pub mod ty {
     use super::*;
 
     #[derive(Debug)]
-    pub struct MutRef;
+    pub struct MutRef(pub mir::LocalKind);
     impl NonConstOp for MutRef {
         fn status_in_item(&self, _ccx: &ConstCx<'_, '_>) -> Status {
             Status::Unstable(sym::const_mut_refs)
+        }
+
+        fn importance(&self) -> DiagnosticImportance {
+            match self.0 {
+                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
+                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
+                    DiagnosticImportance::Primary
+                }
+            }
         }
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
@@ -530,9 +558,18 @@ pub mod ty {
     }
 
     #[derive(Debug)]
-    pub struct FnPtr;
+    pub struct FnPtr(pub mir::LocalKind);
     impl NonConstOp for FnPtr {
         const STOPS_CONST_CHECKING: bool = true;
+
+        fn importance(&self) -> DiagnosticImportance {
+            match self.0 {
+                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
+                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
+                    DiagnosticImportance::Primary
+                }
+            }
+        }
 
         fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
             if ccx.const_kind() != hir::ConstContext::ConstFn {
