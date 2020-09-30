@@ -605,8 +605,6 @@ pub mod ty {
     #[derive(Debug)]
     pub struct ImplTrait;
     impl NonConstOp for ImplTrait {
-        const STOPS_CONST_CHECKING: bool = true;
-
         fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
             mcf_status_in_item(ccx)
         }
