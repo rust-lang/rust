@@ -28,6 +28,7 @@ enum ValueType {
   Primal,
   Shadow
 };
+
 // Determine if a value is needed in the reverse pass. We only use this logic in
 // the top level function right now.
 template<ValueType VT>

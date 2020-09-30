@@ -267,13 +267,13 @@ attributes #8 = { noreturn nounwind }
 ; CHECK: while.body.i.i.i:                                 ; preds = %while.body.i.i.i, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %while.body.i.i.i ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %a1 = load double, double* %x, align 8, !tbaa !3
+; CHECK-NEXT:   %a1 = load double, double* %x, align 8, !tbaa !
 ; CHECK-NEXT:   %mul.i = fmul fast double -1.200000e+00, %a1
 ; CHECK-NEXT:   %mul2 = fmul fast double %div, %mul.i
 ; CHECK-NEXT:   %add = fadd fast double %a1, %mul2
-; CHECK-NEXT:   store double %add, double* %x, align 8, !tbaa !3
+; CHECK-NEXT:   store double %add, double* %x, align 8, !tbaa !
 ; CHECK-NEXT:   %0 = getelementptr inbounds double, double* %mul.i_malloccache, i64 %iv
-; CHECK-NEXT:   store double %mul.i, double* %0, align 8, !invariant.group !19
+; CHECK-NEXT:   store double %mul.i, double* %0, align 8, !invariant.group ![[ig:[0-9]+]]
 ; CHECK-NEXT:   %cmp2 = icmp ne i64 %iv.next, 3
 ; CHECK-NEXT:   br i1 %cmp2, label %while.body.i.i.i, label %invertexit
 
@@ -290,7 +290,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %2 = load double, double* %"x'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'ipa", align 8
 ; CHECK-NEXT:   %3 = getelementptr inbounds double, double* %mul.i_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %4 = load double, double* %3, align 8, !invariant.group !19, !enzyme_fromcache !20
+; CHECK-NEXT:   %4 = load double, double* %3, align 8, !invariant.group ![[ig]], !enzyme_fromcache !{{[0-9]+}}
 ; CHECK-NEXT:   %m0diffediv = fmul fast double %2, %4
 ; CHECK-NEXT:   %m1diffemul.i = fmul fast double %2, %div
 ; CHECK-NEXT:   %5 = fadd fast double %"div'de.0", %m0diffediv

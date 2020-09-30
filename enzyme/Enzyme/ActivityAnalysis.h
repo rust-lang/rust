@@ -28,7 +28,6 @@
 
 #include <cstdint>
 #include <deque>
-#include <memory>
 
 #include <llvm/Config/llvm-config.h>
 
@@ -45,59 +44,97 @@
 
 extern llvm::cl::opt<bool> printconst;
 extern llvm::cl::opt<bool> nonmarkedglobals_inactive;
-class ActivityAnalyzer : std::enable_shared_from_this<ActivityAnalyzer> {
-public:
+
+/// Helper class to analyze the differential activity
+class ActivityAnalyzer {
+    /// Aliasing Information
     llvm::AAResults &AA;
+    /// Library Information
     llvm::TargetLibraryInfo &TLI;
-    bool ActiveReturns;
-    uint8_t directions;
+    /// Whether the returns of the function being analyzed are active
+    const bool ActiveReturns;
 
-    llvm::SmallPtrSet<llvm::Instruction *, 4> constants;
-    llvm::SmallPtrSet<llvm::Instruction *, 20> nonconstant;
-    llvm::SmallPtrSet<llvm::Value *, 4> constantvals;
-    llvm::SmallPtrSet<llvm::Value *, 2> retvals;
+    /// Direction of current analysis
+    const uint8_t directions;
+    /// Analyze up based off of operands
+    static constexpr uint8_t UP = 1;
+    /// Analyze down based off uses
+    static constexpr uint8_t DOWN = 2;
 
+    /// Instructions that don't propagate adjoints
+    /// These instructions could return an active pointer, but
+    /// do not propagate adjoints themselves
+    llvm::SmallPtrSet<llvm::Instruction *, 4> ConstantInstructions;
 
-    ActivityAnalyzer(llvm::AAResults &AA_, llvm::TargetLibraryInfo &TLI_, bool ActiveReturns, uint8_t directions) :
-        AA(AA_), TLI(TLI_), ActiveReturns(ActiveReturns), directions(directions) {
-        assert(directions <= 3);
-        assert(directions != 0);
+    /// Instructions that could propagate adjoints
+    llvm::SmallPtrSet<llvm::Instruction *, 20> ActiveInstructions;
+
+    /// Values that do not contain derivative information, either
+    /// directly or as a pointer to
+    llvm::SmallPtrSet<llvm::Value *, 4> ConstantValues;
+
+    /// Values that may contain derivative information
+    llvm::SmallPtrSet<llvm::Value *, 2> ActiveValues;
+public:
+
+    /// Construct the analyzer from the a previous set of constant and active values
+    /// and whether returns are active. The all arguments of the functions being
+    /// analyzed must be in the set of constant and active values, lest an error
+    /// occur during analysis
+    ActivityAnalyzer(llvm::AAResults &AA_, llvm::TargetLibraryInfo &TLI_, const llvm::SmallPtrSetImpl<llvm::Value *> &ConstantValues, const llvm::SmallPtrSetImpl<llvm::Value *> &ActiveValues, bool ActiveReturns) :
+        AA(AA_), TLI(TLI_), ActiveReturns(ActiveReturns), directions(UP | DOWN), ConstantValues(ConstantValues.begin(), ConstantValues.end()), ActiveValues(ActiveValues.begin(), ActiveValues.end()) {
     }
 
-    bool isconstantValueM(TypeResults &TR, llvm::Value *val);
+    /// Return whether this instruction is known not to propagate adjoints
+    /// Note that instructions could return an active pointer, but
+    /// do not propagate adjoints themselves
+    bool isConstantInstruction(TypeResults &TR, llvm::Instruction *inst);
 
-    bool isconstantM(TypeResults &TR, llvm::Instruction *inst);
+    /// Return whether this values is known not to contain derivative
+    // information, either directly or as a pointer to
+    bool isConstantValue(TypeResults &TR, llvm::Value *val);
 
 private:
+    /// Create a new analyzer starting from an existing Analyzer
+    /// This is used to perform inductive assumptions
     ActivityAnalyzer(ActivityAnalyzer & Other, uint8_t directions)  : AA(Other.AA), TLI(Other.TLI), 
         ActiveReturns(Other.ActiveReturns), directions(directions),
-        constants(Other.constants.begin(), Other.constants.end()), nonconstant(Other.nonconstant.begin(), Other.nonconstant.end()), 
-        constantvals(Other.constantvals.begin(), Other.constantvals.end()), retvals(Other.retvals.begin(), Other.retvals.end())
+        ConstantInstructions(Other.ConstantInstructions), ActiveInstructions(Other.ActiveInstructions), 
+        ConstantValues(Other.ConstantValues), ActiveValues(Other.ActiveValues)
         {
             assert(directions != 0);
-            //assert(directions != 3);
-
             assert((directions & Other.directions) == directions);
             assert((directions & Other.directions) != 0);
 
         }
+    
+    /// Import known constants from an existing analyzer
     void insertConstantsFrom(ActivityAnalyzer &Hypothesis) {
-        constants.insert(Hypothesis.constants.begin(), Hypothesis.constants.end());
-        constantvals.insert(Hypothesis.constantvals.begin(), Hypothesis.constantvals.end());
+        ConstantInstructions.insert(Hypothesis.ConstantInstructions.begin(), Hypothesis.ConstantInstructions.end());
+        ConstantValues.insert(Hypothesis.ConstantValues.begin(), Hypothesis.ConstantValues.end());
     }
+
+    /// Import known data from an existing analyzer
     void insertAllFrom(ActivityAnalyzer &Hypothesis) {
-        constants.insert(Hypothesis.constants.begin(), Hypothesis.constants.end());
-        constantvals.insert(Hypothesis.constantvals.begin(), Hypothesis.constantvals.end());
-        nonconstant.insert(Hypothesis.nonconstant.begin(), Hypothesis.nonconstant.end());
-        retvals.insert(Hypothesis.retvals.begin(), Hypothesis.retvals.end());
+        ConstantInstructions.insert(Hypothesis.ConstantInstructions.begin(), Hypothesis.ConstantInstructions.end());
+        ConstantValues.insert(Hypothesis.ConstantValues.begin(), Hypothesis.ConstantValues.end());
+        ActiveInstructions.insert(Hypothesis.ActiveInstructions.begin(), Hypothesis.ActiveInstructions.end());
+        ActiveValues.insert(Hypothesis.ActiveValues.begin(), Hypothesis.ActiveValues.end());
     }
+
+    /// Is the use of value val as an argument of call CI known to be inactive
     bool isFunctionArgumentConstant(llvm::CallInst *CI, llvm::Value *val);
 
+    /// Is the instruction guaranteed to be inactive because of its operands
     bool isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Value* val);
+
+    /// Is the value free of any active uses
     bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value* val);
 
-    std::map<llvm::Value*, bool> StoredOrReturnedCache;
+    /// Is the value potentially actively returned or stored
     bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value* val);
+    /// StoredOrReturnedCache acts as an inductive cache of results for isValueActivelyStoredOrReturned
+    std::map<llvm::Value*, bool> StoredOrReturnedCache;
 };
 
 #endif

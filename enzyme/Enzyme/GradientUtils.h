@@ -287,10 +287,6 @@ public:
   void erase(Instruction *I) {
     assert(I);
     invertedPointers.erase(I);
-    //constants.erase(I);
-    //constant_values.erase(I);
-    //nonconstant.erase(I);
-    //nonconstant_values.erase(I);
     if (scopeMap.find(I) != scopeMap.end()) {
       scopeFrees.erase(scopeMap[I].first);
       scopeAllocs.erase(scopeMap[I].first);
@@ -931,14 +927,9 @@ public:
                 ValueToValueMapTy &originalToNewFn_, DerivativeMode mode)
       : mode(mode), newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(),
         DT(*newFunc_), OrigDT(*oldFunc_), OrigPDT(*oldFunc_),
-        ATA(new ActivityAnalyzer(AA_, TLI_, ActiveReturn, 3)),
+        ATA(new ActivityAnalyzer(AA_, TLI_, constantvalues_, activevals_, ActiveReturn)),
         OrigLI(OrigDT), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI),
         inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
-
-        ATA->constantvals.insert(constantvalues_.begin(), constantvalues_.end());
-        //nonconstant vals
-        ATA->retvals.insert(activevals_.begin(), activevals_.end());
-
     invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
     for (BasicBlock &BB : *newFunc) {
@@ -1013,20 +1004,6 @@ public:
     return false;
   }
 
-  bool isConstantValueInternal(Value *val, AAResults &AA, TypeResults &TR) {
-    cast<Value>(val);
-    if (auto inst = dyn_cast<Instruction>(val))
-      assert(inst->getParent()->getParent() == oldFunc);
-    return ATA->isconstantValueM(TR, val);
-  };
-
-  bool isConstantInstructionInternal(Instruction *val, AAResults &AA,
-                                     TypeResults &TR) {
-    cast<Instruction>(val);
-    assert(val->getParent()->getParent() == oldFunc);
-    return ATA->isconstantM(TR, val);
-  }
-
   void eraseFictiousPHIs() {
     for (auto pp : fictiousPHIs) {
       if (pp->getNumUses() != 0) {
@@ -1045,42 +1022,18 @@ public:
   std::map<const llvm::Instruction *, bool> internal_isConstantInstruction;
 
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
-    for (auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); ++a) {
-      if (ATA->constantvals.find(a) == ATA->constantvals.end() &&
-          ATA->retvals.find(a) == ATA->retvals.end())
-        continue;
-
-      bool const_value = isConstantValueInternal(a, AA, TR);
-
-      internal_isConstantValue[a] = const_value;
-
-      // a->addAttr(llvm::Attribute::get(a->getContext(),
-      // "enzyme_activity_value", const_value ? "const" : "active"));
-      // cast<Argument>(getNewFromOriginal(a))->addAttr(llvm::Attribute::get(a->getContext(),
-      // "enzyme_activity_value", const_value ? "const" : "active"));
+    for (auto &Arg : oldFunc->args()) {
+      internal_isConstantValue[&Arg] = ATA->isConstantValue(TR, &Arg);
     }
 
     for (BasicBlock &BB : *oldFunc) {
       for (Instruction &I : BB) {
-        bool const_inst = isConstantInstructionInternal(&I, AA, TR);
-
-        // I.setMetadata("enzyme_activity_inst", MDNode::get(I.getContext(),
-        // MDString::get(I.getContext(), const_inst ? "const" : "active")));
-        // I.setMetadata(const_inst ? "enzyme_constinst" : "enzyme_activeinst",
-        // MDNode::get(I.getContext(), {}));
-
-        // I.addAttr(llvm::Attribute::get(I.getContext(),
-        // "enzyme_activity_inst", const_inst ? "const" : "active"));
-        bool const_value = isConstantValueInternal(&I, AA, TR);
-        // I.setMetadata(const_value ? "enzyme_constvalue" :
-        // "enzyme_activevalue", MDNode::get(I.getContext(), {}));
-        // I.setMetadata("enzyme_activity_value", MDNode::get(I.getContext(),
-        // MDString::get(I.getContext(), const_value ? "const" : "active")));
-        // I.addAttr(llvm::Attribute::get(I.getContext(),
-        // "enzyme_activity_value", const_value ? "const" : "active"));
+        bool const_inst = ATA->isConstantInstruction(TR, &I);
+        bool const_value = ATA->isConstantValue(TR, &I);
 
         internal_isConstantValue[&I] = const_value;
         internal_isConstantInstruction[&I] = const_inst;
+
         //if (printconst)
         //llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst << "\n";
       }
@@ -1116,8 +1069,7 @@ public:
       // Note that not actually passing in type results here as (hopefully) it
       // shouldn't be needed
       TypeResults TR(TA, FnTypeInfo(oldFunc));
-      return const_cast<GradientUtils *>(this)->isConstantValueInternal(val, AA,
-                                                                        TR);
+      return ATA->isConstantValue(TR, val);
     }
 
     if (auto gv = dyn_cast<GlobalVariable>(val)) {
@@ -1306,12 +1258,6 @@ public:
       }
     }
 
-#define SAFE(a, b)                                                             \
-  ({                                                                           \
-    Value *res = a->b;                                                         \
-    res;                                                                       \
-  })
-
     // llvm::errs() << "uwval: " << *val << "\n";
     auto getOp = [&](Value *v) -> Value * {
       if (mode == UnwrapMode::LegalFullUnwrap ||
@@ -1331,7 +1277,7 @@ public:
       unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
       return val;
     } else if (auto op = dyn_cast<CastInst>(val)) {
-      auto op0 = getOp(SAFE(op, getOperand(0)));
+      auto op0 = getOp(op->getOperand(0));
       if (op0 == nullptr)
         goto endCheck;
       auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(),
@@ -1342,7 +1288,7 @@ public:
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
-      auto op0 = getOp(SAFE(op, getAggregateOperand()));
+      auto op0 = getOp(op->getAggregateOperand());
       if (op0 == nullptr)
         goto endCheck;
       auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(),
@@ -1353,10 +1299,10 @@ public:
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<BinaryOperator>(val)) {
-      auto op0 = getOp(SAFE(op, getOperand(0)));
+      auto op0 = getOp(op->getOperand(0));
       if (op0 == nullptr)
         goto endCheck;
-      auto op1 = getOp(SAFE(op, getOperand(1)));
+      auto op1 = getOp(op->getOperand(1));
       if (op1 == nullptr)
         goto endCheck;
       auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1,
@@ -1367,10 +1313,10 @@ public:
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<ICmpInst>(val)) {
-      auto op0 = getOp(SAFE(op, getOperand(0)));
+      auto op0 = getOp(op->getOperand(0));
       if (op0 == nullptr)
         goto endCheck;
-      auto op1 = getOp(SAFE(op, getOperand(1)));
+      auto op1 = getOp(op->getOperand(1));
       if (op1 == nullptr)
         goto endCheck;
       auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1,
@@ -1381,10 +1327,10 @@ public:
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<FCmpInst>(val)) {
-      auto op0 = getOp(SAFE(op, getOperand(0)));
+      auto op0 = getOp(op->getOperand(0));
       if (op0 == nullptr)
         goto endCheck;
-      auto op1 = getOp(SAFE(op, getOperand(1)));
+      auto op1 = getOp(op->getOperand(1));
       if (op1 == nullptr)
         goto endCheck;
       auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1,
@@ -1395,13 +1341,13 @@ public:
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<SelectInst>(val)) {
-      auto op0 = getOp(SAFE(op, getOperand(0)));
+      auto op0 = getOp(op->getOperand(0));
       if (op0 == nullptr)
         goto endCheck;
-      auto op1 = getOp(SAFE(op, getOperand(1)));
+      auto op1 = getOp(op->getOperand(1));
       if (op1 == nullptr)
         goto endCheck;
-      auto op2 = getOp(SAFE(op, getOperand(2)));
+      auto op2 = getOp(op->getOperand(2));
       if (op2 == nullptr)
         goto endCheck;
       auto toreturn =
@@ -1412,13 +1358,13 @@ public:
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
-      auto ptr = getOp(SAFE(inst, getPointerOperand()));
+      auto ptr = getOp(inst->getPointerOperand());
       if (ptr == nullptr)
         goto endCheck;
       SmallVector<Value *, 4> ind;
       // llvm::errs() << "inst: " << *inst << "\n";
       for (unsigned i = 0; i < inst->getNumIndices(); ++i) {
-        Value *a = SAFE(inst, getOperand(1 + i));
+        Value *a = inst->getOperand(1 + i);
         assert(a->getName() != "<badref>");
         auto op = getOp(a);
         if (op == nullptr)
@@ -1451,7 +1397,7 @@ public:
       if (!legalMove)
         return nullptr;
 
-      Value *idx = getOp(SAFE(load, getOperand(0)));
+      Value *idx = getOp(load->getOperand(0));
       if (idx == nullptr)
         goto endCheck;
 
@@ -1497,15 +1443,15 @@ public:
 
       std::vector<Value *> args;
       for (unsigned i = 0; i < op->getNumArgOperands(); ++i) {
-        args.emplace_back(getOp(SAFE(op, getArgOperand(i))));
+        args.emplace_back(getOp(op->getArgOperand(i)));
         if (args[i] == nullptr)
           return nullptr;
       }
 
       #if LLVM_VERSION_MAJOR >= 11
-      Value *fn = getOp(SAFE(op, getCalledOperand()));
+      Value *fn = getOp(op->getCalledOperand());
       #else
-      Value *fn = getOp(SAFE(op, getCalledValue()));
+      Value *fn = getOp(op->getCalledValue());
       #endif
       if (fn == nullptr)
         return nullptr;
@@ -1519,8 +1465,8 @@ public:
       return toreturn;
     } else if (auto phi = dyn_cast<PHINode>(val)) {
       if (phi->getNumIncomingValues() == 1) {
-        assert(SAFE(phi, getIncomingValue(0)) != phi);
-        auto toreturn = getOp(SAFE(phi, getIncomingValue(0)));
+        assert(phi->getIncomingValue(0) != phi);
+        auto toreturn = getOp(phi->getIncomingValue(0));
         if (toreturn == nullptr)
           goto endCheck;
         assert(val->getType() == toreturn->getType());
