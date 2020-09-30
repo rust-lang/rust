@@ -9,9 +9,8 @@ fn main() -> () {
     let mut _5: isize;                   // in scope 0 at $DIR/issue-41888.rs:10:16: 10:24
     let mut _7: bool;                    // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     let mut _8: bool;                    // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
-    let mut _9: bool;                    // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    let mut _9: isize;                   // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     let mut _10: isize;                  // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
-    let mut _11: isize;                  // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     scope 1 {
         debug e => _1;                   // in scope 1 at $DIR/issue-41888.rs:7:9: 7:10
         let _6: K;                       // in scope 1 at $DIR/issue-41888.rs:10:21: 10:23
@@ -21,7 +20,6 @@ fn main() -> () {
     }
 
     bb0: {
-        _9 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         _7 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         _8 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         StorageLive(_1);                 // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
@@ -79,7 +77,6 @@ fn main() -> () {
 
     bb10: {
         StorageLive(_6);                 // scope 1 at $DIR/issue-41888.rs:10:21: 10:23
-        _9 = const false;                // scope 1 at $DIR/issue-41888.rs:10:21: 10:23
         _6 = move ((_1 as F).0: K);      // scope 1 at $DIR/issue-41888.rs:10:21: 10:23
         _0 = const ();                   // scope 2 at $DIR/issue-41888.rs:10:29: 13:10
         StorageDead(_6);                 // scope 1 at $DIR/issue-41888.rs:13:9: 13:10
@@ -93,7 +90,6 @@ fn main() -> () {
     bb12: {
         _7 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         _8 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
-        _9 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         StorageDead(_1);                 // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         StorageDead(_2);                 // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         return;                          // scope 0 at $DIR/issue-41888.rs:15:2: 15:2
@@ -102,7 +98,6 @@ fn main() -> () {
     bb13 (cleanup): {
         _7 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         _8 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
-        _9 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         _1 = move _3;                    // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         goto -> bb7;                     // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
     }
@@ -110,7 +105,6 @@ fn main() -> () {
     bb14: {
         _7 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         _8 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
-        _9 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         _1 = move _3;                    // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         goto -> bb6;                     // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
     }
@@ -138,8 +132,8 @@ fn main() -> () {
     }
 
     bb20: {
-        _10 = discriminant(_1);          // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
-        switchInt(move _10) -> [0_isize: bb15, otherwise: bb18]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        _9 = discriminant(_1);           // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        switchInt(move _9) -> [0_isize: bb15, otherwise: bb18]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
     bb21: {
@@ -147,8 +141,8 @@ fn main() -> () {
     }
 
     bb22 (cleanup): {
-        _11 = discriminant(_1);          // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
-        switchInt(move _11) -> [0_isize: bb17, otherwise: bb19]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        _10 = discriminant(_1);          // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        switchInt(move _10) -> [0_isize: bb17, otherwise: bb19]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
     bb23 (cleanup): {
