@@ -22,3 +22,7 @@ pub fn no_doctest() {} //~^ ERROR missing code example in this documentation
 /// println!("sup");
 /// ```
 fn private_doctest() {} //~^^^^^ ERROR documentation test in private item
+
+pub fn no_doc() {}
+//~^ ERROR missing documentation for a function
+//~^^ ERROR missing code example in this documentation

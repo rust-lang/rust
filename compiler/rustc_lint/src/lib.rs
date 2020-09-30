@@ -306,6 +306,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "rustdoc",
         BROKEN_INTRA_DOC_LINKS,
         INVALID_CODEBLOCK_ATTRIBUTES,
+        MISSING_DOCS,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS
     );
