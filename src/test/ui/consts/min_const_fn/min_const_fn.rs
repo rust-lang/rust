@@ -40,7 +40,6 @@ impl<T> Foo<T> {
     //~^ mutable references
     //~| mutable references
     //~| mutable references
-    //~| mutable references
 }
 impl<'a, T> Foo<T> {
     const fn new_lt(t: T) -> Self { Foo(t) }
@@ -48,7 +47,6 @@ impl<'a, T> Foo<T> {
     const fn get_lt(&'a self) -> &T { &self.0 }
     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
     //~^ mutable references
-    //~| mutable references
     //~| mutable references
     //~| mutable references
 }
@@ -60,13 +58,11 @@ impl<T: Sized> Foo<T> {
     //~^ mutable references
     //~| mutable references
     //~| mutable references
-    //~| mutable references
 }
 impl<T: ?Sized> Foo<T> {
     const fn get_sq(&self) -> &T { &self.0 }
     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
     //~^ mutable references
-    //~| mutable references
     //~| mutable references
     //~| mutable references
 }

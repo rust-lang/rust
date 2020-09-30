@@ -1,17 +1,17 @@
 error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/ranged_ints2_const.rs:11:9
+  --> $DIR/ranged_ints2_const.rs:11:13
    |
 LL |     let y = &mut x.0;
-   |         ^
+   |             ^^^^^^^^
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/ranged_ints2_const.rs:18:9
+  --> $DIR/ranged_ints2_const.rs:18:22
    |
 LL |     let y = unsafe { &mut x.0 };
-   |         ^
+   |                      ^^^^^^^^
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable

@@ -1,8 +1,8 @@
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/const-extern-fn-min-const-fn.rs:4:41
+  --> $DIR/const-extern-fn-min-const-fn.rs:4:48
    |
 LL | const unsafe extern "C" fn closure() -> fn() { || {} }
-   |                                         ^^^^
+   |                                                ^^^^^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable

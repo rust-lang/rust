@@ -1,8 +1,8 @@
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/cast_errors.rs:4:23
+  --> $DIR/cast_errors.rs:4:30
    |
 LL | const fn closure() -> fn() { || {} }
-   |                       ^^^^
+   |                              ^^^^^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
@@ -17,10 +17,10 @@ LL |     (|| {}) as fn();
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/cast_errors.rs:10:28
+  --> $DIR/cast_errors.rs:10:16
    |
 LL | const fn reify(f: fn()) -> unsafe fn() { f }
-   |                            ^^^^^^^^^^^
+   |                ^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
