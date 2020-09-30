@@ -245,8 +245,16 @@ LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/min_const_fn.rs:126:19
+   |
+LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
+   |                   ^^                                     - value is dropped here
+   |                   |
+   |                   constant functions cannot evaluate destructors
+
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:128:22
+  --> $DIR/min_const_fn.rs:129:22
    |
 LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                      ^^^^^^^^^^^^^^^^^^^^
@@ -254,8 +262,16 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/min_const_fn.rs:129:18
+   |
+LL | const fn no_apit(_x: impl std::fmt::Debug) {}
+   |                  ^^                         - value is dropped here
+   |                  |
+   |                  constant functions cannot evaluate destructors
+
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:129:23
+  --> $DIR/min_const_fn.rs:132:23
    |
 LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    |                       ^^
@@ -264,7 +280,16 @@ LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:130:63
+  --> $DIR/min_const_fn.rs:134:32
+   |
+LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+
+error[E0723]: unsizing casts to types besides slices are not allowed in const fn
+  --> $DIR/min_const_fn.rs:134:63
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                                               ^^^
@@ -272,17 +297,26 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:135:41
+error[E0723]: unsizing casts to types besides slices are not allowed in const fn
+  --> $DIR/min_const_fn.rs:134:63
+   |
+LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
+   |                                                               ^^^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+
+error[E0723]: unsizing casts to types besides slices are not allowed in const fn
+  --> $DIR/min_const_fn.rs:141:42
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/min_const_fn.rs:138:21
+  --> $DIR/min_const_fn.rs:144:21
    |
 LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
@@ -291,7 +325,7 @@ LL | const fn no_fn_ptrs(_x: fn()) {}
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/min_const_fn.rs:140:27
+  --> $DIR/min_const_fn.rs:146:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^
@@ -300,7 +334,7 @@ LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
 error[E0658]: function pointer casts are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:140:46
+  --> $DIR/min_const_fn.rs:146:46
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                                              ^^^
@@ -308,7 +342,7 @@ LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
-error: aborting due to 35 previous errors
+error: aborting due to 39 previous errors
 
 Some errors have detailed explanations: E0013, E0493, E0658, E0723.
 For more information about an error, try `rustc --explain E0013`.

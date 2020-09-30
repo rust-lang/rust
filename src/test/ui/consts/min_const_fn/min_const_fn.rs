@@ -125,15 +125,21 @@ impl<T: Sync + Sized> Foo<T> {
 struct AlanTuring<T>(T);
 const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
 //~^ ERROR trait bounds other than `Sized`
-const fn no_apit(_x: impl std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
-const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
+//~| ERROR destructor
+const fn no_apit(_x: impl std::fmt::Debug) {}
+//~^ ERROR trait bounds other than `Sized`
+//~| ERROR destructor
+const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
+//~^ ERROR trait bounds other than `Sized`
 const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
 //~^ ERROR trait bounds other than `Sized`
+//~| ERROR unsizing cast
+//~| ERROR unsizing cast
 
 const fn no_unsafe() { unsafe {} }
 
 const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
-//~^ ERROR trait bounds other than `Sized`
+//~^ ERROR unsizing cast
 
 const fn no_fn_ptrs(_x: fn()) {}
 //~^ ERROR function pointer
