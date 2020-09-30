@@ -205,7 +205,7 @@ impl<'db> ResolutionScope<'db> {
 
     /// Returns the function in which SSR was invoked, if any.
     pub(crate) fn current_function(&self) -> Option<SyntaxNode> {
-        self.node.ancestors().find(|node| node.kind() == SyntaxKind::FN).map(|node| node.clone())
+        self.node.ancestors().find(|node| node.kind() == SyntaxKind::FN)
     }
 
     fn resolve_path(&self, path: &ast::Path) -> Option<hir::PathResolution> {

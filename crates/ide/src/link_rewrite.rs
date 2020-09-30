@@ -120,7 +120,7 @@ fn rewrite_intra_doc_link(
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
 fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<String> {
-    if !(target.contains("#") || target.contains(".html")) {
+    if !(target.contains('#') || target.contains(".html")) {
         return None;
     }
 
@@ -190,7 +190,7 @@ fn strip_prefixes_suffixes(mut s: &str) -> &str {
         prefixes.clone().for_each(|prefix| s = s.trim_start_matches(*prefix));
         suffixes.clone().for_each(|suffix| s = s.trim_end_matches(*suffix));
     });
-    s.trim_start_matches("@").trim()
+    s.trim_start_matches('@').trim()
 }
 
 static TYPES: ([&str; 7], [&str; 0]) =

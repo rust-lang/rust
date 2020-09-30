@@ -91,7 +91,7 @@ fn existing_struct_def(db: &RootDatabase, variant_name: &str, variant: &EnumVari
         .module(db)
         .scope(db, None)
         .into_iter()
-        .any(|(name, _)| name.to_string() == variant_name.to_string())
+        .any(|(name, _)| name.to_string() == variant_name)
 }
 
 #[allow(dead_code)]
