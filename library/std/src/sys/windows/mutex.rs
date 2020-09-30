@@ -29,6 +29,8 @@ pub struct Mutex {
     lock: AtomicUsize,
 }
 
+pub type MovableMutex = Box<Mutex>;
+
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 

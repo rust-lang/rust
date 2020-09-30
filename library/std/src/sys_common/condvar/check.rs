@@ -2,13 +2,22 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::mutex as mutex_imp;
 use crate::sys_common::mutex::MovableMutex;
 
-/// A `Condvar` will check it's only ever used with the same mutex, based on
-/// its (stable) address.
-pub struct CondvarCheck {
+pub trait CondvarCheck {
+    type Check;
+}
+
+/// For boxed mutexes, a `Condvar` will check it's only ever used with the same
+/// mutex, based on its (stable) address.
+impl CondvarCheck for Box<mutex_imp::Mutex> {
+    type Check = SameMutexCheck;
+}
+
+pub struct SameMutexCheck {
     addr: AtomicUsize,
 }
 
-impl CondvarCheck {
+#[allow(dead_code)]
+impl SameMutexCheck {
     pub const fn new() -> Self {
         Self { addr: AtomicUsize::new(0) }
     }
@@ -20,4 +29,20 @@ impl CondvarCheck {
             _ => panic!("attempted to use a condition variable with two mutexes"),
         }
     }
+}
+
+/// Unboxed mutexes may move, so `Condvar` can not require its address to stay
+/// constant.
+impl CondvarCheck for mutex_imp::Mutex {
+    type Check = NoCheck;
+}
+
+pub struct NoCheck;
+
+#[allow(dead_code)]
+impl NoCheck {
+    pub const fn new() -> Self {
+        Self
+    }
+    pub fn verify(&self, _: &MovableMutex) {}
 }
