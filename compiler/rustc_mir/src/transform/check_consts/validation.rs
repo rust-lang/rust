@@ -237,7 +237,8 @@ impl Validator<'mir, 'tcx> {
             self.check_item_predicates();
 
             for (idx, local) in body.local_decls.iter_enumerated() {
-                if local.internal {
+                // Handle the return place below.
+                if idx == RETURN_PLACE || local.internal {
                     continue;
                 }
 
