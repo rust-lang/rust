@@ -216,14 +216,12 @@ impl NonConstOp for FnPtrCast {
 #[derive(Debug)]
 pub struct Generator;
 impl NonConstOp for Generator {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        // FIXME: This means generator-only MIR is only forbidden in const fn. This is for
-        // compatibility with the old code. Such MIR should be forbidden everywhere.
-        mcf_status_in_item(ccx)
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Forbidden
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        mcf_emit_error(ccx, span, "const fn generators are unstable");
+        ccx.tcx.sess.struct_span_err(span, "Generators and `async` functions cannot be `const`").emit();
     }
 }
 
