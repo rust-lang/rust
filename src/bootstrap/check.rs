@@ -7,9 +7,8 @@ use crate::tool::{prepare_tool_cargo, SourceType};
 use crate::INTERNER;
 use crate::{
     builder::{Builder, Kind, RunConfig, ShouldRun, Step},
-    Subcommand,
 };
-use crate::{Compiler, Mode};
+use crate::{Compiler, Mode, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -17,10 +16,17 @@ pub struct Std {
     pub target: TargetSelection,
 }
 
-fn args(kind: Kind) -> Vec<String> {
-    match kind {
-        Kind::Clippy => vec!["--".to_owned(), "--cap-lints".to_owned(), "warn".to_owned()],
-        _ => Vec::new(),
+/// Returns args for the subcommand itself (not for cargo)
+fn args(builder: &Builder<'_>) -> Vec<String> {
+    if let Subcommand::Clippy { fix, .. } = builder.config.cmd {
+        let mut args = vec!["--".to_owned(), "--cap-lints".to_owned(), "warn".to_owned()];
+        if fix {
+            args.insert(0, "--fix".to_owned());
+            args.insert(0, "-Zunstable-options".to_owned());
+        }
+        args
+    } else {
+        vec![]
     }
 }
 
@@ -62,7 +68,7 @@ impl Step for Std {
         run_cargo(
             builder,
             cargo,
-            args(builder.kind),
+            args(builder),
             &libstd_stamp(builder, compiler, target),
             vec![],
             true,
@@ -104,7 +110,7 @@ impl Step for Std {
             run_cargo(
                 builder,
                 cargo,
-                args(builder.kind),
+                args(builder),
                 &libstd_test_stamp(builder, compiler, target),
                 vec![],
                 true,
@@ -165,7 +171,7 @@ impl Step for Rustc {
         run_cargo(
             builder,
             cargo,
-            args(builder.kind),
+            args(builder),
             &librustc_stamp(builder, compiler, target),
             vec![],
             true,
@@ -220,7 +226,7 @@ impl Step for CodegenBackend {
         run_cargo(
             builder,
             cargo,
-            args(builder.kind),
+            args(builder),
             &codegen_backend_stamp(builder, compiler, target, backend),
             vec![],
             true,
@@ -278,7 +284,7 @@ macro_rules! tool_check_step {
                 run_cargo(
                     builder,
                     cargo,
-                    args(builder.kind),
+                    args(builder),
                     &stamp(builder, compiler, target),
                     vec![],
                     true,
