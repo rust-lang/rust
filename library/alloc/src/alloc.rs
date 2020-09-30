@@ -145,13 +145,13 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 
 impl Global {
     #[inline]
-    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = if zeroed { alloc_zeroed(layout) } else { alloc(layout) };
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 Ok(NonNull::slice_from_raw_parts(ptr, size))
             },
         }
@@ -165,7 +165,7 @@ impl Global {
         old_layout: Layout,
         new_layout: Layout,
         zeroed: bool,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
             "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
@@ -183,7 +183,7 @@ impl Global {
                 intrinsics::assume(new_size >= old_layout.size());
 
                 let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
                 }
@@ -208,12 +208,12 @@ impl Global {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for Global {
     #[inline]
-    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, false)
     }
 
     #[inline]
-    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, true)
     }
 
@@ -232,7 +232,7 @@ unsafe impl AllocRef for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: all conditions must be upheld by the caller
         unsafe { self.grow_impl(ptr, old_layout, new_layout, false) }
     }
@@ -243,7 +243,7 @@ unsafe impl AllocRef for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: all conditions must be upheld by the caller
         unsafe { self.grow_impl(ptr, old_layout, new_layout, true) }
     }
@@ -254,7 +254,7 @@ unsafe impl AllocRef for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(
             new_layout.size() <= old_layout.size(),
             "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
@@ -273,7 +273,7 @@ unsafe impl AllocRef for Global {
                 intrinsics::assume(new_size <= old_layout.size());
 
                 let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 Ok(NonNull::slice_from_raw_parts(ptr, new_size))
             },
 

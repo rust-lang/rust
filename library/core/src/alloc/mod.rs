@@ -13,17 +13,17 @@ pub use self::layout::{Layout, LayoutErr};
 use crate::fmt;
 use crate::ptr::{self, NonNull};
 
-/// The `AllocErr` error indicates an allocation failure
+/// The `AllocError` error indicates an allocation failure
 /// that may be due to resource exhaustion or to
 /// something wrong when combining the given input arguments with this
 /// allocator.
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct AllocErr;
+pub struct AllocError;
 
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
-impl fmt::Display for AllocErr {
+impl fmt::Display for AllocError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("memory allocation failed")
     }
@@ -109,7 +109,7 @@ pub unsafe trait AllocRef {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr>;
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
     /// Behaves like `alloc`, but also ensures that the returned memory is zero-initialized.
     ///
@@ -126,7 +126,7 @@ pub unsafe trait AllocRef {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = self.alloc(layout)?;
         // SAFETY: `alloc` returns a valid memory block
         unsafe { ptr.as_non_null_ptr().as_ptr().write_bytes(0, ptr.len()) }
@@ -187,7 +187,7 @@ pub unsafe trait AllocRef {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
             "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
@@ -248,7 +248,7 @@ pub unsafe trait AllocRef {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
             "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
@@ -312,7 +312,7 @@ pub unsafe trait AllocRef {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(
             new_layout.size() <= old_layout.size(),
             "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
@@ -348,12 +348,12 @@ where
     A: AllocRef + ?Sized,
 {
     #[inline]
-    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         (**self).alloc(layout)
     }
 
     #[inline]
-    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         (**self).alloc_zeroed(layout)
     }
 
@@ -369,7 +369,7 @@ where
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).grow(ptr, old_layout, new_layout) }
     }
@@ -380,7 +380,7 @@ where
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).grow_zeroed(ptr, old_layout, new_layout) }
     }
@@ -391,7 +391,7 @@ where
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
