@@ -647,11 +647,11 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("["));
                 match movability {
                     hir::Movability::Movable => {}
-                    hir::Movability::Static => p!(write("static ")),
+                    hir::Movability::Static => p!("static "),
                 }
 
                 if !self.tcx().sess.verbose() {
-                    p!(write("generator"));
+                    p!("generator");
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
                         let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
@@ -664,7 +664,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(print_def_path(did, substs));
                     if substs.as_generator().is_valid() {
                         // Search for the first inference variable
-                        p!(write(" upvar_tys=("));
+                        p!(" upvar_tys=(");
                         let mut uninferred_ty =
                             substs.as_generator().upvar_tys().filter(|ty| ty.is_ty_infer());
                         if uninferred_ty.next().is_some() {
@@ -672,7 +672,7 @@ pub trait PrettyPrinter<'tcx>:
                         } else {
                             self = self.comma_sep(substs.as_generator().upvar_tys())?;
                         }
-                        p!(write(")"));
+                        p!(")");
                     }
                 }
 
@@ -693,7 +693,7 @@ pub trait PrettyPrinter<'tcx>:
                     if let Some(did) = did.as_local() {
                         let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
                         if self.tcx().sess.opts.debugging_opts.span_free_formats {
-                            p!(write("@"), print_def_path(did.to_def_id(), substs));
+                            p!("@", print_def_path(did.to_def_id(), substs));
                         } else {
                             let span = self.tcx().hir().span(hir_id);
                             p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
@@ -710,20 +710,20 @@ pub trait PrettyPrinter<'tcx>:
                         if uninferred_ty.next().is_some() {
                             // If the upvar substs contain an inference variable we haven't
                             // finished capture analysis.
-                            p!(write(" closure_substs=(unavailable)"));
+                            p!(" closure_substs=(unavailable)");
                         } else {
-                            p!(write(" closure_kind_ty="), print(substs.as_closure().kind_ty()));
+                            p!(" closure_kind_ty=", print(substs.as_closure().kind_ty()));
                             p!(
-                                write(" closure_sig_as_fn_ptr_ty="),
+                                " closure_sig_as_fn_ptr_ty=",
                                 print(substs.as_closure().sig_as_fn_ptr_ty())
                             );
-                            p!(write(" upvar_tys=("));
+                            p!(" upvar_tys=(");
                             self = self.comma_sep(substs.as_closure().upvar_tys())?;
-                            p!(write(")"));
+                            p!(")");
                         }
                     }
                 }
-                p!(write("]"));
+                p!("]");
             }
             ty::Array(ty, sz) => {
                 p!("[", print(ty), "; ");
