@@ -38,34 +38,7 @@ pub trait NonConstOp: std::fmt::Debug {
         DiagnosticImportance::Primary
     }
 
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        let mut err = struct_span_err!(
-            ccx.tcx.sess,
-            span,
-            E0019,
-            "{} contains unimplemented expression type",
-            ccx.const_kind()
-        );
-
-        if let Status::Unstable(gate) = self.status_in_item(ccx) {
-            if !ccx.tcx.features().enabled(gate) && nightly_options::is_nightly_build() {
-                err.help(&format!("add `#![feature({})]` to the crate attributes to enable", gate));
-            }
-        }
-
-        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note(
-                "A function call isn't allowed in the const's initialization expression \
-                      because the expression's value must be known at compile-time.",
-            );
-            err.note(
-                "Remember: you can't use a function call inside a const's initialization \
-                      expression! However, you can use it anywhere else.",
-            );
-        }
-
-        err
-    }
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx>;
 }
 
 #[derive(Debug)]
@@ -215,7 +188,17 @@ impl NonConstOp for HeapAllocation {
 
 #[derive(Debug)]
 pub struct InlineAsm;
-impl NonConstOp for InlineAsm {}
+impl NonConstOp for InlineAsm {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        struct_span_err!(
+            ccx.tcx.sess,
+            span,
+            E0019,
+            "{} contains unimplemented expression type",
+            ccx.const_kind()
+        )
+    }
+}
 
 #[derive(Debug)]
 pub struct LiveDrop {
