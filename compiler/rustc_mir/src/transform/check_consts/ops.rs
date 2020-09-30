@@ -193,8 +193,8 @@ impl NonConstOp for InlineAsm {
         struct_span_err!(
             ccx.tcx.sess,
             span,
-            E0019,
-            "{} contains unimplemented expression type",
+            E0015,
+            "inline assembly is not allowed in {}s",
             ccx.const_kind()
         )
     }
