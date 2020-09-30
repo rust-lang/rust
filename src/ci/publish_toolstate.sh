@@ -22,7 +22,6 @@ GIT_COMMIT="$(git rev-parse HEAD)"
 GIT_COMMIT_MSG="$(git log --format=%s -n1 HEAD)"
 
 cd rust-toolstate
-FAILURE=1
 for RETRY_COUNT in 1 2 3 4 5; do
     # The purpose of this is to publish the new "current" toolstate in the toolstate repo.
     # This happens post-landing, on master.
@@ -32,7 +31,6 @@ for RETRY_COUNT in 1 2 3 4 5; do
         "$MESSAGE_FILE" \
         "$TOOLSTATE_REPO_ACCESS_TOKEN"
     # `git commit` failing means nothing to commit.
-    FAILURE=0
     git commit -a -F "$MESSAGE_FILE" || break
     # On failure randomly sleep for 0 to 3 seconds as a crude way to introduce jittering.
     if git push origin master; then
@@ -40,7 +38,6 @@ for RETRY_COUNT in 1 2 3 4 5; do
     else
         sleep "$(LC_ALL=C tr -cd 0-3 < /dev/urandom | head -c 1)"
     fi
-    FAILURE=1
     git fetch origin master
     git reset --hard origin/master
 done

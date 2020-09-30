@@ -3,8 +3,6 @@
 set -eu
 source shared.sh
 
-target="x86_64-fortanix-unknown-sgx"
-
 install_prereq() {
     curl https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add -
     add-apt-repository -y 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-11 main'
