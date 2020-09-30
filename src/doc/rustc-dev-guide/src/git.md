@@ -19,7 +19,7 @@ more in depth [book from Git].
 [documentation]: https://docs.github.com/en/github/getting-started-with-github/set-up-git
 [guides]: https://guides.github.com/introduction/git-handbook/
 
-## Prequisites
+## Prerequisites
 
 We'll assume that you've installed Git, forked [rust-lang/rust], and cloned the
 forked repo to your PC. We'll use the command line interface to interact
