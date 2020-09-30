@@ -46,7 +46,7 @@ pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
     }
 }
 
-fn distdir(builder: &Builder<'_>) -> PathBuf {
+pub(crate) fn distdir(builder: &Builder<'_>) -> PathBuf {
     builder.out.join("dist")
 }
 
