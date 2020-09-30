@@ -206,6 +206,8 @@ impl<K: Clone, V: Clone, S: Clone> Clone for HashMap<K, V, S> {
     }
 }
 
+/// Ensures that a single closure type across uses of this which, in turn prevents multiple
+/// instances of any functions like RawTable::reserve from being generated
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hasher<K: Hash, V>(
     hash_builder: &impl BuildHasher,
@@ -213,6 +215,9 @@ pub(crate) fn make_hasher<K: Hash, V>(
     move |val| make_hash(hash_builder, &val.0)
 }
 
+/// Ensures that a single closure type across uses of this which, in turn prevents multiple
+/// instances of any functions like RawTable::reserve from being generated
+#[cfg_attr(feature = "inline-more", inline)]
 fn equivalent<Q, K, V>(k: &Q) -> impl Fn(&(K, V)) -> bool + '_
 where
     K: Borrow<Q>,
@@ -221,6 +226,9 @@ where
     move |x| k.eq(x.0.borrow())
 }
 
+/// Ensures that a single closure type across uses of this which, in turn prevents multiple
+/// instances of any functions like RawTable::reserve from being generated
+#[cfg_attr(feature = "inline-more", inline)]
 fn equivalent_single<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
 where
     K: Borrow<Q>,
@@ -686,8 +694,8 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize) {
-        let hash_builder = &self.hash_builder;
-        self.table.reserve(additional, make_hasher(hash_builder));
+        self.table
+            .reserve(additional, make_hasher(&self.hash_builder));
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -708,9 +716,8 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        let hash_builder = &self.hash_builder;
         self.table
-            .try_reserve(additional, make_hasher(hash_builder))
+            .try_reserve(additional, make_hasher(&self.hash_builder))
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -731,8 +738,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to_fit(&mut self) {
-        let hash_builder = &self.hash_builder;
-        self.table.shrink_to(0, make_hasher(hash_builder));
+        self.table.shrink_to(0, make_hasher(&self.hash_builder));
     }
 
     /// Shrinks the capacity of the map with a lower limit. It will drop
@@ -760,9 +766,8 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        let hash_builder = &self.hash_builder;
         self.table
-            .shrink_to(min_capacity, make_hasher(hash_builder));
+            .shrink_to(min_capacity, make_hasher(&self.hash_builder));
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
@@ -1016,8 +1021,8 @@ where
         if let Some((_, item)) = self.table.get_mut(hash, equivalent(&k)) {
             Some(mem::replace(item, v))
         } else {
-            let hash_builder = &self.hash_builder;
-            self.table.insert(hash, (k, v), make_hasher(hash_builder));
+            self.table
+                .insert(hash, (k, v), make_hasher(&self.hash_builder));
             None
         }
     }
@@ -1966,10 +1971,9 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash_builder = self.hash_builder;
         let &mut (ref mut k, ref mut v) =
             self.table
-                .insert_entry(hash, (key, value), make_hasher(hash_builder));
+                .insert_entry(hash, (key, value), make_hasher(self.hash_builder));
         (k, v)
     }
 
@@ -1998,7 +2002,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         S: BuildHasher,
     {
         let hash_builder = self.hash_builder;
-        let mut hasher = self.hash_builder.build_hasher();
+        let mut hasher = hash_builder.build_hasher();
         key.hash(&mut hasher);
 
         let elem = self
@@ -2007,7 +2011,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         RawOccupiedEntryMut {
             elem,
             table: self.table,
-            hash_builder: self.hash_builder,
+            hash_builder,
         }
     }
 }
@@ -2996,9 +3000,12 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash_builder = &self.table.hash_builder;
         let table = &mut self.table.table;
-        let entry = table.insert_entry(self.hash, (self.key, value), make_hasher(hash_builder));
+        let entry = table.insert_entry(
+            self.hash,
+            (self.key, value),
+            make_hasher(&self.table.hash_builder),
+        );
         &mut entry.1
     }
 
@@ -3008,11 +3015,11 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash_builder = &self.table.hash_builder;
-        let elem = self
-            .table
-            .table
-            .insert(self.hash, (self.key, value), make_hasher(hash_builder));
+        let elem = self.table.table.insert(
+            self.hash,
+            (self.key, value),
+            make_hasher(&self.table.hash_builder),
+        );
         OccupiedEntry {
             hash: self.hash,
             key: None,
