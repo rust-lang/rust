@@ -284,18 +284,6 @@ jobs:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
             <<: *job-linux-xl
 
-  try:
-    <<: *base-ci-job
-    name: try
-    env:
-      <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'
-    strategy:
-      matrix:
-        include:
-          - name: dist-x86_64-linux
-            <<: *job-linux-xl
-
   auto:
     <<: *base-ci-job
     name: auto
@@ -378,7 +366,8 @@ jobs:
           - name: dist-x86_64-illumos
             <<: *job-linux-xl
 
-          - name: dist-x86_64-linux
+          - &dist-x86_64-linux
+            name: dist-x86_64-linux
             <<: *job-linux-xl
 
           - name: dist-x86_64-linux-alt
@@ -633,6 +622,17 @@ jobs:
 
           - name: aarch64-gnu
             <<: *job-aarch64-linux
+
+  try:
+    <<: *base-ci-job
+    name: try
+    env:
+      <<: [*shared-ci-variables, *prod-variables]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'
+    strategy:
+      matrix:
+        include:
+          - *dist-x86_64-linux
 
   master:
     name: master
