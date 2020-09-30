@@ -72,7 +72,7 @@ impl MovableMutex {
         Self(mutex)
     }
 
-    pub(crate) fn raw(&self) -> &imp::Mutex {
+    pub(super) fn raw(&self) -> &imp::Mutex {
         &self.0
     }
 
