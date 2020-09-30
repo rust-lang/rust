@@ -646,8 +646,13 @@ pub trait PrettyPrinter<'tcx>:
             ty::Generator(did, substs, movability) => {
                 p!(write("["));
                 match movability {
+<<<<<<< HEAD
                     hir::Movability::Movable => {}
                     hir::Movability::Static => p!("static "),
+=======
+                    hir::Movability::Movable => p!("[generator"),
+                    hir::Movability::Static => p!("[static generator"),
+>>>>>>> 4bc0ae233aa... updated p! macro to accept literals
                 }
 
                 if !self.tcx().sess.verbose() {
@@ -686,6 +691,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(in_binder(&types));
             }
             ty::Closure(did, substs) => {
+<<<<<<< HEAD
                 p!(write("["));
                 if !self.tcx().sess.verbose() {
                     p!(write("closure"));
@@ -697,6 +703,33 @@ pub trait PrettyPrinter<'tcx>:
                         } else {
                             let span = self.tcx().hir().span(hir_id);
                             p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
+=======
+                p!("[closure");
+
+                // FIXME(eddyb) should use `def_span`.
+                if let Some(did) = did.as_local() {
+                    let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
+                    if self.tcx().sess.opts.debugging_opts.span_free_formats {
+                        p!("@", print_def_path(did.to_def_id(), substs));
+                    } else {
+                        let span = self.tcx().hir().span(hir_id);
+                        p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
+                    }
+
+                    if substs.as_closure().is_valid() {
+                        let upvar_tys = substs.as_closure().upvar_tys();
+                        let mut sep = " ";
+                        for (&var_id, upvar_ty) in self
+                            .tcx()
+                            .upvars_mentioned(did)
+                            .as_ref()
+                            .iter()
+                            .flat_map(|v| v.keys())
+                            .zip(upvar_tys)
+                        {
+                            p!(write("{}{}:", sep, self.tcx().hir().name(var_id)), print(upvar_ty));
+                            sep = ", ";
+>>>>>>> 4bc0ae233aa... updated p! macro to accept literals
                         }
                     } else {
                         p!(write("@{}", self.tcx().def_path_str(did)));
@@ -723,7 +756,17 @@ pub trait PrettyPrinter<'tcx>:
                         }
                     }
                 }
+<<<<<<< HEAD
                 p!("]");
+=======
+
+                if self.tcx().sess.verbose() && substs.as_closure().is_valid() {
+                    p!(" closure_kind_ty=", print(substs.as_closure().kind_ty()));
+                    p!(" closure_sig_as_fn_ptr_ty=", print(substs.as_closure().sig_as_fn_ptr_ty()));
+                }
+
+                p!("]")
+>>>>>>> 4bc0ae233aa... updated p! macro to accept literals
             }
             ty::Array(ty, sz) => {
                 p!("[", print(ty), "; ");
