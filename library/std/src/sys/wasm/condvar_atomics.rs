@@ -9,7 +9,7 @@ pub struct Condvar {
     cnt: AtomicUsize,
 }
 
-pub type MovableCondvar = Box<Condvar>;
+pub type MovableCondvar = Condvar;
 
 // Condition variables are implemented with a simple counter internally that is
 // likely to cause spurious wakeups. Blocking on a condition variable will first
