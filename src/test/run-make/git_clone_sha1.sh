@@ -14,10 +14,10 @@ URL=$2
 SHA1=$3
 
 function err_exit() {
-    echo "ERROR:" $*
+    echo "ERROR:" "$@" 
     exit 1
 }
 
-git clone $URL $PROJECT_NAME || err_exit
-cd $PROJECT_NAME || err_exit
-git reset --hard $SHA1 || err_exit
+git clone "$URL" "$PROJECT_NAME" || err_exit "$@"
+cd "$PROJECT_NAME" || err_exit "$@"
+git reset --hard "$SHA1" || err_exit "$@"

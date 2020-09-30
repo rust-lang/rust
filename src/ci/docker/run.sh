@@ -4,7 +4,7 @@ set -e
 
 export MSYS_NO_PATHCONV=1
 
-script=`cd $(dirname $0) && pwd`/`basename $0`
+script=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
 
 image=""
 dev=0
@@ -27,11 +27,11 @@ do
   shift
 done
 
-script_dir="`dirname $script`"
+script_dir="$(dirname "$script")"
 docker_dir="${script_dir}/host-$(uname -m)"
-ci_dir="`dirname $script_dir`"
-src_dir="`dirname $ci_dir`"
-root_dir="`dirname $src_dir`"
+ci_dir="$(dirname "$script_dir")"
+src_dir="$(dirname "$ci_dir")"
+root_dir="$(dirname "$src_dir")"
 
 objdir=$root_dir/obj
 dist=$objdir/build/dist
@@ -44,7 +44,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     if [ "$CI" != "" ]; then
       hash_key=/tmp/.docker-hash-key.txt
       rm -f "${hash_key}"
-      echo $image >> $hash_key
+      echo "$image" >> $hash_key
 
       cat "$docker_dir/$image/Dockerfile" >> $hash_key
       # Look for all source files involves in the COPY command
@@ -73,13 +73,14 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       retry curl -y 30 -Y 10 --connect-timeout 30 -f -L -C - -o /tmp/rustci_docker_cache "$url"
       loaded_images=$(docker load -i /tmp/rustci_docker_cache | sed 's/.* sha/sha/')
       set -e
-      echo "Downloaded containers:\n$loaded_images"
+      echo "Downloaded containers:"
+      echo "$loaded_images"
     fi
 
     dockerfile="$docker_dir/$image/Dockerfile"
     if [ -x /usr/bin/cygpath ]; then
-        context="`cygpath -w $script_dir`"
-        dockerfile="`cygpath -w $dockerfile`"
+        context="$(cygpath -w "$script_dir")"
+        dockerfile="$(cygpath -w "$dockerfile")"
     else
         context="$script_dir"
     fi
@@ -119,14 +120,14 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
         exit 1
     fi
     # Transform changes the context of disabled Dockerfiles to match the enabled ones
-    tar --transform 's#disabled/#./#' -C $script_dir -c . | docker \
+    tar --transform 's#disabled/#./#' -C "$script_dir" -c . | docker \
       build \
       --rm \
       -t rust-ci \
       -f "host-$(uname -m)/$image/Dockerfile" \
       -
 else
-    echo Invalid image: $image
+    echo "Invalid image: $image"
 
     # Check whether the image exists for other architectures
     for arch_dir in "${script_dir}"/host-*; do
@@ -152,20 +153,20 @@ else
     exit 1
 fi
 
-mkdir -p $HOME/.cargo
-mkdir -p $objdir/tmp
-mkdir -p $objdir/cores
+mkdir -p "$HOME/.cargo"
+mkdir -p "$objdir/tmp"
+mkdir -p "$objdir/cores"
 mkdir -p /tmp/toolstate
 
-args=
+args=()
 if [ "$SCCACHE_BUCKET" != "" ]; then
-    args="$args --env SCCACHE_BUCKET"
-    args="$args --env SCCACHE_REGION"
-    args="$args --env AWS_ACCESS_KEY_ID"
-    args="$args --env AWS_SECRET_ACCESS_KEY"
+    args+=(--env SCCACHE_BUCKET)
+    args+=(--env SCCACHE_REGION)
+    args+=(--env AWS_ACCESS_KEY_ID)
+    args+=(--env AWS_SECRET_ACCESS_KEY)
 else
-    mkdir -p $HOME/.cache/sccache
-    args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
+    mkdir -p "$HOME/.cache/sccache"
+    args+=(--env "SCCACHE_DIR=/sccache" --volume "$HOME/.cache/sccache:/sccache")
 fi
 
 # Run containers as privileged as it should give them access to some more
@@ -173,7 +174,7 @@ fi
 # discovered that the leak sanitizer apparently needs these syscalls nowadays so
 # we'll need `--privileged` for at least the `x86_64-gnu` builder, so this just
 # goes ahead and sets it for all builders.
-args="$args --privileged"
+args+=(--privileged)
 
 # Things get a little weird if this script is already running in a docker
 # container. If we're already in a docker container then we assume it's set up
@@ -200,20 +201,20 @@ args="$args --privileged"
 if [ -f /.dockerenv ]; then
   docker create -v /checkout --name checkout alpine:3.4 /bin/true
   docker cp . checkout:/checkout
-  args="$args --volumes-from checkout"
+  args+=(--volumes-from checkout)
 else
-  args="$args --volume $root_dir:/checkout:ro"
-  args="$args --volume $objdir:/checkout/obj"
-  args="$args --volume $HOME/.cargo:/cargo"
-  args="$args --volume $HOME/rustsrc:$HOME/rustsrc"
-  args="$args --volume /tmp/toolstate:/tmp/toolstate"
-  args="$args --env LOCAL_USER_ID=`id -u`"
+  args+=(--volume "$root_dir":/checkout:ro)
+  args+=(--volume "$objdir":/checkout/obj)
+  args+=(--volume "$HOME"/.cargo:/cargo)
+  args+=(--volume "$HOME"/rustsrc:"$HOME"/rustsrc)
+  args+=(--volume /tmp/toolstate:/tmp/toolstate)
+  args+=(--env "LOCAL_USER_ID=$(id -u)")
 fi
 
 if [ "$dev" = "1" ]
 then
   # Interactive + TTY
-  args="$args -it"
+  args+=(-it)
   command="/bin/bash"
 else
   command="/checkout/src/ci/run.sh"
@@ -223,7 +224,7 @@ docker \
   run \
   --workdir /checkout/obj \
   --env SRC=/checkout \
-  $args \
+  "${args[@]}" \
   --env CARGO_HOME=/cargo \
   --env DEPLOY \
   --env DEPLOY_ALT \
@@ -242,6 +243,6 @@ docker \
   $command
 
 if [ -f /.dockerenv ]; then
-  rm -rf $objdir
-  docker cp checkout:/checkout/obj $objdir
+  rm -rf "$objdir"
+  docker cp checkout:/checkout/obj "$objdir"
 fi

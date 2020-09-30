@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 set -ex
 
 case "$(uname -m)" in

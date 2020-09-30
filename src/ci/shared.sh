@@ -13,7 +13,9 @@ function retry {
   local n=1
   local max=5
   while true; do
-    "$@" && break || {
+    if "$@"; then
+      break
+    else
       if [[ $n -lt $max ]]; then
         sleep $n  # don't retry immediately
         ((n++))
@@ -22,7 +24,7 @@ function retry {
         echo "The command has failed after $n attempts."
         return 1
       fi
-    }
+    fi
   done
 }
 

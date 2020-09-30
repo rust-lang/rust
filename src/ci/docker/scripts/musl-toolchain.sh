@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # This script runs `musl-cross-make` to prepare C toolchain (Binutils, GCC, musl itself)
 # and builds static libunwind that we distribute for static target.
 #
@@ -13,10 +14,10 @@ echo ERROR: An error was encountered with the build.
 cat /tmp/build.log
 exit 1
 "
-  trap "$on_err" ERR
+  trap '$on_err' ERR
   bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
   PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
+  "$@" &> /tmp/build.log
   trap - ERR
   kill $PING_LOOP_PID
   rm /tmp/build.log
@@ -38,21 +39,21 @@ cd musl-cross-make
 # A few commits ahead of v0.9.9 to include the cowpatch fix:
 git checkout a54eb56f33f255dfca60be045f12a5cfaf5a72a9
 
-hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.1.24
-hide_output make install TARGET=$TARGET MUSL_VER=1.1.24 OUTPUT=$OUTPUT
+hide_output make -j"$(nproc)" TARGET="$TARGET" MUSL_VER=1.1.24
+hide_output make install TARGET="$TARGET" MUSL_VER=1.1.24 OUTPUT="$OUTPUT"
 
 cd -
 
 # Install musl library to make binaries executable
-ln -s $OUTPUT/$TARGET/lib/libc.so /lib/ld-musl-$ARCH.so.1
-echo $OUTPUT/$TARGET/lib >> /etc/ld-musl-$ARCH.path
+ln -s "$OUTPUT/$TARGET/lib/libc.so" "/lib/ld-musl-$ARCH.so.1"
+echo "$OUTPUT/$TARGET/lib" >> "/etc/ld-musl-$ARCH.path"
 
 # Now when musl bootstraps itself create proper toolchain symlinks to make build and tests easier
 if [ "$REPLACE_CC" = "1" ]; then
     for exec in cc gcc; do
-        ln -s $TARGET-gcc /usr/local/bin/$exec
+        ln -s "$TARGET-gcc" "/usr/local/bin/$exec"
     done
     for exec in cpp c++ g++; do
-        ln -s $TARGET-g++ /usr/local/bin/$exec
+        ln -s "$TARGET-g++" "/usr/local/bin/$exec"
     done
 fi

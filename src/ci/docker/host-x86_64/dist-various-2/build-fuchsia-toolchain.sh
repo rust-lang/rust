@@ -27,11 +27,11 @@ build() {
     aarch64) tgt="zircon-qemu-arm64" ;;
   esac
 
-  hide_output make -j$(getconf _NPROCESSORS_ONLN) $tgt
-  dst=/usr/local/${arch}-fuchsia
-  mkdir -p $dst
-  cp -a build-${tgt}/sysroot/include $dst/
-  cp -a build-${tgt}/sysroot/lib $dst/
+  hide_output make "-j$(getconf _NPROCESSORS_ONLN)" $tgt
+  dst="/usr/local/${arch}-fuchsia"
+  mkdir -p "$dst"
+  cp -a "build-${tgt}/sysroot/include" "$dst/"
+  cp -a "build-${tgt}/sysroot/lib" "$dst/"
 }
 
 # Build sysroot

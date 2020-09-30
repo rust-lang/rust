@@ -10,10 +10,10 @@ echo ERROR: An error was encountered with the build.
 cat /tmp/build.log
 exit 1
 "
-  trap "$on_err" ERR
+  trap '$on_err' ERR
   bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
   PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
+  "$@" &> /tmp/build.log
   rm /tmp/build.log
   trap - ERR
   kill $PING_LOOP_PID
@@ -63,8 +63,8 @@ cat > /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-g++-sysroot <<'EOF'
 exec /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-g++ --sysroot=/x-tools/x86_64-unknown-netbsd/sysroot "$@"
 EOF
 
-GCC_SHA1=`sha1sum -b /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-gcc | cut -d' ' -f1`
-GPP_SHA1=`sha1sum -b /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-g++ | cut -d' ' -f1`
+GCC_SHA1="$(sha1sum -b /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-gcc | cut -d' ' -f1)"
+GPP_SHA1="$(sha1sum -b /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-g++ | cut -d' ' -f1)"
 
 echo "# $GCC_SHA1" >> /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-gcc-sysroot
 echo "# $GPP_SHA1" >> /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-g++-sysroot

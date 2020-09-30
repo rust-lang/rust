@@ -8,19 +8,17 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-ci_dir=$(cd $(dirname $0) && pwd)
+ci_dir=$(cd "$(dirname "$0")" && pwd)
 . "$ci_dir/shared.sh"
 
 REPO_DIR="$1"
 CACHE_DIR="$2"
 
-cache_src_dir="$CACHE_DIR/src"
-
-if [ ! -d "$REPO_DIR" -o ! -d "$REPO_DIR/.git" ]; then
+if [ ! -d "$REPO_DIR" ] || [ ! -d "$REPO_DIR/.git" ]; then
     echo "Error: $REPO_DIR does not exist or is not a git repo"
     exit 1
 fi
-cd $REPO_DIR
+cd "$REPO_DIR"
 if [ ! -d "$CACHE_DIR" ]; then
     echo "Error: $CACHE_DIR does not exist or is not an absolute path"
     exit 1
@@ -41,26 +39,25 @@ function fetch_github_commit_archive {
     local cached="download-${module//\//-}.tar.gz"
     retry sh -c "rm -f $cached && \
         curl -f -sSL -o $cached $2"
-    mkdir $module
+    mkdir "$module"
     touch "$module/.git"
-    tar -C $module --strip-components=1 -xf $cached
-    rm $cached
+    tar -C "$module" --strip-components=1 -xf "$cached"
+    rm "$cached"
 }
 
 included="src/llvm-project src/doc/book src/doc/rust-by-example"
-modules="$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
-modules=($modules)
+read -ra modules <<< "$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
 use_git=""
-urls="$(git config --file .gitmodules --get-regexp '\.url$' | cut -d' ' -f2)"
-urls=($urls)
-for i in ${!modules[@]}; do
-    module=${modules[$i]}
+read -ra urls <<< "$(git config --file .gitmodules --get-regexp '\.url$' | cut -d' ' -f2)"
+
+for i in "${!modules[@]}"; do
+    module="${modules[$i]}"
     if [[ " $included " = *" $module "* ]]; then
-        commit="$(git ls-tree HEAD $module | awk '{print $3}')"
-        git rm $module
+        commit="$(git ls-tree HEAD "$module" | awk '{print $3}')"
+        git rm "$module"
         url=${urls[$i]}
         url=${url/\.git/}
-        fetch_github_commit_archive $module "$url/archive/$commit.tar.gz" &
+        fetch_github_commit_archive "$module" "$url/archive/$commit.tar.gz" &
         continue
     else
         use_git="$use_git $module"

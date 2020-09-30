@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 set -ex
 
 export ANDROID_HOME=/android/sdk
@@ -15,8 +16,7 @@ LOCKFILE="${ANDROID_HOME}/android-sdk.lock"
 #
 /scripts/android-sdk-manager.py install "${LOCKFILE}" "${ANDROID_HOME}"
 
-details=$(cat "${LOCKFILE}" \
-    | grep system-images \
+details=$(grep system-images "${LOCKFILE}"\
     | sed 's/^system-images;android-\([0-9]\+\);default;\([a-z0-9-]\+\) /\1 \2 /g')
 api="$(echo "${details}" | awk '{print($1)}')"
 abi="$(echo "${details}" | awk '{print($2)}')"

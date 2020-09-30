@@ -33,7 +33,6 @@ while getopts ':vieh' OPTION; do
     case "$OPTION" in
         v)
             INVERT=1
-            ERROR_MSG='should not be found'
             ;;
         i)
             GREPFLAGS="i$GREPFLAGS"
@@ -59,7 +58,7 @@ if command -v "g${GREPPER}"; then
 fi
 
 LOG=$(mktemp -t cgrep.XXXXXX)
-trap "rm -f $LOG" EXIT
+trap 'rm -f $LOG' EXIT
 
 printf "[[[ begin stdout ]]]\n\033[90m"
 tee "$LOG"

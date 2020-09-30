@@ -85,7 +85,7 @@ cd gcc-$GCC
 # These patches probably only need to be updated in case the gcc version is
 # updated.
 
-patch -p0 < $PATCH_TOOLCHAIN
+patch -p0 < "$PATCH_TOOLCHAIN"
 
 ./contrib/download_prerequisites
 
