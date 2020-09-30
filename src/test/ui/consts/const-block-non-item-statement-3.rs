@@ -1,5 +1,5 @@
 // run-pass
-#![allow(dead_code)]
+#![allow(dead_code, unused)]
 
 type Array = [u32; {  let x = 2; 5 }];
 

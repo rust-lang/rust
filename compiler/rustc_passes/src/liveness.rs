@@ -90,12 +90,12 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -318,49 +318,38 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
-    fn visit_fn(
-        &mut self,
-        fk: FnKind<'tcx>,
-        decl: &'tcx hir::FnDecl<'tcx>,
-        body_id: hir::BodyId,
-        sp: Span,
-        id: HirId,
-    ) {
-        debug!("visit_fn {:?}", id);
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+        debug!("visit_body {:?}", body.id());
 
-        // swap in a new set of IR maps for this function body:
-        let def_id = self.tcx.hir().local_def_id(id);
-        let mut fn_maps = IrMaps::new(self.tcx);
+        // swap in a new set of IR maps for this body
+        let mut maps = IrMaps::new(self.tcx);
+        let hir_id = maps.tcx.hir().body_owner(body.id());
+        let def_id = maps.tcx.hir().local_def_id(hir_id);
 
         // Don't run unused pass for #[derive()]
-        if let FnKind::Method(..) = fk {
-            let parent = self.tcx.hir().get_parent_item(id);
-            if let Some(Node::Item(i)) = self.tcx.hir().find(parent) {
-                if i.attrs.iter().any(|a| self.tcx.sess.check_name(a, sym::automatically_derived)) {
+        if let Some(parent) = self.tcx.parent(def_id.to_def_id()) {
+            if let DefKind::Impl = self.tcx.def_kind(parent.expect_local()) {
+                if self.tcx.has_attr(parent, sym::automatically_derived) {
                     return;
                 }
             }
         }
 
-        debug!("creating fn_maps: {:p}", &fn_maps);
-
-        let body = self.tcx.hir().body(body_id);
-
-        if let Some(upvars) = self.tcx.upvars_mentioned(def_id) {
+        if let Some(upvars) = maps.tcx.upvars_mentioned(def_id) {
             for (&var_hir_id, _upvar) in upvars {
-                let var_name = self.tcx.hir().name(var_hir_id);
-                fn_maps.add_variable(Upvar(var_hir_id, var_name));
+                let var_name = maps.tcx.hir().name(var_hir_id);
+                maps.add_variable(Upvar(var_hir_id, var_name));
             }
         }
 
         // gather up the various local variables, significant expressions,
         // and so forth:
-        intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
+        intravisit::walk_body(&mut maps, body);
 
         // compute liveness
-        let mut lsets = Liveness::new(&mut fn_maps, def_id);
-        let entry_ln = lsets.compute(&body, sp, id);
-        lsets.log_liveness(entry_ln, id);
+        let mut lsets = Liveness::new(&mut maps, def_id);
+        let entry_ln = lsets.compute(&body, hir_id);
+        lsets.log_liveness(entry_ln, body.id().hir_id);
 
         // check for various error conditions
         lsets.visit_body(body);
@@ -845,8 +834,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.rwu_table.assign_unpacked(idx, rwu);
     }
 
-    fn compute(&mut self, body: &hir::Body<'_>, span: Span, id: hir::HirId) -> LiveNode {
-        debug!("compute: using id for body, {:?}", body.value);
+    fn compute(&mut self, body: &hir::Body<'_>, hir_id: HirId) -> LiveNode {
+        debug!("compute: for body {:?}", body.id().hir_id);
 
         // # Liveness of captured variables
         //
@@ -890,7 +879,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             return succ;
         }
 
-        let ty = self.typeck_results.node_type(id);
+        let ty = self.typeck_results.node_type(hir_id);
         match ty.kind() {
             ty::Closure(_def_id, substs) => match substs.as_closure().kind() {
                 ty::ClosureKind::Fn => {}
@@ -899,7 +888,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             },
             ty::Generator(..) => return succ,
             _ => {
-                span_bug!(span, "{} has upvars so it should have a closure type: {:?}", id, ty);
+                span_bug!(
+                    body.value.span,
+                    "{} has upvars so it should have a closure type: {:?}",
+                    hir_id,
+                    ty
+                );
             }
         };
 
