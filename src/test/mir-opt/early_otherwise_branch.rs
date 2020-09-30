@@ -53,10 +53,21 @@ fn opt5(x: Option<u32>, y: Option<bool>) -> u32 {
     }
 }
 
+// This caused a miscompilation during development, so I included it here as a regression
+// EMIT_MIR early_otherwise_branch.opt6.EarlyOtherwiseBranch.diff
+pub fn opt6(x: Option<u32>, y: Option<(u32, Option<(String, u32)>)>) -> u32 {
+    match (x, y) {
+        (Some(_), Some((_, None))) => 1,
+        (Some(_), Some((note, Some((sugg, _))))) => 2,
+        _ => 99,
+    }
+}
+
 fn main() {
     opt1(None, Some(0));
     opt2(None, Some(0));
     opt3(MyOption1::None, MyOption2::Some(0));
     opt4(Ok(0), None);
     opt5(None, Some(true));
+    opt6(None, None);
 }

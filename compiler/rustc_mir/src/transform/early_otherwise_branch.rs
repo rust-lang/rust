@@ -4,7 +4,7 @@ use crate::{
 };
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use std::{borrow::Cow, fmt::Debug};
+use std::fmt::Debug;
 
 use super::simplify::simplify_cfg;
 
@@ -98,33 +98,20 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 StatementKind::Assign(box (Place::from(not_equal_temp), not_equal_rvalue)),
             );
 
-            let (mut targets_to_jump_to, values_to_jump_to): (Vec<_>, Vec<_>) = opt_to_apply
-                .infos
-                .iter()
-                .flat_map(|x| x.second_switch_info.targets_with_values.iter())
-                .cloned()
-                .unzip();
-
-            // add otherwise case in the end
-            targets_to_jump_to.push(opt_to_apply.infos[0].first_switch_info.otherwise_bb);
-            // new block that jumps to the correct discriminant case. This block is switched to if the discriminants are equal
-            let new_switch_data = BasicBlockData::new(Some(Terminator {
-                source_info: opt_to_apply.infos[0].second_switch_info.discr_source_info,
-                kind: TerminatorKind::SwitchInt {
-                    // the first and second discriminants are equal, so just pick one
-                    discr: Operand::Copy(first_descriminant_place),
-                    switch_ty: discr_type,
-                    values: Cow::from(values_to_jump_to),
-                    targets: targets_to_jump_to,
-                },
-            }));
-
-            let new_switch_bb = patch.new_block(new_switch_data);
-
             // switch on the NotEqual. If true, then jump to the `otherwise` case.
             // If false, then jump to a basic block that then jumps to the correct disciminant case
             let true_case = opt_to_apply.infos[0].first_switch_info.otherwise_bb;
-            let false_case = new_switch_bb;
+            let targets_second_switch =
+                &opt_to_apply.infos[0].second_switch_info.targets_with_values;
+            assert_eq!(
+                1,
+                targets_second_switch.len(),
+                "We should only have one target besides the otherwise"
+            );
+
+            // Since we know that the two discriminant values are equal,
+            // we can jump directly to the target in the second switch
+            let false_case = targets_second_switch[0].0;
             patch.patch_terminator(
                 opt_to_apply.basic_block_first_switch,
                 TerminatorKind::if_(
