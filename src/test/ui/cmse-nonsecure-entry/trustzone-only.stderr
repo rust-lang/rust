@@ -1,5 +1,5 @@
 error[E0775]: `#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension
-  --> $DIR/trustzone-only.rs:6:1
+  --> $DIR/trustzone-only.rs:5:1
    |
 LL | #[cmse_nonsecure_entry]
    | ^^^^^^^^^^^^^^^^^^^^^^^

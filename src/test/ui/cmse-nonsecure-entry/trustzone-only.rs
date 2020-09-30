@@ -1,4 +1,3 @@
-// gate-test-cmse_nonsecure_entry
 // ignore-thumbv8m.main-none-eabi
 #![feature(cmse_nonsecure_entry)]
 

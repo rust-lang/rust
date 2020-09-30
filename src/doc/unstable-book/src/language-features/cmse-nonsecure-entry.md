@@ -26,6 +26,12 @@ With this attribute, the compiler will do the following:
   information
 * use the `BXNS` instruction to return
 
+Because the stack can not be used to pass parameters, there will be compilation
+errors if:
+* the total size of all parameters is too big (for example more than four 32
+  bits integers)
+* the entry function is not using a C ABI
+
 The special symbol `__acle_se_` will be used by the linker to generate a secure
 gateway veneer.
 
