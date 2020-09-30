@@ -110,7 +110,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "borrow_interior_mutable_const",
-        group: "correctness",
+        group: "style",
         desc: "referencing `const` with interior mutability",
         deprecation: None,
         module: "non_copy_const",
@@ -334,7 +334,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "declare_interior_mutable_const",
-        group: "correctness",
+        group: "style",
         desc: "declaring `const` with interior mutability",
         deprecation: None,
         module: "non_copy_const",
