@@ -641,42 +641,35 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Str => p!(write("str")),
             ty::Generator(did, substs, movability) => {
+                p!(write("["));
                 match movability {
-                    hir::Movability::Movable => p!(write("[generator")),
-                    hir::Movability::Static => p!(write("[static generator")),
+                    hir::Movability::Movable => {}
+                    hir::Movability::Static => p!(write("static ")),
                 }
 
-                // FIXME(eddyb) should use `def_span`.
-                if let Some(did) = did.as_local() {
-                    let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
-                    let span = self.tcx().hir().span(hir_id);
-                    p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
-
-                    if substs.as_generator().is_valid() {
-                        let upvar_tys = substs.as_generator().upvar_tys();
-                        let mut sep = " ";
-                        for (&var_id, upvar_ty) in self
-                            .tcx()
-                            .upvars_mentioned(did)
-                            .as_ref()
-                            .iter()
-                            .flat_map(|v| v.keys())
-                            .zip(upvar_tys)
-                        {
-                            p!(write("{}{}:", sep, self.tcx().hir().name(var_id)), print(upvar_ty));
-                            sep = ", ";
-                        }
+                if !self.tcx().sess.verbose() {
+                    p!(write("generator"));
+                    // FIXME(eddyb) should use `def_span`.
+                    if let Some(did) = did.as_local() {
+                        let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
+                        let span = self.tcx().hir().span(hir_id);
+                        p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
+                    } else {
+                        p!(write("@{}", self.tcx().def_path_str(did)));
                     }
                 } else {
-                    p!(write("@{}", self.tcx().def_path_str(did)));
-
+                    p!(print_def_path(did, substs));
                     if substs.as_generator().is_valid() {
-                        let upvar_tys = substs.as_generator().upvar_tys();
-                        let mut sep = " ";
-                        for (index, upvar_ty) in upvar_tys.enumerate() {
-                            p!(write("{}{}:", sep, index), print(upvar_ty));
-                            sep = ", ";
+                        // Search for the first inference variable
+                        p!(write(" upvar_tys=("));
+                        let mut uninferred_ty =
+                            substs.as_generator().upvar_tys().filter(|ty| ty.is_ty_infer());
+                        if uninferred_ty.next().is_some() {
+                            p!(write("unavailable"));
+                        } else {
+                            self = self.comma_sep(substs.as_generator().upvar_tys())?;
                         }
+                        p!(write(")"));
                     }
                 }
 
@@ -684,61 +677,50 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write(" "), print(substs.as_generator().witness()));
                 }
 
-                p!(write("]"))
+                p!(write("]"));
             }
             ty::GeneratorWitness(types) => {
                 p!(in_binder(&types));
             }
             ty::Closure(did, substs) => {
-                p!(write("[closure"));
-
-                // FIXME(eddyb) should use `def_span`.
-                if let Some(did) = did.as_local() {
-                    let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
-                    if self.tcx().sess.opts.debugging_opts.span_free_formats {
-                        p!(write("@"), print_def_path(did.to_def_id(), substs));
-                    } else {
-                        let span = self.tcx().hir().span(hir_id);
-                        p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
-                    }
-
-                    if substs.as_closure().is_valid() {
-                        let upvar_tys = substs.as_closure().upvar_tys();
-                        let mut sep = " ";
-                        for (&var_id, upvar_ty) in self
-                            .tcx()
-                            .upvars_mentioned(did)
-                            .as_ref()
-                            .iter()
-                            .flat_map(|v| v.keys())
-                            .zip(upvar_tys)
-                        {
-                            p!(write("{}{}:", sep, self.tcx().hir().name(var_id)), print(upvar_ty));
-                            sep = ", ";
+                p!(write("["));
+                if !self.tcx().sess.verbose() {
+                    p!(write("closure"));
+                    // FIXME(eddyb) should use `def_span`.
+                    if let Some(did) = did.as_local() {
+                        let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
+                        if self.tcx().sess.opts.debugging_opts.span_free_formats {
+                            p!(write("@"), print_def_path(did.to_def_id(), substs));
+                        } else {
+                            let span = self.tcx().hir().span(hir_id);
+                            p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
                         }
+                    } else {
+                        p!(write("@{}", self.tcx().def_path_str(did)));
                     }
                 } else {
-                    p!(write("@{}", self.tcx().def_path_str(did)));
-
+                    p!(print_def_path(did, substs));
                     if substs.as_closure().is_valid() {
-                        let upvar_tys = substs.as_closure().upvar_tys();
-                        let mut sep = " ";
-                        for (index, upvar_ty) in upvar_tys.enumerate() {
-                            p!(write("{}{}:", sep, index), print(upvar_ty));
-                            sep = ", ";
+                        // Search for the first inference variable
+                        let mut uninferred_ty =
+                            substs.as_closure().upvar_tys().filter(|ty| ty.is_ty_infer());
+                        if uninferred_ty.next().is_some() {
+                            // If the upvar substs contain an inference variable we haven't
+                            // finished capture analysis.
+                            p!(write(" closure_substs=(unavailable)"));
+                        } else {
+                            p!(write(" closure_kind_ty="), print(substs.as_closure().kind_ty()));
+                            p!(
+                                write(" closure_sig_as_fn_ptr_ty="),
+                                print(substs.as_closure().sig_as_fn_ptr_ty())
+                            );
+                            p!(write(" upvar_tys=("));
+                            self = self.comma_sep(substs.as_closure().upvar_tys())?;
+                            p!(write(")"));
                         }
                     }
                 }
-
-                if self.tcx().sess.verbose() && substs.as_closure().is_valid() {
-                    p!(write(" closure_kind_ty="), print(substs.as_closure().kind_ty()));
-                    p!(
-                        write(" closure_sig_as_fn_ptr_ty="),
-                        print(substs.as_closure().sig_as_fn_ptr_ty())
-                    );
-                }
-
-                p!(write("]"))
+                p!(write("]"));
             }
             ty::Array(ty, sz) => {
                 p!(write("["), print(ty), write("; "));

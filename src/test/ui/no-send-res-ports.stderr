@@ -9,17 +9,17 @@ LL | |
 LL | |         let y = x;
 LL | |         println!("{:?}", y);
 LL | |     });
-   | |_____- within this `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6 x:Foo]`
+   | |_____- within this `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6]`
    | 
   ::: $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
 LL |       F: Send + 'static,
    |          ---- required by this bound in `spawn`
    |
-   = help: within `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6 x:Foo]`, the trait `Send` is not implemented for `Rc<()>`
+   = help: within `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6]`, the trait `Send` is not implemented for `Rc<()>`
    = note: required because it appears within the type `Port<()>`
    = note: required because it appears within the type `Foo`
-   = note: required because it appears within the type `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6 x:Foo]`
+   = note: required because it appears within the type `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6]`
 
 error: aborting due to previous error
 

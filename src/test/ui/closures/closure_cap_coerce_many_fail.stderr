@@ -12,7 +12,7 @@ LL | |     };
    | |_____- `match` arms have incompatible types
    |
    = note: expected type `fn(i32, i32) -> i32 {add}`
-           found closure `[closure@$DIR/closure_cap_coerce_many_fail.rs:9:16: 9:43 cap:_]`
+           found closure `[closure@$DIR/closure_cap_coerce_many_fail.rs:9:16: 9:43]`
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/closure_cap_coerce_many_fail.rs:18:16
@@ -28,7 +28,7 @@ LL | |     };
    | |_____- `match` arms have incompatible types
    |
    = note: expected type `[closure@$DIR/closure_cap_coerce_many_fail.rs:17:16: 17:37]`
-           found closure `[closure@$DIR/closure_cap_coerce_many_fail.rs:18:16: 18:43 cap:_]`
+           found closure `[closure@$DIR/closure_cap_coerce_many_fail.rs:18:16: 18:43]`
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
 
@@ -38,14 +38,14 @@ error[E0308]: `match` arms have incompatible types
 LL |       let _ = match "+" {
    |  _____________-
 LL | |         "+" => |a, b| (a + b + cap) as i32,
-   | |                --------------------------- this is found to be of type `[closure@$DIR/closure_cap_coerce_many_fail.rs:26:16: 26:43 cap:_]`
+   | |                --------------------------- this is found to be of type `[closure@$DIR/closure_cap_coerce_many_fail.rs:26:16: 26:43]`
 LL | |         "-" => |a, b| (a - b) as i32,
    | |                ^^^^^^^^^^^^^^^^^^^^^ expected closure, found a different closure
 LL | |         _ => unimplemented!(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `[closure@$DIR/closure_cap_coerce_many_fail.rs:26:16: 26:43 cap:_]`
+   = note: expected type `[closure@$DIR/closure_cap_coerce_many_fail.rs:26:16: 26:43]`
            found closure `[closure@$DIR/closure_cap_coerce_many_fail.rs:27:16: 27:37]`
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
@@ -56,15 +56,15 @@ error[E0308]: `match` arms have incompatible types
 LL |       let _ = match "+" {
    |  _____________-
 LL | |         "+" => |a, b| (a + b + cap) as i32,
-   | |                --------------------------- this is found to be of type `[closure@$DIR/closure_cap_coerce_many_fail.rs:34:16: 34:43 cap:_]`
+   | |                --------------------------- this is found to be of type `[closure@$DIR/closure_cap_coerce_many_fail.rs:34:16: 34:43]`
 LL | |         "-" => |a, b| (a - b + cap) as i32,
    | |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected closure, found a different closure
 LL | |         _ => unimplemented!(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `[closure@$DIR/closure_cap_coerce_many_fail.rs:34:16: 34:43 cap:_]`
-           found closure `[closure@$DIR/closure_cap_coerce_many_fail.rs:35:16: 35:43 cap:_]`
+   = note: expected type `[closure@$DIR/closure_cap_coerce_many_fail.rs:34:16: 34:43]`
+           found closure `[closure@$DIR/closure_cap_coerce_many_fail.rs:35:16: 35:43]`
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
 
