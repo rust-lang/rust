@@ -598,9 +598,16 @@ pub mod ty {
     }
 
     #[derive(Debug)]
-    pub struct TraitBound;
+    pub struct TraitBound(pub mir::LocalKind);
     impl NonConstOp for TraitBound {
-        const STOPS_CONST_CHECKING: bool = true;
+        fn importance(&self) -> DiagnosticImportance {
+            match self.0 {
+                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
+                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
+                    DiagnosticImportance::Primary
+                }
+            }
+        }
 
         fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
             mcf_status_in_item(ccx)

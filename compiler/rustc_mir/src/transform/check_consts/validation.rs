@@ -364,11 +364,11 @@ impl Validator<'mir, 'tcx> {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::AutoTrait(_)
                             | ty::ExistentialPredicate::Projection(_) => {
-                                self.check_op(ops::ty::TraitBound)
+                                self.check_op(ops::ty::TraitBound(kind))
                             }
                             ty::ExistentialPredicate::Trait(trait_ref) => {
                                 if Some(trait_ref.def_id) != self.tcx.lang_items().sized_trait() {
-                                    self.check_op(ops::ty::TraitBound)
+                                    self.check_op(ops::ty::TraitBound(kind))
                                 }
                             }
                         }
@@ -413,15 +413,19 @@ impl Validator<'mir, 'tcx> {
                                 let def = generics.type_param(p, tcx);
                                 let span = tcx.def_span(def.def_id);
 
+                                // These are part of the function signature, so treat them like
+                                // arguments when determining importance.
+                                let kind = LocalKind::Arg;
+
                                 if constness == hir::Constness::Const {
-                                    self.check_op_spanned(ops::ty::TraitBound, span);
+                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
                                 } else if !tcx.features().const_fn
                                     || self.ccx.is_const_stable_const_fn()
                                 {
                                     // HACK: We shouldn't need the conditional above, but trait
                                     // bounds on containing impl blocks are wrongly being marked as
                                     // "not-const".
-                                    self.check_op_spanned(ops::ty::TraitBound, span);
+                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
                                 }
                             }
                             // other kinds of bounds are either tautologies
