@@ -161,8 +161,6 @@ impl NonConstOp for FnCallUnstable {
 #[derive(Debug)]
 pub struct FnPtrCast;
 impl NonConstOp for FnPtrCast {
-    const STOPS_CONST_CHECKING: bool = true;
-
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
         if ccx.const_kind() != hir::ConstContext::ConstFn {
             Status::Allowed
@@ -560,8 +558,6 @@ pub mod ty {
     #[derive(Debug)]
     pub struct FnPtr(pub mir::LocalKind);
     impl NonConstOp for FnPtr {
-        const STOPS_CONST_CHECKING: bool = true;
-
         fn importance(&self) -> DiagnosticImportance {
             match self.0 {
                 mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
