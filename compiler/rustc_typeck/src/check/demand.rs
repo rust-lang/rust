@@ -827,7 +827,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let suggestion = format!("{}::from({})", checked_ty, lhs_src);
                     (lhs_expr.span, msg, suggestion)
                 } else {
-                    let msg = format!("{} and panic if the converted value wouldn't fit", msg);
+                    let msg = format!("{} and panic if the converted value doesn't fit", msg);
                     let suggestion =
                         format!("{}{}.try_into().unwrap()", prefix, with_opt_paren(&src));
                     (expr.span, msg, suggestion)
