@@ -20,8 +20,7 @@ Then, you can generate the manifest and all the packages from `path/to/dist` to
 `path/to/output` with:
 
 ```
-$ BUILD_MANIFEST_DISABLE_SIGNING=1 cargo +nightly run \
-    path/to/dist path/to/output 1970-01-01 http://example.com \
+$ cargo +nightly run path/to/dist path/to/output 1970-01-01 http://example.com \
     CHANNEL path/to/rust/repo
 ```
 
