@@ -72,8 +72,6 @@ macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt) => {
 // CHECK: #NO_APP
 #[no_mangle]
 pub unsafe fn sym_static() {
-    dont_merge(stringify!($func));
-
     asm!("la $v1, {}", sym extern_static);
 }
 
@@ -83,8 +81,6 @@ pub unsafe fn sym_static() {
 // CHECK: #NO_APP
 #[no_mangle]
 pub unsafe fn sym_fn() {
-    dont_merge(stringify!($func));
-
     asm!("la $v1, {}", sym extern_func);
 }
 
