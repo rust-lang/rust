@@ -567,6 +567,15 @@ fn fma() {
 }
 
 #[test]
+fn issue_69532() {
+    let f = Double::from_bits(0x7FF0_0000_0000_0001u64 as u128);
+    let mut loses_info = false;
+    let r: Single = f.convert(&mut loses_info).value;
+    assert!(loses_info);
+    assert!(r.is_nan());
+}
+
+#[test]
 fn min_num() {
     let f1 = Double::from_f64(1.0);
     let f2 = Double::from_f64(2.0);

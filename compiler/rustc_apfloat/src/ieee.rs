@@ -1511,6 +1511,18 @@ impl<S: Semantics, T: Semantics> FloatConvert<IeeeFloat<T>> for IeeeFloat<S> {
                 sig::set_bit(&mut r.sig, T::PRECISION - 1);
             }
 
+            // If we are truncating NaN, it is possible that we shifted out all of the
+            // set bits in a signalling NaN payload. But NaN must remain NaN, so some
+            // bit in the significand must be set (otherwise it is Inf).
+            // This can only happen with sNaN. Set the 1st bit after the quiet bit,
+            // so that we still have an sNaN.
+            if r.sig[0] == 0 {
+                assert!(shift < 0, "Should not lose NaN payload on extend");
+                assert!(T::PRECISION >= 3, "Unexpectedly narrow significand");
+                assert!(*loses_info, "Missing payload should have set lost info");
+                sig::set_bit(&mut r.sig, T::PRECISION - 3);
+            }
+
             // gcc forces the Quiet bit on, which means (float)(double)(float_sNan)
             // does not give you back the same bits. This is dubious, and we
             // don't currently do it. You're really supposed to get
