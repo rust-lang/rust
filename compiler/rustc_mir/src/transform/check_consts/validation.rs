@@ -1,7 +1,7 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 use rustc_errors::{struct_span_err, Applicability, Diagnostic};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
@@ -209,7 +209,7 @@ impl Validator<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if is_async_fn(tcx, def_id) || body.generator_kind.is_some() {
+        if is_async_fn(self.ccx) || body.generator_kind.is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
@@ -929,15 +929,13 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char()
 }
 
-fn is_async_fn(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    let hir_map = tcx.hir();
-    let hir_id = hir_map.local_def_id_to_hir_id(def_id);
-    hir_map
-        .fn_sig_by_hir_id(hir_id)
-        .map_or(false, |sig| sig.header.asyncness == hir::IsAsync::Async)
+fn is_async_fn(ccx: &ConstCx<'_, '_>) -> bool {
+    ccx.fn_sig().map_or(false, |sig| sig.header.asyncness == hir::IsAsync::Async)
 }
 
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
+    let attr_span = ccx.fn_sig().map_or(ccx.body.span, |sig| sig.span.shrink_to_lo());
+
     ccx.tcx
         .sess
         .struct_span_err(
@@ -945,15 +943,15 @@ fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol
             &format!("const-stable function cannot use `#[feature({})]`", gate.as_str()),
         )
         .span_suggestion(
-            ccx.body.span,
+            attr_span,
             "if it is not part of the public API, make this function unstably const",
             concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
             Applicability::HasPlaceholders,
         )
         .span_suggestion(
-            ccx.body.span,
+            attr_span,
             "otherwise `#[allow_internal_unstable]` can be used to bypass stability checks",
-            format!("#[allow_internal_unstable({})]", gate),
+            format!("#[allow_internal_unstable({})]\n", gate),
             Applicability::MaybeIncorrect,
         )
         .emit();
