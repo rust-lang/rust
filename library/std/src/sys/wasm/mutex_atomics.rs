@@ -8,7 +8,7 @@ pub struct Mutex {
     locked: AtomicUsize,
 }
 
-pub type MovableMutex = Box<Mutex>;
+pub type MovableMutex = Mutex;
 
 // Mutexes have a pretty simple implementation where they contain an `i32`
 // internally that is 0 when unlocked and 1 when the mutex is locked.
