@@ -44,6 +44,8 @@
 #include "TypeAnalysis.h"
 #include "../Utils.h"
 
+#include "../LibraryFuncs.h"
+
 #include "TBAA.h"
 
 llvm::cl::opt<bool> PrintType("enzyme_printtype", cl::init(false), cl::Hidden,
@@ -1244,6 +1246,10 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
     sz = max(sz, (size_t)val);
   }
 
+
+  updateAnalysis(MTI.getArgOperand(0), TypeTree(BaseType::Pointer).Only(-1), &MTI);
+  updateAnalysis(MTI.getArgOperand(1), TypeTree(BaseType::Pointer).Only(-1), &MTI);
+
   TypeTree res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz).PurgeAnything();
   TypeTree res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz).PurgeAnything();
   res |= res2;
@@ -1634,7 +1640,33 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     return;                                                                    \
   }
     //All these are always valid => no direction check
-    CONSIDER(malloc)
+    //CONSIDER(malloc)
+    // TODO consider handling other allocation functions integer inputs
+    if (isAllocationFunction(*ci, interprocedural.TLI)) {
+      size_t Idx=0;
+      for(auto &Arg : ci->args()) {
+        if (Arg.getType()->isIntegerTy()) {
+          updateAnalysis(call.getOperand(Idx), TypeTree(BaseType::Integer).Only(-1), &call);
+        }
+        Idx++;
+      }
+      assert(ci->getReturnType()->isPointerTy());
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+    }
+    if (isDeallocationFunction(*ci, interprocedural.TLI)) {
+      size_t Idx=0;
+      for(auto &Arg : ci->args()) {
+        if (Arg.getType()->isIntegerTy()) {
+          updateAnalysis(call.getOperand(Idx), TypeTree(BaseType::Integer).Only(-1), &call);
+        }
+        if (Arg.getType()->isPointerTy()) {
+          updateAnalysis(call.getOperand(Idx), TypeTree(BaseType::Pointer).Only(-1), &call);
+        }
+        Idx++;
+      }
+      assert(ci->getReturnType()->isVoidTy());
+    }
+
     // CONSIDER(__lgamma_r_finite)
     CONSIDER2(frexp, double, double, int*)
 
@@ -1772,6 +1804,10 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           &call,
           TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
           &call);
+    }
+
+    if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "printf" || ci->getName() == "puts") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
     }
 
     if (!ci->empty()) {

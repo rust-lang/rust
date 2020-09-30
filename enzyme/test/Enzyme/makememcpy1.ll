@@ -1,6 +1,7 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -loop-deletion -correlated-propagation -adce -simplifycfg -S | FileCheck %s
 
 ; XFAIL: *
+; This requires the additional optimization to create memcpy's
 
 source_filename = "mem.c"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -121,7 +122,7 @@ attributes #7 = { nounwind }
 
 ; CHECK: define internal void @diffecompute_loops(double* nocapture %a, double* nocapture %"a'", double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 800)
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(800) dereferenceable_or_null(800) i8* @malloc(i64 800)
 ; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   %0 = bitcast double* %a to i8*
 ; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %malloccall, i8* nonnull align 8 %0, i64 800, i1 false)

@@ -42,6 +42,13 @@
 
 #include <set>
 
+static inline llvm::Function* isCalledFunction(llvm::Value* val) {
+  if (llvm::CallInst* CI = llvm::dyn_cast<llvm::CallInst>(val)) {
+    return CI->getCalledFunction();
+  }
+  return nullptr;
+}
+
 /// Get LLVM fast math flags
 static inline llvm::FastMathFlags getFast() {
   llvm::FastMathFlags f;

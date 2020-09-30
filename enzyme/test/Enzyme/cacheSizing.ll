@@ -914,17 +914,17 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: define internal void @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"diff'ipa" = alloca { double*, i64 }, align 8
-; CHECK-NEXT:   store { double*, i64 } zeroinitializer, { double*, i64 }* %"diff'ipa", align 8
+; REMOVED:   %"diff'ipa" = alloca { double*, i64 }, align 8
+; REMOVED:   store { double*, i64 } zeroinitializer, { double*, i64 }* %"diff'ipa", align 8
 ; CHECK-NEXT:   %diff = alloca { double*, i64 }, align 8
-; CHECK-NEXT:   %"diffptr'ipc" = bitcast { double*, i64 }* %"diff'ipa" to double**
+; REMOVED:   %"diffptr'ipc" = bitcast { double*, i64 }* %"diff'ipa" to double**
 ; CHECK-NEXT:   %diffptr = bitcast { double*, i64 }* %diff to double**
 ; CHECK-NEXT:   %m_rows.i1 = getelementptr inbounds { double*, i64 }, { double*, i64 }* %diff, i64 0, i32 1
 ; CHECK-NEXT:   %".cast'ipa" = alloca double, i64 16
 ; CHECK-NEXT:   %0 = bitcast double* %".cast'ipa" to i8*
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull{{( align 8)?}} %0, i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %.cast = alloca double, i64 16
-; CHECK-NEXT:   store double* %".cast'ipa", double** %"diffptr'ipc", align 8
+; REMOVED:   store double* %".cast'ipa", double** %"diffptr'ipc", align 8
 ; CHECK-NEXT:   store double* %.cast, double** %diffptr, align 8, !tbaa !19
 ; CHECK-NEXT:   store i64 4, i64* %m_rows.i1, align 8, !tbaa !15
 ; CHECK-NEXT:   br label %subfor

@@ -48,14 +48,18 @@ extern llvm::cl::opt<bool> nonmarkedglobals_inactive;
 class ActivityAnalyzer {
 public:
     llvm::AAResults &AA;
+    llvm::TargetLibraryInfo &TLI;
+    bool ActiveReturns;
     uint8_t directions;
 
-    llvm::SmallPtrSet<llvm::Value *, 4> constants;
-    llvm::SmallPtrSet<llvm::Value *, 20> nonconstant;
+    llvm::SmallPtrSet<llvm::Instruction *, 4> constants;
+    llvm::SmallPtrSet<llvm::Instruction *, 20> nonconstant;
     llvm::SmallPtrSet<llvm::Value *, 4> constantvals;
     llvm::SmallPtrSet<llvm::Value *, 2> retvals;
 
-    ActivityAnalyzer(llvm::AAResults &AA, uint8_t directions) : AA(AA), directions(directions) {
+
+    ActivityAnalyzer(llvm::AAResults &AA_, llvm::TargetLibraryInfo &TLI_, bool ActiveReturns, uint8_t directions) :
+        AA(AA_), TLI(TLI_), ActiveReturns(ActiveReturns), directions(directions) {
         assert(directions <= 3);
         assert(directions != 0);
     }
@@ -65,7 +69,8 @@ public:
     bool isconstantM(TypeResults &TR, llvm::Instruction *inst);
 
 private:
-    ActivityAnalyzer(ActivityAnalyzer & Other, uint8_t directions)  : AA(Other.AA), directions(directions),
+    ActivityAnalyzer(ActivityAnalyzer & Other, uint8_t directions)  : AA(Other.AA), TLI(Other.TLI), 
+        ActiveReturns(Other.ActiveReturns), directions(directions),
         constants(Other.constants.begin(), Other.constants.end()), nonconstant(Other.nonconstant.begin(), Other.nonconstant.end()), 
         constantvals(Other.constantvals.begin(), Other.constantvals.end()), retvals(Other.retvals.begin(), Other.retvals.end())
         {
@@ -102,6 +107,11 @@ private:
     }
     bool isFunctionArgumentConstant(llvm::CallInst *CI, llvm::Value *val);
 
+    bool isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Value* val);
+    bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value* val);
+
+    std::map<llvm::Value*, bool> StoredOrReturnedCache;
+    bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value* val);
 };
 
 #endif

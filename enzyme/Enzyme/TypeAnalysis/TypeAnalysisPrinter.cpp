@@ -65,11 +65,18 @@ public:
   TypeAnalysisPrinter() : FunctionPass(ID) {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetLibraryInfoWrapperPass>();
   }
 
   bool runOnFunction(Function &F) override {
     if (F.getName() != FunctionToAnalyze)
       return /*changed*/ false;
+
+#if LLVM_VERSION_MAJOR >= 10
+      auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
+#else
+      auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+#endif
 
     FnTypeInfo type_args(&F);
     for (auto &a : type_args.Function->args()) {
@@ -93,7 +100,7 @@ public:
           std::pair<Argument *, std::set<int64_t>>(&a, {}));
     }
 
-    TypeAnalysis TA;
+    TypeAnalysis TA(TLI);
     TA.analyzeFunction(type_args);
     for (Function &f : *F.getParent()) {
 

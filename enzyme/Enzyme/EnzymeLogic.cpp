@@ -358,7 +358,7 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        return is_value_needed_in_reverse(TR, gutils, val, /*topLevel*/mode == DerivativeMode::Both);
+        return is_value_needed_in_reverse<Primal>(TR, gutils, val, /*topLevel*/mode == DerivativeMode::Both);
       },
       [&](const Instruction *inst) {
         if (auto II = dyn_cast<IntrinsicInst>(inst)) {
@@ -449,7 +449,7 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
           }
         }
         return ( (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) && inst->mayWriteToMemory()) ||
-               is_value_needed_in_reverse(TR, gutils, inst,
+               is_value_needed_in_reverse<Primal>(TR, gutils, inst,
                                           /*topLevel*/ mode == DerivativeMode::Both);
       });
 }
@@ -770,7 +770,7 @@ bool legalCombinedForwardReverse(
                      << (*calledValue) << " due to " << *I << "\n";
       return;
     }
-    if (is_value_needed_in_reverse(TR, gutils, I, /*topLevel*/ true)) {
+    if (is_value_needed_in_reverse<Primal>(TR, gutils, I, /*topLevel*/ true)) {
       legal = false;
       if (called)
         llvm::errs() << " [nv] failed to replace function "

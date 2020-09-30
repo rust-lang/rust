@@ -44,6 +44,7 @@
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 
 #include "ActivityAnalysis.h"
 #include "EnzymeLogic.h"
@@ -230,7 +231,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
         std::pair<Argument *, std::set<int64_t>>(&a, {}));
   }
 
-  TypeAnalysis TA;
+  TypeAnalysis TA(TLI);
   type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
 
   auto newFunc = CreatePrimalAndGradient(

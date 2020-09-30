@@ -29,6 +29,8 @@
 
 #include <llvm/Config/llvm-config.h>
 
+#include "llvm/Analysis/TargetLibraryInfo.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
@@ -259,6 +261,8 @@ public:
 /// Full interprocedural TypeAnalysis
 class TypeAnalysis {
 public:
+  llvm::TargetLibraryInfo &TLI;
+  TypeAnalysis(llvm::TargetLibraryInfo &TLI) : TLI(TLI) {}
   /// Map of possible query states to TypeAnalyzer intermediate results
   std::map<FnTypeInfo, TypeAnalyzer> analyzedFunctions;
 

@@ -24,8 +24,13 @@
 //===----------------------------------------------------------------------===//
 #include "GradientUtils.h"
 
+enum ValueType {
+  Primal,
+  Shadow
+};
 // Determine if a value is needed in the reverse pass. We only use this logic in
 // the top level function right now.
+template<ValueType VT>
 bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
     bool topLevel, std::map<std::pair<const Value *, bool>, bool> seen = {}) {
@@ -46,12 +51,27 @@ bool is_value_needed_in_reverse(
 
     const Instruction *user = dyn_cast<Instruction>(use);
 
+    // A shadow value is only needed in reverse if it or one of its descendants
+    // is used in an active instruction
+    if (VT == Shadow) {
+      if (user)
+        if (!gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+          return true;
+      if (is_value_needed_in_reverse<Shadow>(TR, gutils, use, topLevel, seen)) {
+        return true;
+      }
+      continue;
+    }
+
+    assert(VT == Primal);
+
     // One may need to this value in the computation of loop
     // bounds/comparisons/etc (which even though not active -- will be used for
     // the reverse pass)
     //   We only need this if we're not doing the combined forward/reverse since
     //   otherwise it will use the local cache (rather than save for a separate
     //   backwards cache)
+    //   We also don't need this if looking at the shadow rather than primal
     if (!topLevel) {
       // Proving that none of the uses (or uses' uses) are used in control flow
       // allows us to safely not do this load
@@ -63,7 +83,7 @@ bool is_value_needed_in_reverse(
         return seen[idx] = true;
       }
 
-      if (is_value_needed_in_reverse(TR, gutils, user, topLevel, seen)) {
+      if (is_value_needed_in_reverse<VT>(TR, gutils, user, topLevel, seen)) {
         return seen[idx] = true;
       }
     }
@@ -87,7 +107,7 @@ bool is_value_needed_in_reverse(
         }
 
         if (isa<LoadInst>(zu) || isa<CastInst>(zu) || isa<PHINode>(zu)) {
-          if (is_value_needed_in_reverse(TR, gutils, zu, topLevel, seen)) {
+          if (is_value_needed_in_reverse<VT>(TR, gutils, zu, topLevel, seen)) {
             return seen[idx] = true;
           }
           continue;
@@ -110,9 +130,10 @@ bool is_value_needed_in_reverse(
           //   conservatively assume that if legal it is recomputed and not
           //   stored)
           if (!gutils->isConstantInstruction(ci) ||
+              !gutils->isConstantValue(const_cast<Value*>((const Value*)ci)) ||
               (ci->mayWriteToMemory() && topLevel) ||
               (gutils->legalRecompute(ci, ValueToValueMapTy()) &&
-               is_value_needed_in_reverse(TR, gutils, ci, topLevel, seen))) {
+               is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen))) {
             return seen[idx] = true;
           }
           continue;
@@ -127,7 +148,7 @@ bool is_value_needed_in_reverse(
     }
 
     if (isa<LoadInst>(user) || isa<CastInst>(user) || isa<PHINode>(user)) {
-      if (!is_value_needed_in_reverse(TR, gutils, user, topLevel, seen)) {
+      if (!is_value_needed_in_reverse<VT>(TR, gutils, user, topLevel, seen)) {
         continue;
       }
     }
@@ -225,16 +246,17 @@ bool is_value_needed_in_reverse(
       //   in reverse) or we need this value for the reverse pass (we
       //   conservatively assume that if legal it is recomputed and not stored)
       if (!gutils->isConstantInstruction(ci) ||
+          !gutils->isConstantValue(const_cast<Value*>((const Value*)ci)) ||
           (ci->mayWriteToMemory() && topLevel) ||
           (gutils->legalRecompute(ci, ValueToValueMapTy()) &&
-           is_value_needed_in_reverse(TR, gutils, ci, topLevel, seen))) {
+           is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen))) {
         return seen[idx] = true;
       }
       continue;
     }
 
     if (auto inst = dyn_cast<Instruction>(use))
-      if (gutils->isConstantInstruction(const_cast<Instruction *>(inst)))
+      if (gutils->isConstantInstruction(const_cast<Instruction *>(inst)) && gutils->isConstantValue(const_cast<Instruction*>(inst)))
         continue;
 
     return seen[idx] = true;

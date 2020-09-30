@@ -380,28 +380,25 @@ GradientUtils *GradientUtils::CreateFromClone(
     llvm_unreachable("illegal number of elements in augmented return struct");
 
   ValueToValueMapTy invertedPointers;
-  SmallPtrSet<Value *, 4> constants;
-  SmallPtrSet<Value *, 20> nonconstant;
+  SmallPtrSet<Instruction *, 4> constants;
+  SmallPtrSet<Instruction *, 20> nonconstant;
   SmallPtrSet<Value *, 2> returnvals;
   ValueToValueMapTy originalToNew;
-
-  auto newFunc = CloneFunctionWithReturns(
-      /*topLevel*/ false, todiff, AA, TLI, invertedPointers, constant_args,
-      constants, nonconstant, returnvals, /*returnValue*/ returnValue,
-      "fakeaugmented_" + todiff->getName(), &originalToNew,
-      /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
+  
   SmallPtrSet<Value *, 4> constant_values;
   SmallPtrSet<Value *, 4> nonconstant_values;
 
-  if (retType != DIFFE_TYPE::CONSTANT) {
-    for (auto a : returnvals) {
-      nonconstant_values.insert(a);
-    }
-  }
+  auto newFunc = CloneFunctionWithReturns(
+      /*topLevel*/ false, todiff, AA, TLI, invertedPointers, constant_args,
+      constant_values, nonconstant_values, returnvals, /*returnValue*/ returnValue,
+      "fakeaugmented_" + todiff->getName(), &originalToNew,
+      /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
 
   auto res = new GradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers,
-                               constants, nonconstant, constant_values,
-                               nonconstant_values, originalToNew,
+                               constant_values,
+                               nonconstant_values,
+                               /*ActiveValues*/retType != DIFFE_TYPE::CONSTANT,
+                                originalToNew,
                                DerivativeMode::Forward);
   return res;
 }
@@ -413,27 +410,23 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
     Type *additionalArg) {
   assert(!todiff->empty());
   ValueToValueMapTy invertedPointers;
-  SmallPtrSet<Value *, 4> constants;
-  SmallPtrSet<Value *, 20> nonconstant;
+  SmallPtrSet<Instruction *, 4> constants;
+  SmallPtrSet<Instruction *, 20> nonconstant;
   SmallPtrSet<Value *, 2> returnvals;
   ValueToValueMapTy originalToNew;
 
-  bool diffeReturnArg = retType == DIFFE_TYPE::OUT_DIFF;
-  auto newFunc = CloneFunctionWithReturns(
-      topLevel, todiff, AA, TLI, invertedPointers, constant_args, constants,
-      nonconstant, returnvals, returnValue, "diffe" + todiff->getName(),
-      &originalToNew, /*diffeReturnArg*/ diffeReturnArg, additionalArg);
   SmallPtrSet<Value *, 4> constant_values;
   SmallPtrSet<Value *, 4> nonconstant_values;
-  if (retType != DIFFE_TYPE::CONSTANT) {
-    for (auto a : returnvals) {
-      nonconstant_values.insert(a);
-    }
-  }
+
+  bool diffeReturnArg = retType == DIFFE_TYPE::OUT_DIFF;
+  auto newFunc = CloneFunctionWithReturns(
+      topLevel, todiff, AA, TLI, invertedPointers, constant_args, constant_values,
+      nonconstant_values, returnvals, returnValue, "diffe" + todiff->getName(),
+      &originalToNew, /*diffeReturnArg*/ diffeReturnArg, additionalArg);
 
   auto res = new DiffeGradientUtils(
-      newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant,
-      constant_values, nonconstant_values, originalToNew,
+      newFunc, todiff, TLI, TA, AA, invertedPointers, 
+      constant_values, nonconstant_values, /*ActiveValues*/retType != DIFFE_TYPE::CONSTANT, originalToNew,
       topLevel ? DerivativeMode::Both : DerivativeMode::Reverse);
   return res;
 }

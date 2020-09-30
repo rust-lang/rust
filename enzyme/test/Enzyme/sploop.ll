@@ -1,6 +1,7 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
 
 ; XFAIL: *
+; This requires the memcpy optimization to run
 
 ; Function Attrs: inlinehint nounwind uwtable
 define linkonce_odr dso_local void @f(double* %x, double* %z, i64* %rows) {
@@ -48,11 +49,11 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 
 ; CHECK: define internal void @diffef(double* %x, double* %"x'", double* %z, double* %"z'", i64* %rows) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 32)
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(32) dereferenceable_or_null(32) i8* @malloc(i64 32)
 ; CHECK-NEXT:   %L1_malloccache = bitcast i8* %malloccall to double*
-; CHECK-NEXT:   %malloccall3 = tail call noalias nonnull i8* @malloc(i64 32)
+; CHECK-NEXT:   %malloccall3 = tail call noalias nonnull dereferenceable(32) dereferenceable_or_null(32) i8* @malloc(i64 32)
 ; CHECK-NEXT:   %a17_malloccache = bitcast i8* %malloccall3 to i64*
-; CHECK-NEXT:   %malloccall4 = tail call noalias nonnull i8* @malloc(i64 128)
+; CHECK-NEXT:   %malloccall4 = tail call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
 ; CHECK-NEXT:   %L2_malloccache = bitcast i8* %malloccall4 to double*
 ; CHECK-NEXT:   br label %loop1
 

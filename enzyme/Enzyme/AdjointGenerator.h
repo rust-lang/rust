@@ -151,7 +151,7 @@ public:
     if (auto *FPMO = dyn_cast<FPMathOperator>(&inst)) {
      if (FPMO->getOpcode() == Instruction::FNeg) {
       eraseIfUnused(inst);
-      if (gutils->isConstantValue(&inst))
+      if (gutils->isConstantInstruction(&inst))
         return;
       if (mode != DerivativeMode::Reverse && mode != DerivativeMode::Both)
         return;
@@ -212,6 +212,9 @@ public:
         IRBuilder<> BuilderZ(placeholder);
         Value *newip = nullptr;
 
+        bool needShadow = is_value_needed_in_reverse<Shadow>(
+              TR, gutils, &LI, /*toplevel*/ mode == DerivativeMode::Both);
+
         switch (mode) {
 
         case DerivativeMode::Forward:
@@ -220,7 +223,8 @@ public:
           assert(newip->getType() == type);
 
           if (mode == DerivativeMode::Forward &&
-              gutils->can_modref_map->find(&LI)->second) {
+              gutils->can_modref_map->find(&LI)->second &&
+              needShadow) {
             gutils->cacheForReverse(BuilderZ, newip,
                               getIndex(&LI, CacheType::Shadow));
           }
@@ -232,7 +236,8 @@ public:
 
         case DerivativeMode::Reverse: {
           // only make shadow where caching needed
-          if (gutils->can_modref_map->find(&LI)->second) {
+          if (gutils->can_modref_map->find(&LI)->second &&
+              needShadow) {
             newip = gutils->cacheForReverse(BuilderZ, placeholder,
                                       getIndex(&LI, CacheType::Shadow));
             assert(newip->getType() == type);
@@ -265,7 +270,7 @@ public:
     //! Store loads that need to be cached for use in reverse pass
     if (cache_reads_always ||
         (!cache_reads_never && gutils->can_modref_map->find(&LI)->second &&
-         is_value_needed_in_reverse(
+         is_value_needed_in_reverse<Primal>(
              TR, gutils, &LI, /*toplevel*/ mode == DerivativeMode::Both))) {
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&LI)->getNextNode());
       // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
@@ -283,7 +288,7 @@ public:
     if (mode == DerivativeMode::Forward)
       return;
 
-    if (constantval)
+    if (gutils->isConstantInstruction(&LI))
       return;
 
     if (nonmarkedglobals_inactiveloads) {
@@ -445,8 +450,9 @@ public:
 
   void visitCastInst(llvm::CastInst &I) {
     eraseIfUnused(I);
-    if (gutils->isConstantValue(&I))
+    if (gutils->isConstantInstruction(&I))
       return;
+
     if (I.getType()->isPointerTy() ||
         I.getOpcode() == CastInst::CastOps::PtrToInt)
       return;
@@ -485,7 +491,7 @@ public:
 
   void visitSelectInst(llvm::SelectInst &SI) {
     eraseIfUnused(SI);
-    if (gutils->isConstantValue(&SI))
+    if (gutils->isConstantInstruction(&SI))
       return;
     if (SI.getType()->isPointerTy())
       return;
@@ -741,7 +747,7 @@ public:
 
   void visitBinaryOperator(llvm::BinaryOperator &BO) {
     eraseIfUnused(BO);
-    if (gutils->isConstantValue(&BO))
+    if (gutils->isConstantInstruction(&BO))
       return;
     if (mode != DerivativeMode::Reverse && mode != DerivativeMode::Both)
       return;
@@ -1648,7 +1654,7 @@ public:
       if (called &&
           (called->getName() == "asin" || called->getName() == "asinf" ||
            called->getName() == "asinl")) {
-        if (gutils->isConstantValue(orig))
+        if (gutils->isConstantInstruction(orig))
           return;
 
         IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
@@ -1671,7 +1677,7 @@ public:
 
       if (called &&
           (called->getName() == "tanhf" || called->getName() == "tanh")) {
-        if (mode == DerivativeMode::Forward || gutils->isConstantValue(orig))
+        if (mode == DerivativeMode::Forward || gutils->isConstantInstruction(orig))
           return;
 
         IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
@@ -1694,7 +1700,7 @@ public:
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
           n == "__lgammal_r_finite" || n == "acos" || n == "atan") {
-        if (mode == DerivativeMode::Forward || gutils->isConstantValue(orig)) {
+        if (mode == DerivativeMode::Forward || gutils->isConstantInstruction(orig)) {
           return;
         }
       }
@@ -1725,7 +1731,7 @@ public:
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
       if (mode != DerivativeMode::Both) {
-        if (is_value_needed_in_reverse(
+        if (is_value_needed_in_reverse<Primal>(
                 TR, gutils, orig, /*topLevel*/ mode == DerivativeMode::Both)) {
 
           gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));
@@ -1783,8 +1789,9 @@ public:
     }
 
     bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
+    //llvm::errs() << "orig: " << *orig << " ici:" << gutils->isConstantInstruction(orig) << " icv: " << gutils->isConstantValue(orig) << " subretused=" << subretused << " ivn:" << is_value_needed_in_reverse<Primal>(TR, gutils, &call, /*topLevel*/mode == DerivativeMode::Both) << "\n";
 
-    if (gutils->isConstantInstruction(orig)) {
+    if (gutils->isConstantInstruction(orig) && gutils->isConstantValue(orig)) {
       // If we need this value and it is illegal to recompute it (it writes or
       // may load uncacheable data)
       //    Store and reload it
@@ -2111,7 +2118,7 @@ public:
           }
 
           if (mode == DerivativeMode::Forward &&
-              is_value_needed_in_reverse(TR, gutils, orig,
+              is_value_needed_in_reverse<Primal>(TR, gutils, orig,
                                          /*topLevel*/ mode ==
                                              DerivativeMode::Both)) {
             gutils->cacheForReverse(BuilderZ, dcall, getIndex(orig, CacheType::Self));
@@ -2144,7 +2151,7 @@ public:
         }
 
         if (subretused) {
-          if (is_value_needed_in_reverse(TR, gutils, orig,
+          if (is_value_needed_in_reverse<Primal>(TR, gutils, orig,
                                          mode == DerivativeMode::Both)) {
             cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                               orig->getName() + "_tmpcacheB");
@@ -2230,7 +2237,7 @@ public:
       }
       if (/*!topLevel*/ mode != DerivativeMode::Both && subretused &&
           !orig->doesNotAccessMemory()) {
-        if (is_value_needed_in_reverse(TR, gutils, orig,
+        if (is_value_needed_in_reverse<Primal>(TR, gutils, orig,
                                        mode == DerivativeMode::Both)) {
           assert(!replaceFunction);
           cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,

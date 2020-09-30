@@ -925,22 +925,19 @@ public:
   GradientUtils(Function *newFunc_, Function *oldFunc_, TargetLibraryInfo &TLI_,
                 TypeAnalysis &TA_, AAResults &AA_,
                 ValueToValueMapTy &invertedPointers_,
-                const SmallPtrSetImpl<Value *> &constants_,
-                const SmallPtrSetImpl<Value *> &nonconstant_,
                 const SmallPtrSetImpl<Value *> &constantvalues_,
-                const SmallPtrSetImpl<Value *> &returnvals_,
+                const SmallPtrSetImpl<Value *> &activevals_,
+                bool ActiveReturn,
                 ValueToValueMapTy &originalToNewFn_, DerivativeMode mode)
       : mode(mode), newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(),
         DT(*newFunc_), OrigDT(*oldFunc_), OrigPDT(*oldFunc_),
-        ATA(AA_, 3),
+        ATA(AA_, TLI_, ActiveReturn, 3),
         OrigLI(OrigDT), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI),
         inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
 
-        ATA.constants.insert(constants_.begin(), constants_.end());
-        ATA.nonconstant.insert(nonconstant_.begin(), nonconstant_.end());
         ATA.constantvals.insert(constantvalues_.begin(), constantvalues_.end());
         //nonconstant vals
-        ATA.retvals.insert(returnvals_.begin(), returnvals_.end());
+        ATA.retvals.insert(activevals_.begin(), activevals_.end());
 
     invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
@@ -1049,8 +1046,8 @@ public:
 
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
     for (auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); ++a) {
-      if (ATA.constants.find(a) == ATA.constants.end() &&
-          ATA.nonconstant.find(a) == ATA.nonconstant.end())
+      if (ATA.constantvals.find(a) == ATA.constantvals.end() &&
+          ATA.retvals.find(a) == ATA.retvals.end())
         continue;
 
       bool const_value = isConstantValueInternal(a, AA, TR);
@@ -1084,6 +1081,8 @@ public:
 
         internal_isConstantValue[&I] = const_value;
         internal_isConstantInstruction[&I] = const_inst;
+        //if (printconst)
+        //llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst << "\n";
       }
     }
   }
@@ -2394,13 +2393,12 @@ class DiffeGradientUtils : public GradientUtils {
   DiffeGradientUtils(Function *newFunc_, Function *oldFunc_,
                      TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA,
                      ValueToValueMapTy &invertedPointers_,
-                     const SmallPtrSetImpl<Value *> &constants_,
-                     const SmallPtrSetImpl<Value *> &nonconstant_,
                      const SmallPtrSetImpl<Value *> &constantvalues_,
                      const SmallPtrSetImpl<Value *> &returnvals_,
+                     bool ActiveReturn,
                      ValueToValueMapTy &origToNew_, DerivativeMode mode)
       : GradientUtils(newFunc_, oldFunc_, TLI, TA, AA, invertedPointers_,
-                      constants_, nonconstant_, constantvalues_, returnvals_,
+                      constantvalues_, returnvals_, ActiveReturn,
                       origToNew_, mode) {
     prepareForReverse();
   }

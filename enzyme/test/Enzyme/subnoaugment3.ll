@@ -1,5 +1,7 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
 
+; This fails because activity analysis deduces that sub value is not active, when it indeed is
+
 %Type = type { float, double }
 
 declare dso_local double @__enzyme_autodiff(i8*, ...)
@@ -28,7 +30,7 @@ entry:
   store double %inp, double* %arr
   %call.i = call double* @sub(double* %arr)
   %a1 = load double, double* %call.i
-  ret double %inp
+  ret double %a1
 }
 
 define double* @sub(double* %a) {
@@ -86,11 +88,13 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %arr = alloca double, align 8
 ; CHECK-NEXT:   store double %inp, double* %arr, align 8
 ; CHECK-NEXT:   %call.i_augmented = call double* @augmented_sub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
+; CHECK-NEXT:   %0 = load double, double* %call.i_augmented, align 8
+; CHECK-NEXT:   %1 = fadd fast double %0, %differeturn
+; CHECK-NEXT:   store double %1, double* %call.i_augmented
 ; CHECK-NEXT:   call void @diffesub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
 ; CHECK-NEXT:   %[[prevv:.+]] = load double, double* %"arr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
-; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[prevv]], %differeturn
-; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[add]], 0
+; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[prevv]], 0
 ; CHECK-NEXT:   ret { double } %[[res]]
 ; CHECK-NEXT: }
 

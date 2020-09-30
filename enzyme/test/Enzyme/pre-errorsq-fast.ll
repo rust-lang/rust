@@ -1,6 +1,7 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
 
 ; XFAIL: *
+; TODO implement alias analysis propagation
 ; NOTE THAT IN THIS VERSION THERE IS NO NEED TO CACHE (todo propagate alias analysis information from caller context to callee)
 
 source_filename = "/mnt/Data/git/Enzyme/enzyme/test/Integration/eigensumsqdyn.cpp"

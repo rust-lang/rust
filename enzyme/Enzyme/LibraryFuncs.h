@@ -27,6 +27,7 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IRBuilder.h"
 
 /// Return whether a given function is a known C/C++ memory allocation function
 /// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
