@@ -181,8 +181,6 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
-    const_checking_stopped: bool,
-
     error_emitted: bool,
     secondary_errors: Vec<Diagnostic>,
 }
@@ -201,7 +199,6 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
-            const_checking_stopped: false,
             error_emitted: false,
             secondary_errors: Vec::new(),
         }
@@ -289,12 +286,6 @@ impl Validator<'mir, 'tcx> {
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context.
     pub fn check_op_spanned<O: NonConstOp>(&mut self, op: O, span: Span) {
-        // HACK: This is for strict equivalence with the old `qualify_min_const_fn` pass, which
-        // only emitted one error per function. It should be removed and the test output updated.
-        if self.const_checking_stopped {
-            return;
-        }
-
         let gate = match op.status_in_item(self.ccx) {
             Status::Allowed => return,
 
@@ -327,10 +318,6 @@ impl Validator<'mir, 'tcx> {
             }
 
             ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),
-        }
-
-        if O::STOPS_CONST_CHECKING {
-            self.const_checking_stopped = true;
         }
     }
 
