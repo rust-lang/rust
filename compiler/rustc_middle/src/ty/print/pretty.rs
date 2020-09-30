@@ -1012,20 +1012,12 @@ pub trait PrettyPrinter<'tcx>:
             (Scalar::Raw { data, .. }, ty::Uint(ui)) => {
                 let size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
                 let int = ConstInt::new(data, size, false, ty.is_ptr_sized_integral());
-                if print_ty {
-                    p!(write("{:#?}", int))
-                } else {
-                    p!(write("{:?}", int))
-                }
+                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             (Scalar::Raw { data, .. }, ty::Int(i)) => {
                 let size = Integer::from_attr(&self.tcx(), SignedInt(*i)).size();
                 let int = ConstInt::new(data, size, true, ty.is_ptr_sized_integral());
-                if print_ty {
-                    p!(write("{:#?}", int))
-                } else {
-                    p!(write("{:?}", int))
-                }
+                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             // Char
             (Scalar::Raw { data, .. }, ty::Char) if char::from_u32(data as u32).is_some() => {
