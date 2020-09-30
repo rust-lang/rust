@@ -1,5 +1,5 @@
 error[E0658]: mutation through a reference is not allowed in statics
-  --> $DIR/mod-static-with-const-fn.rs:15:5
+  --> $DIR/mod-static-with-const-fn.rs:16:5
    |
 LL |     *FOO.0.get() = 5;
    |     ^^^^^^^^^^^^^^^^
