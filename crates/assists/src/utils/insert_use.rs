@@ -174,7 +174,7 @@ pub(crate) fn try_merge_trees(
     let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
     let lhs = lhs.split_prefix(&lhs_prefix);
     let rhs = rhs.split_prefix(&rhs_prefix);
-    recursive_merge(&lhs, &rhs, merge).map(|(merged, _)| merged)
+    recursive_merge(&lhs, &rhs, merge)
 }
 
 /// Recursively "zips" together lhs and rhs.
@@ -182,20 +182,22 @@ fn recursive_merge(
     lhs: &ast::UseTree,
     rhs: &ast::UseTree,
     merge: MergeBehaviour,
-) -> Option<(ast::UseTree, bool)> {
+) -> Option<ast::UseTree> {
     let mut use_trees = lhs
         .use_tree_list()
         .into_iter()
         .flat_map(|list| list.use_trees())
-        // check if any of the use trees are nested, if they are and the behaviour is `last` we are not allowed to merge this
-        // so early exit the iterator by using Option's Intoiterator impl
-        .map(|tree| match merge == MergeBehaviour::Last && tree.use_tree_list().is_some() {
-            true => None,
-            false => Some(tree),
+        // we use Option here to early return from this function(this is not the same as a `filter` op)
+        .map(|tree| match merge.is_tree_allowed(&tree) {
+            true => Some(tree),
+            false => None,
         })
         .collect::<Option<Vec<_>>>()?;
     use_trees.sort_unstable_by(|a, b| path_cmp_opt(a.path(), b.path()));
     for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
+        if !merge.is_tree_allowed(&rhs_t) {
+            return None;
+        }
         let rhs_path = rhs_t.path();
         match use_trees.binary_search_by(|p| path_cmp_opt(p.path(), rhs_path.clone())) {
             Ok(idx) => {
@@ -239,17 +241,9 @@ fn recursive_merge(
                 }
                 let lhs = lhs_t.split_prefix(&lhs_prefix);
                 let rhs = rhs_t.split_prefix(&rhs_prefix);
-                let this_has_children = use_trees.len() > 0;
                 match recursive_merge(&lhs, &rhs, merge) {
-                    Some((_, has_multiple_children))
-                        if merge == MergeBehaviour::Last
-                            && this_has_children
-                            && has_multiple_children =>
-                    {
-                        return None
-                    }
-                    Some((use_tree, _)) => use_trees[idx] = use_tree,
-                    None => use_trees.insert(idx, rhs_t),
+                    Some(use_tree) => use_trees[idx] = use_tree,
+                    None => return None,
                 }
             }
             Err(_)
@@ -264,8 +258,7 @@ fn recursive_merge(
             }
         }
     }
-    let has_multiple_children = use_trees.len() > 1;
-    Some((lhs.with_use_tree_list(make::use_tree_list(use_trees)), has_multiple_children))
+    Some(lhs.with_use_tree_list(make::use_tree_list(use_trees)))
 }
 
 /// Traverses both paths until they differ, returning the common prefix of both.
@@ -306,6 +299,10 @@ fn first_path(path: &ast::Path) -> ast::Path {
 fn segment_iter(path: &ast::Path) -> impl Iterator<Item = ast::PathSegment> + Clone {
     // cant make use of SyntaxNode::siblings, because the returned Iterator is not clone
     successors(first_segment(path), |p| p.parent_path().parent_path().and_then(|p| p.segment()))
+}
+
+fn path_len(path: ast::Path) -> usize {
+    segment_iter(&path).count()
 }
 
 /// Orders paths in the following way:
@@ -350,6 +347,19 @@ pub enum MergeBehaviour {
     Full,
     /// Only merge the last import level, doesn't allow import nesting.
     Last,
+}
+
+impl MergeBehaviour {
+    #[inline]
+    fn is_tree_allowed(&self, tree: &ast::UseTree) -> bool {
+        match self {
+            MergeBehaviour::Full => true,
+            // only simple single segment paths are allowed
+            MergeBehaviour::Last => {
+                tree.use_tree_list().is_none() && tree.path().map(path_len) <= Some(1)
+            }
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
@@ -676,6 +686,11 @@ use std::io;",
     }
 
     #[test]
+    fn merge_last_into_self() {
+        check_last("foo::bar::baz", r"use foo::bar;", r"use foo::bar::{self, baz};");
+    }
+
+    #[test]
     fn merge_groups_full() {
         check_full(
             "std::io",
@@ -819,8 +834,24 @@ use std::io;",
     }
 
     #[test]
-    fn merge_last_too_long() {
-        check_last("foo::bar", r"use foo::bar::baz::Qux;", r"use foo::bar::{self, baz::Qux};");
+    fn skip_merge_last_too_long() {
+        check_last(
+            "foo::bar",
+            r"use foo::bar::baz::Qux;",
+            r"use foo::bar;
+use foo::bar::baz::Qux;",
+        );
+    }
+
+    #[test]
+    #[ignore] // FIXME: Order changes when switching lhs and rhs
+    fn skip_merge_last_too_long2() {
+        check_last(
+            "foo::bar::baz::Qux",
+            r"use foo::bar;",
+            r"use foo::bar;
+use foo::bar::baz::Qux;",
+        );
     }
 
     #[test]
