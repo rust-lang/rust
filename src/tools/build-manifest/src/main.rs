@@ -4,10 +4,11 @@
 //! via `x.py dist hash-and-sign`; the cmdline arguments are set up
 //! by rustbuild (in `src/bootstrap/dist.rs`).
 
+mod manifest;
 mod versions;
 
+use crate::manifest::{Component, Manifest, Package, Rename, Target};
 use crate::versions::{PkgType, Versions};
-use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::env;
@@ -166,57 +167,6 @@ static DOCS_TARGETS: &[&str] = &[
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
 static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-analyzer-preview"];
-
-#[derive(Serialize)]
-#[serde(rename_all = "kebab-case")]
-struct Manifest {
-    manifest_version: String,
-    date: String,
-    pkg: BTreeMap<String, Package>,
-    renames: BTreeMap<String, Rename>,
-    profiles: BTreeMap<String, Vec<String>>,
-}
-
-#[derive(Serialize)]
-struct Package {
-    version: String,
-    git_commit_hash: Option<String>,
-    target: BTreeMap<String, Target>,
-}
-
-#[derive(Serialize)]
-struct Rename {
-    to: String,
-}
-
-#[derive(Serialize, Default)]
-struct Target {
-    available: bool,
-    url: Option<String>,
-    hash: Option<String>,
-    xz_url: Option<String>,
-    xz_hash: Option<String>,
-    components: Option<Vec<Component>>,
-    extensions: Option<Vec<Component>>,
-}
-
-impl Target {
-    fn unavailable() -> Self {
-        Self::default()
-    }
-}
-
-#[derive(Serialize)]
-struct Component {
-    pkg: String,
-    target: String,
-}
-
-impl Component {
-    fn from_str(pkg: &str, target: &str) -> Self {
-        Self { pkg: pkg.to_string(), target: target.to_string() }
-    }
-}
 
 macro_rules! t {
     ($e:expr) => {
