@@ -1,4 +1,4 @@
-// compile-flags: -Zmir-opt-level=1
+// compile-flags: -Zmir-opt-level=1 -Zunsound-mir-opts
 // EMIT_MIR simplify_try_if_let.{impl#0}-append.SimplifyArmIdentity.diff
 
 use std::ptr::NonNull;
