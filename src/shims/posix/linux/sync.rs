@@ -10,13 +10,11 @@ pub fn futex<'tcx>(
     if args.len() < 4 {
         throw_ub_format!("incorrect number of arguments for futex syscall: got {}, expected at least 4", args.len());
     }
-    let addr = this.read_scalar(args[1])?.check_init()?;
+    let addr = args[1];
+    let addr_scalar = this.read_scalar(addr)?.check_init()?;
+    let futex_ptr = this.force_ptr(addr_scalar)?.erase_tag();
     let op = this.read_scalar(args[2])?.to_i32()?;
     let val = this.read_scalar(args[3])?.to_i32()?;
-
-    this.memory.check_ptr_access(addr, Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
-
-    let addr = addr.assert_ptr().erase_tag();
 
     let thread = this.get_active_thread();
 
@@ -33,10 +31,11 @@ pub fn futex<'tcx>(
             if !this.is_null(timeout)? {
                 throw_ub_format!("miri does not support timeouts for futex operations");
             }
+            this.memory.check_ptr_access(addr_scalar, Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
             let futex_val = this.read_scalar_at_offset(args[1], 0, this.machine.layouts.i32)?.to_i32()?;
             if val == futex_val {
                 this.block_thread(thread);
-                this.futex_wait(addr, thread);
+                this.futex_wait(futex_ptr, thread);
             } else {
                 let eagain = this.eval_libc("EAGAIN")?;
                 this.set_last_error(eagain)?;
@@ -45,7 +44,7 @@ pub fn futex<'tcx>(
         op if op == futex_wake => {
             let mut n = 0;
             for _ in 0..val {
-                if let Some(thread) = this.futex_wake(addr) {
+                if let Some(thread) = this.futex_wake(futex_ptr) {
                     this.unblock_thread(thread);
                     n += 1;
                 } else {
