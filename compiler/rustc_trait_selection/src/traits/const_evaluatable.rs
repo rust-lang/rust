@@ -23,6 +23,9 @@ use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
+use std::cmp;
+
+/// Check if a given constant can be evaluated.
 pub fn is_const_evaluatable<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def: ty::WithOptConstParam<DefId>,
@@ -32,23 +35,87 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 ) -> Result<(), ErrorHandled> {
     debug!("is_const_evaluatable({:?}, {:?})", def, substs);
     if infcx.tcx.features().const_evaluatable_checked {
-        if let Some(ct) = AbstractConst::new(infcx.tcx, def, substs)? {
-            for pred in param_env.caller_bounds() {
-                match pred.skip_binders() {
-                    ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
-                        debug!("is_const_evaluatable: caller_bound={:?}, {:?}", b_def, b_substs);
-                        if b_def == def && b_substs == substs {
-                            debug!("is_const_evaluatable: caller_bound ~~> ok");
-                            return Ok(());
-                        } else if AbstractConst::new(infcx.tcx, b_def, b_substs)?
-                            .map_or(false, |b_ct| try_unify(infcx.tcx, ct, b_ct))
-                        {
-                            debug!("is_const_evaluatable: abstract_const ~~> ok");
-                            return Ok(());
+        let tcx = infcx.tcx;
+        match AbstractConst::new(tcx, def, substs)? {
+            // We are looking at a generic abstract constant.
+            Some(ct) => {
+                for pred in param_env.caller_bounds() {
+                    match pred.skip_binders() {
+                        ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
+                            debug!(
+                                "is_const_evaluatable: caller_bound={:?}, {:?}",
+                                b_def, b_substs
+                            );
+                            if b_def == def && b_substs == substs {
+                                debug!("is_const_evaluatable: caller_bound ~~> ok");
+                                return Ok(());
+                            } else if AbstractConst::new(tcx, b_def, b_substs)?
+                                .map_or(false, |b_ct| try_unify(tcx, ct, b_ct))
+                            {
+                                debug!("is_const_evaluatable: abstract_const ~~> ok");
+                                return Ok(());
+                            }
+                        }
+                        _ => {} // don't care
+                    }
+                }
+
+                // We were unable to unify the abstract constant with
+                // a constant found in the caller bounds, there are
+                // now three possible cases here.
+                //
+                // - The substs are concrete enough that we can simply
+                //   try and evaluate the given constant.
+                // - The abstract const still references an inference
+                //   variable, in this case we return `TooGeneric`.
+                // - The abstract const references a generic parameter,
+                //   this means that we emit an error here.
+                #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+                enum FailureKind {
+                    MentionsInfer,
+                    MentionsParam,
+                    Concrete,
+                }
+                let mut failure_kind = FailureKind::Concrete;
+                walk_abstract_const(tcx, ct, |node| match node {
+                    Node::Leaf(leaf) => {
+                        let leaf = leaf.subst(tcx, ct.substs);
+                        if leaf.has_infer_types_or_consts() {
+                            failure_kind = FailureKind::MentionsInfer;
+                        } else if leaf.has_param_types_or_consts() {
+                            failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
                     }
-                    _ => {} // don't care
+                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => (),
+                });
+
+                match failure_kind {
+                    FailureKind::MentionsInfer => {
+                        return Err(ErrorHandled::TooGeneric);
+                    }
+                    FailureKind::MentionsParam => {
+                        // FIXME(const_evaluatable_checked): Better error message.
+                        infcx
+                            .tcx
+                            .sess
+                            .struct_span_err(span, "unconstrained generic constant")
+                            .span_help(
+                                tcx.def_span(def.did),
+                                "consider adding a `where` bound for this expression",
+                            )
+                            .emit();
+                        return Err(ErrorHandled::Reported(ErrorReported));
+                    }
+                    FailureKind::Concrete => {
+                        // Dealt with below by the same code which handles this
+                        // without the feature gate.
+                    }
                 }
+            }
+            None => {
+                // If we are dealing with a concrete constant, we can
+                // reuse the old code path and try to evaluate
+                // the constant.
             }
         }
     }
@@ -95,7 +162,36 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     }
 
     debug!(?concrete, "is_const_evaluatable");
-    concrete.map(drop)
+    match concrete {
+        Err(ErrorHandled::TooGeneric) if !substs.has_infer_types_or_consts() => {
+            // FIXME(const_evaluatable_checked): We really should move
+            // emitting this error message to fulfill instead. For
+            // now this is easier.
+            //
+            // This is not a problem without `const_evaluatable_checked` as
+            // all `ConstEvaluatable` predicates have to be fulfilled for compilation
+            // to succeed.
+            //
+            // @lcnr: We already emit an error for things like
+            // `fn test<const N: usize>() -> [0 - N]` eagerly here,
+            // so until we fix this I don't really care.
+
+            let mut err = infcx
+                .tcx
+                .sess
+                .struct_span_err(span, "constant expression depends on a generic parameter");
+            // FIXME(const_generics): we should suggest to the user how they can resolve this
+            // issue. However, this is currently not actually possible
+            // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
+            //
+            // Note that with `feature(const_evaluatable_checked)` this case should not
+            // be reachable.
+            err.note("this may fail depending on what value the parameter takes");
+            err.emit();
+            Err(ErrorHandled::Reported(ErrorReported))
+        }
+        c => c.map(drop),
+    }
 }
 
 /// A tree representing an anonymous constant.
@@ -419,6 +515,33 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     // FIXME(const_evaluatable_checked): We should instead have this
     // method return the resulting `ty::Const` and return `ConstKind::Error`
     // on `ErrorReported`.
+}
+
+fn walk_abstract_const<'tcx, F>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, mut f: F)
+where
+    F: FnMut(Node<'tcx>),
+{
+    recurse(tcx, ct, &mut f);
+    fn recurse<'tcx>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, f: &mut dyn FnMut(Node<'tcx>)) {
+        let root = ct.root();
+        f(root);
+        match root {
+            Node::Leaf(_) => (),
+            Node::Binop(_, l, r) => {
+                recurse(tcx, ct.subtree(l), f);
+                recurse(tcx, ct.subtree(r), f);
+            }
+            Node::UnaryOp(_, v) => {
+                recurse(tcx, ct.subtree(v), f);
+            }
+            Node::FunctionCall(func, args) => {
+                recurse(tcx, ct.subtree(func), f);
+                for &arg in args {
+                    recurse(tcx, ct.subtree(arg), f);
+                }
+            }
+        }
+    }
 }
 
 /// Tries to unify two abstract constants using structural equality.

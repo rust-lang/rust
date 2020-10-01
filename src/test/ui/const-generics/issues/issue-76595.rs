@@ -14,5 +14,4 @@ fn test<T, const P: usize>() where Bool<{core::mem::size_of::<T>() > 4}>: True {
 fn main() {
     test::<2>();
     //~^ ERROR wrong number of type
-    //~| ERROR constant expression depends
 }
