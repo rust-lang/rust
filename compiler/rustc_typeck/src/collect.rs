@@ -710,6 +710,14 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
             if let hir::ItemKind::Fn(..) = it.kind {
                 tcx.ensure().fn_sig(def_id);
             }
+            // Account for the `_` placeholder.
+            // We only check on `static` or `const` to avoid too many duplicated errors
+            // (see https://github.com/rust-lang/rust/issues/77428).
+            if matches!(it.kind, hir::ItemKind::Static(..) | hir::ItemKind::Const(..)) {
+                let mut visitor = PlaceholderHirTyCollector::default();
+                visitor.visit_item(it);
+                placeholder_type_error(tcx, None, &[], visitor.0, false);
+            }
         }
     }
 }

@@ -16,6 +16,24 @@ LL | static BAR: _ = "test";
    |             not allowed in type signatures
    |             help: replace `_` with the correct type: `&str`
 
-error: aborting due to 2 previous errors
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/E0121.rs:3:13
+   |
+LL | static BAR: _ = "test";
+   |             ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/E0121.rs:6:24
+   |
+LL | const FOO: dyn Fn() -> _ = "";
+   |                        ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/E0121.rs:8:25
+   |
+LL | static BOO: dyn Fn() -> _ = "";
+   |                         ^ not allowed in type signatures
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0121`.
