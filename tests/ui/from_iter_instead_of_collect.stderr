@@ -1,5 +1,5 @@
 error: use `.collect()` instead of `::from_iter()`
-  --> $DIR/from_iter_instead_of_collect.rs:9:5
+  --> $DIR/from_iter_instead_of_collect.rs:8:5
    |
 LL |     Vec::from_iter(iter_expr);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: ``iter_expr.collect()``
