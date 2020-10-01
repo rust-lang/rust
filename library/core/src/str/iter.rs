@@ -690,6 +690,19 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
             },
         }
     }
+
+    #[inline]
+    fn as_str(&self) -> &'a str {
+        // `Self::get_end` doesn't change `self.start`
+        if self.finished {
+            return "";
+        }
+
+        // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+        unsafe {
+            self.matcher.haystack().get_unchecked(self.start..self.end)
+        }
+    }
 }
 
 generate_pattern_iterators! {
@@ -708,6 +721,48 @@ generate_pattern_iterators! {
     internal:
         SplitInternal yielding (&'a str);
     delegate double ended;
+}
+
+impl<'a, P: Pattern<'a>> Split<'a, P> {
+    /// Returns remainder of the splitted string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_as_str)]
+    /// let mut split = "Mary had a little lamb".split(' ');
+    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// split.next();
+    /// assert_eq!(split.as_str(), "had a little lamb");
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.as_str(), "");
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_split_as_str", issue = "none")]
+    pub fn as_str(&self) -> &'a str {
+        self.0.as_str()
+    }
+}
+
+impl<'a, P: Pattern<'a>> RSplit<'a, P> {
+    /// Returns remainder of the splitted string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_as_str)]
+    /// let mut split = "Mary had a little lamb".rsplit(' ');
+    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// split.next();
+    /// assert_eq!(split.as_str(), "Mary had a little");
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.as_str(), "");
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_split_as_str", issue = "none")]
+    pub fn as_str(&self) -> &'a str {
+        self.0.as_str()
+    }
 }
 
 generate_pattern_iterators! {

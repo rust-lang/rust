@@ -125,6 +125,7 @@
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stmt_expr_attributes)]
+#![feature(str_split_as_str)]
 #![feature(transparent_unions)]
 #![feature(unboxed_closures)]
 #![feature(unsized_locals)]
