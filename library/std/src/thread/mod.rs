@@ -159,13 +159,12 @@ use crate::num::NonZeroU64;
 use crate::panic;
 use crate::panicking;
 use crate::str;
-use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::SeqCst;
-use crate::sync::{Arc, Condvar, Mutex};
+use crate::sync::Arc;
 use crate::sys::thread as imp;
 use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
+use crate::sys_common::thread_parker::Parker;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::Duration;
 
@@ -667,6 +666,8 @@ pub fn current() -> Thread {
 ///
 /// [`channel`]: crate::sync::mpsc
 /// [`join`]: JoinHandle::join
+/// [`Condvar`]: crate::sync::Condvar
+/// [`Mutex`]: crate::sync::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
     imp::Thread::yield_now()
@@ -712,6 +713,8 @@ pub fn yield_now() {
 ///     panic!()
 /// }
 /// ```
+///
+/// [Mutex]: crate::sync::Mutex
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
@@ -778,11 +781,6 @@ pub fn sleep_ms(ms: u32) {
 pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
-
-// constants for park/unpark
-const EMPTY: usize = 0;
-const PARKED: usize = 1;
-const NOTIFIED: usize = 2;
 
 /// Blocks unless or until the current thread's token is made available.
 ///
@@ -870,45 +868,11 @@ const NOTIFIED: usize = 2;
 ///
 /// [`unpark`]: Thread::unpark
 /// [`thread::park_timeout`]: park_timeout
-//
-// The implementation currently uses the trivial strategy of a Mutex+Condvar
-// with wakeup flag, which does not actually allow spurious wakeups. In the
-// future, this will be implemented in a more efficient way, perhaps along the lines of
-//   http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
-// or futuxes, and in either case may allow spurious wakeups.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
-    let thread = current();
-
-    // If we were previously notified then we consume this notification and
-    // return quickly.
-    if thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
-        return;
-    }
-
-    // Otherwise we need to coordinate going to sleep
-    let mut m = thread.inner.lock.lock().unwrap();
-    match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
-        Ok(_) => {}
-        Err(NOTIFIED) => {
-            // We must read here, even though we know it will be `NOTIFIED`.
-            // This is because `unpark` may have been called again since we read
-            // `NOTIFIED` in the `compare_exchange` above. We must perform an
-            // acquire operation that synchronizes with that `unpark` to observe
-            // any writes it made before the call to unpark. To do that we must
-            // read from the write it made to `state`.
-            let old = thread.inner.state.swap(EMPTY, SeqCst);
-            assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
-            return;
-        } // should consume this notification, so prohibit spurious wakeups in next park.
-        Err(_) => panic!("inconsistent park state"),
-    }
-    loop {
-        m = thread.inner.cvar.wait(m).unwrap();
-        match thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst) {
-            Ok(_) => return, // got a notification
-            Err(_) => {}     // spurious wakeup, go back to sleep
-        }
+    // SAFETY: park_timeout is called on the parker owned by this thread.
+    unsafe {
+        current().inner.parker.park();
     }
 }
 
@@ -970,35 +934,9 @@ pub fn park_timeout_ms(ms: u32) {
 /// ```
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
-    let thread = current();
-
-    // Like `park` above we have a fast path for an already-notified thread, and
-    // afterwards we start coordinating for a sleep.
-    // return quickly.
-    if thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
-        return;
-    }
-    let m = thread.inner.lock.lock().unwrap();
-    match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
-        Ok(_) => {}
-        Err(NOTIFIED) => {
-            // We must read again here, see `park`.
-            let old = thread.inner.state.swap(EMPTY, SeqCst);
-            assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
-            return;
-        } // should consume this notification, so prohibit spurious wakeups in next park.
-        Err(_) => panic!("inconsistent park_timeout state"),
-    }
-
-    // Wait with a timeout, and if we spuriously wake up or otherwise wake up
-    // from a notification we just want to unconditionally set the state back to
-    // empty, either consuming a notification or un-flagging ourselves as
-    // parked.
-    let (_m, _result) = thread.inner.cvar.wait_timeout(m, dur).unwrap();
-    match thread.inner.state.swap(EMPTY, SeqCst) {
-        NOTIFIED => {} // got a notification, hurray!
-        PARKED => {}   // no notification, alas
-        n => panic!("inconsistent park_timeout state: {}", n),
+    // SAFETY: park_timeout is called on the parker owned by this thread.
+    unsafe {
+        current().inner.parker.park_timeout(dur);
     }
 }
 
@@ -1077,11 +1015,7 @@ impl ThreadId {
 struct Inner {
     name: Option<CString>, // Guaranteed to be UTF-8
     id: ThreadId,
-
-    // state for thread park/unpark
-    state: AtomicUsize,
-    lock: Mutex<()>,
-    cvar: Condvar,
+    parker: Parker,
 }
 
 #[derive(Clone)]
@@ -1115,13 +1049,7 @@ impl Thread {
         let cname =
             name.map(|n| CString::new(n).expect("thread name may not contain interior null bytes"));
         Thread {
-            inner: Arc::new(Inner {
-                name: cname,
-                id: ThreadId::new(),
-                state: AtomicUsize::new(EMPTY),
-                lock: Mutex::new(()),
-                cvar: Condvar::new(),
-            }),
+            inner: Arc::new(Inner { name: cname, id: ThreadId::new(), parker: Parker::new() }),
         }
     }
 
@@ -1156,33 +1084,9 @@ impl Thread {
     /// parked_thread.join().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn unpark(&self) {
-        // To ensure the unparked thread will observe any writes we made
-        // before this call, we must perform a release operation that `park`
-        // can synchronize with. To do that we must write `NOTIFIED` even if
-        // `state` is already `NOTIFIED`. That is why this must be a swap
-        // rather than a compare-and-swap that returns if it reads `NOTIFIED`
-        // on failure.
-        match self.inner.state.swap(NOTIFIED, SeqCst) {
-            EMPTY => return,    // no one was waiting
-            NOTIFIED => return, // already unparked
-            PARKED => {}        // gotta go wake someone up
-            _ => panic!("inconsistent state in unpark"),
-        }
-
-        // There is a period between when the parked thread sets `state` to
-        // `PARKED` (or last checked `state` in the case of a spurious wake
-        // up) and when it actually waits on `cvar`. If we were to notify
-        // during this period it would be ignored and then when the parked
-        // thread went to sleep it would never wake up. Fortunately, it has
-        // `lock` locked at this stage so we can acquire `lock` to wait until
-        // it is ready to receive the notification.
-        //
-        // Releasing `lock` before the call to `notify_one` means that when the
-        // parked thread wakes it doesn't get woken only to have to wait for us
-        // to release `lock`.
-        drop(self.inner.lock.lock().unwrap());
-        self.inner.cvar.notify_one()
+        self.inner.parker.unpark();
     }
 
     /// Gets the thread's unique identifier.
