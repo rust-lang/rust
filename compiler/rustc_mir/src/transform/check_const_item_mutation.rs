@@ -60,11 +60,15 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
             // so emitting a lint would be redundant.
             if !lhs.projection.is_empty() {
                 if let Some(def_id) = self.is_const_item(lhs.local) {
-                    self.lint_const_item_usage(def_id, loc, |lint| {
-                        let mut lint = lint.build("attempting to modify a `const` item");
-                        lint.note("each usage of a `const` item creates a new temporary - the original `const` item will not be modified");
-                        lint
-                    })
+                    // Don't lint on writes through a pointer
+                    // (e.g. `unsafe { *FOO = 0; *BAR.field = 1; }`)
+                    if !matches!(lhs.projection.last(), Some(PlaceElem::Deref)) {
+                        self.lint_const_item_usage(def_id, loc, |lint| {
+                            let mut lint = lint.build("attempting to modify a `const` item");
+                            lint.note("each usage of a `const` item creates a new temporary - the original `const` item will not be modified");
+                            lint
+                        })
+                    }
                 }
             }
             // We are looking for MIR of the form:
