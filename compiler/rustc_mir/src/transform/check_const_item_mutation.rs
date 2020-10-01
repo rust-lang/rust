@@ -111,7 +111,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, loc: Location) {
         if let Rvalue::Ref(_, BorrowKind::Mut { .. }, place) = rvalue {
             let local = place.local;
-            if let Some(def_id) = self.is_const_item_without_destructor(local) {
+            if let Some(def_id) = self.is_const_item(local) {
                 // If this Rvalue is being used as the right-hand side of a
                 // `StatementKind::Assign`, see if it ends up getting used as
                 // the `self` parameter of a method call (as the terminator of our current

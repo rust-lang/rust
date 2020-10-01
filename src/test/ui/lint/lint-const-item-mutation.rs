@@ -49,5 +49,5 @@ fn main() {
 
     MUTABLE.msg = "wow"; // no warning, because Drop observes the mutation
     MUTABLE2.msg = "wow"; //~ WARN attempting to modify
-    VEC.push(0); // no warning
+    VEC.push(0); //~ WARN taking a mutable reference to a `const` item
 }
