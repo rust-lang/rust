@@ -3,7 +3,7 @@ use std::cell::Cell;
 
 #[test]
 fn allocator_param() {
-    use crate::alloc::AllocErr;
+    use crate::alloc::AllocError;
 
     // Writing a test of integration between third-party
     // allocators and `RawVec` is a little tricky because the `RawVec`
@@ -21,10 +21,10 @@ fn allocator_param() {
         fuel: Cell<usize>,
     }
     unsafe impl AllocRef for BoundedAlloc {
-        fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+        fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
             let size = layout.size();
             if size > self.fuel.get() {
-                return Err(AllocErr);
+                return Err(AllocError);
             }
             match Global.alloc(layout) {
                 ok @ Ok(_) => {

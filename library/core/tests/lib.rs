@@ -41,6 +41,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(int_error_matching)]
 #![feature(array_value_iter)]
+#![feature(iter_advance_by)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]

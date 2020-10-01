@@ -1,54 +1,50 @@
-error: constant expression depends on a generic parameter
+error: unconstrained generic constant
   --> $DIR/cross_crate_predicate.rs:7:13
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | 
-  ::: $DIR/auxiliary/const_evaluatable_lib.rs:6:10
+   |
+help: consider adding a `where` bound for this expression
+  --> $DIR/auxiliary/const_evaluatable_lib.rs:6:10
    |
 LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
-   |          ---------------------------- required by this bound in `test1`
-   |
-   = note: this may fail depending on what value the parameter takes
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: constant expression depends on a generic parameter
+error: unconstrained generic constant
   --> $DIR/cross_crate_predicate.rs:7:13
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | 
-  ::: $DIR/auxiliary/const_evaluatable_lib.rs:4:27
+   |
+help: consider adding a `where` bound for this expression
+  --> $DIR/auxiliary/const_evaluatable_lib.rs:4:27
    |
 LL | pub fn test1<T>() -> [u8; std::mem::size_of::<T>() - 1]
-   |                           ---------------------------- required by this bound in `test1`
-   |
-   = note: this may fail depending on what value the parameter takes
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: constant expression depends on a generic parameter
+error: unconstrained generic constant
   --> $DIR/cross_crate_predicate.rs:7:13
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | 
-  ::: $DIR/auxiliary/const_evaluatable_lib.rs:6:10
+   |
+help: consider adding a `where` bound for this expression
+  --> $DIR/auxiliary/const_evaluatable_lib.rs:6:10
    |
 LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
-   |          ---------------------------- required by this bound in `test1`
-   |
-   = note: this may fail depending on what value the parameter takes
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: constant expression depends on a generic parameter
+error: unconstrained generic constant
   --> $DIR/cross_crate_predicate.rs:7:13
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | 
-  ::: $DIR/auxiliary/const_evaluatable_lib.rs:4:27
+   |
+help: consider adding a `where` bound for this expression
+  --> $DIR/auxiliary/const_evaluatable_lib.rs:4:27
    |
 LL | pub fn test1<T>() -> [u8; std::mem::size_of::<T>() - 1]
-   |                           ---------------------------- required by this bound in `test1`
-   |
-   = note: this may fail depending on what value the parameter takes
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

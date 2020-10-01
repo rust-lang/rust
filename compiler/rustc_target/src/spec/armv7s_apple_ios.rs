@@ -1,8 +1,8 @@
-use super::apple_sdk_base::{opts, AppleOS, Arch};
+use super::apple_sdk_base::{opts, Arch};
 use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
-    let base = opts(Arch::Armv7s, AppleOS::iOS)?;
+    let base = opts(Arch::Armv7s);
     Ok(Target {
         llvm_target: "armv7s-apple-ios".to_string(),
         target_endian: "little".to_string(),

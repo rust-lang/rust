@@ -1,7 +1,6 @@
 use super::*;
 
 use std::hash::{Hash, Hasher};
-use std::{mem, slice};
 
 // Hash just the bytes of the slice, without length prefix
 struct Bytes<'a>(&'a [u8]);
@@ -399,20 +398,55 @@ fn test_hash_no_concat_alias() {
 }
 
 #[test]
-fn test_write_short_works() {
-    let test_usize = 0xd0c0b0a0usize;
+fn test_short_write_works() {
+    let test_u8 = 0xFF_u8;
+    let test_u16 = 0x1122_u16;
+    let test_u32 = 0x22334455_u32;
+    let test_u64 = 0x33445566_778899AA_u64;
+    let test_u128 = 0x11223344_55667788_99AABBCC_DDEEFF77_u128;
+    let test_usize = 0xD0C0B0A0_usize;
+
+    let test_i8 = -1_i8;
+    let test_i16 = -2_i16;
+    let test_i32 = -3_i32;
+    let test_i64 = -4_i64;
+    let test_i128 = -5_i128;
+    let test_isize = -6_isize;
+
     let mut h1 = SipHasher128::new_with_keys(0, 0);
-    h1.write_usize(test_usize);
     h1.write(b"bytes");
     h1.write(b"string");
-    h1.write_u8(0xFFu8);
-    h1.write_u8(0x01u8);
+    h1.write_u8(test_u8);
+    h1.write_u16(test_u16);
+    h1.write_u32(test_u32);
+    h1.write_u64(test_u64);
+    h1.write_u128(test_u128);
+    h1.write_usize(test_usize);
+    h1.write_i8(test_i8);
+    h1.write_i16(test_i16);
+    h1.write_i32(test_i32);
+    h1.write_i64(test_i64);
+    h1.write_i128(test_i128);
+    h1.write_isize(test_isize);
+
     let mut h2 = SipHasher128::new_with_keys(0, 0);
-    h2.write(unsafe {
-        slice::from_raw_parts(&test_usize as *const _ as *const u8, mem::size_of::<usize>())
-    });
     h2.write(b"bytes");
     h2.write(b"string");
-    h2.write(&[0xFFu8, 0x01u8]);
-    assert_eq!(h1.finish128(), h2.finish128());
+    h2.write(&test_u8.to_ne_bytes());
+    h2.write(&test_u16.to_ne_bytes());
+    h2.write(&test_u32.to_ne_bytes());
+    h2.write(&test_u64.to_ne_bytes());
+    h2.write(&test_u128.to_ne_bytes());
+    h2.write(&test_usize.to_ne_bytes());
+    h2.write(&test_i8.to_ne_bytes());
+    h2.write(&test_i16.to_ne_bytes());
+    h2.write(&test_i32.to_ne_bytes());
+    h2.write(&test_i64.to_ne_bytes());
+    h2.write(&test_i128.to_ne_bytes());
+    h2.write(&test_isize.to_ne_bytes());
+
+    let h1_hash = h1.finish128();
+    let h2_hash = h2.finish128();
+
+    assert_eq!(h1_hash, h2_hash);
 }

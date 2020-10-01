@@ -21,7 +21,7 @@ use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
-use crate::alloc::{box_free, handle_alloc_error, AllocErr, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocError, AllocRef, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
@@ -969,7 +969,7 @@ impl<T: ?Sized> Arc<T> {
     /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
     unsafe fn allocate_for_layout(
         value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocErr>,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> *mut ArcInner<T> {
         // Calculate layout using the given value layout.

@@ -247,7 +247,7 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{box_free, handle_alloc_error, AllocErr, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocError, AllocRef, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::string::String;
 use crate::vec::Vec;
@@ -996,7 +996,7 @@ impl<T: ?Sized> Rc<T> {
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
     unsafe fn allocate_for_layout(
         value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocErr>,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
     ) -> *mut RcBox<T> {
         // Calculate layout using the given value layout.

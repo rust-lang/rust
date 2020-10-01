@@ -284,6 +284,44 @@ pub trait Iterator {
         self.fold(None, some)
     }
 
+    /// Advances the iterator by `n` elements.
+    ///
+    /// This method will eagerly skip `n` elements by calling [`next`] up to `n`
+    /// times until [`None`] is encountered.
+    ///
+    /// `advance_by(n)` will return [`Ok(())`] if the iterator successfully advances by
+    /// `n` elements, or [`Err(k)`] if [`None`] is encountered, where `k` is the number
+    /// of elements the iterator is advanced by before running out of elements (i.e. the
+    /// length of the iterator). Note that `k` is always less than `n`.
+    ///
+    /// Calling `advance_by(0)` does not consume any elements and always returns [`Ok(())`].
+    ///
+    /// [`next`]: Iterator::next
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_advance_by)]
+    ///
+    /// let a = [1, 2, 3, 4];
+    /// let mut iter = a.iter();
+    ///
+    /// assert_eq!(iter.advance_by(2), Ok(()));
+    /// assert_eq!(iter.next(), Some(&3));
+    /// assert_eq!(iter.advance_by(0), Ok(()));
+    /// assert_eq!(iter.advance_by(100), Err(1)); // only `&4` was skipped
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "none")]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        for i in 0..n {
+            self.next().ok_or(i)?;
+        }
+        Ok(())
+    }
+
     /// Returns the `n`th element of the iterator.
     ///
     /// Like most indexing operations, the count starts from zero, so `nth(0)`
@@ -325,14 +363,9 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        while let Some(x) = self.next() {
-            if n == 0 {
-                return Some(x);
-            }
-            n -= 1;
-        }
-        None
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.advance_by(n).ok()?;
+        self.next()
     }
 
     /// Creates an iterator starting at the same point, but stepping by
@@ -3264,6 +3297,9 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
+    }
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        (**self).advance_by(n)
     }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
