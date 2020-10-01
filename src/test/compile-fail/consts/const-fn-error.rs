@@ -6,6 +6,8 @@ const fn f(x: usize) -> usize {
     let mut sum = 0;
     for i in 0..x {
         //~^ ERROR mutable references
+        //~| ERROR calls in constant functions
+        //~| ERROR calls in constant functions
         //~| ERROR E0080
         //~| ERROR E0744
         sum += i;

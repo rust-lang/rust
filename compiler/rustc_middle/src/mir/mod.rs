@@ -670,7 +670,7 @@ impl Atom for Local {
 }
 
 /// Classifies locals into categories. See `Body::local_kind`.
-#[derive(PartialEq, Eq, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
 pub enum LocalKind {
     /// User-declared variable binding.
     Var,

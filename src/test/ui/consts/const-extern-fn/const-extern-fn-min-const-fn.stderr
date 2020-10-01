@@ -7,8 +7,17 @@ LL | const unsafe extern "C" fn closure() -> fn() { || {} }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
+error[E0658]: function pointer casts are not allowed in constant functions
+  --> $DIR/const-extern-fn-min-const-fn.rs:4:48
+   |
+LL | const unsafe extern "C" fn closure() -> fn() { || {} }
+   |                                                ^^^^^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
+
 error[E0658]: floating point arithmetic is not allowed in constant functions
-  --> $DIR/const-extern-fn-min-const-fn.rs:6:38
+  --> $DIR/const-extern-fn-min-const-fn.rs:7:38
    |
 LL | const unsafe extern fn use_float() { 1.0 + 1.0; }
    |                                      ^^^^^^^^^
@@ -17,7 +26,7 @@ LL | const unsafe extern fn use_float() { 1.0 + 1.0; }
    = help: add `#![feature(const_fn_floating_point_arithmetic)]` to the crate attributes to enable
 
 error[E0658]: casting pointers to integers in constant functions is unstable
-  --> $DIR/const-extern-fn-min-const-fn.rs:8:48
+  --> $DIR/const-extern-fn-min-const-fn.rs:9:48
    |
 LL | const extern "C" fn ptr_cast(val: *const u8) { val as usize; }
    |                                                ^^^^^^^^^^^^
@@ -25,6 +34,6 @@ LL | const extern "C" fn ptr_cast(val: *const u8) { val as usize; }
    = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
    = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

@@ -38,6 +38,8 @@ impl<T> Foo<T> {
     const fn get(&self) -> &T { &self.0 }
     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
     //~^ mutable references
+    //~| mutable references
+    //~| mutable references
 }
 impl<'a, T> Foo<T> {
     const fn new_lt(t: T) -> Self { Foo(t) }
@@ -45,6 +47,8 @@ impl<'a, T> Foo<T> {
     const fn get_lt(&'a self) -> &T { &self.0 }
     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
     //~^ mutable references
+    //~| mutable references
+    //~| mutable references
 }
 impl<T: Sized> Foo<T> {
     const fn new_s(t: T) -> Self { Foo(t) }
@@ -52,11 +56,15 @@ impl<T: Sized> Foo<T> {
     const fn get_s(&self) -> &T { &self.0 }
     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
     //~^ mutable references
+    //~| mutable references
+    //~| mutable references
 }
 impl<T: ?Sized> Foo<T> {
     const fn get_sq(&self) -> &T { &self.0 }
     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
     //~^ mutable references
+    //~| mutable references
+    //~| mutable references
 }
 
 
@@ -117,17 +125,24 @@ impl<T: Sync + Sized> Foo<T> {
 struct AlanTuring<T>(T);
 const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
 //~^ ERROR trait bounds other than `Sized`
-const fn no_apit(_x: impl std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
-const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
+//~| ERROR destructor
+const fn no_apit(_x: impl std::fmt::Debug) {}
+//~^ ERROR trait bounds other than `Sized`
+//~| ERROR destructor
+const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
+//~^ ERROR trait bounds other than `Sized`
 const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
 //~^ ERROR trait bounds other than `Sized`
+//~| ERROR unsizing cast
+//~| ERROR unsizing cast
 
 const fn no_unsafe() { unsafe {} }
 
 const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
-//~^ ERROR trait bounds other than `Sized`
+//~^ ERROR unsizing cast
 
 const fn no_fn_ptrs(_x: fn()) {}
 //~^ ERROR function pointer
 const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
 //~^ ERROR function pointer
+//~| ERROR function pointer cast

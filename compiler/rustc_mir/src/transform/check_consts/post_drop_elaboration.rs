@@ -4,7 +4,7 @@ use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use super::ops;
+use super::ops::{self, NonConstOp};
 use super::qualifs::{NeedsDrop, Qualif};
 use super::validation::Qualifs;
 use super::ConstCx;
@@ -56,7 +56,7 @@ impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
 
 impl CheckLiveDrops<'mir, 'tcx> {
     fn check_live_drop(&self, span: Span) {
-        ops::non_const(self.ccx, ops::LiveDrop { dropped_at: None }, span);
+        ops::LiveDrop { dropped_at: None }.build_error(self.ccx, span).emit();
     }
 }
 

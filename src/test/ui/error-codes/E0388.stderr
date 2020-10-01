@@ -19,14 +19,6 @@ error[E0764]: mutable references are not allowed in constants
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^ `&mut` is only allowed in `const fn`
 
-error[E0019]: static contains unimplemented expression type
-  --> $DIR/E0388.rs:6:39
-   |
-LL | static STATIC_REF: &'static mut i32 = &mut X;
-   |                                       ^^^^^^
-   |
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-
 error[E0764]: mutable references are not allowed in statics
   --> $DIR/E0388.rs:6:39
    |
@@ -59,7 +51,7 @@ error[E0764]: mutable references are not allowed in statics
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^ `&mut` is only allowed in `const fn`
 
-error: aborting due to 5 previous errors; 2 warnings emitted
+error: aborting due to 4 previous errors; 2 warnings emitted
 
-Some errors have detailed explanations: E0019, E0596, E0764.
-For more information about an error, try `rustc --explain E0019`.
+Some errors have detailed explanations: E0596, E0764.
+For more information about an error, try `rustc --explain E0596`.

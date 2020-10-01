@@ -57,6 +57,16 @@ impl ConstCx<'mir, 'tcx> {
             && self.tcx.features().staged_api
             && is_const_stable_const_fn(self.tcx, self.def_id.to_def_id())
     }
+
+    /// Returns the function signature of the item being const-checked if it is a `fn` or `const fn`.
+    pub fn fn_sig(&self) -> Option<&'tcx hir::FnSig<'tcx>> {
+        // Get this from the HIR map instead of a query to avoid cycle errors.
+        //
+        // FIXME: Is this still an issue?
+        let hir_map = self.tcx.hir();
+        let hir_id = hir_map.local_def_id_to_hir_id(self.def_id);
+        hir_map.fn_sig_by_hir_id(hir_id)
+    }
 }
 
 /// Returns `true` if this `DefId` points to one of the official `panic` lang items.

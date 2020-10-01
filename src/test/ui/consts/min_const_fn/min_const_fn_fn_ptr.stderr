@@ -7,7 +7,7 @@ LL |     x.0.field;
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
-error[E0658]: function pointers cannot appear in constant functions
+error[E0658]: function pointer casts are not allowed in constant functions
   --> $DIR/min_const_fn_fn_ptr.rs:16:59
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasPtr { field }) }
