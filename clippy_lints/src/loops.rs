@@ -3,7 +3,7 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
-    get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
+    contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
     match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability,
     snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
@@ -1276,6 +1276,8 @@ fn check_for_loop_range<'tcx>(
 
                 let skip = if starts_at_zero {
                     String::new()
+                } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start) {
+                    return;
                 } else {
                     format!(".skip({})", snippet(cx, start.span, ".."))
                 };
@@ -1302,6 +1304,8 @@ fn check_for_loop_range<'tcx>(
 
                     if is_len_call(end, indexed) || is_end_eq_array_len(cx, end, limits, indexed_ty) {
                         String::new()
+                    } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, take_expr) {
+                        return;
                     } else {
                         match limits {
                             ast::RangeLimits::Closed => {
