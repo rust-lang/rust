@@ -574,17 +574,22 @@ impl<T> Option<T> {
     /// ```
     /// #![feature(option_insert)]
     ///
-    /// let mut o = None;
-    /// let v = o.insert(3);
-    /// assert_eq!(*v, 3);
+    /// let mut opt = None;
+    /// let val = opt.insert(1);
+    /// assert_eq!(*val, 1);
+    /// assert_eq!(opt.unwrap(), 1);
+    /// let val = opt.insert(2);
+    /// assert_eq!(*val, 2);
+    /// *val = 3;
+    /// assert_eq!(opt.unwrap(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "option_insert", reason = "new API", issue = "none")]
-    pub fn insert(&mut self, v: T) -> &mut T {
-        *self = Some(v);
+    #[unstable(feature = "option_insert", reason = "newly added", issue = "none")]
+    pub fn insert(&mut self, val: T) -> &mut T {
+        *self = Some(val);
 
-        match *self {
-            Some(ref mut v) => v,
+        match self {
+            Some(v) => v,
             // SAFETY: the code above just filled the option
             None => unsafe { hint::unreachable_unchecked() },
         }
@@ -839,8 +844,8 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
-    pub fn get_or_insert(&mut self, v: T) -> &mut T {
-        self.get_or_insert_with(|| v)
+    pub fn get_or_insert(&mut self, val: T) -> &mut T {
+        self.get_or_insert_with(|| val)
     }
 
     /// Inserts a value computed from `f` into the option if it is [`None`], then
@@ -867,8 +872,8 @@ impl<T> Option<T> {
             *self = Some(f());
         }
 
-        match *self {
-            Some(ref mut v) => v,
+        match self {
+            Some(v) => v,
             // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
             // variant in the code above.
             None => unsafe { hint::unreachable_unchecked() },
