@@ -1,6 +1,6 @@
 use assists::utils::FamousDefs;
 use either::Either;
-use hir::{known, HirDisplay, Semantics};
+use hir::{known, Callable, HirDisplay, Semantics};
 use ide_db::RootDatabase;
 use stdx::to_lower_snake_case;
 use syntax::{
@@ -170,7 +170,7 @@ fn get_param_name_hints(
             };
             Some((param_name, arg))
         })
-        .filter(|(param_name, arg)| should_show_param_name_hint(sema, &callable, &param_name, &arg))
+        .filter(|(param_name, arg)| should_show_param_name_hint(sema, &callable, param_name, &arg))
         .map(|(param_name, arg)| InlayHint {
             range: arg.syntax().text_range(),
             kind: InlayKind::ParameterHint,
@@ -334,9 +334,11 @@ fn should_show_param_name_hint(
         | hir::CallableKind::TupleEnumVariant(_)
         | hir::CallableKind::Closure => None,
     };
+
     if param_name.is_empty()
         || Some(param_name) == fn_name.as_ref().map(|s| s.trim_start_matches('_'))
         || is_argument_similar_to_param_name(sema, argument, param_name)
+        || is_param_name_similar_to_fn_name(param_name, callable, fn_name.as_ref())
         || param_name.starts_with("ra_fixture")
     {
         return false;
@@ -361,6 +363,26 @@ fn is_argument_similar_to_param_name(
             let argument_string = repr.trim_start_matches('_');
             argument_string.starts_with(param_name) || argument_string.ends_with(param_name)
         }
+    }
+}
+
+fn is_param_name_similar_to_fn_name(
+    param_name: &str,
+    callable: &Callable,
+    fn_name: Option<&String>,
+) -> bool {
+    // if it's the only parameter, don't show it if:
+    // - is the same as the function name, or
+    // - the function ends with '_' + param_name
+
+    match (callable.n_params(), fn_name) {
+        (1, Some(function)) => {
+            function == param_name
+                || (function.len() > param_name.len()
+                    && function.ends_with(param_name)
+                    && function[..function.len() - param_name.len()].ends_with('_'))
+        }
+        _ => false,
     }
 }
 
@@ -451,6 +473,88 @@ fn main() {
       //^ a
         4,
       //^ b
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn param_name_similar_to_fn_name_still_hints() {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                type_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
+            r#"
+fn max(x: i32, y: i32) -> i32 { x + y }
+fn main() {
+    let _x = max(
+        4,
+      //^ x
+        4,
+      //^ y
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn param_name_similar_to_fn_name() {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                type_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
+            r#"
+fn param_with_underscore(with_underscore: i32) -> i32 { with_underscore }
+fn main() {
+    let _x = param_with_underscore(
+        4,
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn param_name_same_as_fn_name() {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                type_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
+            r#"
+fn foo(foo: i32) -> i32 { foo }
+fn main() {
+    let _x = foo(
+        4,
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn never_hide_param_when_multiple_params() {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                type_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
+            r#"
+fn foo(bar: i32, baz: i32) -> i32 { bar + baz }
+fn main() {
+    let _x = foo(
+        4,
+      //^ bar
+        8,
+      //^ baz
     );
 }"#,
         );
