@@ -14,7 +14,7 @@ doc = false
 
 [dependencies]
 core = { path = "../core" }
-libc = { version = "0.2.51", features = ['rustc-dep-of-std'], default-features = false }
+libc = { version = "0.2.79", features = ['rustc-dep-of-std'], default-features = false }
 compiler_builtins = "0.1.0"
 cfg-if = "0.1.8"
 
