@@ -36,9 +36,11 @@ pub fn futex<'tcx>(
             if val == futex_val {
                 this.block_thread(thread);
                 this.futex_wait(futex_ptr, thread);
+                this.write_scalar(Scalar::from_i32(0), dest)?;
             } else {
                 let eagain = this.eval_libc("EAGAIN")?;
                 this.set_last_error(eagain)?;
+                this.write_scalar(Scalar::from_i32(-1), dest)?;
             }
         }
         op if op == futex_wake => {
