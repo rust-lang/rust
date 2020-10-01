@@ -18,7 +18,7 @@ LL |         XE::XEmpty3 => ()
 LL |     XEmpty3 {},
    |     ------- `XE::XEmpty3` defined here
 LL |     XEmpty4,
-   |     ------- similarly named unit variant `XEmpty4` defined here
+   |     -------- similarly named unit variant `XEmpty4` defined here
    |
 help: use struct pattern syntax instead
    |

@@ -34,7 +34,7 @@ error[E0423]: expected value, found struct variant `Z::Struct`
 LL | /             Struct {
 LL | |                 s: u8,
 LL | |             },
-   | |_____________- `Z::Struct` defined here
+   | |______________- `Z::Struct` defined here
 ...
 LL |           let _: Z = Z::Struct;
    |                      ^^^^^^^^^ help: use struct literal syntax instead: `Z::Struct { s: val }`
@@ -73,7 +73,7 @@ error[E0423]: expected value, found struct variant `m::E::Struct`
 LL | /         Struct {
 LL | |             s: u8,
 LL | |         },
-   | |_________- `m::E::Struct` defined here
+   | |__________- `m::E::Struct` defined here
 ...
 LL |       let _: E = m::E::Struct;
    |                  ^^^^^^^^^^^^ help: use struct literal syntax instead: `m::E::Struct { s: val }`
@@ -105,7 +105,7 @@ error[E0423]: expected value, found struct variant `E::Struct`
 LL | /         Struct {
 LL | |             s: u8,
 LL | |         },
-   | |_________- `E::Struct` defined here
+   | |__________- `E::Struct` defined here
 ...
 LL |       let _: E = E::Struct;
    |                  ^^^^^^^^^ help: use struct literal syntax instead: `E::Struct { s: val }`
@@ -185,7 +185,7 @@ error[E0423]: expected value, found struct variant `m::n::Z::Struct`
 LL | /             Struct {
 LL | |                 s: u8,
 LL | |             },
-   | |_____________- `m::n::Z::Struct` defined here
+   | |______________- `m::n::Z::Struct` defined here
 ...
 LL |       let _: Z = m::n::Z::Struct;
    |                  ^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `m::n::Z::Struct { s: val }`
@@ -260,7 +260,7 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:27:20
    |
 LL |             Fn(u8),
-   |             ------ fn(u8) -> Z {Z::Fn} defined here
+   |             ------- fn(u8) -> Z {Z::Fn} defined here
 ...
 LL |         let _: Z = Z::Fn;
    |                -   ^^^^^ expected enum `Z`, found fn item
@@ -278,7 +278,7 @@ error[E0618]: expected function, found enum variant `Z::Unit`
   --> $DIR/privacy-enum-ctor.rs:31:17
    |
 LL |             Unit,
-   |             ---- `Z::Unit` defined here
+   |             ----- `Z::Unit` defined here
 ...
 LL |         let _ = Z::Unit();
    |                 ^^^^^^^--
@@ -294,7 +294,7 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:43:16
    |
 LL |         Fn(u8),
-   |         ------ fn(u8) -> E {E::Fn} defined here
+   |         ------- fn(u8) -> E {E::Fn} defined here
 ...
 LL |     let _: E = m::E::Fn;
    |            -   ^^^^^^^^ expected enum `E`, found fn item
@@ -312,7 +312,7 @@ error[E0618]: expected function, found enum variant `m::E::Unit`
   --> $DIR/privacy-enum-ctor.rs:47:16
    |
 LL |         Unit,
-   |         ---- `m::E::Unit` defined here
+   |         ----- `m::E::Unit` defined here
 ...
 LL |     let _: E = m::E::Unit();
    |                ^^^^^^^^^^--
@@ -328,7 +328,7 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:51:16
    |
 LL |         Fn(u8),
-   |         ------ fn(u8) -> E {E::Fn} defined here
+   |         ------- fn(u8) -> E {E::Fn} defined here
 ...
 LL |     let _: E = E::Fn;
    |            -   ^^^^^ expected enum `E`, found fn item
@@ -346,7 +346,7 @@ error[E0618]: expected function, found enum variant `E::Unit`
   --> $DIR/privacy-enum-ctor.rs:55:16
    |
 LL |         Unit,
-   |         ---- `E::Unit` defined here
+   |         ----- `E::Unit` defined here
 ...
 LL |     let _: E = E::Unit();
    |                ^^^^^^^--

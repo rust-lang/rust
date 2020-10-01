@@ -35,25 +35,25 @@ error[E0740]: unions may not contain fields that need dropping
   --> $DIR/feature-gate-untagged_unions.rs:10:5
    |
 LL |     a: String,
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^^
    |
 note: `std::mem::ManuallyDrop` can be used to wrap the type
   --> $DIR/feature-gate-untagged_unions.rs:10:5
    |
 LL |     a: String,
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^^
 
 error[E0740]: unions may not contain fields that need dropping
   --> $DIR/feature-gate-untagged_unions.rs:14:5
    |
 LL |     a: T,
-   |     ^^^^
+   |     ^^^^^
    |
 note: `std::mem::ManuallyDrop` can be used to wrap the type
   --> $DIR/feature-gate-untagged_unions.rs:14:5
    |
 LL |     a: T,
-   |     ^^^^
+   |     ^^^^^
 
 error: aborting due to 5 previous errors
 

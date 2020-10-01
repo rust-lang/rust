@@ -14,13 +14,13 @@ error: variant is never constructed: `Variant5`
   --> $DIR/lint-dead-code-5.rs:13:5
    |
 LL |     Variant5 { _x: isize },
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: variant is never constructed: `Variant6`
   --> $DIR/lint-dead-code-5.rs:14:5
    |
 LL |     Variant6(isize),
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^
 
 error: enum is never used: `Enum3`
   --> $DIR/lint-dead-code-5.rs:35:6

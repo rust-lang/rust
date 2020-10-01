@@ -2,7 +2,7 @@ error: type `S` from private dependency 'somedep' in public interface
   --> $DIR/public-and-private.rs:10:5
    |
 LL |     pub field: somedep::S,
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/public-and-private.rs:5:9

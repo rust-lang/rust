@@ -2,9 +2,9 @@ error[E0124]: field `foo` is already declared
   --> $DIR/struct-fields-decl-dupe.rs:3:5
    |
 LL |     foo: isize,
-   |     ---------- `foo` first declared here
+   |     ----------- `foo` first declared here
 LL |     foo: isize,
-   |     ^^^^^^^^^^ field already declared
+   |     ^^^^^^^^^^^ field already declared
 
 error: aborting due to previous error
 

@@ -2,7 +2,7 @@ error[E0532]: expected unit struct, unit variant or constant, found tuple varian
   --> $DIR/issue-32004.rs:10:9
    |
 LL |     Bar(i32),
-   |     -------- `Foo::Bar` defined here
+   |     --------- `Foo::Bar` defined here
 LL |     Baz
    |     --- similarly named unit variant `Baz` defined here
 ...

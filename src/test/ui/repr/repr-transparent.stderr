@@ -26,7 +26,7 @@ error[E0690]: transparent struct needs exactly one non-zero-sized field, but has
   --> $DIR/repr-transparent.rs:24:1
    |
 LL | struct MultipleNonZst(u8, u8);
-   | ^^^^^^^^^^^^^^^^^^^^^^--^^--^^
+   | ^^^^^^^^^^^^^^^^^^^^^^---^--^^
    | |                     |   |
    | |                     |   this field is non-zero-sized
    | |                     this field is non-zero-sized
@@ -36,7 +36,7 @@ error[E0690]: transparent struct needs exactly one non-zero-sized field, but has
   --> $DIR/repr-transparent.rs:30:1
    |
 LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^-------------------^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----^-------------------^^
    | |                               |    |
    | |                               |    this field is non-zero-sized
    | |                               this field is non-zero-sized
@@ -52,7 +52,7 @@ error[E0691]: zero-sized field in transparent struct has alignment larger than 1
   --> $DIR/repr-transparent.rs:40:24
    |
 LL | struct GenericAlign<T>(ZstAlign32<T>, u32);
-   |                        ^^^^^^^^^^^^^ has alignment larger than 1
+   |                        ^^^^^^^^^^^^^^ has alignment larger than 1
 
 error[E0084]: unsupported representation for zero-variant enum
   --> $DIR/repr-transparent.rs:42:1
@@ -80,7 +80,7 @@ error[E0690]: the variant of a transparent enum needs exactly one non-zero-sized
 LL | enum TooManyFieldsEnum {
    | ^^^^^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 2
 LL |     Foo(u32, String),
-   |         ---  ------ this field is non-zero-sized
+   |         ---- ------ this field is non-zero-sized
    |         |
    |         this field is non-zero-sized
 
@@ -90,9 +90,9 @@ error[E0731]: transparent enum needs exactly one variant, but has 2
 LL | enum TooManyVariants {
    | ^^^^^^^^^^^^^^^^^^^^ needs exactly one variant, but has 2
 LL |     Foo(String),
-   |     -----------
+   |     ------------
 LL |     Bar,
-   |     --- too many variants in `TooManyVariants`
+   |     ---- too many variants in `TooManyVariants`
 
 error[E0691]: zero-sized field in transparent enum has alignment larger than 1
   --> $DIR/repr-transparent.rs:65:14
@@ -104,7 +104,7 @@ error[E0691]: zero-sized field in transparent enum has alignment larger than 1
   --> $DIR/repr-transparent.rs:70:11
    |
 LL |     Foo { bar: ZstAlign32<T>, baz: u32 }
-   |           ^^^^^^^^^^^^^^^^^^ has alignment larger than 1
+   |           ^^^^^^^^^^^^^^^^^^^ has alignment larger than 1
 
 error[E0690]: transparent union needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:74:1
@@ -118,7 +118,7 @@ error[E0690]: transparent union needs exactly one non-zero-sized field, but has 
 LL | union TooManyFields {
    | ^^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 2
 LL |     u: u32,
-   |     ------ this field is non-zero-sized
+   |     ------- this field is non-zero-sized
 LL |     s: i32
    |     ------ this field is non-zero-sized
 

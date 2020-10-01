@@ -2,7 +2,7 @@ error[E0532]: expected unit struct, unit variant or constant, found tuple varian
   --> $DIR/issue-63983.rs:8:9
    |
 LL |     Tuple(i32),
-   |     ---------- `MyEnum::Tuple` defined here
+   |     ----------- `MyEnum::Tuple` defined here
 ...
 LL |         MyEnum::Tuple => "",
    |         ^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `MyEnum::Tuple(_)`
@@ -11,7 +11,7 @@ error[E0532]: expected unit struct, unit variant or constant, found struct varia
   --> $DIR/issue-63983.rs:10:9
    |
 LL |     Struct{ s: i32 },
-   |     ---------------- `MyEnum::Struct` defined here
+   |     ----------------- `MyEnum::Struct` defined here
 ...
 LL |         MyEnum::Struct => "",
    |         ^^^^^^^^^^^^^^ help: use struct pattern syntax instead: `MyEnum::Struct { s }`

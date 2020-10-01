@@ -20,7 +20,7 @@ error: missing documentation for a struct field
   --> $DIR/lint-missing-doc.rs:19:5
    |
 LL |     pub a: isize,
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
 
 error: missing documentation for a module
   --> $DIR/lint-missing-doc.rs:30:1
@@ -86,7 +86,7 @@ error: missing documentation for a struct field
   --> $DIR/lint-missing-doc.rs:120:9
    |
 LL |         a: isize,
-   |         ^^^^^^^^
+   |         ^^^^^^^^^
 
 error: missing documentation for a constant
   --> $DIR/lint-missing-doc.rs:151:1

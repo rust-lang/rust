@@ -22,7 +22,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 
   --> $DIR/issue-74539.rs:8:9
    |
 LL |     A(u8, u8),
-   |     --------- tuple variant defined here
+   |     ---------- tuple variant defined here
 ...
 LL |         E::A(x @ ..) => {
    |         ^^^^^^^^^^^^ expected 2 fields, found 1

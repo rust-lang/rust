@@ -8,7 +8,7 @@ error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-69341-malformed-derive-inert.rs:8:5
    |
 LL |     path: (),
-   |     ^^^^^^^^
+   |     ^^^^^^^^^
 
 error: cannot find derive macro `parse` in this scope
   --> $DIR/issue-69341-malformed-derive-inert.rs:4:14

@@ -37,7 +37,7 @@ warning: unreachable `pub` field
   --> $DIR/unreachable_pub.rs:16:9
    |
 LL |         pub neutrons: usize,
-   |         ---^^^^^^^^^^^^^^^^
+   |         ---^^^^^^^^^^^^^^^^^
    |         |
    |         help: consider restricting its visibility: `crate`
 

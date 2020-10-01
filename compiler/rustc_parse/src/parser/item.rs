@@ -1094,6 +1094,10 @@ impl<'a> Parser<'a> {
         let disr_expr =
             if self.eat(&token::Eq) { Some(self.parse_anon_const_expr()?) } else { None };
 
+        // Include trailing comma in variant span if present
+        let vhi =
+            if self.token.kind == token::Comma { self.token.span } else { self.prev_token.span };
+
         let vr = ast::Variant {
             ident,
             vis,
@@ -1101,7 +1105,7 @@ impl<'a> Parser<'a> {
             attrs: variant_attrs,
             data: struct_def,
             disr_expr,
-            span: vlo.to(self.prev_token.span),
+            span: vlo.to(vhi),
             is_placeholder: false,
         };
 
@@ -1229,8 +1233,11 @@ impl<'a> Parser<'a> {
             let lo = p.token.span;
             let vis = p.parse_visibility(FollowedByType::Yes)?;
             let ty = p.parse_ty()?;
+            // Include trailing comma in field span if present
+            let span_end = if p.token.kind == token::Comma { p.token.span } else { ty.span };
+
             Ok(StructField {
-                span: lo.to(ty.span),
+                span: lo.to(span_end),
                 vis,
                 ident: None,
                 id: DUMMY_NODE_ID,
@@ -1258,9 +1265,10 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
     ) -> PResult<'a, StructField> {
         let mut seen_comma: bool = false;
-        let a_var = self.parse_name_and_ty(lo, vis, attrs)?;
+        let mut a_var = self.parse_name_and_ty(lo, vis, attrs)?;
         if self.token == token::Comma {
             seen_comma = true;
+            a_var.span = a_var.span.to(self.token.span);
         }
         match self.token.kind {
             token::Comma => {

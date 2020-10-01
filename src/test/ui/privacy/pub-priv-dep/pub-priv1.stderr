@@ -2,7 +2,7 @@ error: type `OtherType` from private dependency 'priv_dep' in public interface
   --> $DIR/pub-priv1.rs:20:5
    |
 LL |     pub field: OtherType,
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/pub-priv1.rs:3:9
