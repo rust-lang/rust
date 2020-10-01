@@ -113,6 +113,8 @@ fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
 }
 
 const fn to_nonzero(n: Option<u32>) -> Option<NonZeroU32> {
+    // Can be replaced with `n.and_then(NonZeroU32::new)` if that is ever usable
+    // in const context. Requires https://github.com/rust-lang/rfcs/pull/2632.
     match n {
         None => None,
         Some(n) => NonZeroU32::new(n),
