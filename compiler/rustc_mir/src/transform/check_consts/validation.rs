@@ -770,6 +770,14 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     return;
                 }
 
+                // `async` blocks get lowered to `std::future::from_generator(/* a closure */)`.
+                let is_async_block = Some(callee) == tcx.lang_items().from_generator_fn();
+                if is_async_block {
+                    let kind = hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block);
+                    self.check_op(ops::Generator(kind));
+                    return;
+                }
+
                 // HACK: This is to "unstabilize" the `transmute` intrinsic
                 // within const fns. `transmute` is allowed in all other const contexts.
                 // This won't really scale to more intrinsics or functions. Let's allow const
@@ -869,7 +877,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             TerminatorKind::Abort => self.check_op(ops::Abort),
 
             TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
-                self.check_op(ops::Generator)
+                self.check_op(ops::Generator(hir::GeneratorKind::Gen))
             }
 
             TerminatorKind::Assert { .. }
