@@ -15,7 +15,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 use std::error::Error;
 use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
@@ -632,7 +632,7 @@ impl Builder {
 }
 
 fn fetch_hash(path: &Path) -> Result<String, Box<dyn Error>> {
-    let mut file = File::open(path)?;
+    let mut file = BufReader::new(File::open(path)?);
     let mut sha256 = sha2::Sha256::default();
     std::io::copy(&mut file, &mut sha256)?;
     Ok(hex::encode(sha256.finalize()))
