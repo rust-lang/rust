@@ -33,6 +33,7 @@ pub mod inline;
 pub mod instcombine;
 pub mod instrument_coverage;
 pub mod match_branches;
+pub mod multiple_return_terminators;
 pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
@@ -464,6 +465,7 @@ fn run_optimization_passes<'tcx>(
         &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,
         // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
+        &multiple_return_terminators::MultipleReturnTerminators,
         &instcombine::InstCombine,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
@@ -478,6 +480,7 @@ fn run_optimization_passes<'tcx>(
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
         &simplify::SimplifyLocals,
+        &multiple_return_terminators::MultipleReturnTerminators,
     ];
 
     // Optimizations to run even if mir optimizations have been disabled.
