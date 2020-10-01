@@ -12,6 +12,7 @@ const HI_U64: u64 = 0x8080808080808080;
 // Use truncation.
 const LO_USIZE: usize = LO_U64 as usize;
 const HI_USIZE: usize = HI_U64 as usize;
+const USIZE_BYTES: usize = mem::size_of::<usize>();
 
 /// Returns `true` if `x` contains any zero byte.
 ///
@@ -38,19 +39,29 @@ fn repeat_byte(b: u8) -> usize {
 }
 
 /// Returns the first index matching the byte `x` in `text`.
+#[inline]
 pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
+    // Fast path for small slices
+    if text.len() < 2 * USIZE_BYTES {
+        return text.iter().position(|elt| *elt == x);
+    }
+
+    memchr_general_case(x, text)
+}
+
+fn memchr_general_case(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
     // Split `text` in three parts
     // - unaligned initial part, before the first word aligned address in text
     // - body, scan by 2 words at a time
     // - the last remaining part, < 2 word size
-    let len = text.len();
-    let ptr = text.as_ptr();
-    let usize_bytes = mem::size_of::<usize>();
 
     // search up to an aligned boundary
-    let mut offset = ptr.align_offset(usize_bytes);
+    let len = text.len();
+    let ptr = text.as_ptr();
+    let mut offset = ptr.align_offset(USIZE_BYTES);
+
     if offset > 0 {
         offset = cmp::min(offset, len);
         if let Some(index) = text[..offset].iter().position(|elt| *elt == x) {
@@ -60,22 +71,19 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
 
     // search the body of the text
     let repeated_x = repeat_byte(x);
+    while offset <= len - 2 * USIZE_BYTES {
+        unsafe {
+            let u = *(ptr.add(offset) as *const usize);
+            let v = *(ptr.add(offset + USIZE_BYTES) as *const usize);
 
-    if len >= 2 * usize_bytes {
-        while offset <= len - 2 * usize_bytes {
-            unsafe {
-                let u = *(ptr.add(offset) as *const usize);
-                let v = *(ptr.add(offset + usize_bytes) as *const usize);
-
-                // break if there is a matching byte
-                let zu = contains_zero_byte(u ^ repeated_x);
-                let zv = contains_zero_byte(v ^ repeated_x);
-                if zu || zv {
-                    break;
-                }
+            // break if there is a matching byte
+            let zu = contains_zero_byte(u ^ repeated_x);
+            let zv = contains_zero_byte(v ^ repeated_x);
+            if zu || zv {
+                break;
             }
-            offset += usize_bytes * 2;
         }
+        offset += USIZE_BYTES * 2;
     }
 
     // Find the byte after the point the body loop stopped.
