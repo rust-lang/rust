@@ -1,5 +1,5 @@
 use crate::Builder;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -29,9 +29,9 @@ pub(crate) struct Rename {
 pub(crate) struct Target {
     pub(crate) available: bool,
     pub(crate) url: Option<String>,
-    pub(crate) hash: Option<String>,
+    pub(crate) hash: Option<FileHash>,
     pub(crate) xz_url: Option<String>,
-    pub(crate) xz_hash: Option<String>,
+    pub(crate) xz_hash: Option<FileHash>,
     pub(crate) components: Option<Vec<Component>>,
     pub(crate) extensions: Option<Vec<Component>>,
 }
@@ -52,10 +52,10 @@ impl Target {
             extensions: None,
             // .gz
             url: gz.as_ref().map(|path| builder.url(path)),
-            hash: gz.map(|path| Self::digest_of(builder, &path)),
+            hash: gz.map(FileHash::Missing),
             // .xz
             xz_url: xz.as_ref().map(|path| builder.url(path)),
-            xz_hash: xz.map(|path| Self::digest_of(builder, &path)),
+            xz_hash: xz.map(FileHash::Missing),
         }
     }
 
@@ -63,12 +63,6 @@ impl Target {
         let mut path = base.to_path_buf();
         path.set_extension(ext);
         if path.is_file() { Some(path) } else { None }
-    }
-
-    fn digest_of(builder: &Builder, path: &Path) -> String {
-        // TEMPORARY CODE -- DON'T REVIEW :)
-        let file_name = path.file_name().unwrap().to_str().unwrap();
-        builder.digests.get(file_name).unwrap().clone()
     }
 
     pub(crate) fn unavailable() -> Self {
@@ -85,5 +79,36 @@ pub(crate) struct Component {
 impl Component {
     pub(crate) fn from_str(pkg: &str, target: &str) -> Self {
         Self { pkg: pkg.to_string(), target: target.to_string() }
+    }
+}
+
+#[allow(unused)]
+pub(crate) enum FileHash {
+    Missing(PathBuf),
+    Present(String),
+}
+
+impl Serialize for FileHash {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            FileHash::Missing(path) => Err(serde::ser::Error::custom(format!(
+                "can't serialize a missing hash for file {}",
+                path.display()
+            ))),
+            FileHash::Present(inner) => inner.serialize(serializer),
+        }
+    }
+}
+
+pub(crate) fn visit_file_hashes(manifest: &mut Manifest, mut f: impl FnMut(&mut FileHash)) {
+    for pkg in manifest.pkg.values_mut() {
+        for target in pkg.target.values_mut() {
+            if let Some(hash) = &mut target.hash {
+                f(hash);
+            }
+            if let Some(hash) = &mut target.xz_hash {
+                f(hash);
+            }
+        }
     }
 }
