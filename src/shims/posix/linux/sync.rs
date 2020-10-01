@@ -16,7 +16,7 @@ pub fn futex<'tcx>(
 
     this.memory.check_ptr_access(addr, Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
 
-    let addr = addr.assert_ptr();
+    let addr = addr.assert_ptr().erase_tag();
 
     let thread = this.get_active_thread();
 

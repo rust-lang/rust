@@ -115,7 +115,7 @@ pub(super) struct SynchronizationState {
     mutexes: IndexVec<MutexId, Mutex>,
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
-    futexes: HashMap<Pointer<stacked_borrows::Tag>, Futex>,
+    futexes: HashMap<Pointer, Futex>,
 }
 
 // Private extension trait for local helper methods
@@ -418,14 +418,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.machine.threads.sync.condvars[id].waiters.retain(|waiter| waiter.thread != thread);
     }
 
-    fn futex_wait(&mut self, addr: Pointer<stacked_borrows::Tag>, thread: ThreadId) {
+    fn futex_wait(&mut self, addr: Pointer, thread: ThreadId) {
         let this = self.eval_context_mut();
         let waiters = &mut this.machine.threads.sync.futexes.entry(addr).or_default().waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
         waiters.push_back(FutexWaiter { thread });
     }
 
-    fn futex_wake(&mut self, addr: Pointer<stacked_borrows::Tag>) -> Option<ThreadId> {
+    fn futex_wake(&mut self, addr: Pointer) -> Option<ThreadId> {
         let this = self.eval_context_mut();
         let waiters = &mut this.machine.threads.sync.futexes.get_mut(&addr)?.waiters;
         waiters.pop_front().map(|waiter| waiter.thread)
