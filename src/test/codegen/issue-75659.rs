@@ -2,6 +2,7 @@
 // when searching in small slices.
 
 // compile-flags: -O
+// only-x86_64
 
 #![crate_type = "lib"]
 
