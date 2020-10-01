@@ -581,25 +581,7 @@ impl<T> Option<T> {
     #[inline]
     #[unstable(feature = "option_insert", reason = "new API", issue = "none")]
     pub fn insert(&mut self, v: T) -> &mut T {
-        self.insert_with(|| v)
-    }
-
-    /// Inserts a value computed from `f` into the option, then returns a
-    /// mutable reference to the contained value.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![feature(option_insert)]
-    ///
-    /// let mut o = None;
-    /// let v = o.insert_with(|| 3);
-    /// assert_eq!(*v, 3);
-    /// ```
-    #[inline]
-    #[unstable(feature = "option_insert", reason = "new API", issue = "none")]
-    pub fn insert_with<F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
-        *self = Some(f());
+        *self = Some(v);
 
         match *self {
             Some(ref mut v) => v,
