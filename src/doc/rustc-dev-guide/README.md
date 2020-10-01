@@ -92,7 +92,7 @@ ln -s ../../ci/check_line_lengths.sh .git/hooks/pre-commit
 On Windows:
 
 ```powershell
-cd .git/hooks && New-Item -Path ../../.git_hooks/* -ItemType SymbolicLink -Value . && cd ../..
+New-Item -Path .git/hooks/pre-commit -ItemType HardLink -Value <absolute_path/to/check_line_lengths.sh>
 ```
 
 ### Link Validations
