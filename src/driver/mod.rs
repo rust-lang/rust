@@ -41,7 +41,7 @@ pub(crate) fn codegen_crate(
 }
 
 fn codegen_mono_items<'tcx>(
-    cx: &mut crate::CodegenCx<'tcx, impl Backend + 'static>,
+    cx: &mut crate::CodegenCx<'tcx, impl Module>,
     mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
 ) {
     cx.tcx.sess.time("predefine functions", || {
@@ -68,8 +68,8 @@ fn codegen_mono_items<'tcx>(
     }
 }
 
-fn trans_mono_item<'tcx, B: Backend + 'static>(
-    cx: &mut crate::CodegenCx<'tcx, B>,
+fn trans_mono_item<'tcx, M: Module>(
+    cx: &mut crate::CodegenCx<'tcx, M>,
     mono_item: MonoItem<'tcx>,
     linkage: Linkage,
 ) {

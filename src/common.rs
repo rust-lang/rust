@@ -131,7 +131,7 @@ pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 pub(crate) fn codegen_icmp_imm(
-    fx: &mut FunctionCx<'_, '_, impl Backend>,
+    fx: &mut FunctionCx<'_, '_, impl Module>,
     intcc: IntCC,
     lhs: Value,
     rhs: i128,
@@ -287,8 +287,8 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
     }
 }
 
-pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
-    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx, B>,
+pub(crate) struct FunctionCx<'clif, 'tcx, M: Module> {
+    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx, M>,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) pointer_type: Type, // Cached from module
 
@@ -314,7 +314,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub(crate) inline_asm_index: u32,
 }
 
-impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
+impl<'tcx, M: Module> LayoutOf for FunctionCx<'_, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = TyAndLayout<'tcx>;
 
@@ -332,31 +332,31 @@ impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
     }
 }
 
-impl<'tcx, B: Backend + 'static> layout::HasTyCtxt<'tcx> for FunctionCx<'_, 'tcx, B> {
+impl<'tcx, M: Module> layout::HasTyCtxt<'tcx> for FunctionCx<'_, 'tcx, M> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'tcx, B: Backend + 'static> rustc_target::abi::HasDataLayout for FunctionCx<'_, 'tcx, B> {
+impl<'tcx, M: Module> rustc_target::abi::HasDataLayout for FunctionCx<'_, 'tcx, M> {
     fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'tcx, B: Backend + 'static> layout::HasParamEnv<'tcx> for FunctionCx<'_, 'tcx, B> {
+impl<'tcx, M: Module> layout::HasParamEnv<'tcx> for FunctionCx<'_, 'tcx, M> {
     fn param_env(&self) -> ParamEnv<'tcx> {
         ParamEnv::reveal_all()
     }
 }
 
-impl<'tcx, B: Backend + 'static> HasTargetSpec for FunctionCx<'_, 'tcx, B> {
+impl<'tcx, M: Module> HasTargetSpec for FunctionCx<'_, 'tcx, M> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }
 }
 
-impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
+impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
     pub(crate) fn monomorphize<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx> + Copy,
@@ -430,7 +430,6 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
                 Linkage::Local,
                 false,
                 false,
-                None,
             )
             .unwrap();
 

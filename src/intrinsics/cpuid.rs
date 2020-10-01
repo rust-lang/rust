@@ -6,7 +6,7 @@ use crate::prelude::*;
 ///
 /// This emulates an intel cpu with sse and sse2 support, but which doesn't support anything else.
 pub(crate) fn codegen_cpuid_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     leaf: Value,
     _subleaf: Value,
 ) -> (Value, Value, Value, Value) {

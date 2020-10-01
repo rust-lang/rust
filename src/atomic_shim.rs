@@ -11,7 +11,7 @@ pub static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t =
     libc::PTHREAD_MUTEX_INITIALIZER;
 
 pub(crate) fn init_global_lock(
-    module: &mut Module<impl Backend>,
+    module: &mut impl Module,
     bcx: &mut FunctionBuilder<'_>,
     use_jit: bool,
 ) {
@@ -24,13 +24,13 @@ pub(crate) fn init_global_lock(
 
     let mut data_ctx = DataContext::new();
     data_ctx.define_zeroinit(1024); // 1024 bytes should be big enough on all platforms.
+    data_ctx.set_align(16);
     let atomic_mutex = module
         .declare_data(
             "__cg_clif_global_atomic_mutex",
             Linkage::Export,
             true,
             false,
-            Some(16),
         )
         .unwrap();
     module.define_data(atomic_mutex, &data_ctx).unwrap();
@@ -67,7 +67,7 @@ pub(crate) fn init_global_lock(
 }
 
 pub(crate) fn init_global_lock_constructor(
-    module: &mut Module<impl Backend>,
+    module: &mut impl Module,
     constructor_name: &str,
 ) -> FuncId {
     let sig = Signature::new(CallConv::SystemV);
@@ -101,7 +101,7 @@ pub(crate) fn init_global_lock_constructor(
     init_func_id
 }
 
-pub(crate) fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+pub(crate) fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Module>) {
     let atomic_mutex = fx
         .cx
         .module
@@ -110,7 +110,6 @@ pub(crate) fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
             Linkage::Import,
             true,
             false,
-            None,
         )
         .unwrap();
 
@@ -144,7 +143,7 @@ pub(crate) fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     fx.bcx.ins().call(pthread_mutex_lock, &[atomic_mutex]);
 }
 
-pub(crate) fn unlock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+pub(crate) fn unlock_global_lock(fx: &mut FunctionCx<'_, '_, impl Module>) {
     let atomic_mutex = fx
         .cx
         .module
@@ -153,7 +152,6 @@ pub(crate) fn unlock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
             Linkage::Import,
             true,
             false,
-            None,
         )
         .unwrap();
 

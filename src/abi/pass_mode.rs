@@ -122,7 +122,7 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
 
 /// Get a set of values to be passed as function arguments.
 pub(super) fn adjust_arg_for_abi<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     arg: CValue<'tcx>,
 ) -> EmptySinglePair<Value> {
     match get_pass_mode(fx.tcx, arg.layout()) {
@@ -142,7 +142,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
 /// Create a [`CValue`] containing the value of a function parameter adding clif function parameters
 /// as necessary.
 pub(super) fn cvalue_for_param<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     start_block: Block,
     #[cfg_attr(not(debug_assertions), allow(unused_variables))] local: Option<mir::Local>,
     #[cfg_attr(not(debug_assertions), allow(unused_variables))] local_field: Option<usize>,

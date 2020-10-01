@@ -9,7 +9,6 @@ use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer, Scalar,
 };
 use rustc_middle::ty::{Const, ConstKind};
-use rustc_target::abi::Align;
 
 use cranelift_codegen::ir::GlobalValueData;
 use cranelift_module::*;
@@ -29,7 +28,7 @@ enum TodoItem {
 }
 
 impl ConstantCx {
-    pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut Module<impl Backend>) {
+    pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut impl Module) {
         //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
         //println!("done {:?}", self.done);
@@ -37,7 +36,7 @@ impl ConstantCx {
     }
 }
 
-pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Module>) {
     for constant in &fx.mir.required_consts {
         let const_ = fx.monomorphize(&constant.literal);
         match const_.val {
@@ -77,7 +76,7 @@ pub(crate) fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
 }
 
 pub(crate) fn codegen_tls_ref<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
@@ -90,7 +89,7 @@ pub(crate) fn codegen_tls_ref<'tcx>(
 }
 
 fn codegen_static_ref<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CPlace<'tcx> {
@@ -108,7 +107,7 @@ fn codegen_static_ref<'tcx>(
 }
 
 pub(crate) fn trans_constant<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
     let const_ = fx.monomorphize(&constant.literal);
@@ -156,7 +155,7 @@ pub(crate) fn trans_constant<'tcx>(
 }
 
 pub(crate) fn trans_const_value<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     const_val: ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
@@ -199,7 +198,6 @@ pub(crate) fn trans_const_value<'tcx>(
                             let data_id = data_id_for_alloc_id(
                                 &mut fx.cx.module,
                                 ptr.alloc_id,
-                                alloc.align,
                                 alloc.mutability,
                             );
                             let local_data_id =
@@ -254,12 +252,12 @@ pub(crate) fn trans_const_value<'tcx>(
 }
 
 fn pointer_for_allocation<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
     let alloc_id = fx.tcx.create_memory_alloc(alloc);
     fx.cx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
-    let data_id = data_id_for_alloc_id(&mut fx.cx.module, alloc_id, alloc.align, alloc.mutability);
+    let data_id = data_id_for_alloc_id(&mut fx.cx.module, alloc_id, alloc.mutability);
 
     let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
@@ -268,10 +266,9 @@ fn pointer_for_allocation<'tcx>(
     crate::pointer::Pointer::new(global_ptr)
 }
 
-fn data_id_for_alloc_id<B: Backend>(
-    module: &mut Module<B>,
+fn data_id_for_alloc_id(
+    module: &mut impl Module,
     alloc_id: AllocId,
-    align: Align,
     mutability: rustc_hir::Mutability,
 ) -> DataId {
     module
@@ -280,14 +277,13 @@ fn data_id_for_alloc_id<B: Backend>(
             Linkage::Local,
             mutability == rustc_hir::Mutability::Mut,
             false,
-            Some(align.bytes() as u8),
         )
         .unwrap()
 }
 
 fn data_id_for_static(
     tcx: TyCtxt<'_>,
-    module: &mut Module<impl Backend>,
+    module: &mut impl Module,
     def_id: DefId,
     definition: bool,
 ) -> DataId {
@@ -327,7 +323,6 @@ fn data_id_for_static(
             linkage,
             is_mutable,
             attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
-            Some(align.try_into().unwrap()),
         )
         .unwrap();
 
@@ -342,15 +337,10 @@ fn data_id_for_static(
 
         let ref_name = format!("_rust_extern_with_linkage_{}", symbol_name);
         let ref_data_id = module
-            .declare_data(
-                &ref_name,
-                Linkage::Local,
-                true,
-                false,
-                Some(align.try_into().unwrap()),
-            )
+            .declare_data(&ref_name, Linkage::Local, true, false)
             .unwrap();
         let mut data_ctx = DataContext::new();
+        data_ctx.set_align(align);
         let data = module.declare_data_in_data(data_id, &mut data_ctx);
         data_ctx.define(
             std::iter::repeat(0)
@@ -370,7 +360,7 @@ fn data_id_for_static(
     }
 }
 
-fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mut ConstantCx) {
+fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut impl Module, cx: &mut ConstantCx) {
     while let Some(todo_item) = cx.todo.pop() {
         let (data_id, alloc, section_name) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
@@ -379,7 +369,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     GlobalAlloc::Memory(alloc) => alloc,
                     GlobalAlloc::Function(_) | GlobalAlloc::Static(_) => unreachable!(),
                 };
-                let data_id = data_id_for_alloc_id(module, alloc_id, alloc.align, alloc.mutability);
+                let data_id = data_id_for_alloc_id(module, alloc_id, alloc.mutability);
                 (data_id, alloc, None)
             }
             TodoItem::Static(def_id) => {
@@ -403,6 +393,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
         }
 
         let mut data_ctx = DataContext::new();
+        data_ctx.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
             // FIXME set correct segment for Mach-O files
@@ -436,7 +427,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                 }
                 GlobalAlloc::Memory(target_alloc) => {
                     cx.todo.push(TodoItem::Alloc(reloc));
-                    data_id_for_alloc_id(module, reloc, target_alloc.align, target_alloc.mutability)
+                    data_id_for_alloc_id(module, reloc, target_alloc.mutability)
                 }
                 GlobalAlloc::Static(def_id) => {
                     if tcx
@@ -469,7 +460,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
 }
 
 pub(crate) fn mir_operand_get_const_val<'tcx>(
-    fx: &FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &FunctionCx<'_, 'tcx, impl Module>,
     operand: &Operand<'tcx>,
 ) -> Option<&'tcx Const<'tcx>> {
     match operand {

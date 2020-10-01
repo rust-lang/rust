@@ -7,7 +7,7 @@ use crate::prelude::*;
 /// users main function.
 pub(crate) fn maybe_create_entry_wrapper(
     tcx: TyCtxt<'_>,
-    module: &mut Module<impl Backend + 'static>,
+    module: &mut impl Module,
     unwind_context: &mut UnwindContext<'_>,
     use_jit: bool,
 ) {
@@ -38,7 +38,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
-        m: &mut Module<impl Backend + 'static>,
+        m: &mut impl Module,
         unwind_context: &mut UnwindContext<'_>,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,

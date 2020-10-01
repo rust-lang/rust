@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 
-fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, msg: &str) {
+fn codegen_print(fx: &mut FunctionCx<'_, '_, impl Module>, msg: &str) {
     let puts = fx
         .cx
         .module
@@ -30,7 +30,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
 
 /// Trap code: user1
 pub(crate) fn trap_abort(
-    fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>,
+    fx: &mut FunctionCx<'_, '_, impl Module>,
     msg: impl AsRef<str>,
 ) {
     codegen_print(fx, msg.as_ref());
@@ -42,7 +42,7 @@ pub(crate) fn trap_abort(
 ///
 /// Trap code: user65535
 pub(crate) fn trap_unreachable(
-    fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>,
+    fx: &mut FunctionCx<'_, '_, impl Module>,
     msg: impl AsRef<str>,
 ) {
     codegen_print(fx, msg.as_ref());
@@ -53,7 +53,7 @@ pub(crate) fn trap_unreachable(
 ///
 /// Trap code: user65535
 pub(crate) fn trap_unreachable_ret_value<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     dest_layout: TyAndLayout<'tcx>,
     msg: impl AsRef<str>,
 ) -> CValue<'tcx> {
@@ -69,7 +69,7 @@ pub(crate) fn trap_unreachable_ret_value<'tcx>(
 ///
 /// Trap code: user65535
 pub(crate) fn trap_unimplemented(
-    fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>,
+    fx: &mut FunctionCx<'_, '_, impl Module>,
     msg: impl AsRef<str>,
 ) {
     codegen_print(fx, msg.as_ref());
@@ -81,7 +81,7 @@ pub(crate) fn trap_unimplemented(
 ///
 /// Trap code: user65535
 pub(crate) fn trap_unimplemented_ret_value<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     dest_layout: TyAndLayout<'tcx>,
     msg: impl AsRef<str>,
 ) -> CValue<'tcx> {

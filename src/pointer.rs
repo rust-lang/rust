@@ -37,7 +37,7 @@ impl Pointer {
     }
 
     pub(crate) fn const_addr<'a, 'tcx>(
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
         addr: i64,
     ) -> Self {
         let addr = fx.bcx.ins().iconst(fx.pointer_type, addr);
@@ -59,7 +59,7 @@ impl Pointer {
         (self.base, self.offset)
     }
 
-    pub(crate) fn get_addr<'a, 'tcx>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value {
+    pub(crate) fn get_addr<'a, 'tcx>(self, fx: &mut FunctionCx<'a, 'tcx, impl Module>) -> Value {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 let offset: i64 = self.offset.into();
@@ -83,7 +83,7 @@ impl Pointer {
 
     pub(crate) fn offset<'a, 'tcx>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
         extra_offset: Offset32,
     ) -> Self {
         self.offset_i64(fx, extra_offset.into())
@@ -91,7 +91,7 @@ impl Pointer {
 
     pub(crate) fn offset_i64<'a, 'tcx>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
         extra_offset: i64,
     ) -> Self {
         if let Some(new_offset) = self.offset.try_add_i64(extra_offset) {
@@ -128,7 +128,7 @@ impl Pointer {
 
     pub(crate) fn offset_value<'a, 'tcx>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
         extra_offset: Value,
     ) -> Self {
         match self.base {
@@ -161,7 +161,7 @@ impl Pointer {
 
     pub(crate) fn load<'a, 'tcx>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
         ty: Type,
         flags: MemFlags,
     ) -> Value {
@@ -182,7 +182,7 @@ impl Pointer {
 
     pub(crate) fn store<'a, 'tcx>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
         value: Value,
         flags: MemFlags,
     ) {

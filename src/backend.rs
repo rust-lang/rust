@@ -5,12 +5,12 @@ use std::convert::{TryFrom, TryInto};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::Session;
 
-use cranelift_module::{FuncId, Module};
+use cranelift_module::FuncId;
 
 use object::write::*;
 use object::{RelocationEncoding, RelocationKind, SectionKind, SymbolFlags};
 
-use cranelift_object::{ObjectBackend, ObjectBuilder, ObjectProduct};
+use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 
 use gimli::SectionId;
 
@@ -71,16 +71,18 @@ impl WriteDebugInfo for ObjectProduct {
 
         let segment = self.object.segment_name(StandardSegment::Debug).to_vec();
         // FIXME use SHT_X86_64_UNWIND for .eh_frame
-        let section_id = self.object.add_section(segment, name.clone(), if id == SectionId::EhFrame {
-            SectionKind::ReadOnlyData
-        } else {
-            SectionKind::Debug
-        });
-        self.object.section_mut(section_id).set_data(data, if id == SectionId::EhFrame {
-            8
-        } else {
-            1
-        });
+        let section_id = self.object.add_section(
+            segment,
+            name.clone(),
+            if id == SectionId::EhFrame {
+                SectionKind::ReadOnlyData
+            } else {
+                SectionKind::Debug
+            },
+        );
+        self.object
+            .section_mut(section_id)
+            .set_data(data, if id == SectionId::EhFrame { 8 } else { 1 });
         let symbol_id = self.object.section_symbol(section_id);
         (section_id, symbol_id)
     }
@@ -153,16 +155,6 @@ impl AddConstructor for ObjectProduct {
     }
 }
 
-pub(crate) trait Emit {
-    fn emit(self) -> Vec<u8>;
-}
-
-impl Emit for ObjectProduct {
-    fn emit(self) -> Vec<u8> {
-        self.object.write().unwrap()
-    }
-}
-
 pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
     let triple = crate::build_isa(sess, true).triple().clone();
 
@@ -193,10 +185,7 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
     metadata_object.write().unwrap()
 }
 
-pub(crate) type Backend =
-    impl cranelift_module::Backend<Product: AddConstructor + Emit + WriteDebugInfo>;
-
-pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
+pub(crate) fn make_module(sess: &Session, name: String) -> ObjectModule {
     let mut builder = ObjectBuilder::new(
         crate::build_isa(sess, true),
         name + ".o",
@@ -206,8 +195,6 @@ pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
     if std::env::var("CG_CLIF_FUNCTION_SECTIONS").is_ok() {
         builder.per_function_section(true);
     }
-    let module: Module<ObjectBackend> = Module::new(
-        builder,
-    );
+    let module = ObjectModule::new(builder);
     module
 }

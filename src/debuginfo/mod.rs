@@ -336,6 +336,8 @@ impl<'tcx> DebugContext<'tcx> {
                 | ArgumentPurpose::CalleeSaved => continue,
                 ArgumentPurpose::VMContext
                 | ArgumentPurpose::SignatureId
+                | ArgumentPurpose::CallerTLS
+                | ArgumentPurpose::CalleeTLS
                 | ArgumentPurpose::StackLimit => unreachable!(),
             };
             let name = format!("{}{}", base_name, i);
