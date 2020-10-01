@@ -551,7 +551,7 @@ Each register class has constraints on which value types they can be used with. 
 | ARM | `dreg` | `vfp2` | `i64`, `f64`, `i8x8`, `i16x4`, `i32x2`, `i64x1`, `f32x2` |
 | ARM | `qreg` | `neon` | `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4` |
 | MIPS32 | `reg` | None | `i8`, `i16`, `i32`, `f32` |
-| MIPS32 | `freg` | None | `f32` |
+| MIPS32 | `freg` | None | `f32`, `f64` |
 | NVPTX | `reg16` | None | `i8`, `i16` |
 | NVPTX | `reg32` | None | `i8`, `i16`, `i32`, `f32` |
 | NVPTX | `reg64` | None | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |

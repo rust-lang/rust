@@ -108,6 +108,30 @@ pub unsafe fn f0_f32(x: f32) -> f32 {
     y
 }
 
+// CHECK-LABEL: reg_f64:
+// CHECK: #APP
+// CHECK: mov.d $f{{[0-9]+}}, $f{{[0-9]+}}
+// CHECK: #NO_APP
+#[no_mangle]
+pub unsafe fn reg_f64(x: f64) -> f64 {
+    dont_merge("reg_f64");
+    let y;
+    asm!("mov.d {}, {}", out(freg) y, in(freg) x);
+    y
+}
+
+// CHECK-LABEL: f0_f64:
+// CHECK: #APP
+// CHECK: mov.d $f0, $f0
+// CHECK: #NO_APP
+#[no_mangle]
+pub unsafe fn f0_f64(x: f64) -> f64 {
+    dont_merge("f0_f64");
+    let y;
+    asm!("mov.d $f0, $f0", lateout("$f0") y, in("$f0") x);
+    y
+}
+
 // CHECK-LABEL: reg_ptr:
 // CHECK: #APP
 // CHECK: move ${{[0-9]+}}, ${{[0-9]+}}
