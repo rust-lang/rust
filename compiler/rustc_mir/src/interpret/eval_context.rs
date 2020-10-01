@@ -783,7 +783,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// The cleanup block ends with a special `Resume` terminator, which will
     /// cause us to continue unwinding.
     pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
-        info!(unwinding);
+        info!(
+            "popping stack frame ({})",
+            if unwinding { "during unwinding" } else { "returning from function" }
+        );
 
         // Sanity check `unwinding`.
         assert_eq!(
@@ -852,10 +855,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if let Some(ret) = next_block {
                 self.return_to_block(ret)?;
             }
-        }
-
-        if !self.stack().is_empty() {
-            info!(unwinding);
         }
 
         Ok(())
