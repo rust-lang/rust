@@ -7,14 +7,19 @@
 mod manifest;
 mod versions;
 
-use crate::manifest::{Component, Manifest, Package, Rename, Target};
+use crate::manifest::{Component, FileHash, Manifest, Package, Rename, Target};
 use crate::versions::{PkgType, Versions};
-use std::collections::{BTreeMap, HashMap};
+use rayon::prelude::*;
+use sha2::Digest;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
+use std::error::Error;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
+use std::time::Instant;
 
 static HOSTS: &[&str] = &[
     "aarch64-unknown-linux-gnu",
@@ -181,7 +186,6 @@ struct Builder {
 
     input: PathBuf,
     output: PathBuf,
-    digests: BTreeMap<String, String>,
     s3_address: String,
     date: String,
 
@@ -223,7 +227,6 @@ fn main() {
 
         input,
         output,
-        digests: BTreeMap::new(),
         s3_address,
         date,
 
@@ -236,7 +239,9 @@ fn main() {
 impl Builder {
     fn build(&mut self) {
         self.check_toolstate();
-        self.digest_and_sign();
+        if self.legacy {
+            self.digest_and_sign();
+        }
         let manifest = self.build_manifest();
 
         let rust_version = self.versions.package_version(&PkgType::Rust).unwrap();
@@ -270,10 +275,9 @@ impl Builder {
     /// Hash all files, compute their signatures, and collect the hashes in `self.digests`.
     fn digest_and_sign(&mut self) {
         for file in t!(self.input.read_dir()).map(|e| t!(e).path()) {
-            let filename = file.file_name().unwrap().to_str().unwrap();
-            let digest = self.hash(&file);
+            file.file_name().unwrap().to_str().unwrap();
+            self.hash(&file);
             self.sign(&file);
-            assert!(self.digests.insert(filename.to_string(), digest).is_none());
         }
     }
 
@@ -289,6 +293,9 @@ impl Builder {
         self.add_profiles_to(&mut manifest);
         self.add_renames_to(&mut manifest);
         manifest.pkg.insert("rust".to_string(), self.rust_package(&manifest));
+
+        self.fill_missing_hashes(&mut manifest);
+
         manifest
     }
 
@@ -561,6 +568,41 @@ impl Builder {
         assert!(t!(child.wait()).success());
     }
 
+    fn fill_missing_hashes(&self, manifest: &mut Manifest) {
+        // First collect all files that need hashes
+        let mut need_hashes = HashSet::new();
+        crate::manifest::visit_file_hashes(manifest, |file_hash| {
+            if let FileHash::Missing(path) = file_hash {
+                need_hashes.insert(path.clone());
+            }
+        });
+
+        let collected = Mutex::new(HashMap::new());
+        let collection_start = Instant::now();
+        println!(
+            "collecting hashes for {} tarballs across {} threads",
+            need_hashes.len(),
+            rayon::current_num_threads().min(need_hashes.len()),
+        );
+        need_hashes.par_iter().for_each(|path| match fetch_hash(path) {
+            Ok(hash) => {
+                collected.lock().unwrap().insert(path, hash);
+            }
+            Err(err) => eprintln!("error while fetching the hash for {}: {}", path.display(), err),
+        });
+        let collected = collected.into_inner().unwrap();
+        println!("collected {} hashes in {:.2?}", collected.len(), collection_start.elapsed());
+
+        crate::manifest::visit_file_hashes(manifest, |file_hash| {
+            if let FileHash::Missing(path) = file_hash {
+                match collected.get(path) {
+                    Some(hash) => *file_hash = FileHash::Present(hash.clone()),
+                    None => panic!("missing hash for file {}", path.display()),
+                }
+            }
+        })
+    }
+
     fn write_channel_files(&self, channel_name: &str, manifest: &Manifest) {
         self.write(&toml::to_string(&manifest).unwrap(), channel_name, ".toml");
         self.write(&manifest.date, channel_name, "-date.txt");
@@ -574,7 +616,16 @@ impl Builder {
     fn write(&self, contents: &str, channel_name: &str, suffix: &str) {
         let dst = self.output.join(format!("channel-rust-{}{}", channel_name, suffix));
         t!(fs::write(&dst, contents));
-        self.hash(&dst);
-        self.sign(&dst);
+        if self.legacy {
+            self.hash(&dst);
+            self.sign(&dst);
+        }
     }
+}
+
+fn fetch_hash(path: &Path) -> Result<String, Box<dyn Error>> {
+    let mut file = File::open(path)?;
+    let mut sha256 = sha2::Sha256::default();
+    std::io::copy(&mut file, &mut sha256)?;
+    Ok(hex::encode(sha256.finalize()))
 }
