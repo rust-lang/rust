@@ -1904,7 +1904,7 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 /// /// # Safety:
 /// /// * `ptr` must be correctly aligned for its type and non-zero.
 /// /// * `ptr` must be valid for reads of `elts` contiguous objects of type `T`.
-/// /// * Those elements must not be used after calling this function.
+/// /// * Those elements must not be used after calling this function unless `T: Copy`.
 /// # #[allow(dead_code)]
 /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
 ///     let mut dst = Vec::with_capacity(elts);
