@@ -232,7 +232,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 let n = tcx.lift(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                     _ if t.is_simple_ty() => format!("array `{}`", self).into(),
-                    Some(n) => format!("array of {} element{} ", n, pluralize!(n)).into(),
+                    Some(n) => format!("array of {} element{}", n, pluralize!(n)).into(),
                     None => "array".into(),
                 }
             }
