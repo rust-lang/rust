@@ -1370,10 +1370,11 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `from_iter()` function calls that implements `FromIterator`
+    /// **What it does:** Checks for `from_iter()` function calls on types that implement the `FromIterator`
     /// trait.
     ///
-    /// **Why is this bad?** Makes code less readable especially in method chaining.
+    /// **Why is this bad?** It is recommended style to use collect. See
+    /// [FromIterator documentation](https://doc.rust-lang.org/std/iter/trait.FromIterator.html)
     ///
     /// **Known problems:** None.
     ///
@@ -3873,18 +3874,19 @@ fn lint_filetype_is_file(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir
 
 fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let ty = cx.typeck_results().expr_ty(expr);
-    let id = get_trait_def_id(cx, &paths::FROM_ITERATOR_TRAIT).unwrap();
+    let id = get_trait_def_id(cx, &paths::FROM_ITERATOR).unwrap();
 
     if implements_trait(cx, ty, id, &[]) {
         // `expr` implements `FromIterator` trait
         let iter_expr = snippet(cx, args[0].span, "..");
-        span_lint_and_help(
+        span_lint_and_sugg(
             cx,
             FROM_ITER_INSTEAD_OF_COLLECT,
             expr.span,
             "use `.collect()` instead of `::from_iter()`",
-            None,
-            &format!("consider using `{}.collect()`", iter_expr),
+            "consider using",
+            format!("`{}.collect()`", iter_expr),
+            Applicability::MaybeIncorrect
         );
     }
 }
