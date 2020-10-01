@@ -40,9 +40,9 @@ pub fn setup(src_path: &Path, include_name: &str) {
     println!("`x.py` will now use the configuration at {}", include_path);
 
     let suggestions = match include_name {
-        "codegen" | "compiler" => &["check", "build", "test"][..],
+        "llvm" | "codegen" | "compiler" => &["check", "build", "test"][..],
         "library" => &["check", "build", "test library/std", "doc"],
-        "user" => &["dist", "build"],
+        "maintainer" | "user" => &["dist", "build"],
         _ => return,
     };
 
