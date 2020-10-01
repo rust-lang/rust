@@ -14,7 +14,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{Abi, LayoutOf};
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
     "The rules on what exactly is undefined behavior aren't clear, \
@@ -148,10 +148,10 @@ pub(super) fn op_to_const<'tcx>(
         Scalar::Raw { data, .. } => {
             assert!(mplace.layout.is_zst());
             assert_eq!(
-                data,
-                mplace.layout.align.abi.bytes().into(),
-                "this MPlaceTy must come from `try_as_mplace` being used on a zst, so we know what
-                 value this integer address must have",
+                u64::try_from(data).unwrap() % mplace.layout.align.abi.bytes(),
+                0,
+                "this MPlaceTy must come from a validated constant, thus we can assume the \
+                alignment is correct",
             );
             ConstValue::Scalar(Scalar::zst())
         }
