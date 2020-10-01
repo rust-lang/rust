@@ -387,7 +387,6 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // `&str` and `&[u8]` are represented as `ConstValue::Slice`, let's keep using this
                 // optimization for now.
                 ty::Str => PatKind::Constant { value: cv },
-                ty::Slice(elem_ty) if elem_ty == tcx.types.u8 => PatKind::Constant { value: cv },
                 // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
                 // matching against references, you can only use byte string literals.
                 // The typechecker has a special case for byte string literals, by treating them
