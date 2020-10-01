@@ -293,6 +293,8 @@ impl Builder {
         self.write_channel_files(self.versions.channel(), &manifest);
         if self.versions.channel() != rust_version {
             self.write_channel_files(&rust_version, &manifest);
+        }
+        if self.versions.channel() == "stable" {
             let major_minor = rust_version.split('.').take(2).collect::<Vec<_>>().join(".");
             self.write_channel_files(&major_minor, &manifest);
         }
