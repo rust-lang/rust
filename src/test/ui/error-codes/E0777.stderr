@@ -1,0 +1,11 @@
+error[E0777]: expected path to a trait, found literal
+  --> $DIR/E0777.rs:1:10
+   |
+LL | #[derive("Clone")]
+   |          ^^^^^^^
+   |
+   = help: for example, write `#[derive(Debug)]` for `Debug`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0777`.
