@@ -3,6 +3,7 @@ use crate::throw_ub;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_macros::HashStable;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::{Size, TargetDataLayout};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -115,7 +116,7 @@ impl std::fmt::Debug for ConstInt {
 
 // FIXME: reuse in `super::int::ConstInt` and `Scalar::Bits`
 /// The raw bytes of a simple value.
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(HashStable)]
 pub struct ScalarInt {
     /// The first `size` bytes of `data` are the value.
@@ -125,6 +126,19 @@ pub struct ScalarInt {
     /// (like Scalar).
     bytes: [u8; 16],
     size: u8,
+}
+
+impl<S: Encoder> Encodable<S> for ScalarInt {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u128(self.data())?;
+        s.emit_u8(self.size)
+    }
+}
+
+impl<D: Decoder> Decodable<D> for ScalarInt {
+    fn decode(d: &mut D) -> Result<ScalarInt, D::Error> {
+        Ok(ScalarInt { bytes: d.read_u128()?.to_ne_bytes(), size: d.read_u8()? })
+    }
 }
 
 impl ScalarInt {
