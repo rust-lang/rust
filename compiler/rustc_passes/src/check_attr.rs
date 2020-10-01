@@ -8,12 +8,12 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_ast::{Attribute, NestedMetaItem};
-use rustc_errors::struct_span_err;
+use rustc_ast::{Attribute, LitKind, NestedMetaItem};
+use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{self, HirId, Item, ItemKind, TraitItem};
+use rustc_hir::{self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem};
 use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_session::parse::feature_err;
@@ -43,6 +43,12 @@ pub(crate) fn target_from_impl_item<'tcx>(
     }
 }
 
+#[derive(Clone, Copy)]
+enum ItemLike<'tcx> {
+    Item(&'tcx Item<'tcx>),
+    ForeignItem(&'tcx ForeignItem<'tcx>),
+}
+
 struct CheckAttrVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
@@ -55,7 +61,7 @@ impl CheckAttrVisitor<'tcx> {
         attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
-        item: Option<&Item<'_>>,
+        item: Option<ItemLike<'_>>,
     ) {
         let mut is_valid = true;
         for attr in attrs {
@@ -75,6 +81,8 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_no_link(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::export_name) {
                 self.check_export_name(&attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_args_required_const) {
+                self.check_rustc_args_required_const(&attr, span, target, item)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -400,6 +408,71 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
+    /// Checks if `#[rustc_args_required_const]` is applied to a function and has a valid argument.
+    fn check_rustc_args_required_const(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+        item: Option<ItemLike<'_>>,
+    ) -> bool {
+        if let Target::Fn | Target::Method(..) | Target::ForeignFn = target {
+            let mut invalid_args = vec![];
+            for meta in attr.meta_item_list().expect("no meta item list") {
+                if let Some(LitKind::Int(val, _)) = meta.literal().map(|lit| &lit.kind) {
+                    if let Some(ItemLike::Item(Item {
+                        kind: ItemKind::Fn(FnSig { decl, .. }, ..),
+                        ..
+                    }))
+                    | Some(ItemLike::ForeignItem(ForeignItem {
+                        kind: ForeignItemKind::Fn(decl, ..),
+                        ..
+                    })) = item
+                    {
+                        let arg_count = decl.inputs.len() as u128;
+                        if *val >= arg_count {
+                            let span = meta.span();
+                            self.tcx
+                                .sess
+                                .struct_span_err(span, "index exceeds number of arguments")
+                                .span_label(
+                                    span,
+                                    format!(
+                                        "there {} only {} argument{}",
+                                        if arg_count != 1 { "are" } else { "is" },
+                                        arg_count,
+                                        pluralize!(arg_count)
+                                    ),
+                                )
+                                .emit();
+                            return false;
+                        }
+                    } else {
+                        bug!("should be a function item");
+                    }
+                } else {
+                    invalid_args.push(meta.span());
+                }
+            }
+            if !invalid_args.is_empty() {
+                self.tcx
+                    .sess
+                    .struct_span_err(invalid_args, "arguments should be non-negative integers")
+                    .emit();
+                false
+            } else {
+                true
+            }
+        } else {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to a function")
+                .span_label(*span, "not a function")
+                .emit();
+            false
+        }
+    }
+
     /// Checks if `#[link_section]` is applied to a function or static.
     fn check_link_section(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
         match target {
@@ -448,7 +521,7 @@ impl CheckAttrVisitor<'tcx> {
         attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
-        item: Option<&Item<'_>>,
+        item: Option<ItemLike<'_>>,
         hir_id: HirId,
     ) {
         // Extract the names of all repr hints, e.g., [foo, bar, align] for:
@@ -564,7 +637,14 @@ impl CheckAttrVisitor<'tcx> {
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
             || (is_simd && is_c)
-            || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item)))
+            || (int_reprs == 1
+                && is_c
+                && item.map_or(false, |item| {
+                    if let ItemLike::Item(item) = item {
+                        return is_c_like_enum(item);
+                    }
+                    return false;
+                }))
         {
             self.tcx.struct_span_lint_hir(
                 CONFLICTING_REPR_HINTS,
@@ -649,7 +729,13 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
-        self.check_attributes(item.hir_id, item.attrs, &item.span, target, Some(item));
+        self.check_attributes(
+            item.hir_id,
+            item.attrs,
+            &item.span,
+            target,
+            Some(ItemLike::Item(item)),
+        );
         intravisit::walk_item(self, item)
     }
 
@@ -659,9 +745,15 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_foreign_item(&mut self, f_item: &'tcx hir::ForeignItem<'tcx>) {
+    fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
-        self.check_attributes(f_item.hir_id, &f_item.attrs, &f_item.span, target, None);
+        self.check_attributes(
+            f_item.hir_id,
+            &f_item.attrs,
+            &f_item.span,
+            target,
+            Some(ItemLike::ForeignItem(f_item)),
+        );
         intravisit::walk_foreign_item(self, f_item)
     }
 

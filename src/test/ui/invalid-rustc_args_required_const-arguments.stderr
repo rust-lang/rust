@@ -1,0 +1,48 @@
+error: suffixed literals are not allowed in attributes
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:18:29
+   |
+LL | #[rustc_args_required_const(0usize)]
+   |                             ^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: index exceeds number of arguments
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:3:29
+   |
+LL | #[rustc_args_required_const(0)]
+   |                             ^ there are only 0 arguments
+
+error: index exceeds number of arguments
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:6:29
+   |
+LL | #[rustc_args_required_const(1)]
+   |                             ^ there is only 1 argument
+
+error: arguments should be non-negative integers
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:9:29
+   |
+LL | #[rustc_args_required_const(a)]
+   |                             ^
+
+error: arguments should be non-negative integers
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:12:32
+   |
+LL | #[rustc_args_required_const(1, a, 2, b)]
+   |                                ^     ^
+
+error: attribute should be applied to a function
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:15:1
+   |
+LL | #[rustc_args_required_const(0)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct S;
+   | --------- not a function
+
+error: index exceeds number of arguments
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:22:33
+   |
+LL |     #[rustc_args_required_const(1)]
+   |                                 ^ there is only 1 argument
+
+error: aborting due to 7 previous errors
+
