@@ -178,13 +178,21 @@ fn socket_v4_to_str() {
 
 #[test]
 fn socket_v6_to_str() {
-    let socket: SocketAddrV6 = "[2a02:6b8:0:1::1]:53".parse().unwrap();
+    let mut socket = SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53, 0, 0);
 
     assert_eq!(format!("{}", socket), "[2a02:6b8:0:1::1]:53");
     assert_eq!(format!("{:<24}", socket), "[2a02:6b8:0:1::1]:53    ");
     assert_eq!(format!("{:>24}", socket), "    [2a02:6b8:0:1::1]:53");
     assert_eq!(format!("{:^24}", socket), "  [2a02:6b8:0:1::1]:53  ");
     assert_eq!(format!("{:.15}", socket), "[2a02:6b8:0:1::");
+
+    socket.set_scope_id(5);
+
+    assert_eq!(format!("{}", socket), "[2a02:6b8:0:1::1%5]:53");
+    assert_eq!(format!("{:<24}", socket), "[2a02:6b8:0:1::1%5]:53  ");
+    assert_eq!(format!("{:>24}", socket), "  [2a02:6b8:0:1::1%5]:53");
+    assert_eq!(format!("{:^24}", socket), " [2a02:6b8:0:1::1%5]:53 ");
+    assert_eq!(format!("{:.18}", socket), "[2a02:6b8:0:1::1%5");
 }
 
 #[test]
