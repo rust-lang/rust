@@ -2836,11 +2836,10 @@ impl DefaultHasher {
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 impl Default for DefaultHasher {
-    // FIXME: here should link `new` to [DefaultHasher::new], but it occurs intra-doc link
-    // resolution failure when re-exporting libstd items. When #56922 fixed,
-    // link `new` to [DefaultHasher::new] again.
-    /// Creates a new `DefaultHasher` using `new`.
+    /// Creates a new `DefaultHasher` using [`new`].
     /// See its documentation for more.
+    ///
+    /// [`new`]: DefaultHasher::new
     fn default() -> DefaultHasher {
         DefaultHasher::new()
     }
