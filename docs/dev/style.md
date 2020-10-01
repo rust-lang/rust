@@ -197,7 +197,7 @@ fn frobnicate(walrus: Option<Walrus>) {
 }
 ```
 
-Avoid preconditions that spawn function boundaries:
+Avoid preconditions that span across function boundaries:
 
 
 ```rust
@@ -218,9 +218,8 @@ fn foo() {
 }
 
 // Not as good
-fn is_string_literal(s: &str) -> Option<&str> {
+fn is_string_literal(s: &str) -> bool {
     s.starts_with('"') && s.ends_with('"')
-    Some()
 }
 
 fn foo() {
@@ -231,8 +230,8 @@ fn foo() {
 }
 ```
 
-In the "Not as good" version, the precondition that `1` is a valid char boundary is checked in `is_string_literal` and utilized in `foo`.
-In the "Good" version, precondition check and usage are checked in the same block, and then encoded in the types.
+In the "Not as good" version, the precondition that `1` is a valid char boundary is checked in `is_string_literal` and used in `foo`.
+In the "Good" version, the precondition check and usage are checked in the same block, and then encoded in the types.
 
 # Early Returns
 
