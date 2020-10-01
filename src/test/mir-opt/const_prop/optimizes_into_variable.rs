@@ -1,5 +1,5 @@
 // compile-flags: -C overflow-checks=on
-
+// ignore-endian-big
 struct Point {
     x: u32,
     y: u32,

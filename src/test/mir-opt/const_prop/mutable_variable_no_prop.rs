@@ -1,5 +1,5 @@
 // compile-flags: -O
-
+// ignore-endian-big
 static mut STATIC: u32 = 42;
 
 // EMIT_MIR mutable_variable_no_prop.main.ConstProp.diff
