@@ -3886,7 +3886,7 @@ fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<
             "use `.collect()` instead of `::from_iter()`",
             "consider using",
             format!("`{}.collect()`", iter_expr),
-            Applicability::MaybeIncorrect
+            Applicability::MaybeIncorrect,
         );
     }
 }
