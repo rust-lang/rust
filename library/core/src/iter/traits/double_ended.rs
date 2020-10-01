@@ -91,6 +91,46 @@ pub trait DoubleEndedIterator: Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
+    /// Advances the iterator from the back by `n` elements.
+    ///
+    /// `advance_back_by` is the reverse version of [`advance_by`]. This method will
+    /// eagerly skip `n` elements starting from the back by calling [`next_back`] up
+    /// to `n` times until [`None`] is encountered.
+    ///
+    /// `advance_back_by(n)` will return [`Ok(())`] if the iterator successfully advances by
+    /// `n` elements, or [`Err(k)`] if [`None`] is encountered, where `k` is the number of
+    /// elements the iterator is advanced by before running out of elements (i.e. the length
+    /// of the iterator). Note that `k` is always less than `n`.
+    ///
+    /// Calling `advance_back_by(0)` does not consume any elements and always returns [`Ok(())`].
+    ///
+    /// [`advance_by`]: Iterator::advance_by
+    /// [`next_back`]: DoubleEndedIterator::next_back
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_advance_by)]
+    ///
+    /// let a = [3, 4, 5, 6];
+    /// let mut iter = a.iter();
+    ///
+    /// assert_eq!(iter.advance_back_by(2), Ok(()));
+    /// assert_eq!(iter.next_back(), Some(&4));
+    /// assert_eq!(iter.advance_back_by(0), Ok(()));
+    /// assert_eq!(iter.advance_back_by(100), Err(1)); // only `&3` was skipped
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "none")]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        for i in 0..n {
+            self.next_back().ok_or(i)?;
+        }
+        Ok(())
+    }
+
     /// Returns the `n`th element from the end of the iterator.
     ///
     /// This is essentially the reversed version of [`Iterator::nth()`].
@@ -134,14 +174,9 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_nth_back", since = "1.37.0")]
-    fn nth_back(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self.rev() {
-            if n == 0 {
-                return Some(x);
-            }
-            n -= 1;
-        }
-        None
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.advance_back_by(n).ok()?;
+        self.next_back()
     }
 
     /// This is the reverse version of [`Iterator::try_fold()`]: it takes
@@ -317,6 +352,9 @@ pub trait DoubleEndedIterator: Iterator {
 impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn next_back(&mut self) -> Option<I::Item> {
         (**self).next_back()
+    }
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        (**self).advance_back_by(n)
     }
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth_back(n)
