@@ -67,7 +67,7 @@
 -         discriminant(_0) = 0;            // scope 1 at $DIR/simplify_try.rs:8:5: 8:10
 -         StorageDead(_11);                // scope 1 at $DIR/simplify_try.rs:8:9: 8:10
           StorageDead(_2);                 // scope 0 at $DIR/simplify_try.rs:9:1: 9:2
-          goto -> bb3;                     // scope 0 at $DIR/simplify_try.rs:9:2: 9:2
+          return;                          // scope 0 at $DIR/simplify_try.rs:9:2: 9:2
       }
   
       bb2: {
@@ -88,11 +88,7 @@
 +         _0 = move _3;                    // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_3);                 // scope 0 at $DIR/simplify_try.rs:7:15: 7:16
           StorageDead(_2);                 // scope 0 at $DIR/simplify_try.rs:9:1: 9:2
-          goto -> bb3;                     // scope 0 at $DIR/simplify_try.rs:7:14: 7:15
-      }
-  
-      bb3: {
-          return;                          // scope 0 at $DIR/simplify_try.rs:9:2: 9:2
+          return;                          // scope 0 at $DIR/simplify_try.rs:7:14: 7:15
       }
   }
   

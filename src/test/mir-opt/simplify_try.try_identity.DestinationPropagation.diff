@@ -62,10 +62,6 @@
 +         nop;                             // scope 1 at $DIR/simplify_try.rs:8:5: 8:10
 +         nop;                             // scope 0 at $DIR/simplify_try.rs:7:15: 7:16
           StorageDead(_2);                 // scope 0 at $DIR/simplify_try.rs:9:1: 9:2
-          goto -> bb2;                     // scope 0 at $DIR/simplify_try.rs:9:2: 9:2
-      }
-  
-      bb2: {
           return;                          // scope 0 at $DIR/simplify_try.rs:9:2: 9:2
       }
   }
