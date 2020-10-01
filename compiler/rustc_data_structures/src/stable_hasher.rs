@@ -5,6 +5,9 @@ use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::mem;
 
+#[cfg(test)]
+mod tests;
+
 /// When hashing something that ends up affecting properties like symbol names,
 /// we want these symbol names to be calculated independently of other factors
 /// like what architecture you're compiling *from*.
@@ -129,7 +132,8 @@ impl Hasher for StableHasher {
     fn write_isize(&mut self, i: isize) {
         // Always treat isize as i64 so we get the same results on 32 and 64 bit
         // platforms. This is important for symbol hashes when cross compiling,
-        // for example.
+        // for example. Sign extending here is preferable as it means that the
+        // same negative number hashes the same on both 32 and 64 bit platforms.
         self.state.write_i64((i as i64).to_le());
     }
 }
