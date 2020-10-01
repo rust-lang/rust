@@ -110,6 +110,8 @@ use crate::path::Path;
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
 use crate::sys::process as imp;
+#[unstable(feature = "command_access", issue = "44434")]
+pub use crate::sys_common::process::CommandEnvs;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 /// Representation of a running or exited child process.
@@ -894,6 +896,98 @@ impl Command {
             .map(Child::from_inner)
             .and_then(|mut p| p.wait())
     }
+
+    /// Returns the path to the program that was given to [`Command::new`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(command_access)]
+    /// use std::process::Command;
+    ///
+    /// let cmd = Command::new("echo");
+    /// assert_eq!(cmd.get_program(), "echo");
+    /// ```
+    #[unstable(feature = "command_access", issue = "44434")]
+    pub fn get_program(&self) -> &OsStr {
+        self.inner.get_program()
+    }
+
+    /// Returns an iterator of the arguments that will be passed to the program.
+    ///
+    /// This does not include the path to the program as the first argument;
+    /// it only includes the arguments specified with [`Command::arg`] and
+    /// [`Command::args`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(command_access)]
+    /// use std::ffi::OsStr;
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("echo");
+    /// cmd.arg("first").arg("second");
+    /// let args: Vec<&OsStr> = cmd.get_args().collect();
+    /// assert_eq!(args, &["first", "second"]);
+    /// ```
+    #[unstable(feature = "command_access", issue = "44434")]
+    pub fn get_args(&self) -> CommandArgs<'_> {
+        CommandArgs { inner: self.inner.get_args() }
+    }
+
+    /// Returns an iterator of the environment variables that will be set when
+    /// the process is spawned.
+    ///
+    /// Each element is a tuple `(&OsStr, Option<&OsStr>)`, where the first
+    /// value is the key, and the second is the value, which is [`None`] if
+    /// the environment variable is to be explicitly removed.
+    ///
+    /// This only includes environment variables explicitly set with
+    /// [`Command::env`], [`Command::envs`], and [`Command::env_remove`]. It
+    /// does not include environment variables that will be inherited by the
+    /// child process.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(command_access)]
+    /// use std::ffi::OsStr;
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("ls");
+    /// cmd.env("TERM", "dumb").env_remove("TZ");
+    /// let envs: Vec<(&OsStr, Option<&OsStr>)> = cmd.get_envs().collect();
+    /// assert_eq!(envs, &[
+    ///     (OsStr::new("TERM"), Some(OsStr::new("dumb"))),
+    ///     (OsStr::new("TZ"), None)
+    /// ]);
+    /// ```
+    #[unstable(feature = "command_access", issue = "44434")]
+    pub fn get_envs(&self) -> CommandEnvs<'_> {
+        self.inner.get_envs()
+    }
+
+    /// Returns the working directory for the child process.
+    ///
+    /// This returns [`None`] if the working directory will not be changed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(command_access)]
+    /// use std::path::Path;
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("ls");
+    /// assert_eq!(cmd.get_current_dir(), None);
+    /// cmd.current_dir("/bin");
+    /// assert_eq!(cmd.get_current_dir(), Some(Path::new("/bin")));
+    /// ```
+    #[unstable(feature = "command_access", issue = "44434")]
+    pub fn get_current_dir(&self) -> Option<&Path> {
+        self.inner.get_current_dir()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -915,6 +1009,37 @@ impl AsInner<imp::Command> for Command {
 impl AsInnerMut<imp::Command> for Command {
     fn as_inner_mut(&mut self) -> &mut imp::Command {
         &mut self.inner
+    }
+}
+
+/// An iterator over the command arguments.
+///
+/// This struct is created by [`Command::get_args`]. See its documentation for
+/// more.
+#[unstable(feature = "command_access", issue = "44434")]
+#[derive(Debug)]
+pub struct CommandArgs<'a> {
+    inner: imp::CommandArgs<'a>,
+}
+
+#[unstable(feature = "command_access", issue = "44434")]
+impl<'a> Iterator for CommandArgs<'a> {
+    type Item = &'a OsStr;
+    fn next(&mut self) -> Option<&'a OsStr> {
+        self.inner.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+#[unstable(feature = "command_access", issue = "44434")]
+impl<'a> ExactSizeIterator for CommandArgs<'a> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
     }
 }
 
