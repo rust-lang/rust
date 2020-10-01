@@ -210,12 +210,6 @@ using LLVM's auto-vectorization to produce optimized vectorized code for
 AVX2 and also for the default platform.
 
 ```rust
-# #![cfg_attr(not(doc),feature(stdsimd))]
-# #[allow(unused_imports)]
-# #[cfg(not(doc))]
-# #[macro_use(is_x86_feature_detected)]
-# extern crate std_detect;
-
 fn main() {
     let mut dst = [0];
     add_quickly(&[1], &[2], &mut dst);
