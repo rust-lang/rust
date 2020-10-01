@@ -699,9 +699,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
         }
 
         // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-        unsafe {
-            self.matcher.haystack().get_unchecked(self.start..self.end)
-        }
+        unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) }
     }
 }
 
@@ -1277,6 +1275,28 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
 
 #[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
+
+impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
+    /// Returns remainder of the splitted string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_inclusive_as_str)]
+    /// #![feature(split_inclusive)]
+    /// let mut split = "Mary had a little lamb".split_inclusive(' ');
+    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// split.next();
+    /// assert_eq!(split.as_str(), "had a little lamb");
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.as_str(), "");
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_split_inclusive_as_str", issue = "none")]
+    pub fn as_str(&self) -> &'a str {
+        self.0.as_str()
+    }
+}
 
 /// An iterator of [`u16`] over the string encoded as UTF-16.
 ///
