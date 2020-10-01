@@ -567,9 +567,10 @@ impl<T> Vec<T> {
         self.buf.try_reserve(self.len, additional)
     }
 
-    /// Tries to reserves the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `Vec<T>`. After calling `try_reserve_exact`,
-    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Tries to reserve the minimum capacity for exactly `additional`
+    /// elements to be inserted in the given `Vec<T>`. After calling
+    /// `try_reserve_exact`, capacity will be greater than or equal to
+    /// `self.len() + additional` if it returns `Ok(())`.
     /// Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
