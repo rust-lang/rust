@@ -1,0 +1,30 @@
+- // MIR for `test` before MultipleReturnTerminators
++ // MIR for `test` after MultipleReturnTerminators
+  
+  fn test(_1: bool) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/multiple_return_terminators.rs:4:9: 4:10
+      let mut _0: ();                      // return place in scope 0 at $DIR/multiple_return_terminators.rs:4:18: 4:18
+      let mut _2: bool;                    // in scope 0 at $DIR/multiple_return_terminators.rs:5:8: 5:9
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/multiple_return_terminators.rs:5:8: 5:9
+          _2 = _1;                         // scope 0 at $DIR/multiple_return_terminators.rs:5:8: 5:9
+          switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
+      }
+  
+      bb1: {
+          _0 = const ();                   // scope 0 at $DIR/multiple_return_terminators.rs:7:12: 9:6
+          goto -> bb3;                     // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
+      }
+  
+      bb2: {
+          _0 = const ();                   // scope 0 at $DIR/multiple_return_terminators.rs:5:10: 7:6
+          goto -> bb3;                     // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
+      }
+  
+      bb3: {
+          StorageDead(_2);                 // scope 0 at $DIR/multiple_return_terminators.rs:10:1: 10:2
+          return;                          // scope 0 at $DIR/multiple_return_terminators.rs:10:2: 10:2
+      }
+  }
+  
