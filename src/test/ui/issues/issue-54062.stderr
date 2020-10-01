@@ -1,16 +1,9 @@
 error[E0616]: field `inner` of struct `Mutex` is private
   --> $DIR/issue-54062.rs:10:24
    |
-LL |     let _ = test.comps.inner.lock().unwrap();
+LL |     let _ = test.comps.inner.try_lock();
    |                        ^^^^^ private field
 
-error[E0599]: no method named `unwrap` found for struct `std::sys_common::mutex::MutexGuard<'_>` in the current scope
-  --> $DIR/issue-54062.rs:10:37
-   |
-LL |     let _ = test.comps.inner.lock().unwrap();
-   |                                     ^^^^^^ method not found in `std::sys_common::mutex::MutexGuard<'_>`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0599, E0616.
-For more information about an error, try `rustc --explain E0599`.
+For more information about this error, try `rustc --explain E0616`.

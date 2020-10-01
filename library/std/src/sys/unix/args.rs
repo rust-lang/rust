@@ -80,13 +80,13 @@ mod imp {
     use crate::ptr;
     use crate::sync::atomic::{AtomicIsize, AtomicPtr, Ordering};
 
-    use crate::sys_common::mutex::Mutex;
+    use crate::sys_common::mutex::StaticMutex;
 
     static ARGC: AtomicIsize = AtomicIsize::new(0);
     static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
     // We never call `ENV_LOCK.init()`, so it is UB to attempt to
     // acquire this mutex reentrantly!
-    static LOCK: Mutex = Mutex::new();
+    static LOCK: StaticMutex = StaticMutex::new();
 
     unsafe fn really_init(argc: isize, argv: *const *const u8) {
         let _guard = LOCK.lock();

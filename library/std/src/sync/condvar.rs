@@ -553,8 +553,8 @@ impl Condvar {
         unsafe { self.inner.notify_all() }
     }
 
-    fn verify(&self, mutex: &sys_mutex::Mutex) {
-        let addr = mutex as *const _ as usize;
+    fn verify(&self, mutex: &sys_mutex::MovableMutex) {
+        let addr = mutex.raw() as *const _ as usize;
         match self.mutex.compare_and_swap(0, addr, Ordering::SeqCst) {
             // If we got out 0, then we have successfully bound the mutex to
             // this cvar.
