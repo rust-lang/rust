@@ -1157,7 +1157,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     }
                     _ => {
                         if !ident.is_path_segment_keyword() {
-                            format!("no `{}` external crate", ident)
+                            format!("no external crate `{}`", ident)
                         } else {
                             // HACK(eddyb) this shows up for `self` & `super`, which
                             // should work instead - for now keep the same error message.
