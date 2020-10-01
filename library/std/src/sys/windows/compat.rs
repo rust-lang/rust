@@ -12,7 +12,6 @@
 //! function is available but afterwards it's just a load and a jump.
 
 use crate::ffi::CString;
-use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::c;
 
 pub fn lookup(module: &str, symbol: &str) -> Option<usize> {
@@ -28,45 +27,69 @@ pub fn lookup(module: &str, symbol: &str) -> Option<usize> {
     }
 }
 
-pub fn store_func(ptr: &AtomicUsize, module: &str, symbol: &str, fallback: usize) -> usize {
-    let value = lookup(module, symbol).unwrap_or(fallback);
-    ptr.store(value, Ordering::SeqCst);
-    value
-}
-
 macro_rules! compat_fn {
-    ($module:ident: $(
+    ($module:literal: $(
         $(#[$meta:meta])*
-        pub fn $symbol:ident($($argname:ident: $argtype:ty),*)
-                                  -> $rettype:ty {
-            $($body:expr);*
-        }
+        pub fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty $body:block
     )*) => ($(
-        #[allow(unused_variables)]
         $(#[$meta])*
-        pub unsafe fn $symbol($($argname: $argtype),*) -> $rettype {
+        pub mod $symbol {
+            use super::*;
             use crate::sync::atomic::{AtomicUsize, Ordering};
             use crate::mem;
+
             type F = unsafe extern "system" fn($($argtype),*) -> $rettype;
 
             static PTR: AtomicUsize = AtomicUsize::new(0);
 
+            #[allow(unused_variables)]
+            unsafe extern "system" fn fallback($($argname: $argtype),*) -> $rettype $body
+
+            /// This address is stored in `PTR` to incidate an unavailable API.
+            ///
+            /// This way, call() will end up calling fallback() if it is unavailable.
+            ///
+            /// This is a `static` to avoid rustc duplicating `fn fallback()`
+            /// into both load() and is_available(), which would break
+            /// is_available()'s comparison. By using the same static variable
+            /// in both places, they'll refer to the same (copy of the)
+            /// function.
+            ///
+            /// LLVM merging the address of fallback with other functions
+            /// (because of unnamed_addr) is fine, since it's only compared to
+            /// an address from GetProcAddress from an external dll.
+            static FALLBACK: F = fallback;
+
+            #[cold]
             fn load() -> usize {
-                crate::sys::compat::store_func(&PTR,
-                                          stringify!($module),
-                                          stringify!($symbol),
-                                          fallback as usize)
-            }
-            unsafe extern "system" fn fallback($($argname: $argtype),*)
-                                               -> $rettype {
-                $($body);*
+                // There is no locking here. It's okay if this is executed by multiple threads in
+                // parallel. `lookup` will result in the same value, and it's okay if they overwrite
+                // eachothers result as long as they do so atomically. We don't need any guarantees
+                // about memory ordering, as this involves just a single atomic variable which is
+                // not used to protect or order anything else.
+                let addr = crate::sys::compat::lookup($module, stringify!($symbol))
+                    .unwrap_or(FALLBACK as usize);
+                PTR.store(addr, Ordering::Relaxed);
+                addr
             }
 
-            let addr = match PTR.load(Ordering::SeqCst) {
-                0 => load(),
-                n => n,
-            };
-            mem::transmute::<usize, F>(addr)($($argname),*)
+            fn addr() -> usize {
+                match PTR.load(Ordering::Relaxed) {
+                    0 => load(),
+                    addr => addr,
+                }
+            }
+
+            #[allow(dead_code)]
+            pub fn is_available() -> bool {
+                addr() != FALLBACK as usize
+            }
+
+            pub unsafe fn call($($argname: $argtype),*) -> $rettype {
+                mem::transmute::<usize, F>(addr())($($argname),*)
+            }
         }
+
+        pub use $symbol::call as $symbol;
     )*)
 }
