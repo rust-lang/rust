@@ -127,10 +127,6 @@ impl<K, V> BoxedNode<K, V> {
         BoxedNode { ptr: Unique::from(&mut Box::leak(node).data) }
     }
 
-    unsafe fn from_ptr(ptr: NonNull<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: unsafe { Unique::new_unchecked(ptr.as_ptr()) } }
-    }
-
     fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
         NonNull::from(self.ptr)
     }
@@ -198,7 +194,7 @@ impl<K, V> Root<K, V> {
     /// and is the opposite of `pop_internal_level`.
     pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0].write(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
+        new_node.edges[0].write(unsafe { ptr::read(&mut self.node) });
 
         self.node = BoxedNode::from_internal(new_node);
         self.height += 1;
@@ -224,8 +220,8 @@ impl<K, V> Root<K, V> {
 
         let top = self.node.ptr;
 
-        let internal_node = unsafe { self.internal_node_as_mut() };
-        self.node = unsafe { BoxedNode::from_ptr(internal_node.first_edge().descend().node) };
+        let mut internal_node = unsafe { self.internal_node_as_mut() };
+        self.node = unsafe { internal_node.as_internal_mut().edges[0].assume_init_read() };
         self.height -= 1;
         self.node_as_mut().as_leaf_mut().parent = None;
 
