@@ -9,8 +9,7 @@ mod versions;
 
 use crate::manifest::{Component, Manifest, Package, Rename, Target};
 use crate::versions::{PkgType, Versions};
-use std::collections::BTreeMap;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
@@ -385,9 +384,12 @@ impl Builder {
 
     fn target_host_combination(&mut self, host: &str, manifest: &Manifest) -> Option<Target> {
         let filename = self.versions.tarball_name(&PkgType::Rust, host).unwrap();
-        let digest = self.digests.remove(&filename)?;
-        let xz_filename = filename.replace(".tar.gz", ".tar.xz");
-        let xz_digest = self.digests.remove(&xz_filename);
+
+        let mut target = Target::from_compressed_tar(self, &filename);
+        if !target.available {
+            return None;
+        }
+
         let mut components = Vec::new();
         let mut extensions = Vec::new();
 
@@ -443,15 +445,9 @@ impl Builder {
         extensions.retain(&has_component);
         components.retain(&has_component);
 
-        Some(Target {
-            available: true,
-            url: Some(self.url(&filename)),
-            hash: Some(digest),
-            xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
-            xz_hash: xz_digest,
-            components: Some(components),
-            extensions: Some(extensions),
-        })
+        target.components = Some(components);
+        target.extensions = Some(extensions);
+        Some(target)
     }
 
     fn profile(
@@ -489,37 +485,19 @@ impl Builder {
         let targets = targets
             .iter()
             .map(|name| {
-                if is_present {
-                    // The component generally exists, but it might still be missing for this target.
+                let target = if is_present {
                     let filename = self
                         .versions
                         .tarball_name(&PkgType::from_component(pkgname), name)
                         .unwrap();
-                    let digest = match self.digests.remove(&filename) {
-                        Some(digest) => digest,
-                        // This component does not exist for this target -- skip it.
-                        None => return (name.to_string(), Target::unavailable()),
-                    };
-                    let xz_filename = filename.replace(".tar.gz", ".tar.xz");
-                    let xz_digest = self.digests.remove(&xz_filename);
 
-                    (
-                        name.to_string(),
-                        Target {
-                            available: true,
-                            url: Some(self.url(&filename)),
-                            hash: Some(digest),
-                            xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
-                            xz_hash: xz_digest,
-                            components: None,
-                            extensions: None,
-                        },
-                    )
+                    Target::from_compressed_tar(self, &filename)
                 } else {
                     // If the component is not present for this build add it anyway but mark it as
                     // unavailable -- this way rustup won't allow upgrades without --force
-                    (name.to_string(), Target::unavailable())
-                }
+                    Target::unavailable()
+                };
+                (name.to_string(), target)
             })
             .collect();
 
@@ -533,8 +511,9 @@ impl Builder {
         );
     }
 
-    fn url(&self, filename: &str) -> String {
-        format!("{}/{}/{}", self.s3_address, self.date, filename)
+    fn url(&self, path: &Path) -> String {
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        format!("{}/{}/{}", self.s3_address, self.date, file_name)
     }
 
     fn hash(&self, path: &Path) -> String {

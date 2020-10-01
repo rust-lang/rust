@@ -1,5 +1,7 @@
+use crate::Builder;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -35,6 +37,40 @@ pub(crate) struct Target {
 }
 
 impl Target {
+    pub(crate) fn from_compressed_tar(builder: &Builder, base_path: &str) -> Self {
+        let base_path = builder.input.join(base_path);
+        let gz = Self::tarball_variant(&base_path, "gz");
+        let xz = Self::tarball_variant(&base_path, "xz");
+
+        if gz.is_none() {
+            return Self::unavailable();
+        }
+
+        Self {
+            available: true,
+            components: None,
+            extensions: None,
+            // .gz
+            url: gz.as_ref().map(|path| builder.url(path)),
+            hash: gz.map(|path| Self::digest_of(builder, &path)),
+            // .xz
+            xz_url: xz.as_ref().map(|path| builder.url(path)),
+            xz_hash: xz.map(|path| Self::digest_of(builder, &path)),
+        }
+    }
+
+    fn tarball_variant(base: &Path, ext: &str) -> Option<PathBuf> {
+        let mut path = base.to_path_buf();
+        path.set_extension(ext);
+        if path.is_file() { Some(path) } else { None }
+    }
+
+    fn digest_of(builder: &Builder, path: &Path) -> String {
+        // TEMPORARY CODE -- DON'T REVIEW :)
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        builder.digests.get(file_name).unwrap().clone()
+    }
+
     pub(crate) fn unavailable() -> Self {
         Self::default()
     }
