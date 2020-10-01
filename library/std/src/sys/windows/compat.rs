@@ -38,10 +38,27 @@ macro_rules! compat_fn {
             use crate::sync::atomic::{AtomicUsize, Ordering};
             use crate::mem;
 
+            type F = unsafe extern "system" fn($($argtype),*) -> $rettype;
+
             static PTR: AtomicUsize = AtomicUsize::new(0);
 
             #[allow(unused_variables)]
             unsafe extern "system" fn fallback($($argname: $argtype),*) -> $rettype $body
+
+            /// This address is stored in `PTR` to incidate an unavailable API.
+            ///
+            /// This way, call() will end up calling fallback() if it is unavailable.
+            ///
+            /// This is a `static` to avoid rustc duplicating `fn fallback()`
+            /// into both load() and is_available(), which would break
+            /// is_available()'s comparison. By using the same static variable
+            /// in both places, they'll refer to the same (copy of the)
+            /// function.
+            ///
+            /// LLVM merging the address of fallback with other functions
+            /// (because of unnamed_addr) is fine, since it's only compared to
+            /// an address from GetProcAddress from an external dll.
+            static FALLBACK: F = fallback;
 
             #[cold]
             fn load() -> usize {
@@ -51,7 +68,7 @@ macro_rules! compat_fn {
                 // about memory ordering, as this involves just a single atomic variable which is
                 // not used to protect or order anything else.
                 let addr = crate::sys::compat::lookup($module, stringify!($symbol))
-                    .unwrap_or(fallback as usize);
+                    .unwrap_or(FALLBACK as usize);
                 PTR.store(addr, Ordering::Relaxed);
                 addr
             }
@@ -65,11 +82,10 @@ macro_rules! compat_fn {
 
             #[allow(dead_code)]
             pub fn is_available() -> bool {
-                addr() != fallback as usize
+                addr() != FALLBACK as usize
             }
 
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
-                type F = unsafe extern "system" fn($($argtype),*) -> $rettype;
                 mem::transmute::<usize, F>(addr())($($argname),*)
             }
         }
