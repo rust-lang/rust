@@ -123,7 +123,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(iter.advance_back_by(100), Err(1)); // only `&3` was skipped
     /// ```
     #[inline]
-    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
         for i in 0..n {
             self.next_back().ok_or(i)?;
