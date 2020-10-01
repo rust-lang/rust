@@ -53,7 +53,9 @@ fn opt5(x: Option<u32>, y: Option<bool>) -> u32 {
     }
 }
 
-// This caused a miscompilation during development, so I included it here as a regression
+// This caused a MIR validation during development,
+// as is_cleanup was not properly assigned to new basic blocks created
+// so I included it here as a regression
 // EMIT_MIR early_otherwise_branch.opt6.EarlyOtherwiseBranch.diff
 pub fn opt6(x: Option<u32>, y: Option<(u32, Option<(String, u32)>)>) -> u32 {
     match (x, y) {

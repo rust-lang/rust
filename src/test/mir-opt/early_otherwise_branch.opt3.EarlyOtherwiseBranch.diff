@@ -36,7 +36,7 @@
 +         StorageLive(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:33:10: 33:28
 +         _11 = Ne(_10, _7);               // scope 0 at $DIR/early_otherwise_branch.rs:33:10: 33:28
 +         StorageDead(_10);                // scope 0 at $DIR/early_otherwise_branch.rs:33:10: 33:28
-+         switchInt(move _11) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:33:10: 33:28
++         switchInt(move _11) -> [false: bb4, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:33:10: 33:28
       }
   
       bb1: {
@@ -53,7 +53,6 @@
   
 -     bb3: {
 +     bb2: {
-+         StorageDead(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:33:26: 33:27
           StorageLive(_8);                 // scope 0 at $DIR/early_otherwise_branch.rs:33:26: 33:27
           _8 = (((_3.0: MyOption1<u32>) as Some).0: u32); // scope 0 at $DIR/early_otherwise_branch.rs:33:26: 33:27
           StorageLive(_9);                 // scope 0 at $DIR/early_otherwise_branch.rs:33:46: 33:47
@@ -69,6 +68,11 @@
 +     bb3: {
           StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch.rs:36:1: 36:2
           return;                          // scope 0 at $DIR/early_otherwise_branch.rs:36:2: 36:2
++     }
++ 
++     bb4: {
++         StorageDead(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:33:30: 33:48
++         switchInt(_7) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:33:30: 33:48
       }
   }
   

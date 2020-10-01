@@ -4,7 +4,7 @@ use crate::{
 };
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use std::fmt::Debug;
+use std::{borrow::Cow, fmt::Debug};
 
 use super::simplify::simplify_cfg;
 
@@ -98,22 +98,67 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 StatementKind::Assign(box (Place::from(not_equal_temp), not_equal_rvalue)),
             );
 
-            // switch on the NotEqual. If true, then jump to the `otherwise` case.
-            // If false, then jump to a basic block that then jumps to the correct disciminant case
+            // Switch on the NotEqual. If true, then jump to the `otherwise` case,
+            // since we know the discriminant values are not the same.
             let true_case = opt_to_apply.infos[0].first_switch_info.otherwise_bb;
-            let targets_second_switch =
-                &opt_to_apply.infos[0].second_switch_info.targets_with_values;
-            assert_eq!(
-                1,
-                targets_second_switch.len(),
-                "We should only have one target besides the otherwise"
-            );
 
-            // Since we know that the two discriminant values are equal,
-            // we can jump directly to the target in the second switch
-            let false_case = targets_second_switch[0].0;
+            // In the false case we know that the two discriminant values are equal,
+            // however we still need to account for the following scenario:
+            // ```rust
+            // match (x, y) {
+            //   (Some(_), Some(_)) => 0,
+            //   _ => 2
+            // }
+            // ```
+            //
+            // Here, the two match arms have the same discriminant values, but
+            // we need to make sure that we did not reach a `(None, None)` pattern.
+            // We therefore construct a new basic block that can disambiguate where to go.
+
+            let mut targets_and_values_to_jump_to = vec![];
+            for info in opt_to_apply.infos.iter() {
+                for (_, value) in info.first_switch_info.targets_with_values.iter() {
+                    // Find corresponding value in second switch info -
+                    // this is where we want to jump to
+                    if let Some((target_to_jump_to, _)) = info
+                        .second_switch_info
+                        .targets_with_values
+                        .iter()
+                        .find(|(_, second_value)| value == second_value)
+                    {
+                        targets_and_values_to_jump_to.push((target_to_jump_to, value));
+                    }
+                }
+            }
+
+            let (mut targets_to_jump_to, values_to_jump_to): (Vec<_>, Vec<_>) =
+                targets_and_values_to_jump_to.iter().cloned().unzip();
+
+            // add otherwise case in the end
+            targets_to_jump_to.push(opt_to_apply.infos[0].first_switch_info.otherwise_bb);
+
+            // new block that jumps to the correct discriminant case. This block is switched to if the discriminants are equal
+            let mut new_switch_data = BasicBlockData::new(Some(Terminator {
+                source_info: opt_to_apply.infos[0].second_switch_info.discr_source_info,
+                kind: TerminatorKind::SwitchInt {
+                    // the first and second discriminants are equal, so just pick one
+                    discr: Operand::Copy(first_descriminant_place),
+                    switch_ty: discr_type,
+                    values: Cow::from(values_to_jump_to),
+                    targets: targets_to_jump_to,
+                },
+            }));
+
+            let basic_block_first_switch = opt_to_apply.basic_block_first_switch;
+
+            // Inherit the is_cleanup from the bb we are jumping from, which is where the first switch is
+            new_switch_data.is_cleanup = body.basic_blocks()[basic_block_first_switch].is_cleanup;
+
+            let new_switch_bb = patch.new_block(new_switch_data);
+            let false_case = new_switch_bb;
+
             patch.patch_terminator(
-                opt_to_apply.basic_block_first_switch,
+                basic_block_first_switch,
                 TerminatorKind::if_(
                     tcx,
                     Operand::Move(Place::from(not_equal_temp)),
