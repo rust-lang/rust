@@ -114,7 +114,7 @@ impl<T: Write> TerseFormatter<T> {
                 stdouts.push_str(&format!("---- {} stdout ----\n", f.name));
                 let output = String::from_utf8_lossy(stdout);
                 stdouts.push_str(&output);
-                stdouts.push_str("\n");
+                stdouts.push('\n');
             }
         }
         if !stdouts.is_empty() {
@@ -140,7 +140,7 @@ impl<T: Write> TerseFormatter<T> {
                 fail_out.push_str(&format!("---- {} stdout ----\n", f.name));
                 let output = String::from_utf8_lossy(stdout);
                 fail_out.push_str(&output);
-                fail_out.push_str("\n");
+                fail_out.push('\n');
             }
         }
         if !fail_out.is_empty() {
