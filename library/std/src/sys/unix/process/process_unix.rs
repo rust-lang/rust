@@ -252,7 +252,8 @@ impl Command {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "freebsd",
-        all(target_os = "linux", target_env = "gnu")
+        all(target_os = "linux", target_env = "gnu"),
+        all(target_os = "linux", target_env = "musl"),
     )))]
     fn posix_spawn(
         &mut self,
@@ -267,7 +268,8 @@ impl Command {
     #[cfg(any(
         target_os = "macos",
         target_os = "freebsd",
-        all(target_os = "linux", target_env = "gnu")
+        all(target_os = "linux", target_env = "gnu"),
+        all(target_os = "linux", target_env = "musl"),
     ))]
     fn posix_spawn(
         &mut self,
@@ -297,10 +299,10 @@ impl Command {
             }
         }
 
-        // Solaris and glibc 2.29+ can set a new working directory, and maybe
-        // others will gain this non-POSIX function too. We'll check for this
-        // weak symbol as soon as it's needed, so we can return early otherwise
-        // to do a manual chdir before exec.
+        // Solaris, glibc 2.29+, and musl 1.24+ can set a new working directory,
+        // and maybe others will gain this non-POSIX function too. We'll check
+        // for this weak symbol as soon as it's needed, so we can return early
+        // otherwise to do a manual chdir before exec.
         weak! {
             fn posix_spawn_file_actions_addchdir_np(
                 *mut libc::posix_spawn_file_actions_t,
