@@ -7,7 +7,7 @@ function build {
     mkdir -p "$WORK_DIR"
     pushd "$WORK_DIR"
         rm -rf "$CRATE"
-        cp -a "$TEST_DIR"/enclave .
+        cp -a "$TEST_DIR"/"$CRATE" .
         pushd "$CRATE"
             echo "${WORK_DIR}"
             # HACK(eddyb) sets `RUSTC_BOOTSTRAP=1` so Cargo can accept nightly features.

@@ -7,7 +7,7 @@ curl -Lf $url | tar xzf -
 cd crosstool-ng-crosstool-ng-1.24.0
 ./bootstrap
 ./configure --prefix=/usr/local
-make -j"$(nproc)"
+make -j$(nproc)
 make install
 cd ..
 rm -rf crosstool-ng-crosstool-ng-1.24.0

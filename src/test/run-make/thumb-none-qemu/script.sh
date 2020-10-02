@@ -6,8 +6,8 @@ CRATE=example
 env | sort
 mkdir -p "$WORK_DIR"
 pushd "$WORK_DIR"
-    rm -rf "$CRATE" || echo OK
-    cp -a "$HERE"/example .
+    rm -rf "$CRATE"
+    cp -a "$HERE"/"$CRATE" .
     pushd "$CRATE"
         # HACK(eddyb) sets `RUSTC_BOOTSTRAP=1` so Cargo can accept nightly features.
         # These come from the top-level Rust workspace, that this crate is not a

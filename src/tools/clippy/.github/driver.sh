@@ -28,8 +28,8 @@ diff normalized.stderr tests/ui/cstring.stderr
 
 
 # make sure "clippy-driver --rustc --arg" and "rustc --arg" behave the same
-SYSROOT=$(rustc --print sysroot)
-diff <(LD_LIBRARY_PATH=${SYSROOT}/lib ./target/debug/clippy-driver --rustc --version --verbose) <(rustc --version --verbose)
+SYSROOT="$(rustc --print sysroot)"
+diff <(LD_LIBRARY_PATH="${SYSROOT}"/lib ./target/debug/clippy-driver --rustc --version --verbose) <(rustc --version --verbose)
 
 
 echo "fn main() {}" > target/driver_test.rs

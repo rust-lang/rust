@@ -14,7 +14,7 @@ ci_dir=$(cd "$(dirname "$0")" && pwd)
 REPO_DIR="$1"
 CACHE_DIR="$2"
 
-if [ ! -d "$REPO_DIR" ] || [ ! -d "$REPO_DIR/.git" ]; then
+if ! { [ -d "$REPO_DIR" ] && [ -d "$REPO_DIR/.git" ] }; then
     echo "Error: $REPO_DIR does not exist or is not a git repo"
     exit 1
 fi

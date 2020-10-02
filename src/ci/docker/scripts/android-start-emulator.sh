@@ -11,6 +11,6 @@ export SHELL=/bin/bash
 # classic engine the emulator starts with the current date and the tests run
 # fine. If another image is used, this need to be evaluated again.
 nohup nohup emulator @armeabi-v7a-18 \
-    -engine classic -no-window -partition-size 2047 0<&- 2>&1 /dev/null &
+    -engine classic -no-window -partition-size 2047 0<&- 2>&1 > /dev/null &
 
 exec "$@"

@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/usr/bin/env bash
 
 # Usage: $0 project_name url sha1
 # Get the crate with the specified sha1.

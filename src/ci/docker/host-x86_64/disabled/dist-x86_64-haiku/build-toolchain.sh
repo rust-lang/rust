@@ -61,5 +61,5 @@ cd $PACKAGE_ROOT/develop/lib
 ln -s ../../lib/libgcc_s.so libgcc_s.so
 
 # Clean up
-rm -rf "$BUILDTOOLS" "$HAIKU" $OUTPUT/Jamfile $OUTPUT/attributes $OUTPUT/build \
-  $OUTPUT/build_packages $OUTPUT/download $OUTPUT/objects
+rm -rf "$BUILDTOOLS" "$HAIKU" "$OUTPUT"/Jamfile "$OUTPUT"/attributes "$OUTPUT"/build \
+  "$OUTPUT"/build_packages "$OUTPUT"/download "$OUTPUT"/objects
