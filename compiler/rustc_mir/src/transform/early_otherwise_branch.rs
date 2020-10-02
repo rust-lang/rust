@@ -215,8 +215,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         let mut results = vec![];
 
         for (value, target) in discr.targets_with_values.iter() {
-            let info =
-                self.find_discriminant_switch_pairing(&discr, target.clone(), value.clone())?;
+            let info = self.find_discriminant_switch_pairing(&discr, *target, *value)?;
             results.push(info);
         }
 
@@ -300,7 +299,6 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 // the declaration of the discriminant read. Place of this read is being used in the switch
                 let discr_decl = &self.body.local_decls()[discr_local];
                 let discr_ty = discr_decl.ty;
-                // the otherwise target lies as the last element
                 let otherwise_bb = targets.otherwise();
                 let targets_with_values = targets.iter().collect();
 
