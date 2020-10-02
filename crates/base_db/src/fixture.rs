@@ -65,24 +65,26 @@ use test_utils::{extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER}
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
-    input::CrateName, CrateGraph, CrateId, Edition, Env, FileId, FilePosition, SourceDatabaseExt,
-    SourceRoot, SourceRootId,
+    input::CrateName, Change, CrateGraph, CrateId, Edition, Env, FileId, FilePosition,
+    SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
 pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     fn with_single_file(text: &str) -> (Self, FileId) {
+        let fixture = ChangeFixture::parse(text);
         let mut db = Self::default();
-        let (_, files) = with_files(&mut db, text);
-        assert_eq!(files.len(), 1);
-        (db, files[0])
+        fixture.change.apply(&mut db);
+        assert_eq!(fixture.files.len(), 1);
+        (db, fixture.files[0])
     }
 
     fn with_files(ra_fixture: &str) -> Self {
+        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
-        let (pos, _) = with_files(&mut db, ra_fixture);
-        assert!(pos.is_none());
+        fixture.change.apply(&mut db);
+        assert!(fixture.file_position.is_none());
         db
     }
 
@@ -96,9 +98,10 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     }
 
     fn with_range_or_offset(ra_fixture: &str) -> (Self, FileId, RangeOrOffset) {
+        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
-        let (pos, _) = with_files(&mut db, ra_fixture);
-        let (file_id, range_or_offset) = pos.unwrap();
+        fixture.change.apply(&mut db);
+        let (file_id, range_or_offset) = fixture.file_position.unwrap();
         (db, file_id, range_or_offset)
     }
 
@@ -113,89 +116,93 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
 
 impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
 
-fn with_files(
-    db: &mut dyn SourceDatabaseExt,
-    fixture: &str,
-) -> (Option<(FileId, RangeOrOffset)>, Vec<FileId>) {
-    let fixture = Fixture::parse(fixture);
+pub struct ChangeFixture {
+    file_position: Option<(FileId, RangeOrOffset)>,
+    files: Vec<FileId>,
+    change: Change,
+}
 
-    let mut files = Vec::new();
-    let mut crate_graph = CrateGraph::default();
-    let mut crates = FxHashMap::default();
-    let mut crate_deps = Vec::new();
-    let mut default_crate_root: Option<FileId> = None;
+impl ChangeFixture {
+    fn parse(ra_fixture: &str) -> ChangeFixture {
+        let fixture = Fixture::parse(ra_fixture);
+        let mut change = Change::new();
 
-    let mut file_set = FileSet::default();
-    let source_root_id = WORKSPACE;
-    let source_root_prefix = "/".to_string();
-    let mut file_id = FileId(0);
+        let mut files = Vec::new();
+        let mut crate_graph = CrateGraph::default();
+        let mut crates = FxHashMap::default();
+        let mut crate_deps = Vec::new();
+        let mut default_crate_root: Option<FileId> = None;
 
-    let mut file_position = None;
+        let mut file_set = FileSet::default();
+        let source_root_prefix = "/".to_string();
+        let mut file_id = FileId(0);
 
-    for entry in fixture {
-        let text = if entry.text.contains(CURSOR_MARKER) {
-            let (range_or_offset, text) = extract_range_or_offset(&entry.text);
-            assert!(file_position.is_none());
-            file_position = Some((file_id, range_or_offset));
-            text.to_string()
-        } else {
-            entry.text.clone()
-        };
+        let mut file_position = None;
 
-        let meta = FileMeta::from(entry);
-        assert!(meta.path.starts_with(&source_root_prefix));
+        for entry in fixture {
+            let text = if entry.text.contains(CURSOR_MARKER) {
+                let (range_or_offset, text) = extract_range_or_offset(&entry.text);
+                assert!(file_position.is_none());
+                file_position = Some((file_id, range_or_offset));
+                text.to_string()
+            } else {
+                entry.text.clone()
+            };
 
-        if let Some(krate) = meta.krate {
-            let crate_id = crate_graph.add_crate_root(
-                file_id,
-                meta.edition,
-                Some(krate.clone()),
-                meta.cfg,
-                meta.env,
+            let meta = FileMeta::from(entry);
+            assert!(meta.path.starts_with(&source_root_prefix));
+
+            if let Some(krate) = meta.krate {
+                let crate_id = crate_graph.add_crate_root(
+                    file_id,
+                    meta.edition,
+                    Some(krate.clone()),
+                    meta.cfg,
+                    meta.env,
+                    Default::default(),
+                );
+                let crate_name = CrateName::new(&krate).unwrap();
+                let prev = crates.insert(crate_name.clone(), crate_id);
+                assert!(prev.is_none());
+                for dep in meta.deps {
+                    let dep = CrateName::new(&dep).unwrap();
+                    crate_deps.push((crate_name.clone(), dep))
+                }
+            } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
+                assert!(default_crate_root.is_none());
+                default_crate_root = Some(file_id);
+            }
+
+            change.change_file(file_id, Some(Arc::new(text)));
+            let path = VfsPath::new_virtual_path(meta.path);
+            file_set.insert(file_id, path.into());
+            files.push(file_id);
+            file_id.0 += 1;
+        }
+
+        if crates.is_empty() {
+            let crate_root = default_crate_root.unwrap();
+            crate_graph.add_crate_root(
+                crate_root,
+                Edition::Edition2018,
+                None,
+                CfgOptions::default(),
+                Env::default(),
                 Default::default(),
             );
-            let crate_name = CrateName::new(&krate).unwrap();
-            let prev = crates.insert(crate_name.clone(), crate_id);
-            assert!(prev.is_none());
-            for dep in meta.deps {
-                let dep = CrateName::new(&dep).unwrap();
-                crate_deps.push((crate_name.clone(), dep))
+        } else {
+            for (from, to) in crate_deps {
+                let from_id = crates[&from];
+                let to_id = crates[&to];
+                crate_graph.add_dep(from_id, CrateName::new(&to).unwrap(), to_id).unwrap();
             }
-        } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
-            assert!(default_crate_root.is_none());
-            default_crate_root = Some(file_id);
         }
 
-        db.set_file_text(file_id, Arc::new(text));
-        db.set_file_source_root(file_id, source_root_id);
-        let path = VfsPath::new_virtual_path(meta.path);
-        file_set.insert(file_id, path.into());
-        files.push(file_id);
-        file_id.0 += 1;
+        change.set_roots(vec![SourceRoot::new_local(file_set)]);
+        change.set_crate_graph(crate_graph);
+
+        ChangeFixture { file_position, files, change }
     }
-
-    if crates.is_empty() {
-        let crate_root = default_crate_root.unwrap();
-        crate_graph.add_crate_root(
-            crate_root,
-            Edition::Edition2018,
-            None,
-            CfgOptions::default(),
-            Env::default(),
-            Default::default(),
-        );
-    } else {
-        for (from, to) in crate_deps {
-            let from_id = crates[&from];
-            let to_id = crates[&to];
-            crate_graph.add_dep(from_id, CrateName::new(&to).unwrap(), to_id).unwrap();
-        }
-    }
-
-    db.set_source_root(source_root_id, Arc::new(SourceRoot::new_local(file_set)));
-    db.set_crate_graph(Arc::new(crate_graph));
-
-    (file_position, files)
 }
 
 struct FileMeta {
