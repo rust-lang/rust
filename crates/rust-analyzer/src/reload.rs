@@ -3,7 +3,7 @@ use std::{mem, sync::Arc};
 
 use base_db::{CrateGraph, SourceRoot, VfsPath};
 use flycheck::{FlycheckConfig, FlycheckHandle};
-use ide::AnalysisChange;
+use ide::Change;
 use project_model::{ProcMacroClient, ProjectWorkspace};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
@@ -171,7 +171,7 @@ impl GlobalState {
             );
         }
 
-        let mut change = AnalysisChange::new();
+        let mut change = Change::new();
 
         let project_folders = ProjectFolders::new(&workspaces);
 

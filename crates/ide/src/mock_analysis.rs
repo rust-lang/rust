@@ -7,9 +7,7 @@ use test_utils::{
     extract_annotations, extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER,
 };
 
-use crate::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
-};
+use crate::{Analysis, AnalysisHost, Change, CrateGraph, Edition, FileId, FilePosition, FileRange};
 
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.
@@ -95,7 +93,7 @@ impl MockAnalysis {
     }
     pub(crate) fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();
-        let mut change = AnalysisChange::new();
+        let mut change = Change::new();
         let mut file_set = FileSet::default();
         let mut crate_graph = CrateGraph::default();
         let mut root_crate = None;

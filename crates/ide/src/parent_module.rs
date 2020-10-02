@@ -69,7 +69,7 @@ mod tests {
 
     use crate::{
         mock_analysis::{analysis_and_position, MockAnalysis},
-        AnalysisChange, CrateGraph,
+        Change, CrateGraph,
         Edition::Edition2018,
     };
 
@@ -146,7 +146,7 @@ mod foo;
             Env::default(),
             Default::default(),
         );
-        let mut change = AnalysisChange::new();
+        let mut change = Change::new();
         change.set_crate_graph(crate_graph);
         host.apply_change(change);
 

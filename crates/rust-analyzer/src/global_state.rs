@@ -8,7 +8,7 @@ use std::{sync::Arc, time::Instant};
 use base_db::{CrateId, VfsPath};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
+use ide::{Analysis, AnalysisHost, Change, FileId};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
@@ -139,7 +139,7 @@ impl GlobalState {
         let mut has_fs_changes = false;
 
         let change = {
-            let mut change = AnalysisChange::new();
+            let mut change = Change::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
             let changed_files = vfs.take_changes();
             if changed_files.is_empty() {
