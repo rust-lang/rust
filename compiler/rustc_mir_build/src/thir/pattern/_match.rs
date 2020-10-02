@@ -820,8 +820,8 @@ enum Constructor<'tcx> {
     Single,
     /// Enum variants.
     Variant(DefId),
-    /// Literal values.
-    ConstantValue(&'tcx ty::Const<'tcx>),
+    /// String literals
+    Str(&'tcx ty::Const<'tcx>),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange<'tcx>),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
@@ -840,22 +840,13 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    fn variant_index_for_adt<'a>(
-        &self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
-        adt: &'tcx ty::AdtDef,
-    ) -> VariantIdx {
+    fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
         match *self {
             Variant(id) => adt.variant_index_with_id(id),
             Single => {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
-            ConstantValue(c) => cx
-                .tcx
-                .destructure_const(cx.param_env.and(c))
-                .variant
-                .expect("destructed const of adt without variant id"),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
         }
     }
@@ -869,7 +860,7 @@ impl<'tcx> Constructor<'tcx> {
 
         match self {
             // Those constructors can only match themselves.
-            Single | Variant(_) | ConstantValue(..) | FloatRange(..) => {
+            Single | Variant(_) | Str(_) | FloatRange(..) => {
                 if other_ctors.iter().any(|c| c == self) { vec![] } else { vec![self.clone()] }
             }
             &Slice(slice) => {
@@ -979,7 +970,7 @@ impl<'tcx> Constructor<'tcx> {
                             PatKind::Variant {
                                 adt_def: adt,
                                 substs,
-                                variant_index: self.variant_index_for_adt(cx, adt),
+                                variant_index: self.variant_index_for_adt(adt),
                                 subpatterns,
                             }
                         } else {
@@ -1018,7 +1009,7 @@ impl<'tcx> Constructor<'tcx> {
                     PatKind::Slice { prefix, slice: Some(wild), suffix }
                 }
             },
-            &ConstantValue(value) => PatKind::Constant { value },
+            &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(cx.tcx),
             NonExhaustive => PatKind::Wild,
@@ -1125,7 +1116,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         // Use T as the sub pattern type of Box<T>.
                         Fields::from_single_pattern(wildcard_from_ty(substs.type_at(0)))
                     } else {
-                        let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
+                        let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
                         // Whether we must not match the fields of this variant exhaustively.
                         let is_non_exhaustive =
                             variant.is_field_list_non_exhaustive() && !adt.did.is_local();
@@ -1173,7 +1164,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => Fields::empty(),
+            Str(_) | FloatRange(..) | IntRange(..) | NonExhaustive => Fields::empty(),
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -2110,7 +2101,12 @@ fn pat_constructor<'tcx>(
             if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
                 Some(IntRange(int_range))
             } else {
-                Some(ConstantValue(value))
+                match value.ty.kind() {
+                    ty::Ref(_, t, _) if t.is_str() => Some(Str(value)),
+                    ty::Float(_) => Some(FloatRange(value, value, RangeEnd::Included)),
+                    // Non structural-match values are opaque.
+                    _ => None,
+                }
             }
         }
         PatKind::Range(PatRange { lo, hi, end }) => {
@@ -2458,7 +2454,7 @@ fn constructor_covered_by_range<'tcx>(
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
     let (ctor_from, ctor_to, ctor_end) = match *ctor {
-        ConstantValue(value) => (value, value, RangeEnd::Included),
+        Str(value) => (value, value, RangeEnd::Included),
         FloatRange(from, to, ctor_end) => (from, to, ctor_end),
         _ => bug!("`constructor_covered_by_range` called with {:?}", ctor),
     };
@@ -2558,7 +2554,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                 let suffix = suffix.iter().enumerate().map(|(i, p)| (arity - suffix.len() + i, p));
                 Some(ctor_wild_subpatterns.replace_fields_indexed(prefix.chain(suffix)))
             }
-            ConstantValue(_) => None,
+            Str(_) => None,
             _ => span_bug!(pat.span, "unexpected ctor {:?} for slice pat", constructor),
         },
 
