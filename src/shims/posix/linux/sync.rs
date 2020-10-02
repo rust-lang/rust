@@ -61,7 +61,7 @@ pub fn futex<'tcx>(
                     None => {
                         let einval = this.eval_libc("EINVAL")?;
                         this.set_last_error(einval)?;
-                        this.write_scalar(Scalar::from_i32(-1), dest)?;
+                        this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
                         return Ok(());
                     }
                 };
@@ -81,7 +81,7 @@ pub fn futex<'tcx>(
                 this.block_thread(thread);
                 this.futex_wait(addr, thread);
                 // Succesfully waking up from FUTEX_WAIT always returns zero.
-                this.write_scalar(Scalar::from_i32(0), dest)?;
+                this.write_scalar(Scalar::from_machine_isize(0, this), dest)?;
                 // Register a timeout callback if a timeout was specified.
                 // This callback will override the return value when the timeout triggers.
                 if let Some(timeout_time) = timeout_time {
@@ -93,7 +93,7 @@ pub fn futex<'tcx>(
                             this.futex_remove_waiter(addr, thread);
                             let etimedout = this.eval_libc("ETIMEDOUT")?;
                             this.set_last_error(etimedout)?;
-                            this.write_scalar(Scalar::from_i32(-1), dest)?;
+                            this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
                             Ok(())
                         }),
                     );
@@ -103,7 +103,7 @@ pub fn futex<'tcx>(
                 // right away without sleeping: -1 and errno set to EAGAIN.
                 let eagain = this.eval_libc("EAGAIN")?;
                 this.set_last_error(eagain)?;
-                this.write_scalar(Scalar::from_i32(-1), dest)?;
+                this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
             }
         }
         // FUTEX_WAKE: (int *addr, int op = FUTEX_WAKE, int val)
@@ -121,7 +121,7 @@ pub fn futex<'tcx>(
                     break;
                 }
             }
-            this.write_scalar(Scalar::from_i32(n), dest)?;
+            this.write_scalar(Scalar::from_machine_isize(n, this), dest)?;
         }
         op => throw_unsup_format!("miri does not support SYS_futex operation {}", op),
     }
