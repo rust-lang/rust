@@ -530,7 +530,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Ref(r, ty, mutbl) => {
                 p!("&");
                 if self.region_should_not_be_omitted(r) {
-                    p!(print(r), write(" "));
+                    p!(print(r), " ");
                 }
                 p!(print(ty::TypeAndMut { ty, mutbl }))
             }
@@ -2064,31 +2064,19 @@ define_print_and_forward_display! {
             ty::PredicateAtom::Projection(predicate) => p!(print(predicate)),
             ty::PredicateAtom::WellFormed(arg) => p!(print(arg), " well-formed"),
             ty::PredicateAtom::ObjectSafe(trait_def_id) => {
-                p!("the trait `",
-                print_def_path(trait_def_id, &[]),
-                "` is object-safe")
+                p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
             }
             ty::PredicateAtom::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                p!("the closure `",
-                print_value_path(closure_def_id, &[]),
-                write("` implements the trait `{}`", kind))
+                p!("the closure `", print_value_path(closure_def_id, &[]), write("` implements the trait `{}`", kind))
             }
             ty::PredicateAtom::ConstEvaluatable(def, substs) => {
-                p!("the constant `",
-                print_value_path(def.did, substs),
-                "` can be evaluated")
+                p!("the constant `", print_value_path(def.did, substs), "` can be evaluated")
             }
             ty::PredicateAtom::ConstEquate(c1, c2) => {
-                p!("the constant `",
-                print(c1),
-                "` equals `",
-                print(c2),
-                "`")
+                p!("the constant `", print(c1), "` equals `", print(c2), "`")
             }
             ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
-                p!("the type `",
-                print(ty),
-                "` is found in the environment")
+                p!("the type `", print(ty), "` is found in the environment")
             }
         }
     }
