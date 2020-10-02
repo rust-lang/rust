@@ -1,3 +1,5 @@
+// gate-test-const_fn_impl_trait
+
 struct AlanTuring<T>(T);
 const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> { //~ `impl Trait`
     AlanTuring(0)

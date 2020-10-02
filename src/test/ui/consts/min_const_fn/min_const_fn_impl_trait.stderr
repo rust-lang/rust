@@ -1,5 +1,5 @@
 error[E0658]: `impl Trait` is not allowed in constant functions
-  --> $DIR/min_const_fn_impl_trait.rs:2:24
+  --> $DIR/min_const_fn_impl_trait.rs:4:24
    |
 LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> {
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> {
    = help: add `#![feature(const_fn_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` is not allowed in constant functions
-  --> $DIR/min_const_fn_impl_trait.rs:6:23
+  --> $DIR/min_const_fn_impl_trait.rs:8:23
    |
 LL | const fn no_rpit() -> impl std::fmt::Debug {}
    |                       ^^^^^^^^^^^^^^^^^^^^
