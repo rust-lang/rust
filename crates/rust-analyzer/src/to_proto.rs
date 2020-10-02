@@ -740,6 +740,7 @@ pub(crate) fn runnable(
     file_id: FileId,
     runnable: Runnable,
 ) -> Result<lsp_ext::Runnable> {
+    let config = &snap.config.runnables;
     let spec = CargoTargetSpec::for_file(snap, file_id)?;
     let workspace_root = spec.as_ref().map(|it| it.workspace_root.clone());
     let target = spec.as_ref().map(|s| s.target.clone());
@@ -754,7 +755,9 @@ pub(crate) fn runnable(
         kind: lsp_ext::RunnableKind::Cargo,
         args: lsp_ext::CargoRunnable {
             workspace_root: workspace_root.map(|it| it.into()),
+            override_cargo: config.override_cargo.clone(),
             cargo_args,
+            cargo_extra_args: config.cargo_extra_args.clone(),
             executable_args,
             expect_test: None,
         },

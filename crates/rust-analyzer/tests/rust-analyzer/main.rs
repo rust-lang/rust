@@ -107,6 +107,8 @@ fn main() {}
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
               "executableArgs": ["test_eggs", "--exact", "--nocapture"],
+              "cargoExtraArgs": [],
+              "overrideCargo": null,
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
@@ -127,6 +129,8 @@ fn main() {}
             "args": {
               "cargoArgs": ["check", "--package", "foo", "--all-targets"],
               "executableArgs": [],
+              "cargoExtraArgs": [],
+              "overrideCargo": null,
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
@@ -136,6 +140,8 @@ fn main() {}
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--all-targets"],
               "executableArgs": [],
+              "cargoExtraArgs": [],
+              "overrideCargo": null,
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",

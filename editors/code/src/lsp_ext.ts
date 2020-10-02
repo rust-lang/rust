@@ -69,8 +69,10 @@ export interface Runnable {
     args: {
         workspaceRoot?: string;
         cargoArgs: string[];
+        cargoExtraArgs: string[];
         executableArgs: string[];
         expectTest?: boolean;
+        overrideCargo?: string;
     };
 }
 export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("experimental/runnables");

@@ -13,6 +13,7 @@ export interface CargoTaskDefinition extends vscode.TaskDefinition {
     args?: string[];
     cwd?: string;
     env?: { [key: string]: string };
+    overrideCargo?: string;
 }
 
 class CargoTaskProvider implements vscode.TaskProvider {
@@ -98,7 +99,14 @@ export async function buildCargoTask(
     }
 
     if (!exec) {
-        exec = new vscode.ShellExecution(toolchain.cargoPath(), args, definition);
+        // Check whether we must use a user-defined substitute for cargo.
+        const cargoCommand = definition.overrideCargo ? definition.overrideCargo : toolchain.cargoPath();
+
+        // Prepare the whole command as one line. It is required if user has provided override command which contains spaces,
+        // for example "wrapper cargo". Without manual preparation the overridden command will be quoted and fail to execute.
+        const fullCommand = [cargoCommand, ...args].join(" ");
+
+        exec = new vscode.ShellExecution(fullCommand, definition);
     }
 
     return new vscode.Task(

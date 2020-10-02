@@ -171,10 +171,14 @@ pub enum RunnableKind {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CargoRunnable {
+    // command to be executed instead of cargo
+    pub override_cargo: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub workspace_root: Option<PathBuf>,
     // command, --package and --lib stuff
     pub cargo_args: Vec<String>,
+    // user-specified additional cargo args, like `--release`.
+    pub cargo_extra_args: Vec<String>,
     // stuff after --
     pub executable_args: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
