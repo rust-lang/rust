@@ -1082,30 +1082,29 @@ fn build_manual_memcpy_suggestion<'tcx>(
         }
     }
 
-    let print_limit =
-        |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| -> MinifyingSugg<'static> {
-            if_chain! {
-                if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
-                if method.ident.name == sym!(len);
-                if len_args.len() == 1;
-                if let Some(arg) = len_args.get(0);
-                if var_def_id(cx, arg) == var_def_id(cx, base);
-                then {
-                    if sugg.as_str() == end_str {
-                        sugg::EMPTY.into()
-                    } else {
-                        sugg
-                    }
+    let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| {
+        if_chain! {
+            if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
+            if method.ident.name == sym!(len);
+            if len_args.len() == 1;
+            if let Some(arg) = len_args.get(0);
+            if var_def_id(cx, arg) == var_def_id(cx, base);
+            then {
+                if sugg.as_str() == end_str {
+                    sugg::EMPTY.into()
                 } else {
-                    match limits {
-                        ast::RangeLimits::Closed => {
-                            sugg + &sugg::ONE.into()
-                        },
-                        ast::RangeLimits::HalfOpen => sugg,
-                    }
+                    sugg
+                }
+            } else {
+                match limits {
+                    ast::RangeLimits::Closed => {
+                        sugg + &sugg::ONE.into()
+                    },
+                    ast::RangeLimits::HalfOpen => sugg,
                 }
             }
-        };
+        }
+    };
 
     let start_str = Sugg::hir(cx, start, "").into();
     let end_str: MinifyingSugg<'_> = Sugg::hir(cx, end, "").into();
