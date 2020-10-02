@@ -973,10 +973,7 @@ fn get_details_from_idx<'tcx>(
                 ast::LitKind::Int(x, _ty) => Some(Sugg::NonParen(x.to_string().into())),
                 _ => None,
             },
-            ExprKind::Path(..) if get_start(cx, e, starts).is_none() => {
-                // `e` is always non paren as it's a `Path`
-                Some(Sugg::NonParen(snippet(cx, e.span, "???")))
-            },
+            ExprKind::Path(..) if get_start(cx, e, starts).is_none() => Some(Sugg::hir(cx, e, "???")),
             _ => None,
         }
     }
@@ -1010,8 +1007,7 @@ fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx 
 
 fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
     cx: &'a LateContext<'tcx>,
-    stmts: &'tcx [Stmt<'tcx>],
-    expr: Option<&'tcx Expr<'tcx>>,
+    Block { stmts, expr, .. }: &'tcx Block<'tcx>,
     loop_counters: &'c [Start<'tcx>],
 ) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> + 'c {
     stmts
@@ -1025,7 +1021,7 @@ fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
                 then { None } else { Some(e) }
             },
         })
-        .chain(expr.into_iter())
+        .chain((*expr).into_iter())
         .map(get_assignment)
 }
 
@@ -1184,7 +1180,7 @@ fn detect_manual_memcpy<'tcx>(
                 if let Some(loop_counters) = get_loop_counters(cx, block, expr) {
                     starts.extend(loop_counters);
                 }
-                iter_a = Some(get_assignments(cx, block.stmts, block.expr, &starts));
+                iter_a = Some(get_assignments(cx, block, &starts));
             } else {
                 iter_b = Some(get_assignment(body));
             }
