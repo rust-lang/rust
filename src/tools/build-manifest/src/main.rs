@@ -294,6 +294,10 @@ impl Builder {
         if self.versions.channel() != rust_version {
             self.write_channel_files(&rust_version, &manifest);
         }
+        if self.versions.channel() == "stable" {
+            let major_minor = rust_version.split('.').take(2).collect::<Vec<_>>().join(".");
+            self.write_channel_files(&major_minor, &manifest);
+        }
     }
 
     /// If a tool does not pass its tests, don't ship it.
