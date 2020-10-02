@@ -1,23 +1,22 @@
-//! Postfix completion for `format`-like strings.
-//!
-//! `"Result {result} is {2 + 2}"` is expanded to the `"Result {} is {}", result, 2 + 2`.
-//!
-//! The following postfix snippets are available:
-//!
-//! - `format` -> `format!(...)`
-//! - `panic` -> `panic!(...)`
-//! - `println` -> `println!(...)`
-//! - `log`:
-//!   + `logd` -> `log::debug!(...)`
-//!   + `logt` -> `log::trace!(...)`
-//!   + `logi` -> `log::info!(...)`
-//!   + `logw` -> `log::warn!(...)`
-//!   + `loge` -> `log::error!(...)`
+// Feature: Postfix completion for `format`-like strings.
+//
+// `"Result {result} is {2 + 2}"` is expanded to the `"Result {} is {}", result, 2 + 2`.
+//
+// The following postfix snippets are available:
+//
+// - `format` -> `format!(...)`
+// - `panic` -> `panic!(...)`
+// - `println` -> `println!(...)`
+// - `log`:
+//   + `logd` -> `log::debug!(...)`
+//   + `logt` -> `log::trace!(...)`
+//   + `logi` -> `log::info!(...)`
+//   + `logw` -> `log::warn!(...)`
+//   + `loge` -> `log::error!(...)`
 
-use super::postfix_snippet;
 use crate::completion::{
-    completion_config::SnippetCap, completion_context::CompletionContext,
-    completion_item::Completions,
+    complete_postfix::postfix_snippet, completion_config::SnippetCap,
+    completion_context::CompletionContext, completion_item::Completions,
 };
 use syntax::ast;
 
@@ -35,7 +34,7 @@ pub(super) fn add_format_like_completions(
 
     let input = &receiver_text[1..receiver_text.len() - 1];
 
-    let mut parser = FormatStrParser::new(input);
+    let mut parser = FormatStrParser::new(input.to_owned());
 
     if parser.parse().is_ok() {
         for kind in PostfixKind::all_suggestions() {
@@ -129,7 +128,7 @@ enum State {
 }
 
 impl FormatStrParser {
-    pub fn new(input: impl Into<String>) -> Self {
+    pub fn new(input: String) -> Self {
         Self {
             input: input.into(),
             output: String::new(),
@@ -238,14 +237,8 @@ impl FormatStrParser {
     pub fn into_suggestion(&self, kind: PostfixKind) -> String {
         assert!(self.parsed, "Attempt to get a suggestion from not parsed expression");
 
-        let mut output = format!(r#"{}("{}""#, kind.into_macro_name(), self.output);
-        for expr in &self.extracted_expressions {
-            output += ", ";
-            output += expr;
-        }
-        output.push(')');
-
-        output
+        let expressions_as_string = self.extracted_expressions.join(", ");
+        format!(r#"{}("{}", {})"#, kind.into_macro_name(), self.output, expressions_as_string)
     }
 }
 
@@ -281,7 +274,7 @@ mod tests {
         ];
 
         for (input, output) in test_vector {
-            let mut parser = FormatStrParser::new(*input);
+            let mut parser = FormatStrParser::new((*input).to_owned());
             let outcome = parser.parse();
 
             if let Some((result_str, result_args)) = output {
@@ -316,7 +309,7 @@ mod tests {
         ];
 
         for (kind, input, output) in test_vector {
-            let mut parser = FormatStrParser::new(*input);
+            let mut parser = FormatStrParser::new((*input).to_owned());
             parser.parse().expect("Parsing must succeed");
 
             assert_eq!(&parser.into_suggestion(*kind), output);

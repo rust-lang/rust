@@ -1,4 +1,7 @@
 //! FIXME: write short doc here
+
+mod format_like;
+
 use assists::utils::TryEnum;
 use syntax::{
     ast::{self, AstNode},
@@ -15,8 +18,6 @@ use crate::{
     },
     CompletionItem, CompletionItemKind,
 };
-
-mod format_like;
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_postfix_completions {
