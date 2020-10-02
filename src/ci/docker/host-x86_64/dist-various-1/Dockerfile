@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libncurses-dev \
   gawk \
   make \
+  ninja-build \
   file \
   curl \
   ca-certificates \
@@ -83,10 +84,6 @@ RUN env \
     CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a" \
     bash musl.sh armv7hf && \
     env \
-    CC=aarch64-linux-gnu-gcc \
-    CXX=aarch64-linux-gnu-g++ \
-    bash musl.sh aarch64 && \
-    env \
     CC=mips-openwrt-linux-gcc \
     CXX=mips-openwrt-linux-g++ \
     bash musl.sh mips && \
@@ -129,7 +126,6 @@ ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
-ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
 ENV TARGETS=$TARGETS,aarch64-unknown-none
 ENV TARGETS=$TARGETS,aarch64-unknown-none-softfloat
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
@@ -184,7 +180,6 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
       --musl-root-armv7hf=/musl-armv7hf \
-      --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \
       --musl-root-mips64=/musl-mips64 \
@@ -192,8 +187,8 @@ ENV RUST_CONFIGURE_ARGS \
       --disable-docs
 
 ENV SCRIPT \
-      python3 ../x.py --stage 2 test --target $RUN_MAKE_TARGETS src/test/run-make && \
-      python3 ../x.py dist --target $TARGETS
+      python3 ../x.py --stage 2 test --host='' --target $RUN_MAKE_TARGETS src/test/run-make && \
+      python3 ../x.py dist --host='' --target $TARGETS
 
 # sccache
 COPY scripts/sccache.sh /scripts/

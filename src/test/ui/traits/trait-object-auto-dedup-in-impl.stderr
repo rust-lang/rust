@@ -2,10 +2,10 @@ error[E0592]: duplicate definitions with name `test`
   --> $DIR/trait-object-auto-dedup-in-impl.rs:14:5
    |
 LL |     fn test(&self) { println!("one"); }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definitions for `test`
+   |     ^^^^^^^^^^^^^^ duplicate definitions for `test`
 ...
 LL |     fn test(&self) { println!("two"); }
-   |     ----------------------------------- other definition for `test`
+   |     -------------- other definition for `test`
 
 error: aborting due to previous error
 

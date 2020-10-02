@@ -1,13 +1,14 @@
 //! This pass is overloaded and runs two different lints.
 //!
-//! - MISSING_DOC_CODE_EXAMPLES: this looks for public items missing doc-tests
-//! - PRIVATE_DOC_TESTS: this looks for private items with doc-tests.
+//! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doc-tests
+//! - PRIVATE_DOC_TESTS: this lint is **STABLE** and looks for private items with doc-tests.
 
 use super::{span_of_attrs, Pass};
+use crate::clean;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
+use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
 use rustc_session::lint;
 
 pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
@@ -43,6 +44,34 @@ impl<'a, 'tcx> DocFolder for PrivateItemDocTestLinter<'a, 'tcx> {
     }
 }
 
+pub(crate) struct Tests {
+    pub(crate) found_tests: usize,
+}
+
+impl crate::doctest::Tester for Tests {
+    fn add_test(&mut self, _: String, config: LangString, _: usize) {
+        if config.rust && config.ignore == Ignore::None {
+            self.found_tests += 1;
+        }
+    }
+}
+
+pub fn should_have_doc_example(item_kind: &clean::ItemEnum) -> bool {
+    !matches!(item_kind,
+        clean::StructFieldItem(_)
+        | clean::VariantItem(_)
+        | clean::AssocConstItem(_, _)
+        | clean::AssocTypeItem(_, _)
+        | clean::TypedefItem(_, _)
+        | clean::StaticItem(_)
+        | clean::ConstantItem(_)
+        | clean::ExternCrateItem(_, _)
+        | clean::ImportItem(_)
+        | clean::PrimitiveItem(_)
+        | clean::KeywordItem(_)
+    )
+}
+
 pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     let hir_id = match cx.as_local_hir_id(item.def_id) {
         Some(hir_id) => hir_id,
@@ -52,28 +81,14 @@ pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
         }
     };
 
-    struct Tests {
-        found_tests: usize,
-    }
-
-    impl crate::test::Tester for Tests {
-        fn add_test(&mut self, _: String, _: LangString, _: usize) {
-            self.found_tests += 1;
-        }
-    }
-
     let mut tests = Tests { found_tests: 0 };
 
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
 
-    if tests.found_tests == 0 {
-        use ItemEnum::*;
-
-        let should_report = match item.inner {
-            ExternCrateItem(_, _) | ImportItem(_) | PrimitiveItem(_) | KeywordItem(_) => false,
-            _ => true,
-        };
-        if should_report {
+    if tests.found_tests == 0
+        && rustc_feature::UnstableFeatures::from_environment().is_nightly_build()
+    {
+        if should_have_doc_example(&item.inner) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
             cx.tcx.struct_span_lint_hir(
@@ -83,9 +98,7 @@ pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
                 |lint| lint.build("missing code example in this documentation").emit(),
             );
         }
-    } else if rustc_feature::UnstableFeatures::from_environment().is_nightly_build()
-        && tests.found_tests > 0
-        && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
+    } else if tests.found_tests > 0 && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
     {
         cx.tcx.struct_span_lint_hir(
             lint::builtin::PRIVATE_DOC_TESTS,

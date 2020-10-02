@@ -52,4 +52,11 @@ fn main() {
     for a in vec![NonCopy, NonCopy] {
         println!("{:?}", a);
     }
+
+    on_vec(&vec![1; 201]); // Ok, size of `vec` higher than `too_large_for_stack`
+
+    // Ok
+    for a in vec![1; 201] {
+        println!("{:?}", a);
+    }
 }

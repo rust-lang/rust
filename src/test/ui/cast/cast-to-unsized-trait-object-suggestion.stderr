@@ -1,4 +1,4 @@
-error[E0620]: cast to unsized type: `&{integer}` as `dyn std::marker::Send`
+error[E0620]: cast to unsized type: `&{integer}` as `dyn Send`
   --> $DIR/cast-to-unsized-trait-object-suggestion.rs:2:5
    |
 LL |     &1 as dyn Send;
@@ -6,7 +6,7 @@ LL |     &1 as dyn Send;
    |           |
    |           help: try casting to a reference instead: `&dyn Send`
 
-error[E0620]: cast to unsized type: `std::boxed::Box<{integer}>` as `dyn std::marker::Send`
+error[E0620]: cast to unsized type: `Box<{integer}>` as `dyn Send`
   --> $DIR/cast-to-unsized-trait-object-suggestion.rs:3:5
    |
 LL |     Box::new(1) as dyn Send;

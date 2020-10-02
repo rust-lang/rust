@@ -243,7 +243,7 @@ fn check_comparison<'a, 'tcx>(
                         cx,
                         BOOL_COMPARISON,
                         e.span,
-                        "This comparison might be written more concisely",
+                        "this comparison might be written more concisely",
                         "try simplifying it as shown",
                         format!(
                             "{} != {}",

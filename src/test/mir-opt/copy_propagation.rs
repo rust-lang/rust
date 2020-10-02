@@ -1,4 +1,5 @@
-// EMIT_MIR rustc.test.CopyPropagation.diff
+// compile-flags: -Zunsound-mir-opts
+// EMIT_MIR copy_propagation.test.CopyPropagation.diff
 
 fn test(x: u32) -> u32 {
     let y = x;

@@ -3,7 +3,7 @@ enum Baz {
     Foo { x: usize },
 }
 
-// EMIT_MIR rustc.bar.Deaggregator.diff
+// EMIT_MIR deaggregator_test_enum.bar.Deaggregator.diff
 fn bar(a: usize) -> Baz {
     Baz::Foo { x: a }
 }

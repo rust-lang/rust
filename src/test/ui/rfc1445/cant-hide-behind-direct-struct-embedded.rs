@@ -21,7 +21,6 @@ fn main() {
     match WRAP_DIRECT_INLINE {
         WRAP_DIRECT_INLINE => { panic!("WRAP_DIRECT_INLINE matched itself"); }
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         _ => { println!("WRAP_DIRECT_INLINE did not match itself"); }
     }
 }

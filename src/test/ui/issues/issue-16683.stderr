@@ -7,10 +7,8 @@ LL |         self.a();
 note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 3:5...
   --> $DIR/issue-16683.rs:3:5
    |
-LL | /     fn b(&self) {
-LL | |         self.a();
-LL | |     }
-   | |_____^
+LL |     fn b(&self) {
+   |     ^^^^^^^^^^^
 note: ...so that reference does not outlive borrowed content
   --> $DIR/issue-16683.rs:4:9
    |

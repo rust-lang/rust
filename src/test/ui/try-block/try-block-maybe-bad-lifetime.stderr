@@ -14,7 +14,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/try-block-maybe-bad-lifetime.rs:28:24
    |
 LL |         let x = String::new();
-   |             - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |             - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 ...
 LL |             ::std::mem::drop(x);
    |                              - value moved here

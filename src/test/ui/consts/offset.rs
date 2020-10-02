@@ -1,7 +1,6 @@
 // run-pass
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
-#![feature(ptr_offset_from)]
 use std::ptr;
 
 #[repr(C)]

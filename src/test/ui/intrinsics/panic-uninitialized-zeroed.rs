@@ -3,7 +3,7 @@
 
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
 
-#![feature(never_type)]
+#![feature(never_type, arbitrary_enum_discriminant)]
 #![allow(deprecated, invalid_value)]
 
 use std::{
@@ -23,6 +23,20 @@ enum Bar {}
 
 #[allow(dead_code)]
 enum OneVariant { Variant(i32) }
+
+#[allow(dead_code, non_camel_case_types)]
+enum OneVariant_NonZero {
+    Variant(i32, i32, num::NonZeroI32),
+    DeadVariant(Bar),
+}
+
+// An `Aggregate` abi enum where 0 is not a valid discriminant.
+#[allow(dead_code)]
+#[repr(i32)]
+enum NoNullVariant {
+    Variant1(i32, i32) = 1,
+    Variant2(i32, i32) = 2,
+}
 
 // An enum with ScalarPair layout
 #[allow(dead_code)]
@@ -125,6 +139,7 @@ fn main() {
             "attempted to zero-initialize type `std::mem::ManuallyDrop<LR_NonZero>`, \
              which is invalid"
         );
+        */
 
         test_panic_msg(
             || mem::uninitialized::<(NonNull<u32>, u32, u32)>(),
@@ -136,7 +151,28 @@ fn main() {
             "attempted to zero-initialize type `(std::ptr::NonNull<u32>, u32, u32)`, \
                 which is invalid"
         );
-        */
+
+        test_panic_msg(
+            || mem::uninitialized::<OneVariant_NonZero>(),
+            "attempted to leave type `OneVariant_NonZero` uninitialized, \
+                which is invalid"
+        );
+        test_panic_msg(
+            || mem::zeroed::<OneVariant_NonZero>(),
+            "attempted to zero-initialize type `OneVariant_NonZero`, \
+                which is invalid"
+        );
+
+        test_panic_msg(
+            || mem::uninitialized::<NoNullVariant>(),
+            "attempted to leave type `NoNullVariant` uninitialized, \
+                which is invalid"
+        );
+        test_panic_msg(
+            || mem::zeroed::<NoNullVariant>(),
+            "attempted to zero-initialize type `NoNullVariant`, \
+                which is invalid"
+        );
 
         // Types that can be zero, but not uninit.
         test_panic_msg(

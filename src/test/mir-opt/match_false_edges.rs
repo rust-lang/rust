@@ -10,7 +10,7 @@ fn guard2(_: i32) -> bool {
 
 // no_mangle to make sure this gets instantiated even in an executable.
 #[no_mangle]
-// EMIT_MIR rustc.full_tested_match.PromoteTemps.after.mir
+// EMIT_MIR match_false_edges.full_tested_match.PromoteTemps.after.mir
 pub fn full_tested_match() {
     let _ = match Some(42) {
         Some(x) if guard() => (1, x),
@@ -21,7 +21,7 @@ pub fn full_tested_match() {
 
 // no_mangle to make sure this gets instantiated even in an executable.
 #[no_mangle]
-// EMIT_MIR rustc.full_tested_match2.PromoteTemps.before.mir
+// EMIT_MIR match_false_edges.full_tested_match2.PromoteTemps.before.mir
 pub fn full_tested_match2() {
     let _ = match Some(42) {
         Some(x) if guard() => (1, x),
@@ -30,7 +30,7 @@ pub fn full_tested_match2() {
     };
 }
 
-// EMIT_MIR rustc.main.PromoteTemps.before.mir
+// EMIT_MIR match_false_edges.main.PromoteTemps.before.mir
 fn main() {
     let _ = match Some(1) {
         Some(_w) if guard() => 1,

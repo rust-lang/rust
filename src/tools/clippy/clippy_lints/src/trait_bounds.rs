@@ -2,9 +2,10 @@ use crate::utils::{in_macro, snippet, snippet_with_applicability, span_lint_and_
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use rustc_hir::{GenericBound, Generics, WherePredicate};
+use rustc_hir::{def::Res, GenericBound, Generics, ParamName, Path, QPath, TyKind, WherePredicate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns about unnecessary type repetitions in trait bounds
@@ -29,6 +30,35 @@ declare_clippy_lint! {
     "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for cases where generics are being used and multiple
+    /// syntax specifications for trait bounds are used simultaneously.
+    ///
+    /// **Why is this bad?** Duplicate bounds makes the code
+    /// less readable than specifing them only once.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn func<T: Clone + Default>(arg: T) where T: Clone + Default {}
+    /// ```
+    ///
+    /// Could be written as:
+    ///
+    /// ```rust
+    /// fn func<T: Clone + Default>(arg: T) {}
+    /// ```
+    /// or
+    ///
+    /// ```rust
+    /// fn func<T>(arg: T) where T: Clone + Default {}
+    /// ```
+    pub TRAIT_DUPLICATION_IN_BOUNDS,
+    pedantic,
+    "Check if the same trait bounds are specified twice during a function declaration"
+}
+
 #[derive(Copy, Clone)]
 pub struct TraitBounds {
     max_trait_bounds: u64,
@@ -41,10 +71,25 @@ impl TraitBounds {
     }
 }
 
-impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS]);
+impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS, TRAIT_DUPLICATION_IN_BOUNDS]);
 
 impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
+        self.check_type_repetition(cx, gen);
+        check_trait_bound_duplication(cx, gen);
+    }
+}
+
+fn get_trait_res_span_from_bound(bound: &GenericBound<'_>) -> Option<(Res, Span)> {
+    if let GenericBound::Trait(t, _) = bound {
+        Some((t.trait_ref.path.res, t.span))
+    } else {
+        None
+    }
+}
+
+impl TraitBounds {
+    fn check_type_repetition(self, cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
         if in_macro(gen.span) {
             return;
         }
@@ -96,6 +141,51 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                         None,
                         &hint_string,
                     );
+                }
+            }
+        }
+    }
+}
+
+fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
+    if in_macro(gen.span) || gen.params.is_empty() || gen.where_clause.predicates.is_empty() {
+        return;
+    }
+
+    let mut map = FxHashMap::default();
+    for param in gen.params {
+        if let ParamName::Plain(ref ident) = param.name {
+            let res = param
+                .bounds
+                .iter()
+                .filter_map(get_trait_res_span_from_bound)
+                .collect::<Vec<_>>();
+            map.insert(*ident, res);
+        }
+    }
+
+    for predicate in gen.where_clause.predicates {
+        if_chain! {
+            if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
+            if !in_macro(bound_predicate.span);
+            if let TyKind::Path(ref path) = bound_predicate.bounded_ty.kind;
+            if let QPath::Resolved(_, Path { ref segments, .. }) = path;
+            if let Some(segment) = segments.first();
+            if let Some(trait_resolutions_direct) = map.get(&segment.ident);
+            then {
+                for (res_where, _) in bound_predicate.bounds.iter().filter_map(get_trait_res_span_from_bound) {
+                    if let Some((_, span_direct)) = trait_resolutions_direct
+                                                .iter()
+                                                .find(|(res_direct, _)| *res_direct == res_where) {
+                        span_lint_and_help(
+                            cx,
+                            TRAIT_DUPLICATION_IN_BOUNDS,
+                            *span_direct,
+                            "this trait bound is already specified in the where clause",
+                            None,
+                            "consider removing this trait bound",
+                        );
+                    }
                 }
             }
         }

@@ -6,8 +6,8 @@ struct Point {
 }
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-// EMIT_MIR rustc.main.ConstProp.diff
-// EMIT_MIR rustc.main.SimplifyLocals.after.mir
+// EMIT_MIR optimizes_into_variable.main.ConstProp.diff
+// EMIT_MIR optimizes_into_variable.main.SimplifyLocals.after.mir
 fn main() {
     let x = 2 + 2;
     let y = [0, 1, 2, 3, 4, 5][3];

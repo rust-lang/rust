@@ -4,7 +4,7 @@
 
 #![feature(box_syntax)]
 
-// EMIT_MIR rustc.test.ElaborateDrops.before.mir
+// EMIT_MIR issue_62289.test.ElaborateDrops.before.mir
 fn test() -> Option<Box<u32>> {
     Some(box (None?))
 }

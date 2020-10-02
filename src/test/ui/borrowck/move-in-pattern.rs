@@ -16,9 +16,9 @@ fn main() {
     if let Some(x) = s {
         let _ = x;
     }
-    foo(s); //~ ERROR use of moved value: `s`
+    foo(s); //~ ERROR use of partially moved value: `s`
     let e = E::V { s: S };
     let E::V { s: x } = e;
     let _ = x;
-    bar(e); //~ ERROR use of moved value: `e`
+    bar(e); //~ ERROR use of partially moved value: `e`
 }

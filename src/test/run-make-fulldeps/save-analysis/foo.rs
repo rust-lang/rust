@@ -1,4 +1,4 @@
-#![ crate_name = "test" ]
+#![crate_name = "test"]
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 #![feature(associated_type_defaults)]
@@ -11,10 +11,9 @@ extern crate krate2;
 extern crate krate2 as krate3;
 
 use rustc_graphviz::RenderOption;
-use std::collections::{HashMap,HashSet};
 use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
-
 
 use sub::sub2 as msalias;
 use sub::sub2;
@@ -32,7 +31,7 @@ static bob: Option<rustc_graphviz::RenderOption> = None;
 // buglink test - see issue #1337.
 
 fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
-    let s = sub_struct{ field2: 45u32, };
+    let s = sub_struct { field2: 45u32 };
 
     // import tests
     fn foo(x: &Write) {}
@@ -82,7 +81,7 @@ mod sub {
 
         pub enum nested_enum {
             Nest2 = 2,
-            Nest3 = 3
+            Nest3 = 3,
         }
     }
 }
@@ -103,7 +102,9 @@ struct some_fields {
 type SF = some_fields;
 
 trait SuperTrait {
-    fn qux(&self) { panic!(); }
+    fn qux(&self) {
+        panic!();
+    }
 }
 
 trait SomeTrait: SuperTrait {
@@ -131,8 +132,7 @@ impl SomeTrait for some_fields {
     }
 }
 
-impl SuperTrait for some_fields {
-}
+impl SuperTrait for some_fields {}
 
 impl SubTrait for some_fields {}
 
@@ -145,17 +145,14 @@ impl some_fields {
         42
     }
 
-    fn align_to<T>(&mut self) {
-
-    }
+    fn align_to<T>(&mut self) {}
 
     fn test(&mut self) {
         self.align_to::<bool>();
     }
 }
 
-impl SuperTrait for nofields {
-}
+impl SuperTrait for nofields {}
 impl SomeTrait for nofields {
     fn Method(&self, x: u32) -> u32 {
         self.Method(x);
@@ -181,59 +178,70 @@ enum SomeEnum<'a> {
     Ints(isize, isize),
     Floats(f64, f64),
     Strings(&'a str, &'a str, &'a str),
-    MyTypes(MyType, MyType)
+    MyTypes(MyType, MyType),
 }
 
 #[derive(Copy, Clone)]
 enum SomeOtherEnum {
     SomeConst1,
     SomeConst2,
-    SomeConst3
+    SomeConst3,
 }
 
 enum SomeStructEnum {
-    EnumStruct{a:isize, b:isize},
-    EnumStruct2{f1:MyType, f2:MyType},
-    EnumStruct3{f1:MyType, f2:MyType, f3:SomeEnum<'static>}
+    EnumStruct { a: isize, b: isize },
+    EnumStruct2 { f1: MyType, f2: MyType },
+    EnumStruct3 { f1: MyType, f2: MyType, f3: SomeEnum<'static> },
 }
 
 fn matchSomeEnum(val: SomeEnum) {
     match val {
-        SomeEnum::Ints(int1, int2) => { println(&(int1+int2).to_string()); }
-        SomeEnum::Floats(float1, float2) => { println(&(float2*float1).to_string()); }
-        SomeEnum::Strings(.., s3) => { println(s3); }
-        SomeEnum::MyTypes(mt1, mt2) => { println(&(mt1.field1 - mt2.field1).to_string()); }
+        SomeEnum::Ints(int1, int2) => {
+            println(&(int1 + int2).to_string());
+        }
+        SomeEnum::Floats(float1, float2) => {
+            println(&(float2 * float1).to_string());
+        }
+        SomeEnum::Strings(.., s3) => {
+            println(s3);
+        }
+        SomeEnum::MyTypes(mt1, mt2) => {
+            println(&(mt1.field1 - mt2.field1).to_string());
+        }
     }
 }
 
 fn matchSomeStructEnum(se: SomeStructEnum) {
     match se {
-        SomeStructEnum::EnumStruct{a:a, ..} => println(&a.to_string()),
-        SomeStructEnum::EnumStruct2{f1:f1, f2:f_2} => println(&f_2.field1.to_string()),
-        SomeStructEnum::EnumStruct3{f1, ..} => println(&f1.field1.to_string()),
+        SomeStructEnum::EnumStruct { a: a, .. } => println(&a.to_string()),
+        SomeStructEnum::EnumStruct2 { f1: f1, f2: f_2 } => println(&f_2.field1.to_string()),
+        SomeStructEnum::EnumStruct3 { f1, .. } => println(&f1.field1.to_string()),
     }
 }
-
 
 fn matchSomeStructEnum2(se: SomeStructEnum) {
     use SomeStructEnum::*;
     match se {
-        EnumStruct{a: ref aaa, ..} => println(&aaa.to_string()),
-        EnumStruct2{f1, f2: f2} => println(&f1.field1.to_string()),
-        EnumStruct3{f1, f3: SomeEnum::Ints(..), f2} => println(&f1.field1.to_string()),
-        _ => {},
+        EnumStruct { a: ref aaa, .. } => println(&aaa.to_string()),
+        EnumStruct2 { f1, f2: f2 } => println(&f1.field1.to_string()),
+        EnumStruct3 { f1, f3: SomeEnum::Ints(..), f2 } => println(&f1.field1.to_string()),
+        _ => {}
     }
 }
 
 fn matchSomeOtherEnum(val: SomeOtherEnum) {
     use SomeOtherEnum::{SomeConst2, SomeConst3};
     match val {
-        SomeOtherEnum::SomeConst1 => { println("I'm const1."); }
-        SomeConst2 | SomeConst3 => { println("I'm const2 or const3."); }
+        SomeOtherEnum::SomeConst1 => {
+            println("I'm const1.");
+        }
+        SomeConst2 | SomeConst3 => {
+            println("I'm const2 or const3.");
+        }
     }
 }
 
-fn hello<X: SomeTrait>((z, a) : (u32, String), ex: X) {
+fn hello<X: SomeTrait>((z, a): (u32, String), ex: X) {
     SameDir2::hello(43);
 
     println(&yy.to_string());
@@ -248,8 +256,8 @@ fn hello<X: SomeTrait>((z, a) : (u32, String), ex: X) {
     let x = 32.0f32;
     let _ = (x + ((x * x) + 1.0).sqrt()).ln();
 
-    let s: Box<SomeTrait> = box some_fields {field1: 43};
-    let s2: Box<some_fields> =  box some_fields {field1: 43};
+    let s: Box<SomeTrait> = box some_fields { field1: 43 };
+    let s2: Box<some_fields> = box some_fields { field1: 43 };
     let s3 = box nofields;
 
     s.Method(43);
@@ -302,8 +310,9 @@ mod macro_use_test {
     }
 }
 
-fn main() { // foo
-    let s = box some_fields {field1: 43};
+fn main() {
+    // foo
+    let s = box some_fields { field1: 43 };
     hello((43, "a".to_string()), *s);
     sub::sub2::hello();
     sub2::sub3::hello();
@@ -324,26 +333,24 @@ fn main() { // foo
     let vs = variable_str!(32);
 
     let mut candidates: RefCell<HashMap<&'static str, &'static str>> = RefCell::new(HashMap::new());
-    let _ = blah {
-        used_link_args: RefCell::new([]),
-    };
+    let _ = blah { used_link_args: RefCell::new([]) };
     let s1 = nofields;
-    let s2 = SF { field1: 55};
-    let s3: some_fields = some_fields{ field1: 55};
-    let s4: msalias::nested_struct = sub::sub2::nested_struct{ field2: 55};
-    let s4: msalias::nested_struct = sub2::nested_struct{ field2: 55};
+    let s2 = SF { field1: 55 };
+    let s3: some_fields = some_fields { field1: 55 };
+    let s4: msalias::nested_struct = sub::sub2::nested_struct { field2: 55 };
+    let s4: msalias::nested_struct = sub2::nested_struct { field2: 55 };
     println(&s2.field1.to_string());
-    let s5: MyType = box some_fields{ field1: 55};
-    let s = SameDir::SameStruct{name: "Bob".to_string()};
-    let s = SubDir::SubStruct{name:"Bob".to_string()};
+    let s5: MyType = box some_fields { field1: 55 };
+    let s = SameDir::SameStruct { name: "Bob".to_string() };
+    let s = SubDir::SubStruct { name: "Bob".to_string() };
     let s6: SomeEnum = SomeEnum::MyTypes(box s2.clone(), s5);
     let s7: SomeEnum = SomeEnum::Strings("one", "two", "three");
     matchSomeEnum(s6);
     matchSomeEnum(s7);
     let s8: SomeOtherEnum = SomeOtherEnum::SomeConst2;
     matchSomeOtherEnum(s8);
-    let s9: SomeStructEnum = SomeStructEnum::EnumStruct2{ f1: box some_fields{ field1:10 },
-                                                          f2: box s2 };
+    let s9: SomeStructEnum =
+        SomeStructEnum::EnumStruct2 { f1: box some_fields { field1: 10 }, f2: box s2 };
     matchSomeStructEnum(s9);
 
     for x in &vec![1, 2, 3] {
@@ -404,8 +411,7 @@ impl<'a> Pattern<'a> for CharEqPattern {
 
 struct CharSearcher<'a>(<CharEqPattern as Pattern<'a>>::Searcher);
 
-pub trait Error {
-}
+pub trait Error {}
 
 impl Error + 'static {
     pub fn is<T: Error + 'static>(&self) -> bool {
@@ -419,8 +425,7 @@ impl Error + 'static + Send {
     }
 }
 extern crate rustc_serialize;
-#[derive(Clone, Copy, Hash, RustcEncodable, RustcDecodable,
-         PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
 struct AllDerives(i32);
 
 fn test_format_args() {
@@ -433,9 +438,8 @@ fn test_format_args() {
     print!("x is {}, y is {1}, name is {n}", x, y, n = name);
 }
 
-
 union TestUnion {
-    f1: u32
+    f1: u32,
 }
 
 struct FrameBuffer;
@@ -454,5 +458,5 @@ trait Foo {
     type Bar = FrameBuffer;
 }
 
-#[doc(include="extra-docs.md")]
+#[doc(include = "extra-docs.md")]
 struct StructWithDocs;

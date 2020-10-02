@@ -10,6 +10,7 @@ use crate::result::Result;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub enum Poll<T> {
     /// Represents that a value is immediately ready.
+    #[lang = "Ready"]
     #[stable(feature = "futures_api", since = "1.36.0")]
     Ready(#[stable(feature = "futures_api", since = "1.36.0")] T),
 
@@ -18,6 +19,7 @@ pub enum Poll<T> {
     /// When a function returns `Pending`, the function *must* also
     /// ensure that the current task is scheduled to be awoken when
     /// progress can be made.
+    #[lang = "Pending"]
     #[stable(feature = "futures_api", since = "1.36.0")]
     Pending,
 }
@@ -110,6 +112,14 @@ impl<T, E> Poll<Option<Result<T, E>>> {
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<T> From<T> for Poll<T> {
+    /// Convert to a `Ready` variant.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// assert_eq!(Poll::from(true), Poll::Ready(true));
+    /// ```
     fn from(t: T) -> Poll<T> {
         Poll::Ready(t)
     }

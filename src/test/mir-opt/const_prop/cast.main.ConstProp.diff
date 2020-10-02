@@ -1,0 +1,28 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/cast.rs:3:11: 3:11
+      let _1: u32;                         // in scope 0 at $DIR/cast.rs:4:9: 4:10
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/cast.rs:4:9: 4:10
+          let _2: u8;                      // in scope 1 at $DIR/cast.rs:6:9: 6:10
+          scope 2 {
+              debug y => _2;               // in scope 2 at $DIR/cast.rs:6:9: 6:10
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/cast.rs:4:9: 4:10
+-         _1 = const 42_u8 as u32 (Misc);  // scope 0 at $DIR/cast.rs:4:13: 4:24
++         _1 = const 42_u32;               // scope 0 at $DIR/cast.rs:4:13: 4:24
+          StorageLive(_2);                 // scope 1 at $DIR/cast.rs:6:9: 6:10
+-         _2 = const 42_u32 as u8 (Misc);  // scope 1 at $DIR/cast.rs:6:13: 6:24
++         _2 = const 42_u8;                // scope 1 at $DIR/cast.rs:6:13: 6:24
+          _0 = const ();                   // scope 0 at $DIR/cast.rs:3:11: 7:2
+          StorageDead(_2);                 // scope 1 at $DIR/cast.rs:7:1: 7:2
+          StorageDead(_1);                 // scope 0 at $DIR/cast.rs:7:1: 7:2
+          return;                          // scope 0 at $DIR/cast.rs:7:2: 7:2
+      }
+  }
+  

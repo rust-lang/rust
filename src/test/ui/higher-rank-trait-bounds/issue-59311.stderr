@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-59311.rs:17:9
+   |
+LL |     v.t(|| {});
+   |         ^^^^^
+
+error: aborting due to previous error
+

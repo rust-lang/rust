@@ -20,7 +20,7 @@ help: Unicode character '”' (Right Double Quotation Mark) looks like '"' (Quot
 LL |     println!(“hello world");
    |                          ^
 
-error: expected token: `,`
+error: expected `,`, found `world`
   --> $DIR/unicode-quote-chars.rs:4:21
    |
 LL |     println!(“hello world”);

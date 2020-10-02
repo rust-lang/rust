@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
@@ -46,6 +48,7 @@ pub struct DirEntry {
 pub struct OpenOptions {
     read: bool,
     write: bool,
+    append: bool,
     dirflags: wasi::Lookupflags,
     fdflags: wasi::Fdflags,
     oflags: wasi::Oflags,
@@ -270,8 +273,9 @@ impl OpenOptions {
         }
     }
 
-    pub fn append(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAGS_APPEND, set);
+    pub fn append(&mut self, append: bool) {
+        self.append = append;
+        self.fdflag(wasi::FDFLAGS_APPEND, append);
     }
 
     pub fn dsync(&mut self, set: bool) {
@@ -321,7 +325,7 @@ impl OpenOptions {
             base |= wasi::RIGHTS_FD_READ;
             base |= wasi::RIGHTS_FD_READDIR;
         }
-        if self.write {
+        if self.write || self.append {
             base |= wasi::RIGHTS_FD_WRITE;
             base |= wasi::RIGHTS_FD_DATASYNC;
             base |= wasi::RIGHTS_FD_ALLOCATE;
@@ -331,6 +335,7 @@ impl OpenOptions {
         // FIXME: some of these should probably be read-only or write-only...
         base |= wasi::RIGHTS_FD_ADVISE;
         base |= wasi::RIGHTS_FD_FDSTAT_SET_FLAGS;
+        base |= wasi::RIGHTS_FD_FILESTAT_GET;
         base |= wasi::RIGHTS_FD_FILESTAT_SET_TIMES;
         base |= wasi::RIGHTS_FD_SEEK;
         base |= wasi::RIGHTS_FD_SYNC;

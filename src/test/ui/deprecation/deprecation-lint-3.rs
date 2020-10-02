@@ -1,5 +1,5 @@
 // aux-build:deprecation-lint.rs
-// error-pattern: use of deprecated item
+// error-pattern: use of deprecated function
 
 #![deny(deprecated)]
 #![allow(warnings)]

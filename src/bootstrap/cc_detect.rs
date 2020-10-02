@@ -132,7 +132,8 @@ pub fn find(build: &mut Build) {
             false
         };
 
-        if cxx_configured {
+        // for VxWorks, record CXX compiler which will be used in lib.rs:linker()
+        if cxx_configured || target.contains("vxworks") {
             let compiler = cfg.get_compiler();
             build.cxx.insert(target, compiler);
         }

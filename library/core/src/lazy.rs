@@ -92,7 +92,7 @@ impl<T> OnceCell<T> {
     /// Returns `None` if the cell is empty.
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get(&self) -> Option<&T> {
-        // Safety: Safe due to `inner`'s invariant
+        // SAFETY: Safe due to `inner`'s invariant
         unsafe { &*self.inner.get() }.as_ref()
     }
 
@@ -101,7 +101,7 @@ impl<T> OnceCell<T> {
     /// Returns `None` if the cell is empty.
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
-        // Safety: Safe because we have unique access
+        // SAFETY: Safe because we have unique access
         unsafe { &mut *self.inner.get() }.as_mut()
     }
 
@@ -129,13 +129,13 @@ impl<T> OnceCell<T> {
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn set(&self, value: T) -> Result<(), T> {
-        // Safety: Safe because we cannot have overlapping mutable borrows
+        // SAFETY: Safe because we cannot have overlapping mutable borrows
         let slot = unsafe { &*self.inner.get() };
         if slot.is_some() {
             return Err(value);
         }
 
-        // Safety: This is the only place where we set the slot, no races
+        // SAFETY: This is the only place where we set the slot, no races
         // due to reentrancy/concurrency are possible, and we've
         // checked that slot is currently `None`, so this write
         // maintains the `inner`'s invariant.

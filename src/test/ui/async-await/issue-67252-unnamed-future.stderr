@@ -7,7 +7,7 @@ LL | fn spawn<T: Send>(_: T) {}
 LL |     spawn(async {
    |     ^^^^^ future created by async block is not `Send`
    |
-   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `*mut ()`
+   = help: within `impl Future`, the trait `Send` is not implemented for `*mut ()`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-67252-unnamed-future.rs:20:9
    |

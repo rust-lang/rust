@@ -10,8 +10,8 @@ error[E0658]: const generics are unstable
 LL | struct B<T, const N: T>(PhantomData<[T; N]>);
    |                   ^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: see issue #74878 <https://github.com/rust-lang/rust/issues/74878> for more information
+   = help: add `#![feature(min_const_generics)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

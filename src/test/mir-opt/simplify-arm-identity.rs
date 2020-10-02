@@ -13,7 +13,7 @@ enum Dst {
     Foo(u8),
 }
 
-// EMIT_MIR rustc.main.SimplifyArmIdentity.diff
+// EMIT_MIR simplify_arm_identity.main.SimplifyArmIdentity.diff
 fn main() {
     let e: Src = Src::Foo(0);
     let _: Dst = match e {

@@ -2,7 +2,7 @@ error[E0432]: unresolved import `ycrate`
   --> $DIR/non-existent-3.rs:3:5
    |
 LL | use ycrate;
-   |     ^^^^^^ no `ycrate` external crate
+   |     ^^^^^^ no external crate `ycrate`
 
 error: aborting due to previous error
 

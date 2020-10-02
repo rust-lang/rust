@@ -1,4 +1,4 @@
-use core::array::FixedSizeArray;
+use core::cell::Cell;
 use core::clone::Clone;
 use core::mem;
 use core::ops::DerefMut;
@@ -356,4 +356,49 @@ fn test_replace() {
 
     assert_eq!(x, Some(3));
     assert_eq!(old, None);
+}
+
+#[test]
+fn option_const() {
+    // test that the methods of `Option` are usable in a const context
+
+    const OPTION: Option<usize> = Some(32);
+
+    const REF: Option<&usize> = OPTION.as_ref();
+    assert_eq!(REF, Some(&32));
+
+    const IS_SOME: bool = OPTION.is_some();
+    assert!(IS_SOME);
+
+    const IS_NONE: bool = OPTION.is_none();
+    assert!(!IS_NONE);
+}
+
+#[test]
+fn test_unwrap_drop() {
+    struct Dtor<'a> {
+        x: &'a Cell<isize>,
+    }
+
+    impl<'a> std::ops::Drop for Dtor<'a> {
+        fn drop(&mut self) {
+            self.x.set(self.x.get() - 1);
+        }
+    }
+
+    fn unwrap<T>(o: Option<T>) -> T {
+        match o {
+            Some(v) => v,
+            None => panic!(),
+        }
+    }
+
+    let x = &Cell::new(1);
+
+    {
+        let b = Some(Dtor { x });
+        let _c = unwrap(b);
+    }
+
+    assert_eq!(x.get(), 0);
 }

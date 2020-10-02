@@ -1,0 +1,41 @@
+- // MIR for `bar` before ConstProp
++ // MIR for `bar` after ConstProp
+  
+  fn bar() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/const_prop_miscompile.rs:11:10: 11:10
+      let mut _1: (i32,);                  // in scope 0 at $DIR/const_prop_miscompile.rs:12:9: 12:14
+      let _2: ();                          // in scope 0 at $DIR/const_prop_miscompile.rs:13:5: 15:6
+      let mut _3: *mut i32;                // in scope 0 at $DIR/const_prop_miscompile.rs:14:10: 14:22
+      let mut _5: i32;                     // in scope 0 at $DIR/const_prop_miscompile.rs:16:13: 16:20
+      scope 1 {
+          debug v => _1;                   // in scope 1 at $DIR/const_prop_miscompile.rs:12:9: 12:14
+          let _4: bool;                    // in scope 1 at $DIR/const_prop_miscompile.rs:16:9: 16:10
+          scope 2 {
+          }
+          scope 3 {
+              debug y => _4;               // in scope 3 at $DIR/const_prop_miscompile.rs:16:9: 16:10
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/const_prop_miscompile.rs:12:9: 12:14
+          (_1.0: i32) = const 1_i32;       // scope 0 at $DIR/const_prop_miscompile.rs:12:17: 12:21
+          StorageLive(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:13:5: 15:6
+          StorageLive(_3);                 // scope 2 at $DIR/const_prop_miscompile.rs:14:10: 14:22
+          _3 = &raw mut (_1.0: i32);       // scope 2 at $DIR/const_prop_miscompile.rs:14:10: 14:22
+          (*_3) = const 5_i32;             // scope 2 at $DIR/const_prop_miscompile.rs:14:9: 14:26
+          StorageDead(_3);                 // scope 2 at $DIR/const_prop_miscompile.rs:14:26: 14:27
+          _2 = const ();                   // scope 2 at $DIR/const_prop_miscompile.rs:13:5: 15:6
+          StorageDead(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:15:5: 15:6
+          StorageLive(_4);                 // scope 1 at $DIR/const_prop_miscompile.rs:16:9: 16:10
+          StorageLive(_5);                 // scope 1 at $DIR/const_prop_miscompile.rs:16:13: 16:20
+          _5 = (_1.0: i32);                // scope 1 at $DIR/const_prop_miscompile.rs:16:15: 16:18
+          _4 = Eq(move _5, const 5_i32);   // scope 1 at $DIR/const_prop_miscompile.rs:16:13: 16:25
+          StorageDead(_5);                 // scope 1 at $DIR/const_prop_miscompile.rs:16:24: 16:25
+          _0 = const ();                   // scope 0 at $DIR/const_prop_miscompile.rs:11:10: 17:2
+          StorageDead(_4);                 // scope 1 at $DIR/const_prop_miscompile.rs:17:1: 17:2
+          StorageDead(_1);                 // scope 0 at $DIR/const_prop_miscompile.rs:17:1: 17:2
+          return;                          // scope 0 at $DIR/const_prop_miscompile.rs:17:2: 17:2
+      }
+  }
+  

@@ -1,5 +1,5 @@
 error: expected type, found `""`
-  --> $DIR/type-ascription-instead-of-variant.rs:2:25
+  --> $DIR/type-ascription-instead-of-variant.rs:3:25
    |
 LL |     let _ = Option:Some("");
    |                   -     ^^ expected type

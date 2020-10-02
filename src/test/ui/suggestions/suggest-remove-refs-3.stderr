@@ -1,4 +1,4 @@
-error[E0277]: `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
+error[E0277]: `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
   --> $DIR/suggest-remove-refs-3.rs:6:19
    |
 LL |        for (i, _) in & & &
@@ -9,10 +9,10 @@ LL | ||         & &v
    | ||___________- help: consider removing 5 leading `&`-references
 LL | |          .iter()
 LL | |          .enumerate() {
-   | |_____________________^ `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
+   | |_____________________^ `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>`
-   = note: required by `std::iter::IntoIterator::into_iter`
+   = help: the trait `Iterator` is not implemented for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>`
+   = note: required by `into_iter`
 
 error: aborting due to previous error
 

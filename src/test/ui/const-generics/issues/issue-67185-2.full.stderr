@@ -1,0 +1,103 @@
+error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:17:1
+   |
+LL | / trait Foo
+LL | |
+LL | |     where
+LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
+LL | |         <u8 as Baz>::Quaks: Bar,
+LL | | {
+LL | | }
+   | |_^ the trait `Bar` is not implemented for `[u16; 3]`
+   |
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:17:1
+   |
+LL | / trait Foo
+LL | |
+LL | |     where
+LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
+LL | |         <u8 as Baz>::Quaks: Bar,
+LL | | {
+LL | | }
+   | |_^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
+   |
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:27:6
+   |
+LL | trait Foo
+   |       --- required by a bound in this
+...
+LL |         <u8 as Baz>::Quaks: Bar,
+   |                             --- required by this bound in `Foo`
+...
+LL | impl Foo for FooImpl {}
+   |      ^^^ the trait `Bar` is not implemented for `[u16; 3]`
+   |
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
+
+error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:27:6
+   |
+LL | trait Foo
+   |       --- required by a bound in this
+...
+LL |         [<u8 as Baz>::Quaks; 2]: Bar,
+   |                                  --- required by this bound in `Foo`
+...
+LL | impl Foo for FooImpl {}
+   |      ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
+   |
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
+
+error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:31:14
+   |
+LL | trait Foo
+   |       --- required by a bound in this
+...
+LL |         [<u8 as Baz>::Quaks; 2]: Bar,
+   |                                  --- required by this bound in `Foo`
+...
+LL | fn f(_: impl Foo) {}
+   |              ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
+   |
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
+
+error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:31:14
+   |
+LL | trait Foo
+   |       --- required by a bound in this
+...
+LL |         <u8 as Baz>::Quaks: Bar,
+   |                             --- required by this bound in `Foo`
+...
+LL | fn f(_: impl Foo) {}
+   |              ^^^ the trait `Bar` is not implemented for `[u16; 3]`
+   |
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

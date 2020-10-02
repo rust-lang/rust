@@ -57,4 +57,14 @@ impl E {
 #[derive(Deserialize)]
 pub struct F {}
 
+// Check that we honor the `allow` attribute on the ADT
+#[allow(clippy::unsafe_derive_deserialize)]
+#[derive(Deserialize)]
+pub struct G {}
+impl G {
+    pub fn unsafe_block(&self) {
+        unsafe {}
+    }
+}
+
 fn main() {}

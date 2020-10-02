@@ -33,7 +33,7 @@ fn main() {
         box (true, false) => ()
 //~^ ERROR mismatched types
 //~| expected tuple `(bool, bool)`
-//~| found struct `std::boxed::Box<_>`
+//~| found struct `Box<_>`
     }
 
     match (true, false) {

@@ -1,12 +1,12 @@
 // check-pass
 // edition:2018
+// compile-flags: -Z span-debug
 // aux-build:test-macros.rs
 // aux-build:dollar-crate-external.rs
 
-// Anonymize unstable non-dummy spans while still showing dummy spans `0..0`.
-// normalize-stdout-test "bytes\([^0]\w*\.\.(\w+)\)" -> "bytes(LO..$1)"
-// normalize-stdout-test "bytes\((\w+)\.\.[^0]\w*\)" -> "bytes($1..HI)"
-// normalize-stdout-test "#\d+" -> "#CTXT"
+
+#![no_std] // Don't load unnecessary hygiene information from std
+extern crate std;
 
 #[macro_use]
 extern crate test_macros;

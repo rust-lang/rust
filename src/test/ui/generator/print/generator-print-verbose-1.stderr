@@ -1,0 +1,40 @@
+error: generator cannot be sent between threads safely
+  --> $DIR/generator-print-verbose-1.rs:37:5
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ---- required by this bound in `require_send`
+...
+LL |     require_send(send_gen);
+   |     ^^^^^^^^^^^^ generator is not `Send`
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/generator-print-verbose-1.rs:35:9
+   |
+LL |         let _non_send_gen = make_non_send_generator();
+   |             ------------- has type `Opaque(DefId(0:24 ~ generator_print_verbose_1[317d]::make_non_send_generator::{opaque#0}), [])` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
+LL |     };
+   |     - `_non_send_gen` is later dropped here
+
+error[E0277]: `RefCell<i32>` cannot be shared between threads safely
+  --> $DIR/generator-print-verbose-1.rs:56:5
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ---- required by this bound in `require_send`
+...
+LL |     require_send(send_gen);
+   |     ^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: required because of the requirements on the impl of `Send` for `Arc<RefCell<i32>>`
+   = note: required because it appears within the type `[make_gen2<Arc<RefCell<i32>>>::{closure#0} upvar_tys=(Arc<RefCell<i32>>) {()}]`
+   = note: required because it appears within the type `Opaque(DefId(0:29 ~ generator_print_verbose_1[317d]::make_gen2::{opaque#0}), [std::sync::Arc<std::cell::RefCell<i32>>])`
+   = note: required because it appears within the type `Opaque(DefId(0:32 ~ generator_print_verbose_1[317d]::make_non_send_generator2::{opaque#0}), [])`
+   = note: required because it appears within the type `{Opaque(DefId(0:32 ~ generator_print_verbose_1[317d]::make_non_send_generator2::{opaque#0}), []), ()}`
+   = note: required because it appears within the type `[test2::{closure#0} upvar_tys=() {Opaque(DefId(0:32 ~ generator_print_verbose_1[317d]::make_non_send_generator2::{opaque#0}), []), ()}]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

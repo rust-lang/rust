@@ -271,7 +271,7 @@ impl EarlyLintPass for MiscEarlyLints {
                         cx,
                         BUILTIN_TYPE_SHADOW,
                         param.ident.span,
-                        &format!("This generic shadows the built-in type `{}`", name),
+                        &format!("this generic shadows the built-in type `{}`", name),
                     );
                 }
             }
@@ -298,9 +298,9 @@ impl EarlyLintPass for MiscEarlyLints {
                     cx,
                     UNNEEDED_FIELD_PATTERN,
                     pat.span,
-                    "All the struct fields are matched to a wildcard pattern, consider using `..`.",
+                    "all the struct fields are matched to a wildcard pattern, consider using `..`",
                     None,
-                    &format!("Try with `{} {{ .. }}` instead", type_name),
+                    &format!("try with `{} {{ .. }}` instead", type_name),
                 );
                 return;
             }
@@ -313,7 +313,7 @@ impl EarlyLintPass for MiscEarlyLints {
                                 cx,
                                 UNNEEDED_FIELD_PATTERN,
                                 field.span,
-                                "You matched a field with a wildcard pattern. Consider using `..` instead",
+                                "you matched a field with a wildcard pattern, consider using `..` instead",
                             );
                         } else {
                             let mut normal = vec![];
@@ -333,10 +333,10 @@ impl EarlyLintPass for MiscEarlyLints {
                                 cx,
                                 UNNEEDED_FIELD_PATTERN,
                                 field.span,
-                                "You matched a field with a wildcard pattern. Consider using `..` \
+                                "you matched a field with a wildcard pattern, consider using `..` \
                                  instead",
                                 None,
-                                &format!("Try with `{} {{ {}, .. }}`", type_name, normal[..].join(", ")),
+                                &format!("try with `{} {{ {}, .. }}`", type_name, normal[..].join(", ")),
                             );
                         }
                     }
@@ -377,8 +377,8 @@ impl EarlyLintPass for MiscEarlyLints {
             if let PatKind::Ident(_, ident, None) = arg.pat.kind {
                 let arg_name = ident.to_string();
 
-                if arg_name.starts_with('_') {
-                    if let Some(correspondence) = registered_names.get(&arg_name[1..]) {
+                if let Some(arg_name) = arg_name.strip_prefix('_') {
+                    if let Some(correspondence) = registered_names.get(arg_name) {
                         span_lint(
                             cx,
                             DUPLICATE_UNDERSCORE_ARGUMENT,
@@ -386,7 +386,7 @@ impl EarlyLintPass for MiscEarlyLints {
                             &format!(
                                 "`{}` already exists, having another argument having almost the same \
                                  name makes code comprehension and documentation more difficult",
-                                arg_name[1..].to_owned()
+                                arg_name
                             ),
                         );
                     }

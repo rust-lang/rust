@@ -17,6 +17,7 @@ fn foo<T: Default>() {
 fn foo2<T: Default>() {
     let _: T = Default::default();
     (|| {
+        //~^ ERROR item has unused generic parameters
         let call: extern "rust-call" fn(_, _) = Fn::call;
         call(&|| {}, ());
         //~^ ERROR item has unused generic parameters

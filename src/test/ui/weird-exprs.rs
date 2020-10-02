@@ -5,7 +5,7 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![allow(unreachable_code)]
-#![allow(unused_braces, unused_parens)]
+#![allow(unused_braces, unused_must_use, unused_parens)]
 
 #![recursion_limit = "256"]
 

@@ -30,12 +30,10 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 /// nanosecond-level precision, APIs binding a system timeout will typically round up
 /// the number of nanoseconds.
 ///
-/// `Duration`s implement many common traits, including [`Add`], [`Sub`], and other
-/// [`ops`] traits. It implements `Default` by returning a zero-length `Duration`.
+/// [`Duration`]s implement many common traits, including [`Add`], [`Sub`], and other
+/// [`ops`] traits. It implements [`Default`] by returning a zero-length `Duration`.
 ///
-/// [`Add`]: ../../std/ops/trait.Add.html
-/// [`Sub`]: ../../std/ops/trait.Sub.html
-/// [`ops`]: ../../std/ops/index.html
+/// [`ops`]: crate::ops
 ///
 /// # Examples
 ///
@@ -109,6 +107,34 @@ impl Duration {
     /// ```
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const NANOSECOND: Duration = Duration::from_nanos(1);
+
+    /// The minimum duration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MIN, Duration::new(0, 0));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MIN: Duration = Duration::from_nanos(0);
+
+    /// The maximum duration.
+    ///
+    /// It is roughly equal to a duration of 584,942,417,355 years.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MAX, Duration::new(u64::MAX, 1_000_000_000 - 1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MAX: Duration = Duration::new(u64::MAX, NANOS_PER_SEC - 1);
 
     /// Creates a new `Duration` from the specified number of whole seconds and
     /// additional nanoseconds.
@@ -293,7 +319,7 @@ impl Duration {
     ///            + duration.subsec_nanos() as f64 * 1e-9);
     /// ```
     ///
-    /// [`subsec_nanos`]: #method.subsec_nanos
+    /// [`subsec_nanos`]: Duration::subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[rustc_const_stable(feature = "duration", since = "1.32.0")]
     #[inline]
@@ -421,8 +447,6 @@ impl Duration {
     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
     /// if overflow occurred.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -454,10 +478,31 @@ impl Duration {
         }
     }
 
+    /// Saturating `Duration` addition. Computes `self + other`, returning [`Duration::MAX`]
+    /// if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_saturating_ops)]
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
+    /// assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
+    /// ```
+    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn saturating_add(self, rhs: Duration) -> Duration {
+        match self.checked_add(rhs) {
+            Some(res) => res,
+            None => Duration::MAX,
+        }
+    }
+
     /// Checked `Duration` subtraction. Computes `self - other`, returning [`None`]
     /// if the result would be negative or if overflow occurred.
-    ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -491,10 +536,31 @@ impl Duration {
         }
     }
 
+    /// Saturating `Duration` subtraction. Computes `self - other`, returning [`Duration::MIN`]
+    /// if the result would be negative or if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_saturating_ops)]
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
+    /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::MIN);
+    /// ```
+    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn saturating_sub(self, rhs: Duration) -> Duration {
+        match self.checked_sub(rhs) {
+            Some(res) => res,
+            None => Duration::MIN,
+        }
+    }
+
     /// Checked `Duration` multiplication. Computes `self * other`, returning
     /// [`None`] if overflow occurred.
-    ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -523,10 +589,31 @@ impl Duration {
         None
     }
 
+    /// Saturating `Duration` multiplication. Computes `self * other`, returning
+    /// [`Duration::MAX`] if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_saturating_ops)]
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 500_000_001).saturating_mul(2), Duration::new(1, 2));
+    /// assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
+    /// ```
+    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn saturating_mul(self, rhs: u32) -> Duration {
+        match self.checked_mul(rhs) {
+            Some(res) => res,
+            None => Duration::MAX,
+        }
+    }
+
     /// Checked `Duration` division. Computes `self / other`, returning [`None`]
     /// if `other == 0`.
-    ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -606,7 +693,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn from_secs_f64(secs: f64) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn from_secs_f64(secs: f64) -> Duration {
         const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f64;
         let nanos = secs * (NANOS_PER_SEC as f64);
         if !nanos.is_finite() {
@@ -640,7 +728,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn from_secs_f32(secs: f32) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn from_secs_f32(secs: f32) -> Duration {
         const MAX_NANOS_F32: f32 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f32;
         let nanos = secs * (NANOS_PER_SEC as f32);
         if !nanos.is_finite() {
@@ -674,7 +763,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn mul_f64(self, rhs: f64) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn mul_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(rhs * self.as_secs_f64())
     }
 
@@ -695,7 +785,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn mul_f32(self, rhs: f32) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn mul_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(rhs * self.as_secs_f32())
     }
 
@@ -715,7 +806,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn div_f64(self, rhs: f64) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn div_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(self.as_secs_f64() / rhs)
     }
 
@@ -737,7 +829,8 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub fn div_f32(self, rhs: f32) -> Duration {
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn div_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(self.as_secs_f32() / rhs)
     }
 

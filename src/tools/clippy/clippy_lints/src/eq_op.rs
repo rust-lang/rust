@@ -1,5 +1,5 @@
 use crate::utils::{
-    implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq,
+    eq_expr_value, implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, BorrowKind, Expr, ExprKind};
@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
             if macro_with_not_op(&left.kind) || macro_with_not_op(&right.kind) {
                 return;
             }
-            if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {
+            if is_valid_operator(op) && eq_expr_value(cx, left, right) {
                 span_lint(
                     cx,
                     EQ_OP,

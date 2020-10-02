@@ -8,7 +8,7 @@ unsafe fn foo(z: *mut usize) -> u32 {
 }
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-// EMIT_MIR rustc.main.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR array_index_is_temporary.main.SimplifyCfg-elaborate-drops.after.mir
 fn main() {
     let mut x = [42, 43, 44];
     let mut y = 1;

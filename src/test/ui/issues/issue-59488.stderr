@@ -79,25 +79,25 @@ LL |     assert_eq!(Foo::Bar, i);
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `std::fmt::Debug`
+error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
-   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&fn(usize) -> Foo {Foo::Bar}`
+   = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
+   = note: required because of the requirements on the impl of `Debug` for `&fn(usize) -> Foo {Foo::Bar}`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `std::fmt::Debug`
+error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
-   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&fn(usize) -> Foo {Foo::Bar}`
+   = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
+   = note: required because of the requirements on the impl of `Debug` for `&fn(usize) -> Foo {Foo::Bar}`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

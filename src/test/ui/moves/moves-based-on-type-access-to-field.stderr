@@ -2,7 +2,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-access-to-field.rs:11:12
    |
 LL |     let x = vec!["hi".to_string()];
-   |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `Vec<String>`, which does not implement the `Copy` trait
 LL |     consume(x.into_iter().next().unwrap());
    |               ----------- `x` moved due to this method call
 LL |     touch(&x[0]);

@@ -7,15 +7,6 @@ LL |     *std::ptr::null_mut() = 0;
    = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
    = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-suggest-feature.rs:2:5
-   |
-LL |     *std::ptr::null_mut() = 0;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0019, E0658.
-For more information about an error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0658`.

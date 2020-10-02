@@ -5,7 +5,7 @@ LL | fn test1() -> _ { Some(42) }
    |               ^
    |               |
    |               not allowed in type signatures
-   |               help: replace with the correct return type: `std::option::Option<i32>`
+   |               help: replace with the correct return type: `Option<i32>`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item_help.rs:7:14
@@ -23,7 +23,7 @@ LL | const TEST3: _ = Some(42);
    |              ^
    |              |
    |              not allowed in type signatures
-   |              help: replace `_` with the correct type: `std::option::Option<i32>`
+   |              help: replace `_` with the correct type: `Option<i32>`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item_help.rs:14:18

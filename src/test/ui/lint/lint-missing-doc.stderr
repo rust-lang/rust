@@ -118,5 +118,23 @@ error: missing documentation for a function
 LL |         pub fn also_undocumented1() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:189:5
+   |
+LL |     pub fn extern_fn_undocumented(f: f32) -> f32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a static
+  --> $DIR/lint-missing-doc.rs:194:5
+   |
+LL |     pub static EXTERN_STATIC_UNDOCUMENTED: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a foreign type
+  --> $DIR/lint-missing-doc.rs:199:5
+   |
+LL |     pub type ExternTyUndocumented;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 22 previous errors
 

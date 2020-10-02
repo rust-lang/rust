@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 
@@ -37,7 +38,7 @@ fn box_clone_and_clone_from_equivalence() {
 /// This test might give a false positive in case the box realocates, but the alocator keeps the
 /// original pointer.
 ///
-/// On the other hand it won't give a false negative, if it fails than the memory was definitly not
+/// On the other hand it won't give a false negative, if it fails than the memory was definitely not
 /// reused
 #[test]
 fn box_clone_from_ptr_stability() {
@@ -48,4 +49,11 @@ fn box_clone_from_ptr_stability() {
         copy.clone_from(&control);
         assert_eq!(copy.as_ptr() as usize, copy_raw);
     }
+}
+
+#[test]
+fn box_deref_lval() {
+    let x = Box::new(Cell::new(5));
+    x.set(1000);
+    assert_eq!(x.get(), 1000);
 }

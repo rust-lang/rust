@@ -1,7 +1,7 @@
 // Check that when we compile the static `XXX` into MIR, we do not
 // generate `StorageStart` or `StorageEnd` statements.
 
-// EMIT_MIR rustc.XXX.mir_map.0.mir
+// EMIT_MIR storage_live_dead_in_statics.XXX.mir_map.0.mir
 static XXX: &'static Foo = &Foo {
     tup: "hi",
     data: &[

@@ -10,7 +10,7 @@ LL |
 LL |             var = Some(NotCopyable);
    |             ---
    |             |
-   |             move occurs because `var` has type `std::option::Option<NotCopyable>`, which does not implement the `Copy` trait
+   |             move occurs because `var` has type `Option<NotCopyable>`, which does not implement the `Copy` trait
    |             move occurs due to use in closure
 
 error: aborting due to previous error

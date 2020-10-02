@@ -103,8 +103,6 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![feature(drain_filter)]
-
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -143,6 +141,7 @@ mod metadata;
 mod native;
 mod run;
 mod sanity;
+mod setup;
 mod test;
 mod tool;
 mod toolstate;
@@ -167,7 +166,7 @@ mod job {
 
 use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
-use crate::flags::Subcommand;
+pub use crate::flags::Subcommand;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-nm", // used to inspect binaries; it shows symbol names, their sizes and visibility
@@ -219,6 +218,9 @@ pub enum GitRepo {
 pub struct Build {
     /// User-specified configuration from `config.toml`.
     config: Config,
+
+    // Version information
+    version: String,
 
     // Properties derived from the above configuration
     src: PathBuf,
@@ -300,9 +302,6 @@ pub enum Mode {
     /// Build librustc, and compiler libraries, placing output in the "stageN-rustc" directory.
     Rustc,
 
-    /// Build codegen libraries, placing output in the "stageN-codegen" directory
-    Codegen,
-
     /// Build a tool, placing output in the "stage0-bootstrap-tools"
     /// directory. This is for miscellaneous sets of tools that are built
     /// using the bootstrap stage0 compiler in its entirety (target libraries
@@ -323,10 +322,7 @@ pub enum Mode {
 
 impl Mode {
     pub fn is_tool(&self) -> bool {
-        match self {
-            Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd => true,
-            _ => false,
-        }
+        matches!(self, Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd)
     }
 }
 
@@ -388,6 +384,10 @@ impl Build {
             .unwrap()
             .to_path_buf();
 
+        let version = std::fs::read_to_string(src.join("src").join("version"))
+            .expect("failed to read src/version");
+        let version = version.trim();
+
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
@@ -403,6 +403,7 @@ impl Build {
             targets: config.targets.clone(),
 
             config,
+            version: version.to_string(),
             src,
             out,
 
@@ -441,8 +442,7 @@ impl Build {
             .next()
             .unwrap()
             .trim();
-        let my_version = channel::CFG_RELEASE_NUM;
-        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
+        if local_release.split('.').take(2).eq(version.split('.').take(2)) {
             build.verbose(&format!("auto-detected local-rebuild {}", local_release));
             build.local_rebuild = true;
         }
@@ -469,6 +469,10 @@ impl Build {
 
         if let Subcommand::Clean { all } = self.config.cmd {
             return clean::clean(self, all);
+        }
+
+        if let Subcommand::Setup { path: include_name } = &self.config.cmd {
+            return setup::setup(&self.config.src, include_name);
         }
 
         {
@@ -549,6 +553,16 @@ impl Build {
         if self.config.llvm_enabled() {
             features.push_str(" llvm");
         }
+
+        // If debug logging is on, then we want the default for tracing:
+        // https://github.com/tokio-rs/tracing/blob/3dd5c03d907afdf2c39444a29931833335171554/tracing/src/level_filters.rs#L26
+        // which is everything (including debug/trace/etc.)
+        // if its unset, if debug_assertions is on, then debug_logging will also be on
+        // as well as tracing *ignoring* this feature when debug_assertions is on
+        if !self.config.rust_debug_logging {
+            features.push_str(" max_level_info");
+        }
+
         features
     }
 
@@ -575,7 +589,6 @@ impl Build {
         let suffix = match mode {
             Mode::Std => "-std",
             Mode::Rustc => "-rustc",
-            Mode::Codegen => "-codegen",
             Mode::ToolBootstrap => "-bootstrap-tools",
             Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
@@ -620,6 +633,10 @@ impl Build {
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
     fn is_rust_llvm(&self, target: TargetSelection) -> bool {
+        if self.config.llvm_from_ci && target == self.config.build {
+            return true;
+        }
+
         match self.config.target_config.get(&target) {
             Some(ref c) => c.llvm_config.is_none(),
             None => true,
@@ -653,7 +670,7 @@ impl Build {
             }
         } else {
             let base = self.llvm_out(self.config.build).join("build");
-            let base = if !self.config.ninja && self.config.build.contains("msvc") {
+            let base = if !self.ninja() && self.config.build.contains("msvc") {
                 if self.config.llvm_optimize {
                     if self.config.llvm_release_debuginfo {
                         base.join("RelWithDebInfo")
@@ -780,7 +797,7 @@ impl Build {
 
         match which {
             GitRepo::Rustc => {
-                let sha = self.rust_sha().unwrap_or(channel::CFG_RELEASE_NUM);
+                let sha = self.rust_sha().unwrap_or(&self.version);
                 Some(format!("/rustc/{}", sha))
             }
             GitRepo::Llvm => Some(String::from("/rustc/llvm")),
@@ -853,20 +870,30 @@ impl Build {
     }
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
-    fn linker(&self, target: TargetSelection, can_use_lld: bool) -> Option<&Path> {
+    fn linker(&self, target: TargetSelection) -> Option<&Path> {
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.as_ref())
         {
             Some(linker)
+        } else if target.contains("vxworks") {
+            // need to use CXX compiler as linker to resolve the exception functions
+            // that are only existed in CXX libraries
+            Some(self.cxx[&target].path())
         } else if target != self.config.build
             && util::use_host_linker(target)
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if can_use_lld && self.config.use_lld && self.build == target {
+        } else if self.config.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
             Some(&self.initial_lld)
         } else {
             None
         }
+    }
+
+    // LLD is used through `-fuse-ld=lld` rather than directly.
+    // Only MSVC targets use LLD directly at the moment.
+    fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
+        self.config.use_lld && !target.contains("msvc")
     }
 
     /// Returns if this target should statically link the C runtime, if specified
@@ -1001,7 +1028,7 @@ impl Build {
 
     /// Returns the value of `release` above for Rust itself.
     fn rust_release(&self) -> String {
-        self.release(channel::CFG_RELEASE_NUM)
+        self.release(&self.version)
     }
 
     /// Returns the "package version" for a component given the `num` release
@@ -1021,7 +1048,7 @@ impl Build {
 
     /// Returns the value of `package_vers` above for Rust itself.
     fn rust_package_vers(&self) -> String {
-        self.package_vers(channel::CFG_RELEASE_NUM)
+        self.package_vers(&self.version)
     }
 
     /// Returns the value of `package_vers` above for Cargo
@@ -1055,7 +1082,7 @@ impl Build {
     }
 
     fn llvm_tools_package_vers(&self) -> String {
-        self.package_vers(channel::CFG_RELEASE_NUM)
+        self.package_vers(&self.version)
     }
 
     fn llvm_tools_vers(&self) -> String {
@@ -1072,7 +1099,7 @@ impl Build {
     /// Note that this is a descriptive string which includes the commit date,
     /// sha, version, etc.
     fn rust_version(&self) -> String {
-        self.rust_info.version(self, channel::CFG_RELEASE_NUM)
+        self.rust_info.version(self, &self.version)
     }
 
     /// Returns the full commit hash.
@@ -1326,6 +1353,43 @@ impl Build {
             return;
         }
         fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+    }
+
+    /// Returns if config.ninja is enabled, and checks for ninja existence,
+    /// exiting with a nicer error message if not.
+    fn ninja(&self) -> bool {
+        let mut cmd_finder = crate::sanity::Finder::new();
+
+        if self.config.ninja_in_file {
+            // Some Linux distros rename `ninja` to `ninja-build`.
+            // CMake can work with either binary name.
+            if cmd_finder.maybe_have("ninja-build").is_none()
+                && cmd_finder.maybe_have("ninja").is_none()
+            {
+                eprintln!(
+                    "
+Couldn't find required command: ninja
+You should install ninja, or set ninja=false in config.toml
+"
+                );
+                std::process::exit(1);
+            }
+        }
+
+        // If ninja isn't enabled but we're building for MSVC then we try
+        // doubly hard to enable it. It was realized in #43767 that the msbuild
+        // CMake generator for MSVC doesn't respect configuration options like
+        // disabling LLVM assertions, which can often be quite important!
+        //
+        // In these cases we automatically enable Ninja if we find it in the
+        // environment.
+        if !self.config.ninja_in_file && self.config.build.contains("msvc") {
+            if cmd_finder.maybe_have("ninja").is_some() {
+                return true;
+            }
+        }
+
+        self.config.ninja_in_file
     }
 }
 

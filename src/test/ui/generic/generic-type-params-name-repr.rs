@@ -27,12 +27,12 @@ fn main() {
     let _: HashMap<String, isize> = ();
     //~^ ERROR mismatched types
     //~| expected struct `HashMap`, found `()`
-    //~| expected struct `HashMap<std::string::String, isize>`
+    //~| expected struct `HashMap<String, isize>`
     //~| found unit type `()`
     let _: HashMap<String, isize, Hash<String>> = ();
     //~^ ERROR mismatched types
     //~| expected struct `HashMap`, found `()`
-    //~| expected struct `HashMap<std::string::String, isize>`
+    //~| expected struct `HashMap<String, isize>`
     //~| found unit type `()`
 
     // But not when there's a different type in between.

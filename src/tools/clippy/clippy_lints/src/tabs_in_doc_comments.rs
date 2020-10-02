@@ -60,13 +60,14 @@ declare_lint_pass!(TabsInDocComments => [TABS_IN_DOC_COMMENTS]);
 
 impl TabsInDocComments {
     fn warn_if_tabs_in_doc(cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        if let ast::AttrKind::DocComment(comment) = attr.kind {
+        if let ast::AttrKind::DocComment(_, comment) = attr.kind {
             let comment = comment.as_str();
 
             for (lo, hi) in get_chunks_of_tabs(&comment) {
+                // +3 skips the opening delimiter
                 let new_span = Span::new(
-                    attr.span.lo() + BytePos(lo),
-                    attr.span.lo() + BytePos(hi),
+                    attr.span.lo() + BytePos(3 + lo),
+                    attr.span.lo() + BytePos(3 + hi),
                     attr.span.ctxt(),
                 );
                 span_lint_and_sugg(

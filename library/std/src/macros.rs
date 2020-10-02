@@ -1,6 +1,6 @@
 //! Standard library macros
 //!
-//! This modules contains a set of macros which are exported from the standard
+//! This module contains a set of macros which are exported from the standard
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
@@ -29,9 +29,7 @@ macro_rules! panic {
 /// Use `print!` only for the primary output of your program. Use
 /// [`eprint!`] instead to print error and progress messages.
 ///
-/// [`println!`]: ../std/macro.println.html
-/// [flush]: ../std/io/trait.Write.html#tymethod.flush
-/// [`eprint!`]: ../std/macro.eprint.html
+/// [flush]: crate::io::Write::flush
 ///
 /// # Panics
 ///
@@ -74,12 +72,13 @@ macro_rules! print {
 /// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.
 ///
-/// [`format!`]: ../std/macro.format.html
-/// [`std::fmt`]: ../std/fmt/index.html
-/// [`eprintln!`]: ../std/macro.eprintln.html
+/// [`std::fmt`]: crate::fmt
+///
 /// # Panics
 ///
-/// Panics if writing to `io::stdout` fails.
+/// Panics if writing to [`io::stdout`] fails.
+///
+/// [`io::stdout`]: crate::io::stdout
 ///
 /// # Examples
 ///
@@ -101,14 +100,14 @@ macro_rules! println {
 /// Prints to the standard error.
 ///
 /// Equivalent to the [`print!`] macro, except that output goes to
-/// [`io::stderr`] instead of `io::stdout`. See [`print!`] for
+/// [`io::stderr`] instead of [`io::stdout`]. See [`print!`] for
 /// example usage.
 ///
 /// Use `eprint!` only for error and progress messages. Use `print!`
 /// instead for the primary output of your program.
 ///
-/// [`io::stderr`]: ../std/io/struct.Stderr.html
-/// [`print!`]: ../std/macro.print.html
+/// [`io::stderr`]: crate::io::stderr
+/// [`io::stdout`]: crate::io::stdout
 ///
 /// # Panics
 ///
@@ -129,14 +128,14 @@ macro_rules! eprint {
 /// Prints to the standard error, with a newline.
 ///
 /// Equivalent to the [`println!`] macro, except that output goes to
-/// [`io::stderr`] instead of `io::stdout`. See [`println!`] for
+/// [`io::stderr`] instead of [`io::stdout`]. See [`println!`] for
 /// example usage.
 ///
 /// Use `eprintln!` only for error and progress messages. Use `println!`
 /// instead for the primary output of your program.
 ///
-/// [`io::stderr`]: ../std/io/struct.Stderr.html
-/// [`println!`]: ../std/macro.println.html
+/// [`io::stderr`]: crate::io::stderr
+/// [`io::stdout`]: crate::io::stdout
 ///
 /// # Panics
 ///

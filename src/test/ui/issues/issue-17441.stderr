@@ -10,7 +10,7 @@ help: consider using an implicit coercion to `&[usize]` instead
 LL |     let _foo = &[1_usize, 2] as [usize];
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0620]: cast to unsized type: `std::boxed::Box<usize>` as `dyn std::fmt::Debug`
+error[E0620]: cast to unsized type: `Box<usize>` as `dyn Debug`
   --> $DIR/issue-17441.rs:5:16
    |
 LL |     let _bar = Box::new(1_usize) as dyn std::fmt::Debug;
@@ -18,7 +18,7 @@ LL |     let _bar = Box::new(1_usize) as dyn std::fmt::Debug;
    |                                     |
    |                                     help: you can cast to a `Box` instead: `Box<dyn std::fmt::Debug>`
 
-error[E0620]: cast to unsized type: `usize` as `dyn std::fmt::Debug`
+error[E0620]: cast to unsized type: `usize` as `dyn Debug`
   --> $DIR/issue-17441.rs:8:16
    |
 LL |     let _baz = 1_usize as dyn std::fmt::Debug;

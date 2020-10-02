@@ -1460,6 +1460,15 @@ fn test_to_vec() {
 }
 
 #[test]
+fn test_in_place_iterator_specialization() {
+    let src: Box<[usize]> = box [1, 2, 3];
+    let src_ptr = src.as_ptr();
+    let sink: Box<_> = src.into_vec().into_iter().map(std::convert::identity).collect();
+    let sink_ptr = sink.as_ptr();
+    assert_eq!(src_ptr, sink_ptr);
+}
+
+#[test]
 fn test_box_slice_clone() {
     let data = vec![vec![0, 1], vec![0], vec![1]];
     let data2 = data.clone().into_boxed_slice().clone().to_vec();
@@ -1522,7 +1531,7 @@ fn test_copy_from_slice() {
 }
 
 #[test]
-#[should_panic(expected = "destination and source slices have different lengths")]
+#[should_panic(expected = "source slice length (4) does not match destination slice length (5)")]
 fn test_copy_from_slice_dst_longer() {
     let src = [0, 1, 2, 3];
     let mut dst = [0; 5];
@@ -1530,7 +1539,7 @@ fn test_copy_from_slice_dst_longer() {
 }
 
 #[test]
-#[should_panic(expected = "destination and source slices have different lengths")]
+#[should_panic(expected = "source slice length (4) does not match destination slice length (3)")]
 fn test_copy_from_slice_dst_shorter() {
     let src = [0, 1, 2, 3];
     let mut dst = [0; 3];
@@ -1721,8 +1730,8 @@ fn panic_safe() {
 
     let mut rng = thread_rng();
 
-    // Miri is too slow
-    let lens = if cfg!(miri) { (1..10).chain(20..21) } else { (1..20).chain(70..MAX_LEN) };
+    // Miri is too slow (but still need to `chain` to make the types match)
+    let lens = if cfg!(miri) { (1..10).chain(0..0) } else { (1..20).chain(70..MAX_LEN) };
     let moduli: &[u32] = if cfg!(miri) { &[5] } else { &[5, 20, 50] };
 
     for len in lens {

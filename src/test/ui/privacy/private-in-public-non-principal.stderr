@@ -2,7 +2,7 @@ warning: private trait `PrivNonPrincipal` in public interface (error E0445)
   --> $DIR/private-in-public-non-principal.rs:7:1
    |
 LL | pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> { loop {} }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(private_in_public)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

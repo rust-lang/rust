@@ -12,8 +12,8 @@ LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'a> {
    |                                                            ^^
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL | fn g<'a, T: 'static>(v: std::boxed::Box<(dyn A<T> + 'static)>) -> Box<dyn X + 'static> {
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn g<'a, T: 'static>(v: Box<(dyn A<T> + 'static)>) -> Box<dyn X + 'static> {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -9,5 +9,5 @@ fn main() {
 }
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-// EMIT_MIR rustc.main.SimplifyArmIdentity.diff
-// EMIT_MIR rustc.main.PreCodegen.diff
+// EMIT_MIR issue_73223.main.SimplifyArmIdentity.diff
+// EMIT_MIR issue_73223.main.PreCodegen.diff

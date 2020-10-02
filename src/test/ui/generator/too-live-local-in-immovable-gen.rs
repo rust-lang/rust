@@ -5,7 +5,7 @@
 
 fn main() {
     unsafe {
-        static move || {
+        static move || { //~ WARN unused generator that must be used
             // Tests that the generator transformation finds out that `a` is not live
             // during the yield expression. Type checking will also compute liveness
             // and it should also find out that `a` is not live.

@@ -1,10 +1,10 @@
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-inferred-type-1.rs:16:5
    |
 LL |     [].arr0_secret();
    |     ^^^^^^^^^^^^^^^^ private type
 
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-inferred-type-1.rs:17:5
    |
 LL |     None.ty_param_secret();

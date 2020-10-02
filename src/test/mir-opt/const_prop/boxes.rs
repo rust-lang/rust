@@ -7,7 +7,7 @@
 
 // Note: this test verifies that we, in fact, do not const prop `box`
 
-// EMIT_MIR rustc.main.ConstProp.diff
+// EMIT_MIR boxes.main.ConstProp.diff
 fn main() {
     let x = *(box 42) + 0;
 }

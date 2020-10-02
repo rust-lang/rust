@@ -1,4 +1,4 @@
-error[E0605]: non-primitive cast: `u8` as `std::vec::Vec<u8>`
+error[E0605]: non-primitive cast: `u8` as `Vec<u8>`
   --> $DIR/E0605.rs:3:5
    |
 LL |     x as Vec<u8>;

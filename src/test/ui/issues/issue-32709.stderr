@@ -4,10 +4,10 @@ error[E0277]: `?` couldn't convert the error to `()`
 LL | fn a() -> Result<i32, ()> {
    |           --------------- expected `()` because of this
 LL |     Err(5)?;
-   |           ^ the trait `std::convert::From<{integer}>` is not implemented for `()`
+   |           ^ the trait `From<{integer}>` is not implemented for `()`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required by `std::convert::From::from`
+   = note: required by `from`
 
 error: aborting due to previous error
 

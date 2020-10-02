@@ -112,6 +112,9 @@ fn main() {
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
             cmd.arg(format!("-Clinker={}", host_linker));
         }
+        if env::var_os("RUSTC_HOST_FUSE_LD_LLD").is_some() {
+            cmd.arg("-Clink-args=-fuse-ld=lld");
+        }
 
         if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
             if s == "true" {
@@ -171,7 +174,9 @@ fn main() {
         // note: everything below here is unreachable. do not put code that
         // should run on success, after this block.
     }
-    println!("\nDid not run successfully: {}\n{:?}\n-------------", status, cmd);
+    if verbose > 0 {
+        println!("\nDid not run successfully: {}\n{:?}\n-------------", status, cmd);
+    }
 
     if let Some(mut on_fail) = on_fail {
         on_fail.status().expect("Could not run the on_fail command");

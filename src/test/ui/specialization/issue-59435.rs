@@ -9,7 +9,7 @@ trait MyTrait {
 
 impl MyTrait for i32 {
     default type MyType = MyStruct;
-    //~^ ERROR: the trait bound `MyStruct: std::default::Default` is not satisfied
+    //~^ ERROR: the trait bound `MyStruct: Default` is not satisfied
 }
 
 fn main() {

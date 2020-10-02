@@ -7,7 +7,7 @@ LL |
 LL | impl Tsized for () {}
    |      ^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[()]`
+   = help: the trait `Sized` is not implemented for `[()]`
 
 error: aborting due to previous error
 

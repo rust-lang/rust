@@ -26,7 +26,7 @@ LL |         asm!("{}", in(reg) |x: i32| x);
    |
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
-error: cannot use value of type `std::vec::Vec<i32>` for inline assembly
+error: cannot use value of type `Vec<i32>` for inline assembly
   --> $DIR/type-check-2.rs:80:28
    |
 LL |         asm!("{}", in(reg) vec![0]);

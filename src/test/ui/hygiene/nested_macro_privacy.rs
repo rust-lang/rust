@@ -12,6 +12,6 @@ n!(foo, S, i, m);
 
 fn main() {
     use foo::{S, m};
-    S::default().i; //~ ERROR field `i` of struct `foo::S` is private
+    S::default().i; //~ ERROR field `i` of struct `S` is private
     m!(S::default()); // ok
 }

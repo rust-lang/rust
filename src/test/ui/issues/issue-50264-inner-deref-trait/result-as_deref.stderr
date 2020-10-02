@@ -1,12 +1,12 @@
 error[E0599]: no method named `as_deref` found for enum `std::result::Result<{integer}, _>` in the current scope
-  --> $DIR/result-as_deref.rs:4:27
+  --> $DIR/result-as_deref.rs:2:27
    |
 LL |     let _result = &Ok(42).as_deref();
    |                           ^^^^^^^^ help: there is an associated function with a similar name: `as_ref`
    |
    = note: the method `as_deref` exists but the following trait bounds were not satisfied:
-           `{integer}: std::ops::Deref`
-           `<{integer} as std::ops::Deref>::Target = _`
+           `{integer}: Deref`
+           `<{integer} as Deref>::Target = _`
 
 error: aborting due to previous error
 

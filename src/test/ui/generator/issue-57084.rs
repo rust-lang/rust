@@ -19,7 +19,7 @@ where F: Fn() -> ()
 
 fn main() {
     let data = &vec![1];
-    || {
+    || { //~ WARN unused generator that must be used
         let _to_pin = with(move || println!("{:p}", data));
         loop {
             yield

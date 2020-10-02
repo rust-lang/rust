@@ -351,8 +351,7 @@ impl ExitStatus {
     }
 
     fn exited(&self) -> bool {
-        /*unsafe*/
-        { libc::WIFEXITED(self.0) }
+        libc::WIFEXITED(self.0)
     }
 
     pub fn success(&self) -> bool {
@@ -360,19 +359,11 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        if self.exited() {
-            Some(/*unsafe*/ { libc::WEXITSTATUS(self.0) })
-        } else {
-            None
-        }
+        if self.exited() { Some(libc::WEXITSTATUS(self.0)) } else { None }
     }
 
     pub fn signal(&self) -> Option<i32> {
-        if !self.exited() {
-            Some(/*unsafe*/ { libc::WTERMSIG(self.0) })
-        } else {
-            None
-        }
+        if !self.exited() { Some(libc::WTERMSIG(self.0)) } else { None }
     }
 }
 

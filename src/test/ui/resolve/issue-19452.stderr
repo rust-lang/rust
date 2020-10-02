@@ -12,6 +12,11 @@ error[E0423]: expected value, found struct variant `issue_19452_aux::Homura::Mad
    |
 LL |     let homura = issue_19452_aux::Homura::Madoka;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `issue_19452_aux::Homura::Madoka { /* fields */ }`
+   | 
+  ::: $DIR/auxiliary/issue-19452-aux.rs:2:5
+   |
+LL |     Madoka { age: u32 }
+   |     ------ `issue_19452_aux::Homura::Madoka` defined here
 
 error: aborting due to 2 previous errors
 

@@ -4,7 +4,7 @@ struct Baz {
     z: bool,
 }
 
-// EMIT_MIR rustc.bar.Deaggregator.diff
+// EMIT_MIR deaggregator_test.bar.Deaggregator.diff
 fn bar(a: usize) -> Baz {
     Baz { x: a, y: 0.0, z: false }
 }

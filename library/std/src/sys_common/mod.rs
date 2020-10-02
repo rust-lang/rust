@@ -15,6 +15,9 @@
 #![allow(missing_docs)]
 #![allow(missing_debug_implementations)]
 
+#[cfg(test)]
+mod tests;
+
 use crate::sync::Once;
 use crate::sys;
 
@@ -63,6 +66,7 @@ pub mod thread;
 pub mod thread_info;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod util;
 pub mod wtf8;
 
@@ -140,9 +144,4 @@ pub fn mul_div_u64(value: u64, numer: u64, denom: u64) -> u64 {
     // substitute into (value*numer)/denom and simplify.
     // r < denom, so (denom*numer) is the upper bound of (r*numer)
     q * numer + r * numer / denom
-}
-
-#[test]
-fn test_muldiv() {
-    assert_eq!(mul_div_u64(1_000_000_000_001, 1_000_000_000, 1_000_000), 1_000_000_000_001_000);
 }

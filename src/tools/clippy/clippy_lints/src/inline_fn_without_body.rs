@@ -41,7 +41,7 @@ impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
 
 fn check_attrs(cx: &LateContext<'_>, name: Symbol, attrs: &[Attribute]) {
     for attr in attrs {
-        if !attr.check_name(sym!(inline)) {
+        if !attr.has_name(sym!(inline)) {
             continue;
         }
 

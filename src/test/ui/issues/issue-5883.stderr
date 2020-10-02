@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at
 LL | fn new_struct(r: dyn A + 'static)
    |               ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
    = help: unsized locals are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
@@ -20,7 +20,7 @@ LL |
 LL |     Struct { r: r }
    |     --------------- this returned value is of type `Struct`
    |
-   = help: within `Struct`, the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
+   = help: within `Struct`, the trait `Sized` is not implemented for `(dyn A + 'static)`
    = note: required because it appears within the type `Struct`
    = note: the return type of a function must have a statically known size
 

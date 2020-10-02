@@ -12,7 +12,7 @@ fn use_x(_: usize) -> bool {
 }
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-// EMIT_MIR rustc.main.nll.0.mir
+// EMIT_MIR region_subtyping_basic.main.nll.0.mir
 fn main() {
     let mut v = [1, 2, 3];
     let p = &v[0];

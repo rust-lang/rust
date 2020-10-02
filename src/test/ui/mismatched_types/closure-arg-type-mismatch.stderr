@@ -28,8 +28,8 @@ error[E0308]: mismatched types
 LL |     baz(f);
    |     ^^^ one type is more general than the other
    |
-   = note: expected type `for<'r> std::ops::Fn<(*mut &'r u32,)>`
-              found type `std::ops::Fn<(*mut &'a u32,)>`
+   = note: expected type `for<'r> Fn<(*mut &'r u32,)>`
+              found type `Fn<(*mut &'a u32,)>`
 
 error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
@@ -37,8 +37,8 @@ error[E0308]: mismatched types
 LL |     baz(f);
    |     ^^^ one type is more general than the other
    |
-   = note: expected type `std::ops::FnOnce<(*mut &u32,)>`
-              found type `std::ops::FnOnce<(*mut &'a u32,)>`
+   = note: expected type `FnOnce<(*mut &u32,)>`
+              found type `FnOnce<(*mut &'a u32,)>`
 
 error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
@@ -46,8 +46,8 @@ error[E0308]: mismatched types
 LL |     baz(f);
    |     ^^^ one type is more general than the other
    |
-   = note: expected type `for<'r> std::ops::Fn<(*mut &'r u32,)>`
-              found type `std::ops::Fn<(*mut &'a u32,)>`
+   = note: expected type `for<'r> Fn<(*mut &'r u32,)>`
+              found type `Fn<(*mut &'a u32,)>`
 
 error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
@@ -55,8 +55,8 @@ error[E0308]: mismatched types
 LL |     baz(f);
    |     ^^^ one type is more general than the other
    |
-   = note: expected type `std::ops::FnOnce<(*mut &u32,)>`
-              found type `std::ops::FnOnce<(*mut &'a u32,)>`
+   = note: expected type `FnOnce<(*mut &u32,)>`
+              found type `FnOnce<(*mut &'a u32,)>`
 
 error: aborting due to 7 previous errors
 

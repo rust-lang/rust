@@ -10,4 +10,4 @@ fn main() {
     }
 }
 
-// EMIT_MIR rustc.main.SimplifyCfg-final.after.mir
+// EMIT_MIR tls_access.main.SimplifyCfg-final.after.mir

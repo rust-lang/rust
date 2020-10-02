@@ -1,6 +1,6 @@
 // aux-build:intra-doc-basic.rs
 // build-aux-docs
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(broken_intra_doc_links)]
 
 // from https://github.com/rust-lang/rust/issues/65983
 extern crate a;

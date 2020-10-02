@@ -42,13 +42,13 @@ impl Condvar {
 
     pub unsafe fn notify_one(&self) {
         self.cnt.fetch_add(1, SeqCst);
-        wasm32::atomic_notify(self.ptr(), 1);
+        wasm32::memory_atomic_notify(self.ptr(), 1);
     }
 
     #[inline]
     pub unsafe fn notify_all(&self) {
         self.cnt.fetch_add(1, SeqCst);
-        wasm32::atomic_notify(self.ptr(), u32::MAX); // -1 == "wake everyone"
+        wasm32::memory_atomic_notify(self.ptr(), u32::MAX); // -1 == "wake everyone"
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {
@@ -62,7 +62,7 @@ impl Condvar {
         // wake us up once we're asleep.
         let ticket = self.cnt.load(SeqCst) as i32;
         mutex.unlock();
-        let val = wasm32::i32_atomic_wait(self.ptr(), ticket, -1);
+        let val = wasm32::memory_atomic_wait32(self.ptr(), ticket, -1);
         // 0 == woken, 1 == not equal to `ticket`, 2 == timeout (shouldn't happen)
         debug_assert!(val == 0 || val == 1);
         mutex.lock();
@@ -76,7 +76,7 @@ impl Condvar {
 
         // If the return value is 2 then a timeout happened, so we return
         // `false` as we weren't actually notified.
-        let ret = wasm32::i32_atomic_wait(self.ptr(), ticket, nanos as i64) != 2;
+        let ret = wasm32::memory_atomic_wait32(self.ptr(), ticket, nanos as i64) != 2;
         mutex.lock();
         return ret;
     }

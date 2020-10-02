@@ -5,7 +5,7 @@ fn get_bool(c: bool) -> bool {
     c
 }
 
-// EMIT_MIR rustc.while_loop.PreCodegen.after.mir
+// EMIT_MIR while_storage.while_loop.PreCodegen.after.mir
 fn while_loop(c: bool) {
     while get_bool(c) {
         if get_bool(c) {

@@ -6,7 +6,7 @@
 
 fn main() {
     let x = 0i32;
-    || {
+    || { //~ WARN unused generator that must be used
         let y = 2u32;
         {
             let _t = box (&x, yield 0, &y);

@@ -7,7 +7,6 @@ use std::process::{exit, Command};
 use build_helper::t;
 
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
-use crate::channel;
 use crate::channel::GitInfo;
 use crate::compile;
 use crate::config::TargetSelection;
@@ -162,13 +161,15 @@ impl Step for ToolBuild {
                 "the following dependencies are duplicated although they \
                       have the same features enabled:"
             );
-            for (id, cur, prev) in duplicates.drain_filter(|(_, cur, prev)| cur.2 == prev.2) {
+            let (same, different): (Vec<_>, Vec<_>) =
+                duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
+            for (id, cur, prev) in same {
                 println!("  {}", id);
                 // same features
                 println!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
             }
             println!("the following dependencies have different features:");
-            for (id, cur, prev) in duplicates {
+            for (id, cur, prev) in different {
                 println!("  {}", id);
                 let cur_features: HashSet<_> = cur.2.into_iter().collect();
                 let prev_features: HashSet<_> = prev.2.into_iter().collect();
@@ -253,7 +254,7 @@ pub fn prepare_tool_cargo(
     cargo.env("CFG_RELEASE", builder.rust_release());
     cargo.env("CFG_RELEASE_CHANNEL", &builder.config.channel);
     cargo.env("CFG_VERSION", builder.rust_version());
-    cargo.env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM);
+    cargo.env("CFG_RELEASE_NUM", &builder.version);
 
     let info = GitInfo::new(builder.config.ignore_git, &dir);
     if let Some(sha) = info.sha() {
@@ -365,6 +366,7 @@ bootstrap_tool!(
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
+    LintDocs, "src/tools/lint-docs", "lint-docs";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
@@ -467,8 +469,13 @@ impl Step for Rustdoc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder
-            .ensure(Rustdoc { compiler: run.builder.compiler(run.builder.top_stage, run.host) });
+        run.builder.ensure(Rustdoc {
+            // Note: this is somewhat unique in that we actually want a *target*
+            // compiler here, because rustdoc *is* a compiler. We won't be using
+            // this as the compiler to build with, but rather this is "what
+            // compiler are we producing"?
+            compiler: run.builder.compiler(run.builder.top_stage, run.target),
+        });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
@@ -697,6 +704,10 @@ impl<'a> Builder<'a> {
         }
 
         add_dylib_path(lib_paths, &mut cmd);
+
+        // Provide a RUSTC for this command to use.
+        cmd.env("RUSTC", &self.initial_rustc);
+
         cmd
     }
 }

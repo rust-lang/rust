@@ -1,0 +1,64 @@
+// MIR for `main` 0 nll
+
+| Free Region Mapping
+| '_#0r | Global | ['_#0r, '_#1r]
+| '_#1r | Local | ['_#1r]
+|
+| Inferred Region Values
+| '_#0r | U0 | {bb0[0..=22], '_#0r, '_#1r}
+| '_#1r | U0 | {bb0[0..=22], '_#1r}
+| '_#2r | U0 | {}
+| '_#3r | U0 | {bb0[10..=11]}
+| '_#4r | U0 | {bb0[11]}
+|
+| Inference Constraints
+| '_#0r live at {bb0[0..=22]}
+| '_#1r live at {bb0[0..=22]}
+| '_#3r live at {bb0[10]}
+| '_#4r live at {bb0[11]}
+| '_#3r: '_#4r due to Assignment at Single(bb0[10])
+|
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/storage_ranges.rs:3:11: 3:11
+    let _1: i32;                         // in scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
+    let _2: ();                          // in scope 0 at $DIR/storage_ranges.rs:5:5: 7:6
+    let _4: std::option::Option<i32>;    // in scope 0 at $DIR/storage_ranges.rs:6:18: 6:25
+    let mut _5: i32;                     // in scope 0 at $DIR/storage_ranges.rs:6:23: 6:24
+    scope 1 {
+        debug a => _1;                   // in scope 1 at $DIR/storage_ranges.rs:4:9: 4:10
+        let _3: &std::option::Option<i32>; // in scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
+        let _6: i32;                     // in scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
+        scope 2 {
+            debug b => _3;               // in scope 2 at $DIR/storage_ranges.rs:6:13: 6:14
+        }
+        scope 3 {
+            debug c => _6;               // in scope 3 at $DIR/storage_ranges.rs:8:9: 8:10
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
+        _1 = const 0_i32;                // scope 0 at $DIR/storage_ranges.rs:4:13: 4:14
+        FakeRead(ForLet, _1);            // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
+        StorageLive(_2);                 // scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
+        StorageLive(_3);                 // scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
+        StorageLive(_4);                 // scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
+        StorageLive(_5);                 // scope 1 at $DIR/storage_ranges.rs:6:23: 6:24
+        _5 = _1;                         // scope 1 at $DIR/storage_ranges.rs:6:23: 6:24
+        _4 = Option::<i32>::Some(move _5); // scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
+        StorageDead(_5);                 // scope 1 at $DIR/storage_ranges.rs:6:24: 6:25
+        _3 = &_4;                        // scope 1 at $DIR/storage_ranges.rs:6:17: 6:25
+        FakeRead(ForLet, _3);            // scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
+        _2 = const ();                   // scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
+        StorageDead(_4);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
+        StorageDead(_3);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
+        StorageDead(_2);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
+        StorageLive(_6);                 // scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
+        _6 = const 1_i32;                // scope 1 at $DIR/storage_ranges.rs:8:13: 8:14
+        FakeRead(ForLet, _6);            // scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
+        _0 = const ();                   // scope 0 at $DIR/storage_ranges.rs:3:11: 9:2
+        StorageDead(_6);                 // scope 1 at $DIR/storage_ranges.rs:9:1: 9:2
+        StorageDead(_1);                 // scope 0 at $DIR/storage_ranges.rs:9:1: 9:2
+        return;                          // scope 0 at $DIR/storage_ranges.rs:9:2: 9:2
+    }
+}

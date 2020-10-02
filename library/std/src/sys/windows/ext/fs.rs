@@ -8,9 +8,7 @@ use crate::path::Path;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut};
 
-/// Windows-specific extensions to [`File`].
-///
-/// [`File`]: ../../../fs/struct.File.html
+/// Windows-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Seeks to a given position and reads a number of bytes.
@@ -94,8 +92,6 @@ impl FileExt for fs::File {
 }
 
 /// Windows-specific extensions to [`fs::OpenOptions`].
-///
-/// [`fs::OpenOptions`]: ../../../../std/fs/struct.OpenOptions.html
 #[stable(feature = "open_options_ext", since = "1.10.0")]
 pub trait OpenOptionsExt {
     /// Overrides the `dwDesiredAccess` argument to the call to [`CreateFile`]
@@ -295,7 +291,6 @@ impl OpenOptionsExt for OpenOptions {
 /// The data members that this trait exposes correspond to the members
 /// of the [`BY_HANDLE_FILE_INFORMATION`] structure.
 ///
-/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 /// [`BY_HANDLE_FILE_INFORMATION`]:
 ///     https://docs.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -499,11 +494,9 @@ impl MetadataExt for Metadata {
     }
 }
 
-/// Windows-specific extensions to [`FileType`].
+/// Windows-specific extensions to [`fs::FileType`].
 ///
 /// On Windows, a symbolic link knows whether it is a file or directory.
-///
-/// [`FileType`]: ../../../../std/fs/struct.FileType.html
 #[unstable(feature = "windows_file_type_ext", issue = "none")]
 pub trait FileTypeExt {
     /// Returns `true` if this file type is a symbolic link that is also a directory.

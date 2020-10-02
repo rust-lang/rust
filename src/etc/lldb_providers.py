@@ -514,6 +514,8 @@ class StdHashMapSyntheticProvider:
         # type: (int) -> SBValue
         pairs_start = self.data_ptr.GetValueAsUnsigned()
         idx = self.valid_indices[index]
+        if self.new_layout:
+            idx = -(idx + 1)
         address = pairs_start + idx * self.pair_type_size
         element = self.data_ptr.CreateValueFromAddress("[%s]" % index, address, self.pair_type)
         if self.show_values:
@@ -524,14 +526,19 @@ class StdHashMapSyntheticProvider:
 
     def update(self):
         # type: () -> None
-        table = self.valobj.GetChildMemberWithName("base").GetChildMemberWithName("table")
+        table = self.table()
         capacity = table.GetChildMemberWithName("bucket_mask").GetValueAsUnsigned() + 1
         ctrl = table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
 
         self.size = table.GetChildMemberWithName("items").GetValueAsUnsigned()
-        self.data_ptr = table.GetChildMemberWithName("data").GetChildAtIndex(0)
-        self.pair_type = self.data_ptr.Dereference().GetType()
+        self.pair_type = table.type.template_args[0]
         self.pair_type_size = self.pair_type.GetByteSize()
+
+        self.new_layout = not table.GetChildMemberWithName("data").IsValid()
+        if self.new_layout:
+            self.data_ptr = ctrl.Cast(self.pair_type.GetPointerType())
+        else:
+            self.data_ptr = table.GetChildMemberWithName("data").GetChildAtIndex(0)
 
         u8_type = self.valobj.GetTarget().GetBasicType(eBasicTypeUnsignedChar)
         u8_type_size = self.valobj.GetTarget().GetBasicType(eBasicTypeUnsignedChar).GetByteSize()
@@ -544,6 +551,17 @@ class StdHashMapSyntheticProvider:
             is_present = value & 128 == 0
             if is_present:
                 self.valid_indices.append(idx)
+
+    def table(self):
+        # type: () -> SBValue
+        if self.show_values:
+            hashbrown_hashmap = self.valobj.GetChildMemberWithName("base")
+        else:
+            # BACKCOMPAT: rust 1.47
+            # HashSet wraps either std HashMap or hashbrown::HashSet, which both
+            # wrap hashbrown::HashMap, so either way we "unwrap" twice.
+            hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
+        return hashbrown_hashmap.GetChildMemberWithName("table")
 
     def has_children(self):
         # type: () -> bool

@@ -7,7 +7,7 @@ LL |     (&|_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
    |     | found signature of `fn(u16) -> _`
    |     expected signature of `fn(<u32 as T<'x>>::V) -> _`
    |
-   = note: required for the cast to the object type `dyn for<'x> std::ops::Fn(<u32 as T<'x>>::V)`
+   = note: required for the cast to the object type `dyn for<'x> Fn(<u32 as T<'x>>::V)`
 
 error: aborting due to previous error
 

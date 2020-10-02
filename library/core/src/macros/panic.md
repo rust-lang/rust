@@ -5,12 +5,12 @@ to the caller of the program. `panic!` should be used when a program reaches
 an unrecoverable state.
 
 This macro is the perfect way to assert conditions in example code and in
-tests. `panic!` is closely tied with the `unwrap` method of both [`Option`]
-and [`Result`][runwrap] enums. Both implementations call `panic!` when they are set
-to None or Err variants.
+tests. `panic!` is closely tied with the `unwrap` method of both
+[`Option`][ounwrap] and [`Result`][runwrap] enums. Both implementations call
+`panic!` when they are set to [`None`] or [`Err`] variants.
 
 This macro is used to inject panic into a Rust thread, causing the thread to
-panic entirely. Each thread's panic can be reaped as the `Box<Any>` type,
+panic entirely. Each thread's panic can be reaped as the [`Box`]`<`[`Any`]`>` type,
 and the single-argument form of the `panic!` macro will be the value which
 is transmitted.
 
@@ -24,11 +24,11 @@ The multi-argument form of this macro panics with a string and has the
 
 See also the macro [`compile_error!`], for raising errors during compilation.
 
-[runwrap]: ../std/result/enum.Result.html#method.unwrap
-[`Option`]: ../std/option/enum.Option.html#method.unwrap
-[`Result`]: ../std/result/enum.Result.html
+[ounwrap]: Option::unwrap
+[runwrap]: Result::unwrap
+[`Box`]: ../std/boxed/struct.Box.html
+[`Any`]: crate::any::Any
 [`format!`]: ../std/macro.format.html
-[`compile_error!`]: ../std/macro.compile_error.html
 [book]: ../book/ch09-00-error-handling.html
 
 # Current implementation

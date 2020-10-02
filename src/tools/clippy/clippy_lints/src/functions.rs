@@ -239,7 +239,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 return;
             }
             if cx.access_levels.is_exported(item.hir_id)
-                && !is_proc_macro(&item.attrs)
+                && !is_proc_macro(cx.sess(), &item.attrs)
                 && attr_by_name(&item.attrs, "no_mangle").is_none()
             {
                 check_must_use_candidate(
@@ -262,7 +262,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
                 check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
             } else if cx.access_levels.is_exported(item.hir_id)
-                && !is_proc_macro(&item.attrs)
+                && !is_proc_macro(cx.sess(), &item.attrs)
                 && trait_ref_of_method(cx, item.hir_id).is_none()
             {
                 check_must_use_candidate(
@@ -294,7 +294,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 let body = cx.tcx.hir().body(eid);
                 Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
 
-                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(&item.attrs) {
+                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(cx.sess(), &item.attrs)
+                {
                     check_must_use_candidate(
                         cx,
                         &sig.decl,
@@ -373,7 +374,12 @@ impl<'tcx> Functions {
         }
 
         if line_count > self.max_lines {
-            span_lint(cx, TOO_MANY_LINES, span, "This function has a large number of lines.")
+            span_lint(
+                cx,
+                TOO_MANY_LINES,
+                span,
+                &format!("this function has too many lines ({}/{})", line_count, self.max_lines),
+            )
         }
     }
 
@@ -504,7 +510,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<
 static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
 
 fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut FxHashSet<DefId>) -> bool {
-    match ty.kind {
+    match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
         ty::Adt(ref adt, ref substs) => {

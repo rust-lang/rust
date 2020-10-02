@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
-use std::mem::size_of;
+use std::ops::Bound::*;
 
 pub trait IntoCow<'a, B: ?Sized>
 where
@@ -271,24 +271,28 @@ fn test_split_off_past_end() {
 #[test]
 #[should_panic]
 fn test_split_off_mid_char() {
-    let mut orig = String::from("山");
-    let _ = orig.split_off(1);
+    let mut shan = String::from("山");
+    let _broken_mountain = shan.split_off(1);
 }
 
 #[test]
 fn test_split_off_ascii() {
     let mut ab = String::from("ABCD");
+    let orig_capacity = ab.capacity();
     let cd = ab.split_off(2);
     assert_eq!(ab, "AB");
     assert_eq!(cd, "CD");
+    assert_eq!(ab.capacity(), orig_capacity);
 }
 
 #[test]
 fn test_split_off_unicode() {
     let mut nihon = String::from("日本語");
+    let orig_capacity = nihon.capacity();
     let go = nihon.split_off("日本".len());
     assert_eq!(nihon, "日本");
     assert_eq!(go, "語");
+    assert_eq!(nihon.capacity(), orig_capacity);
 }
 
 #[test]
@@ -464,6 +468,20 @@ fn test_drain() {
 }
 
 #[test]
+#[should_panic]
+fn test_drain_start_overflow() {
+    let mut s = String::from("abc");
+    s.drain((Excluded(usize::MAX), Included(0)));
+}
+
+#[test]
+#[should_panic]
+fn test_drain_end_overflow() {
+    let mut s = String::from("abc");
+    s.drain((Included(0), Included(usize::MAX)));
+}
+
+#[test]
 fn test_replace_range() {
     let mut s = "Hello, world!".to_owned();
     s.replace_range(7..12, "世界");
@@ -498,6 +516,20 @@ fn test_replace_range_out_of_bounds() {
 fn test_replace_range_inclusive_out_of_bounds() {
     let mut s = String::from("12345");
     s.replace_range(5..=5, "789");
+}
+
+#[test]
+#[should_panic]
+fn test_replace_range_start_overflow() {
+    let mut s = String::from("123");
+    s.replace_range((Excluded(usize::MAX), Included(0)), "");
+}
+
+#[test]
+#[should_panic]
+fn test_replace_range_end_overflow() {
+    let mut s = String::from("456");
+    s.replace_range((Included(0), Included(usize::MAX)), "");
 }
 
 #[test]
@@ -572,7 +604,7 @@ fn test_try_reserve() {
     // on 64-bit, we assume the OS will give an OOM for such a ridiculous size.
     // Any platform that succeeds for these requests is technically broken with
     // ptr::offset because LLVM is the worst.
-    let guards_against_isize = size_of::<usize>() < 8;
+    let guards_against_isize = usize::BITS < 64;
 
     {
         // Note: basic stuff is checked by test_reserve
@@ -653,7 +685,7 @@ fn test_try_reserve_exact() {
     const MAX_CAP: usize = isize::MAX as usize;
     const MAX_USIZE: usize = usize::MAX;
 
-    let guards_against_isize = size_of::<usize>() < 8;
+    let guards_against_isize = usize::BITS < 64;
 
     {
         let mut empty_string: String = String::new();
@@ -720,4 +752,12 @@ fn test_from_char() {
     assert_eq!(String::from('a'), 'a'.to_string());
     let s: String = 'x'.into();
     assert_eq!(s, 'x'.to_string());
+}
+
+#[test]
+fn test_str_concat() {
+    let a: String = "hello".to_string();
+    let b: String = "world".to_string();
+    let s: String = format!("{}{}", a, b);
+    assert_eq!(s.as_bytes()[9], 'd' as u8);
 }

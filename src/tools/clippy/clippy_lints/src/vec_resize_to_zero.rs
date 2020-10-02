@@ -7,7 +7,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 
 use crate::utils::{match_def_path, paths};
-use rustc_ast::ast::LitKind;
+use rustc_ast::LitKind;
 use rustc_hir as hir;
 
 declare_clippy_lint! {

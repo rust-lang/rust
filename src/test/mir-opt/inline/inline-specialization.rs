@@ -1,6 +1,6 @@
 #![feature(specialization)]
 
-// EMIT_MIR rustc.main.Inline.diff
+// EMIT_MIR inline_specialization.main.Inline.diff
 fn main() {
     let x = <Vec::<()> as Foo>::bar();
 }

@@ -77,7 +77,7 @@ impl EarlyLintPass for RedundantClosureCall {
                         cx,
                         REDUNDANT_CLOSURE_CALL,
                         expr.span,
-                        "try not to call a closure in the expression where it is declared.",
+                        "try not to call a closure in the expression where it is declared",
                         |diag| {
                             if decl.inputs.is_empty() {
                                 let mut app = Applicability::MachineApplicable;
@@ -95,12 +95,17 @@ impl EarlyLintPass for RedundantClosureCall {
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
-        fn count_closure_usage<'tcx>(block: &'tcx hir::Block<'_>, path: &'tcx hir::Path<'tcx>) -> usize {
-            struct ClosureUsageCount<'tcx> {
+        fn count_closure_usage<'a, 'tcx>(
+            cx: &'a LateContext<'tcx>,
+            block: &'tcx hir::Block<'_>,
+            path: &'tcx hir::Path<'tcx>,
+        ) -> usize {
+            struct ClosureUsageCount<'a, 'tcx> {
+                cx: &'a LateContext<'tcx>,
                 path: &'tcx hir::Path<'tcx>,
                 count: usize,
             };
-            impl<'tcx> hir_visit::Visitor<'tcx> for ClosureUsageCount<'tcx> {
+            impl<'a, 'tcx> hir_visit::Visitor<'tcx> for ClosureUsageCount<'a, 'tcx> {
                 type Map = Map<'tcx>;
 
                 fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
@@ -117,10 +122,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 }
 
                 fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
-                    hir_visit::NestedVisitorMap::None
+                    hir_visit::NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
                 }
             };
-            let mut closure_usage_count = ClosureUsageCount { path, count: 0 };
+            let mut closure_usage_count = ClosureUsageCount { cx, path, count: 0 };
             closure_usage_count.visit_block(block);
             closure_usage_count.count
         }
@@ -136,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 if let hir::ExprKind::Call(ref closure, _) = call.kind;
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = closure.kind;
                 if ident == path.segments[0].ident;
-                if count_closure_usage(block, path) == 1;
+                if count_closure_usage(cx, block, path) == 1;
                 then {
                     span_lint(
                         cx,

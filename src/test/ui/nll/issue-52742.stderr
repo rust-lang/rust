@@ -12,11 +12,8 @@ LL | impl Foo<'_, '_> {
 note: ...but the borrowed content is only valid for the anonymous lifetime #2 defined on the method body at 13:5
   --> $DIR/issue-52742.rs:13:5
    |
-LL | /     fn take_bar(&mut self, b: Bar<'_>) {
-LL | |         self.y = b.z
-LL | |
-LL | |     }
-   | |_____^
+LL |     fn take_bar(&mut self, b: Bar<'_>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

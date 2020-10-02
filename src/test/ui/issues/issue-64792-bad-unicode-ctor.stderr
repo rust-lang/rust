@@ -5,16 +5,7 @@ LL | struct X {}
    | ----------- `X` defined here
 LL | 
 LL | const Y: X = X("ö");
-   |              ^^^^^^
-   |
-help: a constant with a similar name exists
-   |
-LL | const Y: X = Y("ö");
-   |              ^
-help: use struct literal syntax instead
-   |
-LL | const Y: X = X {};
-   |              ^^^^
+   |              ^^^^^^ help: use struct literal syntax instead: `X {}`
 
 error: aborting due to previous error
 

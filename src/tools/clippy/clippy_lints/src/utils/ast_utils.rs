@@ -5,8 +5,8 @@
 #![allow(clippy::similar_names, clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::utils::{both, over};
-use rustc_ast::ast::{self, *};
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, *};
 use rustc_span::symbol::Ident;
 use std::mem;
 
@@ -191,7 +191,9 @@ pub fn eq_stmt(l: &Stmt, r: &Stmt) -> bool {
         (Item(l), Item(r)) => eq_item(l, r, eq_item_kind),
         (Expr(l), Expr(r)) | (Semi(l), Semi(r)) => eq_expr(l, r),
         (Empty, Empty) => true,
-        (MacCall(l), MacCall(r)) => l.1 == r.1 && eq_mac_call(&l.0, &r.0) && over(&l.2, &r.2, |l, r| eq_attr(l, r)),
+        (MacCall(l), MacCall(r)) => {
+            l.style == r.style && eq_mac_call(&l.mac, &r.mac) && over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r))
+        },
         _ => false,
     }
 }
@@ -392,7 +394,7 @@ pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
 
 pub fn eq_vis(l: &Visibility, r: &Visibility) -> bool {
     use VisibilityKind::*;
-    match (&l.node, &r.node) {
+    match (&l.kind, &r.kind) {
         (Public, Public) | (Inherited, Inherited) | (Crate(_), Crate(_)) => true,
         (Restricted { path: l, .. }, Restricted { path: r, .. }) => eq_path(l, r),
         _ => false,
@@ -506,7 +508,7 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     use AttrKind::*;
     l.style == r.style
         && match (&l.kind, &r.kind) {
-            (DocComment(l), DocComment(r)) => l == r,
+            (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
             (Normal(l), Normal(r)) => eq_path(&l.path, &r.path) && eq_mac_args(&l.args, &r.args),
             _ => false,
         }

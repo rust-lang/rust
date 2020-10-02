@@ -180,7 +180,8 @@ where
 
 /// Sorts `v` using heapsort, which guarantees *O*(*n* \* log(*n*)) worst-case.
 #[cold]
-pub fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
+#[unstable(feature = "sort_internals", reason = "internal to sort module", issue = "none")]
+pub fn heapsort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -299,8 +300,8 @@ where
 
         if start_l == end_l {
             // Trace `block_l` elements from the left side.
-            start_l = MaybeUninit::first_ptr_mut(&mut offsets_l);
-            end_l = MaybeUninit::first_ptr_mut(&mut offsets_l);
+            start_l = MaybeUninit::slice_as_mut_ptr(&mut offsets_l);
+            end_l = MaybeUninit::slice_as_mut_ptr(&mut offsets_l);
             let mut elem = l;
 
             for i in 0..block_l {
@@ -325,8 +326,8 @@ where
 
         if start_r == end_r {
             // Trace `block_r` elements from the right side.
-            start_r = MaybeUninit::first_ptr_mut(&mut offsets_r);
-            end_r = MaybeUninit::first_ptr_mut(&mut offsets_r);
+            start_r = MaybeUninit::slice_as_mut_ptr(&mut offsets_r);
+            end_r = MaybeUninit::slice_as_mut_ptr(&mut offsets_r);
             let mut elem = r;
 
             for i in 0..block_r {
@@ -564,7 +565,7 @@ fn break_patterns<T>(v: &mut [T]) {
             random
         };
         let mut gen_usize = || {
-            if mem::size_of::<usize>() <= 4 {
+            if usize::BITS <= 32 {
                 gen_u32() as usize
             } else {
                 (((gen_u32() as u64) << 32) | (gen_u32() as u64)) as usize
@@ -666,7 +667,7 @@ where
 ///
 /// `limit` is the number of allowed imbalanced partitions before switching to `heapsort`. If zero,
 /// this function will immediately switch to heapsort.
-fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T>, mut limit: usize)
+fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T>, mut limit: u32)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -762,7 +763,7 @@ where
     }
 
     // Limit the number of imbalanced partitions to `floor(log2(len)) + 1`.
-    let limit = mem::size_of::<usize>() * 8 - v.len().leading_zeros() as usize;
+    let limit = usize::BITS - v.len().leading_zeros();
 
     recurse(v, &mut is_less, None, limit);
 }

@@ -31,14 +31,14 @@ LL |     pub const I: i32 = 1;
 LL |     a::b.J
    |     ^^^^
    |
-help: a constant with a similar name exists
-   |
-LL |     a::I.J
-   |        ^
 help: use the path separator to refer to an item
    |
 LL |     a::b::J
    |
+help: a constant with a similar name exists
+   |
+LL |     a::I.J
+   |        ^
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:37:5
@@ -68,14 +68,14 @@ LL |     pub const I: i32 = 1;
 LL |     a::b.f()
    |     ^^^^
    |
-help: a constant with a similar name exists
-   |
-LL |     a::I.f()
-   |        ^
 help: use the path separator to refer to an item
    |
 LL |     a::b::f()
    |     ^^^^^^^
+help: a constant with a similar name exists
+   |
+LL |     a::I.f()
+   |        ^
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:50:5

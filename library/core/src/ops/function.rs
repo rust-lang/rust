@@ -28,8 +28,6 @@
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
 /// [book]: ../../book/ch13-01-closures.html
-/// [`FnMut`]: trait.FnMut.html
-/// [`FnOnce`]: trait.FnOnce.html
 /// [function pointers]: ../../std/primitive.fn.html
 /// [nomicon]: ../../nomicon/hrtb.html
 ///
@@ -99,8 +97,6 @@ pub trait Fn<Args>: FnMut<Args> {
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
 /// [book]: ../../book/ch13-01-closures.html
-/// [`Fn`]: trait.Fn.html
-/// [`FnOnce`]: trait.FnOnce.html
 /// [function pointers]: ../../std/primitive.fn.html
 /// [nomicon]: ../../nomicon/hrtb.html
 ///
@@ -180,8 +176,6 @@ pub trait FnMut<Args>: FnOnce<Args> {
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
 /// [book]: ../../book/ch13-01-closures.html
-/// [`Fn`]: trait.Fn.html
-/// [`FnMut`]: trait.FnMut.html
 /// [function pointers]: ../../std/primitive.fn.html
 /// [nomicon]: ../../nomicon/hrtb.html
 ///

@@ -1,6 +1,6 @@
 // aux-build:through-proc-macro-aux.rs
 // build-aux-docs
-#![warn(intra_doc_link_resolution_failure)]
+#![warn(broken_intra_doc_links)]
 extern crate some_macros;
 
 #[some_macros::second]

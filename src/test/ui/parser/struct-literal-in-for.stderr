@@ -23,8 +23,8 @@ LL | |         x: 3
 LL | |     }.hi() {
    | |__________^ `bool` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `bool`
-   = note: required by `std::iter::IntoIterator::into_iter`
+   = help: the trait `Iterator` is not implemented for `bool`
+   = note: required by `into_iter`
 
 error: aborting due to 2 previous errors
 

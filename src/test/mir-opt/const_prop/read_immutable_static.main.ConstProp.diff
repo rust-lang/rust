@@ -1,0 +1,54 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/read_immutable_static.rs:6:11: 6:11
+      let _1: u8;                          // in scope 0 at $DIR/read_immutable_static.rs:7:9: 7:10
+      let mut _2: u8;                      // in scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
+      let mut _3: &u8;                     // in scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
+      let mut _4: u8;                      // in scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
+      let mut _5: &u8;                     // in scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/read_immutable_static.rs:7:9: 7:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/read_immutable_static.rs:7:9: 7:10
+          StorageLive(_2);                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
+          StorageLive(_3);                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
+          _3 = const {alloc0: &u8};        // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
+                                           // ty::Const
+                                           // + ty: &u8
+                                           // + val: Value(Scalar(alloc0))
+                                           // mir::Constant
+                                           // + span: $DIR/read_immutable_static.rs:7:13: 7:16
+                                           // + literal: Const { ty: &u8, val: Value(Scalar(alloc0)) }
+-         _2 = (*_3);                      // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
++         _2 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
+          StorageLive(_4);                 // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
+          StorageLive(_5);                 // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
+          _5 = const {alloc0: &u8};        // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
+                                           // ty::Const
+                                           // + ty: &u8
+                                           // + val: Value(Scalar(alloc0))
+                                           // mir::Constant
+                                           // + span: $DIR/read_immutable_static.rs:7:19: 7:22
+                                           // + literal: Const { ty: &u8, val: Value(Scalar(alloc0)) }
+-         _4 = (*_5);                      // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
+-         _1 = Add(move _2, move _4);      // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:22
++         _4 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
++         _1 = const 4_u8;                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:22
+          StorageDead(_4);                 // scope 0 at $DIR/read_immutable_static.rs:7:21: 7:22
+          StorageDead(_2);                 // scope 0 at $DIR/read_immutable_static.rs:7:21: 7:22
+          StorageDead(_5);                 // scope 0 at $DIR/read_immutable_static.rs:7:22: 7:23
+          StorageDead(_3);                 // scope 0 at $DIR/read_immutable_static.rs:7:22: 7:23
+          _0 = const ();                   // scope 0 at $DIR/read_immutable_static.rs:6:11: 8:2
+          StorageDead(_1);                 // scope 0 at $DIR/read_immutable_static.rs:8:1: 8:2
+          return;                          // scope 0 at $DIR/read_immutable_static.rs:8:2: 8:2
+      }
+  }
+  
+  alloc0 (static: FOO, size: 1, align: 1) {
+      02                                              │ .
+  }
+  

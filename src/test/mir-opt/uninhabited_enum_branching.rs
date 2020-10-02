@@ -14,8 +14,8 @@ enum Test2 {
     E = 5,
 }
 
-// EMIT_MIR rustc.main.UninhabitedEnumBranching.diff
-// EMIT_MIR rustc.main.SimplifyCfg-after-uninhabited-enum-branching.after.mir
+// EMIT_MIR uninhabited_enum_branching.main.UninhabitedEnumBranching.diff
+// EMIT_MIR uninhabited_enum_branching.main.SimplifyCfg-after-uninhabited-enum-branching.after.mir
 fn main() {
     match Test1::C {
         Test1::A(_) => "A(Empty)",

@@ -8,7 +8,7 @@ fn loop_forever() {
     loop {}
 }
 
-// EMIT_MIR rustc.main.UnreachablePropagation.diff
+// EMIT_MIR unreachable_diverging.main.UnreachablePropagation.diff
 fn main() {
     let x = true;
     if let Some(bomb) = empty() {

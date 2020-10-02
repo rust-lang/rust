@@ -1,13 +1,13 @@
-error[E0277]: the trait bound `std::option::Option<&str>: std::convert::AsRef<std::path::Path>` is not satisfied
+error[E0277]: the trait bound `Option<&str>: AsRef<Path>` is not satisfied
   --> $DIR/issue-72442.rs:12:36
    |
 LL |             let mut f = File::open(path.to_str())?;
-   |                                    ^^^^^^^^^^^^^ the trait `std::convert::AsRef<std::path::Path>` is not implemented for `std::option::Option<&str>`
+   |                                    ^^^^^^^^^^^^^ the trait `AsRef<Path>` is not implemented for `Option<&str>`
    | 
   ::: $SRC_DIR/std/src/fs.rs:LL:COL
    |
 LL |     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<File> {
-   |                    ----------- required by this bound in `std::fs::File::open`
+   |                    ----------- required by this bound in `File::open`
 
 error: aborting due to previous error
 

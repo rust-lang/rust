@@ -20,7 +20,7 @@ impl RawEmitter {
         if self.file.is_empty() || self.file.ends_with("\n\n") {
             return;
         }
-        writeln!(&mut self.file, "").unwrap();
+        writeln!(&mut self.file).unwrap();
     }
 
     fn emit_bitset(&mut self, ranges: &[Range<u32>]) {
@@ -161,10 +161,10 @@ pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
 
     if bitset.bytes_used <= skiplist.bytes_used {
         *emitter = bitset;
-        emitter.desc = format!("bitset");
+        emitter.desc = String::from("bitset");
     } else {
         *emitter = skiplist;
-        emitter.desc = format!("skiplist");
+        emitter.desc = String::from("skiplist");
     }
 }
 
@@ -289,7 +289,7 @@ impl Canonicalized {
                 // Remove the now-canonicalized word from other mappings,
                 // to ensure that we deprioritize them in the next iteration of
                 // the while loop.
-                for (_, mapped) in &mut mappings {
+                for mapped in mappings.values_mut() {
                     let mut i = 0;
                     while i != mapped.len() {
                         if mapped[i].0 == *from {
@@ -309,7 +309,7 @@ impl Canonicalized {
 
             // Remove the now-canonical word from other mappings, to ensure that
             // we deprioritize them in the next iteration of the while loop.
-            for (_, mapped) in &mut mappings {
+            for mapped in mappings.values_mut() {
                 let mut i = 0;
                 while i != mapped.len() {
                     if mapped[i].0 == to {

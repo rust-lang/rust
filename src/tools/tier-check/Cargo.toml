@@ -1,0 +1,8 @@
+[package]
+name = "tier-check"
+version = "0.1.0"
+authors = ["Eric Huss"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

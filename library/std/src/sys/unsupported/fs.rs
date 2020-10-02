@@ -233,10 +233,6 @@ impl File {
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
         match self.0 {}
     }
-
-    pub fn diverge(&self) -> ! {
-        match self.0 {}
-    }
 }
 
 impl DirBuilder {

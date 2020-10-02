@@ -41,4 +41,7 @@ fn main() {
 
     let _ = opt.as_ref().map(|x| &**x);
     let _ = opt.as_mut().map(|x| &mut **x);
+
+    // Issue #5927
+    let _ = opt.as_ref().map(std::ops::Deref::deref);
 }

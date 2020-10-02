@@ -1,5 +1,5 @@
 use crate::sys::condvar as imp;
-use crate::sys_common::mutex::{self, Mutex};
+use crate::sys_common::mutex::MovableMutex;
 use crate::time::Duration;
 
 /// An OS-based condition variable.
@@ -46,8 +46,8 @@ impl Condvar {
     /// Behavior is also undefined if more than one mutex is used concurrently
     /// on this condition variable.
     #[inline]
-    pub unsafe fn wait(&self, mutex: &Mutex) {
-        self.0.wait(mutex::raw(mutex))
+    pub unsafe fn wait(&self, mutex: &MovableMutex) {
+        self.0.wait(mutex.raw())
     }
 
     /// Waits for a signal on the specified mutex with a timeout duration
@@ -57,8 +57,8 @@ impl Condvar {
     /// Behavior is also undefined if more than one mutex is used concurrently
     /// on this condition variable.
     #[inline]
-    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        self.0.wait_timeout(mutex::raw(mutex), dur)
+    pub unsafe fn wait_timeout(&self, mutex: &MovableMutex, dur: Duration) -> bool {
+        self.0.wait_timeout(mutex.raw(), dur)
     }
 
     /// Deallocates all resources associated with this condition variable.

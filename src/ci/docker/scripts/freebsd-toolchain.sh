@@ -5,8 +5,8 @@ set -eux
 
 arch=$1
 binutils_version=2.25.1
-freebsd_version=10.3
-triple=$arch-unknown-freebsd10
+freebsd_version=11.4
+triple=$arch-unknown-freebsd11
 sysroot=/usr/local/$triple
 
 hide_output() {
@@ -58,23 +58,9 @@ for lib in c++ c_nonshared compiler_rt execinfo gcc pthread rt ssp_nonshared; do
 done
 
 # Originally downloaded from:
-# https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
-URL=https://ci-mirrors.rust-lang.org/rustc/2019-04-04-freebsd-${freebsd_arch}-${freebsd_version}-RELEASE-base.txz
+# URL=https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
+URL=https://ci-mirrors.rust-lang.org/rustc/2020-08-09-freebsd-${freebsd_arch}-${freebsd_version}-RELEASE-base.txz
 curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
-
-# Fix up absolute symlinks from the system image.  This can be removed
-# for FreeBSD 11.  (If there's an easy way to make them relative
-# symlinks instead, feel free to change this.)
-set +x
-find "$sysroot" -type l | while read symlink_path; do
-  symlink_target=$(readlink "$symlink_path")
-  case $symlink_target in
-    (/*)
-      echo "Fixing symlink ${symlink_path} -> ${sysroot}${symlink_target}" >&2
-      ln -nfs "${sysroot}${symlink_target}" "${symlink_path}" ;;
-  esac
-done
-set -x
 
 # Clang can do cross-builds out of the box, if we give it the right
 # flags.  (The local binutils seem to work, but they set the ELF
@@ -82,7 +68,7 @@ set -x
 # there might be other problems.)
 #
 # The --target option is last because the cross-build of LLVM uses
-# --target without an OS version ("-freebsd" vs. "-freebsd10").  This
+# --target without an OS version ("-freebsd" vs. "-freebsd11").  This
 # makes Clang default to libstdc++ (which no longer exists), and also
 # controls other features, like GNU-style symbol table hashing and
 # anything predicated on the version number in the __FreeBSD__

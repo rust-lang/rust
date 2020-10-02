@@ -6,7 +6,7 @@ fn main() {
     println!("{}", bar());
 }
 
-// EMIT_MIR rustc.bar.Inline.after.mir
+// EMIT_MIR inline_retag.bar.Inline.after.mir
 fn bar() -> bool {
     let f = foo;
     f(&1, &-1)

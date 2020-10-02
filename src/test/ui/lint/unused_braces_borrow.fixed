@@ -21,6 +21,6 @@ fn main() {
     };
 
     consume(&{ a.b });
-    consume( a.b );
+    consume(a.b);
     //~^ WARN unnecessary braces
 }

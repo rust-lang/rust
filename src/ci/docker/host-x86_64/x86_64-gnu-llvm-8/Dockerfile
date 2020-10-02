@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   g++-arm-linux-gnueabi \
   make \
+  ninja-build \
   file \
   curl \
   ca-certificates \
@@ -44,7 +45,7 @@ ENV SCRIPT python2.7 ../x.py --stage 2 test --exclude src/tools/tidy && \
            # on the `x86_64` host when they're built as `armv5te` binaries.
            # (we're only interested in the MIR output, so this doesn't matter)
            python2.7 ../x.py --stage 2 test src/test/mir-opt --pass=build \
-                                  --target=armv5te-unknown-linux-gnueabi && \
+                             --host='' --target=armv5te-unknown-linux-gnueabi && \
            # Run the UI test suite again, but in `--pass=check` mode
            #
            # This is intended to make sure that both `--pass=check` continues to

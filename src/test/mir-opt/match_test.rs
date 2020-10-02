@@ -2,7 +2,7 @@
 
 #![feature(exclusive_range_pattern)]
 
-// EMIT_MIR rustc.main.SimplifyCfg-initial.after.mir
+// EMIT_MIR match_test.main.SimplifyCfg-initial.after.mir
 fn main() {
     let x = 3;
     let b = true;

@@ -1,4 +1,4 @@
-//! Unix-specific extensions to general I/O primitives
+//! Unix-specific extensions to general I/O primitives.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -60,6 +60,25 @@ pub trait IntoRawFd {
     /// and must close the descriptor once it's no longer needed.
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_fd(self) -> RawFd;
+}
+
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl AsRawFd for RawFd {
+    fn as_raw_fd(&self) -> RawFd {
+        *self
+    }
+}
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl IntoRawFd for RawFd {
+    fn into_raw_fd(self) -> RawFd {
+        self
+    }
+}
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl FromRawFd for RawFd {
+    unsafe fn from_raw_fd(fd: RawFd) -> RawFd {
+        fd
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

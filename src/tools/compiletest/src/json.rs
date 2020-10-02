@@ -75,7 +75,7 @@ pub fn extract_rendered(output: &str) -> String {
             if line.starts_with('{') {
                 if let Ok(diagnostic) = serde_json::from_str::<Diagnostic>(line) {
                     diagnostic.rendered
-                } else if let Ok(_) = serde_json::from_str::<ArtifactNotification>(line) {
+                } else if serde_json::from_str::<ArtifactNotification>(line).is_ok() {
                     // Ignore the notification.
                     None
                 } else {

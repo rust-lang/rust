@@ -347,13 +347,18 @@ class StdHashMapProvider:
         self.valobj = valobj
         self.show_values = show_values
 
-        table = self.valobj["base"]["table"]
+        table = self.table()
         capacity = int(table["bucket_mask"]) + 1
         ctrl = table["ctrl"]["pointer"]
 
         self.size = int(table["items"])
-        self.data_ptr = table["data"]["pointer"]
-        self.pair_type = self.data_ptr.dereference().type
+        self.pair_type = table.type.template_argument(0)
+
+        self.new_layout = not table.type.has_key("data")
+        if self.new_layout:
+            self.data_ptr = ctrl.cast(self.pair_type.pointer())
+        else:
+            self.data_ptr = table["data"]["pointer"]
 
         self.valid_indices = []
         for idx in range(capacity):
@@ -362,6 +367,18 @@ class StdHashMapProvider:
             is_presented = value & 128 == 0
             if is_presented:
                 self.valid_indices.append(idx)
+
+    def table(self):
+        if self.show_values:
+            hashbrown_hashmap = self.valobj["base"]
+        elif self.valobj.type.fields()[0].name == "map":
+            # BACKCOMPAT: rust 1.47
+            # HashSet wraps std::collections::HashMap, which wraps hashbrown::HashMap
+            hashbrown_hashmap = self.valobj["map"]["base"]
+        else:
+            # HashSet wraps hashbrown::HashSet, which wraps hashbrown::HashMap
+            hashbrown_hashmap = self.valobj["base"]["map"]
+        return hashbrown_hashmap["table"]
 
     def to_string(self):
         if self.show_values:
@@ -374,6 +391,8 @@ class StdHashMapProvider:
 
         for index in range(self.size):
             idx = self.valid_indices[index]
+            if self.new_layout:
+                idx = -(idx + 1)
             element = (pairs_start + idx).dereference()
             if self.show_values:
                 yield "key{}".format(index), element[ZERO_FIELD]

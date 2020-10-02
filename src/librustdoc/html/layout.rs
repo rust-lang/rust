@@ -95,6 +95,7 @@ pub fn render<T: Print, S: Print>(
                            placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
                            type=\"search\">\
                 </div>\
+                <span class=\"help-button\">?</span>
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
                     <img src=\"{static_root_path}wheel{suffix}.svg\" \
                          width=\"18\" \
@@ -138,7 +139,7 @@ pub fn render<T: Print, S: Print>(
             if layout.logo.is_empty() {
                 format!(
                     "<a href='{path}index.html'>\
-                     <div class='logo-container'>\
+                     <div class='logo-container rust-logo'>\
                      <img src='{static_root_path}rust-logo{suffix}.png' alt='logo'></div></a>",
                     path = p,
                     static_root_path = static_root_path,
@@ -157,7 +158,9 @@ pub fn render<T: Print, S: Print>(
         keywords = page.keywords,
         favicon = if layout.favicon.is_empty() {
             format!(
-                r#"<link rel="shortcut icon" href="{static_root_path}favicon{suffix}.ico">"#,
+                r##"<link rel="icon" type="image/svg+xml" href="{static_root_path}favicon{suffix}.svg">
+<link rel="alternate icon" type="image/png" href="{static_root_path}favicon-16x16{suffix}.png">
+<link rel="alternate icon" type="image/png" href="{static_root_path}favicon-32x32{suffix}.png">"##,
                 static_root_path = static_root_path,
                 suffix = page.resource_suffix
             )
@@ -209,8 +212,8 @@ pub fn render<T: Print, S: Print>(
             .collect::<String>(),
         filter_crates = if layout.generate_search_filter {
             "<select id=\"crate-search\">\
-            <option value=\"All crates\">All crates</option>\
-        </select>"
+                 <option value=\"All crates\">All crates</option>\
+             </select>"
         } else {
             ""
         },

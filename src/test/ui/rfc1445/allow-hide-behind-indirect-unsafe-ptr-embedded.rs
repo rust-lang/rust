@@ -3,6 +3,8 @@
 
 // run-pass
 
+#![warn(pointer_structural_match)]
+
 struct NoDerive(i32);
 
 // This impl makes NoDerive irreflexive

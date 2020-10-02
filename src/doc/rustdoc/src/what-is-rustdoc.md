@@ -93,6 +93,29 @@ passes `-L`, a flag that helps rustdoc find the dependencies
 your code relies on. If our project used dependencies, we'd get
 documentation for them as well!
 
+## Outer and inner documentation
+
+The `///` syntax is used to document the item present after it.
+That's why it is called an outer documentation.
+There is another syntax: `//!`, which is used to document the 
+item it is present inside. It is called an inner documentation.
+It is often used when documenting the entire crate,
+because nothing comes before it: it is the root of the crate.
+So in order to document an entire crate, you need to use `//!` syntax.
+For example:
+
+``` rust
+//! This is my first rust crate
+```
+
+When used in the crate root, it documents the item it is inside,
+which is the crate itself.
+
+For more information about the `//!` syntax, see [the Book].
+
+[the Book]: https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#commenting-contained-items
+
+
 ## Using standalone Markdown files
 
 `rustdoc` can also generate HTML from standalone Markdown files. Let's

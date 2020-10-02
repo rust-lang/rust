@@ -6,12 +6,12 @@
 
 enum Void {}
 
-// EMIT_MIR rustc.f.mir_map.0.mir
+// EMIT_MIR issue_72181_1.f.mir_map.0.mir
 fn f(v: Void) -> ! {
     match v {}
 }
 
-// EMIT_MIR rustc.main.mir_map.0.mir
+// EMIT_MIR issue_72181_1.main.mir_map.0.mir
 fn main() {
     let v: Void = unsafe {
         std::mem::transmute::<(), Void>(())

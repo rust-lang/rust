@@ -43,16 +43,19 @@ pub trait Try {
     /// in the return type of the enclosing scope (which must itself implement
     /// `Try`). Specifically, the value `X::from_error(From::from(e))`
     /// is returned, where `X` is the return type of the enclosing function.
+    #[lang = "into_result"]
     #[unstable(feature = "try_trait", issue = "42327")]
     fn into_result(self) -> Result<Self::Ok, Self::Error>;
 
     /// Wrap an error value to construct the composite result. For example,
     /// `Result::Err(x)` and `Result::from_error(x)` are equivalent.
+    #[lang = "from_error"]
     #[unstable(feature = "try_trait", issue = "42327")]
     fn from_error(v: Self::Error) -> Self;
 
     /// Wrap an OK value to construct the composite result. For example,
     /// `Result::Ok(x)` and `Result::from_ok(x)` are equivalent.
+    #[lang = "from_ok"]
     #[unstable(feature = "try_trait", issue = "42327")]
     fn from_ok(v: Self::Ok) -> Self;
 }

@@ -19,6 +19,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(any(
         unix,
         windows,
+        target_os = "psp",
         target_os = "cloudabi",
         all(target_vendor = "fortanix", target_env = "sgx"),
     ))] {
@@ -32,7 +33,6 @@ cfg_if::cfg_if! {
         // - os=uefi
         // - os=cuda
         // - nvptx64-nvidia-cuda
-        // - mipsel-sony-psp
         // - Any new targets not listed above.
     }
 }

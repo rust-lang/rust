@@ -4,7 +4,7 @@ note: external requirements
 LL |             let mut closure1 = || p = &y;
    |                                ^^^^^^^^^
    |
-   = note: defining type: test::{{closure}}#0::{{closure}}#0 with closure substs [
+   = note: defining type: test::{closure#0}::{closure#0} with closure substs [
                i16,
                extern "rust-call" fn(()),
                (&'_#1r i32, &'_#2r mut &'_#3r i32),
@@ -22,7 +22,7 @@ LL | |             closure1();
 LL | |         };
    | |_________^
    |
-   = note: defining type: test::{{closure}}#0 with closure substs [
+   = note: defining type: test::{closure#0} with closure substs [
                i16,
                extern "rust-call" fn(()),
                (&'_#1r i32, &'_#2r mut &'_#3r i32),

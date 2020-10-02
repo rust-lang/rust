@@ -24,8 +24,8 @@ error[E0277]: `()` is not a future
 LL |     [1; ().await];
    |         ^^^^^^^^ `()` is not a future
    |
-   = help: the trait `std::future::Future` is not implemented for `()`
-   = note: required by `std::future::Future::poll`
+   = help: the trait `Future` is not implemented for `()`
+   = note: required by `poll`
 
 error: aborting due to 4 previous errors
 

@@ -4,7 +4,7 @@ error[E0277]: can't compare `Error` with `Error`
 LL |     x: Error
    |     ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
    |
-   = help: the trait `std::cmp::PartialOrd` is not implemented for `Error`
+   = help: the trait `PartialOrd` is not implemented for `Error`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -14,7 +14,7 @@ error[E0277]: can't compare `Error` with `Error`
 LL |     x: Error
    |     ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
    |
-   = help: the trait `std::cmp::PartialOrd` is not implemented for `Error`
+   = help: the trait `PartialOrd` is not implemented for `Error`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -24,7 +24,7 @@ error[E0277]: can't compare `Error` with `Error`
 LL |     x: Error
    |     ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
    |
-   = help: the trait `std::cmp::PartialOrd` is not implemented for `Error`
+   = help: the trait `PartialOrd` is not implemented for `Error`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -34,7 +34,7 @@ error[E0277]: can't compare `Error` with `Error`
 LL |     x: Error
    |     ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
    |
-   = help: the trait `std::cmp::PartialOrd` is not implemented for `Error`
+   = help: the trait `PartialOrd` is not implemented for `Error`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -44,7 +44,7 @@ error[E0277]: can't compare `Error` with `Error`
 LL |     x: Error
    |     ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
    |
-   = help: the trait `std::cmp::PartialOrd` is not implemented for `Error`
+   = help: the trait `PartialOrd` is not implemented for `Error`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

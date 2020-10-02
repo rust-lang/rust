@@ -85,7 +85,7 @@ impl Layout {
     /// # Safety
     ///
     /// This function is unsafe as it does not verify the preconditions from
-    /// [`Layout::from_size_align`](#method.from_size_align).
+    /// [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
@@ -177,6 +177,7 @@ impl Layout {
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[rustc_const_unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub const fn dangling(&self) -> NonNull<u8> {
         // SAFETY: align is guaranteed to be non-zero
@@ -196,8 +197,7 @@ impl Layout {
     /// will *still* have size 16.
     ///
     /// Returns an error if the combination of `self.size()` and the given
-    /// `align` violates the conditions listed in
-    /// [`Layout::from_size_align`](#method.from_size_align).
+    /// `align` violates the conditions listed in [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn align_to(&self, align: usize) -> Result<Self, LayoutErr> {

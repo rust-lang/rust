@@ -4,6 +4,9 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::DefId;
+use rustc_middle::middle::privacy::AccessLevels;
 use rustc_session::config::{self, parse_crate_types_from_list, parse_externs, CrateType};
 use rustc_session::config::{
     build_codegen_options, build_debugging_options, get_cmd_lint_options, host_triple,
@@ -80,9 +83,9 @@ pub struct Options {
     /// Codegen options strings to hand to the compiler.
     pub codegen_options_strs: Vec<String>,
     /// Debugging (`-Z`) options to pass to the compiler.
-    pub debugging_options: DebuggingOptions,
+    pub debugging_opts: DebuggingOptions,
     /// Debugging (`-Z`) options strings to pass to the compiler.
-    pub debugging_options_strs: Vec<String>,
+    pub debugging_opts_strs: Vec<String>,
     /// The target used to compile the crate against.
     pub target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -249,6 +252,20 @@ pub struct RenderOptions {
     pub document_hidden: bool,
 }
 
+/// Temporary storage for data obtained during `RustdocVisitor::clean()`.
+/// Later on moved into `CACHE_KEY`.
+#[derive(Default, Clone)]
+pub struct RenderInfo {
+    pub inlined: FxHashSet<DefId>,
+    pub external_paths: crate::core::ExternalPaths,
+    pub exact_paths: FxHashMap<DefId, Vec<String>>,
+    pub access_levels: AccessLevels<DefId>,
+    pub deref_trait_did: Option<DefId>,
+    pub deref_mut_trait_did: Option<DefId>,
+    pub owned_box_did: Option<DefId>,
+    pub output_format: Option<OutputFormat>,
+}
+
 impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
@@ -301,9 +318,9 @@ impl Options {
         let error_format = config::parse_error_format(&matches, color, json_rendered);
 
         let codegen_options = build_codegen_options(matches, error_format);
-        let debugging_options = build_debugging_options(matches, error_format);
+        let debugging_opts = build_debugging_options(matches, error_format);
 
-        let diag = new_handler(error_format, None, &debugging_options);
+        let diag = new_handler(error_format, None, &debugging_opts);
 
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
@@ -348,7 +365,7 @@ impl Options {
             .iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
-        let externs = parse_externs(&matches, &debugging_options, error_format);
+        let externs = parse_externs(&matches, &debugging_opts, error_format);
         let extern_html_root_urls = match parse_extern_html_roots(&matches) {
             Ok(ex) => ex,
             Err(err) => {
@@ -399,14 +416,12 @@ impl Options {
                     return Err(1);
                 } else if !ret.is_empty() {
                     diag.struct_warn(&format!(
-                        "theme file \"{}\" is missing CSS rules from the \
-                                               default theme",
+                        "theme file \"{}\" is missing CSS rules from the default theme",
                         theme_s
                     ))
                     .warn("the theme may appear incorrect when loaded")
                     .help(&format!(
-                        "to see what rules are missing, call `rustdoc \
-                                        --check-theme \"{}\"`",
+                        "to see what rules are missing, call `rustdoc  --check-theme \"{}\"`",
                         theme_s
                     ))
                     .emit();
@@ -491,7 +506,7 @@ impl Options {
         let output_format = match matches.opt_str("output-format") {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
                 Ok(o) => {
-                    if o.is_json() && !show_coverage {
+                    if o.is_json() && !(show_coverage || nightly_options::is_nightly_build()) {
                         diag.struct_err("json output format isn't supported for doc generation")
                             .emit();
                         return Err(1);
@@ -529,7 +544,7 @@ impl Options {
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
-        let debugging_options_strs = matches.opt_strs("Z");
+        let debugging_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
         let runtool = matches.opt_str("runtool");
@@ -552,8 +567,8 @@ impl Options {
             cfgs,
             codegen_options,
             codegen_options_strs,
-            debugging_options,
-            debugging_options_strs,
+            debugging_opts,
+            debugging_opts_strs,
             target,
             edition,
             maybe_sysroot,
@@ -609,7 +624,9 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            if *flag == "output-format" && matches.opt_present("show-coverage") {
+            if *flag == "output-format"
+                && (matches.opt_present("show-coverage") || nightly_options::is_nightly_build())
+            {
                 continue;
             }
             let mut err =

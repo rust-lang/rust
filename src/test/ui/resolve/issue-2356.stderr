@@ -70,14 +70,15 @@ LL |         purr();
 error[E0424]: expected value, found module `self`
   --> $DIR/issue-2356.rs:65:8
    |
-LL | /   fn meow() {
-LL | |     if self.whiskers > 3 {
-   | |        ^^^^ `self` value is a keyword only available in methods with a `self` parameter
-LL | |
-LL | |         println!("MEOW");
-LL | |     }
-LL | |   }
-   | |___- this function doesn't have a `self` parameter
+LL |   fn meow() {
+   |      ---- this function doesn't have a `self` parameter
+LL |     if self.whiskers > 3 {
+   |        ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |   fn meow(&self) {
+   |           ^^^^^
 
 error[E0425]: cannot find function `grow_older` in this scope
   --> $DIR/issue-2356.rs:72:5
@@ -112,12 +113,10 @@ LL |     purr_louder();
 error[E0424]: expected value, found module `self`
   --> $DIR/issue-2356.rs:92:5
    |
-LL | / fn main() {
-LL | |     self += 1;
-   | |     ^^^^ `self` value is a keyword only available in methods with a `self` parameter
-LL | |
-LL | | }
-   | |_- this function doesn't have a `self` parameter
+LL | fn main() {
+   |    ---- this function can't have a `self` parameter
+LL |     self += 1;
+   |     ^^^^ `self` value is a keyword only available in methods with a `self` parameter
 
 error: aborting due to 17 previous errors
 

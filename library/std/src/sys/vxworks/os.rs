@@ -10,7 +10,7 @@ use crate::path::{self, Path, PathBuf};
 use crate::slice;
 use crate::str;
 use crate::sys::cvt;
-use crate::sys_common::mutex::{Mutex, MutexGuard};
+use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
 use libc::{self, c_char /*,c_void */, c_int};
 /*use sys::fd; this one is probably important */
 use crate::vec;
@@ -212,10 +212,9 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     &mut environ
 }
 
-pub unsafe fn env_lock() -> MutexGuard<'static> {
-    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
-    // acquire this mutex reentrantly!
-    static ENV_LOCK: Mutex = Mutex::new();
+pub unsafe fn env_lock() -> StaticMutexGuard<'static> {
+    // It is UB to attempt to acquire this mutex reentrantly!
+    static ENV_LOCK: StaticMutex = StaticMutex::new();
     ENV_LOCK.lock()
 }
 

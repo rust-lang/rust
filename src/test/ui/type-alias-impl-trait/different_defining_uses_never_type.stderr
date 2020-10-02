@@ -1,34 +1,26 @@
 error: concrete type differs from previous defining opaque type use
   --> $DIR/different_defining_uses_never_type.rs:12:1
    |
-LL | / fn bar() -> Foo {
-LL | |     panic!()
-LL | | }
-   | |_^ expected `&'static str`, got `()`
+LL | fn bar() -> Foo {
+   | ^^^^^^^^^^^^^^^ expected `&'static str`, got `()`
    |
 note: previous use here
   --> $DIR/different_defining_uses_never_type.rs:8:1
    |
-LL | / fn foo() -> Foo {
-LL | |     ""
-LL | | }
-   | |_^
+LL | fn foo() -> Foo {
+   | ^^^^^^^^^^^^^^^
 
 error: concrete type differs from previous defining opaque type use
   --> $DIR/different_defining_uses_never_type.rs:16:1
    |
-LL | / fn boo() -> Foo {
-LL | |     loop {}
-LL | | }
-   | |_^ expected `&'static str`, got `()`
+LL | fn boo() -> Foo {
+   | ^^^^^^^^^^^^^^^ expected `&'static str`, got `()`
    |
 note: previous use here
   --> $DIR/different_defining_uses_never_type.rs:8:1
    |
-LL | / fn foo() -> Foo {
-LL | |     ""
-LL | | }
-   | |_^
+LL | fn foo() -> Foo {
+   | ^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

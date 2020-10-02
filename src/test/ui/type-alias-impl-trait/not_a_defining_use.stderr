@@ -1,18 +1,14 @@
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/not_a_defining_use.rs:29:1
+error: non-defining opaque type use in defining scope
+  --> $DIR/not_a_defining_use.rs:9:27
    |
-LL | / fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
-LL | |     (t, <U as Bar>::FOO)
-LL | | }
-   | |_^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
+LL | fn two<T: Debug>(t: T) -> Two<T, u32> {
+   |                           ^^^^^^^^^^^
    |
-note: previous use here
-  --> $DIR/not_a_defining_use.rs:9:1
+note: used non-generic type `u32` for generic parameter
+  --> $DIR/not_a_defining_use.rs:7:13
    |
-LL | / fn two<T: Debug>(t: T) -> Two<T, u32> {
-LL | |     (t, 4i8)
-LL | | }
-   | |_^
+LL | type Two<T, U> = impl Debug;
+   |             ^
 
 error: aborting due to previous error
 

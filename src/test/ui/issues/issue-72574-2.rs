@@ -8,3 +8,5 @@ fn main() {
     }
 }
 //~^^^^ ERROR `_x @` is not allowed in a tuple struct
+//~| ERROR: `..` patterns are not allowed here
+//~| ERROR: this pattern has 2 fields, but the corresponding tuple struct has 3 fields

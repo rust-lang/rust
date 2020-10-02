@@ -131,8 +131,8 @@ fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
 }
 
 impl Stdin {
-    pub fn new() -> io::Result<Stdin> {
-        Ok(Stdin { surrogate: 0 })
+    pub const fn new() -> Stdin {
+        Stdin { surrogate: 0 }
     }
 }
 
@@ -255,8 +255,8 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
 }
 
 impl Stdout {
-    pub fn new() -> io::Result<Stdout> {
-        Ok(Stdout)
+    pub const fn new() -> Stdout {
+        Stdout
     }
 }
 
@@ -271,8 +271,8 @@ impl io::Write for Stdout {
 }
 
 impl Stderr {
-    pub fn new() -> io::Result<Stderr> {
-        Ok(Stderr)
+    pub const fn new() -> Stderr {
+        Stderr
     }
 }
 
@@ -291,5 +291,5 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
-    Stderr::new().ok()
+    Some(Stderr::new())
 }

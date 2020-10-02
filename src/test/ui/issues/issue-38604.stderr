@@ -20,8 +20,8 @@ LL | trait Foo where u32: Q<Self> {
 LL |         Box::new(());
    |         ^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Foo>>` for `std::boxed::Box<()>`
-   = note: required by cast to type `std::boxed::Box<dyn Foo>`
+   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Foo>>` for `Box<()>`
+   = note: required by cast to type `Box<dyn Foo>`
 
 error: aborting due to 2 previous errors
 

@@ -4,6 +4,6 @@
 // though they would never actually get displayed. This tripped intra-doc-link resolution failures,
 // for items that aren't under our control, and not actually getting documented!
 
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(broken_intra_doc_links)]
 
 extern crate inner;

@@ -4,7 +4,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::sys::hermit::abi;
-use crate::sys::hermit::fast_thread_local::run_dtors;
+use crate::sys::hermit::thread_local_dtor::run_dtors;
 use crate::time::Duration;
 
 pub type Tid = abi::Tid;

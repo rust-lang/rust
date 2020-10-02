@@ -138,10 +138,10 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
             ExprKind::Call(ref func, _) => {
                 let typ = self.cx.typeck_results().expr_ty(func);
-                match typ.kind {
+                match typ.kind() {
                     ty::FnDef(..) | ty::FnPtr(_) => {
                         let sig = typ.fn_sig(self.cx.tcx);
-                        if let ty::Never = self.cx.tcx.erase_late_bound_regions(&sig).output().kind {
+                        if let ty::Never = self.cx.tcx.erase_late_bound_regions(&sig).output().kind() {
                             self.report_diverging_sub_expr(e);
                         }
                     },

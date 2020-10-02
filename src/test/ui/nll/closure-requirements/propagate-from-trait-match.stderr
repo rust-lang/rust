@@ -11,7 +11,7 @@ LL | |         require(value);
 LL | |     });
    | |_____^
    |
-   = note: defining type: supply::<'_#1r, T>::{{closure}}#0 with closure substs [
+   = note: defining type: supply::<'_#1r, T>::{closure#0} with closure substs [
                i32,
                extern "rust-call" fn((T,)),
                (),

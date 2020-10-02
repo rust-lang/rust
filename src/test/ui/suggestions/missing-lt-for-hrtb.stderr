@@ -1,0 +1,63 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lt-for-hrtb.rs:2:32
+   |
+LL | struct S<'a>(&'a dyn Fn(&X) -> &X);
+   |                         --     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of argument 1's 2 lifetimes it is borrowed from
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL | struct S<'a>(&'a dyn for<'b> Fn(&'b X) -> &'b X);
+   |                      ^^^^^^^    ^^^^^     ^^^
+help: consider using the `'a` lifetime
+   |
+LL | struct S<'a>(&'a dyn Fn(&X) -> &'a X);
+   |                                ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lt-for-hrtb.rs:2:33
+   |
+LL | struct S<'a>(&'a dyn Fn(&X) -> &X);
+   |                         --      ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of argument 1's 2 lifetimes it is borrowed from
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL | struct S<'a>(&'a dyn for<'b> Fn(&'b X) -> &X<'b>);
+   |                      ^^^^^^^    ^^^^^      ^^^^^
+help: consider using the `'a` lifetime
+   |
+LL | struct S<'a>(&'a dyn Fn(&X) -> &X<'a>);
+   |                                 ^^^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lt-for-hrtb.rs:5:40
+   |
+LL | struct V<'a>(&'a dyn for<'b> Fn(&X) -> &X);
+   |                                 --     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of argument 1's 2 lifetimes it is borrowed from
+note: these named lifetimes are available to use
+  --> $DIR/missing-lt-for-hrtb.rs:5:10
+   |
+LL | struct V<'a>(&'a dyn for<'b> Fn(&X) -> &X);
+   |          ^^              ^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lt-for-hrtb.rs:5:41
+   |
+LL | struct V<'a>(&'a dyn for<'b> Fn(&X) -> &X);
+   |                                 --      ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of argument 1's 2 lifetimes it is borrowed from
+note: these named lifetimes are available to use
+  --> $DIR/missing-lt-for-hrtb.rs:5:10
+   |
+LL | struct V<'a>(&'a dyn for<'b> Fn(&X) -> &X);
+   |          ^^              ^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

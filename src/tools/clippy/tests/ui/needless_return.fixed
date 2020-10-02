@@ -69,6 +69,23 @@ fn test_void_match(x: u32) {
     }
 }
 
+fn read_line() -> String {
+    use std::io::BufRead;
+    let stdin = ::std::io::stdin();
+    return stdin.lock().lines().next().unwrap().unwrap();
+}
+
+fn borrows_but_not_last(value: bool) -> String {
+    if value {
+        use std::io::BufRead;
+        let stdin = ::std::io::stdin();
+        let _a = stdin.lock().lines().next().unwrap().unwrap();
+        String::from("test")
+    } else {
+        String::new()
+    }
+}
+
 fn main() {
     let _ = test_end_of_fn();
     let _ = test_no_semicolon();

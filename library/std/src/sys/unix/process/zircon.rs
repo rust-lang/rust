@@ -138,6 +138,7 @@ pub const FDIO_SPAWN_CLONE_LDSVC: u32 = 0x0002;
 pub const FDIO_SPAWN_CLONE_NAMESPACE: u32 = 0x0004;
 pub const FDIO_SPAWN_CLONE_STDIO: u32 = 0x0008;
 pub const FDIO_SPAWN_CLONE_ENVIRON: u32 = 0x0010;
+pub const FDIO_SPAWN_CLONE_UTC_CLOCK: u32 = 0x0020;
 pub const FDIO_SPAWN_CLONE_ALL: u32 = 0xFFFF;
 
 // fdio_spawn_etc actions

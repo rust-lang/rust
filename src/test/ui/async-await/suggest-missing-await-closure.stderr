@@ -11,7 +11,7 @@ LL |         take_u32(x)
    |                  help: consider using `.await` here: `x.await`
    |
    = note:     expected type `u32`
-           found opaque type `impl std::future::Future`
+           found opaque type `impl Future`
 
 error: aborting due to previous error
 

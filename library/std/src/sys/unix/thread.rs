@@ -213,7 +213,7 @@ impl Drop for Thread {
 }
 
 #[cfg(all(
-    not(all(target_os = "linux", not(target_env = "musl"))),
+    not(target_os = "linux"),
     not(target_os = "freebsd"),
     not(target_os = "macos"),
     not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
@@ -233,7 +233,7 @@ pub mod guard {
 }
 
 #[cfg(any(
-    all(target_os = "linux", not(target_env = "musl")),
+    target_os = "linux",
     target_os = "freebsd",
     target_os = "macos",
     all(target_os = "netbsd", not(target_vendor = "rumprun")),
@@ -294,6 +294,7 @@ pub mod guard {
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
+        #[cfg(target_os = "freebsd")]
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         #[cfg(target_os = "freebsd")]
         let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
@@ -305,7 +306,9 @@ pub mod guard {
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize), 0);
             ret = Some(stackaddr);
         }
-        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        if e == 0 || cfg!(target_os = "freebsd") {
+            assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        }
         ret
     }
 
@@ -333,9 +336,7 @@ pub mod guard {
         let page_size = os::page_size();
         PAGE_SIZE.store(page_size, Ordering::Relaxed);
 
-        let stackaddr = get_stack_start_aligned()?;
-
-        if cfg!(target_os = "linux") {
+        if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
             // Linux doesn't allocate the whole stack right away, and
             // the kernel has its own stack-guard mechanism to fault
             // when growing too close to an existing mapping.  If we map
@@ -346,8 +347,15 @@ pub mod guard {
             // Instead, we'll just note where we expect rlimit to start
             // faulting, so our handler can report "stack overflow", and
             // trust that the kernel's own stack guard will work.
+            let stackaddr = get_stack_start_aligned()?;
             let stackaddr = stackaddr as usize;
             Some(stackaddr - page_size..stackaddr)
+        } else if cfg!(all(target_os = "linux", target_env = "musl")) {
+            // For the main thread, the musl's pthread_attr_getstack
+            // returns the current stack size, rather than maximum size
+            // it can eventually grow to. It cannot be used to determine
+            // the position of kernel's stack guard.
+            None
         } else {
             // Reallocate the last page of the stack.
             // This ensures SIGBUS will be raised on
@@ -357,6 +365,7 @@ pub mod guard {
             // than the initial mmap() used, so we mmap() here with
             // read/write permissions and only then mprotect() it to
             // no permissions at all. See issue #50313.
+            let stackaddr = get_stack_start_aligned()?;
             let result = mmap(
                 stackaddr,
                 page_size,
@@ -397,6 +406,7 @@ pub mod guard {
     pub unsafe fn current() -> Option<Guard> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
+        #[cfg(target_os = "freebsd")]
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         #[cfg(target_os = "freebsd")]
         let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
@@ -406,7 +416,14 @@ pub mod guard {
             let mut guardsize = 0;
             assert_eq!(libc::pthread_attr_getguardsize(&attr, &mut guardsize), 0);
             if guardsize == 0 {
-                panic!("there is no guard page");
+                if cfg!(all(target_os = "linux", target_env = "musl")) {
+                    // musl versions before 1.1.19 always reported guard
+                    // size obtained from pthread_attr_get_np as zero.
+                    // Use page size as a fallback.
+                    guardsize = PAGE_SIZE.load(Ordering::Relaxed);
+                } else {
+                    panic!("there is no guard page");
+                }
             }
             let mut stackaddr = crate::ptr::null_mut();
             let mut size = 0;
@@ -418,6 +435,8 @@ pub mod guard {
                 let guardaddr = stackaddr - guardsize;
                 Some(guardaddr - PAGE_SIZE.load(Ordering::Relaxed)..guardaddr)
             } else if cfg!(target_os = "netbsd") {
+                Some(stackaddr - guardsize..stackaddr)
+            } else if cfg!(all(target_os = "linux", target_env = "musl")) {
                 Some(stackaddr - guardsize..stackaddr)
             } else if cfg!(all(target_os = "linux", target_env = "gnu")) {
                 // glibc used to include the guard area within the stack, as noted in the BUGS
@@ -431,7 +450,9 @@ pub mod guard {
                 Some(stackaddr..stackaddr + guardsize)
             };
         }
-        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        if e == 0 || cfg!(target_os = "freebsd") {
+            assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        }
         ret
     }
 }

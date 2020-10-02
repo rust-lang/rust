@@ -11,44 +11,53 @@ use std::path::PathBuf;
 use std::process;
 
 fn main() {
-    let path: PathBuf = env::args_os().nth(1).expect("need path to src").into();
+    let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
 
-    let library_path: PathBuf = path
-        .join("..")
-        .join("library")
-        .canonicalize()
-        .expect("unable to canonicalize path to library/");
+    let src_path = root_path.join("src");
+    let library_path = root_path.join("library");
+    let compiler_path = root_path.join("compiler");
 
     let args: Vec<String> = env::args().skip(1).collect();
 
     let mut bad = false;
     let verbose = args.iter().any(|s| *s == "--verbose");
 
+    // Checks over tests.
+    debug_artifacts::check(&src_path, &mut bad);
+    ui_tests::check(&src_path, &mut bad);
+
     // Checks that only make sense for the compiler.
-    debug_artifacts::check(&path, &mut bad);
-    errors::check(&path, &mut bad);
-    ui_tests::check(&path, &mut bad);
-    error_codes_check::check(&path, &mut bad);
+    errors::check(&compiler_path, &mut bad);
+    error_codes_check::check(&src_path, &mut bad);
 
     // Checks that only make sense for the std libs.
     pal::check(&library_path, &mut bad);
     unit_tests::check(&library_path, &mut bad);
 
-    // Check that need to be done for both the compiler and std libraries.
-    bins::check(&path, &mut bad);
+    // Checks that need to be done for both the compiler and std libraries.
+    bins::check(&src_path, &mut bad);
+    bins::check(&compiler_path, &mut bad);
     bins::check(&library_path, &mut bad);
-    style::check(&path, &mut bad);
+
+    style::check(&src_path, &mut bad);
+    style::check(&compiler_path, &mut bad);
     style::check(&library_path, &mut bad);
-    cargo::check(&path, &mut bad);
+
+    cargo::check(&src_path, &mut bad);
+    cargo::check(&compiler_path, &mut bad);
     cargo::check(&library_path, &mut bad);
-    edition::check(&path, &mut bad);
+
+    edition::check(&src_path, &mut bad);
+    edition::check(&compiler_path, &mut bad);
     edition::check(&library_path, &mut bad);
 
-    let collected = features::check(&path, &library_path, &mut bad, verbose);
-    unstable_book::check(&path, collected, &mut bad);
-    deps::check(&path.parent().unwrap(), &cargo, &mut bad);
-    extdeps::check(&path.parent().unwrap(), &mut bad);
+    let collected = features::check(&src_path, &compiler_path, &library_path, &mut bad, verbose);
+    unstable_book::check(&src_path, collected, &mut bad);
+
+    // Checks that are done on the cargo workspace.
+    deps::check(&root_path, &cargo, &mut bad);
+    extdeps::check(&root_path, &mut bad);
 
     if bad {
         eprintln!("some tidy checks failed");

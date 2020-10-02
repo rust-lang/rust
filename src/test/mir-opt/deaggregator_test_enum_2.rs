@@ -5,7 +5,7 @@ enum Foo {
     B(i32),
 }
 
-// EMIT_MIR rustc.test1.Deaggregator.diff
+// EMIT_MIR deaggregator_test_enum_2.test1.Deaggregator.diff
 fn test1(x: bool, y: i32) -> Foo {
     if x {
         Foo::A(y)

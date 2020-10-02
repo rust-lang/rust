@@ -34,21 +34,24 @@ LL |     struct Foo { a: bool };
 LL | 
 LL |     let f = Foo();
    |             ^^^^^
+...
+LL | fn foo() {
+   | -------- similarly named function `foo` defined here
    |
-help: a function with a similar name exists
-   |
-LL |     let f = foo();
-   |             ^^^
 help: use struct literal syntax instead
    |
 LL |     let f = Foo { a: val };
    |             ^^^^^^^^^^^^^^
+help: a function with a similar name exists
+   |
+LL |     let f = foo();
+   |             ^^^
 
 error[E0423]: expected value, found struct `T`
   --> $DIR/E0423.rs:14:8
    |
 LL |     if T {} == T {} { println!("Ok"); }
-   |        ^
+   |        ^ not a value
    |
 help: surround the struct literal with parentheses
    |

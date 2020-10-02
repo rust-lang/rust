@@ -16,19 +16,19 @@ LL |     r.a_unstable_undeclared_pub;
    = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
-error[E0616]: field `b_crate` of struct `pub_and_stability::Record` is private
+error[E0616]: field `b_crate` of struct `Record` is private
   --> $DIR/explore-issue-38412.rs:31:7
    |
 LL |     r.b_crate;
    |       ^^^^^^^ private field
 
-error[E0616]: field `c_mod` of struct `pub_and_stability::Record` is private
+error[E0616]: field `c_mod` of struct `Record` is private
   --> $DIR/explore-issue-38412.rs:32:7
    |
 LL |     r.c_mod;
    |       ^^^^^ private field
 
-error[E0616]: field `d_priv` of struct `pub_and_stability::Record` is private
+error[E0616]: field `d_priv` of struct `Record` is private
   --> $DIR/explore-issue-38412.rs:33:7
    |
 LL |     r.d_priv;
@@ -43,19 +43,19 @@ LL |     t.2;
    = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
-error[E0616]: field `3` of struct `pub_and_stability::Tuple` is private
+error[E0616]: field `3` of struct `Tuple` is private
   --> $DIR/explore-issue-38412.rs:38:7
    |
 LL |     t.3;
    |       ^ private field
 
-error[E0616]: field `4` of struct `pub_and_stability::Tuple` is private
+error[E0616]: field `4` of struct `Tuple` is private
   --> $DIR/explore-issue-38412.rs:39:7
    |
 LL |     t.4;
    |       ^ private field
 
-error[E0616]: field `5` of struct `pub_and_stability::Tuple` is private
+error[E0616]: field `5` of struct `Tuple` is private
   --> $DIR/explore-issue-38412.rs:40:7
    |
 LL |     t.5;

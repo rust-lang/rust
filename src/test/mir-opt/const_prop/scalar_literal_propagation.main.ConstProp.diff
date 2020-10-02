@@ -1,0 +1,35 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/scalar_literal_propagation.rs:2:11: 2:11
+      let _1: u32;                         // in scope 0 at $DIR/scalar_literal_propagation.rs:3:9: 3:10
+      let _2: ();                          // in scope 0 at $DIR/scalar_literal_propagation.rs:4:5: 4:15
+      let mut _3: u32;                     // in scope 0 at $DIR/scalar_literal_propagation.rs:4:13: 4:14
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/scalar_literal_propagation.rs:3:9: 3:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/scalar_literal_propagation.rs:3:9: 3:10
+          _1 = const 1_u32;                // scope 0 at $DIR/scalar_literal_propagation.rs:3:13: 3:14
+          StorageLive(_2);                 // scope 1 at $DIR/scalar_literal_propagation.rs:4:5: 4:15
+          StorageLive(_3);                 // scope 1 at $DIR/scalar_literal_propagation.rs:4:13: 4:14
+-         _3 = _1;                         // scope 1 at $DIR/scalar_literal_propagation.rs:4:13: 4:14
+-         _2 = consume(move _3) -> bb1;    // scope 1 at $DIR/scalar_literal_propagation.rs:4:5: 4:15
++         _3 = const 1_u32;                // scope 1 at $DIR/scalar_literal_propagation.rs:4:13: 4:14
++         _2 = consume(const 1_u32) -> bb1; // scope 1 at $DIR/scalar_literal_propagation.rs:4:5: 4:15
+                                           // mir::Constant
+                                           // + span: $DIR/scalar_literal_propagation.rs:4:5: 4:12
+                                           // + literal: Const { ty: fn(u32) {consume}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 1 at $DIR/scalar_literal_propagation.rs:4:14: 4:15
+          StorageDead(_2);                 // scope 1 at $DIR/scalar_literal_propagation.rs:4:15: 4:16
+          _0 = const ();                   // scope 0 at $DIR/scalar_literal_propagation.rs:2:11: 5:2
+          StorageDead(_1);                 // scope 0 at $DIR/scalar_literal_propagation.rs:5:1: 5:2
+          return;                          // scope 0 at $DIR/scalar_literal_propagation.rs:5:2: 5:2
+      }
+  }
+  

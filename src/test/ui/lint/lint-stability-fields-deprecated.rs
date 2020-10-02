@@ -16,19 +16,19 @@ mod cross_crate {
             inherit: 1,
             override1: 2,
             override2: 3,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         };
 
         let _ = x.inherit;
         let _ = x.override1;
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Stable {
             inherit: _,
             override1: _,
             override2: _
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         } = x;
         // all fine
         let Stable { .. } = x;
@@ -38,12 +38,12 @@ mod cross_crate {
         let _ = x.0;
         let _ = x.1;
         let _ = x.2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Stable2(_,
                    _,
                    _)
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             = x;
         // all fine
         let Stable2(..) = x;
@@ -53,19 +53,19 @@ mod cross_crate {
             inherit: 1,
             override1: 2,
             override2: 3,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         };
 
         let _ = x.inherit;
         let _ = x.override1;
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Unstable {
             inherit: _,
             override1: _,
             override2: _
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         } = x;
 
         let Unstable
@@ -78,13 +78,13 @@ mod cross_crate {
         let _ = x.0;
         let _ = x.1;
         let _ = x.2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Unstable2
             (_,
              _,
              _)
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             = x;
         let Unstable2
             // the patterns are all fine:
@@ -92,58 +92,58 @@ mod cross_crate {
 
 
         let x = Deprecated {
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated struct
             inherit: 1,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             override1: 2,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             override2: 3,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         };
 
         let _ = x.inherit;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
         let _ = x.override1;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Deprecated {
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated struct
             inherit: _,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             override1: _,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             override2: _
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         } = x;
 
         let Deprecated
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated struct
             // the patterns are all fine:
             { .. } = x;
 
         let x = Deprecated2(1, 2, 3);
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated struct
 
         let _ = x.0;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
         let _ = x.1;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
         let _ = x.2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Deprecated2
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated struct
             (_,
-             //~^ ERROR use of deprecated item
+             //~^ ERROR use of deprecated field
              _,
-             //~^ ERROR use of deprecated item
+             //~^ ERROR use of deprecated field
              _)
-             //~^ ERROR use of deprecated item
+             //~^ ERROR use of deprecated field
             = x;
         let Deprecated2
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated struct
             // the patterns are all fine:
             (..) = x;
     }
@@ -203,19 +203,19 @@ mod this_crate {
             inherit: 1,
             override1: 2,
             override2: 3,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         };
 
         let _ = x.inherit;
         let _ = x.override1;
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Stable {
             inherit: _,
             override1: _,
             override2: _
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         } = x;
         // all fine
         let Stable { .. } = x;
@@ -225,12 +225,12 @@ mod this_crate {
         let _ = x.0;
         let _ = x.1;
         let _ = x.2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Stable2(_,
                    _,
                    _)
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             = x;
         // all fine
         let Stable2(..) = x;
@@ -240,19 +240,19 @@ mod this_crate {
             inherit: 1,
             override1: 2,
             override2: 3,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         };
 
         let _ = x.inherit;
         let _ = x.override1;
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Unstable {
             inherit: _,
             override1: _,
             override2: _
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         } = x;
 
         let Unstable
@@ -265,13 +265,13 @@ mod this_crate {
         let _ = x.0;
         let _ = x.1;
         let _ = x.2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Unstable2
             (_,
              _,
              _)
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             = x;
         let Unstable2
             // the patterns are all fine:
@@ -279,58 +279,58 @@ mod this_crate {
 
 
         let x = Deprecated {
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated struct
             inherit: 1,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             override1: 2,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             override2: 3,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         };
 
         let _ = x.inherit;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
         let _ = x.override1;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Deprecated {
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated struct
             inherit: _,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             override1: _,
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             override2: _
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
         } = x;
 
         let Deprecated
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated struct
             // the patterns are all fine:
             { .. } = x;
 
         let x = Deprecated2(1, 2, 3);
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated tuple struct
 
         let _ = x.0;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
         let _ = x.1;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
         let _ = x.2;
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated field
 
         let Deprecated2
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated tuple struct
             (_,
-             //~^ ERROR use of deprecated item
+             //~^ ERROR use of deprecated field
              _,
-             //~^ ERROR use of deprecated item
+             //~^ ERROR use of deprecated field
              _)
-            //~^ ERROR use of deprecated item
+            //~^ ERROR use of deprecated field
             = x;
         let Deprecated2
-        //~^ ERROR use of deprecated item
+        //~^ ERROR use of deprecated tuple struct
             // the patterns are all fine:
             (..) = x;
     }

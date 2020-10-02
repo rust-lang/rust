@@ -16,6 +16,7 @@ apt-get install -y --no-install-recommends \
   git \
   lld-5.0 \
   make \
+  ninja-build \
   python \
   sudo \
   xz-utils

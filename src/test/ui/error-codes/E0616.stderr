@@ -1,4 +1,4 @@
-error[E0616]: field `x` of struct `a::Foo` is private
+error[E0616]: field `x` of struct `Foo` is private
   --> $DIR/E0616.rs:13:7
    |
 LL |     f.x;

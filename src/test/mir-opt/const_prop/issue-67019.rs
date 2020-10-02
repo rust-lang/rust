@@ -6,7 +6,7 @@ fn test(this: ((u8, u8),)) {
     assert!((this.0).0 == 1);
 }
 
-// EMIT_MIR rustc.main.ConstProp.diff
+// EMIT_MIR issue_67019.main.ConstProp.diff
 fn main() {
     test(((1, 2),));
 }

@@ -40,34 +40,34 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/trait-object-trait-parens.rs:8:35
    |
 LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
-   |                -----              ^^^^^^^^^^^^^^^^^^^
-   |                |                  |
-   |                |                  additional non-auto trait
-   |                |                  trait alias used in trait object type (additional use)
+   |                -----              ^^^^^^^^^^^^^^^^^^^ additional non-auto trait
+   |                |
    |                first non-auto trait
-   |                trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Obj + for<'a> Trait<'a> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/trait-object-trait-parens.rs:12:49
    |
 LL |     let _: Box<(?Sized) + (for<'a> Trait<'a>) + (Obj)>;
-   |                           -------------------   ^^^^^
-   |                           |                     |
-   |                           |                     additional non-auto trait
-   |                           |                     trait alias used in trait object type (additional use)
+   |                           -------------------   ^^^^^ additional non-auto trait
+   |                           |
    |                           first non-auto trait
-   |                           trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: for<'a> Trait<'a> + Obj {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/trait-object-trait-parens.rs:16:38
    |
 LL |     let _: Box<(for<'a> Trait<'a>) + (Obj) + (?Sized)>;
-   |                 -----------------    ^^^^^
-   |                 |                    |
-   |                 |                    additional non-auto trait
-   |                 |                    trait alias used in trait object type (additional use)
+   |                 -----------------    ^^^^^ additional non-auto trait
+   |                 |
    |                 first non-auto trait
-   |                 trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: for<'a> Trait<'a> + Obj {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error: aborting due to 6 previous errors; 3 warnings emitted
 

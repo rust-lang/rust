@@ -135,4 +135,25 @@ mod no_lint_if_stmt_borrows {
     }
 }
 
+mod issue_5729 {
+    use std::sync::Arc;
+
+    trait Foo {}
+
+    trait FooStorage {
+        fn foo_cloned(&self) -> Arc<dyn Foo>;
+    }
+
+    struct FooStorageImpl<T: Foo> {
+        foo: Arc<T>,
+    }
+
+    impl<T: Foo + 'static> FooStorage for FooStorageImpl<T> {
+        fn foo_cloned(&self) -> Arc<dyn Foo> {
+            let clone = Arc::clone(&self.foo);
+            clone
+        }
+    }
+}
+
 fn main() {}

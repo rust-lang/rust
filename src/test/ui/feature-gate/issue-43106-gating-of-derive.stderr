@@ -1,28 +1,28 @@
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-43106-gating-of-derive.rs:4:1
    |
 LL | #[derive(Debug)]
    | ^^^^^^^^^^^^^^^^
 
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-43106-gating-of-derive.rs:7:17
    |
 LL |     mod inner { #![derive(Debug)] }
    |                 ^^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Debug)]`
 
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-43106-gating-of-derive.rs:10:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-43106-gating-of-derive.rs:23:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-43106-gating-of-derive.rs:27:5
    |
 LL |     #[derive(Debug)]
@@ -30,3 +30,4 @@ LL |     #[derive(Debug)]
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0774`.

@@ -1,40 +1,40 @@
-error: You are using an explicit closure for copying elements
+error: you are using an explicit closure for copying elements
   --> $DIR/map_clone.rs:10:22
    |
 LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `copied` method: `vec![5_i8; 6].iter().copied()`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `vec![5_i8; 6].iter().copied()`
    |
    = note: `-D clippy::map-clone` implied by `-D warnings`
 
-error: You are using an explicit closure for cloning elements
+error: you are using an explicit closure for cloning elements
   --> $DIR/map_clone.rs:11:26
    |
 LL |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![String::new()].iter().cloned()`
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `vec![String::new()].iter().cloned()`
 
-error: You are using an explicit closure for copying elements
+error: you are using an explicit closure for copying elements
   --> $DIR/map_clone.rs:12:23
    |
 LL |     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `copied` method: `vec![42, 43].iter().copied()`
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `vec![42, 43].iter().copied()`
 
-error: You are using an explicit closure for copying elements
+error: you are using an explicit closure for copying elements
   --> $DIR/map_clone.rs:14:26
    |
 LL |     let _: Option<u64> = Some(&16).map(|b| *b);
-   |                          ^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `copied` method: `Some(&16).copied()`
+   |                          ^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `Some(&16).copied()`
 
-error: You are using an explicit closure for copying elements
+error: you are using an explicit closure for copying elements
   --> $DIR/map_clone.rs:15:25
    |
 LL |     let _: Option<u8> = Some(&1).map(|x| x.clone());
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `copied` method: `Some(&1).copied()`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `Some(&1).copied()`
 
-error: You are needlessly cloning iterator elements
+error: you are needlessly cloning iterator elements
   --> $DIR/map_clone.rs:26:29
    |
 LL |     let _ = std::env::args().map(|v| v.clone());
-   |                             ^^^^^^^^^^^^^^^^^^^ help: Remove the `map` call
+   |                             ^^^^^^^^^^^^^^^^^^^ help: remove the `map` call
 
 error: aborting due to 6 previous errors
 

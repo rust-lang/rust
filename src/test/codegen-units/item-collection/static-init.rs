@@ -6,10 +6,10 @@ pub static FN : fn() = foo::<i32>;
 
 pub fn foo<T>() { }
 
-//~ MONO_ITEM fn static_init::foo[0]<T>
-//~ MONO_ITEM static static_init::FN[0]
+//~ MONO_ITEM fn foo::<T>
+//~ MONO_ITEM static FN
 
-//~ MONO_ITEM fn static_init::start[0]
+//~ MONO_ITEM fn start
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
     0

@@ -57,7 +57,7 @@ LL |     async fn associated();
    |                          expected `()`, found opaque type
    |
    = note: expected fn pointer `fn()`
-              found fn pointer `fn() -> impl std::future::Future`
+              found fn pointer `fn() -> impl Future`
 
 error: aborting due to 6 previous errors
 

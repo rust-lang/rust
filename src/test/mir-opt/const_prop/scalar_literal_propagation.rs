@@ -1,4 +1,4 @@
-// EMIT_MIR rustc.main.ConstProp.diff
+// EMIT_MIR scalar_literal_propagation.main.ConstProp.diff
 fn main() {
     let x = 1;
     consume(x);

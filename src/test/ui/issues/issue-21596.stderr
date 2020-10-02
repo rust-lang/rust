@@ -8,7 +8,7 @@ LL |     println!("{}", z.to_string());
    = note: using `<*const T>::as_ref()` on a pointer which is unaligned or points to invalid or uninitialized memory is undefined behavior
    = note: the method `to_string` exists but the following trait bounds were not satisfied:
            `*const u8: std::fmt::Display`
-           which is required by `*const u8: std::string::ToString`
+           which is required by `*const u8: ToString`
 
 error: aborting due to previous error
 

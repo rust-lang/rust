@@ -48,6 +48,14 @@ fn main() {
     let _ = -1f64.to_degrees();
     let _ = -1f64.to_radians();
 
+    // Chains containing any non-odd function should trigger (issue #5924)
+    let _ = -1.0_f64.cos().cos();
+    let _ = -1.0_f64.cos().sin();
+    let _ = -1.0_f64.sin().cos();
+
+    // Chains of odd functions shouldn't trigger
+    let _ = -1f64.sin().sin();
+
     let b = 3;
     trip!(b * 8);
 }

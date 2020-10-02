@@ -40,7 +40,7 @@ impl Thread {
         while nanos > 0 {
             let amt = cmp::min(i64::MAX as u128, nanos);
             let mut x = 0;
-            let val = unsafe { wasm32::i32_atomic_wait(&mut x, 0, amt as i64) };
+            let val = unsafe { wasm32::memory_atomic_wait32(&mut x, 0, amt as i64) };
             debug_assert_eq!(val, 2);
             nanos -= amt;
         }

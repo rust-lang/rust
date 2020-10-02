@@ -27,7 +27,7 @@ error[E0392]: parameter `'c` is never used
 LL | struct Foo<'a,'b,'c> {
    |                  ^^ unused parameter
    |
-   = help: consider removing `'c`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
+   = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
 
 error: aborting due to 3 previous errors
 

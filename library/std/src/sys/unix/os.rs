@@ -2,6 +2,9 @@
 
 #![allow(unused_imports)] // lots of cfg code here
 
+#[cfg(all(test, target_env = "gnu"))]
+mod tests;
+
 use crate::os::unix::prelude::*;
 
 use crate::error::Error as StdError;
@@ -18,7 +21,7 @@ use crate::slice;
 use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
-use crate::sys_common::mutex::{Mutex, MutexGuard};
+use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
 use crate::vec;
 
 use libc::{c_char, c_int, c_void};
@@ -467,10 +470,9 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     &mut environ
 }
 
-pub unsafe fn env_lock() -> MutexGuard<'static> {
-    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
-    // acquire this mutex reentrantly!
-    static ENV_LOCK: Mutex = Mutex::new();
+pub unsafe fn env_lock() -> StaticMutexGuard<'static> {
+    // It is UB to attempt to acquire this mutex reentrantly!
+    static ENV_LOCK: StaticMutex = StaticMutex::new();
     ENV_LOCK.lock()
 }
 
@@ -643,32 +645,5 @@ fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
     match (parsed_ints.next(), parsed_ints.next()) {
         (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
         _ => None,
-    }
-}
-
-#[cfg(all(test, target_env = "gnu"))]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_glibc_version() {
-        // This mostly just tests that the weak linkage doesn't panic wildly...
-        glibc_version();
-    }
-
-    #[test]
-    fn test_parse_glibc_version() {
-        let cases = [
-            ("0.0", Some((0, 0))),
-            ("01.+2", Some((1, 2))),
-            ("3.4.5.six", Some((3, 4))),
-            ("1", None),
-            ("1.-2", None),
-            ("1.foo", None),
-            ("foo.1", None),
-        ];
-        for &(version_str, parsed) in cases.iter() {
-            assert_eq!(parsed, parse_glibc_version(version_str));
-        }
     }
 }

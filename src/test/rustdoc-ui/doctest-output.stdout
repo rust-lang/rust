@@ -1,7 +1,8 @@
 
-running 2 tests
-test $DIR/doctest-output.rs - (line 5) ... ok
-test $DIR/doctest-output.rs - foo::bar (line 11) ... ok
+running 3 tests
+test $DIR/doctest-output.rs - (line 7) ... ok
+test $DIR/doctest-output.rs - ExpandedStruct (line 23) ... ok
+test $DIR/doctest-output.rs - foo::bar (line 17) ... ok
 
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 

@@ -9,7 +9,7 @@
 //   all of the bindings for that scope.
 // * No drop flags are used.
 
-// EMIT_MIR rustc.complicated_match SimplifyCfg-initial.after ElaborateDrops.after
+// EMIT_MIR match_arm_scopes.complicated_match SimplifyCfg-initial.after ElaborateDrops.after
 fn complicated_match(cond: bool, items: (bool, bool, String)) -> i32 {
     match items {
         (false, a, s) | (a, false, s) if if cond { return 3 } else { a } => 1,

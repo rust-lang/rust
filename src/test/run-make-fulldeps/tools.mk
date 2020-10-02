@@ -11,8 +11,8 @@ BARE_RUSTDOC := $(HOST_RPATH_ENV) '$(RUSTDOC)'
 RUSTC := $(BARE_RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR) $(RUSTFLAGS)
 RUSTDOC := $(BARE_RUSTDOC) -L $(TARGET_RPATH_DIR)
 ifdef RUSTC_LINKER
-RUSTC := $(RUSTC) -Clinker=$(RUSTC_LINKER)
-RUSTDOC := $(RUSTDOC) -Clinker=$(RUSTC_LINKER)
+RUSTC := $(RUSTC) -Clinker='$(RUSTC_LINKER)'
+RUSTDOC := $(RUSTDOC) -Clinker='$(RUSTC_LINKER)'
 endif
 #CC := $(CC) -L $(TMPDIR)
 HTMLDOCCK := '$(PYTHON)' '$(S)/src/etc/htmldocck.py'
@@ -51,6 +51,7 @@ ifdef IS_MSVC
 STATICLIB = $(TMPDIR)/$(1).lib
 STATICLIB_GLOB = $(1)*.lib
 else
+IMPLIB = $(TMPDIR)/lib$(1).dll.a
 STATICLIB = $(TMPDIR)/lib$(1).a
 STATICLIB_GLOB = lib$(1)*.a
 endif

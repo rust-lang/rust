@@ -38,63 +38,6 @@ future.
 Attempting to use these error numbers on stable will result in the code sample being interpreted as
 plain text.
 
-### Linking to items by name
-
-Rustdoc is capable of directly linking to other rustdoc pages in Markdown documentation using the path of item as a link.
-
-For example, in the following code all of the links will link to the rustdoc page for `Bar`:
-
-```rust
-/// This struct is not [Bar]
-pub struct Foo1;
-
-/// This struct is also not [bar](Bar)
-pub struct Foo2;
-
-/// This struct is also not [bar][b]
-///
-/// [b]: Bar
-pub struct Foo3;
-
-/// This struct is also not [`Bar`]
-pub struct Foo4;
-
-pub struct Bar;
-```
-
-You can refer to anything in scope, and use paths, including `Self`. You may also use `foo()` and `foo!()` to refer to methods/functions and macros respectively.
-
-```rust,edition2018
-use std::sync::mpsc::Receiver;
-
-/// This is an version of [`Receiver`], with support for [`std::future`].
-///
-/// You can obtain a [`std::future::Future`] by calling [`Self::recv()`].
-pub struct AsyncReceiver<T> {
-    sender: Receiver<T>
-}
-
-impl<T> AsyncReceiver<T> {
-    pub async fn recv() -> T {
-        unimplemented!()
-    }
-}
-```
-
-Paths in Rust have three namespaces: type, value, and macro. Items from these namespaces are allowed to overlap. In case of ambiguity, rustdoc will warn about the ambiguity and ask you to disambiguate, which can be done by using a prefix like `struct@`, `enum@`, `type@`, `trait@`, `union@`, `const@`, `static@`, `value@`, `function@`, `mod@`, `fn@`, `module@`, `method@` , `macro@`, or `derive@`:
-
-```rust
-/// See also: [`Foo`](struct@Foo)
-struct Bar;
-
-/// This is different from [`Foo`](fn@Foo)
-struct Foo {}
-
-fn Foo() {}
-```
-
-Note: Because of how `macro_rules` macros are scoped in Rust, the intra-doc links of a `macro_rules` macro will be resolved relative to the crate root, as opposed to the module it is defined in.
-
 ## Extensions to the `#[doc]` attribute
 
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
@@ -206,22 +149,6 @@ issue][issue-include].
 
 [unstable-include]: ../unstable-book/language-features/external-doc.html
 [issue-include]: https://github.com/rust-lang/rust/issues/44732
-
-### Add aliases for an item in documentation search
-
-This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
-`doc(alias)` attribute. Example:
-
-```rust,no_run
-#![feature(doc_alias)]
-
-#[doc(alias = "x")]
-#[doc(alias = "big")]
-pub struct BigX;
-```
-
-Then, when looking for it through the `rustdoc` search, if you enter "x" or
-"big", search will show the `BigX` struct first.
 
 ## Unstable command-line arguments
 
@@ -467,3 +394,36 @@ $ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
 ```
 
 Another use case would be to run a test inside an emulator, or through a Virtual Machine.
+
+### `--show-coverage`: get statistics about code documentation coverage
+
+This option allows you to get a nice overview over your code documentation coverage, including both
+doc-comments and code examples in the doc-comments. Example:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --show-coverage
++-------------------------------------+------------+------------+------------+------------+
+| File                                | Documented | Percentage |   Examples | Percentage |
++-------------------------------------+------------+------------+------------+------------+
+| lib.rs                              |          4 |     100.0% |          1 |      25.0% |
++-------------------------------------+------------+------------+------------+------------+
+| Total                               |          4 |     100.0% |          1 |      25.0% |
++-------------------------------------+------------+------------+------------+------------+
+```
+
+You can also use this option with the `--output-format` one:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --show-coverage --output-format json
+{"lib.rs":{"total":4,"with_docs":4,"total_examples":4,"with_examples":1}}
+```
+
+Calculating code examples follows these rules:
+
+1. These items aren't accounted by default:
+  * struct/union field
+  * enum variant
+  * constant
+  * static
+  * typedef
+2. If one of the previously listed items has a code example, then it'll be counted.

@@ -14,15 +14,15 @@ LL |     let _ = line1.origin.x + 1;
    |
    = note: move occurs because `line1.origin` has type `Point`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `line2`
+error[E0382]: use of partially moved value: `line2`
   --> $DIR/borrowck-uninit-field-access.rs:29:5
    |
 LL |     let _moved = (line2.origin, line2.middle);
-   |                                 ------------ value moved here
+   |                                 ------------ value partially moved here
 LL |     line2.consume();
    |     ^^^^^ value used here after partial move
    |
-   = note: move occurs because `line2.middle` has type `Point`, which does not implement the `Copy` trait
+   = note: partial move occurs because `line2.middle` has type `Point`, which does not implement the `Copy` trait
 
 error: aborting due to 3 previous errors
 

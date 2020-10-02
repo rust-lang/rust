@@ -1,5 +1,8 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
+#[cfg(test)]
+mod tests;
+
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
 use crate::mem;
@@ -25,6 +28,38 @@ pub struct FileDesc {
 const READ_LIMIT: usize = c_int::MAX as usize - 1;
 #[cfg(not(target_os = "macos"))]
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
+
+#[cfg(any(
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "ios",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+const fn max_iov() -> usize {
+    libc::IOV_MAX as usize
+}
+
+#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+const fn max_iov() -> usize {
+    libc::UIO_MAXIOV as usize
+}
+
+#[cfg(not(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "ios",
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+)))]
+const fn max_iov() -> usize {
+    16 // The minimum value required by POSIX.
+}
 
 impl FileDesc {
     pub fn new(fd: c_int) -> FileDesc {
@@ -54,7 +89,7 @@ impl FileDesc {
             libc::readv(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
+                cmp::min(bufs.len(), max_iov()) as c_int,
             )
         })?;
         Ok(ret as usize)
@@ -111,7 +146,7 @@ impl FileDesc {
             libc::writev(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
+                cmp::min(bufs.len(), max_iov()) as c_int,
             )
         })?;
         Ok(ret as usize)

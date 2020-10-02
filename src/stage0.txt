@@ -12,7 +12,7 @@
 # source tarball for a stable release you'll likely see `1.x.0` for rustc and
 # `0.(x+1).0` for Cargo where they were released on `date`.
 
-date: 2020-07-16
+date: 2020-08-26
 rustc: beta
 cargo: beta
 

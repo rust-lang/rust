@@ -1,0 +1,22 @@
+error: type parameters with a default must be trailing
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:12:12
+   |
+LL | struct Bar<T = [u8; N], const N: usize>(T);
+   |            ^
+   |
+   = note: using type defaults and const parameters in the same parameter list is currently not permitted
+
+error: constant values inside of type parameter defaults must not depend on generic parameters
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:7:44
+   |
+LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
+   |                                            ^ the anonymous constant must not depend on the parameter `T`
+
+error: constant values inside of type parameter defaults must not depend on generic parameters
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:12:21
+   |
+LL | struct Bar<T = [u8; N], const N: usize>(T);
+   |                     ^ the anonymous constant must not depend on the parameter `N`
+
+error: aborting due to 3 previous errors
+

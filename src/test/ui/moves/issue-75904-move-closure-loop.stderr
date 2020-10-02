@@ -1,0 +1,15 @@
+error[E0382]: use of moved value: `a`
+  --> $DIR/issue-75904-move-closure-loop.rs:10:9
+   |
+LL |     let mut a = NotCopy;
+   |         ----- move occurs because `a` has type `NotCopy`, which does not implement the `Copy` trait
+LL |     loop {
+LL |         || {
+   |         ^^ value moved into closure here, in previous iteration of loop
+LL |             &mut a;
+LL |             a;
+   |             - use occurs due to use in closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,18 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_ast_passes"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+itertools = "0.9"
+tracing = "0.1"
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_attr = { path = "../rustc_attr" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_parse = { path = "../rustc_parse" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_ast = { path = "../rustc_ast" }

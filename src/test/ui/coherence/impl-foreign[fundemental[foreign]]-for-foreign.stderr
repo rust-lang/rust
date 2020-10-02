@@ -5,7 +5,7 @@ LL | impl Remote1<Box<String>> for i32 {
    | ^^^^^--------------------^^^^^---
    | |    |                        |
    | |    |                        `i32` is not defined in the current crate
-   | |    `std::string::String` is not defined in the current crate
+   | |    `String` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
@@ -17,7 +17,7 @@ LL | impl Remote1<Box<Rc<i32>>> for f64 {
    | ^^^^^---------------------^^^^^---
    | |    |                         |
    | |    |                         `f64` is not defined in the current crate
-   | |    `std::rc::Rc` is not defined in the current crate
+   | |    `Rc` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
@@ -29,7 +29,7 @@ LL | impl<T> Remote1<Box<Rc<T>>> for f32 {
    | ^^^^^^^^-------------------^^^^^---
    | |       |                       |
    | |       |                       `f32` is not defined in the current crate
-   | |       `std::rc::Rc` is not defined in the current crate
+   | |       `Rc` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead

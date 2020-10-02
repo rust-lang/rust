@@ -2,10 +2,10 @@ error[E0592]: duplicate definitions with name `dummy`
   --> $DIR/coherence-overlap-issue-23516-inherent.rs:9:25
    |
 LL | impl<T:Sugar> Cake<T> { fn dummy(&self) { } }
-   |                         ^^^^^^^^^^^^^^^^^^^ duplicate definitions for `dummy`
+   |                         ^^^^^^^^^^^^^^^ duplicate definitions for `dummy`
 LL |
 LL | impl<U:Sugar> Cake<Box<U>> { fn dummy(&self) { } }
-   |                              ------------------- other definition for `dummy`
+   |                              --------------- other definition for `dummy`
    |
    = note: downstream crates may implement trait `Sugar` for type `std::boxed::Box<_>`
 

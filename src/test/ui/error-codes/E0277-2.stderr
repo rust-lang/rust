@@ -7,7 +7,7 @@ LL | fn is_send<T: Send>() { }
 LL |     is_send::<Foo>();
    |     ^^^^^^^^^^^^^^ `*const u8` cannot be sent between threads safely
    |
-   = help: within `Foo`, the trait `std::marker::Send` is not implemented for `*const u8`
+   = help: within `Foo`, the trait `Send` is not implemented for `*const u8`
    = note: required because it appears within the type `Baz`
    = note: required because it appears within the type `Bar`
    = note: required because it appears within the type `Foo`

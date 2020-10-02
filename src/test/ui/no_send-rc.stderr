@@ -1,13 +1,13 @@
-error[E0277]: `std::rc::Rc<{integer}>` cannot be sent between threads safely
+error[E0277]: `Rc<{integer}>` cannot be sent between threads safely
   --> $DIR/no_send-rc.rs:7:9
    |
 LL | fn bar<T: Send>(_: T) {}
    |           ---- required by this bound in `bar`
 ...
 LL |     bar(x);
-   |         ^ `std::rc::Rc<{integer}>` cannot be sent between threads safely
+   |         ^ `Rc<{integer}>` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `std::rc::Rc<{integer}>`
+   = help: the trait `Send` is not implemented for `Rc<{integer}>`
 
 error: aborting due to previous error
 

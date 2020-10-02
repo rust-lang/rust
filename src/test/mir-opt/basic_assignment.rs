@@ -1,6 +1,6 @@
 // this tests move up progration, which is not yet implemented
 
-// EMIT_MIR rustc.main.SimplifyCfg-initial.after.mir
+// EMIT_MIR basic_assignment.main.SimplifyCfg-initial.after.mir
 
 // Check codegen for assignments (`a = b`) where the left-hand-side is
 // not yet initialized. Assignments tend to be absent in simple code,

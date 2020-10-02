@@ -9,7 +9,7 @@ LL | trait Trait: Sized {}
 LL |     let t: &dyn Trait = &S;
    |                         ^^ the trait `Trait` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&S`
+   = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Trait>` for `&S`
    = note: required by cast to type `&dyn Trait`
 
 error[E0038]: the trait `Trait` cannot be made into an object
@@ -23,7 +23,7 @@ LL | trait Trait: Sized {}
 LL |     takes_trait(&S);
    |                 ^^ the trait `Trait` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&S`
+   = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Trait>` for `&S`
    = note: required by cast to type `&dyn Trait`
 
 error[E0038]: the trait `Trait` cannot be made into an object
@@ -37,7 +37,7 @@ LL | trait Trait: Sized {}
 LL |     &S as &dyn Trait;
    |     ^^ the trait `Trait` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&S`
+   = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Trait>` for `&S`
    = note: required by cast to type `&dyn Trait`
 
 error: aborting due to 3 previous errors

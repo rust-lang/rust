@@ -32,7 +32,7 @@ ENV RUST_CONFIGURE_ARGS \
       --x86_64-linux-android-ndk=/android/ndk/x86_64-21 \
       --disable-docs
 
-ENV SCRIPT python3 ../x.py dist --target $TARGETS
+ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

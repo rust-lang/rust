@@ -2,7 +2,7 @@
 
 #![feature(box_syntax)]
 
-// EMIT_MIR rustc.main.ElaborateDrops.before.mir
+// EMIT_MIR box_expr.main.ElaborateDrops.before.mir
 fn main() {
     let x = box S::new();
     drop(x);

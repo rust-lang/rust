@@ -16,8 +16,7 @@ const EXEMPTED_FROM_TEST: &[&str] = &[
 ];
 
 // Some error codes don't have any tests apparently...
-const IGNORE_EXPLANATION_CHECK: &[&str] =
-    &["E0570", "E0601", "E0602", "E0639", "E0729", "E0749", "E0750"];
+const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0570", "E0601", "E0602", "E0639", "E0729"];
 
 fn check_error_code_explanation(
     f: &str,
@@ -48,9 +47,7 @@ fn check_error_code_explanation(
     invalid_compile_fail_format
 }
 
-fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &String) -> bool {
-    let mut can_be_ignored = false;
-
+fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &str) -> bool {
     for line in f.lines() {
         let s = line.trim();
         if s.starts_with("#### Note: this error code is no longer emitted by the compiler") {
@@ -59,13 +56,13 @@ fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &String) -> boo
         if s.starts_with("```") {
             if s.contains("compile_fail") && s.contains(err_code) {
                 return true;
-            } else if s.contains("(") {
+            } else if s.contains('(') {
                 // It's very likely that we can't actually make it fail compilation...
-                can_be_ignored = true;
+                return true;
             }
         }
     }
-    can_be_ignored
+    false
 }
 
 macro_rules! some_or_continue {

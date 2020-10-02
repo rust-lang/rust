@@ -12,7 +12,6 @@
 //! bounds by special casing scenarios such as these. Fun!
 
 use std::collections::BTreeMap;
-use std::mem;
 
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
@@ -116,18 +115,6 @@ pub fn merge_bounds(
         };
         true
     })
-}
-
-pub fn ty_params(mut params: Vec<clean::GenericParamDef>) -> Vec<clean::GenericParamDef> {
-    for param in &mut params {
-        match param.kind {
-            clean::GenericParamDefKind::Type { ref mut bounds, .. } => {
-                *bounds = mem::take(bounds);
-            }
-            _ => panic!("expected only type parameters"),
-        }
-    }
-    params
 }
 
 fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId) -> bool {

@@ -2,7 +2,7 @@ error: entry symbol `main` declared multiple times
   --> $DIR/dupe-symbols-7.rs:12:1
    |
 LL | fn main(){}
-   | ^^^^^^^^^^^
+   | ^^^^^^^^^
    |
    = help: did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead
 

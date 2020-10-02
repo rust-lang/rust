@@ -1,12 +1,9 @@
-error[E0026]: variant `MyOption::MySome` does not have a field named `x`
-  --> $DIR/issue-17800.rs:8:28
+error[E0769]: tuple variant `MyOption::MySome` written as struct variant
+  --> $DIR/issue-17800.rs:8:9
    |
 LL |         MyOption::MySome { x: 42 } => (),
-   |                            ^
-   |                            |
-   |                            variant `MyOption::MySome` does not have this field
-   |                            help: a field with a similar name exists: `0`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `MyOption::MySome(42)`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0026`.
+For more information about this error, try `rustc --explain E0769`.

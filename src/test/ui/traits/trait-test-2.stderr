@@ -39,8 +39,8 @@ LL |     (box 10 as Box<dyn bar>).dup();
    |
    = help: consider moving `dup` to another trait
    = help: consider moving `blah` to another trait
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn bar>>` for `std::boxed::Box<{integer}>`
-   = note: required by cast to type `std::boxed::Box<dyn bar>`
+   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn bar>>` for `Box<{integer}>`
+   = note: required by cast to type `Box<dyn bar>`
 
 error: aborting due to 4 previous errors
 

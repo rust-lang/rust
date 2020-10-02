@@ -1,16 +1,16 @@
-error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/wf-in-obj-type-trait.rs:11:8
    |
 LL | struct MustBeCopy<T:Copy> {
    |                     ---- required by this bound in `MustBeCopy`
 ...
 LL |     x: dyn Object<MustBeCopy<T>>
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
-LL | struct Bar<T: std::marker::Copy> {
-   |             ^^^^^^^^^^^^^^^^^^^
+LL | struct Bar<T: Copy> {
+   |             ^^^^^^
 
 error: aborting due to previous error
 

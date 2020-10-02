@@ -100,5 +100,11 @@ error: called `.as_mut().map(|x| &mut **x)` on an Option value. This can be done
 LL |     let _ = opt.as_mut().map(|x| &mut **x);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using as_deref_mut instead: `opt.as_deref_mut()`
 
-error: aborting due to 16 previous errors
+error: called `.as_ref().map(std::ops::Deref::deref)` on an Option value. This can be done more directly by calling `opt.as_deref()` instead
+  --> $DIR/option_as_ref_deref.rs:46:13
+   |
+LL |     let _ = opt.as_ref().map(std::ops::Deref::deref);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using as_deref instead: `opt.as_deref()`
+
+error: aborting due to 17 previous errors
 

@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `x`
   --> $DIR/moves-based-on-type-tuple.rs:4:13
    |
 LL | fn dup(x: Box<isize>) -> Box<(Box<isize>,Box<isize>)> {
-   |        - move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |        - move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
 LL |     box (x, x)
    |          -  ^ value used here after move
    |          |

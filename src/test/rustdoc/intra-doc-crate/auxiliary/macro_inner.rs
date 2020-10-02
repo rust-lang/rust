@@ -1,5 +1,5 @@
 #![crate_name = "macro_inner"]
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(broken_intra_doc_links)]
 
 pub struct Foo;
 

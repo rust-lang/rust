@@ -1,10 +1,10 @@
 error: expected type, found `"foo"`
-  --> $DIR/type-ascription-instead-of-method.rs:2:13
+  --> $DIR/type-ascription-instead-of-method.rs:3:21
    |
-LL |     Box:new("foo".to_string())
-   |        -    ^^^^^ expected type
-   |        |
-   |        help: maybe write a path separator here: `::`
+LL |     let _ = Box:new("foo".to_string());
+   |                -    ^^^^^ expected type
+   |                |
+   |                help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
 

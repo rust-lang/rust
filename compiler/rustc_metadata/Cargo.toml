@@ -1,0 +1,34 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_metadata"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+libc = "0.2"
+snap = "1"
+tracing = "0.1"
+memmap = "0.7"
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+rustc_middle = { path = "../rustc_middle" }
+rustc_attr = { path = "../rustc_attr" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_hir_pretty = { path = "../rustc_hir_pretty" }
+rustc_target = { path = "../rustc_target" }
+rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+stable_deref_trait = "1.0.0"
+rustc_ast = { path = "../rustc_ast" }
+rustc_expand = { path = "../rustc_expand" }
+rustc_span = { path = "../rustc_span" }
+rustc_session = { path = "../rustc_session" }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["errhandlingapi", "libloaderapi"] }

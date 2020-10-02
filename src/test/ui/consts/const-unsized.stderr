@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `(dyn std::fmt::Debug + std::marker::Sync + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `(dyn Debug + Sync + 'static)` cannot be known at compilation time
   --> $DIR/const-unsized.rs:3:16
    |
 LL | const CONST_0: dyn Debug + Sync = *(&0 as &(dyn Debug + Sync));
    |                ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn std::fmt::Debug + std::marker::Sync + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn Debug + Sync + 'static)`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/const-unsized.rs:6:18
@@ -12,15 +12,15 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL | const CONST_FOO: str = *"foo";
    |                  ^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
 
-error[E0277]: the size for values of type `(dyn std::fmt::Debug + std::marker::Sync + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `(dyn Debug + Sync + 'static)` cannot be known at compilation time
   --> $DIR/const-unsized.rs:9:18
    |
 LL | static STATIC_1: dyn Debug + Sync = *(&1 as &(dyn Debug + Sync));
    |                  ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn std::fmt::Debug + std::marker::Sync + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn Debug + Sync + 'static)`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/const-unsized.rs:12:20
@@ -28,7 +28,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL | static STATIC_BAR: str = *"bar";
    |                    ^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
 
 error: aborting due to 4 previous errors
 

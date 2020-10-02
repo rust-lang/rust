@@ -8,7 +8,7 @@ error[E0423]: expected value, found macro `semitransparent`
   --> $DIR/rustc-macro-transparency.rs:29:5
    |
 LL |     semitransparent;
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ not a value
    |
 help: use `!` to invoke the macro
    |
@@ -19,7 +19,7 @@ error[E0423]: expected value, found macro `opaque`
   --> $DIR/rustc-macro-transparency.rs:30:5
    |
 LL |     opaque;
-   |     ^^^^^^
+   |     ^^^^^^ not a value
    |
 help: use `!` to invoke the macro
    |

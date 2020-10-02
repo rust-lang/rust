@@ -14,7 +14,7 @@ error: fatal error triggered by #[rustc_error]
   --> $DIR/no-macro-use-attr.rs:10:1
    |
 LL | fn main() {}
-   | ^^^^^^^^^^^^
+   | ^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

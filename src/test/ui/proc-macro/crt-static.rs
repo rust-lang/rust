@@ -1,4 +1,4 @@
-// Test proc-macro crate can be built without addtional RUSTFLAGS
+// Test proc-macro crate can be built without additional RUSTFLAGS
 // on musl target
 // override -Ctarget-feature=-crt-static from compiletest
 // compile-flags: -Ctarget-feature=

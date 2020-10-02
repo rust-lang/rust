@@ -1,0 +1,71 @@
+error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
+  --> $DIR/derive_ord_xor_partial_ord.rs:20:10
+   |
+LL | #[derive(Ord, PartialEq, Eq)]
+   |          ^^^
+   |
+   = note: `-D clippy::derive-ord-xor-partial-ord` implied by `-D warnings`
+note: `PartialOrd` implemented here
+  --> $DIR/derive_ord_xor_partial_ord.rs:23:1
+   |
+LL | / impl PartialOrd for DeriveOrd {
+LL | |     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+LL | |         Some(other.cmp(self))
+LL | |     }
+LL | | }
+   | |_^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
+  --> $DIR/derive_ord_xor_partial_ord.rs:29:10
+   |
+LL | #[derive(Ord, PartialEq, Eq)]
+   |          ^^^
+   |
+note: `PartialOrd` implemented here
+  --> $DIR/derive_ord_xor_partial_ord.rs:32:1
+   |
+LL | / impl PartialOrd<DeriveOrdWithExplicitTypeVariable> for DeriveOrdWithExplicitTypeVariable {
+LL | |     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+LL | |         Some(other.cmp(self))
+LL | |     }
+LL | | }
+   | |_^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are implementing `Ord` explicitly but have derived `PartialOrd`
+  --> $DIR/derive_ord_xor_partial_ord.rs:41:1
+   |
+LL | / impl std::cmp::Ord for DerivePartialOrd {
+LL | |     fn cmp(&self, other: &Self) -> Ordering {
+LL | |         Ordering::Less
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: `PartialOrd` implemented here
+  --> $DIR/derive_ord_xor_partial_ord.rs:38:10
+   |
+LL | #[derive(PartialOrd, PartialEq, Eq)]
+   |          ^^^^^^^^^^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are implementing `Ord` explicitly but have derived `PartialOrd`
+  --> $DIR/derive_ord_xor_partial_ord.rs:61:5
+   |
+LL | /     impl Ord for DerivePartialOrdInUseOrd {
+LL | |         fn cmp(&self, other: &Self) -> Ordering {
+LL | |             Ordering::Less
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+note: `PartialOrd` implemented here
+  --> $DIR/derive_ord_xor_partial_ord.rs:58:14
+   |
+LL |     #[derive(PartialOrd, PartialEq, Eq)]
+   |              ^^^^^^^^^^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+

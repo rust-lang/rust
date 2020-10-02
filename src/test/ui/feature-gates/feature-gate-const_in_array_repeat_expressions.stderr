@@ -1,23 +1,23 @@
-error[E0277]: the trait bound `std::option::Option<std::string::String>: std::marker::Copy` is not satisfied
-  --> $DIR/feature-gate-const_in_array_repeat_expressions.rs:8:36
+error[E0277]: the trait bound `Option<String>: Copy` is not satisfied
+  --> $DIR/feature-gate-const_in_array_repeat_expressions.rs:7:36
    |
 LL |     let arr: [Option<String>; 2] = [None::<String>; 2];
-   |                                    ^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::option::Option<std::string::String>`
+   |                                    ^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Option<String>`
    |
    = help: the following implementations were found:
-             <std::option::Option<T> as std::marker::Copy>
+             <Option<T> as Copy>
    = note: the `Copy` trait is required because the repeated element will be copied
    = note: this array initializer can be evaluated at compile-time, see issue #49147 <https://github.com/rust-lang/rust/issues/49147> for more information
    = help: add `#![feature(const_in_array_repeat_expressions)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `std::option::Option<std::string::String>: std::marker::Copy` is not satisfied
-  --> $DIR/feature-gate-const_in_array_repeat_expressions.rs:14:36
+error[E0277]: the trait bound `Option<String>: Copy` is not satisfied
+  --> $DIR/feature-gate-const_in_array_repeat_expressions.rs:13:36
    |
 LL |     let arr: [Option<String>; 2] = [Some("foo".to_string()); 2];
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::option::Option<std::string::String>`
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Option<String>`
    |
    = help: the following implementations were found:
-             <std::option::Option<T> as std::marker::Copy>
+             <Option<T> as Copy>
    = note: the `Copy` trait is required because the repeated element will be copied
 
 error: aborting due to 2 previous errors

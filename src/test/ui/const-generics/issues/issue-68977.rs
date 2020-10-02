@@ -1,5 +1,7 @@
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 struct PhantomU8<const X: u8>;
 
@@ -25,11 +27,13 @@ fxp_storage_impls! {
 
 type FxpStorageHelper<const INT_BITS: u8, const FRAC_BITS: u8> =
     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
+    //[min]~^ ERROR generic parameters must not be used inside of non trivial constant values
+    //[min]~| ERROR generic parameters must not be used inside of non trivial constant values
 
 struct Fxp<const INT_BITS: u8, const FRAC_BITS: u8>
 where
     FxpStorageHelper<INT_BITS, FRAC_BITS>: FxpStorage,
-    //~^ ERROR constant expression depends on a generic parameter
+    //[full]~^ ERROR constant expression depends on a generic parameter
 {
     storage: <FxpStorageHelper<INT_BITS, FRAC_BITS> as FxpStorage>::SInt,
 }

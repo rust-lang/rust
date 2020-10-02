@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::result::Result::{Err, Ok};
 
 #[test]
@@ -471,6 +472,239 @@ fn test_chunks_exact_mut_zip() {
         }
     }
     assert_eq!(v1, [13, 14, 19, 20, 4]);
+}
+
+#[test]
+fn test_array_chunks_infer() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, -4];
+    let c = v.array_chunks();
+    for &[a, b, c] in c {
+        assert_eq!(a + b + c, 3);
+    }
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let total = v2.array_chunks().map(|&[a, b]| a * b).sum::<i32>();
+    assert_eq!(total, 2 * 3 + 4 * 5);
+}
+
+#[test]
+fn test_array_chunks_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks::<3>();
+    assert_eq!(c.count(), 2);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks::<2>();
+    assert_eq!(c2.count(), 2);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.array_chunks::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_chunks_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks::<2>();
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.array_chunks::<3>();
+    assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_array_chunks_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks::<2>();
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.array_chunks::<3>();
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c3 = v3.array_chunks::<10>();
+    assert_eq!(c3.nth_back(0), None);
+}
+
+#[test]
+fn test_array_chunks_last() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks::<2>();
+    assert_eq!(c.last().unwrap(), &[4, 5]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks::<2>();
+    assert_eq!(c2.last().unwrap(), &[2, 3]);
+}
+
+#[test]
+fn test_array_chunks_remainder() {
+    let v: &[i32] = &[0, 1, 2, 3, 4];
+    let c = v.array_chunks::<2>();
+    assert_eq!(c.remainder(), &[4]);
+}
+
+#[test]
+fn test_array_chunks_zip() {
+    let v1: &[i32] = &[0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let res = v1
+        .array_chunks::<2>()
+        .zip(v2.array_chunks::<2>())
+        .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
+        .collect::<Vec<_>>();
+    assert_eq!(res, vec![14, 22]);
+}
+
+#[test]
+fn test_array_chunks_mut_infer() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    for a in v.array_chunks_mut() {
+        let sum = a.iter().sum::<i32>();
+        *a = [sum; 3];
+    }
+    assert_eq!(v, &[3, 3, 3, 12, 12, 12, 6]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    v2.array_chunks_mut().for_each(|[a, b]| core::mem::swap(a, b));
+    assert_eq!(v2, &[1, 0, 3, 2, 5, 4, 6]);
+}
+
+#[test]
+fn test_array_chunks_mut_count() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks_mut::<3>();
+    assert_eq!(c.count(), 2);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks_mut::<2>();
+    assert_eq!(c2.count(), 2);
+
+    let v3: &mut [i32] = &mut [];
+    let c3 = v3.array_chunks_mut::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_chunks_mut_nth() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks_mut::<2>();
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.array_chunks_mut::<3>();
+    assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_array_chunks_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks_mut::<2>();
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.array_chunks_mut::<3>();
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c3 = v3.array_chunks_mut::<10>();
+    assert_eq!(c3.nth_back(0), None);
+}
+
+#[test]
+fn test_array_chunks_mut_last() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks_mut::<2>();
+    assert_eq!(c.last().unwrap(), &[4, 5]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks_mut::<2>();
+    assert_eq!(c2.last().unwrap(), &[2, 3]);
+}
+
+#[test]
+fn test_array_chunks_mut_remainder() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c = v.array_chunks_mut::<2>();
+    assert_eq!(c.into_remainder(), &[4]);
+}
+
+#[test]
+fn test_array_chunks_mut_zip() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    for (a, b) in v1.array_chunks_mut::<2>().zip(v2.array_chunks::<2>()) {
+        let sum = b.iter().sum::<i32>();
+        for v in a {
+            *v += sum;
+        }
+    }
+    assert_eq!(v1, [13, 14, 19, 20, 4]);
+}
+
+#[test]
+fn test_array_windows_infer() {
+    let v: &[i32] = &[0, 1, 0, 1];
+    assert_eq!(v.array_windows::<2>().count(), 3);
+    let c = v.array_windows();
+    for &[a, b] in c {
+        assert_eq!(a + b, 1);
+    }
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let total = v2.array_windows().map(|&[a, b, c]| a + b + c).sum::<i32>();
+    assert_eq!(total, 3 + 6 + 9 + 12 + 15);
+}
+
+#[test]
+fn test_array_windows_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.array_windows::<3>();
+    assert_eq!(c.count(), 4);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.array_windows::<6>();
+    assert_eq!(c2.count(), 0);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.array_windows::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_windows_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let snd = v.array_windows::<4>().nth(1);
+    assert_eq!(snd, Some(&[1, 2, 3, 4]));
+    let mut arr_windows = v.array_windows::<2>();
+    assert_ne!(arr_windows.nth(0), arr_windows.nth(0));
+    let last = v.array_windows::<3>().last();
+    assert_eq!(last, Some(&[3, 4, 5]));
+}
+
+#[test]
+fn test_array_windows_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let snd = v.array_windows::<4>().nth_back(1);
+    assert_eq!(snd, Some(&[1, 2, 3, 4]));
+    let mut arr_windows = v.array_windows::<2>();
+    assert_ne!(arr_windows.nth_back(0), arr_windows.nth_back(0));
 }
 
 #[test]
@@ -1267,15 +1501,15 @@ fn sort_unstable() {
     use core::slice::heapsort;
     use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 
-    // Miri is too slow
-    let large_range = if cfg!(miri) { 0..0 } else { 500..510 };
+    // Miri is too slow (but still need to `chain` to make the types match)
+    let lens = if cfg!(miri) { (2..20).chain(0..0) } else { (2..25).chain(500..510) };
     let rounds = if cfg!(miri) { 1 } else { 100 };
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
     let mut rng = StdRng::from_entropy();
 
-    for len in (2..25).chain(large_range) {
+    for len in lens {
         let v = &mut v[0..len];
         let tmp = &mut tmp[0..len];
 
@@ -1539,7 +1773,6 @@ pub mod memchr {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_simple() {
     let bytes = [1u8, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<u16>() };
@@ -1569,7 +1802,6 @@ fn test_align_to_zst() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_non_trivial() {
     #[repr(align(8))]
     struct U64(u64, u64);
@@ -1706,7 +1938,7 @@ fn test_copy_within() {
 }
 
 #[test]
-#[should_panic(expected = "src is out of bounds")]
+#[should_panic(expected = "range end index 14 out of range for slice of length 13")]
 fn test_copy_within_panics_src_too_long() {
     let mut bytes = *b"Hello, World!";
     // The length is only 13, so 14 is out of bounds.
@@ -1721,7 +1953,7 @@ fn test_copy_within_panics_dest_too_long() {
     bytes.copy_within(0..4, 10);
 }
 #[test]
-#[should_panic(expected = "src end is before src start")]
+#[should_panic(expected = "slice index starts at 2 but ends at 1")]
 fn test_copy_within_panics_src_inverted() {
     let mut bytes = *b"Hello, World!";
     // 2 is greater than 1, so this range is invalid.
@@ -1748,4 +1980,31 @@ fn test_is_sorted() {
     assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].is_sorted());
     assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
+}
+
+#[test]
+fn test_slice_run_destructors() {
+    // Make sure that destructors get run on slice literals
+    struct Foo<'a> {
+        x: &'a Cell<isize>,
+    }
+
+    impl<'a> Drop for Foo<'a> {
+        fn drop(&mut self) {
+            self.x.set(self.x.get() + 1);
+        }
+    }
+
+    fn foo(x: &Cell<isize>) -> Foo<'_> {
+        Foo { x }
+    }
+
+    let x = &Cell::new(0);
+
+    {
+        let l = &[foo(x)];
+        assert_eq!(l[0].x.get(), 0);
+    }
+
+    assert_eq!(x.get(), 1);
 }

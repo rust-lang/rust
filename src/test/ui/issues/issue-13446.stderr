@@ -2,10 +2,10 @@ error[E0308]: mismatched types
   --> $DIR/issue-13446.rs:3:26
    |
 LL | static VEC: [u32; 256] = vec![];
-   |                          ^^^^^^ expected array `[u32; 256]`, found struct `std::vec::Vec`
+   |                          ^^^^^^ expected array `[u32; 256]`, found struct `Vec`
    |
    = note: expected array `[u32; 256]`
-             found struct `std::vec::Vec<_>`
+             found struct `Vec<_>`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

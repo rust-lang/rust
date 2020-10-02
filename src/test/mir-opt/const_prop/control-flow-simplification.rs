@@ -6,8 +6,8 @@ trait NeedsDrop:Sized{
 
 impl<This> NeedsDrop for This{}
 
-// EMIT_MIR rustc.hello.ConstProp.diff
-// EMIT_MIR rustc.hello.PreCodegen.before.mir
+// EMIT_MIR control_flow_simplification.hello.ConstProp.diff
+// EMIT_MIR control_flow_simplification.hello.PreCodegen.before.mir
 fn hello<T>(){
     if <bool>::NEEDS {
         panic!()

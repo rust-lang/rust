@@ -187,19 +187,19 @@ fn find_first_mismatch<'tcx>(
     level: Level,
 ) -> Option<(Span, Mutability, Level)> {
     if let PatKind::Ref(ref sub_pat, _) = pat.kind {
-        if let TyKind::Ref(_, sub_ty, _) = ty.kind {
+        if let TyKind::Ref(_, sub_ty, _) = ty.kind() {
             return find_first_mismatch(cx, sub_pat, sub_ty, Level::Lower);
         }
     }
 
-    if let TyKind::Ref(_, _, mutability) = ty.kind {
+    if let TyKind::Ref(_, _, mutability) = *ty.kind() {
         if is_non_ref_pattern(&pat.kind) {
             return Some((pat.span, mutability, level));
         }
     }
 
     if let PatKind::Struct(ref qpath, ref field_pats, _) = pat.kind {
-        if let TyKind::Adt(ref adt_def, ref substs_ref) = ty.kind {
+        if let TyKind::Adt(ref adt_def, ref substs_ref) = ty.kind() {
             if let Some(variant) = get_variant(adt_def, qpath) {
                 let field_defs = &variant.fields;
                 return find_first_mismatch_in_struct(cx, field_pats, field_defs, substs_ref);
@@ -208,7 +208,7 @@ fn find_first_mismatch<'tcx>(
     }
 
     if let PatKind::TupleStruct(ref qpath, ref pats, _) = pat.kind {
-        if let TyKind::Adt(ref adt_def, ref substs_ref) = ty.kind {
+        if let TyKind::Adt(ref adt_def, ref substs_ref) = ty.kind() {
             if let Some(variant) = get_variant(adt_def, qpath) {
                 let field_defs = &variant.fields;
                 let ty_iter = field_defs.iter().map(|field_def| field_def.ty(cx.tcx, substs_ref));
@@ -218,7 +218,7 @@ fn find_first_mismatch<'tcx>(
     }
 
     if let PatKind::Tuple(ref pats, _) = pat.kind {
-        if let TyKind::Tuple(..) = ty.kind {
+        if let TyKind::Tuple(..) = ty.kind() {
             return find_first_mismatch_in_tuple(cx, pats, ty.tuple_fields());
         }
     }

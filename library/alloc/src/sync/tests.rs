@@ -492,3 +492,70 @@ fn test_array_from_slice() {
     let a: Result<Arc<[u32; 2]>, _> = r.clone().try_into();
     assert!(a.is_err());
 }
+
+#[test]
+fn test_arc_cyclic_with_zero_refs() {
+    struct ZeroRefs {
+        inner: Weak<ZeroRefs>,
+    }
+    let zero_refs = Arc::new_cyclic(|inner| {
+        assert_eq!(inner.strong_count(), 0);
+        assert!(inner.upgrade().is_none());
+        ZeroRefs { inner: Weak::new() }
+    });
+
+    assert_eq!(Arc::strong_count(&zero_refs), 1);
+    assert_eq!(Arc::weak_count(&zero_refs), 0);
+    assert_eq!(zero_refs.inner.strong_count(), 0);
+    assert_eq!(zero_refs.inner.weak_count(), 0);
+}
+
+#[test]
+fn test_arc_new_cyclic_one_ref() {
+    struct OneRef {
+        inner: Weak<OneRef>,
+    }
+    let one_ref = Arc::new_cyclic(|inner| {
+        assert_eq!(inner.strong_count(), 0);
+        assert!(inner.upgrade().is_none());
+        OneRef { inner: inner.clone() }
+    });
+
+    assert_eq!(Arc::strong_count(&one_ref), 1);
+    assert_eq!(Arc::weak_count(&one_ref), 1);
+
+    let one_ref2 = Weak::upgrade(&one_ref.inner).unwrap();
+    assert!(Arc::ptr_eq(&one_ref, &one_ref2));
+
+    assert_eq!(Arc::strong_count(&one_ref), 2);
+    assert_eq!(Arc::weak_count(&one_ref), 1);
+}
+
+#[test]
+fn test_arc_cyclic_two_refs() {
+    struct TwoRefs {
+        inner1: Weak<TwoRefs>,
+        inner2: Weak<TwoRefs>,
+    }
+    let two_refs = Arc::new_cyclic(|inner| {
+        assert_eq!(inner.strong_count(), 0);
+        assert!(inner.upgrade().is_none());
+
+        let inner1 = inner.clone();
+        let inner2 = inner1.clone();
+
+        TwoRefs { inner1, inner2 }
+    });
+
+    assert_eq!(Arc::strong_count(&two_refs), 1);
+    assert_eq!(Arc::weak_count(&two_refs), 2);
+
+    let two_refs1 = Weak::upgrade(&two_refs.inner1).unwrap();
+    assert!(Arc::ptr_eq(&two_refs, &two_refs1));
+
+    let two_refs2 = Weak::upgrade(&two_refs.inner2).unwrap();
+    assert!(Arc::ptr_eq(&two_refs, &two_refs2));
+
+    assert_eq!(Arc::strong_count(&two_refs), 3);
+    assert_eq!(Arc::weak_count(&two_refs), 2);
+}

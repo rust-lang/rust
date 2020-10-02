@@ -1,0 +1,90 @@
+- // MIR for `noopt1` before EarlyOtherwiseBranch
++ // MIR for `noopt1` after EarlyOtherwiseBranch
+  
+  fn noopt1(_1: Option<u32>, _2: Option<u32>) -> u32 {
+      debug x => _1;                       // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:7:11: 7:12
+      debug y => _2;                       // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:7:27: 7:28
+      let mut _0: u32;                     // return place in scope 0 at $DIR/early_otherwise_branch_noopt.rs:7:46: 7:49
+      let mut _3: (std::option::Option<u32>, std::option::Option<u32>); // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:11: 8:17
+      let mut _4: std::option::Option<u32>; // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:12: 8:13
+      let mut _5: std::option::Option<u32>; // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:15: 8:16
+      let mut _6: isize;                   // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:11:16: 11:23
+      let mut _7: isize;                   // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:19: 9:26
+      let mut _8: isize;                   // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:10: 9:17
+      let _9: u32;                         // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:15: 9:16
+      let _10: u32;                        // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:24: 9:25
+      let _11: u32;                        // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:10:15: 10:16
+      let _12: u32;                        // in scope 0 at $DIR/early_otherwise_branch_noopt.rs:11:21: 11:22
+      scope 1 {
+          debug a => _9;                   // in scope 1 at $DIR/early_otherwise_branch_noopt.rs:9:15: 9:16
+          debug b => _10;                  // in scope 1 at $DIR/early_otherwise_branch_noopt.rs:9:24: 9:25
+      }
+      scope 2 {
+          debug a => _11;                  // in scope 2 at $DIR/early_otherwise_branch_noopt.rs:10:15: 10:16
+      }
+      scope 3 {
+          debug b => _12;                  // in scope 3 at $DIR/early_otherwise_branch_noopt.rs:11:21: 11:22
+      }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:11: 8:17
+          StorageLive(_4);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:12: 8:13
+          _4 = _1;                         // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:12: 8:13
+          StorageLive(_5);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:15: 8:16
+          _5 = _2;                         // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:15: 8:16
+          (_3.0: std::option::Option<u32>) = move _4; // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:11: 8:17
+          (_3.1: std::option::Option<u32>) = move _5; // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:11: 8:17
+          StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:16: 8:17
+          StorageDead(_4);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:16: 8:17
+          _8 = discriminant((_3.0: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:10: 9:17
+          switchInt(move _8) -> [0_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:10: 9:17
+      }
+  
+      bb1: {
+          _6 = discriminant((_3.1: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch_noopt.rs:11:16: 11:23
+          switchInt(move _6) -> [0_isize: bb2, otherwise: bb6]; // scope 0 at $DIR/early_otherwise_branch_noopt.rs:11:16: 11:23
+      }
+  
+      bb2: {
+          _0 = const 3_u32;                // scope 0 at $DIR/early_otherwise_branch_noopt.rs:12:25: 12:26
+          goto -> bb7;                     // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:5: 13:6
+      }
+  
+      bb3: {
+          _7 = discriminant((_3.1: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:19: 9:26
+          switchInt(move _7) -> [0_isize: bb5, otherwise: bb4]; // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:19: 9:26
+      }
+  
+      bb4: {
+          StorageLive(_9);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:15: 9:16
+          _9 = (((_3.0: std::option::Option<u32>) as Some).0: u32); // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:15: 9:16
+          StorageLive(_10);                // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:24: 9:25
+          _10 = (((_3.1: std::option::Option<u32>) as Some).0: u32); // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:24: 9:25
+          _0 = const 0_u32;                // scope 1 at $DIR/early_otherwise_branch_noopt.rs:9:31: 9:32
+          StorageDead(_10);                // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:31: 9:32
+          StorageDead(_9);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:9:31: 9:32
+          goto -> bb7;                     // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:5: 13:6
+      }
+  
+      bb5: {
+          StorageLive(_11);                // scope 0 at $DIR/early_otherwise_branch_noopt.rs:10:15: 10:16
+          _11 = (((_3.0: std::option::Option<u32>) as Some).0: u32); // scope 0 at $DIR/early_otherwise_branch_noopt.rs:10:15: 10:16
+          _0 = const 1_u32;                // scope 2 at $DIR/early_otherwise_branch_noopt.rs:10:28: 10:29
+          StorageDead(_11);                // scope 0 at $DIR/early_otherwise_branch_noopt.rs:10:28: 10:29
+          goto -> bb7;                     // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:5: 13:6
+      }
+  
+      bb6: {
+          StorageLive(_12);                // scope 0 at $DIR/early_otherwise_branch_noopt.rs:11:21: 11:22
+          _12 = (((_3.1: std::option::Option<u32>) as Some).0: u32); // scope 0 at $DIR/early_otherwise_branch_noopt.rs:11:21: 11:22
+          _0 = const 2_u32;                // scope 3 at $DIR/early_otherwise_branch_noopt.rs:11:28: 11:29
+          StorageDead(_12);                // scope 0 at $DIR/early_otherwise_branch_noopt.rs:11:28: 11:29
+          goto -> bb7;                     // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:5: 13:6
+      }
+  
+      bb7: {
+          StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:14:1: 14:2
+          return;                          // scope 0 at $DIR/early_otherwise_branch_noopt.rs:14:2: 14:2
+      }
+  }
+  

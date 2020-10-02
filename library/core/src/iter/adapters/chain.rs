@@ -4,11 +4,8 @@ use crate::usize;
 
 /// An iterator that links two iterators together, in a chain.
 ///
-/// This `struct` is created by the [`chain`] method on [`Iterator`]. See its
-/// documentation for more.
-///
-/// [`chain`]: trait.Iterator.html#method.chain
-/// [`Iterator`]: trait.Iterator.html
+/// This `struct` is created by [`Iterator::chain`]. See its documentation
+/// for more.
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]

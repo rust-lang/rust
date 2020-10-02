@@ -1,5 +1,6 @@
 //! WASI-specific extensions to general I/O primitives
 
+#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "wasi_ext", issue = "none")]
 
 use crate::fs;
@@ -49,6 +50,25 @@ pub trait IntoRawFd {
     /// to the caller. Callers are then the unique owners of the file descriptor
     /// and must close the descriptor once it's no longer needed.
     fn into_raw_fd(self) -> RawFd;
+}
+
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl AsRawFd for RawFd {
+    fn as_raw_fd(&self) -> RawFd {
+        *self
+    }
+}
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl IntoRawFd for RawFd {
+    fn into_raw_fd(self) -> RawFd {
+        self
+    }
+}
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl FromRawFd for RawFd {
+    unsafe fn from_raw_fd(fd: RawFd) -> RawFd {
+        fd
+    }
 }
 
 impl AsRawFd for net::TcpStream {

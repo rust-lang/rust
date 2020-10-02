@@ -1,17 +1,17 @@
-error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
+error[E0277]: `Rc<()>` cannot be sent between threads safely
   --> $DIR/issue-21763.rs:9:5
    |
 LL | fn foo<T: Send>() {}
    |           ---- required by this bound in `foo`
 ...
 LL |     foo::<HashMap<Rc<()>, Rc<()>>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Rc<()>` cannot be sent between threads safely
    |
-   = help: within `(std::rc::Rc<()>, std::rc::Rc<()>)`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
-   = note: required because it appears within the type `(std::rc::Rc<()>, std::rc::Rc<()>)`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `hashbrown::raw::RawTable<(std::rc::Rc<()>, std::rc::Rc<()>)>`
-   = note: required because it appears within the type `hashbrown::map::HashMap<std::rc::Rc<()>, std::rc::Rc<()>, std::collections::hash_map::RandomState>`
-   = note: required because it appears within the type `std::collections::HashMap<std::rc::Rc<()>, std::rc::Rc<()>>`
+   = help: within `(Rc<()>, Rc<()>)`, the trait `Send` is not implemented for `Rc<()>`
+   = note: required because it appears within the type `(Rc<()>, Rc<()>)`
+   = note: required because of the requirements on the impl of `Send` for `hashbrown::raw::RawTable<(Rc<()>, Rc<()>)>`
+   = note: required because it appears within the type `hashbrown::map::HashMap<Rc<()>, Rc<()>, RandomState>`
+   = note: required because it appears within the type `HashMap<Rc<()>, Rc<()>>`
 
 error: aborting due to previous error
 

@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-pub enum A {} //~ ERROR type does not implement `std::fmt::Debug`
+pub enum A {} //~ ERROR type does not implement `Debug`
 
 #[derive(Debug)]
 pub enum B {}
@@ -17,7 +17,7 @@ impl fmt::Debug for C {
     }
 }
 
-pub struct Foo; //~ ERROR type does not implement `std::fmt::Debug`
+pub struct Foo; //~ ERROR type does not implement `Debug`
 
 #[derive(Debug)]
 pub struct Bar;

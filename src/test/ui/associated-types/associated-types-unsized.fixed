@@ -6,7 +6,7 @@ trait Get {
     fn get(&self) -> <Self as Get>::Value;
 }
 
-fn foo<T:Get>(t: T) where <T as Get>::Value: std::marker::Sized {
+fn foo<T:Get>(t: T) where <T as Get>::Value: Sized {
     let x = t.get(); //~ ERROR the size for values of type
 }
 

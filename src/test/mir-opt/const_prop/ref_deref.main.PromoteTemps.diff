@@ -1,0 +1,33 @@
+- // MIR for `main` before PromoteTemps
++ // MIR for `main` after PromoteTemps
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/ref_deref.rs:4:11: 4:11
+      let _1: i32;                         // in scope 0 at $DIR/ref_deref.rs:5:5: 5:10
+      let mut _2: &i32;                    // in scope 0 at $DIR/ref_deref.rs:5:6: 5:10
+      let _3: i32;                         // in scope 0 at $DIR/ref_deref.rs:5:8: 5:9
++     let mut _4: &i32;                    // in scope 0 at $DIR/ref_deref.rs:5:6: 5:10
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
+          StorageLive(_2);                 // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
+-         StorageLive(_3);                 // scope 0 at $DIR/ref_deref.rs:5:8: 5:9
+-         _3 = const 4_i32;                // scope 0 at $DIR/ref_deref.rs:5:8: 5:9
+-         _2 = &_3;                        // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
++         _4 = const main::promoted[0];    // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
++                                          // ty::Const
++                                          // + ty: &i32
++                                          // + val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ ref_deref[317d]::main), const_param_did: None }, [], Some(promoted[0]))
++                                          // mir::Constant
++                                          // + span: $DIR/ref_deref.rs:5:6: 5:10
++                                          // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ ref_deref[317d]::main), const_param_did: None }, [], Some(promoted[0])) }
++         _2 = &(*_4);                     // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
+          _1 = (*_2);                      // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
+-         StorageDead(_3);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
+          StorageDead(_2);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
+          StorageDead(_1);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
+          _0 = const ();                   // scope 0 at $DIR/ref_deref.rs:4:11: 6:2
+          return;                          // scope 0 at $DIR/ref_deref.rs:6:2: 6:2
+      }
+  }
+  

@@ -1,4 +1,4 @@
-//! Unix-specific extension to the primitives in the `std::ffi` module
+//! Unix-specific extension to the primitives in the `std::ffi` module.
 //!
 //! # Examples
 //!

@@ -1,5 +1,5 @@
-error[E0277]: the trait bound `for<'b> <std::boxed::Box<T> as X<'b, std::boxed::Box<T>>>::U: std::clone::Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-5.rs:28:14
+error[E0277]: the trait bound `for<'b> <Box<T> as X<'b, Box<T>>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-5.rs:26:14
    |
 LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
    |       - required by a bound in this
@@ -8,14 +8,14 @@ LL |     for<'b> <T::Next as X<'b, T::Next>>::U: Clone,
    |                                             ----- required by this bound in `X`
 ...
 LL |     type U = str;
-   |              ^^^ the trait `for<'b> std::clone::Clone` is not implemented for `<std::boxed::Box<T> as X<'b, std::boxed::Box<T>>>::U`
+   |              ^^^ the trait `for<'b> Clone` is not implemented for `<Box<T> as X<'b, Box<T>>>::U`
    |
    = help: the following implementations were found:
-             <&T as std::clone::Clone>
-             <&mut T as std::clone::Clone>
+             <&T as Clone>
+             <&mut T as Clone>
 
-error[E0277]: the trait bound `for<'b> <std::vec::Vec<T> as X<'b, std::vec::Vec<T>>>::U: std::clone::Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-5.rs:28:14
+error[E0277]: the trait bound `for<'b> <Vec<T> as X<'b, Vec<T>>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-5.rs:26:14
    |
 LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
    |       - required by a bound in this
@@ -24,14 +24,14 @@ LL |     for<'b> <T as X<'b, T>>::U: Clone,
    |                                 ----- required by this bound in `X`
 ...
 LL |     type U = str;
-   |              ^^^ the trait `for<'b> std::clone::Clone` is not implemented for `<std::vec::Vec<T> as X<'b, std::vec::Vec<T>>>::U`
+   |              ^^^ the trait `for<'b> Clone` is not implemented for `<Vec<T> as X<'b, Vec<T>>>::U`
    |
    = help: the following implementations were found:
-             <&T as std::clone::Clone>
-             <&mut T as std::clone::Clone>
+             <&T as Clone>
+             <&mut T as Clone>
 
-error[E0277]: the trait bound `for<'b> <std::vec::Vec<T> as X<'b, std::vec::Vec<T>>>::U: std::clone::Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-5.rs:34:14
+error[E0277]: the trait bound `for<'b> <Vec<T> as X<'b, Vec<T>>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-5.rs:32:14
    |
 LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
    |       - required by a bound in this
@@ -40,14 +40,14 @@ LL |     for<'b> <T::Next as X<'b, T::Next>>::U: Clone,
    |                                             ----- required by this bound in `X`
 ...
 LL |     type U = str;
-   |              ^^^ the trait `for<'b> std::clone::Clone` is not implemented for `<std::vec::Vec<T> as X<'b, std::vec::Vec<T>>>::U`
+   |              ^^^ the trait `for<'b> Clone` is not implemented for `<Vec<T> as X<'b, Vec<T>>>::U`
    |
    = help: the following implementations were found:
-             <&T as std::clone::Clone>
-             <&mut T as std::clone::Clone>
+             <&T as Clone>
+             <&mut T as Clone>
 
-error[E0277]: the trait bound `for<'b> <std::boxed::Box<T> as X<'b, std::boxed::Box<T>>>::U: std::clone::Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-5.rs:34:14
+error[E0277]: the trait bound `for<'b> <Box<T> as X<'b, Box<T>>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-5.rs:32:14
    |
 LL | trait X<'a, T: Cycle + for<'b> X<'b, T>>
    |       - required by a bound in this
@@ -56,11 +56,11 @@ LL |     for<'b> <T as X<'b, T>>::U: Clone,
    |                                 ----- required by this bound in `X`
 ...
 LL |     type U = str;
-   |              ^^^ the trait `for<'b> std::clone::Clone` is not implemented for `<std::boxed::Box<T> as X<'b, std::boxed::Box<T>>>::U`
+   |              ^^^ the trait `for<'b> Clone` is not implemented for `<Box<T> as X<'b, Box<T>>>::U`
    |
    = help: the following implementations were found:
-             <&T as std::clone::Clone>
-             <&mut T as std::clone::Clone>
+             <&T as Clone>
+             <&mut T as Clone>
 
 error: aborting due to 4 previous errors
 

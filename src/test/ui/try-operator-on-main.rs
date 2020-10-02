@@ -19,7 +19,7 @@ fn main() {
 
 fn try_trait_generic<T: Try>() -> T {
     // and a non-`Try` object on a `Try` fn.
-    ()?; //~ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
+    ()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
 
     loop {}
 }

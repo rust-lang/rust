@@ -5,6 +5,7 @@
 #![feature(never_type)]
 
 use std::mem::size_of;
+use std::num::NonZeroU8;
 
 struct t {a: u8, b: i8}
 struct u {a: u8, b: i8, c: u8}
@@ -102,6 +103,23 @@ enum Option2<A, B> {
     None
 }
 
+// Two layouts are considered for `CanBeNicheFilledButShouldnt`:
+//   Niche-filling:
+//     { u32 (4 bytes), NonZeroU8 + tag in niche (1 byte), padding (3 bytes) }
+//   Tagged:
+//     { tag (1 byte), NonZeroU8 (1 byte), padding (2 bytes), u32 (4 bytes) }
+// Both are the same size (due to padding),
+// but the tagged layout is better as the tag creates a niche with 254 invalid values,
+// allowing types like `Option<Option<CanBeNicheFilledButShouldnt>>` to fit into 8 bytes.
+pub enum CanBeNicheFilledButShouldnt {
+    A(NonZeroU8, u32),
+    B
+}
+pub enum AlwaysTaggedBecauseItHasNoNiche {
+    A(u8, u32),
+    B
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -145,4 +163,11 @@ pub fn main() {
     assert_eq!(size_of::<Option<Option<(&(), bool)>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option2<bool, &()>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option2<&(), bool>>>(), size_of::<(bool, &())>());
+
+    assert_eq!(size_of::<CanBeNicheFilledButShouldnt>(), 8);
+    assert_eq!(size_of::<Option<CanBeNicheFilledButShouldnt>>(), 8);
+    assert_eq!(size_of::<Option<Option<CanBeNicheFilledButShouldnt>>>(), 8);
+    assert_eq!(size_of::<AlwaysTaggedBecauseItHasNoNiche>(), 8);
+    assert_eq!(size_of::<Option<AlwaysTaggedBecauseItHasNoNiche>>(), 8);
+    assert_eq!(size_of::<Option<Option<AlwaysTaggedBecauseItHasNoNiche>>>(), 8);
 }

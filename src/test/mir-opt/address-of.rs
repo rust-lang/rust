@@ -1,4 +1,4 @@
-// EMIT_MIR rustc.address_of_reborrow.SimplifyCfg-initial.after.mir
+// EMIT_MIR address_of.address_of_reborrow.SimplifyCfg-initial.after.mir
 
 fn address_of_reborrow() {
     let y = &[0; 10];
@@ -37,7 +37,7 @@ fn address_of_reborrow() {
 }
 
 // The normal borrows here should be preserved
-// EMIT_MIR rustc.borrow_and_cast.SimplifyCfg-initial.after.mir
+// EMIT_MIR address_of.borrow_and_cast.SimplifyCfg-initial.after.mir
 fn borrow_and_cast(mut x: i32) {
     let p = &x as *const i32;
     let q = &mut x as *const i32;

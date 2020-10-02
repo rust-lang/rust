@@ -84,6 +84,9 @@ x--expand-yaml-anchors--remove:
     os: windows-latest-xl
     <<: *base-job
 
+  - &job-aarch64-linux
+    os: [self-hosted, ARM64, linux]
+
   - &step
     if: success() && !env.SKIP_JOB
 
@@ -99,13 +102,6 @@ x--expand-yaml-anchors--remove:
         uses: actions/checkout@v1
         with:
           fetch-depth: 2
-
-      - name: configure GitHub Actions to kill the build when outdated
-        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-        with:
-          github_token: "${{ secrets.github_token }}"
-        if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'
-        <<: *step
 
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
@@ -128,6 +124,13 @@ x--expand-yaml-anchors--remove:
 
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
+        <<: *step
+
+      - name: configure GitHub Actions to kill the build when outdated
+        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+        with:
+          github_token: "${{ secrets.github_token }}"
+        if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'
         <<: *step
 
       - name: collect CPU statistics
@@ -281,18 +284,6 @@ jobs:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
             <<: *job-linux-xl
 
-  try:
-    <<: *base-ci-job
-    name: try
-    env:
-      <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'
-    strategy:
-      matrix:
-        include:
-          - name: dist-x86_64-linux
-            <<: *job-linux-xl
-
   auto:
     <<: *base-ci-job
     name: auto
@@ -375,7 +366,8 @@ jobs:
           - name: dist-x86_64-illumos
             <<: *job-linux-xl
 
-          - name: dist-x86_64-linux
+          - &dist-x86_64-linux
+            name: dist-x86_64-linux
             <<: *job-linux-xl
 
           - name: dist-x86_64-linux-alt
@@ -416,9 +408,6 @@ jobs:
           - name: x86_64-gnu-distcheck
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-full-bootstrap
-            <<: *job-linux-xl
-
           - name: x86_64-gnu-llvm-8
             env:
               RUST_BACKTRACE: 1
@@ -431,6 +420,42 @@ jobs:
             env:
               DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
             <<: *job-linux-xl
+
+          ####################
+          #  macOS Builders  #
+          ####################
+
+          - name: dist-x86_64-apple
+            env:
+              SCRIPT: ./x.py dist
+              RUST_CONFIGURE_ARGS: --host=x86_64-apple-darwin --target=x86_64-apple-darwin,aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-macos-xl
+
+          - name: dist-x86_64-apple-alt
+            env:
+              SCRIPT: ./x.py dist
+              RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            <<: *job-macos-xl
+
+          - name: x86_64-apple
+            env:
+              SCRIPT: ./x.py --stage 2 test
+              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.8
+              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            <<: *job-macos-xl
 
           ######################
           #  Windows Builders  #
@@ -487,15 +512,17 @@ jobs:
 
           # 32/64-bit MinGW builds.
           #
-          # We are using MinGW with posix threads since LLVM does not compile with
-          # the win32 threads version due to missing support for C++'s std::thread.
+          # We are using MinGW with POSIX threads since LLVM requires
+          # C++'s std::thread which is disabled in libstdc++ with win32 threads.
+          # FIXME: Libc++ doesn't have this limitation so we can avoid
+          # winpthreads if we switch to it.
           #
-          # Instead of relying on the MinGW version installed on appveryor we download
-          # and install one ourselves so we won't be surprised by changes to appveyor's
+          # Instead of relying on the MinGW version installed on CI we download
+          # and install one ourselves so we won't be surprised by changes to CI's
           # build image.
           #
           # Finally, note that the downloads below are all in the `rust-lang-ci` S3
-          # bucket, but they cleraly didn't originate there! The downloads originally
+          # bucket, but they clearly didn't originate there! The downloads originally
           # came from the mingw-w64 SourceForge download site. Unfortunately
           # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
 
@@ -519,7 +546,7 @@ jobs:
           - name: x86_64-mingw-1
             env:
               SCRIPT: make ci-mingw-subset-1
-              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-profiler
               CUSTOM_MINGW: 1
               # FIXME(#59637)
               NO_DEBUG_ASSERTIONS: 1
@@ -529,7 +556,7 @@ jobs:
           - name: x86_64-mingw-2
             env:
               SCRIPT: make ci-mingw-subset-2
-              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-profiler
               CUSTOM_MINGW: 1
             <<: *job-windows-xl
 
@@ -537,6 +564,7 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-pc-windows-msvc
+                --host=x86_64-pc-windows-msvc
                 --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
@@ -548,7 +576,8 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: >-
                 --build=i686-pc-windows-msvc
-                --target=i586-pc-windows-msvc
+                --host=i686-pc-windows-msvc
+                --target=i686-pc-windows-msvc,i586-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
               SCRIPT: python x.py dist
@@ -584,43 +613,26 @@ jobs:
       <<: [*shared-ci-variables, *dummy-variables]
     if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
     strategy:
+      fail-fast: false
       matrix:
         include:
-          ####################
-          #  macOS Builders  #
-          ####################
+          #############################
+          #   Linux/Docker builders   #
+          #############################
 
-          - name: dist-x86_64-apple
-            env:
-              SCRIPT: ./x.py dist
-              RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.7
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              DIST_REQUIRE_ALL_TOOLS: 1
-            <<: *job-macos-xl
+          - name: aarch64-gnu
+            <<: *job-aarch64-linux
 
-          - name: dist-x86_64-apple-alt
-            env:
-              SCRIPT: ./x.py dist
-              RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.7
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-            <<: *job-macos-xl
-
-          - name: x86_64-apple
-            env:
-              SCRIPT: ./x.py --stage 2 test
-              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.8
-              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-            <<: *job-macos-xl
+  try:
+    <<: *base-ci-job
+    name: try
+    env:
+      <<: [*shared-ci-variables, *prod-variables]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'
+    strategy:
+      matrix:
+        include:
+          - *dist-x86_64-linux
 
   master:
     name: master

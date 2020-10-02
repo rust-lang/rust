@@ -5,8 +5,8 @@ pub struct Stdout;
 pub struct Stderr;
 
 impl Stdin {
-    pub fn new() -> io::Result<Stdin> {
-        Ok(Stdin)
+    pub const fn new() -> Stdin {
+        Stdin
     }
 }
 
@@ -17,8 +17,8 @@ impl io::Read for Stdin {
 }
 
 impl Stdout {
-    pub fn new() -> io::Result<Stdout> {
-        Ok(Stdout)
+    pub const fn new() -> Stdout {
+        Stdout
     }
 }
 
@@ -33,8 +33,8 @@ impl io::Write for Stdout {
 }
 
 impl Stderr {
-    pub fn new() -> io::Result<Stderr> {
-        Ok(Stderr)
+    pub const fn new() -> Stderr {
+        Stderr
     }
 }
 

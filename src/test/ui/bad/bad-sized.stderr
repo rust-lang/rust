@@ -2,12 +2,12 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/bad-sized.rs:4:28
    |
 LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
-   |                    -----   ^^^^^
-   |                    |       |
-   |                    |       additional non-auto trait
-   |                    |       trait alias used in trait object type (additional use)
+   |                    -----   ^^^^^ additional non-auto trait
+   |                    |
    |                    first non-auto trait
-   |                    trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Trait + Sized {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
   --> $DIR/bad-sized.rs:4:12
@@ -18,9 +18,9 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
   ::: $SRC_DIR/alloc/src/vec.rs:LL:COL
    |
 LL | pub struct Vec<T> {
-   |                - required by this bound in `std::vec::Vec`
+   |                - required by this bound in `Vec`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
+   = help: the trait `Sized` is not implemented for `dyn Trait`
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
   --> $DIR/bad-sized.rs:4:37
@@ -28,8 +28,8 @@ error[E0277]: the size for values of type `dyn Trait` cannot be known at compila
 LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |                                     ^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
-   = note: required by `std::vec::Vec::<T>::new`
+   = help: the trait `Sized` is not implemented for `dyn Trait`
+   = note: required by `Vec::<T>::new`
 
 error: aborting due to 3 previous errors
 

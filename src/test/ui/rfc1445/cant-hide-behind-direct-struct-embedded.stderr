@@ -4,11 +4,5 @@ error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be ann
 LL |         WRAP_DIRECT_INLINE => { panic!("WRAP_DIRECT_INLINE matched itself"); }
    |         ^^^^^^^^^^^^^^^^^^
 
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/cant-hide-behind-direct-struct-embedded.rs:22:9
-   |
-LL |         WRAP_DIRECT_INLINE => { panic!("WRAP_DIRECT_INLINE matched itself"); }
-   |         ^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

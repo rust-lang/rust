@@ -92,6 +92,13 @@ jobs:
       env:
         OS: ${{ runner.os }}
 
+    - name: Test cargo dev new lint
+      run: |
+        cargo dev new_lint --name new_early_pass --pass early
+        cargo dev new_lint --name new_late_pass --pass late
+        cargo check
+        git reset --hard HEAD
+
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |

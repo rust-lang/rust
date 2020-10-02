@@ -73,8 +73,14 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
 }
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
-    let exception = Box::from_raw(ptr as *mut Exception);
-    exception.cause
+    let exception = ptr as *mut uw::_Unwind_Exception;
+    if (*exception).exception_class != rust_exception_class() {
+        uw::_Unwind_DeleteException(exception);
+        super::__rust_foreign_exception();
+    } else {
+        let exception = Box::from_raw(exception as *mut Exception);
+        exception.cause
+    }
 }
 
 // Rust's exception class identifier.  This is used by personality routines to
@@ -108,13 +114,13 @@ const UNWIND_DATA_REG: (i32, i32) = (3, 4); // R3, R4 / X3, X4
 #[cfg(target_arch = "s390x")]
 const UNWIND_DATA_REG: (i32, i32) = (6, 7); // R6, R7
 
-#[cfg(target_arch = "sparc64")]
+#[cfg(any(target_arch = "sparc", target_arch = "sparc64"))]
 const UNWIND_DATA_REG: (i32, i32) = (24, 25); // I0, I1
 
 #[cfg(target_arch = "hexagon")]
 const UNWIND_DATA_REG: (i32, i32) = (0, 1); // R0, R1
 
-#[cfg(target_arch = "riscv64")]
+#[cfg(any(target_arch = "riscv64", target_arch = "riscv32"))]
 const UNWIND_DATA_REG: (i32, i32) = (10, 11); // x10, x11
 
 // The following code is based on GCC's C and C++ personality routines.  For reference, see:
@@ -164,9 +170,7 @@ cfg_if::cfg_if! {
             // _Unwind_Context in our libunwind bindings and fetch the required data from there
             // directly, bypassing DWARF compatibility functions.
 
-            let exception_class = (*exception_object).exception_class;
-            let foreign_exception = exception_class != rust_exception_class();
-            let eh_action = match find_eh_action(context, foreign_exception) {
+            let eh_action = match find_eh_action(context) {
                 Ok(action) => action,
                 Err(_) => return uw::_URC_FAILURE,
             };
@@ -221,15 +225,14 @@ cfg_if::cfg_if! {
         // and indirectly on Windows x86_64 via SEH.
         unsafe extern "C" fn rust_eh_personality_impl(version: c_int,
                                                       actions: uw::_Unwind_Action,
-                                                      exception_class: uw::_Unwind_Exception_Class,
+                                                      _exception_class: uw::_Unwind_Exception_Class,
                                                       exception_object: *mut uw::_Unwind_Exception,
                                                       context: *mut uw::_Unwind_Context)
                                                       -> uw::_Unwind_Reason_Code {
             if version != 1 {
                 return uw::_URC_FATAL_PHASE1_ERROR;
             }
-            let foreign_exception = exception_class != rust_exception_class();
-            let eh_action = match find_eh_action(context, foreign_exception) {
+            let eh_action = match find_eh_action(context) {
                 Ok(action) => action,
                 Err(_) => return uw::_URC_FATAL_PHASE1_ERROR,
             };
@@ -293,10 +296,7 @@ cfg_if::cfg_if! {
     }
 }
 
-unsafe fn find_eh_action(
-    context: *mut uw::_Unwind_Context,
-    foreign_exception: bool,
-) -> Result<EHAction, ()> {
+unsafe fn find_eh_action(context: *mut uw::_Unwind_Context) -> Result<EHAction, ()> {
     let lsda = uw::_Unwind_GetLanguageSpecificData(context) as *const u8;
     let mut ip_before_instr: c_int = 0;
     let ip = uw::_Unwind_GetIPInfo(context, &mut ip_before_instr);
@@ -308,7 +308,7 @@ unsafe fn find_eh_action(
         get_text_start: &|| uw::_Unwind_GetTextRelBase(context),
         get_data_start: &|| uw::_Unwind_GetDataRelBase(context),
     };
-    eh::find_eh_action(lsda, &eh_context, foreign_exception)
+    eh::find_eh_action(lsda, &eh_context)
 }
 
 // Frame unwind info registration

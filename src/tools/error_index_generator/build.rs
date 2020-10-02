@@ -9,7 +9,7 @@ fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let dest = out_dir.join("error_codes.rs");
 
-    let error_codes_path = "../../../src/librustc_error_codes/error_codes.rs";
+    let error_codes_path = "../../../compiler/rustc_error_codes/src/error_codes.rs";
 
     println!("cargo:rerun-if-changed={}", error_codes_path);
     let file = fs::read_to_string(error_codes_path)
@@ -19,7 +19,7 @@ fn main() {
     fs::write(&out_dir.join("all_error_codes.rs"), &contents).unwrap();
 
     // We copy the md files as well to the target directory.
-    for entry in WalkDir::new("../../../src/librustc_error_codes/error_codes") {
+    for entry in WalkDir::new("../../../compiler/rustc_error_codes/src/error_codes") {
         let entry = entry.unwrap();
         match entry.path().extension() {
             Some(s) if s == "md" => {}

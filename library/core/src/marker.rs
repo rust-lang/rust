@@ -111,13 +111,13 @@ pub trait Sized {
 ///   - `T` is not part of the type of any other fields
 ///   - `Bar<T>: Unsize<Bar<U>>`, if the last field of `Foo` has type `Bar<T>`
 ///
-/// `Unsize` is used along with [`ops::CoerceUnsized`][coerceunsized] to allow
-/// "user-defined" containers such as [`rc::Rc`][rc] to contain dynamically-sized
+/// `Unsize` is used along with [`ops::CoerceUnsized`] to allow
+/// "user-defined" containers such as [`Rc`] to contain dynamically-sized
 /// types. See the [DST coercion RFC][RFC982] and [the nomicon entry on coercion][nomicon-coerce]
 /// for more details.
 ///
-/// [coerceunsized]: ../ops/trait.CoerceUnsized.html
-/// [rc]: ../../std/rc/struct.Rc.html
+/// [`ops::CoerceUnsized`]: crate::ops::CoerceUnsized
+/// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "unsize", issue = "27732")]
@@ -291,6 +291,7 @@ pub trait StructuralEq {
 ///
 /// ```
 /// # #[allow(dead_code)]
+/// #[derive(Copy, Clone)]
 /// struct Point {
 ///    x: i32,
 ///    y: i32,
@@ -313,6 +314,20 @@ pub trait StructuralEq {
 ///
 /// ```text
 /// the trait `Copy` may not be implemented for this type; field `points` does not implement `Copy`
+/// ```
+///
+/// Shared references (`&T`) are also `Copy`, so a type can be `Copy`, even when it holds
+/// shared references of types `T` that are *not* `Copy`. Consider the following struct,
+/// which can implement `Copy`, because it only holds a *shared reference* to our non-`Copy`
+/// type `PointList` from above:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// # struct PointList;
+/// #[derive(Copy, Clone)]
+/// struct PointListWrapper<'a> {
+///     point_list_ref: &'a PointList,
+/// }
 /// ```
 ///
 /// ## When *can't* my type be `Copy`?
@@ -353,11 +368,7 @@ pub trait StructuralEq {
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`Drop`]: ../../std/ops/trait.Drop.html
-/// [`size_of::<T>`]: ../../std/mem/fn.size_of.html
-/// [`Clone`]: ../clone/trait.Clone.html
-/// [`String`]: ../../std/string/struct.String.html
-/// [`i32`]: ../../std/primitive.i32.html
+/// [`size_of::<T>`]: crate::mem::size_of
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
@@ -385,18 +396,18 @@ pub macro Copy($item:item) {
 /// This trait is automatically implemented when the compiler determines
 /// it's appropriate.
 ///
-/// The precise definition is: a type `T` is `Sync` if and only if `&T` is
-/// [`Send`][send]. In other words, if there is no possibility of
+/// The precise definition is: a type `T` is [`Sync`] if and only if `&T` is
+/// [`Send`]. In other words, if there is no possibility of
 /// [undefined behavior][ub] (including data races) when passing
 /// `&T` references between threads.
 ///
-/// As one would expect, primitive types like [`u8`][u8] and [`f64`][f64]
-/// are all `Sync`, and so are simple aggregate types containing them,
-/// like tuples, structs and enums. More examples of basic `Sync`
+/// As one would expect, primitive types like [`u8`] and [`f64`]
+/// are all [`Sync`], and so are simple aggregate types containing them,
+/// like tuples, structs and enums. More examples of basic [`Sync`]
 /// types include "immutable" types like `&T`, and those with simple
 /// inherited mutability, such as [`Box<T>`][box], [`Vec<T>`][vec] and
-/// most other collection types. (Generic parameters need to be `Sync`
-/// for their container to be `Sync`.)
+/// most other collection types. (Generic parameters need to be [`Sync`]
+/// for their container to be [`Sync`].)
 ///
 /// A somewhat surprising consequence of the definition is that `&mut T`
 /// is `Sync` (if `T` is `Sync`) even though it seems like that might
@@ -406,15 +417,15 @@ pub macro Copy($item:item) {
 /// of a data race.
 ///
 /// Types that are not `Sync` are those that have "interior
-/// mutability" in a non-thread-safe form, such as [`cell::Cell`][cell]
-/// and [`cell::RefCell`][refcell]. These types allow for mutation of
+/// mutability" in a non-thread-safe form, such as [`Cell`][cell]
+/// and [`RefCell`][refcell]. These types allow for mutation of
 /// their contents even through an immutable, shared reference. For
 /// example the `set` method on [`Cell<T>`][cell] takes `&self`, so it requires
 /// only a shared reference [`&Cell<T>`][cell]. The method performs no
 /// synchronization, thus [`Cell`][cell] cannot be `Sync`.
 ///
 /// Another example of a non-`Sync` type is the reference-counting
-/// pointer [`rc::Rc`][rc]. Given any reference [`&Rc<T>`][rc], you can clone
+/// pointer [`Rc`][rc]. Given any reference [`&Rc<T>`][rc], you can clone
 /// a new [`Rc<T>`][rc], modifying the reference counts in a non-atomic way.
 ///
 /// For cases when one does need thread-safe interior mutability,
@@ -430,24 +441,21 @@ pub macro Copy($item:item) {
 /// [undefined behavior][ub]. For example, [`transmute`][transmute]-ing
 /// from `&T` to `&mut T` is invalid.
 ///
-/// See [the Nomicon](../../nomicon/send-and-sync.html) for more
-/// details about `Sync`.
+/// See [the Nomicon][nomicon-send-and-sync] for more details about `Sync`.
 ///
-/// [send]: trait.Send.html
-/// [u8]: ../../std/primitive.u8.html
-/// [f64]: ../../std/primitive.f64.html
 /// [box]: ../../std/boxed/struct.Box.html
 /// [vec]: ../../std/vec/struct.Vec.html
-/// [cell]: ../cell/struct.Cell.html
-/// [refcell]: ../cell/struct.RefCell.html
+/// [cell]: crate::cell::Cell
+/// [refcell]: crate::cell::RefCell
 /// [rc]: ../../std/rc/struct.Rc.html
 /// [arc]: ../../std/sync/struct.Arc.html
-/// [atomic data types]: ../sync/atomic/index.html
+/// [atomic data types]: crate::sync::atomic
 /// [mutex]: ../../std/sync/struct.Mutex.html
 /// [rwlock]: ../../std/sync/struct.RwLock.html
-/// [unsafecell]: ../cell/struct.UnsafeCell.html
+/// [unsafecell]: crate::cell::UnsafeCell
 /// [ub]: ../../reference/behavior-considered-undefined.html
-/// [transmute]: ../../std/mem/fn.transmute.html
+/// [transmute]: crate::mem::transmute
+/// [nomicon-send-and-sync]: ../../nomicon/send-and-sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "sync_trait")]
 #[lang = "sync"]
@@ -635,9 +643,9 @@ macro_rules! impls {
 /// }
 ///
 /// impl<R: ResType> ExternalResource<R> {
-///     fn new() -> ExternalResource<R> {
+///     fn new() -> Self {
 ///         let size_of_res = mem::size_of::<R>();
-///         ExternalResource {
+///         Self {
 ///             resource_handle: foreign_lib::new(size_of_res),
 ///             resource_type: PhantomData,
 ///         }
@@ -683,7 +691,7 @@ mod impls {
 /// guarantees to [`mem::Discriminant`]. It is **undefined behavior** to transmute
 /// between `DiscriminantKind::Discriminant` and `mem::Discriminant`.
 ///
-/// [`mem::Discriminant`]: https://doc.rust-lang.org/stable/core/mem/struct.Discriminant.html
+/// [`mem::Discriminant`]: crate::mem::Discriminant
 #[unstable(
     feature = "discriminant_kind",
     issue = "none",
@@ -693,7 +701,7 @@ mod impls {
 pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
-    #[cfg_attr(not(bootstrap), lang = "discriminant_type")]
+    #[lang = "discriminant_type"]
     type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
 }
 
@@ -713,23 +721,23 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 
 /// Types that can be safely moved after being pinned.
 ///
-/// Since Rust itself has no notion of immovable types, and considers moves
-/// (e.g., through assignment or [`mem::replace`]) to always be safe,
-/// this trait cannot prevent types from moving by itself.
+/// Rust itself has no notion of immovable types, and considers moves (e.g.,
+/// through assignment or [`mem::replace`]) to always be safe.
 ///
-/// Instead it is used to prevent moves through the type system,
-/// by controlling the behavior of pointers `P` wrapped in the [`Pin<P>`] wrapper,
-/// which "pin" the type in place by not allowing it to be moved out of them.
-/// See the [`pin module`] documentation for more information on pinning.
+/// The [`Pin`][Pin] type is used instead to prevent moves through the type
+/// system. Pointers `P<T>` wrapped in the [`Pin<P<T>>`][Pin] wrapper can't be
+/// moved out of. See the [`pin` module] documentation for more information on
+/// pinning.
 ///
-/// Implementing this trait lifts the restrictions of pinning off a type,
-/// which then allows it to move out with functions such as [`mem::replace`].
+/// Implementing the `Unpin` trait for `T` lifts the restrictions of pinning off
+/// the type, which then allows moving `T` out of [`Pin<P<T>>`][Pin] with
+/// functions such as [`mem::replace`].
 ///
 /// `Unpin` has no consequence at all for non-pinned data. In particular,
 /// [`mem::replace`] happily moves `!Unpin` data (it works for any `&mut T`, not
-/// just when `T: Unpin`). However, you cannot use
-/// [`mem::replace`] on data wrapped inside a [`Pin<P>`] because you cannot get the
-/// `&mut T` you need for that, and *that* is what makes this system work.
+/// just when `T: Unpin`). However, you cannot use [`mem::replace`] on data
+/// wrapped inside a [`Pin<P<T>>`][Pin] because you cannot get the `&mut T` you
+/// need for that, and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
@@ -749,9 +757,9 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 ///
 /// This trait is automatically implemented for almost every type.
 ///
-/// [`mem::replace`]: ../../std/mem/fn.replace.html
-/// [`Pin<P>`]: ../pin/struct.Pin.html
-/// [`pin module`]: ../../std/pin/index.html
+/// [`mem::replace`]: crate::mem::replace
+/// [Pin]: crate::pin::Pin
+/// [`pin` module]: crate::pin
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_on_unimplemented(
     on(_Self = "std::future::Future", note = "consider using `Box::pin`",),

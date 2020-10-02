@@ -6,9 +6,12 @@
 //! as moving an object with pointers to itself will invalidate them, which could cause undefined
 //! behavior.
 //!
-//! A [`Pin<P>`] ensures that the pointee of any pointer type `P` has a stable location in memory,
-//! meaning it cannot be moved elsewhere and its memory cannot be deallocated
-//! until it gets dropped. We say that the pointee is "pinned".
+//! At a high level, a [`Pin<P>`] ensures that the pointee of any pointer type
+//! `P` has a stable location in memory, meaning it cannot be moved elsewhere
+//! and its memory cannot be deallocated until it gets dropped. We say that the
+//! pointee is "pinned". Things get more subtle when discussing types that
+//! combine pinned with non-pinned data; [see below](#projections-and-structural-pinning)
+//! for more details.
 //!
 //! By default, all types in Rust are movable. Rust allows passing all types by-value,
 //! and common smart-pointer types such as [`Box<T>`] and `&mut T` allow replacing and
@@ -60,6 +63,10 @@
 //! pointed-to type).
 //!
 //! # Example: self-referential struct
+//!
+//! Before we go into more details to explain the guarantees and choices
+//! associated with `Pin<T>`, we discuss some examples for how it might be used.
+//! Feel free to [skip to where the theoretical discussion continues](#drop-guarantee).
 //!
 //! ```rust
 //! use std::pin::Pin;
@@ -342,37 +349,28 @@
 //! mutable reference even when you just have [`Pin`]`<&mut Self>` (such as in your own
 //! [`poll`] implementation).
 //!
-//! [`Pin<P>`]: struct.Pin.html
-//! [`Unpin`]: ../marker/trait.Unpin.html
-//! [`Deref`]: ../ops/trait.Deref.html
-//! [`DerefMut`]: ../ops/trait.DerefMut.html
-//! [`mem::swap`]: ../mem/fn.swap.html
-//! [`mem::forget`]: ../mem/fn.forget.html
+//! [`Pin<P>`]: Pin
+//! [`Deref`]: crate::ops::Deref
+//! [`DerefMut`]: crate::ops::DerefMut
+//! [`mem::swap`]: crate::mem::swap
+//! [`mem::forget`]: crate::mem::forget
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`Vec<T>`]: ../../std/vec/struct.Vec.html
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
-//! [`Pin`]: struct.Pin.html
 //! [`Box`]: ../../std/boxed/struct.Box.html
 //! [Vec::pop]: ../../std/vec/struct.Vec.html#method.pop
 //! [Vec::push]: ../../std/vec/struct.Vec.html#method.push
 //! [`Rc`]: ../../std/rc/struct.Rc.html
-//! [`RefCell<T>`]: ../../std/cell/struct.RefCell.html
-//! [`Drop`]: ../../std/ops/trait.Drop.html
-//! [`drop`]: ../../std/ops/trait.Drop.html#tymethod.drop
+//! [`RefCell<T>`]: crate::cell::RefCell
+//! [`drop`]: Drop::drop
 //! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
-//! [`Option<T>`]: ../../std/option/enum.Option.html
-//! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
-//! [`RefCell<T>`]: ../cell/struct.RefCell.html
-//! [`None`]: ../option/enum.Option.html#variant.None
-//! [`Some(v)`]: ../option/enum.Option.html#variant.Some
-//! [`ptr::write`]: ../ptr/fn.write.html
-//! [`Future`]: ../future/trait.Future.html
+//! [`Option<T>`]: Option
+//! [`Some(v)`]: Some
+//! [`ptr::write`]: crate::ptr::write
+//! [`Future`]: crate::future::Future
 //! [drop-impl]: #drop-implementation
 //! [drop-guarantee]: #drop-guarantee
-//! [`poll`]: ../../std/future/trait.Future.html#tymethod.poll
-//! [`Pin::get_unchecked_mut`]: struct.Pin.html#method.get_unchecked_mut
-//! [`bool`]: ../../std/primitive.bool.html
-//! [`i32`]: ../../std/primitive.i32.html
+//! [`poll`]: crate::future::Future::poll
 
 #![stable(feature = "pin", since = "1.33.0")]
 
@@ -390,8 +388,7 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 ///
 /// *See the [`pin` module] documentation for an explanation of pinning.*
 ///
-/// [`Unpin`]: ../../std/marker/trait.Unpin.html
-/// [`pin` module]: ../../std/pin/index.html
+/// [`pin` module]: self
 //
 // Note: the `Clone` derive below causes unsoundness as it's possible to implement
 // `Clone` for mutable references.
@@ -474,12 +471,11 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
     /// `P` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
-    ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn new(pointer: P) -> Pin<P> {
-        // Safety: the value pointed to is `Unpin`, and so has no requirements
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub const fn new(pointer: P) -> Pin<P> {
+        // SAFETY: the value pointed to is `Unpin`, and so has no requirements
         // around pinning.
         unsafe { Pin::new_unchecked(pointer) }
     }
@@ -488,11 +484,10 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// This requires that the data inside this `Pin` is [`Unpin`] so that we
     /// can ignore the pinning invariants when unwrapping it.
-    ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
-    #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
-    pub fn into_inner(pin: Pin<P>) -> P {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
+    pub const fn into_inner(pin: Pin<P>) -> P {
         pin.pointer
     }
 }
@@ -548,7 +543,7 @@ impl<P: Deref> Pin<P> {
     /// use std::pin::Pin;
     ///
     /// fn move_pinned_rc<T>(mut x: Rc<T>) {
-    ///     let pinned = unsafe { Pin::new_unchecked(x.clone()) };
+    ///     let pinned = unsafe { Pin::new_unchecked(Rc::clone(&x)) };
     ///     {
     ///         let p: Pin<&T> = pinned.as_ref();
     ///         // This should mean the pointee can never move again.
@@ -561,10 +556,12 @@ impl<P: Deref> Pin<P> {
     ///  }
     ///  ```
     ///
-    /// [`mem::swap`]: ../../std/mem/fn.swap.html
-    #[stable(feature = "pin", since = "1.33.0")]
+    /// [`mem::swap`]: crate::mem::swap
+    #[lang = "new_unchecked"]
     #[inline(always)]
-    pub unsafe fn new_unchecked(pointer: P) -> Pin<P> {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub const unsafe fn new_unchecked(pointer: P) -> Pin<P> {
         Pin { pointer }
     }
 
@@ -595,12 +592,10 @@ impl<P: Deref> Pin<P> {
     ///
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
     /// instead.
-    ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
-    /// [`Pin::into_inner`]: #method.into_inner
-    #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
-    pub unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
+    pub const unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
         pin.pointer
     }
 }
@@ -670,7 +665,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     ///
-    /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
+    /// [`pin` module]: self#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked<U, F>(self, func: F) -> Pin<&'a U>
     where
@@ -701,19 +696,21 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// the `Pin` itself. This method allows turning the `Pin` into a reference
     /// with the same lifetime as the original `Pin`.
     ///
-    /// ["pinning projections"]: ../../std/pin/index.html#projections-and-structural-pinning
-    #[stable(feature = "pin", since = "1.33.0")]
+    /// ["pinning projections"]: self#projections-and-structural-pinning
     #[inline(always)]
-    pub fn get_ref(self) -> &'a T {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub const fn get_ref(self) -> &'a T {
         self.pointer
     }
 }
 
 impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn into_ref(self) -> Pin<&'a T> {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub const fn into_ref(self) -> Pin<&'a T> {
         Pin { pointer: self.pointer }
     }
 
@@ -726,9 +723,10 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// that lives for as long as the borrow of the `Pin`, not the lifetime of
     /// the `Pin` itself. This method allows turning the `Pin` into a reference
     /// with the same lifetime as the original `Pin`.
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn get_mut(self) -> &'a mut T
+    #[stable(feature = "pin", since = "1.33.0")]
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    pub const fn get_mut(self) -> &'a mut T
     where
         T: Unpin,
     {
@@ -745,9 +743,10 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     ///
     /// If the underlying data is `Unpin`, `Pin::get_mut` should be used
     /// instead.
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub unsafe fn get_unchecked_mut(self) -> &'a mut T {
+    #[stable(feature = "pin", since = "1.33.0")]
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    pub const unsafe fn get_unchecked_mut(self) -> &'a mut T {
         self.pointer
     }
 
@@ -765,7 +764,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     ///
-    /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
+    /// [`pin` module]: self#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U>
     where

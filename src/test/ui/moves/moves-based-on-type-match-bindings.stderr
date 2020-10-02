@@ -1,13 +1,13 @@
-error[E0382]: borrow of moved value: `x`
+error[E0382]: borrow of partially moved value: `x`
   --> $DIR/moves-based-on-type-match-bindings.rs:16:11
    |
 LL |         Foo {f} => {}
-   |              - value moved here
+   |              - value partially moved here
 ...
 LL |     touch(&x);
    |           ^^ value borrowed here after partial move
    |
-   = note: move occurs because `x.f` has type `std::string::String`, which does not implement the `Copy` trait
+   = note: partial move occurs because `x.f` has type `String`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

@@ -5,7 +5,7 @@ pub(crate) struct Snail;
 
 mod sea {
     pub(super) struct Turtle;
-    //~^ NOTE `sea::Turtle` declared as restricted
+    //~^ NOTE `Turtle` declared as restricted
 }
 
 struct Tortoise;
@@ -19,7 +19,7 @@ pub type Helix_pomatia = Shell<Snail>;
 //~^ ERROR crate-visible type `Snail` in public interface
 //~| NOTE can't leak crate-visible type
 pub type Dermochelys_coriacea = Shell<sea::Turtle>;
-//~^ ERROR restricted type `sea::Turtle` in public interface
+//~^ ERROR restricted type `Turtle` in public interface
 //~| NOTE can't leak restricted type
 pub type Testudo_graeca = Shell<Tortoise>;
 //~^ ERROR private type `Tortoise` in public interface

@@ -5,11 +5,18 @@
 
 extern crate rustc_serialize;
 
-use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::{json, Decodable, Encodable};
 use std::fmt::Display;
 
-pub trait Entity : Decodable + Encodable + Sized {
-    type Key: Clone + Decodable + Encodable + ToString + Display + Eq + Ord + Sized;
+pub trait Entity: Decodable<json::Decoder> + for<'a> Encodable<json::Encoder<'a>> + Sized {
+    type Key: Clone
+        + Decodable<json::Decoder>
+        + for<'a> Encodable<json::Encoder<'a>>
+        + ToString
+        + Display
+        + Eq
+        + Ord
+        + Sized;
 
     fn id(&self) -> Self::Key;
 
@@ -20,7 +27,10 @@ pub struct DbRef<E: Entity> {
     pub id: E::Key,
 }
 
-impl<E> DbRef<E> where E: Entity {
+impl<E> DbRef<E>
+where
+    E: Entity,
+{
     fn get(self) -> Option<E> {
         E::find_by_id(self.id)
     }

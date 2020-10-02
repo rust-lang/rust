@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<'b> <T as X<'b, T>>::U: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `for<'b> <T as X<'b, T>>::U: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-param-6.rs:14:14
    |
 LL | trait X<'a, T>
@@ -8,11 +8,11 @@ LL |     for<'b> <T as X<'b, T>>::U: Clone,
    |                                 ----- required by this bound in `X`
 ...
 LL |     type U = str;
-   |              ^^^ the trait `for<'b> std::clone::Clone` is not implemented for `<T as X<'b, T>>::U`
+   |              ^^^ the trait `for<'b> Clone` is not implemented for `<T as X<'b, T>>::U`
    |
    = help: the following implementations were found:
-             <&T as std::clone::Clone>
-             <&mut T as std::clone::Clone>
+             <&T as Clone>
+             <&mut T as Clone>
 
 error[E0277]: the trait bound `for<'b> T: X<'b, T>` is not satisfied
   --> $DIR/hr-associated-type-bound-param-6.rs:12:12

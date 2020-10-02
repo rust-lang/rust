@@ -40,14 +40,12 @@
 /// provide a reference to related type `T`, it is often better to use
 /// [`AsRef<T>`] as more types can safely implement it.
 ///
-/// [`AsRef<T>`]: ../../std/convert/trait.AsRef.html
-/// [`BorrowMut<T>`]: trait.BorrowMut.html
+/// [`BorrowMut<T>`]: BorrowMut
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 /// [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
 /// [`Rc<T>`]: ../../std/rc/struct.Rc.html
-/// [`str`]: ../../std/primitive.str.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`borrow`]: #tymethod.borrow
+/// [`borrow`]: Borrow::borrow
 ///
 /// # Examples
 ///
@@ -152,10 +150,9 @@
 /// If it wants to allow others access to the underlying `str`, it can do
 /// that via `AsRef<str>` which doesn’t carry any extra requirements.
 ///
-/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`Hash`]: crate::hash::Hash
 /// [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.
@@ -187,7 +184,7 @@ pub trait Borrow<Borrowed: ?Sized> {
 /// an underlying type by providing a mutable reference. See [`Borrow<T>`]
 /// for more information on borrowing as another type.
 ///
-/// [`Borrow<T>`]: trait.Borrow.html
+/// [`Borrow<T>`]: Borrow
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BorrowMut<Borrowed: ?Sized>: Borrow<Borrowed> {
     /// Mutably borrows from an owned value.

@@ -42,14 +42,14 @@ impl<'a> Sugg<'a> {
     pub fn hir_opt(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Self> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
-            Self::hir_from_snippet(cx, expr, snippet)
+            Self::hir_from_snippet(expr, snippet)
         })
     }
 
     /// Convenience function around `hir_opt` for suggestions with a default
     /// text.
     pub fn hir(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
-        Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
+        Self::hir_opt(cx, expr).unwrap_or(Sugg::NonParen(Cow::Borrowed(default)))
     }
 
     /// Same as `hir`, but it adapts the applicability level by following rules:
@@ -80,13 +80,13 @@ impl<'a> Sugg<'a> {
     pub fn hir_with_macro_callsite(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
         let snippet = snippet_with_macro_callsite(cx, expr.span, default);
 
-        Self::hir_from_snippet(cx, expr, snippet)
+        Self::hir_from_snippet(expr, snippet)
     }
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
-    fn hir_from_snippet(cx: &LateContext<'_>, expr: &hir::Expr<'_>, snippet: Cow<'a, str>) -> Self {
-        if let Some(range) = higher::range(cx, expr) {
+    fn hir_from_snippet(expr: &hir::Expr<'_>, snippet: Cow<'a, str>) -> Self {
+        if let Some(range) = higher::range(expr) {
             let op = match range.limits {
                 ast::RangeLimits::HalfOpen => AssocOp::DotDot,
                 ast::RangeLimits::Closed => AssocOp::DotDotEq,
@@ -132,7 +132,11 @@ impl<'a> Sugg<'a> {
     pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        let snippet = snippet(cx, expr.span, default);
+        let snippet = if expr.span.from_expansion() {
+            snippet_with_macro_callsite(cx, expr.span, default)
+        } else {
+            snippet(cx, expr.span, default)
+        };
 
         match expr.kind {
             ast::ExprKind::AddrOf(..)

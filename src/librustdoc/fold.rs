@@ -93,15 +93,11 @@ pub trait DocFolder: Sized {
         c.module = c.module.take().and_then(|module| self.fold_item(module));
 
         {
-            let mut guard = c.external_traits.borrow_mut();
-            let external_traits = std::mem::replace(&mut *guard, Default::default());
-            *guard = external_traits
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
-                    (k, v)
-                })
-                .collect();
+            let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };
+            for (k, mut v) in external_traits {
+                v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
+                c.external_traits.borrow_mut().insert(k, v);
+            }
         }
         c
     }

@@ -10,7 +10,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for calls to await while holding a
     /// non-async-aware MutexGuard.
     ///
-    /// **Why is this bad?** The Mutex types found in syd::sync and parking_lot
+    /// **Why is this bad?** The Mutex types found in std::sync and parking_lot
     /// are not designed to operate in an async context across await points.
     ///
     /// There are two potential solutions. One is to use an asynx-aware Mutex
@@ -67,7 +67,7 @@ impl LateLintPass<'_> for AwaitHoldingLock {
 
 fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
     for ty_cause in ty_causes {
-        if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind {
+        if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
             if is_mutex_guard(cx, adt.did) {
                 span_lint_and_note(
                     cx,

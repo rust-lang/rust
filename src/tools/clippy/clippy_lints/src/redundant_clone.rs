@@ -14,7 +14,6 @@ use rustc_middle::mir::{
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
 };
 use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
-use rustc_mir::dataflow::BottomValue;
 use rustc_mir::dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
@@ -88,6 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
         let maybe_storage_live_result = MaybeStorageLive
             .into_engine(cx.tcx, mir, def_id.to_def_id())
+            .pass_name("redundant_clone")
             .iterate_to_fixpoint()
             .into_results_cursor(mir);
         let mut possible_borrower = {
@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
-            if let ty::Adt(ref def, _) = arg_ty.kind {
+            if let ty::Adt(ref def, _) = arg_ty.kind() {
                 if match_def_path(cx, def.did, &paths::MEM_MANUALLY_DROP) {
                     continue;
                 }
@@ -240,10 +240,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                         );
                         let mut app = Applicability::MaybeIncorrect;
 
-                        let mut call_snip = &snip[dot + 1..];
+                        let call_snip = &snip[dot + 1..];
                         // Machine applicable when `call_snip` looks like `foobar()`
-                        if call_snip.ends_with("()") {
-                            call_snip = call_snip[..call_snip.len()-2].trim();
+                        if let Some(call_snip) = call_snip.strip_suffix("()").map(str::trim) {
                             if call_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
                                 app = Applicability::MachineApplicable;
                             }
@@ -287,7 +286,7 @@ fn is_call_with_ref_arg<'tcx>(
         if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
         if let mir::Operand::Move(mir::Place { local, .. }) = &args[0];
-        if let ty::FnDef(def_id, _) = func.ty(&*mir, cx.tcx).kind;
+        if let ty::FnDef(def_id, _) = *func.ty(&*mir, cx.tcx).kind();
         if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
         if !is_copy(cx, inner_ty);
         then {
@@ -411,14 +410,15 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
 struct MaybeStorageLive;
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeStorageLive {
-    type Idx = mir::Local;
+    type Domain = BitSet<mir::Local>;
     const NAME: &'static str = "maybe_storage_live";
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = dead
+        BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
         for arg in body.args_iter() {
             state.insert(arg);
         }
@@ -426,6 +426,8 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeStorageLive {
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
+    type Idx = mir::Local;
+
     fn statement_effect(&self, trans: &mut impl GenKill<Self::Idx>, stmt: &mir::Statement<'tcx>, _: mir::Location) {
         match stmt.kind {
             mir::StatementKind::StorageLive(l) => trans.gen(l),
@@ -452,11 +454,6 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
     ) {
         // Nothing to do when a call returns successfully
     }
-}
-
-impl BottomValue for MaybeStorageLive {
-    /// bottom = dead
-    const BOTTOM_VALUE: bool = false;
 }
 
 /// Collects the possible borrowers of each local.

@@ -7,8 +7,8 @@ LL | fn assert<T: UnwindSafe + ?Sized>() {}
 LL |     assert::<&mut i32>();
    |     ^^^^^^^^^^^^^^^^^^ `&mut i32` may not be safely transferred across an unwind boundary
    |
-   = help: the trait `std::panic::UnwindSafe` is not implemented for `&mut i32`
-   = note: `std::panic::UnwindSafe` is implemented for `&i32`, but not for `&mut i32`
+   = help: the trait `UnwindSafe` is not implemented for `&mut i32`
+   = note: `UnwindSafe` is implemented for `&i32`, but not for `&mut i32`
 
 error: aborting due to previous error
 

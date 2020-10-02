@@ -23,15 +23,15 @@ struct drop_check {
 extern "C" {
     void rust_catch_callback(void (*cb)(), bool* rust_ok);
 
-    static void callback() {
+    void throw_cxx_exception() {
         println("throwing C++ exception");
         throw exception();
     }
 
-    void throw_cxx_exception() {
+    void test_cxx_exception() {
         bool rust_ok = false;
         try {
-            rust_catch_callback(callback, &rust_ok);
+            rust_catch_callback(throw_cxx_exception, &rust_ok);
             assert(false && "unreachable");
         } catch (exception e) {
             println("caught C++ exception");

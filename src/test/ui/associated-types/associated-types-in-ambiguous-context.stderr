@@ -14,7 +14,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:25:10
    |
 LL | type X = std::ops::Deref::Target;
-   |          ^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<Type as std::ops::Deref>::Target`
+   |          ^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<Type as Deref>::Target`
 
 error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:11:23

@@ -1,0 +1,41 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/tuple_literal_propagation.rs:2:11: 2:11
+      let _1: (u32, u32);                  // in scope 0 at $DIR/tuple_literal_propagation.rs:3:9: 3:10
+      let _2: ();                          // in scope 0 at $DIR/tuple_literal_propagation.rs:5:5: 5:15
+      let mut _3: (u32, u32);              // in scope 0 at $DIR/tuple_literal_propagation.rs:5:13: 5:14
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/tuple_literal_propagation.rs:3:9: 3:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/tuple_literal_propagation.rs:3:9: 3:10
+          (_1.0: u32) = const 1_u32;       // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
+          (_1.1: u32) = const 2_u32;       // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
+          StorageLive(_2);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:5: 5:15
+          StorageLive(_3);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:13: 5:14
+-         _3 = _1;                         // scope 1 at $DIR/tuple_literal_propagation.rs:5:13: 5:14
++         _3 = const (1_u32, 2_u32);       // scope 1 at $DIR/tuple_literal_propagation.rs:5:13: 5:14
++                                          // ty::Const
++                                          // + ty: (u32, u32)
++                                          // + val: Value(ByRef { alloc: Allocation { bytes: [1, 0, 0, 0, 2, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
++                                          // mir::Constant
++                                          // + span: $DIR/tuple_literal_propagation.rs:5:13: 5:14
++                                          // + literal: Const { ty: (u32, u32), val: Value(ByRef { alloc: Allocation { bytes: [1, 0, 0, 0, 2, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
+          _2 = consume(move _3) -> bb1;    // scope 1 at $DIR/tuple_literal_propagation.rs:5:5: 5:15
+                                           // mir::Constant
+                                           // + span: $DIR/tuple_literal_propagation.rs:5:5: 5:12
+                                           // + literal: Const { ty: fn((u32, u32)) {consume}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:14: 5:15
+          StorageDead(_2);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:15: 5:16
+          _0 = const ();                   // scope 0 at $DIR/tuple_literal_propagation.rs:2:11: 6:2
+          StorageDead(_1);                 // scope 0 at $DIR/tuple_literal_propagation.rs:6:1: 6:2
+          return;                          // scope 0 at $DIR/tuple_literal_propagation.rs:6:2: 6:2
+      }
+  }
+  

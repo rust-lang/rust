@@ -1,10 +1,12 @@
 // run-pass
 // aux-build:test-macros.rs
 // compile-flags: -Z span-debug
-// normalize-stdout-test "#\d+" -> "#CTXT"
 // edition:2018
 //
 // Tests the pretty-printing behavior of inserting `NoDelim` groups
+
+#![no_std] // Don't load unnecessary hygiene information from std
+extern crate std;
 
 extern crate test_macros;
 use test_macros::print_bang_consume;

@@ -4,7 +4,7 @@ error[E0507]: cannot move out of static item `X`
 LL |         let mut x = X;
    |                     ^
    |                     |
-   |                     move occurs because `X` has type `std::sync::atomic::AtomicUsize`, which does not implement the `Copy` trait
+   |                     move occurs because `X` has type `AtomicUsize`, which does not implement the `Copy` trait
    |                     help: consider borrowing here: `&X`
 
 error: aborting due to previous error

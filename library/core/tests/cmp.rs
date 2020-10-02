@@ -1,4 +1,7 @@
-use core::cmp::{self, Ordering::*};
+use core::cmp::{
+    self,
+    Ordering::{self, *},
+};
 
 #[test]
 fn test_int_totalord() {
@@ -115,4 +118,17 @@ fn test_user_defined_eq() {
     // Now these binary operators will work when applied!
     assert!(SketchyNum { num: 37 } == SketchyNum { num: 34 });
     assert!(SketchyNum { num: 25 } != SketchyNum { num: 57 });
+}
+
+#[test]
+fn ordering_const() {
+    // test that the methods of `Ordering` are usable in a const context
+
+    const ORDERING: Ordering = Greater;
+
+    const REVERSE: Ordering = ORDERING.reverse();
+    assert_eq!(REVERSE, Less);
+
+    const THEN: Ordering = Equal.then(ORDERING);
+    assert_eq!(THEN, Greater);
 }

@@ -17,7 +17,7 @@ impl<T> Foo for Fooy<T> {
     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
     //~^ ERROR lifetime bound not satisfied
     type C where Self: Copy = String;
-    //~^ ERROR the trait bound `T: std::marker::Copy` is not satisfied
+    //~^ ERROR the trait bound `T: Copy` is not satisfied
 }
 
 fn main() {}

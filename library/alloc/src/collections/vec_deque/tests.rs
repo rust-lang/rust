@@ -107,7 +107,8 @@ fn test_insert() {
     let cap = tester.capacity();
 
     // len is the length *after* insertion
-    for len in 1..cap {
+    let minlen = if cfg!(miri) { cap - 1 } else { 1 }; // Miri is too slow
+    for len in minlen..cap {
         // 0, 1, 2, .., len - 1
         let expected = (0..).take(len).collect::<VecDeque<_>>();
         for tail_pos in 0..cap {
@@ -221,7 +222,8 @@ fn test_remove() {
     let cap = tester.capacity();
 
     // len is the length *after* removal
-    for len in 0..cap - 1 {
+    let minlen = if cfg!(miri) { cap - 2 } else { 0 }; // Miri is too slow
+    for len in minlen..cap - 1 {
         // 0, 1, 2, .., len - 1
         let expected = (0..).take(len).collect::<VecDeque<_>>();
         for tail_pos in 0..cap {
@@ -251,7 +253,8 @@ fn test_range() {
     let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
 
     let cap = tester.capacity();
-    for len in 0..=cap {
+    let minlen = if cfg!(miri) { cap - 1 } else { 0 }; // Miri is too slow
+    for len in minlen..=cap {
         for tail in 0..=cap {
             for start in 0..=len {
                 for end in start..=len {
@@ -384,7 +387,8 @@ fn test_split_off() {
     let cap = tester.capacity();
 
     // len is the length *before* splitting
-    for len in 0..cap {
+    let minlen = if cfg!(miri) { cap - 1 } else { 0 }; // Miri is too slow
+    for len in minlen..cap {
         // index to split at
         for at in 0..=len {
             // 0, 1, 2, .., at - 1 (may be empty)
@@ -495,8 +499,9 @@ fn test_vec_from_vecdeque() {
 fn test_clone_from() {
     let m = vec![1; 8];
     let n = vec![2; 12];
-    for pfv in 0..8 {
-        for pfu in 0..8 {
+    let limit = if cfg!(miri) { 4 } else { 8 }; // Miri is too slow
+    for pfv in 0..limit {
+        for pfu in 0..limit {
             for longer in 0..2 {
                 let (vr, ur) = if longer == 0 { (&m, &n) } else { (&n, &m) };
                 let mut v = VecDeque::from(vr.clone());

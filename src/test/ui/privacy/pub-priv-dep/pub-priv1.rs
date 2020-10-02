@@ -18,14 +18,14 @@ struct PrivateType {
 
 pub struct PublicType {
     pub field: OtherType,
-    //~^ ERROR type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
+    //~^ ERROR type `OtherType` from private dependency 'priv_dep' in public interface
     priv_field: OtherType, // Private field - this is fine
     pub other_field: PubType // Type from public dependency - this is fine
 }
 
 impl PublicType {
     pub fn pub_fn(param: OtherType) {}
-    //~^ ERROR type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
+    //~^ ERROR type `OtherType` from private dependency 'priv_dep' in public interface
 
     fn priv_fn(param: OtherType) {}
 }
@@ -33,7 +33,7 @@ impl PublicType {
 pub trait MyPubTrait {
     type Foo: OtherTrait;
 }
-//~^^^ ERROR trait `priv_dep::OtherTrait` from private dependency 'priv_dep' in public interface
+//~^^^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
 pub struct AllowedPrivType {
     #[allow(exported_private_dependencies)]
