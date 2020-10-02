@@ -6,13 +6,13 @@ chapter on how to build and run the compiler](./building/how-to-build-and-run.md
 
 ## Asking Questions
 
-The compiler team (or "t-compiler") usually hangs out in Zulip [in this
+The compiler team (or `t-compiler`) usually hangs out in Zulip [in this
 "stream"][z]; it will be easiest to get questions answered there.
 
 [z]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 
 **Please ask questions!** A lot of people report feeling that they are "wasting
-expert time", but nobody on t-compiler feels this way. Contributors are
+expert time", but nobody on `t-compiler` feels this way. Contributors are
 important to us.
 
 Also, if you feel comfortable, prefer public topics, as this means others can
