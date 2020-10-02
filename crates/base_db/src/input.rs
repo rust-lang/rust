@@ -130,7 +130,7 @@ pub struct CrateData {
     /// The name to display to the end user.
     /// This actual crate name can be different in a particular dependent crate
     /// or may even be missing for some cases, such as a dummy crate for the code snippet.
-    pub display_name: Option<String>,
+    pub display_name: Option<CrateName>,
     pub cfg_options: CfgOptions,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
@@ -159,7 +159,7 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
-        display_name: Option<String>,
+        display_name: Option<CrateName>,
         cfg_options: CfgOptions,
         env: Env,
         proc_macro: Vec<(SmolStr, Arc<dyn tt::TokenExpander>)>,

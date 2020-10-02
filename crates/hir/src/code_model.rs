@@ -2,7 +2,7 @@
 use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateId, Edition, FileId};
+use base_db::{CrateId, CrateName, Edition, FileId};
 use either::Either;
 use hir_def::{
     adt::ReprKind,
@@ -98,7 +98,7 @@ impl Crate {
         db.crate_graph()[self.id].edition
     }
 
-    pub fn display_name(self, db: &dyn HirDatabase) -> Option<String> {
+    pub fn display_name(self, db: &dyn HirDatabase) -> Option<CrateName> {
         db.crate_graph()[self.id].display_name.clone()
     }
 
