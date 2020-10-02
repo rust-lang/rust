@@ -970,6 +970,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "types",
     },
     Lint {
+        name: "invisible_characters",
+        group: "correctness",
+        desc: "using an invisible character in a string literal, which is confusing",
+        deprecation: None,
+        module: "unicode",
+    },
+    Lint {
         name: "items_after_statements",
         group: "pedantic",
         desc: "blocks where an item comes after a statement",
@@ -2809,13 +2816,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "using `0 as *{const, mut} T`",
         deprecation: None,
         module: "misc",
-    },
-    Lint {
-        name: "zero_width_space",
-        group: "correctness",
-        desc: "using a zero-width space in a string literal, which is confusing",
-        deprecation: None,
-        module: "unicode",
     },
     Lint {
         name: "zst_offset",
