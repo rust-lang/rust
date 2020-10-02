@@ -151,14 +151,15 @@ impl NonConstOp for FnPtrCast {
 }
 
 #[derive(Debug)]
-pub struct Generator;
+pub struct Generator(pub hir::GeneratorKind);
 impl NonConstOp for Generator {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
         Status::Forbidden
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        ccx.tcx.sess.struct_span_err(span, "Generators and `async` functions cannot be `const`")
+        let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
+        ccx.tcx.sess.struct_span_err(span, &msg)
     }
 }
 
