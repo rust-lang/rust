@@ -1,6 +1,7 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
 mod cancellation;
 mod input;
+mod change;
 pub mod fixture;
 
 use std::{panic, sync::Arc};
@@ -10,6 +11,7 @@ use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 
 pub use crate::{
     cancellation::Canceled,
+    change::Change,
     input::{
         CrateData, CrateGraph, CrateId, CrateName, Dependency, Edition, Env, FileId, ProcMacroId,
         SourceRoot, SourceRootId,

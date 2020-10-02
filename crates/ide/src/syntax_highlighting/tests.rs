@@ -3,7 +3,7 @@ use std::fs;
 use expect_test::{expect_file, ExpectFile};
 use test_utils::project_dir;
 
-use crate::{mock_analysis::single_file, FileRange, TextRange};
+use crate::{fixture, FileRange, TextRange};
 
 #[test]
 fn test_highlighting() {
@@ -178,7 +178,7 @@ fn accidentally_quadratic() {
     let file = project_dir().join("crates/syntax/test_data/accidentally_quadratic");
     let src = fs::read_to_string(file).unwrap();
 
-    let (analysis, file_id) = single_file(&src);
+    let (analysis, file_id) = fixture::file(&src);
 
     // let t = std::time::Instant::now();
     let _ = analysis.highlight(file_id).unwrap();
@@ -187,7 +187,7 @@ fn accidentally_quadratic() {
 
 #[test]
 fn test_ranges() {
-    let (analysis, file_id) = single_file(
+    let (analysis, file_id) = fixture::file(
         r#"
 #[derive(Clone, Debug)]
 struct Foo {
@@ -228,7 +228,7 @@ fn main() {
 
 #[test]
 fn ranges_sorted() {
-    let (analysis, file_id) = single_file(
+    let (analysis, file_id) = fixture::file(
         r#"
 #[foo(bar = "bar")]
 macro_rules! test {}
@@ -462,12 +462,12 @@ macro_rules! noop {
 fn test_extern_crate() {
     check_highlighting(
         r#"
-        //- /main.rs
+        //- /main.rs crate:main deps:std,alloc
         extern crate std;
         extern crate alloc as abc;
-        //- /std/lib.rs
+        //- /std/lib.rs crate:std
         pub struct S;
-        //- /alloc/lib.rs
+        //- /alloc/lib.rs crate:alloc
         pub struct A
         "#,
         expect_file!["./test_data/highlight_extern_crate.html"],
@@ -479,7 +479,7 @@ fn test_extern_crate() {
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
 fn check_highlighting(ra_fixture: &str, expect: ExpectFile, rainbow: bool) {
-    let (analysis, file_id) = single_file(ra_fixture);
+    let (analysis, file_id) = fixture::file(ra_fixture);
     let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
     expect.assert_eq(actual_html)
 }

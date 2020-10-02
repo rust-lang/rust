@@ -5,7 +5,7 @@ use std::{path::Path, sync::Arc};
 use anyhow::Result;
 use base_db::CrateGraph;
 use crossbeam_channel::{unbounded, Receiver};
-use ide::{AnalysisChange, AnalysisHost};
+use ide::{AnalysisHost, Change};
 use project_model::{CargoConfig, ProcMacroClient, ProjectManifest, ProjectWorkspace};
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
@@ -62,7 +62,7 @@ fn load(
 ) -> AnalysisHost {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut host = AnalysisHost::new(lru_cap);
-    let mut analysis_change = AnalysisChange::new();
+    let mut analysis_change = Change::new();
 
     // wait until Vfs has loaded all roots
     for task in receiver {

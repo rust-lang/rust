@@ -292,7 +292,7 @@ fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     use super::{RunnableAction, BENCH, BIN, DOCTEST, TEST};
 
@@ -302,7 +302,7 @@ mod tests {
         actions: &[&RunnableAction],
         expect: Expect,
     ) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let runnables = analysis.runnables(position.file_id).unwrap();
         expect.assert_debug_eq(&runnables);
         assert_eq!(
@@ -335,7 +335,7 @@ fn bench() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 1..13,
                             focus_range: Some(
@@ -353,7 +353,7 @@ fn bench() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 15..39,
                             focus_range: Some(
@@ -378,7 +378,7 @@ fn bench() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 41..75,
                             focus_range: Some(
@@ -403,7 +403,7 @@ fn bench() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 77..99,
                             focus_range: Some(
@@ -494,7 +494,7 @@ fn should_have_no_runnable_6() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 1..13,
                             focus_range: Some(
@@ -512,7 +512,7 @@ fn should_have_no_runnable_6() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 15..74,
                             focus_range: None,
@@ -532,7 +532,7 @@ fn should_have_no_runnable_6() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 76..148,
                             focus_range: None,
@@ -552,7 +552,7 @@ fn should_have_no_runnable_6() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 150..254,
                             focus_range: None,
@@ -596,7 +596,7 @@ impl Data {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 1..13,
                             focus_range: Some(
@@ -614,7 +614,7 @@ impl Data {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 44..98,
                             focus_range: None,
@@ -653,7 +653,7 @@ mod test_mod {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 1..51,
                             focus_range: Some(
@@ -673,7 +673,7 @@ mod test_mod {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 20..49,
                             focus_range: Some(
@@ -733,7 +733,7 @@ mod root_tests {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 22..323,
                             focus_range: Some(
@@ -753,7 +753,7 @@ mod root_tests {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 51..192,
                             focus_range: Some(
@@ -773,7 +773,7 @@ mod root_tests {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 84..126,
                             focus_range: Some(
@@ -798,7 +798,7 @@ mod root_tests {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 140..182,
                             focus_range: Some(
@@ -823,7 +823,7 @@ mod root_tests {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 202..286,
                             focus_range: Some(
@@ -843,7 +843,7 @@ mod root_tests {
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 235..276,
                             focus_range: Some(
@@ -886,7 +886,7 @@ fn test_foo1() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 1..50,
                             focus_range: Some(
@@ -934,7 +934,7 @@ fn test_foo1() {}
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             full_range: 1..72,
                             focus_range: Some(

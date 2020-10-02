@@ -25,15 +25,14 @@ fn method_range(item: SyntaxNode, file_id: FileId) -> Option<FileRange> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
     use crate::{FileRange, TextSize};
     use std::ops::RangeInclusive;
 
     #[test]
     fn test_find_all_methods() {
-        let (analysis, pos) = analysis_and_position(
+        let (analysis, pos) = fixture::position(
             r#"
-            //- /lib.rs
             fn private_fn() {<|>}
 
             pub fn pub_fn() {}
@@ -48,9 +47,8 @@ mod tests {
 
     #[test]
     fn test_find_trait_methods() {
-        let (analysis, pos) = analysis_and_position(
+        let (analysis, pos) = fixture::position(
             r#"
-            //- /lib.rs
             trait Foo {
                 fn bar() {<|>}
                 fn baz() {}
@@ -64,7 +62,7 @@ mod tests {
 
     #[test]
     fn test_skip_tests() {
-        let (analysis, pos) = analysis_and_position(
+        let (analysis, pos) = fixture::position(
             r#"
             //- /lib.rs
             #[test]

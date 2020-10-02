@@ -56,13 +56,12 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 mod tests {
     use base_db::FileRange;
 
-    use crate::mock_analysis::MockAnalysis;
+    use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (mock, position) = MockAnalysis::with_files_and_position(ra_fixture);
-        let (expected, data) = mock.annotation();
+        let (analysis, position, mut annotations) = fixture::annotations(ra_fixture);
+        let (expected, data) = annotations.pop().unwrap();
         assert!(data.is_empty());
-        let analysis = mock.analysis();
 
         let mut navs = analysis.goto_type_definition(position).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);

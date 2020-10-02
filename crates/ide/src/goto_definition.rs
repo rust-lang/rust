@@ -103,12 +103,11 @@ mod tests {
     use base_db::FileRange;
     use syntax::{TextRange, TextSize};
 
-    use crate::mock_analysis::MockAnalysis;
+    use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (mock, position) = MockAnalysis::with_files_and_position(ra_fixture);
-        let (mut expected, data) = mock.annotation();
-        let analysis = mock.analysis();
+        let (analysis, position, mut annotations) = fixture::annotations(ra_fixture);
+        let (mut expected, data) = annotations.pop().unwrap();
         match data.as_str() {
             "" => (),
             "file" => {
@@ -133,9 +132,9 @@ mod tests {
     fn goto_def_for_extern_crate() {
         check(
             r#"
-            //- /main.rs
+            //- /main.rs crate:main deps:std
             extern crate std<|>;
-            //- /std/lib.rs
+            //- /std/lib.rs crate:std
             // empty
             //^ file
             "#,
@@ -146,9 +145,9 @@ mod tests {
     fn goto_def_for_renamed_extern_crate() {
         check(
             r#"
-            //- /main.rs
+            //- /main.rs crate:main deps:std
             extern crate std as abc<|>;
-            //- /std/lib.rs
+            //- /std/lib.rs crate:std
             // empty
             //^ file
             "#,
@@ -342,10 +341,10 @@ fn bar() {
     fn goto_def_for_use_alias() {
         check(
             r#"
-//- /lib.rs
+//- /lib.rs crate:main deps:foo
 use foo as bar<|>;
 
-//- /foo/lib.rs
+//- /foo/lib.rs crate:foo
 // empty
 //^ file
 "#,
@@ -356,10 +355,10 @@ use foo as bar<|>;
     fn goto_def_for_use_alias_foo_macro() {
         check(
             r#"
-//- /lib.rs
+//- /lib.rs crate:main deps:foo
 use foo::foo as bar<|>;
 
-//- /foo/lib.rs
+//- /foo/lib.rs crate:foo
 #[macro_export]
 macro_rules! foo { () => { () } }
            //^^^
@@ -371,7 +370,6 @@ macro_rules! foo { () => { () } }
     fn goto_def_for_methods() {
         check(
             r#"
-//- /lib.rs
 struct Foo;
 impl Foo {
     fn frobnicate(&self) { }

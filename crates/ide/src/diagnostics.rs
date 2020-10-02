@@ -218,10 +218,7 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
-    use crate::{
-        mock_analysis::{analysis_and_position, single_file, MockAnalysis},
-        DiagnosticsConfig,
-    };
+    use crate::{fixture, DiagnosticsConfig};
 
     /// Takes a multi-file input fixture with annotated cursor positions,
     /// and checks that:
@@ -231,7 +228,7 @@ mod tests {
     fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
         let after = trim_indent(ra_fixture_after);
 
-        let (analysis, file_position) = analysis_and_position(ra_fixture_before);
+        let (analysis, file_position) = fixture::position(ra_fixture_before);
         let diagnostic = analysis
             .diagnostics(&DiagnosticsConfig::default(), file_position.file_id)
             .unwrap()
@@ -260,7 +257,7 @@ mod tests {
     /// which has a fix that can apply to other files.
     fn check_apply_diagnostic_fix_in_other_file(ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
-        let (analysis, file_pos) = analysis_and_position(ra_fixture_before);
+        let (analysis, file_pos) = fixture::position(ra_fixture_before);
         let current_file_id = file_pos.file_id;
         let diagnostic = analysis
             .diagnostics(&DiagnosticsConfig::default(), current_file_id)
@@ -282,9 +279,7 @@ mod tests {
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
     /// apply to the file containing the cursor.
     fn check_no_diagnostics(ra_fixture: &str) {
-        let mock = MockAnalysis::with_files(ra_fixture);
-        let files = mock.files().map(|(it, _)| it).collect::<Vec<_>>();
-        let analysis = mock.analysis();
+        let (analysis, files) = fixture::files(ra_fixture);
         let diagnostics = files
             .into_iter()
             .flat_map(|file_id| {
@@ -295,7 +290,7 @@ mod tests {
     }
 
     fn check_expect(ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = single_file(ra_fixture);
+        let (analysis, file_id) = fixture::file(ra_fixture);
         let diagnostics = analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap();
         expect.assert_debug_eq(&diagnostics)
     }
@@ -304,7 +299,7 @@ mod tests {
     fn test_wrap_return_type() {
         check_fix(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 fn div(x: i32, y: i32) -> Result<i32, ()> {
@@ -313,7 +308,7 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
     }
     x / y<|>
 }
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -335,7 +330,7 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
     fn test_wrap_return_type_handles_generic_functions() {
         check_fix(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 fn div<T>(x: T) -> Result<T, i32> {
@@ -344,7 +339,7 @@ fn div<T>(x: T) -> Result<T, i32> {
     }
     <|>x
 }
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -366,7 +361,7 @@ fn div<T>(x: T) -> Result<T, i32> {
     fn test_wrap_return_type_handles_type_aliases() {
         check_fix(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 type MyResult<T> = Result<T, ()>;
@@ -377,7 +372,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     }
     x <|>/ y
 }
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -401,12 +396,12 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
         check_no_diagnostics(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 fn foo() -> Result<(), i32> { 0 }
 
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -418,14 +413,14 @@ pub mod result {
     fn test_wrap_return_type_not_applicable_when_return_type_is_not_result() {
         check_no_diagnostics(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 enum SomeOtherEnum { Ok(i32), Err(String) }
 
 fn foo() -> SomeOtherEnum { 0 }
 
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -567,7 +562,7 @@ fn test_fn() {
                                     file_system_edits: [
                                         CreateFile {
                                             anchor: FileId(
-                                                1,
+                                                0,
                                             ),
                                             dst: "foo.rs",
                                         },
@@ -787,7 +782,7 @@ struct Foo {
         let mut config = DiagnosticsConfig::default();
         config.disabled.insert("unresolved-module".into());
 
-        let (analysis, file_id) = single_file(r#"mod foo;"#);
+        let (analysis, file_id) = fixture::file(r#"mod foo;"#);
 
         let diagnostics = analysis.diagnostics(&config, file_id).unwrap();
         assert!(diagnostics.is_empty());

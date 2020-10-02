@@ -1172,9 +1172,9 @@ fn foo(xs: Vec<i128>)
         check_edit(
             "frobnicate!",
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:foo
 use foo::<|>;
-//- /foo/lib.rs
+//- /foo/lib.rs crate:foo
 #[macro_export]
 macro_rules frobnicate { () => () }
 "#,

@@ -122,10 +122,10 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let (analysis, pos) = analysis_and_position(ra_fixture);
+        let (analysis, pos) = fixture::position(ra_fixture);
         let expansion = analysis.expand_macro(pos).unwrap().unwrap();
         let actual = format!("{}\n{}", expansion.name, expansion.expansion);
         expect.assert_eq(&actual);

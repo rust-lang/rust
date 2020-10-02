@@ -8,8 +8,7 @@ use base_db::{
     FileId,
 };
 use ide::{
-    Analysis, AnalysisChange, AnalysisHost, CompletionConfig, DiagnosticsConfig, FilePosition,
-    LineCol,
+    Analysis, AnalysisHost, Change, CompletionConfig, DiagnosticsConfig, FilePosition, LineCol,
 };
 use vfs::AbsPathBuf;
 
@@ -143,7 +142,7 @@ fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, w
         {
             let mut text = host.analysis().file_text(file_id).unwrap().to_string();
             text.push_str("\n/* Hello world */\n");
-            let mut change = AnalysisChange::new();
+            let mut change = Change::new();
             change.change_file(file_id, Some(Arc::new(text)));
             host.apply_change(change);
         }
@@ -156,7 +155,7 @@ fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, w
         {
             let mut text = host.analysis().file_text(file_id).unwrap().to_string();
             text.push_str("\npub fn _dummy() {}\n");
-            let mut change = AnalysisChange::new();
+            let mut change = Change::new();
             change.change_file(file_id, Some(Arc::new(text)));
             host.apply_change(change);
         }

@@ -8,8 +8,7 @@ use test_utils::assert_eq_text;
 
 use crate::{
     completion::{completion_item::CompletionKind, CompletionConfig},
-    mock_analysis::analysis_and_position,
-    CompletionItem,
+    fixture, CompletionItem,
 };
 
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
@@ -80,7 +79,7 @@ pub(crate) fn check_edit_with_config(
     ra_fixture_after: &str,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
-    let (analysis, position) = analysis_and_position(ra_fixture_before);
+    let (analysis, position) = fixture::position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
         analysis.completions(&config, position).unwrap().unwrap().into();
     let (completion,) = completions
@@ -94,7 +93,7 @@ pub(crate) fn check_edit_with_config(
 }
 
 pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -> bool) {
-    let (analysis, pos) = analysis_and_position(code);
+    let (analysis, pos) = fixture::position(code);
     analysis
         .with_db(|db| {
             let sema = Semantics::new(db);
@@ -109,6 +108,6 @@ pub(crate) fn get_all_completion_items(
     config: CompletionConfig,
     code: &str,
 ) -> Vec<CompletionItem> {
-    let (analysis, position) = analysis_and_position(code);
+    let (analysis, position) = fixture::position(code);
     analysis.completions(&config, position).unwrap().unwrap().into()
 }

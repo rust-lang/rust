@@ -232,10 +232,10 @@ mod tests {
     use expect_test::{expect, Expect};
     use test_utils::mark;
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let call_info = analysis.call_info(position).unwrap();
         let actual = match call_info {
             Some(call_info) => {

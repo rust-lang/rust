@@ -495,13 +495,13 @@ Some multi-line comment<|>
     fn test_completion_await_impls_future() {
         check(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 use std::future::*;
 struct A {}
 impl Future for A {}
 fn foo(a: A) { a.<|> }
 
-//- /std/lib.rs
+//- /std/lib.rs crate:std
 pub mod future {
     #[lang = "future_trait"]
     pub trait Future {}
@@ -514,14 +514,14 @@ pub mod future {
 
         check(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 use std::future::*;
 fn foo() {
     let a = async {};
     a.<|>
 }
 
-//- /std/lib.rs
+//- /std/lib.rs crate:std
 pub mod future {
     #[lang = "future_trait"]
     pub trait Future {
