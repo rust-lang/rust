@@ -16,6 +16,7 @@ use rustc_hir::def::{self, CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::config::nightly_options;
+use rustc_session::parse::feature_err;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, DUMMY_SP};
@@ -1597,6 +1598,34 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics` so
+    /// this function will emit an error if `min_const_generics` is enabled, the body identified by
+    /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
+    crate fn maybe_emit_forbidden_non_static_lifetime_error(
+        &self,
+        body_id: hir::BodyId,
+        lifetime_ref: &'tcx hir::Lifetime,
+    ) {
+        let is_anon_const = matches!(
+            self.tcx.def_kind(self.tcx.hir().body_owner_def_id(body_id)),
+            hir::def::DefKind::AnonConst
+        );
+        let is_allowed_lifetime = matches!(
+            lifetime_ref.name,
+            hir::LifetimeName::Implicit | hir::LifetimeName::Static | hir::LifetimeName::Underscore
+        );
+
+        if self.tcx.features().min_const_generics && is_anon_const && !is_allowed_lifetime {
+            feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::const_generics,
+                lifetime_ref.span,
+                "a non-static lifetime is not allowed in a `const`",
+            )
+            .emit();
         }
     }
 }

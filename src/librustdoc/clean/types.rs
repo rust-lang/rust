@@ -695,7 +695,7 @@ impl Attributes {
         self.other_attrs
             .lists(sym::doc)
             .filter(|a| a.has_name(sym::alias))
-            .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
+            .filter_map(|a| a.value_str().map(|s| s.to_string()))
             .filter(|v| !v.is_empty())
             .collect::<FxHashSet<_>>()
     }

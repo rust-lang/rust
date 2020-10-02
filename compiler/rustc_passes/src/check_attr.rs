@@ -260,23 +260,42 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
+    fn doc_alias_str_error(&self, meta: &NestedMetaItem) {
+        self.tcx
+            .sess
+            .struct_span_err(
+                meta.span(),
+                "doc alias attribute expects a string: #[doc(alias = \"0\")]",
+            )
+            .emit();
+    }
+
     fn check_doc_alias(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
         if let Some(mi) = attr.meta() {
             if let Some(list) = mi.meta_item_list() {
                 for meta in list {
                     if meta.has_name(sym::alias) {
-                        if !meta.is_value_str()
-                            || meta
-                                .value_str()
-                                .map(|s| s.to_string())
-                                .unwrap_or_else(String::new)
-                                .is_empty()
+                        if !meta.is_value_str() {
+                            self.doc_alias_str_error(meta);
+                            return false;
+                        }
+                        let doc_alias =
+                            meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
+                        if doc_alias.is_empty() {
+                            self.doc_alias_str_error(meta);
+                            return false;
+                        }
+                        if let Some(c) =
+                            doc_alias.chars().find(|&c| c == '"' || c == '\'' || c.is_whitespace())
                         {
                             self.tcx
                                 .sess
                                 .struct_span_err(
                                     meta.span(),
-                                    "doc alias attribute expects a string: #[doc(alias = \"0\")]",
+                                    &format!(
+                                        "{:?} character isn't allowed in `#[doc(alias = \"...\")]`",
+                                        c,
+                                    ),
                                 )
                                 .emit();
                             return false;
@@ -312,6 +331,7 @@ impl CheckAttrVisitor<'tcx> {
                                     &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
                                 )
                                 .emit();
+                            return false;
                         }
                     }
                 }

@@ -1008,6 +1008,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to prepend to the linker invocation (space separated)"),
+    precise_enum_drop_elaboration: bool = (true, parse_bool, [TRACKED],
+        "use a more precise version of drop elaboration for matches on enums (default: yes). \
+        This results in better codegen, but has caused miscompilations on some tier 2 platforms. \
+        See #77382 and #74551."),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make rustc print the total optimization fuel used by a crate"),
     print_link_args: bool = (false, parse_bool, [UNTRACKED],
