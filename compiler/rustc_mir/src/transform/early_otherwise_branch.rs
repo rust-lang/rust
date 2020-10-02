@@ -234,23 +234,13 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         if is_switch(terminator) {
             let this_bb_discr_info = self.find_switch_discriminant_info(bb, terminator)?;
 
-            // the types of the two adts matched on have to be equalfor this optimization to apply
-            if discr_info.type_adt_matched_on != this_bb_discr_info.type_adt_matched_on {
-                trace!(
-                    "NO: types do not match. LHS: {:?}, RHS: {:?}",
-                    discr_info.type_adt_matched_on,
-                    this_bb_discr_info.type_adt_matched_on
-                );
-                return None;
-            }
-
-            // the otherwise branch of the two switches have to point to the same bb
+            // The otherwise branch of the two switches have to point to the same bb
             if discr_info.otherwise_bb != this_bb_discr_info.otherwise_bb {
                 trace!("NO: otherwise target is not the same");
                 return None;
             }
 
-            // only allow optimization if the left and right of the tuple being matched are the same variants.
+            // Only allow optimization if the left and right of the tuple being matched are the same variants.
             // so the following should not optimize
             //  ```rust
             // let x: Option<()>;
@@ -266,6 +256,16 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
             {
                 trace!(
                     "NO: The second switch did not have only 1 target (besides otherwise) that had the same value as the value from the first switch that got us here"
+                );
+                return None;
+            }
+
+            // The types of the two adts matched on have to be equal for this optimization to apply
+            if discr_info.type_adt_matched_on != this_bb_discr_info.type_adt_matched_on {
+                trace!(
+                    "NO: types do not match. LHS: {:?}, RHS: {:?}",
+                    discr_info.type_adt_matched_on,
+                    this_bb_discr_info.type_adt_matched_on
                 );
                 return None;
             }
