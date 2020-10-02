@@ -430,4 +430,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let waiters = &mut this.machine.threads.sync.futexes.get_mut(&addr.erase_tag())?.waiters;
         waiters.pop_front().map(|waiter| waiter.thread)
     }
+
+    fn futex_remove_waiter(&mut self, addr: Pointer<stacked_borrows::Tag>, thread: ThreadId) {
+        let this = self.eval_context_mut();
+        if let Some(futex) = this.machine.threads.sync.futexes.get_mut(&addr.erase_tag()) {
+            futex.waiters.retain(|waiter| waiter.thread != thread);
+        }
+    }
 }
