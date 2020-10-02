@@ -1485,9 +1485,7 @@ fn all_constructors<'a, 'tcx>(
         )
     };
     match *pcx.ty.kind() {
-        ty::Bool => {
-            [true, false].iter().map(|&b| ConstantValue(ty::Const::from_bool(cx.tcx, b))).collect()
-        }
+        ty::Bool => vec![make_range(0, 1)],
         ty::Array(ref sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
             let len = len.eval_usize(cx.tcx, cx.param_env);
             if len != 0 && cx.is_uninhabited(sub_ty) {
@@ -1600,7 +1598,7 @@ impl<'tcx> IntRange<'tcx> {
     #[inline]
     fn is_integral(ty: Ty<'_>) -> bool {
         match ty.kind() {
-            ty::Char | ty::Int(_) | ty::Uint(_) => true,
+            ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool => true,
             _ => false,
         }
     }
@@ -1622,6 +1620,7 @@ impl<'tcx> IntRange<'tcx> {
     #[inline]
     fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
         match *ty.kind() {
+            ty::Bool => Some((Size::from_bytes(1), 0)),
             ty::Char => Some((Size::from_bytes(4), 0)),
             ty::Int(ity) => {
                 let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
