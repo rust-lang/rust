@@ -109,10 +109,10 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, mark};
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     fn apply_on_enter(before: &str) -> Option<String> {
-        let (analysis, position) = analysis_and_position(&before);
+        let (analysis, position) = fixture::position(&before);
         let result = analysis.on_enter(position).unwrap()?;
 
         let mut actual = analysis.file_text(position.file_id).unwrap().to_string();

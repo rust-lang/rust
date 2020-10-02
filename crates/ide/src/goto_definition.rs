@@ -103,10 +103,10 @@ mod tests {
     use base_db::FileRange;
     use syntax::{TextRange, TextSize};
 
-    use crate::mock_analysis::analysis_and_annotations;
+    use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (analysis, position, mut annotations) = analysis_and_annotations(ra_fixture);
+        let (analysis, position, mut annotations) = fixture::annotations(ra_fixture);
         let (mut expected, data) = annotations.pop().unwrap();
         match data.as_str() {
             "" => (),

@@ -139,7 +139,7 @@ impl CallLocations {
 mod tests {
     use base_db::FilePosition;
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     fn check_hierarchy(
         ra_fixture: &str,
@@ -147,7 +147,7 @@ mod tests {
         expected_incoming: &[&str],
         expected_outgoing: &[&str],
     ) {
-        let (analysis, pos) = analysis_and_position(ra_fixture);
+        let (analysis, pos) = fixture::position(ra_fixture);
 
         let mut navs = analysis.call_hierarchy(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);

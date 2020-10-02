@@ -133,7 +133,7 @@ pub(crate) fn completions(
 #[cfg(test)]
 mod tests {
     use crate::completion::completion_config::CompletionConfig;
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     struct DetailAndDocumentation<'a> {
         detail: &'a str,
@@ -141,7 +141,7 @@ mod tests {
     }
 
     fn check_detail_and_documentation(ra_fixture: &str, expected: DetailAndDocumentation) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let config = CompletionConfig::default();
         let completions = analysis.completions(&config, position).unwrap().unwrap();
         for item in completions {

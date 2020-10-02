@@ -65,11 +65,11 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 mod tests {
     use test_utils::mark;
 
-    use crate::mock_analysis::{analysis_and_position, single_file};
+    use crate::fixture::{self};
 
     #[test]
     fn test_resolve_parent_module() {
-        let (analysis, pos) = analysis_and_position(
+        let (analysis, pos) = fixture::position(
             "
             //- /lib.rs
             mod foo;
@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn test_resolve_parent_module_on_module_decl() {
         mark::check!(test_resolve_parent_module_on_module_decl);
-        let (analysis, pos) = analysis_and_position(
+        let (analysis, pos) = fixture::position(
             "
             //- /lib.rs
             mod foo;
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_resolve_parent_module_for_inline() {
-        let (analysis, pos) = analysis_and_position(
+        let (analysis, pos) = fixture::position(
             "
             //- /lib.rs
             mod foo {
@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_resolve_crate_root() {
-        let (analysis, file_id) = single_file(
+        let (analysis, file_id) = fixture::file(
             r#"
 //- /main.rs
 mod foo;

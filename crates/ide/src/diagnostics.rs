@@ -218,10 +218,7 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
-    use crate::{
-        mock_analysis::{analysis_and_position, many_files, single_file},
-        DiagnosticsConfig,
-    };
+    use crate::{fixture, DiagnosticsConfig};
 
     /// Takes a multi-file input fixture with annotated cursor positions,
     /// and checks that:
@@ -231,7 +228,7 @@ mod tests {
     fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
         let after = trim_indent(ra_fixture_after);
 
-        let (analysis, file_position) = analysis_and_position(ra_fixture_before);
+        let (analysis, file_position) = fixture::position(ra_fixture_before);
         let diagnostic = analysis
             .diagnostics(&DiagnosticsConfig::default(), file_position.file_id)
             .unwrap()
@@ -260,7 +257,7 @@ mod tests {
     /// which has a fix that can apply to other files.
     fn check_apply_diagnostic_fix_in_other_file(ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
-        let (analysis, file_pos) = analysis_and_position(ra_fixture_before);
+        let (analysis, file_pos) = fixture::position(ra_fixture_before);
         let current_file_id = file_pos.file_id;
         let diagnostic = analysis
             .diagnostics(&DiagnosticsConfig::default(), current_file_id)
@@ -282,7 +279,7 @@ mod tests {
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
     /// apply to the file containing the cursor.
     fn check_no_diagnostics(ra_fixture: &str) {
-        let (analysis, files) = many_files(ra_fixture);
+        let (analysis, files) = fixture::files(ra_fixture);
         let diagnostics = files
             .into_iter()
             .flat_map(|file_id| {
@@ -293,7 +290,7 @@ mod tests {
     }
 
     fn check_expect(ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = single_file(ra_fixture);
+        let (analysis, file_id) = fixture::file(ra_fixture);
         let diagnostics = analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap();
         expect.assert_debug_eq(&diagnostics)
     }
@@ -785,7 +782,7 @@ struct Foo {
         let mut config = DiagnosticsConfig::default();
         config.disabled.insert("unresolved-module".into());
 
-        let (analysis, file_id) = single_file(r#"mod foo;"#);
+        let (analysis, file_id) = fixture::file(r#"mod foo;"#);
 
         let diagnostics = analysis.diagnostics(&config, file_id).unwrap();
         assert!(diagnostics.is_empty());

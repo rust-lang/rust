@@ -423,11 +423,11 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
 mod tests {
     use expect_test::expect;
 
-    use crate::{mock_analysis::single_file, Query};
+    use crate::{fixture, Query};
 
     #[test]
     fn test_nav_for_symbol() {
-        let (analysis, _) = single_file(
+        let (analysis, _) = fixture::file(
             r#"
 enum FooInner { }
 fn foo() { enum FooInner { } }
@@ -478,7 +478,7 @@ fn foo() { enum FooInner { } }
 
     #[test]
     fn test_world_symbols_are_case_sensitive() {
-        let (analysis, _) = single_file(
+        let (analysis, _) = fixture::file(
             r#"
 fn foo() {}
 struct Foo;

@@ -1,12 +1,27 @@
-//! FIXME: write short doc here
-
+//! Utilities for creating `Analysis` instances for tests.
 use base_db::fixture::ChangeFixture;
 use test_utils::{extract_annotations, RangeOrOffset};
 
 use crate::{Analysis, AnalysisHost, FileId, FilePosition, FileRange};
 
+/// Creates analysis for a single file.
+pub(crate) fn file(ra_fixture: &str) -> (Analysis, FileId) {
+    let mut host = AnalysisHost::default();
+    let change_fixture = ChangeFixture::parse(ra_fixture);
+    host.db.apply_change(change_fixture.change);
+    (host.analysis(), change_fixture.files[0])
+}
+
+/// Creates analysis for many files.
+pub(crate) fn files(ra_fixture: &str) -> (Analysis, Vec<FileId>) {
+    let mut host = AnalysisHost::default();
+    let change_fixture = ChangeFixture::parse(ra_fixture);
+    host.db.apply_change(change_fixture.change);
+    (host.analysis(), change_fixture.files)
+}
+
 /// Creates analysis from a multi-file fixture, returns positions marked with <|>.
-pub(crate) fn analysis_and_position(ra_fixture: &str) -> (Analysis, FilePosition) {
+pub(crate) fn position(ra_fixture: &str) -> (Analysis, FilePosition) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.apply_change(change_fixture.change);
@@ -18,24 +33,8 @@ pub(crate) fn analysis_and_position(ra_fixture: &str) -> (Analysis, FilePosition
     (host.analysis(), FilePosition { file_id, offset })
 }
 
-/// Creates analysis for a single file.
-pub(crate) fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
-    let mut host = AnalysisHost::default();
-    let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.apply_change(change_fixture.change);
-    (host.analysis(), change_fixture.files[0])
-}
-
-/// Creates analysis for a single file.
-pub(crate) fn many_files(ra_fixture: &str) -> (Analysis, Vec<FileId>) {
-    let mut host = AnalysisHost::default();
-    let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.apply_change(change_fixture.change);
-    (host.analysis(), change_fixture.files)
-}
-
 /// Creates analysis for a single file, returns range marked with a pair of <|>.
-pub(crate) fn analysis_and_range(ra_fixture: &str) -> (Analysis, FileRange) {
+pub(crate) fn range(ra_fixture: &str) -> (Analysis, FileRange) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.apply_change(change_fixture.change);
@@ -48,9 +47,7 @@ pub(crate) fn analysis_and_range(ra_fixture: &str) -> (Analysis, FileRange) {
 }
 
 /// Creates analysis from a multi-file fixture, returns positions marked with <|>.
-pub(crate) fn analysis_and_annotations(
-    ra_fixture: &str,
-) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
+pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.apply_change(change_fixture.change);

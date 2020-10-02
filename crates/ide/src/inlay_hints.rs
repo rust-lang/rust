@@ -339,14 +339,14 @@ mod tests {
     use expect_test::{expect, Expect};
     use test_utils::extract_annotations;
 
-    use crate::{inlay_hints::InlayHintsConfig, mock_analysis::single_file};
+    use crate::{fixture, inlay_hints::InlayHintsConfig};
 
     fn check(ra_fixture: &str) {
         check_with_config(InlayHintsConfig::default(), ra_fixture);
     }
 
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
-        let (analysis, file_id) = single_file(ra_fixture);
+        let (analysis, file_id) = fixture::file(ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
         let actual =
@@ -355,7 +355,7 @@ mod tests {
     }
 
     fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = single_file(ra_fixture);
+        let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
         expect.assert_debug_eq(&inlay_hints)
     }

@@ -16,7 +16,7 @@ macro_rules! eprintln {
 }
 
 #[cfg(test)]
-mod mock_analysis;
+mod fixture;
 
 mod markup;
 mod prime_caches;

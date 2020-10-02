@@ -275,11 +275,11 @@ mod tests {
     use test_utils::{assert_eq_text, mark};
     use text_edit::TextEdit;
 
-    use crate::{mock_analysis::analysis_and_position, FileId};
+    use crate::{fixture, FileId};
 
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
-        let (analysis, position) = analysis_and_position(ra_fixture_before);
+        let (analysis, position) = fixture::position(ra_fixture_before);
         let source_change = analysis.rename(position, new_name).unwrap();
         let mut text_edit_builder = TextEdit::builder();
         let mut file_id: Option<FileId> = None;
@@ -297,7 +297,7 @@ mod tests {
     }
 
     fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let source_change = analysis.rename(position, new_name).unwrap().unwrap();
         expect.assert_debug_eq(&source_change)
     }
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_invalid_identifier() {
-        let (analysis, position) = analysis_and_position(r#"fn main() { let i<|> = 1; }"#);
+        let (analysis, position) = fixture::position(r#"fn main() { let i<|> = 1; }"#);
         let new_name = "invalid!";
         let source_change = analysis.rename(position, new_name).unwrap();
         assert!(source_change.is_none());

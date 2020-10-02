@@ -292,7 +292,7 @@ fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     use super::{RunnableAction, BENCH, BIN, DOCTEST, TEST};
 
@@ -302,7 +302,7 @@ mod tests {
         actions: &[&RunnableAction],
         expect: Expect,
     ) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let runnables = analysis.runnables(position.file_id).unwrap();
         expect.assert_debug_eq(&runnables);
         assert_eq!(

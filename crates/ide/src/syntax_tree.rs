@@ -104,12 +104,12 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
 mod tests {
     use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::{analysis_and_range, single_file};
+    use crate::fixture;
 
     #[test]
     fn test_syntax_tree_without_range() {
         // Basic syntax
-        let (analysis, file_id) = single_file(r#"fn foo() {}"#);
+        let (analysis, file_id) = fixture::file(r#"fn foo() {}"#);
         let syn = analysis.syntax_tree(file_id, None).unwrap();
 
         assert_eq_text!(
@@ -132,7 +132,7 @@ SOURCE_FILE@0..11
             .trim()
         );
 
-        let (analysis, file_id) = single_file(
+        let (analysis, file_id) = fixture::file(
             r#"
 fn test() {
     assert!("
@@ -184,7 +184,7 @@ SOURCE_FILE@0..60
 
     #[test]
     fn test_syntax_tree_with_range() {
-        let (analysis, range) = analysis_and_range(r#"<|>fn foo() {}<|>"#.trim());
+        let (analysis, range) = fixture::range(r#"<|>fn foo() {}<|>"#.trim());
         let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
 
         assert_eq_text!(
@@ -206,7 +206,7 @@ FN@0..11
             .trim()
         );
 
-        let (analysis, range) = analysis_and_range(
+        let (analysis, range) = fixture::range(
             r#"fn test() {
     <|>assert!("
     fn foo() {
@@ -242,7 +242,7 @@ EXPR_STMT@16..58
 
     #[test]
     fn test_syntax_tree_inside_string() {
-        let (analysis, range) = analysis_and_range(
+        let (analysis, range) = fixture::range(
             r#"fn test() {
     assert!("
 <|>fn foo() {
@@ -276,7 +276,7 @@ SOURCE_FILE@0..12
         );
 
         // With a raw string
-        let (analysis, range) = analysis_and_range(
+        let (analysis, range) = fixture::range(
             r###"fn test() {
     assert!(r#"
 <|>fn foo() {
@@ -310,7 +310,7 @@ SOURCE_FILE@0..12
         );
 
         // With a raw string
-        let (analysis, range) = analysis_and_range(
+        let (analysis, range) = fixture::range(
             r###"fn test() {
     assert!(r<|>#"
 fn foo() {

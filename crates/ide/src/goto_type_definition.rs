@@ -56,10 +56,10 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 mod tests {
     use base_db::FileRange;
 
-    use crate::mock_analysis::analysis_and_annotations;
+    use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (analysis, position, mut annotations) = analysis_and_annotations(ra_fixture);
+        let (analysis, position, mut annotations) = fixture::annotations(ra_fixture);
         let (expected, data) = annotations.pop().unwrap();
         assert!(data.is_empty());
 

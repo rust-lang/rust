@@ -76,10 +76,10 @@ fn impls_for_trait(
 mod tests {
     use base_db::FileRange;
 
-    use crate::mock_analysis::analysis_and_annotations;
+    use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (analysis, position, annotations) = analysis_and_annotations(ra_fixture);
+        let (analysis, position, annotations) = fixture::annotations(ra_fixture);
 
         let navs = analysis.goto_implementation(position).unwrap().unwrap().info;
 

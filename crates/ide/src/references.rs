@@ -194,7 +194,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use stdx::format_to;
 
-    use crate::{mock_analysis::analysis_and_position, SearchScope};
+    use crate::{fixture, SearchScope};
 
     #[test]
     fn test_struct_literal_after_space() {
@@ -674,7 +674,7 @@ fn g() { f(); }
     }
 
     fn check_with_scope(ra_fixture: &str, search_scope: Option<SearchScope>, expect: Expect) {
-        let (analysis, pos) = analysis_and_position(ra_fixture);
+        let (analysis, pos) = fixture::position(ra_fixture);
         let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
 
         let mut actual = String::new();

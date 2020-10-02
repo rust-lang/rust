@@ -377,17 +377,17 @@ mod tests {
     use base_db::FileLoader;
     use expect_test::{expect, Expect};
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     use super::*;
 
     fn check_hover_no_result(ra_fixture: &str) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         assert!(analysis.hover(position, true).unwrap().is_none());
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let hover = analysis.hover(position, true).unwrap().unwrap();
 
         let content = analysis.db.file_text(position.file_id);
@@ -398,7 +398,7 @@ mod tests {
     }
 
     fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let hover = analysis.hover(position, false).unwrap().unwrap();
 
         let content = analysis.db.file_text(position.file_id);
@@ -409,7 +409,7 @@ mod tests {
     }
 
     fn check_actions(ra_fixture: &str, expect: Expect) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let hover = analysis.hover(position, true).unwrap().unwrap();
         expect.assert_debug_eq(&hover.info.actions)
     }
@@ -963,7 +963,7 @@ impl Thing {
             "#]],
         )
     } /* FIXME: revive these tests
-              let (analysis, position) = analysis_and_position(
+              let (analysis, position) = fixture::position(
                   "
                   struct Thing { x: u32 }
                   impl Thing {
@@ -977,7 +977,7 @@ impl Thing {
               let hover = analysis.hover(position).unwrap().unwrap();
               assert_eq!(trim_markup(&hover.info.markup.as_str()), ("Thing"));
 
-              let (analysis, position) = analysis_and_position(
+              let (analysis, position) = fixture::position(
                   "
                   enum Thing { A }
                   impl Thing {
@@ -990,7 +990,7 @@ impl Thing {
               let hover = analysis.hover(position).unwrap().unwrap();
               assert_eq!(trim_markup(&hover.info.markup.as_str()), ("enum Thing"));
 
-              let (analysis, position) = analysis_and_position(
+              let (analysis, position) = fixture::position(
                   "
                   enum Thing { A }
                   impl Thing {
