@@ -162,11 +162,11 @@ impl ChangeFixture {
                     meta.env,
                     Default::default(),
                 );
-                let crate_name = CrateName::new(&krate).unwrap();
+                let crate_name = CrateName::normalize_dashes(&krate);
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
                 for dep in meta.deps {
-                    let dep = CrateName::new(&dep).unwrap();
+                    let dep = CrateName::normalize_dashes(&dep);
                     crate_deps.push((crate_name.clone(), dep))
                 }
             } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
