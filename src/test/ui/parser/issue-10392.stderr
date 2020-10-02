@@ -2,7 +2,9 @@ error: expected identifier, found `,`
   --> $DIR/issue-10392.rs:6:13
    |
 LL |     let A { , } = a();
-   |             ^ expected identifier
+   |         -   ^ expected identifier
+   |         |
+   |         while parsing the fields for this pattern
 
 error: aborting due to previous error
 
