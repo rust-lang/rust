@@ -4,13 +4,14 @@ use std::{
     iter::{self, successors},
 };
 
-use ast::{
-    edit::{AstNodeEdit, IndentLevel},
-    PathSegmentKind, VisibilityOwner,
-};
+use itertools::{EitherOrBoth, Itertools};
 use syntax::{
     algo,
-    ast::{self, make, AstNode},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make, AstNode, PathSegmentKind, VisibilityOwner,
+    },
     InsertPosition, SyntaxElement, SyntaxNode,
 };
 
@@ -193,13 +194,13 @@ fn recursive_merge(
             false => None,
         })
         .collect::<Option<Vec<_>>>()?;
-    use_trees.sort_unstable_by(|a, b| path_cmp_opt(a.path(), b.path()));
+    use_trees.sort_unstable_by(|a, b| path_cmp_for_sort(a.path(), b.path()));
     for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
         if !merge.is_tree_allowed(&rhs_t) {
             return None;
         }
         let rhs_path = rhs_t.path();
-        match use_trees.binary_search_by(|p| path_cmp_opt(p.path(), rhs_path.clone())) {
+        match use_trees.binary_search_by(|p| path_cmp_bin_search(p.path(), rhs_path.clone())) {
             Ok(idx) => {
                 let lhs_t = &mut use_trees[idx];
                 let lhs_path = lhs_t.path()?;
@@ -307,37 +308,75 @@ fn path_len(path: ast::Path) -> usize {
 
 /// Orders paths in the following way:
 /// the sole self token comes first, after that come uppercase identifiers, then lowercase identifiers
-// FIXME: rustfmt sort lowercase idents before uppercase, in general we want to have the same ordering rustfmt has
+// FIXME: rustfmt sorts lowercase idents before uppercase, in general we want to have the same ordering rustfmt has
 // which is `self` and `super` first, then identifier imports with lowercase ones first, then glob imports and at last list imports.
 // Example foo::{self, foo, baz, Baz, Qux, *, {Bar}}
-fn path_cmp(a: &ast::Path, b: &ast::Path) -> Ordering {
-    match (path_is_self(a), path_is_self(b)) {
-        (true, true) => Ordering::Equal,
-        (true, false) => Ordering::Less,
-        (false, true) => Ordering::Greater,
-        (false, false) => {
-            let a = segment_iter(a);
-            let b = segment_iter(b);
-            // cmp_by would be useful for us here but that is currently unstable
-            // cmp doesnt work due the lifetimes on text's return type
-            a.zip(b)
-                .flat_map(|(seg, seg2)| seg.name_ref().zip(seg2.name_ref()))
-                .find_map(|(a, b)| match a.text().cmp(b.text()) {
-                    ord @ Ordering::Greater | ord @ Ordering::Less => Some(ord),
-                    Ordering::Equal => None,
-                })
-                .unwrap_or(Ordering::Equal)
-        }
-    }
-}
-
-fn path_cmp_opt(a: Option<ast::Path>, b: Option<ast::Path>) -> Ordering {
+fn path_cmp_for_sort(a: Option<ast::Path>, b: Option<ast::Path>) -> Ordering {
     match (a, b) {
         (None, None) => Ordering::Equal,
         (None, Some(_)) => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
-        (Some(a), Some(b)) => path_cmp(&a, &b),
+        (Some(ref a), Some(ref b)) => match (path_is_self(a), path_is_self(b)) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Less,
+            (false, true) => Ordering::Greater,
+            (false, false) => path_cmp_short(a, b),
+        },
     }
+}
+
+/// Path comparison func for binary searching for merging.
+fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<ast::Path>) -> Ordering {
+    match (lhs, rhs) {
+        (None, None) => Ordering::Equal,
+        (None, Some(_)) => Ordering::Less,
+        (Some(_), None) => Ordering::Greater,
+        (Some(ref a), Some(ref b)) => path_cmp_short(a, b),
+    }
+}
+
+/// Short circuiting comparison, if both paths are equal until one of them ends they are considered
+/// equal
+fn path_cmp_short(a: &ast::Path, b: &ast::Path) -> Ordering {
+    let a = segment_iter(a);
+    let b = segment_iter(b);
+    // cmp_by would be useful for us here but that is currently unstable
+    // cmp doesnt work due the lifetimes on text's return type
+    a.zip(b)
+        .find_map(|(a, b)| match path_segment_cmp(&a, &b) {
+            Ordering::Equal => None,
+            ord => Some(ord),
+        })
+        .unwrap_or(Ordering::Equal)
+}
+
+/// Compares to paths, if one ends earlier than the other the has_tl parameters decide which is
+/// greater as a a path that has a tree list should be greater, while one that just ends without
+/// a tree list should be considered less.
+fn use_tree_path_cmp(a: &ast::Path, a_has_tl: bool, b: &ast::Path, b_has_tl: bool) -> Ordering {
+    let a_segments = segment_iter(a);
+    let b_segments = segment_iter(b);
+    // cmp_by would be useful for us here but that is currently unstable
+    // cmp doesnt work due the lifetimes on text's return type
+    a_segments
+        .zip_longest(b_segments)
+        .find_map(|zipped| match zipped {
+            EitherOrBoth::Both(ref a, ref b) => match path_segment_cmp(a, b) {
+                Ordering::Equal => None,
+                ord => Some(ord),
+            },
+            EitherOrBoth::Left(_) if !b_has_tl => Some(Ordering::Greater),
+            EitherOrBoth::Left(_) => Some(Ordering::Less),
+            EitherOrBoth::Right(_) if !a_has_tl => Some(Ordering::Less),
+            EitherOrBoth::Right(_) => Some(Ordering::Greater),
+        })
+        .unwrap_or(Ordering::Equal)
+}
+
+fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
+    let a = a.name_ref();
+    let b = b.name_ref();
+    a.as_ref().map(ast::NameRef::text).cmp(&b.as_ref().map(ast::NameRef::text))
 }
 
 /// What type of merges are allowed.
@@ -389,7 +428,6 @@ impl ImportGroup {
             PathSegmentKind::Name(name) => match name.text().as_str() {
                 "std" => ImportGroup::Std,
                 "core" => ImportGroup::Std,
-                // FIXME: can be ThisModule as well
                 _ => ImportGroup::ExternCrate,
             },
             PathSegmentKind::Type { .. } => unreachable!(),
@@ -415,30 +453,30 @@ fn find_insert_position(
         .as_syntax_node()
         .children()
         .filter_map(|node| ast::Use::cast(node.clone()).zip(Some(node)))
-        .flat_map(|(use_, node)| use_.use_tree().and_then(|tree| tree.path()).zip(Some(node)));
+        .flat_map(|(use_, node)| {
+            let tree = use_.use_tree()?;
+            let path = tree.path()?;
+            let has_tl = tree.use_tree_list().is_some();
+            Some((path, has_tl, node))
+        });
     // Iterator that discards anything thats not in the required grouping
     // This implementation allows the user to rearrange their import groups as this only takes the first group that fits
     let group_iter = path_node_iter
         .clone()
-        .skip_while(|(path, _)| ImportGroup::new(path) != group)
-        .take_while(|(path, _)| ImportGroup::new(path) == group);
+        .skip_while(|(path, ..)| ImportGroup::new(path) != group)
+        .take_while(|(path, ..)| ImportGroup::new(path) == group);
 
-    let segments = segment_iter(&insert_path);
     // track the last element we iterated over, if this is still None after the iteration then that means we never iterated in the first place
     let mut last = None;
     // find the element that would come directly after our new import
-    let post_insert =
-        group_iter.inspect(|(_, node)| last = Some(node.clone())).find(|(path, _)| {
-            let check_segments = segment_iter(&path);
-            segments
-                .clone()
-                .zip(check_segments)
-                .flat_map(|(seg, seg2)| seg.name_ref().zip(seg2.name_ref()))
-                .all(|(l, r)| l.text() <= r.text())
-        });
+    let post_insert = group_iter.inspect(|(.., node)| last = Some(node.clone())).find(
+        |&(ref path, has_tl, _)| {
+            use_tree_path_cmp(&insert_path, false, path, has_tl) != Ordering::Greater
+        },
+    );
     match post_insert {
         // insert our import before that element
-        Some((_, node)) => (InsertPosition::Before(node.into()), AddBlankLine::After),
+        Some((.., node)) => (InsertPosition::Before(node.into()), AddBlankLine::After),
         // there is no element after our new import, so append it to the end of the group
         None => match last {
             Some(node) => (InsertPosition::After(node.into()), AddBlankLine::Before),
@@ -448,10 +486,10 @@ fn find_insert_position(
                 let mut last = None;
                 // find the group that comes after where we want to insert
                 let post_group = path_node_iter
-                    .inspect(|(_, node)| last = Some(node.clone()))
-                    .find(|(p, _)| ImportGroup::new(p) > group);
+                    .inspect(|(.., node)| last = Some(node.clone()))
+                    .find(|(p, ..)| ImportGroup::new(p) > group);
                 match post_group {
-                    Some((_, node)) => {
+                    Some((.., node)) => {
                         (InsertPosition::Before(node.into()), AddBlankLine::AfterTwice)
                     }
                     // there is no such group, so append after the last one
@@ -844,7 +882,6 @@ use foo::bar::baz::Qux;",
     }
 
     #[test]
-    #[ignore] // FIXME: Order changes when switching lhs and rhs
     fn skip_merge_last_too_long2() {
         check_last(
             "foo::bar::baz::Qux",
