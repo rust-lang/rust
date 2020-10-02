@@ -7,8 +7,11 @@ pub fn futex<'tcx>(
     args: &[OpTy<'tcx, Tag>],
     dest: PlaceTy<'tcx, Tag>,
 ) -> InterpResult<'tcx> {
-    if args.len() < 4 {
-        throw_ub_format!("incorrect number of arguments for futex syscall: got {}, expected at least 4", args.len());
+    // The amount of arguments used depends on the type of futex operation.
+    // Some users always pass all arguments, even the unused ones, due to how they wrap this syscall in their code base.
+    // Some other users pass only the arguments the operation actually needs. So we don't use `check_arg_count` here.
+    if !(4..=7).contains(&args.len()) {
+        throw_ub_format!("incorrect number of arguments for futex syscall: got {}, expected between 4 and 7 (inclusive)", args.len());
     }
     let addr = args[1];
     let addr_scalar = this.read_scalar(addr)?.check_init()?;
