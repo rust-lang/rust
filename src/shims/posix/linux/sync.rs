@@ -22,14 +22,16 @@ pub fn futex<'tcx>(
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
     //     (int *addr, int op, int val).
     // We checked above that these definitely exist.
-    // Although note that the first one is often passed as a different pointer type, e.g. `*const AtomicU32` or `*mut u32`.
-    let addr = this.deref_operand(args[1])?;
+    //
+    // `addr` is used to identify the mutex, but note that not all futex
+    // operations actually read from this addres or even require this address
+    // to exist. Also, the type of `addr` is not consistent. The API requires
+    // it to be a 4-byte aligned pointer, and will use the 4 bytes at the given
+    // address as an (atomic) i32. It's not uncommon for `addr` to be passed as
+    // another type than `*mut i32`, such as `*const AtomicI32`.
+    let addr = this.force_ptr(this.read_scalar(args[1])?.check_init()?)?;
     let op = this.read_scalar(args[2])?.to_i32()?;
     let val = this.read_scalar(args[3])?.to_i32()?;
-
-    // The raw pointer value is used to identify the mutex.
-    // Not all mutex operations actually read from this address or even require this address to exist.
-    let futex_ptr = addr.ptr.assert_ptr();
 
     let thread = this.get_active_thread();
 
@@ -53,14 +55,15 @@ pub fn futex<'tcx>(
                 // Note that a triggered timeout should have this syscall return with -1 and errno set to ETIMEOUT.
                 throw_ub_format!("miri does not support timeouts for futex operations");
             }
-            // Check the pointer for alignment. Atomic operations are only available for fully aligned values.
-            this.memory.check_ptr_access(addr.ptr.into(), Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
+            // Check the pointer for alignment and validity.
+            // Atomic operations are only available for fully aligned values.
+            this.memory.check_ptr_access(addr.into(), Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
             // Read an `i32` through the pointer, regardless of any wrapper types (e.g. `AtomicI32`).
-            let futex_val = this.read_scalar(addr.offset(Size::ZERO, MemPlaceMeta::None, this.machine.layouts.i32, this)?.into())?.to_i32()?;
+            let futex_val = this.memory.get_raw(addr.alloc_id)?.read_scalar(this, addr, Size::from_bytes(4))?.to_i32()?;
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
                 this.block_thread(thread);
-                this.futex_wait(futex_ptr, thread);
+                this.futex_wait(addr, thread);
                 // Succesfully waking up from FUTEX_WAIT always returns zero.
                 this.write_scalar(Scalar::from_i32(0), dest)?;
             } else {
@@ -78,7 +81,7 @@ pub fn futex<'tcx>(
         op if op == futex_wake => {
             let mut n = 0;
             for _ in 0..val {
-                if let Some(thread) = this.futex_wake(futex_ptr) {
+                if let Some(thread) = this.futex_wake(addr) {
                     this.unblock_thread(thread);
                     n += 1;
                 } else {
