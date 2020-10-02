@@ -854,9 +854,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &types::UNIT_CMP,
         &types::UNNECESSARY_CAST,
         &types::VEC_BOX,
+        &unicode::INVISIBLE_CHARACTERS,
         &unicode::NON_ASCII_LITERAL,
         &unicode::UNICODE_NOT_NFC,
-        &unicode::ZERO_WIDTH_SPACE,
         &unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD,
         &unnamed_address::FN_ADDRESS_COMPARISONS,
         &unnamed_address::VTABLE_ADDRESS_COMPARISONS,
@@ -1511,7 +1511,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::UNIT_CMP),
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
-        LintId::of(&unicode::ZERO_WIDTH_SPACE),
+        LintId::of(&unicode::INVISIBLE_CHARACTERS),
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
@@ -1779,7 +1779,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&types::CAST_REF_TO_MUT),
         LintId::of(&types::UNIT_CMP),
-        LintId::of(&unicode::ZERO_WIDTH_SPACE),
+        LintId::of(&unicode::INVISIBLE_CHARACTERS),
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
@@ -1910,6 +1910,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::for_loop_over_option", "clippy::for_loops_over_fallibles");
     ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles");
     ls.register_renamed("clippy::identity_conversion", "clippy::useless_conversion");
+    ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
 }
 
 // only exists to let the dogfood integration test works.

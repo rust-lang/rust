@@ -1,4 +1,4 @@
-#[warn(clippy::zero_width_space)]
+#[warn(clippy::invisible_characters)]
 fn zero() {
     print!("Here >​< is a ZWS, and ​another");
     print!("This\u{200B}is\u{200B}fine");

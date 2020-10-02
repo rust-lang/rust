@@ -1,12 +1,12 @@
-error: invisible character detected: '/u{200b}'
+error: invisible character detected
   --> $DIR/unicode.rs:3:12
    |
 LL |     print!("Here >​< is a ZWS, and ​another");
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >/u{200B}< is a ZWS, and /u{200B}another"`
    |
-   = note: `-D clippy::zero-width-space` implied by `-D warnings`
+   = note: `-D clippy::invisible-characters` implied by `-D warnings`
 
-error: invisible character detected: '/u{ad}'
+error: invisible character detected
   --> $DIR/unicode.rs:5:12
    |
 LL |     print!("Here >­< is a SHY, and ­another");

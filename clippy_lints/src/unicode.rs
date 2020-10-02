@@ -17,7 +17,7 @@ declare_clippy_lint! {
     ///
     /// **Example:** You don't see it, but there may be a zero-width space or soft hyphen
     /// some­where in this text.
-    pub ZERO_WIDTH_SPACE,
+    pub INVISIBLE_CHARACTERS,
     correctness,
     "using an invisible character in a string literal, which is confusing"
 }
@@ -63,7 +63,7 @@ declare_clippy_lint! {
     "using a Unicode literal not in NFC normal form (see [Unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
 }
 
-declare_lint_pass!(Unicode => [ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_NFC]);
+declare_lint_pass!(Unicode => [INVISIBLE_CHARACTERS, NON_ASCII_LITERAL, UNICODE_NOT_NFC]);
 
 impl LateLintPass<'_> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
@@ -91,12 +91,12 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
 
 fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
     let string = snippet(cx, span, "");
-    if let Some(invisible) = string.chars().find(|c| ['\u{200B}', '\u{ad}'].contains(&c)) {
+    if string.chars().any(|c| ['\u{200B}', '\u{ad}'].contains(&c)) {
         span_lint_and_sugg(
             cx,
-            ZERO_WIDTH_SPACE,
+            INVISIBLE_CHARACTERS,
             span,
-            &format!("invisible character detected: {:?}", invisible),
+            "invisible character detected",
             "consider replacing the string with",
             string.replace("\u{200B}", "\\u{200B}").replace("\u{ad}", "\\u{AD}"),
             Applicability::MachineApplicable,
