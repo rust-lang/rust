@@ -37,6 +37,12 @@ pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32])
         count += 1;
     }
 
+    let mut count = 2;
+    for i in 0..dst.len() {
+        dst[i] = src[count];
+        count += 1;
+    }
+
     let mut count = 5;
     for i in 3..10 {
         dst[i] = src[count];
@@ -65,6 +71,17 @@ pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32])
     for i in 3..src.len() {
         dst[i] = src[count];
         count += 1
+    }
+
+    // make sure ones where the increment is not at the end of the loop.
+    // As a possible enhancement, one could adjust the offset in the suggestion according to
+    // the position. For example, if the increment is at the top of the loop;
+    // treating the loop counter as if it were initialized 1 greater than the original value.
+    let mut count = 0;
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..src.len() {
+        count += 1;
+        dst[i] = src[count];
     }
 }
 

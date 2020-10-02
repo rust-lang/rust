@@ -57,6 +57,15 @@ LL | |     }
 error: it looks like you're manually copying between slices
   --> $DIR/with_loop_counters.rs:41:5
    |
+LL | /     for i in 0..dst.len() {
+LL | |         dst[i] = src[count];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst.clone_from_slice(&src[2..(dst.len() + 2)]);`
+
+error: it looks like you're manually copying between slices
+  --> $DIR/with_loop_counters.rs:47:5
+   |
 LL | /     for i in 3..10 {
 LL | |         dst[i] = src[count];
 LL | |         count += 1;
@@ -64,7 +73,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[3..10].clone_from_slice(&src[5..(10 + 5 - 3)]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/with_loop_counters.rs:48:5
+  --> $DIR/with_loop_counters.rs:54:5
    |
 LL | /     for i in 0..src.len() {
 LL | |         dst[count] = src[i];
@@ -81,7 +90,7 @@ LL |     dst2[30..(src.len() + 30)].clone_from_slice(&src[..]);
    |
 
 error: it looks like you're manually copying between slices
-  --> $DIR/with_loop_counters.rs:58:5
+  --> $DIR/with_loop_counters.rs:64:5
    |
 LL | /     for i in 0..1 << 1 {
 LL | |         dst[count] = src[i + 2];
@@ -90,7 +99,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[(0 << 1)..((1 << 1) + (0 << 1))].clone_from_slice(&src[2..((1 << 1) + 2)]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/with_loop_counters.rs:65:5
+  --> $DIR/with_loop_counters.rs:71:5
    |
 LL | /     for i in 3..src.len() {
 LL | |         dst[i] = src[count];
@@ -98,5 +107,5 @@ LL | |         count += 1
 LL | |     }
    | |_____^ help: try replacing the loop by: `dst[3..src.len()].clone_from_slice(&src[..(src.len() - 3)]);`
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
