@@ -29,7 +29,13 @@ crate fn mir_built<'tcx>(
         return tcx.mir_built(def);
     }
 
-    tcx.alloc_steal_mir(mir_build(tcx, def))
+    let mut body = mir_build(tcx, def);
+    if def.const_param_did.is_some() {
+        assert!(matches!(body.source.instance, ty::InstanceDef::Item(_)));
+        body.source = MirSource::from_instance(ty::InstanceDef::Item(def.to_global()));
+    }
+
+    tcx.alloc_steal_mir(body)
 }
 
 /// Construct the MIR for a given `DefId`.
