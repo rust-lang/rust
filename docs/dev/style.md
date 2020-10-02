@@ -371,3 +371,13 @@ After you are happy with the state of the code, please use [interactive rebase](
 
 Avoid @mentioning people in commit messages and pull request descriptions(they are added to commit message by bors).
 Such messages create a lot of duplicate notification traffic during rebases.
+
+# Clippy
+
+We don't enforce Clippy.
+A number of default lints have high false positive rate.
+Selectively patching false-positives with `allow(clippy)` is considered worse than not using Clippy at all.
+There's `cargo xtask lint` command which runs a subset of low-FPR lints.
+Careful tweaking of `xtask lint` is welcome.
+See also [rust-lang/clippy#5537](https://github.com/rust-lang/rust-clippy/issues/5537).
+Of course, applying Clippy suggestions is welcome as long as they indeed improve the code.
