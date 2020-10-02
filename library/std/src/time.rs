@@ -20,7 +20,7 @@ use crate::error::Error;
 use crate::fmt;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::sys::time;
-use crate::sys_common::mutex::Mutex;
+use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::FromInner;
 
 #[stable(feature = "time", since = "1.3.0")]
@@ -243,7 +243,7 @@ impl Instant {
             return Instant(os_now);
         }
 
-        static LOCK: Mutex = Mutex::new();
+        static LOCK: StaticMutex = StaticMutex::new();
         static mut LAST_NOW: time::Instant = time::Instant::zero();
         unsafe {
             let _lock = LOCK.lock();

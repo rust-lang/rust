@@ -128,7 +128,7 @@ impl<K, V> BoxedNode<K, V> {
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
-        BoxedNode { ptr: Box::into_unique(node).cast() }
+        BoxedNode { ptr: Unique::from(&mut Box::leak(node).data) }
     }
 
     unsafe fn from_ptr(ptr: NonNull<LeafNode<K, V>>) -> Self {

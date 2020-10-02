@@ -21,7 +21,7 @@ use crate::slice;
 use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
-use crate::sys_common::mutex::{Mutex, MutexGuard};
+use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
 use crate::vec;
 
 use libc::{c_char, c_int, c_void};
@@ -470,10 +470,9 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     &mut environ
 }
 
-pub unsafe fn env_lock() -> MutexGuard<'static> {
-    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
-    // acquire this mutex reentrantly!
-    static ENV_LOCK: Mutex = Mutex::new();
+pub unsafe fn env_lock() -> StaticMutexGuard<'static> {
+    // It is UB to attempt to acquire this mutex reentrantly!
+    static ENV_LOCK: StaticMutex = StaticMutex::new();
     ENV_LOCK.lock()
 }
 

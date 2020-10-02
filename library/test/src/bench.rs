@@ -159,7 +159,7 @@ where
             return summ5;
         }
 
-        total_run = total_run + loop_run;
+        total_run += loop_run;
         // Longest we ever run for is 3s.
         if total_run > Duration::from_secs(3) {
             return summ5;

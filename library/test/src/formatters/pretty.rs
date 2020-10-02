@@ -139,7 +139,7 @@ impl<T: Write> PrettyFormatter<T> {
                 stdouts.push_str(&format!("---- {} stdout ----\n", f.name));
                 let output = String::from_utf8_lossy(stdout);
                 stdouts.push_str(&output);
-                stdouts.push_str("\n");
+                stdouts.push('\n');
             }
         }
         if !stdouts.is_empty() {
