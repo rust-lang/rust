@@ -1005,6 +1005,10 @@ fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx 
     }
 }
 
+/// Get assignments from the given block.
+/// The returned iterator yields `None` if no assignment expressions are there,
+/// filtering out the increments of the given whitelisted loop counters;
+/// because its job is to make sure there's nothing other than assignments and the increments.
 fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
     cx: &'a LateContext<'tcx>,
     Block { stmts, expr, .. }: &'tcx Block<'tcx>,
@@ -1021,7 +1025,8 @@ fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
             if let ExprKind::AssignOp(_, place, _) = e.kind {
                 !loop_counters
                     .iter()
-                    // skip StartKind::Range
+                    // skip the first item which should be `StartKind::Range`
+                    // this makes it possible to use the slice with `StartKind::Range` in the same iterator loop.
                     .skip(1)
                     .any(|counter| same_var(cx, place, counter.id))
             } else {
@@ -1191,11 +1196,11 @@ fn detect_manual_memcpy<'tcx>(
                 iter_b = Some(get_assignment(body));
             }
 
-            // The only statements in the for loops can be indexed assignments from
-            // indexed retrievals.
             let assignments = iter_a.into_iter().flatten().chain(iter_b.into_iter());
 
             let big_sugg = assignments
+                // The only statements in the for loops can be indexed assignments from
+                // indexed retrievals (except increments of loop counters).
                 .map(|o| {
                     o.and_then(|(lhs, rhs)| {
                         let rhs = fetch_cloned_expr(rhs);
