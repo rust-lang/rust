@@ -8,8 +8,13 @@ pub fn futex<'tcx>(
     dest: PlaceTy<'tcx, Tag>,
 ) -> InterpResult<'tcx> {
     // The amount of arguments used depends on the type of futex operation.
-    // Some users always pass all arguments, even the unused ones, due to how they wrap this syscall in their code base.
-    // Some other users pass only the arguments the operation actually needs. So we don't use `check_arg_count` here.
+    // The full futex syscall takes six arguments (excluding the syscall
+    // number), which is also the maximum amount of arguments a linux syscall
+    // can take on most architectures.
+    // However, not all futex operations use all six arguments. The unused ones
+    // may or may not be left out from the `syscall()` call.
+    // Therefore we don't use `check_arg_count` here, but only check for the
+    // number of arguments to fall within a range.
     if !(4..=7).contains(&args.len()) {
         throw_ub_format!("incorrect number of arguments for futex syscall: got {}, expected between 4 and 7 (inclusive)", args.len());
     }
