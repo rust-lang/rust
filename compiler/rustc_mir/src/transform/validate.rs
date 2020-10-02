@@ -1,18 +1,17 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
+use crate::dataflow::impls::MaybeStorageLive;
+use crate::dataflow::{Analysis, ResultsCursor};
+use crate::util::storage::AlwaysLiveLocals;
+
 use super::{MirPass, MirSource};
-use rustc_middle::mir::visit::Visitor;
-use rustc_middle::{
-    mir::{
-        AggregateKind, BasicBlock, Body, BorrowKind, Location, MirPhase, Operand, Rvalue,
-        Statement, StatementKind, Terminator, TerminatorKind,
-    },
-    ty::{
-        self,
-        relate::{Relate, RelateResult, TypeRelation},
-        ParamEnv, Ty, TyCtxt,
-    },
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{
+    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, Rvalue,
+    Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
 };
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
@@ -33,9 +32,18 @@ pub struct Validator {
 
 impl<'tcx> MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let param_env = tcx.param_env(source.def_id());
+        let def_id = source.def_id();
+        let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
-        TypeChecker { when: &self.when, source, body, tcx, param_env, mir_phase }.visit_body(body);
+
+        let always_live_locals = AlwaysLiveLocals::new(body);
+        let storage_liveness = MaybeStorageLive::new(always_live_locals)
+            .into_engine(tcx, body, def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(body);
+
+        TypeChecker { when: &self.when, source, body, tcx, param_env, mir_phase, storage_liveness }
+            .visit_body(body);
     }
 }
 
@@ -138,6 +146,7 @@ struct TypeChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
+    storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -210,6 +219,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
+    fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
+        if context.is_use() {
+            // Uses of locals must occur while the local's storage is allocated.
+            self.storage_liveness.seek_after_primary_effect(location);
+            let locals_with_storage = self.storage_liveness.get();
+            if !locals_with_storage.contains(*local) {
+                self.fail(location, format!("use of local {:?}, which has no storage here", local));
+            }
+        }
+    }
+
+    fn visit_var_debug_info(&mut self, _var_debug_info: &VarDebugInfo<'tcx>) {
+        // Debuginfo can contain field projections, which count as a use of the base local. Skip
+        // debuginfo so that we avoid the storage liveness assertion in that case.
+    }
+
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // `Operand::Copy` is only supposed to be used with `Copy` types.
         if let Operand::Copy(place) = operand {
