@@ -204,54 +204,54 @@ impl FormatStrParser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use expect_test::{expect, Expect};
+
+    fn check(input: &str, expect: &Expect) {
+        let mut parser = FormatStrParser::new((*input).to_owned());
+        let outcome_repr = if parser.parse().is_ok() {
+            // Parsing should be OK, expected repr is "string; expr_1, expr_2".
+            if parser.extracted_expressions.is_empty() {
+                parser.output
+            } else {
+                format!("{}; {}", parser.output, parser.extracted_expressions.join(", "))
+            }
+        } else {
+            // Parsing should fail, expected repr is "-".
+            "-".to_owned()
+        };
+
+        expect.assert_eq(&outcome_repr);
+    }
 
     #[test]
     fn format_str_parser() {
         let test_vector = &[
-            ("no expressions", Some(("no expressions", vec![]))),
-            ("{expr} is {2 + 2}", Some(("{} is {}", vec!["expr", "2 + 2"]))),
-            ("{expr:?}", Some(("{:?}", vec!["expr"]))),
-            ("{malformed", None),
-            ("malformed}", None),
-            ("{{correct", Some(("{{correct", vec![]))),
-            ("correct}}", Some(("correct}}", vec![]))),
-            ("{correct}}}", Some(("{}}}", vec!["correct"]))),
-            ("{correct}}}}}", Some(("{}}}}}", vec!["correct"]))),
-            ("{incorrect}}", None),
-            ("placeholders {} {}", Some(("placeholders {} {}", vec!["$1", "$2"]))),
-            ("mixed {} {2 + 2} {}", Some(("mixed {} {} {}", vec!["$1", "2 + 2", "$2"]))),
+            ("no expressions", expect![["no expressions"]]),
+            ("{expr} is {2 + 2}", expect![["{} is {}; expr, 2 + 2"]]),
+            ("{expr:?}", expect![["{:?}; expr"]]),
+            ("{malformed", expect![["-"]]),
+            ("malformed}", expect![["-"]]),
+            ("{{correct", expect![["{{correct"]]),
+            ("correct}}", expect![["correct}}"]]),
+            ("{correct}}}", expect![["{}}}; correct"]]),
+            ("{correct}}}}}", expect![["{}}}}}; correct"]]),
+            ("{incorrect}}", expect![["-"]]),
+            ("placeholders {} {}", expect![["placeholders {} {}; $1, $2"]]),
+            ("mixed {} {2 + 2} {}", expect![["mixed {} {} {}; $1, 2 + 2, $2"]]),
             (
                 "{SomeStruct { val_a: 0, val_b: 1 }}",
-                Some(("{}", vec!["SomeStruct { val_a: 0, val_b: 1 }"])),
+                expect![["{}; SomeStruct { val_a: 0, val_b: 1 }"]],
             ),
-            ("{expr:?} is {2.32f64:.5}", Some(("{:?} is {:.5}", vec!["expr", "2.32f64"]))),
+            ("{expr:?} is {2.32f64:.5}", expect![["{:?} is {:.5}; expr, 2.32f64"]]),
             (
                 "{SomeStruct { val_a: 0, val_b: 1 }:?}",
-                Some(("{:?}", vec!["SomeStruct { val_a: 0, val_b: 1 }"])),
+                expect![["{:?}; SomeStruct { val_a: 0, val_b: 1 }"]],
             ),
-            ("{     2 + 2        }", Some(("{}", vec!["2 + 2"]))),
+            ("{     2 + 2        }", expect![["{}; 2 + 2"]]),
         ];
 
         for (input, output) in test_vector {
-            let mut parser = FormatStrParser::new((*input).to_owned());
-            let outcome = parser.parse();
-
-            if let Some((result_str, result_args)) = output {
-                assert!(
-                    outcome.is_ok(),
-                    "Outcome is error for input: {}, but the expected outcome is {:?}",
-                    input,
-                    output
-                );
-                assert_eq!(parser.output, *result_str);
-                assert_eq!(&parser.extracted_expressions, result_args);
-            } else {
-                assert!(
-                    outcome.is_err(),
-                    "Outcome is OK for input: {}, but the expected outcome is error",
-                    input
-                );
-            }
+            check(input, output)
         }
     }
 
