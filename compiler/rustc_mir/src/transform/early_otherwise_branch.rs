@@ -38,8 +38,8 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             .flat_map(|(bb_idx, bb)| {
                 let switch = bb.terminator();
                 let helper = Helper { body, tcx };
-                let infos = helper.go(bb, switch)?;
-                Some(OptimizationToApply { infos, basic_block_first_switch: bb_idx })
+                let info = helper.go(bb, switch)?;
+                Some(OptimizationToApply { info, basic_block_first_switch: bb_idx })
             })
             .collect();
 
@@ -48,6 +48,8 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
         for opt_to_apply in opts_to_apply {
             trace!("SUCCESS: found optimization possibility to apply: {:?}", &opt_to_apply);
 
+            let first_switch_info = opt_to_apply.info.first_switch_info;
+            let second_switch_info = &opt_to_apply.info.second_switch_infos[0];
             let statements_before =
                 body.basic_blocks()[opt_to_apply.basic_block_first_switch].statements.len();
             let end_of_block_location = Location {
@@ -58,8 +60,8 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             let mut patch = MirPatch::new(body);
 
             // create temp to store second discriminant in
-            let discr_type = opt_to_apply.infos[0].second_switch_info.discr_ty;
-            let discr_span = opt_to_apply.infos[0].second_switch_info.discr_source_info.span;
+            let discr_type = second_switch_info.discr_ty;
+            let discr_span = second_switch_info.discr_source_info.span;
             let second_discriminant_temp = patch.new_temp(discr_type, discr_span);
 
             patch.add_statement(
@@ -68,8 +70,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             );
 
             // create assignment of discriminant
-            let place_of_adt_to_get_discriminant_of =
-                opt_to_apply.infos[0].second_switch_info.place_of_adt_discr_read;
+            let place_of_adt_to_get_discriminant_of = second_switch_info.place_of_adt_discr_read;
             patch.add_assign(
                 end_of_block_location,
                 Place::from(second_discriminant_temp),
@@ -83,8 +84,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             patch.add_statement(end_of_block_location, StatementKind::StorageLive(not_equal_temp));
 
             // create NotEqual comparison between the two discriminants
-            let first_descriminant_place =
-                opt_to_apply.infos[0].first_switch_info.discr_used_in_switch;
+            let first_descriminant_place = first_switch_info.discr_used_in_switch;
             let not_equal_rvalue = Rvalue::BinaryOp(
                 not_equal,
                 Operand::Copy(Place::from(second_discriminant_temp)),
@@ -96,19 +96,17 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             );
 
             let new_targets = opt_to_apply
-                .infos
+                .info
+                .second_switch_infos
                 .iter()
-                .flat_map(|x| x.second_switch_info.targets_with_values.iter())
+                .flat_map(|x| x.targets_with_values.iter())
                 .cloned();
 
-            let targets = SwitchTargets::new(
-                new_targets,
-                opt_to_apply.infos[0].first_switch_info.otherwise_bb,
-            );
+            let targets = SwitchTargets::new(new_targets, first_switch_info.otherwise_bb);
 
             // new block that jumps to the correct discriminant case. This block is switched to if the discriminants are equal
             let new_switch_data = BasicBlockData::new(Some(Terminator {
-                source_info: opt_to_apply.infos[0].second_switch_info.discr_source_info,
+                source_info: second_switch_info.discr_source_info,
                 kind: TerminatorKind::SwitchInt {
                     // the first and second discriminants are equal, so just pick one
                     discr: Operand::Copy(first_descriminant_place),
@@ -121,7 +119,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 
             // switch on the NotEqual. If true, then jump to the `otherwise` case.
             // If false, then jump to a basic block that then jumps to the correct disciminant case
-            let true_case = opt_to_apply.infos[0].first_switch_info.otherwise_bb;
+            let true_case = first_switch_info.otherwise_bb;
             let false_case = new_switch_bb;
             patch.patch_terminator(
                 opt_to_apply.basic_block_first_switch,
@@ -189,7 +187,7 @@ struct SwitchDiscriminantInfo<'tcx> {
 
 #[derive(Debug)]
 struct OptimizationToApply<'tcx> {
-    infos: Vec<OptimizationInfo<'tcx>>,
+    info: OptimizationInfo<'tcx>,
     /// Basic block of the original first switch
     basic_block_first_switch: BasicBlock,
 }
@@ -198,8 +196,8 @@ struct OptimizationToApply<'tcx> {
 struct OptimizationInfo<'tcx> {
     /// Info about the first switch and discriminant
     first_switch_info: SwitchDiscriminantInfo<'tcx>,
-    /// Info about the second switch and discriminant
-    second_switch_info: SwitchDiscriminantInfo<'tcx>,
+    /// Info about all swtiches that are successors of the first switch
+    second_switch_infos: Vec<SwitchDiscriminantInfo<'tcx>>,
 }
 
 impl<'a, 'tcx> Helper<'a, 'tcx> {
@@ -207,19 +205,19 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         &self,
         bb: &BasicBlockData<'tcx>,
         switch: &Terminator<'tcx>,
-    ) -> Option<Vec<OptimizationInfo<'tcx>>> {
+    ) -> Option<OptimizationInfo<'tcx>> {
         // try to find the statement that defines the discriminant that is used for the switch
         let discr = self.find_switch_discriminant_info(bb, switch)?;
 
         // go through each target, finding a discriminant read, and a switch
-        let mut results = vec![];
+        let mut second_switch_infos = vec![];
 
         for (value, target) in discr.targets_with_values.iter() {
             let info = self.find_discriminant_switch_pairing(&discr, *target, *value)?;
-            results.push(info);
+            second_switch_infos.push(info);
         }
 
-        Some(results)
+        Some(OptimizationInfo { first_switch_info: discr, second_switch_infos })
     }
 
     fn find_discriminant_switch_pairing(
@@ -227,7 +225,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         discr_info: &SwitchDiscriminantInfo<'tcx>,
         target: BasicBlock,
         value: u128,
-    ) -> Option<OptimizationInfo<'tcx>> {
+    ) -> Option<SwitchDiscriminantInfo<'tcx>> {
         let bb = &self.body.basic_blocks()[target];
         // find switch
         let terminator = bb.terminator();
@@ -273,10 +271,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
             // if we reach this point, the optimization applies, and we should be able to optimize this case
             // store the info that is needed to apply the optimization
 
-            Some(OptimizationInfo {
-                first_switch_info: discr_info.clone(),
-                second_switch_info: this_bb_discr_info,
-            })
+            Some(this_bb_discr_info)
         } else {
             None
         }
