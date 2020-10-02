@@ -469,7 +469,7 @@ impl<'a> CompletionContext<'a> {
                     }
                 } else {
                     false
-                }
+                };
         }
         if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
             // As above
