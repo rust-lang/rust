@@ -7,10 +7,8 @@
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use super::{
-    recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, sockaddr_un, SocketAddr,
-    SocketAncillary,
-};
+use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
+use super::{sockaddr_un, SocketAddr};
 #[cfg(any(
     target_os = "android",
     target_os = "dragonfly",
