@@ -805,44 +805,10 @@ fn same_var<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
     }
 }
 
-#[derive(Clone, Copy)]
-enum OffsetSign {
-    Positive,
-    Negative,
-}
-
-struct Offset {
-    value: MinifyingSugg<'static>,
-    sign: OffsetSign,
-}
-
-impl Offset {
-    fn negative(value: Sugg<'static>) -> Self {
-        Self {
-            value: value.into(),
-            sign: OffsetSign::Negative,
-        }
-    }
-
-    fn positive(value: Sugg<'static>) -> Self {
-        Self {
-            value: value.into(),
-            sign: OffsetSign::Positive,
-        }
-    }
-
-    fn empty() -> Self {
-        Self::positive(sugg::ZERO)
-    }
-}
-
-fn apply_offset(lhs: &MinifyingSugg<'static>, rhs: &Offset) -> MinifyingSugg<'static> {
-    match rhs.sign {
-        OffsetSign::Positive => lhs + &rhs.value,
-        OffsetSign::Negative => lhs - &rhs.value,
-    }
-}
-
+/// a wrapper of `Sugg`. Besides what `Sugg` do, this removes unnecessary `0`;
+/// and also, it avoids subtracting a variable from the same one by replacing it with `0`.
+/// it exists for the convenience of the overloaded operators while normal functions can do the
+/// same.
 #[derive(Clone)]
 struct MinifyingSugg<'a>(Sugg<'a>);
 
@@ -906,6 +872,46 @@ impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
             (x, y) if x == y => sugg::ZERO.into(),
             (_, _) => (self.0 - &rhs.0).into(),
         }
+    }
+}
+
+/// a wrapper around `MinifyingSugg`, which carries a operator like currying
+/// so that the suggested code become more efficient (e.g. `foo + -bar` `foo - bar`).
+struct Offset {
+    value: MinifyingSugg<'static>,
+    sign: OffsetSign,
+}
+
+#[derive(Clone, Copy)]
+enum OffsetSign {
+    Positive,
+    Negative,
+}
+
+impl Offset {
+    fn negative(value: Sugg<'static>) -> Self {
+        Self {
+            value: value.into(),
+            sign: OffsetSign::Negative,
+        }
+    }
+
+    fn positive(value: Sugg<'static>) -> Self {
+        Self {
+            value: value.into(),
+            sign: OffsetSign::Positive,
+        }
+    }
+
+    fn empty() -> Self {
+        Self::positive(sugg::ZERO)
+    }
+}
+
+fn apply_offset(lhs: &MinifyingSugg<'static>, rhs: &Offset) -> MinifyingSugg<'static> {
+    match rhs.sign {
+        OffsetSign::Positive => lhs + &rhs.value,
+        OffsetSign::Negative => lhs - &rhs.value,
     }
 }
 
