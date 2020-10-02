@@ -145,7 +145,7 @@ impl Crate {
             }
         }).flat_map(|t| t).next();
 
-        doc_url.map(|s| s.trim_matches('"').trim_end_matches("/").to_owned() + "/")
+        doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 }
 

@@ -159,7 +159,7 @@ impl ast::AssocItemList {
         let whitespace =
             last_token_before_curly.clone().into_token().and_then(ast::Whitespace::cast)?;
         let text = whitespace.syntax().text();
-        let newline = text.rfind("\n")?;
+        let newline = text.rfind('\n')?;
         let keep = tokens::WsBuilder::new(&text[newline..]);
         Some(self.replace_children(
             first_token_after_items..=last_token_before_curly,

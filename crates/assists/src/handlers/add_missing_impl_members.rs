@@ -146,7 +146,7 @@ fn add_missing_impl_members_inner(
 
     let target = impl_def.syntax().text_range();
     acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |builder| {
-        let impl_item_list = impl_def.assoc_item_list().unwrap_or(make::assoc_item_list());
+        let impl_item_list = impl_def.assoc_item_list().unwrap_or_else(make::assoc_item_list);
 
         let n_existing_items = impl_item_list.assoc_items().count();
         let source_scope = ctx.sema.scope_for_def(trait_);
