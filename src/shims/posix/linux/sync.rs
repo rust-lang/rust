@@ -21,6 +21,7 @@ pub fn futex<'tcx>(
 
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
     //     (int *addr, int op, int val).
+    // We checked above that these definitely exist.
     // Although note that the first one is often passed as a different pointer type, e.g. `*const AtomicU32` or `*mut u32`.
     let addr = this.deref_operand(args[1])?;
     let op = this.read_scalar(args[2])?.to_i32()?;
