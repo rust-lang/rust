@@ -1,0 +1,19 @@
+error[E0596]: cannot borrow `value` as mutable, as it is not declared as mutable
+  --> $DIR/mut_mutex_lock.rs:10:6
+   |
+LL |     let value = value_mutex.lock().unwrap();
+   |         ----- help: consider changing this to be mutable: `mut value`
+LL |     *value += 1;
+   |      ^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `value` as mutable, as it is not declared as mutable
+  --> $DIR/mut_mutex_lock.rs:16:6
+   |
+LL |     let value = value_rc.lock().unwrap();
+   |         ----- help: consider changing this to be mutable: `mut value`
+LL |     *value += 1;
+   |      ^^^^^ cannot borrow as mutable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.
