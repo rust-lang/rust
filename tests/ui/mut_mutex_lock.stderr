@@ -1,19 +1,11 @@
-error[E0596]: cannot borrow `value` as mutable, as it is not declared as mutable
-  --> $DIR/mut_mutex_lock.rs:10:6
+error: calling `&mut Mutex::lock` unnecessarily locks an exclusive (mutable) reference
+  --> $DIR/mut_mutex_lock.rs:9:21
    |
-LL |     let value = value_mutex.lock().unwrap();
-   |         ----- help: consider changing this to be mutable: `mut value`
-LL |     *value += 1;
-   |      ^^^^^ cannot borrow as mutable
-
-error[E0596]: cannot borrow `value` as mutable, as it is not declared as mutable
-  --> $DIR/mut_mutex_lock.rs:16:6
+LL |     let mut value = value_mutex.lock().unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^
    |
-LL |     let value = value_rc.lock().unwrap();
-   |         ----- help: consider changing this to be mutable: `mut value`
-LL |     *value += 1;
-   |      ^^^^^ cannot borrow as mutable
+   = note: `-D clippy::mut-mutex-lock` implied by `-D warnings`
+   = help: use `&mut Mutex::get_mut` instead
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0596`.

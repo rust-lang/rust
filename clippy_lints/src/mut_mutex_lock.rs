@@ -21,8 +21,8 @@ declare_clippy_lint! {
     /// let mut value_rc = Arc::new(Mutex::new(42_u8));
     /// let value_mutex = Arc::get_mut(&mut value_rc).unwrap();
     ///
-    /// let value = value_mutex.lock().unwrap();
-    /// do_stuff(value);
+    /// let mut value = value_mutex.lock().unwrap();
+    /// *value += 1;
     /// ```
     /// Use instead:
     /// ```rust
@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// let value_mutex = Arc::get_mut(&mut value_rc).unwrap();
     ///
     /// let value = value_mutex.get_mut().unwrap();
-    /// do_stuff(value);
+    /// *value += 1;
     /// ```
     pub MUT_MUTEX_LOCK,
     correctness,
