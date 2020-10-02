@@ -1585,13 +1585,14 @@ fn resolution_failure(
                         } else {
                             diag.note(&note);
                         }
-                        diag.help(&format!("did you mean to import `{}`?", unresolved));
+
                         // If the link has `::` in it, assume it was meant to be an intra-doc link.
                         // Otherwise, the `[]` might be unrelated.
                         // FIXME: don't show this for autolinks (`<>`), `()` style links, or reference links
                         if !path_str.contains("::") {
                             diag.help(r#"to escape `[` and `]` characters, add '\' before them like `\[` or `\]`"#);
                         }
+
                         continue;
                     }
 

@@ -9,7 +9,6 @@ note: the lint level is defined here
    |
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
-   = help: did you mean to import `i`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: aborting due to previous error

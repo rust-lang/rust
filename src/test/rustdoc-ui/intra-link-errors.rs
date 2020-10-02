@@ -7,27 +7,22 @@
 /// [path::to::nonexistent::module]
 //~^ ERROR unresolved link
 //~| NOTE there is no item named `path` in scope
-//~| HELP did you mean to import `path`?
 
 /// [path::to::nonexistent::macro!]
 //~^ ERROR unresolved link
 //~| NOTE there is no item named `path` in scope
-//~| HELP did you mean to import `path`?
 
 /// [type@path::to::nonexistent::type]
 //~^ ERROR unresolved link
 //~| NOTE there is no item named `path` in scope
-//~| HELP did you mean to import `path`?
 
 /// [std::io::not::here]
 //~^ ERROR unresolved link
 //~| NOTE there is no item named `not` in scope
-//~| HELP did you mean to import `not`?
 
 /// [type@std::io::not::here]
 //~^ ERROR unresolved link
 //~| NOTE there is no item named `not` in scope
-//~| HELP did you mean to import `not`?
 
 /// [std::io::Error::x]
 //~^ ERROR unresolved link

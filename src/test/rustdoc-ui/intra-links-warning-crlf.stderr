@@ -5,7 +5,6 @@ LL | /// [error]
    |      ^^^^^ there is no item named `error` in scope
    |
    = note: `#[warn(broken_intra_doc_links)]` on by default
-   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error1`
@@ -14,7 +13,6 @@ warning: unresolved link to `error1`
 LL | /// docs [error1]
    |           ^^^^^^ there is no item named `error1` in scope
    |
-   = help: did you mean to import `error1`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error2`
@@ -23,7 +21,6 @@ warning: unresolved link to `error2`
 LL | /// docs [error2]
    |           ^^^^^^ there is no item named `error2` in scope
    |
-   = help: did you mean to import `error2`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
@@ -32,7 +29,6 @@ warning: unresolved link to `error`
 LL |  * It also has an [error].
    |                    ^^^^^ there is no item named `error` in scope
    |
-   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: 4 warnings emitted
