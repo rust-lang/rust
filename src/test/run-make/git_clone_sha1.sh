@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -x
 
 # Usage: $0 project_name url sha1
 # Get the crate with the specified sha1.
@@ -14,7 +14,7 @@ URL=$2
 SHA1=$3
 
 function err_exit() {
-    echo "ERROR:" "$@" 
+    echo "ERROR:" "$@"
     exit 1
 }
 
