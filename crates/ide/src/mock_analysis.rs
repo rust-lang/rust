@@ -14,7 +14,7 @@ use crate::{
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.
 #[derive(Debug, Default)]
-pub struct MockAnalysis {
+pub(crate) struct MockAnalysis {
     files: Vec<Fixture>,
 }
 
@@ -29,7 +29,7 @@ impl MockAnalysis {
     /// //- /foo.rs
     /// struct Baz;
     /// ```
-    pub fn with_files(ra_fixture: &str) -> MockAnalysis {
+    pub(crate) fn with_files(ra_fixture: &str) -> MockAnalysis {
         let (res, pos) = MockAnalysis::with_fixture(ra_fixture);
         assert!(pos.is_none());
         res
@@ -37,7 +37,7 @@ impl MockAnalysis {
 
     /// Same as `with_files`, but requires that a single file contains a `<|>` marker,
     /// whose position is also returned.
-    pub fn with_files_and_position(fixture: &str) -> (MockAnalysis, FilePosition) {
+    pub(crate) fn with_files_and_position(fixture: &str) -> (MockAnalysis, FilePosition) {
         let (res, position) = MockAnalysis::with_fixture(fixture);
         let (file_id, range_or_offset) = position.expect("expected a marker (<|>)");
         let offset = match range_or_offset {
@@ -70,12 +70,12 @@ impl MockAnalysis {
         file_id
     }
 
-    pub fn id_of(&self, path: &str) -> FileId {
+    pub(crate) fn id_of(&self, path: &str) -> FileId {
         let (file_id, _) =
             self.files().find(|(_, data)| path == data.path).expect("no file in this mock");
         file_id
     }
-    pub fn annotations(&self) -> Vec<(FileRange, String)> {
+    pub(crate) fn annotations(&self) -> Vec<(FileRange, String)> {
         self.files()
             .flat_map(|(file_id, fixture)| {
                 let annotations = extract_annotations(&fixture.text);
@@ -85,15 +85,15 @@ impl MockAnalysis {
             })
             .collect()
     }
-    pub fn files(&self) -> impl Iterator<Item = (FileId, &Fixture)> + '_ {
+    pub(crate) fn files(&self) -> impl Iterator<Item = (FileId, &Fixture)> + '_ {
         self.files.iter().enumerate().map(|(idx, fixture)| (FileId(idx as u32 + 1), fixture))
     }
-    pub fn annotation(&self) -> (FileRange, String) {
+    pub(crate) fn annotation(&self) -> (FileRange, String) {
         let mut all = self.annotations();
         assert_eq!(all.len(), 1);
         all.pop().unwrap()
     }
-    pub fn analysis_host(self) -> AnalysisHost {
+    pub(crate) fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();
         let mut change = AnalysisChange::new();
         let mut file_set = FileSet::default();
@@ -146,26 +146,26 @@ impl MockAnalysis {
         host.apply_change(change);
         host
     }
-    pub fn analysis(self) -> Analysis {
+    pub(crate) fn analysis(self) -> Analysis {
         self.analysis_host().analysis()
     }
 }
 
 /// Creates analysis from a multi-file fixture, returns positions marked with <|>.
-pub fn analysis_and_position(ra_fixture: &str) -> (Analysis, FilePosition) {
+pub(crate) fn analysis_and_position(ra_fixture: &str) -> (Analysis, FilePosition) {
     let (mock, position) = MockAnalysis::with_files_and_position(ra_fixture);
     (mock.analysis(), position)
 }
 
 /// Creates analysis for a single file.
-pub fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
+pub(crate) fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
     let mock = MockAnalysis::with_files(ra_fixture);
     let file_id = mock.id_of("/main.rs");
     (mock.analysis(), file_id)
 }
 
 /// Creates analysis for a single file, returns range marked with a pair of <|>.
-pub fn analysis_and_range(ra_fixture: &str) -> (Analysis, FileRange) {
+pub(crate) fn analysis_and_range(ra_fixture: &str) -> (Analysis, FileRange) {
     let (res, position) = MockAnalysis::with_fixture(ra_fixture);
     let (file_id, range_or_offset) = position.expect("expected a marker (<|>)");
     let range = match range_or_offset {

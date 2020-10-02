@@ -15,7 +15,8 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
-pub mod mock_analysis;
+#[cfg(test)]
+mod mock_analysis;
 
 mod markup;
 mod prime_caches;
