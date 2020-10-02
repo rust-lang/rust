@@ -4,23 +4,17 @@ error: expected identifier, found `+`
 LL |     { $+ } => {
    |        ^
 
-error: missing fragment specifier
-  --> $DIR/issue-33569.rs:2:8
-   |
-LL |     { $+ } => {
-   |        ^
-
 error: expected one of: `*`, `+`, or `?`
   --> $DIR/issue-33569.rs:4:13
    |
 LL |         $(x)(y)
    |             ^^^
 
-error: attempted to repeat an expression containing no syntax variables matched as repeating at this depth
-  --> $DIR/issue-33569.rs:4:10
+error: missing fragment specifier
+  --> $DIR/issue-33569.rs:2:8
    |
-LL |         $(x)(y)
-   |          ^^^
+LL |     { $+ } => {
+   |        ^
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
