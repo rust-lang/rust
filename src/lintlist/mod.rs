@@ -2813,7 +2813,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "zero_width_space",
         group: "correctness",
-        desc: "using a zero-width space in a string literal, which is confusing",
+        desc: "using an invisible character in a string literal, which is confusing",
         deprecation: None,
         module: "unicode",
     },
