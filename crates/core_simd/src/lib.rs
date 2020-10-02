@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(repr_simd)]
+#![feature(repr_simd, platform_intrinsics)]
 #![warn(missing_docs)]
 //! Portable SIMD module.
 
@@ -7,6 +7,8 @@
 mod macros;
 
 mod fmt;
+mod intrinsics;
+mod ops;
 
 mod masks;
 pub use masks::*;
