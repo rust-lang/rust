@@ -31,13 +31,20 @@ pub fn futex<'tcx>(
     let futex_wait = this.eval_libc_i32("FUTEX_WAIT")?;
     let futex_wake = this.eval_libc_i32("FUTEX_WAKE")?;
 
+    // FUTEX_PRIVATE enables an optimization that stops it from working across processes.
+    // Miri doesn't support that anyway, so we ignore that flag.
     match op & !futex_private {
+        // FUTEX_WAIT: (int *addr, int op = FUTEX_WAIT, int val, const timespec *timeout)
+        // Blocks the thread if *addr still equals val. Wakes up when FUTEX_WAKE is called on the same address,
+        // or *timeout expires. `timeout == null` for an infinite timeout.
         op if op == futex_wait => {
             if args.len() < 5 {
                 throw_ub_format!("incorrect number of arguments for FUTEX_WAIT syscall: got {}, expected at least 5", args.len());
             }
             let timeout = this.read_scalar(args[4])?.check_init()?;
             if !this.is_null(timeout)? {
+                // FIXME: Implement timeouts. The condvar waiting code is probably a good example to start with.
+                // Note that a triggered timeout should have this syscall return with -1 and errno set to ETIMEOUT.
                 throw_ub_format!("miri does not support timeouts for futex operations");
             }
             // Check the pointer for alignment. Atomic operations are only available for fully aligned values.
@@ -45,15 +52,23 @@ pub fn futex<'tcx>(
             // Read an `i32` through the pointer, regardless of any wrapper types (e.g. `AtomicI32`).
             let futex_val = this.read_scalar(addr.offset(Size::ZERO, MemPlaceMeta::None, this.machine.layouts.i32, this)?.into())?.to_i32()?;
             if val == futex_val {
+                // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
                 this.block_thread(thread);
                 this.futex_wait(futex_ptr, thread);
+                // Succesfully waking up from FUTEX_WAIT always returns zero.
                 this.write_scalar(Scalar::from_i32(0), dest)?;
             } else {
+                // The futex value doesn't match the expected value, so we return failure
+                // right away without sleeping: -1 and errno set to EAGAIN.
                 let eagain = this.eval_libc("EAGAIN")?;
                 this.set_last_error(eagain)?;
                 this.write_scalar(Scalar::from_i32(-1), dest)?;
             }
         }
+        // FUTEX_WAKE: (int *addr, int op = FUTEX_WAKE, int val)
+        // Wakes at most `val` threads waiting on the futex at `addr`.
+        // Returns the amount of threads woken up.
+        // Does not access the futex value at *addr.
         op if op == futex_wake => {
             let mut n = 0;
             for _ in 0..val {
