@@ -17,7 +17,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains an instruction visitor DerivativeMaker that generates
+// This file contains an instruction visitor AdjointGenerator that generates
 // the corresponding augmented forward pass code, and adjoints for all
 // LLVM instructions.
 //
@@ -33,12 +33,15 @@
 
 using namespace llvm;
 
+// Helper instruction visitor that generates adjoints
 template <class AugmentedReturnType = AugmentedReturn *>
-class DerivativeMaker
-    : public llvm::InstVisitor<DerivativeMaker<AugmentedReturnType>> {
-public:
-  DerivativeMode mode;
-  GradientUtils *gutils;
+class AdjointGenerator
+    : public llvm::InstVisitor<AdjointGenerator<AugmentedReturnType>> {
+private:
+  // Type of code being generated (forward, reverse, or both)
+  const DerivativeMode Mode;
+
+  GradientUtils *const gutils;
   const std::vector<DIFFE_TYPE> &constant_args;
   TypeResults &TR;
   std::function<unsigned(Instruction *, CacheType)> getIndex;
@@ -53,8 +56,9 @@ public:
   const SmallPtrSetImpl<const Instruction *> &unnecessaryStores;
 
   AllocaInst *dretAlloca;
-  DerivativeMaker(
-      DerivativeMode mode, GradientUtils *gutils,
+public:
+  AdjointGenerator(
+      DerivativeMode Mode, GradientUtils *gutils,
       const std::vector<DIFFE_TYPE> &constant_args, TypeResults &TR,
       std::function<unsigned(Instruction *, CacheType)> getIndex,
       const std::map<CallInst *, const std::map<Argument *, bool>>
@@ -66,7 +70,7 @@ public:
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryStores,
       AllocaInst *dretAlloca)
-      : mode(mode), gutils(gutils), constant_args(constant_args), TR(TR),
+      : Mode(Mode), gutils(gutils), constant_args(constant_args), TR(TR),
         getIndex(getIndex), uncacheable_args_map(uncacheable_args_map),
         returnuses(returnuses), augmentedReturn(augmentedReturn),
         replacedReturns(replacedReturns),
@@ -144,7 +148,7 @@ public:
   void visitInstruction(llvm::Instruction &inst) {
     // TODO explicitly handle all instructions rather than using the catch all
     // below
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     #if LLVM_VERSION_MAJOR >= 10
@@ -153,7 +157,7 @@ public:
       eraseIfUnused(inst);
       if (gutils->isConstantInstruction(&inst))
         return;
-      if (mode != DerivativeMode::Reverse && mode != DerivativeMode::Both)
+      if (Mode != DerivativeMode::Reverse && Mode != DerivativeMode::Both)
         return;
 
       Value *orig_op1 = FPMO->getOperand(0);
@@ -175,7 +179,7 @@ public:
 
     llvm::errs() << *gutils->oldFunc << "\n";
     llvm::errs() << *gutils->newFunc << "\n";
-    llvm::errs() << "in mode: " << to_string(mode) << "\n";
+    llvm::errs() << "in Mode: " << to_string(Mode) << "\n";
     llvm::errs() << "cannot handle unknown instruction\n" << inst;
     report_fatal_error("unknown value");
   }
@@ -213,16 +217,16 @@ public:
         Value *newip = nullptr;
 
         bool needShadow = is_value_needed_in_reverse<Shadow>(
-              TR, gutils, &LI, /*toplevel*/ mode == DerivativeMode::Both);
+              TR, gutils, &LI, /*toplevel*/ Mode == DerivativeMode::Both);
 
-        switch (mode) {
+        switch (Mode) {
 
         case DerivativeMode::Forward:
         case DerivativeMode::Both: {
           newip = gutils->invertPointerM(&LI, BuilderZ);
           assert(newip->getType() == type);
 
-          if (mode == DerivativeMode::Forward &&
+          if (Mode == DerivativeMode::Forward &&
               gutils->can_modref_map->find(&LI)->second &&
               needShadow) {
             gutils->cacheForReverse(BuilderZ, newip,
@@ -271,21 +275,21 @@ public:
     if (cache_reads_always ||
         (!cache_reads_never && gutils->can_modref_map->find(&LI)->second &&
          is_value_needed_in_reverse<Primal>(
-             TR, gutils, &LI, /*toplevel*/ mode == DerivativeMode::Both))) {
+             TR, gutils, &LI, /*toplevel*/ Mode == DerivativeMode::Both))) {
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&LI)->getNextNode());
       // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
 
       inst = gutils->cacheForReverse(BuilderZ, newi, getIndex(&LI, CacheType::Self));
       assert(inst->getType() == type);
 
-      if (mode == DerivativeMode::Reverse) {
+      if (Mode == DerivativeMode::Reverse) {
         assert(inst != newi);
       } else {
         assert(inst == newi);
       }
     }
 
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     if (gutils->isConstantInstruction(&LI))
@@ -392,7 +396,7 @@ public:
 
     if (FT) {
       //! Only need to update the reverse function
-      if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
+      if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
         IRBuilder<> Builder2(SI.getParent()); getReverseBuilder(Builder2);
 
         if (gutils->isConstantValue(orig_val)) {
@@ -413,7 +417,7 @@ public:
       //! Storing an integer or pointer
     } else {
       //! Only need to update the forward function
-      if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
+      if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
         IRBuilder<> storeBuilder(gutils->getNewFromOriginal(&SI));
 
         Value *valueop = nullptr;
@@ -457,7 +461,7 @@ public:
         I.getOpcode() == CastInst::CastOps::PtrToInt)
       return;
 
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     Value *orig_op0 = I.getOperand(0);
@@ -496,7 +500,7 @@ public:
     if (SI.getType()->isPointerTy())
       return;
 
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     Value *op0 = gutils->getNewFromOriginal(SI.getOperand(0));
@@ -533,7 +537,7 @@ public:
     eraseIfUnused(EEI);
     if (gutils->isConstantValue(&EEI))
       return;
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     IRBuilder<> Builder2(EEI.getParent()); getReverseBuilder(Builder2);
@@ -553,7 +557,7 @@ public:
     eraseIfUnused(IEI);
     if (gutils->isConstantValue(&IEI))
       return;
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     IRBuilder<> Builder2(IEI.getParent()); getReverseBuilder(Builder2);
@@ -584,7 +588,7 @@ public:
     eraseIfUnused(SVI);
     if (gutils->isConstantValue(&SVI))
       return;
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     IRBuilder<> Builder2(SVI.getParent()); getReverseBuilder(Builder2);
@@ -616,7 +620,7 @@ public:
     if (EVI.getType()->isPointerTy())
       return;
 
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     Value *orig_op0 = EVI.getOperand(0);
@@ -642,7 +646,7 @@ public:
     if (gutils->isConstantValue(&IVI))
       return;
 
-    if (mode == DerivativeMode::Forward)
+    if (Mode == DerivativeMode::Forward)
       return;
 
     auto st = cast<StructType>(IVI.getType());
@@ -722,12 +726,12 @@ public:
   }
 
   Value *diffe(Value *val, IRBuilder<> &Builder) {
-    assert(mode == DerivativeMode::Reverse || mode == DerivativeMode::Both);
+    assert(Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both);
     return ((DiffeGradientUtils *)gutils)->diffe(val, Builder);
   }
 
   void setDiffe(Value *val, Value *dif, IRBuilder<> &Builder) {
-    assert(mode == DerivativeMode::Reverse || mode == DerivativeMode::Both);
+    assert(Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both);
     ((DiffeGradientUtils *)gutils)->setDiffe(val, dif, Builder);
   }
 
@@ -737,7 +741,7 @@ public:
 
   std::vector<SelectInst *> addToDiffe(Value *val, Value *dif,
                                        IRBuilder<> &Builder, Type *T) {
-    assert(mode == DerivativeMode::Reverse || mode == DerivativeMode::Both);
+    assert(Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both);
     return ((DiffeGradientUtils *)gutils)->addToDiffe(val, dif, Builder, T);
   }
 
@@ -749,7 +753,7 @@ public:
     eraseIfUnused(BO);
     if (gutils->isConstantInstruction(&BO))
       return;
-    if (mode != DerivativeMode::Reverse && mode != DerivativeMode::Both)
+    if (Mode != DerivativeMode::Reverse && Mode != DerivativeMode::Both)
       return;
 
     Value *orig_op0 = BO.getOperand(0);
@@ -865,7 +869,7 @@ public:
 
   void visitMemSetInst(llvm::MemSetInst &MS) {
     // Don't duplicate set in reverse pass
-    if (mode == DerivativeMode::Reverse) {
+    if (Mode == DerivativeMode::Reverse) {
       erased.insert(&MS);
       gutils->erase(gutils->getNewFromOriginal(&MS));
     }
@@ -889,7 +893,7 @@ public:
       report_fatal_error("non constant in memset");
     }
 
-    if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
+    if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&MS));
 
       SmallVector<Value *, 4> args;
@@ -915,7 +919,7 @@ public:
       cal->setTailCallKind(MS.getTailCallKind());
     }
 
-    if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
+    if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
       // TODO consider what reverse pass memset should be
     }
   }
@@ -929,7 +933,7 @@ public:
 
     if (secretty) {
       // no change to forward pass if represents floats
-      if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
+      if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
         IRBuilder<> Builder2(parent); getReverseBuilder(Builder2);
 
         // If the src is context simply zero d_dst and don't propagate to d_src
@@ -990,7 +994,7 @@ public:
 
       // if represents pointer or integer type then only need to modify forward
       // pass with the copy
-      if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
+      if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
 
         // It is questionable how the following case would even occur, but if
         // the dst is constant, we shouldn't do anything extra
@@ -1202,7 +1206,7 @@ public:
       orig_ops[i] = II.getOperand(i);
     }
 
-    if (mode == DerivativeMode::Forward) {
+    if (Mode == DerivativeMode::Forward) {
       switch (II.getIntrinsicID()) {
       case Intrinsic::prefetch:
       case Intrinsic::dbg_declare:
@@ -1252,7 +1256,7 @@ public:
       }
     }
 
-    if (mode == DerivativeMode::Both || mode == DerivativeMode::Reverse) {
+    if (Mode == DerivativeMode::Both || Mode == DerivativeMode::Reverse) {
 
       IRBuilder<> Builder2(II.getParent()); getReverseBuilder(Builder2);
       Module *M = II.getParent()->getParent()->getParent();
@@ -1600,7 +1604,7 @@ public:
       }
     }
 
-    llvm::InstVisitor<DerivativeMaker<AugmentedReturnType>>::visitIntrinsicInst(
+    llvm::InstVisitor<AdjointGenerator<AugmentedReturnType>>::visitIntrinsicInst(
         II);
   }
 
@@ -1641,7 +1645,7 @@ public:
 
     if (called &&
         (called->getName() == "printf" || called->getName() == "puts")) {
-      if (mode == DerivativeMode::Reverse) {
+      if (Mode == DerivativeMode::Reverse) {
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
       return;
@@ -1677,7 +1681,7 @@ public:
 
       if (called &&
           (called->getName() == "tanhf" || called->getName() == "tanh")) {
-        if (mode == DerivativeMode::Forward || gutils->isConstantInstruction(orig))
+        if (Mode == DerivativeMode::Forward || gutils->isConstantInstruction(orig))
           return;
 
         IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
@@ -1700,7 +1704,7 @@ public:
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
           n == "__lgammal_r_finite" || n == "acos" || n == "atan") {
-        if (mode == DerivativeMode::Forward || gutils->isConstantInstruction(orig)) {
+        if (Mode == DerivativeMode::Forward || gutils->isConstantInstruction(orig)) {
           return;
         }
       }
@@ -1713,7 +1717,7 @@ public:
       if (!constval) {
         auto anti =
             gutils->createAntiMalloc(orig, getIndex(orig, CacheType::Shadow));
-        if (mode == DerivativeMode::Both || mode == DerivativeMode::Reverse) {
+        if (Mode == DerivativeMode::Both || Mode == DerivativeMode::Reverse) {
           IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
           Value *tofree = lookup(anti, Builder2);
           assert(tofree);
@@ -1730,12 +1734,12 @@ public:
       // TODO enable this if we need to free the memory
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
-      if (mode != DerivativeMode::Both) {
+      if (Mode != DerivativeMode::Both) {
         if (is_value_needed_in_reverse<Primal>(
-                TR, gutils, orig, /*topLevel*/ mode == DerivativeMode::Both)) {
+                TR, gutils, orig, /*topLevel*/ Mode == DerivativeMode::Both)) {
 
           gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));
-        } else if (mode != DerivativeMode::Forward) {
+        } else if (Mode != DerivativeMode::Forward) {
           // Note that here we cannot simply replace with null as users who try
           // to find the shadow pointer will use the shadow of null rather than
           // the true shadow of this
@@ -1789,13 +1793,13 @@ public:
     }
 
     bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
-    //llvm::errs() << "orig: " << *orig << " ici:" << gutils->isConstantInstruction(orig) << " icv: " << gutils->isConstantValue(orig) << " subretused=" << subretused << " ivn:" << is_value_needed_in_reverse<Primal>(TR, gutils, &call, /*topLevel*/mode == DerivativeMode::Both) << "\n";
+    //llvm::errs() << "orig: " << *orig << " ici:" << gutils->isConstantInstruction(orig) << " icv: " << gutils->isConstantValue(orig) << " subretused=" << subretused << " ivn:" << is_value_needed_in_reverse<Primal>(TR, gutils, &call, /*topLevel*/Mode == DerivativeMode::Both) << "\n";
 
     if (gutils->isConstantInstruction(orig) && gutils->isConstantValue(orig)) {
       // If we need this value and it is illegal to recompute it (it writes or
       // may load uncacheable data)
       //    Store and reload it
-      if (mode != DerivativeMode::Both && subretused &&
+      if (Mode != DerivativeMode::Both && subretused &&
           !orig->doesNotAccessMemory()) {
         CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
         gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));
@@ -1806,7 +1810,7 @@ public:
       // pass), erase it
       //  Any uses of it should be handled by the case above so it is safe to
       //  RAUW
-      if (orig->mayWriteToMemory() && mode == DerivativeMode::Reverse) {
+      if (orig->mayWriteToMemory() && Mode == DerivativeMode::Reverse) {
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
         return;
       }
@@ -1836,7 +1840,7 @@ public:
 
       pre_args.push_back(argi);
 
-      if (mode != DerivativeMode::Forward) {
+      if (Mode != DerivativeMode::Forward) {
         IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
         args.push_back(lookup(argi, Builder2));
       }
@@ -1868,7 +1872,7 @@ public:
         }
         argsInverted.push_back(ty);
 
-        if (mode != DerivativeMode::Forward) {
+        if (Mode != DerivativeMode::Forward) {
           IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
           args.push_back(
               gutils->invertPointerM(orig->getArgOperand(i), Builder2));
@@ -1900,7 +1904,7 @@ public:
 
     bool replaceFunction = false;
 
-    if (mode == DerivativeMode::Both && !foreignFunction) {
+    if (Mode == DerivativeMode::Both && !foreignFunction) {
       replaceFunction = legalCombinedForwardReverse(
           orig, *replacedReturns, postCreate, userReplace, gutils, TR,
           unnecessaryInstructions, subretused);
@@ -1937,7 +1941,7 @@ public:
     Optional<int> differetIdx;
 
     const AugmentedReturn *subdata = nullptr;
-    if (mode == DerivativeMode::Reverse) {
+    if (Mode == DerivativeMode::Reverse) {
       assert(augmentedReturn);
       if (augmentedReturn) {
         auto fd = augmentedReturn->subaugmentations.find(&call);
@@ -1986,12 +1990,12 @@ public:
         }
 
       } else {
-        if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
+        if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
           subdata = &CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted, gutils->TLI,
               TR.analysis, gutils->AA, /*return is used*/ subretused,
               nextTypeInfo, uncacheable_args, false);
-          if (mode == DerivativeMode::Forward) {
+          if (Mode == DerivativeMode::Forward) {
             assert(augmentedReturn);
             auto subaugmentations =
                 (std::map<const llvm::CallInst *, AugmentedReturn *>
@@ -2033,7 +2037,7 @@ public:
 
       // llvm::errs() << "seeing sub_index_map of " << sub_index_map->size() <<
       // " in ap " << cast<Function>(called)->getName() << "\n";
-      if (mode == DerivativeMode::Both || mode == DerivativeMode::Forward) {
+      if (Mode == DerivativeMode::Both || Mode == DerivativeMode::Forward) {
 
         if (false) {
         badaugmentedfn:;
@@ -2102,7 +2106,7 @@ public:
             gutils->originalToNewFn[orig] = dcall;
             if (!orig->getType()->isFPOrFPVectorTy() &&
                 TR.query(orig).Data0()[{}].isPossiblePointer()) {
-            } else if (mode != DerivativeMode::Forward) {
+            } else if (Mode != DerivativeMode::Forward) {
               ((DiffeGradientUtils *)gutils)->differentials[dcall] =
                   ((DiffeGradientUtils *)gutils)->differentials[op];
               ((DiffeGradientUtils *)gutils)->differentials.erase(op);
@@ -2117,9 +2121,9 @@ public:
             cast<Instruction>(dcall)->setName(name);
           }
 
-          if (mode == DerivativeMode::Forward &&
+          if (Mode == DerivativeMode::Forward &&
               is_value_needed_in_reverse<Primal>(TR, gutils, orig,
-                                         /*topLevel*/ mode ==
+                                         /*topLevel*/ Mode ==
                                              DerivativeMode::Both)) {
             gutils->cacheForReverse(BuilderZ, dcall, getIndex(orig, CacheType::Self));
           }
@@ -2152,7 +2156,7 @@ public:
 
         if (subretused) {
           if (is_value_needed_in_reverse<Primal>(TR, gutils, orig,
-                                         mode == DerivativeMode::Both)) {
+                                         Mode == DerivativeMode::Both)) {
             cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                               orig->getName() + "_tmpcacheB");
             cachereplace = gutils->cacheForReverse(BuilderZ, cachereplace,
@@ -2178,11 +2182,11 @@ public:
         bool subcheck = (subretType == DIFFE_TYPE::DUP_ARG ||
                          subretType == DIFFE_TYPE::DUP_NONEED);
 
-        //! We only need the shadow pointer for non-forward mode if it is used
+        //! We only need the shadow pointer for non-forward Mode if it is used
         //! in a non return setting
         bool hasNonReturnUse = false;
         for (auto use : orig->users()) {
-          if (mode == DerivativeMode::Forward ||
+          if (Mode == DerivativeMode::Forward ||
               !isa<ReturnInst>(
                   use)) { // || returnuses.find(cast<Instruction>(use)) ==
                           // returnuses.end()) {
@@ -2193,7 +2197,7 @@ public:
         if (subcheck && hasNonReturnUse) {
 
           Value *newip = nullptr;
-          if (mode == DerivativeMode::Both || mode == DerivativeMode::Forward) {
+          if (Mode == DerivativeMode::Both || Mode == DerivativeMode::Forward) {
             newip = (differetIdx.getValue() < 0)
                         ? augmentcall
                         : BuilderZ.CreateExtractValue(augmentcall,
@@ -2217,7 +2221,7 @@ public:
       }
 
       if (fnandtapetype && fnandtapetype->tapeType &&
-          mode != DerivativeMode::Forward) {
+          Mode != DerivativeMode::Forward) {
         auto tapep = BuilderZ.CreatePointerCast(
             tape, PointerType::getUnqual(fnandtapetype->tapeType));
         auto truetape = BuilderZ.CreateLoad(tapep);
@@ -2235,10 +2239,10 @@ public:
         gutils->invertedPointers.erase(orig);
         gutils->erase(placeholder);
       }
-      if (/*!topLevel*/ mode != DerivativeMode::Both && subretused &&
+      if (/*!topLevel*/ Mode != DerivativeMode::Both && subretused &&
           !orig->doesNotAccessMemory()) {
         if (is_value_needed_in_reverse<Primal>(TR, gutils, orig,
-                                       mode == DerivativeMode::Both)) {
+                                       Mode == DerivativeMode::Both)) {
           assert(!replaceFunction);
           cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                             orig->getName() + "_cachereplace2");
@@ -2258,7 +2262,7 @@ public:
     }
 
     // Note here down only contains the reverse bits
-    if (mode == DerivativeMode::Forward) {
+    if (Mode == DerivativeMode::Forward) {
       return;
     }
 
@@ -2413,13 +2417,13 @@ public:
       ValueToValueMapTy mapp;
       if (subretused) {
         retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
-
-        if (gutils->scopeMap.find(op) != gutils->scopeMap.end()) {
-          AllocaInst *cache = gutils->scopeMap[op].first;
+        auto found = gutils->scopeMap.find(op);
+        if (found!= gutils->scopeMap.end()) {
+          AllocaInst *cache = found->second.first;
           for (auto st : gutils->scopeStores[cache])
             cast<StoreInst>(st)->eraseFromParent();
           gutils->scopeStores.clear();
-          gutils->storeInstructionInCache(gutils->scopeMap[op].second, retval,
+          gutils->storeInstructionInCache(found->second.second, retval,
                                           cache);
         }
         op->replaceAllUsesWith(retval);

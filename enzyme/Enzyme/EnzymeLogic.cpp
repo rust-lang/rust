@@ -1180,7 +1180,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     }
   }
 
-  DerivativeMaker<AugmentedReturn *> maker(
+  AdjointGenerator<AugmentedReturn *> maker(
       DerivativeMode::Forward, gutils, constant_args, TR, getIndex,
       uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second,
       nullptr, unnecessaryValues, unnecessaryInstructions,
@@ -2213,7 +2213,7 @@ Function *CreatePrimalAndGradient(
     }
   }
 
-  DerivativeMaker<const AugmentedReturn *> maker(
+  AdjointGenerator<const AugmentedReturn *> maker(
       topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils,
       constant_args, TR, getIndex, uncacheable_args_map, /*returnuses*/ nullptr,
       augmenteddata, &replacedReturns, unnecessaryValues,

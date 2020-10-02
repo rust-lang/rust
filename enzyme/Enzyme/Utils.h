@@ -435,6 +435,14 @@ insert_or_assign2(std::map<K, V> &map, K key, V val) {
   return map.emplace(key, val).first;
 }
 
+template<typename K, typename V>
+static inline V* findInMap(std::map<K, V> &map, K key) {
+  auto found = map.find(key);
+  if (found == map.end()) return nullptr;
+  V* val = &found->second;
+  return val;
+}
+
 #include "llvm/IR/CFG.h"
 #include <deque>
 #include <functional>

@@ -12,7 +12,6 @@ list(APPEND ENZYME_SRC  TypeAnalysis/TypeTree.cpp TypeAnalysis/TypeAnalysis.cpp 
 
 message("found enzyme sources " ${ENZYME_SRC})
 
-
 if (${LLVM_VERSION_MAJOR} LESS 8)
     add_llvm_loadable_module( LLVMEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC}

@@ -44,12 +44,704 @@
 
 #include <algorithm>
 
-cl::opt<bool>
-    efficientBoolCache("enzyme_smallbool", cl::init(false), cl::Hidden,
-                       cl::desc("Place 8 bools together in a single byte"));
+Value *
+GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
+        const ValueToValueMapTy &available, UnwrapMode mode) {
+  assert(val);
+  assert(val->getName() != "<badref>");
+  assert(val->getType());
 
-//! Given an edge from BB to branchingBlock get the corresponding block to
-//! branch to in the reverse pass
+  // llvm::errs() << " attempting unwrap of: " << *val << "\n";
+
+  for (auto pair : available) {
+    assert(pair.first);
+    assert(pair.second);
+    assert(pair.first->getType());
+    assert(pair.second->getType());
+    assert(pair.first->getType() == pair.second->getType());
+  }
+
+  if (isa<LoadInst>(val) &&
+      cast<LoadInst>(val)->getMetadata("enzyme_mustcache")) {
+    return val;
+  }
+
+  // assert(!val->getName().startswith("$tapeload"));
+
+  auto cidx = std::make_pair(val, BuilderM.GetInsertBlock());
+  if (unwrap_cache.find(cidx) != unwrap_cache.end()) {
+    if (unwrap_cache[cidx]->getType() != val->getType()) {
+      llvm::errs() << "val: " << *val << "\n";
+      llvm::errs() << "unwrap_cache[cidx]: " << *unwrap_cache[cidx] << "\n";
+    }
+    assert(unwrap_cache[cidx]->getType() == val->getType());
+    return unwrap_cache[cidx];
+  }
+
+  if (available.count(val)) {
+    auto avail = available.lookup(val);
+    assert(avail->getType());
+    if (avail->getType() != val->getType()) {
+      llvm::errs() << "val: " << *val << "\n";
+      llvm::errs() << "available[val]: " << *available.lookup(val) << "\n";
+    }
+    assert(available.lookup(val)->getType() == val->getType());
+    return available.lookup(val);
+  }
+
+  if (auto inst = dyn_cast<Instruction>(val)) {
+    // if (inst->getParent() == &newFunc->getEntryBlock()) {
+    //  return inst;
+    //}
+    if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
+      if (BuilderM.GetInsertBlock()->size() &&
+          BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
+        if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
+          // llvm::errs() << "allowed " << *inst << "from domination\n";
+          assert(inst->getType() == val->getType());
+          return inst;
+        }
+      } else {
+        if (DT.dominates(inst, BuilderM.GetInsertBlock())) {
+          // llvm::errs() << "allowed " << *inst << "from block domination\n";
+          assert(inst->getType() == val->getType());
+          return inst;
+        }
+      }
+    }
+  }
+
+  // llvm::errs() << "uwval: " << *val << "\n";
+  auto getOp = [&](Value *v) -> Value * {
+    if (mode == UnwrapMode::LegalFullUnwrap ||
+        mode == UnwrapMode::AttemptFullUnwrap ||
+        mode == UnwrapMode::AttemptFullUnwrapWithLookup) {
+      return unwrapM(v, BuilderM, available, mode);
+    } else {
+      assert(mode == UnwrapMode::AttemptSingleUnwrap);
+      return lookupM(v, BuilderM, available);
+    }
+  };
+
+  if (isa<Argument>(val) || isa<Constant>(val)) {
+    unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
+    return val;
+  } else if (isa<AllocaInst>(val)) {
+    unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
+    return val;
+  } else if (auto op = dyn_cast<CastInst>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(),
+                                        op->getName() + "_unwrap");
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    unwrap_cache[cidx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
+    auto op0 = getOp(op->getAggregateOperand());
+    if (op0 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(),
+                                                op->getName() + "_unwrap");
+    unwrap_cache[cidx] = toreturn;
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<BinaryOperator>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto op1 = getOp(op->getOperand(1));
+    if (op1 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1,
+                                          op->getName() + "_unwrap");
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    unwrap_cache[cidx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<ICmpInst>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto op1 = getOp(op->getOperand(1));
+    if (op1 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1,
+                                        op->getName() + "_unwrap");
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    unwrap_cache[cidx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<FCmpInst>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto op1 = getOp(op->getOperand(1));
+    if (op1 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1,
+                                        op->getName() + "_unwrap");
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    unwrap_cache[cidx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<SelectInst>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto op1 = getOp(op->getOperand(1));
+    if (op1 == nullptr)
+      goto endCheck;
+    auto op2 = getOp(op->getOperand(2));
+    if (op2 == nullptr)
+      goto endCheck;
+    auto toreturn =
+        BuilderM.CreateSelect(op0, op1, op2, op->getName() + "_unwrap");
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    unwrap_cache[cidx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
+    auto ptr = getOp(inst->getPointerOperand());
+    if (ptr == nullptr)
+      goto endCheck;
+    SmallVector<Value *, 4> ind;
+    // llvm::errs() << "inst: " << *inst << "\n";
+    for (unsigned i = 0; i < inst->getNumIndices(); ++i) {
+      Value *a = inst->getOperand(1 + i);
+      assert(a->getName() != "<badref>");
+      auto op = getOp(a);
+      if (op == nullptr)
+        goto endCheck;
+      ind.push_back(op);
+    }
+    auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
+    if (isa<GetElementPtrInst>(toreturn))
+      cast<GetElementPtrInst>(toreturn)->setIsInBounds(inst->isInBounds());
+    else {
+      // llvm::errs() << "gep tr: " << *toreturn << " inst: " << *inst << "
+      // ptr: " << *ptr << "\n"; llvm::errs() << "safe: " << *SAFE(inst,
+      // getPointerOperand()) << "\n"; assert(0 && "illegal");
+    }
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(inst);
+    unwrap_cache[cidx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto load = dyn_cast<LoadInst>(val)) {
+    if (load->getMetadata("enzyme_noneedunwrap"))
+      return load;
+
+    bool legalMove = mode == UnwrapMode::LegalFullUnwrap;
+    if (mode != UnwrapMode::LegalFullUnwrap) {
+      // TODO actually consider whether this is legal to move to the new
+      // location, rather than recomputable anywhere
+      legalMove = legalRecompute(load, available);
+    }
+    if (!legalMove)
+      return nullptr;
+
+    Value *idx = getOp(load->getOperand(0));
+    if (idx == nullptr)
+      goto endCheck;
+
+    if (idx->getType() != load->getOperand(0)->getType()) {
+      llvm::errs() << "load: " << *load << "\n";
+      llvm::errs() << "load->getOperand(0): " << *load->getOperand(0) << "\n";
+      llvm::errs() << "idx: " << *idx << "\n";
+    }
+    assert(idx->getType() == load->getOperand(0)->getType());
+    auto toreturn = BuilderM.CreateLoad(idx, load->getName() + "_unwrap");
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(load);
+#if LLVM_VERSION_MAJOR >= 10
+    toreturn->setAlignment(load->getAlign());
+#else
+    toreturn->setAlignment(load->getAlignment());
+#endif
+    toreturn->setVolatile(load->isVolatile());
+    toreturn->setOrdering(load->getOrdering());
+    toreturn->setSyncScopeID(load->getSyncScopeID());
+    toreturn->setMetadata(LLVMContext::MD_tbaa,
+                          load->getMetadata(LLVMContext::MD_tbaa));
+    toreturn->setMetadata("enzyme_unwrapped",
+                          MDNode::get(toreturn->getContext(), {}));
+    // toreturn->setMetadata(LLVMContext::MD_invariant,
+    // load->getMetadata(LLVMContext::MD_invariant));
+    toreturn->setMetadata(LLVMContext::MD_invariant_group,
+                          load->getMetadata(LLVMContext::MD_invariant_group));
+    // TODO adding to cache only legal if no alias of any future writes
+    unwrap_cache[cidx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<CallInst>(val)) {
+
+    bool legalMove = mode == UnwrapMode::LegalFullUnwrap;
+    if (mode != UnwrapMode::LegalFullUnwrap) {
+      // TODO actually consider whether this is legal to move to the new
+      // location, rather than recomputable anywhere
+      legalMove = legalRecompute(op, available);
+    }
+    if (!legalMove)
+      return nullptr;
+
+    std::vector<Value *> args;
+    for (unsigned i = 0; i < op->getNumArgOperands(); ++i) {
+      args.emplace_back(getOp(op->getArgOperand(i)));
+      if (args[i] == nullptr)
+        return nullptr;
+    }
+
+    #if LLVM_VERSION_MAJOR >= 11
+    Value *fn = getOp(op->getCalledOperand());
+    #else
+    Value *fn = getOp(op->getCalledValue());
+    #endif
+    if (fn == nullptr)
+      return nullptr;
+
+    auto toreturn = cast<CallInst>(BuilderM.CreateCall(op->getFunctionType(), fn, args));
+    toreturn->copyIRFlags(op);
+    toreturn->setAttributes(op->getAttributes());
+    toreturn->setCallingConv(op->getCallingConv());
+    toreturn->setTailCallKind(op->getTailCallKind());
+    toreturn->setDebugLoc(op->getDebugLoc());
+    return toreturn;
+  } else if (auto phi = dyn_cast<PHINode>(val)) {
+    if (phi->getNumIncomingValues() == 1) {
+      assert(phi->getIncomingValue(0) != phi);
+      auto toreturn = getOp(phi->getIncomingValue(0));
+      if (toreturn == nullptr)
+        goto endCheck;
+      assert(val->getType() == toreturn->getType());
+      if (auto newi = dyn_cast<Instruction>(toreturn))
+        newi->copyIRFlags(op);
+      return toreturn;
+    }
+  }
+
+endCheck:
+  assert(val);
+  if (mode == UnwrapMode::LegalFullUnwrap ||
+      mode == UnwrapMode::AttemptFullUnwrapWithLookup) {
+    assert(val->getName() != "<badref>");
+    auto toreturn = lookupM(val, BuilderM);
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  }
+
+  // llvm::errs() << "cannot unwrap following " << *val << "\n";
+
+  if (auto inst = dyn_cast<Instruction>(val)) {
+    // LoopContext lc;
+    // if (BuilderM.GetInsertBlock() != inversionAllocs && !(
+    // (reverseBlocks.find(BuilderM.GetInsertBlock()) != reverseBlocks.end())
+    // && /*inLoop*/getContext(inst->getParent(), lc)) ) {
+    if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
+      if (BuilderM.GetInsertBlock()->size() &&
+          BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
+        if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
+          // llvm::errs() << "allowed " << *inst << "from domination\n";
+          assert(inst->getType() == val->getType());
+          return inst;
+        }
+      } else {
+        if (DT.dominates(inst, BuilderM.GetInsertBlock())) {
+          // llvm::errs() << "allowed " << *inst << "from block domination\n";
+          assert(inst->getType() == val->getType());
+          return inst;
+        }
+      }
+    }
+  }
+  return nullptr;
+}
+
+Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx) {
+    assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
+
+    if (tape) {
+      if (idx >= 0 && !tape->getType()->isStructTy()) {
+        llvm::errs() << "cacheForReverse incorrect tape type: " << *tape
+                     << " idx: " << idx << "\n";
+      }
+      assert(idx < 0 || tape->getType()->isStructTy());
+      if (idx >= 0 && (unsigned)idx >=
+                          cast<StructType>(tape->getType())->getNumElements()) {
+        llvm::errs() << "oldFunc: " << *oldFunc << "\n";
+        llvm::errs() << "newFunc: " << *newFunc << "\n";
+        if (malloc)
+          llvm::errs() << "malloc: " << *malloc << "\n";
+        llvm::errs() << "tape: " << *tape << "\n";
+        llvm::errs() << "idx: " << idx << "\n";
+      }
+      assert(idx < 0 ||
+             (unsigned)idx <
+                 cast<StructType>(tape->getType())->getNumElements());
+      Value *ret = (idx < 0) ? tape
+                             : cast<Instruction>(BuilderQ.CreateExtractValue(
+                                   tape, {(unsigned)idx}));
+
+      if (ret->getType()->isEmptyTy()) {
+        if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
+          if (inst->getType() != ret->getType()) {
+            llvm::errs() << "oldFunc: " << *oldFunc << "\n";
+            llvm::errs() << "newFunc: " << *newFunc << "\n";
+            llvm::errs() << "inst==malloc: " << *inst << "\n";
+            llvm::errs() << "ret: " << *ret << "\n";
+          }
+          assert(inst->getType() == ret->getType());
+          inst->replaceAllUsesWith(UndefValue::get(ret->getType()));
+          erase(inst);
+        }
+        Type *retType = ret->getType();
+        if (auto ri = dyn_cast<Instruction>(ret))
+          erase(ri);
+        return UndefValue::get(retType);
+      }
+
+      LimitContext ctx(BuilderQ.GetInsertBlock());
+      if (auto inst = dyn_cast<Instruction>(malloc))
+        ctx = LimitContext(inst->getParent());
+      if (auto found = findInMap(scopeMap, malloc)) {
+        ctx = found->second;
+      }
+
+      bool inLoop;
+      if (ctx.Experimental) {
+        inLoop = true;
+        ctx.Experimental = false;
+      } else {
+        LoopContext lc;
+        inLoop = getContext(ctx.Block, lc);
+      }
+
+      if (!inLoop) {
+        if (malloc)
+          ret->setName(malloc->getName() + "_fromtape");
+      } else {
+        if (auto ri = dyn_cast<Instruction>(ret))
+          erase(ri);
+        IRBuilder<> entryBuilder(inversionAllocs);
+        entryBuilder.setFastMathFlags(getFast());
+        ret = (idx < 0) ? tape
+                        : cast<Instruction>(entryBuilder.CreateExtractValue(
+                              tape, {(unsigned)idx}));
+
+        Type *innerType = ret->getType();
+        for (size_t i=0, limit=getSubLimits(BuilderQ.GetInsertBlock()).size(); i<limit; ++i) {
+          if (!isa<PointerType>(innerType)) {
+            llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
+                         << "\n";
+            llvm::errs() << "bq insertblock: " << *BuilderQ.GetInsertBlock()
+                         << "\n";
+            llvm::errs() << "ret: " << *ret << " type: " << *ret->getType()
+                         << "\n";
+            llvm::errs() << "innerType: " << *innerType << "\n";
+            if (malloc)
+              llvm::errs() << " malloc: " << *malloc << "\n";
+          }
+          assert(isa<PointerType>(innerType));
+          innerType = cast<PointerType>(innerType)->getElementType();
+        }
+
+        assert(malloc);
+        if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
+            cast<IntegerType>(malloc->getType())->getBitWidth() == 1 &&
+            innerType != ret->getType()) {
+          assert(innerType == Type::getInt8Ty(malloc->getContext()));
+        } else {
+          if (innerType != malloc->getType()) {
+            llvm::errs() << *cast<Instruction>(malloc)->getParent()->getParent()
+                         << "\n";
+            llvm::errs() << "innerType: " << *innerType << "\n";
+            llvm::errs() << "malloc->getType(): " << *malloc->getType() << "\n";
+            llvm::errs() << "ret: " << *ret << "\n";
+            llvm::errs() << "malloc: " << *malloc << "\n";
+          }
+        }
+
+        AllocaInst *cache =
+            createCacheForScope(BuilderQ.GetInsertBlock(), innerType,
+                                "mdyncache_fromtape", true, false);
+        assert(malloc);
+        bool isi1 = malloc->getType()->isIntegerTy() &&
+                    cast<IntegerType>(malloc->getType())->getBitWidth() == 1;
+        entryBuilder.CreateStore(ret, cache);
+
+        auto v = lookupValueFromCache(/*forwardPass*/true, BuilderQ, BuilderQ.GetInsertBlock(),
+                                      cache, isi1);
+        if (malloc) {
+          assert(v->getType() == malloc->getType());
+        }
+        insert_or_assign(scopeMap, v, std::make_pair(cache, ctx));
+        ret = cast<Instruction>(v);
+      }
+
+      if (malloc && !isa<UndefValue>(malloc)) {
+        if (malloc->getType() != ret->getType()) {
+          llvm::errs() << *oldFunc << "\n";
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *malloc << "\n";
+          llvm::errs() << *ret << "\n";
+        }
+        assert(malloc->getType() == ret->getType());
+
+        if (auto orig = isOriginal(malloc))
+          originalToNewFn[orig] = ret;
+
+
+        if (auto found = findInMap(scopeMap, malloc)) {
+          // There already exists an alloaction for this, we should fully remove
+          // it
+          if (!inLoop) {
+
+            // Remove stores into
+            auto stores = scopeStores[found->first];
+            scopeStores.erase(found->first);
+            for (int i = stores.size() - 1; i >= 0; i--) {
+              if (auto inst = dyn_cast<Instruction>(stores[i])) {
+                erase(inst);
+              }
+            }
+
+            std::vector<User *> users;
+            for (auto u : found->first->users()) {
+              users.push_back(u);
+            }
+            for (auto u : users) {
+              if (auto li = dyn_cast<LoadInst>(u)) {
+                IRBuilder<> lb(li);
+                ValueToValueMapTy empty;
+                li->replaceAllUsesWith(
+                    unwrapM(ret, lb, empty, UnwrapMode::LegalFullUnwrap));
+                erase(li);
+              } else {
+                llvm::errs() << "newFunc: " << *newFunc << "\n";
+                llvm::errs() << "malloc: " << *malloc << "\n";
+                llvm::errs()
+                    << "scopeMap[malloc]: " << *found->first << "\n";
+                llvm::errs() << "u: " << *u << "\n";
+                assert(0 && "illegal use for out of loop scopeMap");
+              }
+            }
+
+            {
+              AllocaInst *preerase = found->first;
+              scopeMap.erase(malloc);
+              erase(preerase);
+            }
+          } else {
+            // Remove stores into
+            auto stores = scopeStores[found->first];
+            scopeStores.erase(found->first);
+            for (int i = stores.size() - 1; i >= 0; i--) {
+              if (auto inst = dyn_cast<Instruction>(stores[i])) {
+                erase(inst);
+              }
+            }
+
+            // Remove allocations for scopealloc since it is already allocated
+            // by the augmented forward pass
+            auto allocs = scopeAllocs[found->first];
+            scopeAllocs.erase(found->first);
+            for (auto allocinst : allocs) {
+              CastInst *cast = nullptr;
+              StoreInst *store = nullptr;
+              for (auto use : allocinst->users()) {
+                if (auto ci = dyn_cast<CastInst>(use)) {
+                  assert(cast == nullptr);
+                  cast = ci;
+                }
+                if (auto si = dyn_cast<StoreInst>(use)) {
+                  if (si->getValueOperand() == allocinst) {
+                    assert(store == nullptr);
+                    store = si;
+                  }
+                }
+              }
+              if (cast) {
+                assert(store == nullptr);
+                for (auto use : cast->users()) {
+                  if (auto si = dyn_cast<StoreInst>(use)) {
+                    if (si->getValueOperand() == cast) {
+                      assert(store == nullptr);
+                      store = si;
+                    }
+                  }
+                }
+              }
+              /*
+              if (!store) {
+                  allocinst->getParent()->getParent()->dump();
+                  allocinst->dump();
+              }
+              assert(store);
+              erase(store);
+              */
+
+              Instruction *storedinto =
+                  cast ? (Instruction *)cast : (Instruction *)allocinst;
+              for (auto use : storedinto->users()) {
+                // llvm::errs() << " found use of " << *storedinto << " of " <<
+                // use << "\n";
+                if (auto si = dyn_cast<StoreInst>(use))
+                  erase(si);
+              }
+
+              if (cast)
+                erase(cast);
+              // llvm::errs() << "considering inner loop for malloc: " <<
+              // *malloc << " allocinst " << *allocinst << "\n";
+              erase(allocinst);
+            }
+
+            // Remove frees
+            auto tofree = scopeFrees[found->first];
+            scopeFrees.erase(found->first);
+            for (auto freeinst : tofree) {
+              std::deque<Value *> ops = {freeinst->getArgOperand(0)};
+              erase(freeinst);
+
+              while (ops.size()) {
+                auto z = dyn_cast<Instruction>(ops[0]);
+                ops.pop_front();
+                if (z && z->getNumUses() == 0) {
+                  for (unsigned i = 0; i < z->getNumOperands(); ++i) {
+                    ops.push_back(z->getOperand(i));
+                  }
+                  erase(z);
+                }
+              }
+            }
+
+            // uses of the alloc
+            std::vector<User *> users;
+            for (auto u : found->first->users()) {
+              users.push_back(u);
+            }
+            for (auto u : users) {
+              if (auto li = dyn_cast<LoadInst>(u)) {
+                IRBuilder<> lb(li);
+                // llvm::errs() << "fixing li: " << *li << "\n";
+                auto replacewith =
+                    (idx < 0) ? tape
+                              : lb.CreateExtractValue(tape, {(unsigned)idx});
+                // llvm::errs() << "fixing with rw: " << *replacewith << "\n";
+                li->replaceAllUsesWith(replacewith);
+                erase(li);
+              } else {
+                llvm::errs() << "newFunc: " << *newFunc << "\n";
+                llvm::errs() << "malloc: " << *malloc << "\n";
+                llvm::errs()
+                    << "scopeMap[malloc]: " << *found->first << "\n";
+                llvm::errs() << "u: " << *u << "\n";
+                assert(0 && "illegal use for out of loop scopeMap");
+              }
+            }
+
+            // cast<Instruction>(scopeMap[malloc])->getParent()->getParent()->dump();
+
+            // llvm::errs() << "did erase for malloc: " << *malloc << " " <<
+            // *scopeMap[malloc] << "\n";
+
+            AllocaInst *preerase = found->first;
+            scopeMap.erase(malloc);
+            erase(preerase);
+          }
+        }
+        // llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
+        cast<Instruction>(malloc)->replaceAllUsesWith(ret);
+        std::string n = malloc->getName().str();
+        erase(cast<Instruction>(malloc));
+        ret->setName(n);
+      }
+      return ret;
+    } else {
+      assert(malloc);
+      // assert(!isa<PHINode>(malloc));
+
+      assert(idx >= 0 && (unsigned)idx == addedTapeVals.size());
+
+      if (isa<UndefValue>(malloc)) {
+        addedTapeVals.push_back(malloc);
+        return malloc;
+      }
+
+      LimitContext ctx(BuilderQ.GetInsertBlock());
+      if (auto inst = dyn_cast<Instruction>(malloc))
+        ctx = LimitContext(inst->getParent());
+      if (auto found = findInMap(scopeMap, malloc)) {
+        ctx = found->second;
+      }
+
+      bool inLoop;
+
+      if (ctx.Experimental) {
+        inLoop = true;
+        ctx.Experimental = false;
+      } else {
+        LoopContext lc;
+        inLoop = getContext(ctx.Block, lc);
+      }
+
+      if (!inLoop) {
+        addedTapeVals.push_back(malloc);
+        return malloc;
+      }
+
+      ensureLookupCached(cast<Instruction>(malloc),
+                         /*shouldFree=*/reverseBlocks.size() > 0);
+      auto found2 = scopeMap.find(malloc);
+      assert(found2 != scopeMap.end());
+      assert(found2->second.first);
+
+      Instruction *toadd = scopeAllocs[found2->second.first][0];
+      for (auto u : toadd->users()) {
+        if (auto ci = dyn_cast<CastInst>(u)) {
+          toadd = ci;
+        }
+      }
+
+      // llvm::errs() << " malloc: " << *malloc << "\n";
+      // llvm::errs() << " toadd: " << *toadd << "\n";
+      Type *innerType = toadd->getType();
+      for (size_t i=0, limit=getSubLimits(LimitContext(BuilderQ.GetInsertBlock())).size(); i<limit; ++i) {
+        innerType = cast<PointerType>(innerType)->getElementType();
+      }
+
+      if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
+          toadd->getType() != innerType &&
+          cast<IntegerType>(malloc->getType())->getBitWidth() == 1) {
+        assert(innerType == Type::getInt8Ty(toadd->getContext()));
+      } else {
+        if (innerType != malloc->getType()) {
+          llvm::errs() << "oldFunc:" << *oldFunc << "\n";
+          llvm::errs() << "newFunc: " << *newFunc << "\n";
+          llvm::errs() << " toadd: " << *toadd << "\n";
+          llvm::errs() << "innerType: " << *innerType << "\n";
+          llvm::errs() << "malloc: " << *malloc << "\n";
+        }
+        assert(innerType == malloc->getType());
+      }
+      addedTapeVals.push_back(toadd);
+      return malloc;
+    }
+    llvm::errs() << "Fell through on cacheForReverse. This should never happen.\n";
+    assert(false);
+  }
+  
+/// Given an edge from BB to branchingBlock get the corresponding block to
+/// branch to in the reverse pass
 BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                                                   BasicBlock *branchingBlock) {
   assert(BB);
@@ -108,7 +800,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
 
       Value *lim = nullptr;
       if (lc.dynamic) {
-        lim = lookupValueFromCache(tbuild, lc.preheader,
+        lim = lookupValueFromCache(/*forwardPass*/false, tbuild, lc.preheader,
                                    cast<AllocaInst>(lc.limit), /*isi1*/ false);
       } else {
         lim = lookupM(lc.limit, tbuild);
@@ -787,850 +1479,6 @@ end:;
   report_fatal_error("cannot find deal with ptr that isnt arg");
 }
 
-std::pair<PHINode *, Instruction *> insertNewCanonicalIV(Loop *L, Type *Ty) {
-  assert(L);
-  assert(Ty);
-
-  BasicBlock *Header = L->getHeader();
-  assert(Header);
-  IRBuilder<> B(&Header->front());
-  PHINode *CanonicalIV = B.CreatePHI(Ty, 1, "iv");
-
-  B.SetInsertPoint(Header->getFirstNonPHIOrDbg());
-  Instruction *inc = cast<Instruction>(
-      B.CreateAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1),
-                  "iv.next", /*NUW*/ true, /*NSW*/ true));
-
-  for (BasicBlock *Pred : predecessors(Header)) {
-    assert(Pred);
-    if (L->contains(Pred)) {
-      CanonicalIV->addIncoming(inc, Pred);
-    } else {
-      CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0),
-                               Pred);
-    }
-  }
-  return std::pair<PHINode *, Instruction *>(CanonicalIV, inc);
-}
-
-void removeRedundantIVs(const Loop *L, BasicBlock *Header,
-                        BasicBlock *Preheader, PHINode *CanonicalIV,
-                        MyScalarEvolution &SE, GradientUtils &gutils,
-                        Instruction *increment,
-                        const SmallVectorImpl<BasicBlock *> &&latches) {
-  assert(Header);
-  assert(CanonicalIV);
-
-  SmallVector<Instruction *, 8> IVsToRemove;
-
-  // This scope is necessary to ensure scevexpander cleans up before we erase
-  // things
-  {
-    fake::SCEVExpander Exp(
-        SE, Header->getParent()->getParent()->getDataLayout(), "enzyme");
-
-    for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
-      PHINode *PN = cast<PHINode>(II);
-      if (PN == CanonicalIV)
-        continue;
-      if (PN->getType()->isPointerTy())
-        continue;
-      if (!SE.isSCEVable(PN->getType()))
-        continue;
-      const SCEV *S = SE.getSCEV(PN);
-      if (SE.getCouldNotCompute() == S)
-        continue;
-      Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
-      if (NewIV == PN) {
-        continue;
-      }
-      if (auto BO = dyn_cast<BinaryOperator>(NewIV)) {
-        if (BO->getOpcode() == BinaryOperator::Add ||
-            BO->getOpcode() == BinaryOperator::Mul) {
-          BO->setHasNoSignedWrap(true);
-          BO->setHasNoUnsignedWrap(true);
-        }
-        for (int i = 0; i < 2; ++i) {
-          if (auto BO2 = dyn_cast<BinaryOperator>(BO->getOperand(i))) {
-            if (BO2->getOpcode() == BinaryOperator::Add ||
-                BO2->getOpcode() == BinaryOperator::Mul) {
-              BO2->setHasNoSignedWrap(true);
-              BO2->setHasNoUnsignedWrap(true);
-            }
-          }
-        }
-      }
-
-      PN->replaceAllUsesWith(NewIV);
-      IVsToRemove.push_back(PN);
-    }
-  }
-
-  for (Instruction *PN : IVsToRemove) {
-    gutils.erase(PN);
-  }
-
-  if (latches.size() == 1 && isa<BranchInst>(latches[0]->getTerminator()) &&
-      cast<BranchInst>(latches[0]->getTerminator())->isConditional())
-    for (auto use : CanonicalIV->users()) {
-      if (auto cmp = dyn_cast<ICmpInst>(use)) {
-        if (cast<BranchInst>(latches[0]->getTerminator())->getCondition() !=
-            cmp)
-          continue;
-        // Force i to be on LHS
-        if (cmp->getOperand(0) != CanonicalIV) {
-          // Below also swaps predicate correctly
-          cmp->swapOperands();
-        }
-        assert(cmp->getOperand(0) == CanonicalIV);
-
-        auto scv = SE.getSCEVAtScope(cmp->getOperand(1), L);
-        if (cmp->isUnsigned() ||
-            (scv != SE.getCouldNotCompute() && SE.isKnownNonNegative(scv))) {
-
-          // valid replacements (since unsigned comparison and i starts at 0
-          // counting up)
-
-          // * i < n => i != n, valid since first time i >= n occurs at i == n
-          if (cmp->getPredicate() == ICmpInst::ICMP_ULT ||
-              cmp->getPredicate() == ICmpInst::ICMP_SLT) {
-            cmp->setPredicate(ICmpInst::ICMP_NE);
-            goto cend;
-          }
-
-          // * i <= n => i != n+1, valid since first time i > n occurs at i ==
-          // n+1 [ which we assert is in bitrange as not infinite loop ]
-          if (cmp->getPredicate() == ICmpInst::ICMP_ULE ||
-              cmp->getPredicate() == ICmpInst::ICMP_SLE) {
-            IRBuilder<> builder(Preheader->getTerminator());
-            if (auto inst = dyn_cast<Instruction>(cmp->getOperand(1))) {
-              builder.SetInsertPoint(inst->getNextNode());
-            }
-            cmp->setOperand(
-                1,
-                builder.CreateNUWAdd(
-                    cmp->getOperand(1),
-                    ConstantInt::get(cmp->getOperand(1)->getType(), 1, false)));
-            cmp->setPredicate(ICmpInst::ICMP_NE);
-            goto cend;
-          }
-
-          // * i >= n => i == n, valid since first time i >= n occurs at i == n
-          if (cmp->getPredicate() == ICmpInst::ICMP_UGE ||
-              cmp->getPredicate() == ICmpInst::ICMP_SGE) {
-            cmp->setPredicate(ICmpInst::ICMP_EQ);
-            goto cend;
-          }
-
-          // * i > n => i == n+1, valid since first time i > n occurs at i ==
-          // n+1 [ which we assert is in bitrange as not infinite loop ]
-          if (cmp->getPredicate() == ICmpInst::ICMP_UGT ||
-              cmp->getPredicate() == ICmpInst::ICMP_SGT) {
-            IRBuilder<> builder(Preheader->getTerminator());
-            if (auto inst = dyn_cast<Instruction>(cmp->getOperand(1))) {
-              builder.SetInsertPoint(inst->getNextNode());
-            }
-            cmp->setOperand(
-                1,
-                builder.CreateNUWAdd(
-                    cmp->getOperand(1),
-                    ConstantInt::get(cmp->getOperand(1)->getType(), 1, false)));
-            cmp->setPredicate(ICmpInst::ICMP_EQ);
-            goto cend;
-          }
-        }
-      cend:;
-        if (cmp->getPredicate() == ICmpInst::ICMP_NE) {
-        }
-      }
-    }
-
-  // Replace previous increment usage with new increment value
-  if (increment) {
-    increment->moveAfter(CanonicalIV->getParent()->getFirstNonPHI());
-    std::vector<Instruction *> toerase;
-    for (auto use : CanonicalIV->users()) {
-      auto bo = dyn_cast<BinaryOperator>(use);
-
-      if (bo == nullptr)
-        continue;
-      if (bo->getOpcode() != BinaryOperator::Add)
-        continue;
-      if (use == increment)
-        continue;
-
-      Value *toadd = nullptr;
-      if (bo->getOperand(0) == CanonicalIV) {
-        toadd = bo->getOperand(1);
-      } else {
-        assert(bo->getOperand(1) == CanonicalIV);
-        toadd = bo->getOperand(0);
-      }
-      if (auto ci = dyn_cast<ConstantInt>(toadd)) {
-        if (!ci->isOne())
-          continue;
-        bo->replaceAllUsesWith(increment);
-        toerase.push_back(bo);
-      } else {
-        continue;
-      }
-    }
-    for (auto inst : toerase) {
-      gutils.erase(inst);
-    }
-
-    if (latches.size() == 1 && isa<BranchInst>(latches[0]->getTerminator()) &&
-        cast<BranchInst>(latches[0]->getTerminator())->isConditional())
-      for (auto use : increment->users()) {
-        if (auto cmp = dyn_cast<ICmpInst>(use)) {
-          if (cast<BranchInst>(latches[0]->getTerminator())->getCondition() !=
-              cmp)
-            continue;
-
-          // Force i+1 to be on LHS
-          if (cmp->getOperand(0) != increment) {
-            // Below also swaps predicate correctly
-            cmp->swapOperands();
-          }
-          assert(cmp->getOperand(0) == increment);
-
-          auto scv = SE.getSCEVAtScope(cmp->getOperand(1), L);
-          if (cmp->isUnsigned() ||
-              (scv != SE.getCouldNotCompute() && SE.isKnownNonNegative(scv))) {
-
-            // valid replacements (since unsigned comparison and i starts at 0
-            // counting up)
-
-            // * i+1 < n => i+1 != n, valid since first time i+1 >= n occurs at
-            // i+1 == n
-            if (cmp->getPredicate() == ICmpInst::ICMP_ULT ||
-                cmp->getPredicate() == ICmpInst::ICMP_SLT) {
-              cmp->setPredicate(ICmpInst::ICMP_NE);
-              continue;
-            }
-
-            // * i+1 <= n => i != n, valid since first time i+1 > n occurs at
-            // i+1 == n+1 => i == n
-            if (cmp->getPredicate() == ICmpInst::ICMP_ULE ||
-                cmp->getPredicate() == ICmpInst::ICMP_SLE) {
-              cmp->setOperand(0, CanonicalIV);
-              cmp->setPredicate(ICmpInst::ICMP_NE);
-              continue;
-            }
-
-            // * i+1 >= n => i+1 == n, valid since first time i+1 >= n occurs at
-            // i+1 == n
-            if (cmp->getPredicate() == ICmpInst::ICMP_UGE ||
-                cmp->getPredicate() == ICmpInst::ICMP_SGE) {
-              cmp->setPredicate(ICmpInst::ICMP_EQ);
-              continue;
-            }
-
-            // * i+1 > n => i == n, valid since first time i+1 > n occurs at i+1
-            // == n+1 => i == n
-            if (cmp->getPredicate() == ICmpInst::ICMP_UGT ||
-                cmp->getPredicate() == ICmpInst::ICMP_SGT) {
-              cmp->setOperand(0, CanonicalIV);
-              cmp->setPredicate(ICmpInst::ICMP_EQ);
-              continue;
-            }
-          }
-        }
-      }
-  }
-}
-
-ScalarEvolution::ExitLimit
-MyScalarEvolution::computeExitLimitFromCond(const Loop *L, Value *ExitCond,
-                                            bool ExitIfTrue, bool ControlsExit,
-                                            bool AllowPredicates) {
-  ScalarEvolution::ExitLimitCacheTy Cache(L, ExitIfTrue, AllowPredicates);
-  return computeExitLimitFromCondCached(Cache, L, ExitCond, ExitIfTrue,
-                                        ControlsExit, AllowPredicates);
-}
-
-ScalarEvolution::ExitLimit
-MyScalarEvolution::computeExitLimit(const Loop *L, BasicBlock *ExitingBlock,
-                                    bool AllowPredicates) {
-  assert(L->contains(ExitingBlock) && "Exit count for non-loop block?");
-  // If our exiting block does not dominate the latch, then its connection with
-  // loop's exit limit may be far from trivial.
-  const BasicBlock *Latch = L->getLoopLatch();
-  if (!Latch || !DT.dominates(ExitingBlock, Latch))
-    return getCouldNotCompute();
-
-  bool IsOnlyExit = (L->getExitingBlock() != nullptr);
-  auto *Term = ExitingBlock->getTerminator();
-  if (BranchInst *BI = dyn_cast<BranchInst>(Term)) {
-    assert(BI->isConditional() && "If unconditional, it can't be in loop!");
-    bool ExitIfTrue = !L->contains(BI->getSuccessor(0));
-    assert(ExitIfTrue == L->contains(BI->getSuccessor(1)) &&
-           "It should have one successor in loop and one exit block!");
-    // Proceed to the next level to examine the exit condition expression.
-    return computeExitLimitFromCond(L, BI->getCondition(), ExitIfTrue,
-                                    /*ControlsExit=*/IsOnlyExit,
-                                    AllowPredicates);
-  }
-
-  if (SwitchInst *SI = dyn_cast<SwitchInst>(Term)) {
-    // For switch, make sure that there is a single exit from the loop.
-    BasicBlock *Exit = nullptr;
-    for (auto *SBB : successors(ExitingBlock))
-      if (!L->contains(SBB)) {
-        if (Exit) // Multiple exit successors.
-          return getCouldNotCompute();
-        Exit = SBB;
-      }
-    assert(Exit && "Exiting block must have at least one exit");
-    return computeExitLimitFromSingleExitSwitch(L, SI, Exit,
-                                                /*ControlsExit=*/IsOnlyExit);
-  }
-
-  return getCouldNotCompute();
-}
-
-ScalarEvolution::ExitLimit MyScalarEvolution::computeExitLimitFromCondCached(
-    ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, bool ExitIfTrue,
-    bool ControlsExit, bool AllowPredicates) {
-
-  if (auto MaybeEL =
-          Cache.find(L, ExitCond, ExitIfTrue, ControlsExit, AllowPredicates))
-    return *MaybeEL;
-
-  ExitLimit EL = computeExitLimitFromCondImpl(Cache, L, ExitCond, ExitIfTrue,
-                                              ControlsExit, AllowPredicates);
-  Cache.insert(L, ExitCond, ExitIfTrue, ControlsExit, AllowPredicates, EL);
-  return EL;
-}
-
-ScalarEvolution::ExitLimit MyScalarEvolution::computeExitLimitFromCondImpl(
-    ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, bool ExitIfTrue,
-    bool ControlsExit, bool AllowPredicates) {
-  // Check if the controlling expression for this loop is an And or Or.
-  if (BinaryOperator *BO = dyn_cast<BinaryOperator>(ExitCond)) {
-    if (BO->getOpcode() == Instruction::And) {
-      // Recurse on the operands of the and.
-      bool EitherMayExit = !ExitIfTrue;
-      ExitLimit EL0 = computeExitLimitFromCondCached(
-          Cache, L, BO->getOperand(0), ExitIfTrue,
-          ControlsExit && !EitherMayExit, AllowPredicates);
-      ExitLimit EL1 = computeExitLimitFromCondCached(
-          Cache, L, BO->getOperand(1), ExitIfTrue,
-          ControlsExit && !EitherMayExit, AllowPredicates);
-      const SCEV *BECount = getCouldNotCompute();
-      const SCEV *MaxBECount = getCouldNotCompute();
-      if (EitherMayExit) {
-        // Both conditions must be true for the loop to continue executing.
-        // Choose the less conservative count.
-        if (EL0.ExactNotTaken == getCouldNotCompute() ||
-            EL1.ExactNotTaken == getCouldNotCompute())
-          BECount = getCouldNotCompute();
-        else
-          BECount =
-              getUMinFromMismatchedTypes(EL0.ExactNotTaken, EL1.ExactNotTaken);
-        if (EL0.MaxNotTaken == getCouldNotCompute())
-          MaxBECount = EL1.MaxNotTaken;
-        else if (EL1.MaxNotTaken == getCouldNotCompute())
-          MaxBECount = EL0.MaxNotTaken;
-        else
-          MaxBECount =
-              getUMinFromMismatchedTypes(EL0.MaxNotTaken, EL1.MaxNotTaken);
-      } else {
-        // Both conditions must be true at the same time for the loop to exit.
-        // For now, be conservative.
-        if (EL0.MaxNotTaken == EL1.MaxNotTaken)
-          MaxBECount = EL0.MaxNotTaken;
-        if (EL0.ExactNotTaken == EL1.ExactNotTaken)
-          BECount = EL0.ExactNotTaken;
-      }
-
-      // There are cases (e.g. PR26207) where computeExitLimitFromCond is able
-      // to be more aggressive when computing BECount than when computing
-      // MaxBECount.  In these cases it is possible for EL0.ExactNotTaken and
-      // EL1.ExactNotTaken to match, but for EL0.MaxNotTaken and EL1.MaxNotTaken
-      // to not.
-      if (isa<SCEVCouldNotCompute>(MaxBECount) &&
-          !isa<SCEVCouldNotCompute>(BECount))
-        MaxBECount = getConstant(getUnsignedRangeMax(BECount));
-
-      return ExitLimit(BECount, MaxBECount, false,
-                       {&EL0.Predicates, &EL1.Predicates});
-    }
-    if (BO->getOpcode() == Instruction::Or) {
-      // Recurse on the operands of the or.
-      bool EitherMayExit = ExitIfTrue;
-      ExitLimit EL0 = computeExitLimitFromCondCached(
-          Cache, L, BO->getOperand(0), ExitIfTrue,
-          ControlsExit && !EitherMayExit, AllowPredicates);
-      ExitLimit EL1 = computeExitLimitFromCondCached(
-          Cache, L, BO->getOperand(1), ExitIfTrue,
-          ControlsExit && !EitherMayExit, AllowPredicates);
-      const SCEV *BECount = getCouldNotCompute();
-      const SCEV *MaxBECount = getCouldNotCompute();
-      if (EitherMayExit) {
-        // Both conditions must be false for the loop to continue executing.
-        // Choose the less conservative count.
-        if (EL0.ExactNotTaken == getCouldNotCompute() ||
-            EL1.ExactNotTaken == getCouldNotCompute())
-          BECount = getCouldNotCompute();
-        else
-          BECount =
-              getUMinFromMismatchedTypes(EL0.ExactNotTaken, EL1.ExactNotTaken);
-        if (EL0.MaxNotTaken == getCouldNotCompute())
-          MaxBECount = EL1.MaxNotTaken;
-        else if (EL1.MaxNotTaken == getCouldNotCompute())
-          MaxBECount = EL0.MaxNotTaken;
-        else
-          MaxBECount =
-              getUMinFromMismatchedTypes(EL0.MaxNotTaken, EL1.MaxNotTaken);
-      } else {
-        // Both conditions must be false at the same time for the loop to exit.
-        // For now, be conservative.
-        if (EL0.MaxNotTaken == EL1.MaxNotTaken)
-          MaxBECount = EL0.MaxNotTaken;
-        if (EL0.ExactNotTaken == EL1.ExactNotTaken)
-          BECount = EL0.ExactNotTaken;
-      }
-
-      return ExitLimit(BECount, MaxBECount, false,
-                       {&EL0.Predicates, &EL1.Predicates});
-    }
-  }
-
-  // With an icmp, it may be feasible to compute an exact backedge-taken count.
-  // Proceed to the next level to examine the icmp.
-  if (ICmpInst *ExitCondICmp = dyn_cast<ICmpInst>(ExitCond)) {
-    ExitLimit EL =
-        computeExitLimitFromICmp(L, ExitCondICmp, ExitIfTrue, ControlsExit);
-    if (EL.hasFullInfo() || !AllowPredicates)
-      return EL;
-
-    // Try again, but use SCEV predicates this time.
-    return computeExitLimitFromICmp(L, ExitCondICmp, ExitIfTrue, ControlsExit,
-                                    /*AllowPredicates=*/true);
-  }
-
-  // Check for a constant condition. These are normally stripped out by
-  // SimplifyCFG, but ScalarEvolution may be used by a pass which wishes to
-  // preserve the CFG and is temporarily leaving constant conditions
-  // in place.
-  if (ConstantInt *CI = dyn_cast<ConstantInt>(ExitCond)) {
-    if (ExitIfTrue == !CI->getZExtValue())
-      // The backedge is always taken.
-      return getCouldNotCompute();
-    else
-      // The backedge is never taken.
-      return getZero(CI->getType());
-  }
-
-  // If it's not an integer or pointer comparison then compute it the hard way.
-  return computeExitCountExhaustively(L, ExitCond, ExitIfTrue);
-}
-
-ScalarEvolution::ExitLimit
-MyScalarEvolution::computeExitLimitFromICmp(const Loop *L, ICmpInst *ExitCond,
-                                            bool ExitIfTrue, bool ControlsExit,
-                                            bool AllowPredicates) {
-  // If the condition was exit on true, convert the condition to exit on false
-  ICmpInst::Predicate Pred;
-  if (!ExitIfTrue)
-    Pred = ExitCond->getPredicate();
-  else
-    Pred = ExitCond->getInversePredicate();
-  const ICmpInst::Predicate OriginalPred = Pred;
-
-  // Handle common loops like: for (X = "string"; *X; ++X)
-  if (LoadInst *LI = dyn_cast<LoadInst>(ExitCond->getOperand(0)))
-    if (Constant *RHS = dyn_cast<Constant>(ExitCond->getOperand(1))) {
-      ExitLimit ItCnt = computeLoadConstantCompareExitLimit(LI, RHS, L, Pred);
-      if (ItCnt.hasAnyInfo())
-        return ItCnt;
-    }
-
-  const SCEV *LHS = getSCEV(ExitCond->getOperand(0));
-  const SCEV *RHS = getSCEV(ExitCond->getOperand(1));
-
-#define PROP_PHI(LHS)                                                          \
-  if (auto un = dyn_cast<SCEVUnknown>(LHS)) {                                  \
-    if (auto pn = dyn_cast_or_null<PHINode>(un->getValue())) {                 \
-      const SCEV *sc = nullptr;                                                \
-      bool failed = false;                                                     \
-      for (auto &a : pn->incoming_values()) {                                  \
-        auto subsc = getSCEV(a);                                               \
-        if (sc == nullptr) {                                                   \
-          sc = subsc;                                                          \
-          continue;                                                            \
-        }                                                                      \
-        if (subsc != sc) {                                                     \
-          failed = true;                                                       \
-          break;                                                               \
-        }                                                                      \
-      }                                                                        \
-      if (!failed) {                                                           \
-        LHS = sc;                                                              \
-      }                                                                        \
-    }                                                                          \
-  }
-  PROP_PHI(LHS)
-  PROP_PHI(RHS)
-
-  // Try to evaluate any dependencies out of the loop.
-  LHS = getSCEVAtScope(LHS, L);
-  RHS = getSCEVAtScope(RHS, L);
-
-  // At this point, we would like to compute how many iterations of the
-  // loop the predicate will return true for these inputs.
-  if (isLoopInvariant(LHS, L) && !isLoopInvariant(RHS, L)) {
-    // If there is a loop-invariant, force it into the RHS.
-    std::swap(LHS, RHS);
-    Pred = ICmpInst::getSwappedPredicate(Pred);
-  }
-
-  // Simplify the operands before analyzing them.
-  (void)SimplifyICmpOperands(Pred, LHS, RHS);
-
-  // If we have a comparison of a chrec against a constant, try to use value
-  // ranges to answer this query.
-  if (const SCEVConstant *RHSC = dyn_cast<SCEVConstant>(RHS))
-    if (const SCEVAddRecExpr *AddRec = dyn_cast<SCEVAddRecExpr>(LHS))
-      if (AddRec->getLoop() == L) {
-        // Form the constant range.
-        ConstantRange CompRange =
-            ConstantRange::makeExactICmpRegion(Pred, RHSC->getAPInt());
-
-        const SCEV *Ret = AddRec->getNumIterationsInRange(CompRange, *this);
-        if (!isa<SCEVCouldNotCompute>(Ret))
-          return Ret;
-      }
-
-  switch (Pred) {
-  case ICmpInst::ICMP_NE: { // while (X != Y)
-    // Convert to: while (X-Y != 0)
-    ExitLimit EL =
-        howFarToZero(getMinusSCEV(LHS, RHS), L, ControlsExit, AllowPredicates);
-    if (EL.hasAnyInfo())
-      return EL;
-    break;
-  }
-  case ICmpInst::ICMP_EQ: { // while (X == Y)
-    // Convert to: while (X-Y == 0)
-    ExitLimit EL = howFarToNonZero(getMinusSCEV(LHS, RHS), L);
-    if (EL.hasAnyInfo())
-      return EL;
-    break;
-  }
-  case ICmpInst::ICMP_SLT:
-  case ICmpInst::ICMP_ULT: { // while (X < Y)
-    bool IsSigned = Pred == ICmpInst::ICMP_SLT;
-    ExitLimit EL =
-        howManyLessThans(LHS, RHS, L, IsSigned, ControlsExit, AllowPredicates);
-    if (EL.hasAnyInfo())
-      return EL;
-    break;
-  }
-  case ICmpInst::ICMP_SGT:
-  case ICmpInst::ICMP_UGT: { // while (X > Y)
-    bool IsSigned = Pred == ICmpInst::ICMP_SGT;
-    ExitLimit EL = howManyGreaterThans(LHS, RHS, L, IsSigned, ControlsExit,
-                                       AllowPredicates);
-    if (EL.hasAnyInfo())
-      return EL;
-    break;
-  }
-  default:
-    break;
-  }
-
-  auto *ExhaustiveCount = computeExitCountExhaustively(L, ExitCond, ExitIfTrue);
-
-  if (!isa<SCEVCouldNotCompute>(ExhaustiveCount))
-    return ExhaustiveCount;
-
-  return computeShiftCompareExitLimit(ExitCond->getOperand(0),
-                                      ExitCond->getOperand(1), L, OriginalPred);
-}
-
-ScalarEvolution::ExitLimit
-MyScalarEvolution::howManyLessThans(const SCEV *LHS, const SCEV *RHS,
-                                    const Loop *L, bool IsSigned,
-                                    bool ControlsExit, bool AllowPredicates) {
-  SmallPtrSet<const SCEVPredicate *, 4> Predicates;
-
-  const SCEVAddRecExpr *IV = dyn_cast<SCEVAddRecExpr>(LHS);
-
-  if (!IV && AllowPredicates) {
-    // Try to make this an AddRec using runtime tests, in the first X
-    // iterations of this loop, where X is the SCEV expression found by the
-    // algorithm below.
-    IV = convertSCEVToAddRecWithPredicates(LHS, L, Predicates);
-  }
-
-  // Avoid weird loops
-  if (!IV || IV->getLoop() != L || !IV->isAffine())
-    return getCouldNotCompute();
-
-  bool NoWrap = ControlsExit && true; // changed this to assume no wrap for inc
-  //              IV->getNoWrapFlags(IsSigned ? SCEV::FlagNSW : SCEV::FlagNUW);
-
-  const SCEV *Stride = IV->getStepRecurrence(*this);
-
-  bool PositiveStride = isKnownPositive(Stride);
-
-  // Avoid negative or zero stride values.
-  if (!PositiveStride) {
-    // We can compute the correct backedge taken count for loops with unknown
-    // strides if we can prove that the loop is not an infinite loop with side
-    // effects. Here's the loop structure we are trying to handle -
-    //
-    // i = start
-    // do {
-    //   A[i] = i;
-    //   i += s;
-    // } while (i < end);
-    //
-    // The backedge taken count for such loops is evaluated as -
-    // (max(end, start + stride) - start - 1) /u stride
-    //
-    // The additional preconditions that we need to check to prove correctness
-    // of the above formula is as follows -
-    //
-    // a) IV is either nuw or nsw depending upon signedness (indicated by the
-    //    NoWrap flag).
-    // b) loop is single exit with no side effects. // dont need this
-    //
-    //
-    // Precondition a) implies that if the stride is negative, this is a single
-    // trip loop. The backedge taken count formula reduces to zero in this case.
-    //
-    // Precondition b) implies that the unknown stride cannot be zero otherwise
-    // we have UB.
-    //
-    // The positive stride case is the same as isKnownPositive(Stride) returning
-    // true (original behavior of the function).
-    //
-    // We want to make sure that the stride is truly unknown as there are edge
-    // cases where ScalarEvolution propagates no wrap flags to the
-    // post-increment/decrement IV even though the increment/decrement operation
-    // itself is wrapping. The computed backedge taken count may be wrong in
-    // such cases. This is prevented by checking that the stride is not known to
-    // be either positive or non-positive. For example, no wrap flags are
-    // propagated to the post-increment IV of this loop with a trip count of 2 -
-    //
-    // unsigned char i;
-    // for(i=127; i<128; i+=129)
-    //   A[i] = i;
-    //
-    if (!NoWrap) // THIS LINE CHANGED
-      return getCouldNotCompute();
-  } else if (!Stride->isOne() &&
-             doesIVOverflowOnLT(RHS, Stride, IsSigned, NoWrap))
-    // Avoid proven overflow cases: this will ensure that the backedge taken
-    // count will not generate any unsigned overflow. Relaxed no-overflow
-    // conditions exploit NoWrapFlags, allowing to optimize in presence of
-    // undefined behaviors like the case of C language.
-    return getCouldNotCompute();
-
-  ICmpInst::Predicate Cond = IsSigned ? ICmpInst::ICMP_SLT : ICmpInst::ICMP_ULT;
-  const SCEV *Start = IV->getStart();
-  const SCEV *End = RHS;
-  // When the RHS is not invariant, we do not know the end bound of the loop and
-  // cannot calculate the ExactBECount needed by ExitLimit. However, we can
-  // calculate the MaxBECount, given the start, stride and max value for the end
-  // bound of the loop (RHS), and the fact that IV does not overflow (which is
-  // checked above).
-  if (!isLoopInvariant(RHS, L)) {
-    const SCEV *MaxBECount = computeMaxBECountForLT(
-        Start, Stride, RHS, getTypeSizeInBits(LHS->getType()), IsSigned);
-    return ExitLimit(getCouldNotCompute() /* ExactNotTaken */, MaxBECount,
-                     false /*MaxOrZero*/, Predicates);
-  }
-  // If the backedge is taken at least once, then it will be taken
-  // (End-Start)/Stride times (rounded up to a multiple of Stride), where Start
-  // is the LHS value of the less-than comparison the first time it is evaluated
-  // and End is the RHS.
-  const SCEV *BECountIfBackedgeTaken =
-      computeBECount(getMinusSCEV(End, Start), Stride, false);
-  // If the loop entry is guarded by the result of the backedge test of the
-  // first loop iteration, then we know the backedge will be taken at least
-  // once and so the backedge taken count is as above. If not then we use the
-  // expression (max(End,Start)-Start)/Stride to describe the backedge count,
-  // as if the backedge is taken at least once max(End,Start) is End and so the
-  // result is as above, and if not max(End,Start) is Start so we get a backedge
-  // count of zero.
-  const SCEV *BECount;
-  if (isLoopEntryGuardedByCond(L, Cond, getMinusSCEV(Start, Stride), RHS))
-    BECount = BECountIfBackedgeTaken;
-  else {
-    End = IsSigned ? getSMaxExpr(RHS, Start) : getUMaxExpr(RHS, Start);
-    BECount = computeBECount(getMinusSCEV(End, Start), Stride, false);
-  }
-
-  const SCEV *MaxBECount;
-  bool MaxOrZero = false;
-  if (isa<SCEVConstant>(BECount))
-    MaxBECount = BECount;
-  else if (isa<SCEVConstant>(BECountIfBackedgeTaken)) {
-    // If we know exactly how many times the backedge will be taken if it's
-    // taken at least once, then the backedge count will either be that or
-    // zero.
-    MaxBECount = BECountIfBackedgeTaken;
-    MaxOrZero = true;
-  } else {
-    MaxBECount = computeMaxBECountForLT(
-        Start, Stride, RHS, getTypeSizeInBits(LHS->getType()), IsSigned);
-  }
-
-  if (isa<SCEVCouldNotCompute>(MaxBECount) &&
-      !isa<SCEVCouldNotCompute>(BECount))
-    MaxBECount = getConstant(getUnsignedRangeMax(BECount));
-
-  return ExitLimit(BECount, MaxBECount, MaxOrZero, Predicates);
-}
-
-bool getContextM(BasicBlock *BB, LoopContext &loopContext,
-                 std::map<Loop *, LoopContext> &loopContexts, LoopInfo &LI,
-                 MyScalarEvolution &SE, DominatorTree &DT,
-                 GradientUtils &gutils) {
-  Loop *L = LI.getLoopFor(BB);
-
-  // Not inside a loop
-  if (L == nullptr)
-    return false;
-
-  // Already canonicalized
-  if (loopContexts.find(L) == loopContexts.end()) {
-
-    loopContexts[L].parent = L->getParentLoop();
-
-    loopContexts[L].header = L->getHeader();
-    assert(loopContexts[L].header && "loop must have header");
-
-    loopContexts[L].preheader = L->getLoopPreheader();
-    if (!L->getLoopPreheader()) {
-      llvm::errs() << "fn: " << *L->getHeader()->getParent() << "\n";
-      llvm::errs() << "L: " << *L << "\n";
-    }
-    assert(loopContexts[L].preheader && "loop must have preheader");
-
-    loopContexts[L].latchMerge = nullptr;
-
-    getExitBlocks(L, loopContexts[L].exitBlocks);
-
-    auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
-    PHINode *CanonicalIV = pair.first;
-    assert(CanonicalIV);
-    loopContexts[L].var = CanonicalIV;
-    loopContexts[L].incvar = pair.second;
-    removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader,
-                       CanonicalIV, SE, gutils, pair.second,
-                       getLatches(L, loopContexts[L].exitBlocks));
-    loopContexts[L].antivaralloc =
-        IRBuilder<>(gutils.inversionAllocs)
-            .CreateAlloca(CanonicalIV->getType(), nullptr,
-                          CanonicalIV->getName() + "'ac");
-#if LLVM_VERSION_MAJOR >= 10
-    loopContexts[L].antivaralloc->setAlignment(
-        Align(cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8));
-#else
-    loopContexts[L].antivaralloc->setAlignment(
-        cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8);
-#endif
-
-    SCEVUnionPredicate BackedgePred;
-
-    const SCEV *Limit = nullptr;
-    {
-
-      const SCEV *MayExitMaxBECount = nullptr;
-
-      SmallVector<BasicBlock *, 8> ExitingBlocks;
-      L->getExitingBlocks(ExitingBlocks);
-
-      for (BasicBlock *ExitBB : ExitingBlocks) {
-        assert(L->contains(ExitBB));
-        auto EL = SE.computeExitLimit(L, ExitBB, /*AllowPredicates*/ true);
-
-        if (MayExitMaxBECount != SE.getCouldNotCompute()) {
-          if (!MayExitMaxBECount || EL.ExactNotTaken == SE.getCouldNotCompute())
-            MayExitMaxBECount = EL.ExactNotTaken;
-          else {
-            if (MayExitMaxBECount != EL.ExactNotTaken) {
-              llvm::errs() << "Optimization opportunity! could allocate max!\n";
-              MayExitMaxBECount = SE.getCouldNotCompute();
-              break;
-            }
-
-            MayExitMaxBECount = SE.getUMaxFromMismatchedTypes(MayExitMaxBECount,
-                                                              EL.ExactNotTaken);
-          }
-        } else {
-          MayExitMaxBECount = SE.getCouldNotCompute();
-        }
-      }
-      if (ExitingBlocks.size() == 0) {
-        MayExitMaxBECount = SE.getCouldNotCompute();
-      }
-      Limit = MayExitMaxBECount;
-    }
-    assert(Limit);
-    // const SCEV *Limit = SE.computeBackedgeTakenCount(L,
-    // /*allowpred*/true).getExact(L, &SE, &BackedgePred);//
-    // SE.getPredicatedBackedgeTakenCount(L, BackedgePred);
-
-    Value *LimitVar = nullptr;
-
-    if (SE.getCouldNotCompute() != Limit) {
-      // rerun canonicalization to ensure we have canonical variable equal to
-      // limit type
-      // CanonicalIV = canonicalizeIVs(Exp, Limit->getType(), L, DT, &gutils);
-
-      if (CanonicalIV == nullptr) {
-        report_fatal_error("Couldn't get canonical IV.");
-      }
-
-      if (Limit->getType() != CanonicalIV->getType())
-        Limit = SE.getZeroExtendExpr(Limit, CanonicalIV->getType());
-
-      fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
-                             "enzyme");
-      LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
-                                   loopContexts[L].preheader->getTerminator());
-      loopContexts[L].dynamic = false;
-    } else {
-      llvm::errs() << "SE could not compute loop limit of "
-                   << L->getHeader()->getName() << " "
-                   << L->getHeader()->getParent()->getName() << "\n";
-
-      // TODO should eventually ensure this is freed
-      LimitVar = gutils.createCacheForScope(loopContexts[L].preheader,
-                                            CanonicalIV->getType(), "loopLimit",
-                                            /*shouldfree*/ false);
-
-      for (auto ExitBlock : loopContexts[L].exitBlocks) {
-        IRBuilder<> B(&ExitBlock->front());
-        auto herephi = B.CreatePHI(CanonicalIV->getType(), 1);
-
-        for (BasicBlock *Pred : predecessors(ExitBlock)) {
-          if (LI.getLoopFor(Pred) == L) {
-            herephi->addIncoming(CanonicalIV, Pred);
-          } else {
-            herephi->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0),
-                                 Pred);
-          }
-        }
-
-        gutils.storeInstructionInCache(loopContexts[L].preheader, herephi,
-                                       cast<AllocaInst>(LimitVar));
-      }
-      loopContexts[L].dynamic = true;
-    }
-    loopContexts[L].limit = LimitVar;
-  }
-
-  loopContext = loopContexts.find(L)->second;
-  return true;
-}
-
 Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                               const ValueToValueMapTy &incoming_available) {
   assert(val->getName() != "<badref>");
@@ -2012,16 +1860,20 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 ctx = (BasicBlock *)((size_t)ctx | 1);
               }
 
-              if (scopeMap.find(inst) == scopeMap.end()) {
+              if (auto found = findInMap(scopeMap, (Value*)inst)) {
+                cache = found->first;
+              } else {
+                // if freeing reverseblocks must exist
+                assert(reverseBlocks.size());
                 cache = createCacheForScope(
                     ctx, li->getType(), li->getName(), /*shouldFree*/ true,
                     /*allocate*/ true, /*extraSize*/ lim);
                 assert(cache);
-                scopeMap[inst] = std::make_pair(cache, ctx);
+                scopeMap.insert(std::make_pair(inst, std::make_pair(cache, ctx)));
 
                 v.setFastMathFlags(getFast());
-
-                Value *outer = getCachePointer(v, ctx, cache, isi1,
+                assert(isOriginalBlock(*v.GetInsertBlock()));
+                Value *outer = getCachePointer(/*inForwardPass*/true, v, ctx, cache, isi1,
                                                /*storeinstorecache*/ true,
                                                /*extraSize*/ lim);
 
@@ -2088,12 +1940,11 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 // TODO alignment
 
                 scopeStores[cache].push_back(mem);
-              } else {
-                cache = scopeMap[inst].first;
               }
 
+              assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
               Value *result =
-                  lookupValueFromCache(BuilderM, ctx, cache, isi1,
+                  lookupValueFromCache(/*isForwardPass*/false, BuilderM, ctx, cache, isi1,
                                        /*extraSize*/ lim, available[l1.var]);
               lookup_cache[idx] = result;
               return result;
@@ -2107,18 +1958,15 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   ensureLookupCached(inst);
   bool isi1 = inst->getType()->isIntegerTy() &&
               cast<IntegerType>(inst->getType())->getBitWidth() == 1;
-  Value *result = lookupValueFromCache(BuilderM, scopeMap[inst].second,
-                                       scopeMap[inst].first, isi1);
+  assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
+  auto found = findInMap(scopeMap, (Value*)inst);
+  Value *result = lookupValueFromCache(/*isForwardPass*/false, BuilderM, found->second,
+                                       found->first, isi1);
   assert(result->getType() == inst->getType());
   lookup_cache[idx] = result;
   assert(result);
   assert(result->getType());
   return result;
-}
-
-bool GradientUtils::getContext(BasicBlock *BB, LoopContext &loopContext) {
-  return getContextM(BB, loopContext, this->loopContexts, this->LI, this->SE,
-                     this->DT, *this);
 }
 
 //! Given a map of edges we could have taken to desired target, compute a value
@@ -2482,6 +2330,8 @@ fast:;
 
 nofast:;
 
+  // if freeing reverseblocks must exist
+  assert(reverseBlocks.size());
   AllocaInst *cache = createCacheForScope(ctx, T, "", /*shouldFree*/ true);
   std::vector<BasicBlock *> targets;
   {
@@ -2523,7 +2373,7 @@ nofast:;
   }
 
   bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
-  Value *which = lookupValueFromCache(BuilderM, ctx, cache, isi1);
+  Value *which = lookupValueFromCache(/*forwardPass*/isOriginalBlock(*BuilderM.GetInsertBlock()), BuilderM, ctx, cache, isi1);
   assert(which);
   assert(which->getType() == T);
 
