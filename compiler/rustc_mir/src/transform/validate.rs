@@ -1,23 +1,17 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
-use crate::{
-    dataflow::impls::MaybeStorageLive, dataflow::Analysis, dataflow::ResultsCursor,
-    util::storage::AlwaysLiveLocals,
-};
+use crate::dataflow::impls::MaybeStorageLive;
+use crate::dataflow::{Analysis, ResultsCursor};
+use crate::util::storage::AlwaysLiveLocals;
 
 use super::{MirPass, MirSource};
-use rustc_middle::mir::{visit::PlaceContext, visit::Visitor, Local};
-use rustc_middle::{
-    mir::{
-        AggregateKind, BasicBlock, Body, BorrowKind, Location, MirPhase, Operand, Rvalue,
-        Statement, StatementKind, Terminator, TerminatorKind,
-    },
-    ty::{
-        self,
-        relate::{Relate, RelateResult, TypeRelation},
-        ParamEnv, Ty, TyCtxt,
-    },
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{
+    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, Rvalue,
+    Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
 };
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
@@ -234,6 +228,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 self.fail(location, format!("use of local {:?}, which has no storage here", local));
             }
         }
+    }
+
+    fn visit_var_debug_info(&mut self, _var_debug_info: &VarDebugInfo<'tcx>) {
+        // Debuginfo can contain field projections, which count as a use of the base local. Skip
+        // debuginfo so that we avoid the storage liveness assertion in that case.
     }
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
