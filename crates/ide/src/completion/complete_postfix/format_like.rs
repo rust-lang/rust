@@ -20,6 +20,18 @@ use crate::completion::{
 };
 use syntax::ast::{self, AstToken};
 
+/// Mapping ("postfix completion item" => "macro to use")
+static KINDS: &[(&str, &str)] = &[
+    ("fmt", "format!"),
+    ("panic", "panic!"),
+    ("println", "println!"),
+    ("logd", "log::debug!"),
+    ("logt", "log::trace!"),
+    ("logi", "log::info!"),
+    ("logw", "log::warn!"),
+    ("loge", "log::error!"),
+];
+
 pub(super) fn add_format_like_completions(
     acc: &mut Completions,
     ctx: &CompletionContext,
@@ -36,11 +48,10 @@ pub(super) fn add_format_like_completions(
     let mut parser = FormatStrParser::new(input);
 
     if parser.parse().is_ok() {
-        for kind in PostfixKind::all_suggestions() {
-            let snippet = parser.into_suggestion(*kind);
-            let (label, detail) = kind.into_description();
+        for (label, macro_name) in KINDS {
+            let snippet = parser.into_suggestion(macro_name);
 
-            postfix_snippet(ctx, cap, &dot_receiver, label, detail, &snippet).add_to(acc);
+            postfix_snippet(ctx, cap, &dot_receiver, label, macro_name, &snippet).add_to(acc);
         }
     }
 }
@@ -64,59 +75,6 @@ pub struct FormatStrParser {
     extracted_expressions: Vec<String>,
     state: State,
     parsed: bool,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum PostfixKind {
-    Format,
-    Panic,
-    Println,
-    LogDebug,
-    LogTrace,
-    LogInfo,
-    LogWarn,
-    LogError,
-}
-
-impl PostfixKind {
-    pub fn all_suggestions() -> &'static [PostfixKind] {
-        &[
-            Self::Format,
-            Self::Panic,
-            Self::Println,
-            Self::LogDebug,
-            Self::LogTrace,
-            Self::LogInfo,
-            Self::LogWarn,
-            Self::LogError,
-        ]
-    }
-
-    pub fn into_description(self) -> (&'static str, &'static str) {
-        match self {
-            Self::Format => ("fmt", "format!"),
-            Self::Panic => ("panic", "panic!"),
-            Self::Println => ("println", "println!"),
-            Self::LogDebug => ("logd", "log::debug!"),
-            Self::LogTrace => ("logt", "log::trace!"),
-            Self::LogInfo => ("logi", "log::info!"),
-            Self::LogWarn => ("logw", "log::warn!"),
-            Self::LogError => ("loge", "log::error!"),
-        }
-    }
-
-    pub fn into_macro_name(self) -> &'static str {
-        match self {
-            Self::Format => "format!",
-            Self::Panic => "panic!",
-            Self::Println => "println!",
-            Self::LogDebug => "log::debug!",
-            Self::LogTrace => "log::trace!",
-            Self::LogInfo => "log::info!",
-            Self::LogWarn => "log::warn!",
-            Self::LogError => "log::error!",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -235,11 +193,11 @@ impl FormatStrParser {
         Ok(())
     }
 
-    pub fn into_suggestion(&self, kind: PostfixKind) -> String {
+    pub fn into_suggestion(&self, macro_name: &str) -> String {
         assert!(self.parsed, "Attempt to get a suggestion from not parsed expression");
 
         let expressions_as_string = self.extracted_expressions.join(", ");
-        format!(r#"{}("{}", {})"#, kind.into_macro_name(), self.output, expressions_as_string)
+        format!(r#"{}("{}", {})"#, macro_name, self.output, expressions_as_string)
     }
 }
 
@@ -300,13 +258,13 @@ mod tests {
     #[test]
     fn test_into_suggestion() {
         let test_vector = &[
-            (PostfixKind::Println, "{}", r#"println!("{}", $1)"#),
+            ("println!", "{}", r#"println!("{}", $1)"#),
             (
-                PostfixKind::LogInfo,
+                "log::info!",
                 "{} {expr} {} {2 + 2}",
                 r#"log::info!("{} {} {} {}", $1, expr, $2, 2 + 2)"#,
             ),
-            (PostfixKind::Format, "{expr:?}", r#"format!("{:?}", expr)"#),
+            ("format!", "{expr:?}", r#"format!("{:?}", expr)"#),
         ];
 
         for (kind, input, output) in test_vector {
