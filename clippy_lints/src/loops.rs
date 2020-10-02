@@ -1014,6 +1014,9 @@ fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
     Block { stmts, expr, .. }: &'tcx Block<'tcx>,
     loop_counters: &'c [Start<'tcx>],
 ) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> + 'c {
+    // As the `filter` and `map` below do different things, I think putting together
+    // just increases complexity. (cc #3188 and #4193)
+    #[allow(clippy::filter_map)]
     stmts
         .iter()
         .filter_map(move |stmt| match stmt.kind {
