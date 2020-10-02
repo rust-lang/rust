@@ -25,19 +25,7 @@ macro_rules! impl_asymmetric {
             #[$unsigned_attr]
         )*
         pub fn $unsigned_name(duo: $uD, div: $uD) -> ($uD,$uD) {
-            fn carrying_mul(lhs: $uX, rhs: $uX) -> ($uX, $uX) {
-                let tmp = (lhs as $uD).wrapping_mul(rhs as $uD);
-                (tmp as $uX, (tmp >> ($n_h * 2)) as $uX)
-            }
-            fn carrying_mul_add(lhs: $uX, mul: $uX, add: $uX) -> ($uX, $uX) {
-                let tmp = (lhs as $uD).wrapping_mul(mul as $uD).wrapping_add(add as $uD);
-                (tmp as $uX, (tmp >> ($n_h * 2)) as $uX)
-            }
-
             let n: u32 = $n_h * 2;
-
-            // Many of these subalgorithms are taken from trifecta.rs, see that for better
-            // documentation.
 
             let duo_lo = duo as $uX;
             let duo_hi = (duo >> n) as $uX;
@@ -51,30 +39,6 @@ macro_rules! impl_asymmetric {
                     // `$uD` by `$uX` division with a quotient that will fit into a `$uX`
                     let (quo, rem) = unsafe { $asymmetric_division(duo, div_lo) };
                     return (quo as $uD, rem as $uD)
-                } else if (div_lo >> $n_h) == 0 {
-                    // Short division of $uD by a $uH.
-
-                    // Some x86_64 CPUs have bad division implementations that make specializing
-                    // this case faster.
-                    let div_0 = div_lo as $uH as $uX;
-                    let (quo_hi, rem_3) = $half_division(duo_hi, div_0);
-
-                    let duo_mid =
-                        ((duo >> $n_h) as $uH as $uX)
-                        | (rem_3 << $n_h);
-                    let (quo_1, rem_2) = $half_division(duo_mid, div_0);
-
-                    let duo_lo =
-                        (duo as $uH as $uX)
-                        | (rem_2 << $n_h);
-                    let (quo_0, rem_1) = $half_division(duo_lo, div_0);
-
-                    return (
-                        (quo_0 as $uD)
-                        | ((quo_1 as $uD) << $n_h)
-                        | ((quo_hi as $uD) << n),
-                        rem_1 as $uD
-                    )
                 } else {
                     // Short division using the $uD by $uX division
                     let (quo_hi, rem_hi) = $half_division(duo_hi, div_lo);
@@ -85,59 +49,30 @@ macro_rules! impl_asymmetric {
                 }
             }
 
-            let duo_lz = duo_hi.leading_zeros();
+            // This has been adapted from
+            // https://www.codeproject.com/tips/785014/uint-division-modulus which was in turn
+            // adapted from Hacker's Delight. This is similar to the two possibility algorithm
+            // in that it uses only more significant parts of `duo` and `div` to divide a large
+            // integer with a smaller division instruction.
             let div_lz = div_hi.leading_zeros();
-            let rel_leading_sb = div_lz.wrapping_sub(duo_lz);
-            if rel_leading_sb < $n_h {
-                // Some x86_64 CPUs have bad hardware division implementations that make putting
-                // a two possibility algorithm here beneficial. We also avoid a full `$uD`
-                // multiplication.
-                let shift = n - duo_lz;
-                let duo_sig_n = (duo >> shift) as $uX;
-                let div_sig_n = (div >> shift) as $uX;
-                let quo = $half_division(duo_sig_n, div_sig_n).0;
-                let div_lo = div as $uX;
-                let div_hi = (div >> n) as $uX;
-                let (tmp_lo, carry) = carrying_mul(quo, div_lo);
-                let (tmp_hi, overflow) = carrying_mul_add(quo, div_hi, carry);
-                let tmp = (tmp_lo as $uD) | ((tmp_hi as $uD) << n);
-                if (overflow != 0) || (duo < tmp) {
-                    return (
-                        (quo - 1) as $uD,
-                        duo.wrapping_add(div).wrapping_sub(tmp)
-                    )
-                } else {
-                    return (
-                        quo as $uD,
-                        duo - tmp
-                    )
-                }
-            } else {
-                // This has been adapted from
-                // https://www.codeproject.com/tips/785014/uint-division-modulus which was in turn
-                // adapted from Hacker's Delight. This is similar to the two possibility algorithm
-                // in that it uses only more significant parts of `duo` and `div` to divide a large
-                // integer with a smaller division instruction.
+            let div_extra = n - div_lz;
+            let div_sig_n = (div >> div_extra) as $uX;
+            let tmp = unsafe {
+                $asymmetric_division(duo >> 1, div_sig_n)
+            };
 
-                let div_extra = n - div_lz;
-                let div_sig_n = (div >> div_extra) as $uX;
-                let tmp = unsafe {
-                    $asymmetric_division(duo >> 1, div_sig_n)
-                };
-
-                let mut quo = tmp.0 >> ((n - 1) - div_lz);
-                if quo != 0 {
-                    quo -= 1;
-                }
-
-                // Note that this is a full `$uD` multiplication being used here
-                let mut rem = duo - (quo as $uD).wrapping_mul(div);
-                if div <= rem {
-                    quo += 1;
-                    rem -= div;
-                }
-                return (quo as $uD, rem)
+            let mut quo = tmp.0 >> ((n - 1) - div_lz);
+            if quo != 0 {
+                quo -= 1;
             }
+
+            // Note that this is a full `$uD` multiplication being used here
+            let mut rem = duo - (quo as $uD).wrapping_mul(div);
+            if div <= rem {
+                quo += 1;
+                rem -= div;
+            }
+            return (quo as $uD, rem)
         }
 
         /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
