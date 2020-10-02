@@ -334,14 +334,14 @@ mod tests {
 
     use super::*;
 
-    fn check_search(ra_fixture: &str, krate_name: &str, query: Query, expect: Expect) {
+    fn check_search(ra_fixture: &str, crate_name: &str, query: Query, expect: Expect) {
         let db = TestDB::with_files(ra_fixture);
         let crate_graph = db.crate_graph();
         let krate = crate_graph
             .iter()
             .find(|krate| {
-                crate_graph[*krate].display_name.as_ref().map(|n| n.to_string())
-                    == Some(krate_name.to_string())
+                crate_graph[*krate].declaration_name.as_ref().map(|n| n.to_string())
+                    == Some(crate_name.to_string())
             })
             .unwrap();
 
@@ -359,7 +359,7 @@ mod tests {
                     let path = map.path_of(item).unwrap();
                     format!(
                         "{}::{} ({})\n",
-                        crate_graph[krate].display_name.as_ref().unwrap(),
+                        crate_graph[krate].declaration_name.as_ref().unwrap(),
                         path,
                         mark
                     )
@@ -400,7 +400,7 @@ mod tests {
             .iter()
             .filter_map(|krate| {
                 let cdata = &crate_graph[krate];
-                let name = cdata.display_name.as_ref()?;
+                let name = cdata.declaration_name.as_ref()?;
 
                 let map = db.import_map(krate);
 
