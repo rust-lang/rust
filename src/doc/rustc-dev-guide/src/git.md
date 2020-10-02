@@ -160,7 +160,7 @@ Alternatively, you can sacrifice the commit history like this:
 
 ```
 # squash all the changes into one commit so you only have to worry about conflicts once
-git rebase -i $(git merge-base master)  # and squash all changes along the way
+git rebase -i $(git merge-base master HEAD)  # and squash all changes along the way
 git rebase master
 # fix all merge conflicts
 git rebase --continue
