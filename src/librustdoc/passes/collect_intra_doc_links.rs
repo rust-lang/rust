@@ -1575,17 +1575,17 @@ fn resolution_failure(
                         _ => None,
                     };
                     // See if this was a module: `[path]` or `[std::io::nope]`
-                    if let Some(module) = last_found_module {
-                        let module_name = collector.cx.tcx.item_name(module);
+                    if let Some(_module) = last_found_module {
                         let note = format!(
-                            "the module `{}` contains no item named `{}`",
-                            module_name, unresolved
+                            "there is no item named `{}` in scope",
+                            unresolved
                         );
                         if let Some(span) = sp {
                             diag.span_label(span, &note);
                         } else {
                             diag.note(&note);
                         }
+                        diag.help(&format!("did you mean to import `{}`?", unresolved));
                         // If the link has `::` in it, assume it was meant to be an intra-doc link.
                         // Otherwise, the `[]` might be unrelated.
                         // FIXME: don't show this for autolinks (`<>`), `()` style links, or reference links

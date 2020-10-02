@@ -2,33 +2,37 @@ warning: unresolved link to `error`
   --> $DIR/intra-links-warning-crlf.rs:7:6
    |
 LL | /// [error]
-   |      ^^^^^ the module `intra_links_warning_crlf` contains no item named `error`
+   |      ^^^^^ there is no item named `error` in scope
    |
    = note: `#[warn(broken_intra_doc_links)]` on by default
+   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error1`
   --> $DIR/intra-links-warning-crlf.rs:12:11
    |
 LL | /// docs [error1]
-   |           ^^^^^^ the module `intra_links_warning_crlf` contains no item named `error1`
+   |           ^^^^^^ there is no item named `error1` in scope
    |
+   = help: did you mean to import `error1`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error2`
   --> $DIR/intra-links-warning-crlf.rs:15:11
    |
 LL | /// docs [error2]
-   |           ^^^^^^ the module `intra_links_warning_crlf` contains no item named `error2`
+   |           ^^^^^^ there is no item named `error2` in scope
    |
+   = help: did you mean to import `error2`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
   --> $DIR/intra-links-warning-crlf.rs:23:20
    |
 LL |  * It also has an [error].
-   |                    ^^^^^ the module `intra_links_warning_crlf` contains no item named `error`
+   |                    ^^^^^ there is no item named `error` in scope
    |
+   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: 4 warnings emitted

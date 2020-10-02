@@ -10,54 +10,67 @@ warning: unresolved link to `Bar::foo`
   --> $DIR/intra-links-warning.rs:3:35
    |
 LL |        //! Test with [Foo::baz], [Bar::foo], ...
-   |                                   ^^^^^^^^ the module `intra_links_warning` contains no item named `Bar`
+   |                                   ^^^^^^^^ there is no item named `Bar` in scope
+   |
+   = help: did you mean to import `Bar`?
 
 warning: unresolved link to `Uniooon::X`
   --> $DIR/intra-links-warning.rs:6:13
    |
 LL |      //! , [Uniooon::X] and [Qux::Z].
-   |             ^^^^^^^^^^ the module `intra_links_warning` contains no item named `Uniooon`
+   |             ^^^^^^^^^^ there is no item named `Uniooon` in scope
+   |
+   = help: did you mean to import `Uniooon`?
 
 warning: unresolved link to `Qux::Z`
   --> $DIR/intra-links-warning.rs:6:30
    |
 LL |      //! , [Uniooon::X] and [Qux::Z].
-   |                              ^^^^^^ the module `intra_links_warning` contains no item named `Qux`
+   |                              ^^^^^^ there is no item named `Qux` in scope
+   |
+   = help: did you mean to import `Qux`?
 
 warning: unresolved link to `Uniooon::X`
   --> $DIR/intra-links-warning.rs:10:14
    |
 LL |       //! , [Uniooon::X] and [Qux::Z].
-   |              ^^^^^^^^^^ the module `intra_links_warning` contains no item named `Uniooon`
+   |              ^^^^^^^^^^ there is no item named `Uniooon` in scope
+   |
+   = help: did you mean to import `Uniooon`?
 
 warning: unresolved link to `Qux::Z`
   --> $DIR/intra-links-warning.rs:10:31
    |
 LL |       //! , [Uniooon::X] and [Qux::Z].
-   |                               ^^^^^^ the module `intra_links_warning` contains no item named `Qux`
+   |                               ^^^^^^ there is no item named `Qux` in scope
+   |
+   = help: did you mean to import `Qux`?
 
 warning: unresolved link to `Qux:Y`
   --> $DIR/intra-links-warning.rs:14:13
    |
 LL |        /// [Qux:Y]
-   |             ^^^^^ the module `intra_links_warning` contains no item named `Qux:Y`
+   |             ^^^^^ there is no item named `Qux:Y` in scope
    |
+   = help: did you mean to import `Qux:Y`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
   --> $DIR/intra-links-warning.rs:58:30
    |
 LL |  * time to introduce a link [error]*/
-   |                              ^^^^^ the module `intra_links_warning` contains no item named `error`
+   |                              ^^^^^ there is no item named `error` in scope
    |
+   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
   --> $DIR/intra-links-warning.rs:64:30
    |
 LL |  * time to introduce a link [error]
-   |                              ^^^^^ the module `intra_links_warning` contains no item named `error`
+   |                              ^^^^^ there is no item named `error` in scope
    |
+   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
@@ -70,7 +83,8 @@ LL | #[doc = "single line [error]"]
            
            single line [error]
                         ^^^^^
-   = note: the module `intra_links_warning` contains no item named `error`
+   = note: there is no item named `error` in scope
+   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
@@ -83,7 +97,8 @@ LL | #[doc = "single line with \"escaping\" [error]"]
            
            single line with "escaping" [error]
                                         ^^^^^
-   = note: the module `intra_links_warning` contains no item named `error`
+   = note: there is no item named `error` in scope
+   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
@@ -98,47 +113,53 @@ LL | | /// [error]
            
            [error]
             ^^^^^
-   = note: the module `intra_links_warning` contains no item named `error`
+   = note: there is no item named `error` in scope
+   = help: did you mean to import `error`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error1`
   --> $DIR/intra-links-warning.rs:80:11
    |
 LL | /// docs [error1]
-   |           ^^^^^^ the module `intra_links_warning` contains no item named `error1`
+   |           ^^^^^^ there is no item named `error1` in scope
    |
+   = help: did you mean to import `error1`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error2`
   --> $DIR/intra-links-warning.rs:82:11
    |
 LL | /// docs [error2]
-   |           ^^^^^^ the module `intra_links_warning` contains no item named `error2`
+   |           ^^^^^^ there is no item named `error2` in scope
    |
+   = help: did you mean to import `error2`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarA`
   --> $DIR/intra-links-warning.rs:21:10
    |
 LL | /// bar [BarA] bar
-   |          ^^^^ the module `intra_links_warning` contains no item named `BarA`
+   |          ^^^^ there is no item named `BarA` in scope
    |
+   = help: did you mean to import `BarA`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarB`
   --> $DIR/intra-links-warning.rs:27:9
    |
 LL |  * bar [BarB] bar
-   |         ^^^^ the module `intra_links_warning` contains no item named `BarB`
+   |         ^^^^ there is no item named `BarB` in scope
    |
+   = help: did you mean to import `BarB`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarC`
   --> $DIR/intra-links-warning.rs:34:6
    |
 LL | bar [BarC] bar
-   |      ^^^^ the module `intra_links_warning` contains no item named `BarC`
+   |      ^^^^ there is no item named `BarC` in scope
    |
+   = help: did you mean to import `BarC`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarD`
@@ -151,7 +172,8 @@ LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
            
            bar [BarD] bar
                 ^^^^
-   = note: the module `intra_links_warning` contains no item named `BarD`
+   = note: there is no item named `BarD` in scope
+   = help: did you mean to import `BarD`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarF`
@@ -167,7 +189,8 @@ LL | f!("Foo\nbar [BarF] bar\nbaz");
            
            bar [BarF] bar
                 ^^^^
-   = note: the module `intra_links_warning` contains no item named `BarF`
+   = note: there is no item named `BarF` in scope
+   = help: did you mean to import `BarF`?
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
