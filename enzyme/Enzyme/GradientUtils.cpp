@@ -417,9 +417,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int 
       }
 
       bool inLoop;
-      if (ctx.Experimental) {
+      if (ctx.ForceSingleIteration) {
         inLoop = true;
-        ctx.Experimental = false;
+        ctx.ForceSingleIteration = false;
       } else {
         LoopContext lc;
         inLoop = getContext(ctx.Block, lc);
@@ -686,9 +686,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int 
 
       bool inLoop;
 
-      if (ctx.Experimental) {
+      if (ctx.ForceSingleIteration) {
         inLoop = true;
-        ctx.Experimental = false;
+        ctx.ForceSingleIteration = false;
       } else {
         LoopContext lc;
         inLoop = getContext(ctx.Block, lc);
@@ -1879,14 +1879,14 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
                 auto dst_arg = v.CreateBitCast(
                     outer, Type::getInt8PtrTy(inst->getContext()));
-                scopeStores[cache].push_back(dst_arg);
+                scopeStores[cache].push_back(cast<Instruction>(dst_arg));
                 auto src_arg = v.CreateBitCast(
                     start, Type::getInt8PtrTy(inst->getContext()));
                 auto len_arg = v.CreateMul(
                     ConstantInt::get(lim->getType(), step->getAPInt()), lim, "",
                     true, true);
-                if (!isa<Constant>(len_arg))
-                  scopeStores[cache].push_back(len_arg);
+                if (Instruction* I = dyn_cast<Instruction>(len_arg))
+                  scopeStores[cache].push_back(I);
                 // if (!isa<Constant>(lim))
                 //  scopeStores[cache].push_back(lim);
                 auto volatile_arg = ConstantInt::getFalse(inst->getContext());

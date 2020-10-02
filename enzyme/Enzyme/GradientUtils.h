@@ -189,17 +189,35 @@ public:
   bool shouldRecompute(const Value *val,
                        const ValueToValueMapTy &available) const;
 
-  void replaceAWithB(Value *A, Value *B) {
+  void replaceAWithB(Value *A, Value *B, bool storeInCache=false) {
     for (unsigned i = 0; i < addedTapeVals.size(); ++i) {
       if (addedTapeVals[i] == A) {
         addedTapeVals[i] = B;
       }
     }
+
     auto found = scopeMap.find(A);
     if (found != scopeMap.end()) {
       insert_or_assign2(scopeMap, B, found->second);
+
+      llvm::AllocaInst *cache = found->second.first;
+      if (storeInCache) {
+        assert(isa<Instruction>(B));
+        if (scopeStores.find(cache) != scopeStores.end()) {
+          for (auto st : scopeStores[cache])
+            cast<StoreInst>(st)->eraseFromParent();
+          scopeStores.clear();
+          storeInstructionInCache(found->second.second, cast<Instruction>(B),
+                                          cache);
+        } 
+      }
+    
       scopeMap.erase(A);
+    
+    
     }
+    
+    
     if (invertedPointers.find(A) != invertedPointers.end()) {
       invertedPointers[B] = invertedPointers[A];
       invertedPointers.erase(A);
@@ -1081,7 +1099,7 @@ public:
     return addedSelect;
   }
 
-  virtual void freeCache(llvm::BasicBlock* forwardPreheader, const SubLimitType& sublimits, int i, llvm::AllocaInst* alloc, llvm::ConstantInt* byteSizeOfType, llvm::Value* storeInto) override {
+  virtual void freeCache(llvm::BasicBlock* forwardPreheader, const SubLimitType& sublimits, int i, llvm::AllocaInst* alloc, llvm::ConstantInt* byteSizeOfType, llvm::Value* storeInto, llvm::MDNode* InvariantMD) override {
     
     IRBuilder<> tbuild(reverseBlocks[forwardPreheader]);
     tbuild.setFastMathFlags(getFast());
@@ -1106,8 +1124,7 @@ public:
     auto forfree = cast<LoadInst>(tbuild.CreateLoad(
         unwrapM(storeInto, tbuild, antimap, UnwrapMode::LegalFullUnwrap)));
     forfree->setMetadata(
-        LLVMContext::MD_invariant_group,
-        invariantGroups[std::make_pair((Value *)alloc, i)]);
+        LLVMContext::MD_invariant_group, InvariantMD);
     forfree->setMetadata(
         LLVMContext::MD_dereferenceable,
         MDNode::get(forfree->getContext(),

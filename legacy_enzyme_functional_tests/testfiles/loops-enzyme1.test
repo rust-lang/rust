@@ -1,6 +1,0 @@
-; RUN: cd %desired_wd
-; RUN: make clean-loops-enzyme1 ENZYME_PLUGIN=%loadEnzyme
-; RUN: make build/loops-enzyme1 ENZYME_PLUGIN=%loadEnzyme CLANG_BIN_PATH=%clangBinPath
-; RUN: build/loops-enzyme1
-; RUN: make clean-loops-enzyme1 ENZYME_PLUGIN=%loadEnzyme
-

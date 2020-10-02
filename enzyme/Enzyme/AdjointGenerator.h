@@ -101,17 +101,8 @@ public:
 
     auto iload = gutils->getNewFromOriginal(&I);
 
-    // We still need this value if it is the increment/induction variable for a
-    // loop
-    for (auto &context : gutils->loopContexts) {
-      if (context.second.var == iload || context.second.incvar == iload) {
-        used = true;
-        break;
-      }
-    }
-
-    // llvm::errs() << " eraseIfUnused:" << I << " used: " << used << " erase:"
-    // << erase << " check:" << check << "\n";
+    // We still need this value used as increment/induction variable for a loop
+    used |= gutils->isInstructionUsedInLoopInduction(*iload);
 
     if (used && check)
       return;
@@ -2417,16 +2408,7 @@ public:
       ValueToValueMapTy mapp;
       if (subretused) {
         retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
-        auto found = gutils->scopeMap.find(op);
-        if (found!= gutils->scopeMap.end()) {
-          AllocaInst *cache = found->second.first;
-          for (auto st : gutils->scopeStores[cache])
-            cast<StoreInst>(st)->eraseFromParent();
-          gutils->scopeStores.clear();
-          gutils->storeInstructionInCache(found->second.second, retval,
-                                          cache);
-        }
-        op->replaceAllUsesWith(retval);
+        gutils->replaceAWithB(op, retval, /*storeInCache*/true);
         mapp[op] = retval;
       } else {
         eraseIfUnused(*orig, /*erase*/ false, /*check*/ false);

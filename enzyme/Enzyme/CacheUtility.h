@@ -93,38 +93,21 @@ enum class UnwrapMode {
 
 class CacheUtility {
 public:
+  /// The function whose instructions we are caching
   llvm::Function *const newFunc;
-  std::map<llvm::Loop *, LoopContext> loopContexts;
 
-public:
+  /// Various analysis results of newFunc
   llvm::TargetLibraryInfo &TLI;
   llvm::DominatorTree DT;
+protected:
   llvm::LoopInfo LI;
   llvm::AssumptionCache AC;
   MustExitScalarEvolution SE;
 
-  llvm::BasicBlock *inversionAllocs;
-
-protected:
-  std::map<std::pair<llvm::Value *, int>, llvm::MDNode *> invariantGroups;
-  std::map<llvm::Value *, llvm::MDNode *> valueInvariantGroups;
-
 public:
-  // Context information to request calculation of loop limit information
-  struct LimitContext {
-      // A block inside of the loop, defining the location
-      llvm::BasicBlock* Block;
-      // Currently unused experimental information (see getSubLimit/lookupM)
-      bool Experimental;
-
-      LimitContext(llvm::BasicBlock* Block, bool Experimental=false) : Block(Block), Experimental(Experimental) {}
-  };
-  std::map<llvm::Value *, std::pair<llvm::AllocaInst *, LimitContext>> scopeMap;
-
-  std::map<llvm::AllocaInst *, std::vector<llvm::Value *>> scopeStores;
-protected:
-  std::map<llvm::AllocaInst *, std::set<llvm::CallInst *>> scopeFrees;
-  std::map<llvm::AllocaInst *, std::vector<llvm::CallInst *>> scopeAllocs;
+  // Helper basicblock where all new allocations will be added to
+  // This includes allocations for cache variables
+  llvm::BasicBlock *inversionAllocs;
 
 protected:
   CacheUtility(llvm::TargetLibraryInfo &TLI, llvm::Function* newFunc) : newFunc(newFunc),
@@ -135,8 +118,25 @@ protected:
 public:
   virtual ~CacheUtility();
   
+private:
+  /// Map of Loop to requisite loop information needed for AD (forward/reverse induction/etc)
+  std::map<llvm::Loop *, LoopContext> loopContexts;
+public:
+  /// Given a BasicBlock BB in newFunc, set loopContext to the relevant contained loop and
+  /// return true. If BB is not in a loop, return false
   bool getContext(llvm::BasicBlock *BB, LoopContext &loopContext);
+  /// Return whether the given instruction is used as necessary as part of a loop context
+  /// This includes as the canonical induction variable or increment
+  bool isInstructionUsedInLoopInduction(llvm::Instruction& I) {
+    for (auto &context : loopContexts) {
+      if (context.second.var == &I || context.second.incvar == &I) {
+        return true;
+      }
+    }
+    return false;
+  }
   
+  /// Print out all currently cached values
   void dumpScope() {
     llvm::errs() << "scope:\n";
     for (auto a : scopeMap) {
@@ -146,73 +146,56 @@ public:
     llvm::errs() << "end scope\n";
   }
 
-  virtual void erase(llvm::Instruction* I) {
-    using namespace llvm;
-    assert(I);
-
-    for (auto v : scopeMap) {
-      if (v.second.first == I) {
-        llvm::errs() << *newFunc << "\n";
-        dumpScope();
-        llvm::errs() << *v.first << "\n";
-        llvm::errs() << *I << "\n";
-        assert(0 && "erasing something in scope map");
-      }
-    }
-        if (auto ci = dyn_cast<CallInst>(I))
-      for (auto v : scopeFrees) {
-        if (v.second.count(ci)) {
-          llvm::errs() << *newFunc << "\n";
-          llvm::errs() << *v.first << "\n";
-          llvm::errs() << *I << "\n";
-          assert(0 && "erasing something in scopeFrees map");
-        }
-      }
-    if (auto ci = dyn_cast<CallInst>(I))
-      for (auto v : scopeAllocs) {
-        if (std::find(v.second.begin(), v.second.end(), ci) != v.second.end()) {
-          llvm::errs() << *newFunc << "\n";
-          llvm::errs() << *v.first << "\n";
-          llvm::errs() << *I << "\n";
-          assert(0 && "erasing something in scopeAllocs map");
-        }
-      }
-    for (auto v : scopeStores) {
-      if (std::find(v.second.begin(), v.second.end(), I) != v.second.end()) {
-        llvm::errs() << *newFunc << "\n";
-        llvm::errs() << *v.first << "\n";
-        llvm::errs() << *I << "\n";
-        assert(0 && "erasing something in scopeStores map");
-      }
-    }
-
-    auto found = scopeMap.find(I);
-    if (found != scopeMap.end()) {
-      scopeFrees.erase(found->second.first);
-      scopeAllocs.erase(found->second.first);
-      scopeStores.erase(found->second.first);
-    }
-    if (auto ai = dyn_cast<AllocaInst>(I)) {
-      scopeFrees.erase(ai);
-      scopeAllocs.erase(ai);
-      scopeStores.erase(ai);
-    }
-    scopeMap.erase(I);
-    SE.eraseValueFromMap(I);
-
-    if (!I->use_empty()) {
-      llvm::errs() << *newFunc << "\n";
-      llvm::errs() << *I << "\n";
-    }
-    assert(I->use_empty());
-    I->eraseFromParent();
-  }
+  /// Erase this instruction both from LLVM modules and any local data-structures
+  virtual void erase(llvm::Instruction* I);
   
-  //! returns true indices
+  // Context information to request calculation of loop limit information
+  struct LimitContext {
+      // A block inside of the loop, defining the location
+      llvm::BasicBlock* Block;
+      // Instead of getting the actual limits, return a limit of one
+      bool ForceSingleIteration;
+
+      LimitContext(llvm::BasicBlock* Block, bool ForceSingleIteration=false) : Block(Block), ForceSingleIteration(ForceSingleIteration) {}
+  };
+
+
+  /// Given a LimitContext ctx, representing a location inside a loop nest,
+  /// break each of the loops up into chunks of loops where each chunk's number
+  /// of iterations can be computed at the chunk preheader. Every dynamic loop
+  /// defines the start of a chunk. SubLimitType is a vector of chunk objects.
+  /// More specifically it is a vector of { # iters in a Chunk (sublimit), Chunk }
+  /// Each chunk object is a vector of loops contained within the chunk.
+  /// For every loop, this returns pair of the LoopContext and the limit of that loop
+  /// Both the vector of Chunks and vector of Loops within a Chunk go from outermost
+  /// loop to innermost loop.
   typedef std::vector<std::pair</*sublimit*/ llvm::Value *, /*loop limits*/ std::vector<
                         std::pair<LoopContext, llvm::Value *>>>> SubLimitType;
   SubLimitType getSubLimits(LimitContext ctx);
 
+
+private:
+  /// Given a cache allocation and an index denoting how many Chunks deep the
+  /// allocation is being indexed into, return the invariant metadata describing
+  /// used to describe loads/stores to the indexed pointer
+  /// Note that the cache allocation should either be an allocainst (if in fwd/both)
+  /// or an extraction from the tape
+  std::map<std::pair<llvm::Value *, int>, llvm::MDNode *> CachePointerInvariantGroups;
+  /// Given a value being cached, return the invariant metadata of any loads/stores
+  /// to memory storing that value
+  std::map<llvm::Value *, llvm::MDNode *> ValueInvariantGroups;
+
+
+protected:
+  /// A map of values being cached to their underlying allocation/limit context
+  std::map<llvm::Value *, std::pair<llvm::AllocaInst *, LimitContext>> scopeMap;
+  /// A map of allocations to a vector of instruction used to create by the allocation
+  /// Keeping track of these values is useful for deallocation
+  std::map<llvm::AllocaInst *, std::vector<llvm::Instruction *>> scopeStores;
+  std::map<llvm::AllocaInst *, std::set<llvm::CallInst *>> scopeFrees;
+  std::map<llvm::AllocaInst *, std::vector<llvm::CallInst *>> scopeAllocs;
+
+public:
   llvm::AllocaInst *createCacheForScope(LimitContext ctx, llvm::Type *T,llvm::StringRef name,
                                 bool shouldFree, bool allocateInternal = true,
                                 llvm::Value *extraSize = nullptr);
@@ -225,7 +208,7 @@ public:
     virtual llvm::Value * lookupM(llvm::Value *val, llvm::IRBuilder<> &BuilderM,
             const llvm::ValueToValueMapTy &incoming_availalble = llvm::ValueToValueMapTy()) = 0;
 
-    virtual void freeCache(llvm::BasicBlock* forwardPreheader, const SubLimitType& antimap, int i, llvm::AllocaInst* alloc, llvm::ConstantInt* byteSizeOfType, llvm::Value* storeInto) {
+    virtual void freeCache(llvm::BasicBlock* forwardPreheader, const SubLimitType& antimap, int i, llvm::AllocaInst* alloc, llvm::ConstantInt* byteSizeOfType, llvm::Value* storeInto, llvm::MDNode* InvariantMD) {
         assert(0 && "freeing cache not handled in this scenario");
         llvm_unreachable("freeing cache not handled in this scenario");
     } 

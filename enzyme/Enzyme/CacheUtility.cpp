@@ -34,6 +34,67 @@ llvm::cl::opt<bool>
 
 CacheUtility::~CacheUtility(){}
 
+void CacheUtility::erase(Instruction* I) {
+    assert(I);
+
+    for (auto v : scopeMap) {
+      if (v.second.first == I) {
+        llvm::errs() << *newFunc << "\n";
+        dumpScope();
+        llvm::errs() << *v.first << "\n";
+        llvm::errs() << *I << "\n";
+        assert(0 && "erasing something in scope map");
+      }
+    }
+    if (auto ci = dyn_cast<CallInst>(I))
+      for (auto v : scopeFrees) {
+        if (v.second.count(ci)) {
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *v.first << "\n";
+          llvm::errs() << *I << "\n";
+          assert(0 && "erasing something in scopeFrees map");
+        }
+      }
+    if (auto ci = dyn_cast<CallInst>(I))
+      for (auto v : scopeAllocs) {
+        if (std::find(v.second.begin(), v.second.end(), ci) != v.second.end()) {
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *v.first << "\n";
+          llvm::errs() << *I << "\n";
+          assert(0 && "erasing something in scopeAllocs map");
+        }
+      }
+    for (auto v : scopeStores) {
+      if (std::find(v.second.begin(), v.second.end(), I) != v.second.end()) {
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *v.first << "\n";
+        llvm::errs() << *I << "\n";
+        assert(0 && "erasing something in scopeStores map");
+      }
+    }
+
+    auto found = scopeMap.find(I);
+    if (found != scopeMap.end()) {
+      scopeFrees.erase(found->second.first);
+      scopeAllocs.erase(found->second.first);
+      scopeStores.erase(found->second.first);
+    }
+    if (auto ai = dyn_cast<AllocaInst>(I)) {
+      scopeFrees.erase(ai);
+      scopeAllocs.erase(ai);
+      scopeStores.erase(ai);
+    }
+    scopeMap.erase(I);
+    SE.eraseValueFromMap(I);
+
+    if (!I->use_empty()) {
+      llvm::errs() << *newFunc << "\n";
+      llvm::errs() << *I << "\n";
+    }
+    assert(I->use_empty());
+    I->eraseFromParent();
+  }
+
 // Create a new canonical induction variable of Type Ty for Loop L
 // Return the variable and the increment instruction
 static std::pair<PHINode *, Instruction *> insertNewCanonicalIV(Loop *L, Type *Ty) {
@@ -576,14 +637,14 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
           storealloc = build.CreateStore(allocation, storeInto);
         }
 
-        if (invariantGroups.find(std::make_pair((Value *)alloc, i)) ==
-            invariantGroups.end()) {
+        if (CachePointerInvariantGroups.find(std::make_pair((Value *)alloc, i)) ==
+            CachePointerInvariantGroups.end()) {
           MDNode *invgroup = MDNode::getDistinct(alloc->getContext(), {});
-          invariantGroups[std::make_pair((Value *)alloc, i)] = invgroup;
+          CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)] = invgroup;
         }
         storealloc->setMetadata(
             LLVMContext::MD_invariant_group,
-            invariantGroups[std::make_pair((Value *)alloc, i)]);
+            CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
         if ((bsize & (bsize - 1)) == 0) {
 #if LLVM_VERSION_MAJOR >= 10
@@ -596,7 +657,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
       }
 
       if (shouldFree) {
-          freeCache(containedloops.back().first.preheader, sublimits, i, alloc, byteSizeOfType, storeInto);
+          freeCache(containedloops.back().first.preheader, sublimits, i, alloc, byteSizeOfType, storeInto, CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
       }
 
       if (i != 0) {
@@ -651,11 +712,10 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
 //! returns true indices
 CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
 
-// The following ficticious context is part of a disabled
-// experimental mechanism for merging stores into a unified memcpy
-{
+  // The following ficticious context is part of an experimental
+  // mechanism for merging stores into a unified memcpy
+  if (ctx.ForceSingleIteration) {
     LoopContext idx;
-    if (ctx.Experimental) {
     auto subctx = ctx.Block;
     auto zero =
         ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 0);
@@ -672,8 +732,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
     SubLimitType sublimits;
     sublimits.push_back({one, {{idx, one}}});
     return sublimits;
-    }
-}
+  }
 
 std::vector<LoopContext> contexts;
 for (BasicBlock *blk = ctx.Block; blk != nullptr;) {
@@ -843,12 +902,12 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx, IRBuilder<> &Builde
     StoreInst *storeinst = v.CreateStore(tostore, loc);
 
     if (tostore == val &&
-        valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
+        ValueInvariantGroups.find(cache) == ValueInvariantGroups.end()) {
       MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
-      valueInvariantGroups[cache] = invgroup;
+      ValueInvariantGroups[cache] = invgroup;
     }
     storeinst->setMetadata(LLVMContext::MD_invariant_group,
-                           valueInvariantGroups[cache]);
+                           ValueInvariantGroups[cache]);
     ConstantInt *byteSizeOfType = ConstantInt::get(
         Type::getInt64Ty(cache->getContext()),
         ctx.Block->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(
@@ -900,7 +959,7 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM, 
     for (int i = sublimits.size() - 1; i >= 0; i--) {
       next = BuilderM.CreateLoad(next);
       if (storeInStoresMap && isa<AllocaInst>(cache))
-        scopeStores[cast<AllocaInst>(cache)].push_back(next);
+        scopeStores[cast<AllocaInst>(cache)].push_back(cast<Instruction>(next));
 
       if (!next->getType()->isPointerTy()) {
         llvm::errs() << *newFunc << "\n";
@@ -908,14 +967,14 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM, 
         llvm::errs() << "next: " << *next << "\n";
       }
       assert(next->getType()->isPointerTy());
-      if (invariantGroups.find(std::make_pair(cache, i)) ==
-          invariantGroups.end()) {
+      if (CachePointerInvariantGroups.find(std::make_pair(cache, i)) ==
+          CachePointerInvariantGroups.end()) {
         MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
-        invariantGroups[std::make_pair(cache, i)] = invgroup;
+        CachePointerInvariantGroups[std::make_pair(cache, i)] = invgroup;
       }
       cast<LoadInst>(next)->setMetadata(
           LLVMContext::MD_invariant_group,
-          invariantGroups[std::make_pair(cache, i)]);
+          CachePointerInvariantGroups[std::make_pair(cache, i)]);
       ConstantInt *byteSizeOfType = ConstantInt::get(
           Type::getInt64Ty(cache->getContext()),
           newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
@@ -998,7 +1057,7 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM, 
         next = BuilderM.CreateGEP(next, {idx});
         cast<GetElementPtrInst>(next)->setIsInBounds(true);
         if (storeInStoresMap && isa<AllocaInst>(cache))
-          scopeStores[cast<AllocaInst>(cache)].push_back(next);
+          scopeStores[cast<AllocaInst>(cache)].push_back(cast<Instruction>(next));
       }
       assert(next->getType()->isPointerTy());
     }
@@ -1018,14 +1077,14 @@ Value *CacheUtility::lookupValueFromCache(bool inForwardPass, IRBuilder<> &Build
     }
     auto result = BuilderM.CreateLoad(cptr);
 
-    if (valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
+    if (ValueInvariantGroups.find(cache) == ValueInvariantGroups.end()) {
       MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
-      valueInvariantGroups[cache] = invgroup;
+      ValueInvariantGroups[cache] = invgroup;
     }
     result->setMetadata("enzyme_fromcache",
                         MDNode::get(result->getContext(), {}));
     result->setMetadata(LLVMContext::MD_invariant_group,
-                        valueInvariantGroups[cache]);
+                        ValueInvariantGroups[cache]);
     ConstantInt *byteSizeOfType = ConstantInt::get(
         Type::getInt64Ty(cache->getContext()),
         newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
