@@ -1785,8 +1785,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc::MODULO_ONE),
         LintId::of(&mut_key::MUTABLE_KEY_TYPE),
         LintId::of(&mut_mutex_lock::MUT_MUTEX_LOCK),
-        LintId::of(&non_copy_const::BORROW_INTERIOR_MUTABLE_CONST),
-        LintId::of(&non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
         LintId::of(&open_options::NONSENSICAL_OPEN_OPTIONS),
         LintId::of(&option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(&ptr::MUT_FROM_REF),
