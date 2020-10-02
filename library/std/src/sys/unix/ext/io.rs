@@ -30,14 +30,13 @@ pub trait AsRawFd {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// # use std::io;
     /// use std::os::unix::io::{AsRawFd, RawFd};
     ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let mut f = File::open("foo.txt")?;
-    ///     // Note that `raw_fd` is only valid as long as `f` exists.
-    ///     let raw_fd: RawFd = f.as_raw_fd();
-    ///     Ok(())
-    /// }
+    /// let mut f = File::open("foo.txt")?;
+    /// // Note that `raw_fd` is only valid as long as `f` exists.
+    /// let raw_fd: RawFd = f.as_raw_fd();
+    /// # Ok::<(), io::Error>(())
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_raw_fd(&self) -> RawFd;
@@ -64,16 +63,15 @@ pub trait FromRawFd {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// # use std::io;
     /// use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
     ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
-    ///     let raw_fd: RawFd = f.into_raw_fd();
-    ///     // SAFETY: no other functions should call `from_raw_fd`, so there
-    ///     // is only one owner for the file descriptor.
-    ///     let f = unsafe { File::from_raw_fd(raw_fd) };
-    ///     Ok(())
-    /// }
+    /// let f = File::open("foo.txt")?;
+    /// let raw_fd: RawFd = f.into_raw_fd();
+    /// // SAFETY: no other functions should call `from_raw_fd`, so there
+    /// // is only one owner for the file descriptor.
+    /// let f = unsafe { File::from_raw_fd(raw_fd) };
+    /// # Ok::<(), io::Error>(())
     /// ```
     #[stable(feature = "from_raw_os", since = "1.1.0")]
     unsafe fn from_raw_fd(fd: RawFd) -> Self;
@@ -93,13 +91,12 @@ pub trait IntoRawFd {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// # use std::io;
     /// use std::os::unix::io::{IntoRawFd, RawFd};
     ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
-    ///     let raw_fd: RawFd = f.into_raw_fd();
-    ///     Ok(())
-    /// }
+    /// let f = File::open("foo.txt")?;
+    /// let raw_fd: RawFd = f.into_raw_fd();
+    /// # Ok::<(), io::Error>(())
     /// ```
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_fd(self) -> RawFd;
