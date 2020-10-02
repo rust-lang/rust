@@ -22,7 +22,7 @@ use crate::sys::handle::Handle;
 use crate::sys::mutex::Mutex;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys_common::process::CommandEnv;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::AsInner;
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
@@ -132,6 +132,23 @@ impl Command {
     }
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
+    }
+
+    pub fn get_program(&self) -> &OsStr {
+        &self.program
+    }
+
+    pub fn get_args(&self) -> CommandArgs<'_> {
+        let iter = self.args.iter();
+        CommandArgs { iter }
+    }
+
+    pub fn get_envs(&self) -> CommandEnvs<'_> {
+        self.env.iter()
+    }
+
+    pub fn get_current_dir(&self) -> Option<&Path> {
+        self.cwd.as_ref().map(|cwd| Path::new(cwd))
     }
 
     pub fn spawn(
@@ -527,5 +544,34 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
             Ok((dir_str.as_ptr(), dir_str))
         }
         None => Ok((ptr::null(), Vec::new())),
+    }
+}
+
+pub struct CommandArgs<'a> {
+    iter: crate::slice::Iter<'a, OsString>,
+}
+
+impl<'a> Iterator for CommandArgs<'a> {
+    type Item = &'a OsStr;
+    fn next(&mut self) -> Option<&'a OsStr> {
+        self.iter.next().map(|s| s.as_ref())
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<'a> ExactSizeIterator for CommandArgs<'a> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
+
+impl<'a> fmt::Debug for CommandArgs<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.iter.clone()).finish()
     }
 }
