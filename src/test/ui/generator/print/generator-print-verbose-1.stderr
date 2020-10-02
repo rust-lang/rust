@@ -29,6 +29,7 @@ LL |     require_send(send_gen);
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: required because of the requirements on the impl of `Send` for `Arc<RefCell<i32>>`
+   = note: required because it appears within the type `(Arc<RefCell<i32>>,)`
    = note: required because it appears within the type `[make_gen2<Arc<RefCell<i32>>>::{closure#0} upvar_tys=(Arc<RefCell<i32>>) {()}]`
    = note: required because it appears within the type `Opaque(DefId(0:29 ~ generator_print_verbose_1[317d]::make_gen2::{opaque#0}), [std::sync::Arc<std::cell::RefCell<i32>>])`
    = note: required because it appears within the type `Opaque(DefId(0:32 ~ generator_print_verbose_1[317d]::make_non_send_generator2::{opaque#0}), [])`

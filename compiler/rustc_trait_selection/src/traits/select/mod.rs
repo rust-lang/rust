@@ -1708,29 +1708,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Closure(_, ref substs) => {
                 let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
-                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
-                    // The inference variable will be replaced by a tuple once capture analysis
-                    // completes. If the tuple meets a bound, so do all the elements within it.
-                    vec![ty]
-                } else {
-                    substs.as_closure().upvar_tys().collect()
-                }
+                vec![ty]
             }
 
             ty::Generator(_, ref substs, _) => {
-                let upvar_tys_resolved =
-                    self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
-
-                if let ty::Infer(ty::TyVar(_)) = upvar_tys_resolved.kind() {
-                    // The inference variable will be replaced by a tuple once capture analysis
-                    // completes, if the tuple meets a bound, so do all the elements within it.
-                    let witness_resolved =
-                        self.infcx.shallow_resolve(substs.as_generator().witness());
-                    vec![upvar_tys_resolved, witness_resolved]
-                } else {
-                    let witness = substs.as_generator().witness();
-                    substs.as_generator().upvar_tys().chain(iter::once(witness)).collect()
-                }
+                let ty = self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
+                let witness = substs.as_generator().witness();
+                vec![ty].into_iter().chain(iter::once(witness)).collect()
             }
 
             ty::GeneratorWitness(types) => {
