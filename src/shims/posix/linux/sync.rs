@@ -13,11 +13,17 @@ pub fn futex<'tcx>(
     if !(4..=7).contains(&args.len()) {
         throw_ub_format!("incorrect number of arguments for futex syscall: got {}, expected between 4 and 7 (inclusive)", args.len());
     }
-    let addr = args[1];
-    let addr_scalar = this.read_scalar(addr)?.check_init()?;
-    let futex_ptr = this.force_ptr(addr_scalar)?.erase_tag();
+
+    // The first three arguments (after the syscall number itself) are the same to all futex operations:
+    //     (int *addr, int op, int val).
+    // Although note that the first one is often passed as a different pointer type, e.g. `*const AtomicU32` or `*mut u32`.
+    let addr = this.deref_operand(args[1])?;
     let op = this.read_scalar(args[2])?.to_i32()?;
     let val = this.read_scalar(args[3])?.to_i32()?;
+
+    // The raw pointer value is used to identify the mutex.
+    // Not all mutex operations actually read from this address or even require this address to exist.
+    let futex_ptr = addr.ptr.assert_ptr();
 
     let thread = this.get_active_thread();
 
@@ -34,8 +40,10 @@ pub fn futex<'tcx>(
             if !this.is_null(timeout)? {
                 throw_ub_format!("miri does not support timeouts for futex operations");
             }
-            this.memory.check_ptr_access(addr_scalar, Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
-            let futex_val = this.read_scalar_at_offset(args[1], 0, this.machine.layouts.i32)?.to_i32()?;
+            // Check the pointer for alignment. Atomic operations are only available for fully aligned values.
+            this.memory.check_ptr_access(addr.ptr.into(), Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
+            // Read an `i32` through the pointer, regardless of any wrapper types (e.g. `AtomicI32`).
+            let futex_val = this.read_scalar(addr.offset(Size::ZERO, MemPlaceMeta::None, this.machine.layouts.i32, this)?.into())?.to_i32()?;
             if val == futex_val {
                 this.block_thread(thread);
                 this.futex_wait(futex_ptr, thread);

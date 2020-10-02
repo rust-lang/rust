@@ -418,16 +418,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.machine.threads.sync.condvars[id].waiters.retain(|waiter| waiter.thread != thread);
     }
 
-    fn futex_wait(&mut self, addr: Pointer, thread: ThreadId) {
+    fn futex_wait(&mut self, addr: Pointer<stacked_borrows::Tag>, thread: ThreadId) {
         let this = self.eval_context_mut();
-        let waiters = &mut this.machine.threads.sync.futexes.entry(addr).or_default().waiters;
+        let waiters = &mut this.machine.threads.sync.futexes.entry(addr.erase_tag()).or_default().waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
         waiters.push_back(FutexWaiter { thread });
     }
 
-    fn futex_wake(&mut self, addr: Pointer) -> Option<ThreadId> {
+    fn futex_wake(&mut self, addr: Pointer<stacked_borrows::Tag>) -> Option<ThreadId> {
         let this = self.eval_context_mut();
-        let waiters = &mut this.machine.threads.sync.futexes.get_mut(&addr)?.waiters;
+        let waiters = &mut this.machine.threads.sync.futexes.get_mut(&addr.erase_tag())?.waiters;
         waiters.pop_front().map(|waiter| waiter.thread)
     }
 }
