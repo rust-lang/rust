@@ -504,6 +504,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
         match ct.ty.kind() {
             ty::Uint(_) => {}
+            ty::Bool => {}
             _ => {
                 bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
             }
