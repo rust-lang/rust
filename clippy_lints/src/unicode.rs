@@ -91,14 +91,17 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
 
 fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
     let string = snippet(cx, span, "");
-    if string.chars().any(|c| ['\u{200B}', '\u{ad}'].contains(&c)) {
+    if string.chars().any(|c| ['\u{200B}', '\u{ad}', '\u{2060}'].contains(&c)) {
         span_lint_and_sugg(
             cx,
             INVISIBLE_CHARACTERS,
             span,
             "invisible character detected",
             "consider replacing the string with",
-            string.replace("\u{200B}", "\\u{200B}").replace("\u{ad}", "\\u{AD}"),
+            string
+                .replace("\u{200B}", "\\u{200B}")
+                .replace("\u{ad}", "\\u{AD}")
+                .replace("\u{2060}", "\\u{2060}"),
             Applicability::MachineApplicable,
         );
     }
