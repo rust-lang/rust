@@ -120,10 +120,10 @@ fn rustc_token_kind_to_syntax_kind(
 
     let syntax_kind = {
         match rustc_token_kind {
-            rustc_lexer::TokenKind::LineComment => COMMENT,
+            rustc_lexer::TokenKind::LineComment { doc_style: _ } => COMMENT,
 
-            rustc_lexer::TokenKind::BlockComment { terminated: true } => COMMENT,
-            rustc_lexer::TokenKind::BlockComment { terminated: false } => {
+            rustc_lexer::TokenKind::BlockComment { doc_style: _, terminated: true } => COMMENT,
+            rustc_lexer::TokenKind::BlockComment { doc_style: _, terminated: false } => {
                 return (
                     COMMENT,
                     Some("Missing trailing `*/` symbols to terminate the block comment"),
@@ -164,7 +164,7 @@ fn rustc_token_kind_to_syntax_kind(
             rustc_lexer::TokenKind::Colon => T![:],
             rustc_lexer::TokenKind::Dollar => T![$],
             rustc_lexer::TokenKind::Eq => T![=],
-            rustc_lexer::TokenKind::Not => T![!],
+            rustc_lexer::TokenKind::Bang => T![!],
             rustc_lexer::TokenKind::Lt => T![<],
             rustc_lexer::TokenKind::Gt => T![>],
             rustc_lexer::TokenKind::Minus => T![-],
