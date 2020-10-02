@@ -88,7 +88,7 @@
 +         _0 = move _3;                    // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_3);                 // scope 0 at $DIR/simplify_try.rs:8:15: 8:16
           StorageDead(_2);                 // scope 0 at $DIR/simplify_try.rs:10:1: 10:2
-          return;                          // scope 0 at $DIR/simplify_try.rs:8:14: 8:15
+          return;                          // scope 0 at $DIR/simplify_try.rs:10:2: 10:2
       }
   }
   

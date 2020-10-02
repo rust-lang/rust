@@ -109,7 +109,7 @@
 -         StorageDead(_4);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:29:1: 29:2
 +         nop;                             // scope 0 at $DIR/early_otherwise_branch_68867.rs:28:6: 28:7
 +         nop;                             // scope 0 at $DIR/early_otherwise_branch_68867.rs:29:1: 29:2
-          return;                          // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:14: 27:28
+          return;                          // scope 0 at $DIR/early_otherwise_branch_68867.rs:29:2: 29:2
       }
   
 +     bb2: {
