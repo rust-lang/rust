@@ -18,23 +18,22 @@ use crate::completion::{
     complete_postfix::postfix_snippet, completion_config::SnippetCap,
     completion_context::CompletionContext, completion_item::Completions,
 };
-use syntax::ast;
+use syntax::ast::{self, AstToken};
 
 pub(super) fn add_format_like_completions(
     acc: &mut Completions,
     ctx: &CompletionContext,
     dot_receiver: &ast::Expr,
     cap: SnippetCap,
-    receiver_text: &str,
+    receiver_text: &ast::String,
 ) {
-    if !is_string_literal(receiver_text) {
+    let input = match string_literal_contents(receiver_text) {
         // It's not a string literal, do not parse input.
-        return;
-    }
+        Some(input) => input,
+        None => return,
+    };
 
-    let input = &receiver_text[1..receiver_text.len() - 1];
-
-    let mut parser = FormatStrParser::new(input.to_owned());
+    let mut parser = FormatStrParser::new(input);
 
     if parser.parse().is_ok() {
         for kind in PostfixKind::all_suggestions() {
@@ -47,11 +46,13 @@ pub(super) fn add_format_like_completions(
 }
 
 /// Checks whether provided item is a string literal.
-fn is_string_literal(item: &str) -> bool {
-    if item.len() < 2 {
-        return false;
+fn string_literal_contents(item: &ast::String) -> Option<String> {
+    let item = item.text();
+    if item.len() >= 2 && item.starts_with("\"") && item.ends_with("\"") {
+        return Some(item[1..item.len() - 1].to_owned());
     }
-    item.starts_with("\"") && item.ends_with("\"")
+
+    None
 }
 
 /// Parser for a format-like string. It is more allowing in terms of string contents,

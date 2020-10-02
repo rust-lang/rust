@@ -4,7 +4,7 @@ mod format_like;
 
 use assists::utils::TryEnum;
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, AstToken},
     TextRange, TextSize,
 };
 use text_edit::TextEdit;
@@ -212,7 +212,11 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     )
     .add_to(acc);
 
-    add_format_like_completions(acc, ctx, &dot_receiver, cap, &receiver_text);
+    if let ast::Expr::Literal(literal) = dot_receiver.clone() {
+        if let Some(literal_text) = ast::String::cast(literal.token()) {
+            add_format_like_completions(acc, ctx, &dot_receiver, cap, &literal_text);
+        }
+    }
 }
 
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
