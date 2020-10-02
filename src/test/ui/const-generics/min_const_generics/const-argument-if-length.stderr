@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/const-argument-if-length.rs:14:24
    |
 LL |     pad: [u8; is_zst::<T>()],

@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-76701-ty-param-in-const.rs:6:46
    |
 LL | fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
@@ -6,7 +6,7 @@ LL | fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
    |
    = note: type parameters are currently not permitted in anonymous constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-76701-ty-param-in-const.rs:12:42
    |
 LL | fn const_param<const N: usize>() -> [u8; N + 1] {

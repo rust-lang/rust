@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/simple.rs:8:53
    |
 LL | fn test<const N: usize>() -> [u8; N - 1] where [u8; N - 1]: Default {
@@ -6,7 +6,7 @@ LL | fn test<const N: usize>() -> [u8; N - 1] where [u8; N - 1]: Default {
    |
    = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/simple.rs:8:35
    |
 LL | fn test<const N: usize>() -> [u8; N - 1] where [u8; N - 1]: Default {

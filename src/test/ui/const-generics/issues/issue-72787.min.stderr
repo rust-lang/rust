@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-72787.rs:11:17
    |
 LL |     Condition<{ LHS <= RHS }>: True
@@ -6,7 +6,7 @@ LL |     Condition<{ LHS <= RHS }>: True
    |
    = help: it is currently only allowed to use either `LHS` or `{ LHS }` as generic constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-72787.rs:11:24
    |
 LL |     Condition<{ LHS <= RHS }>: True
@@ -14,7 +14,7 @@ LL |     Condition<{ LHS <= RHS }>: True
    |
    = help: it is currently only allowed to use either `RHS` or `{ RHS }` as generic constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-72787.rs:26:25
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
@@ -22,7 +22,7 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |
    = help: it is currently only allowed to use either `I` or `{ I }` as generic constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-72787.rs:26:36
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,

@@ -12,7 +12,7 @@ pub struct AtLeastByte<T: ?Sized> {
     value: T,
     //~^ ERROR the size for values of type `T` cannot be known at compilation time
     pad: [u8; is_zst::<T>()],
-    //~^ ERROR generic parameters must not be used inside of non trivial constant values
+    //~^ ERROR generic parameters must not be used inside of non-trivial constant values
 }
 
 fn main() {}

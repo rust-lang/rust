@@ -581,7 +581,7 @@ declare_features! (
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
-    /// Allows non trivial generic constants which have to be manually propageted upwards.
+    /// Allows non-trivial generic constants which have to be manually propageted upwards.
     (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
 
     /// Allows basic arithmetic on floating point types in a `const fn`.

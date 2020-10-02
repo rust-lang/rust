@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-67945-1.rs:10:16
    |
 LL |         let x: S = MaybeUninit::uninit();
@@ -6,7 +6,7 @@ LL |         let x: S = MaybeUninit::uninit();
    |
    = note: type parameters are currently not permitted in anonymous constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-67945-1.rs:12:45
    |
 LL |         let b = &*(&x as *const _ as *const S);

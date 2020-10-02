@@ -7,7 +7,7 @@ trait Trait<const S: &'static str> {}
 struct Bug<T>
 where
     T: Trait<{std::intrinsics::type_name::<T>()}>
-    //~^ ERROR generic parameters must not be used inside of non trivial constant values
+    //~^ ERROR generic parameters must not be used inside of non-trivial constant values
 {
     t: T
 }

@@ -27,8 +27,8 @@ fxp_storage_impls! {
 
 type FxpStorageHelper<const INT_BITS: u8, const FRAC_BITS: u8> =
     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
-    //[min]~^ ERROR generic parameters must not be used inside of non trivial constant values
-    //[min]~| ERROR generic parameters must not be used inside of non trivial constant values
+    //[min]~^ ERROR generic parameters must not be used inside of non-trivial constant values
+    //[min]~| ERROR generic parameters must not be used inside of non-trivial constant values
 
 struct Fxp<const INT_BITS: u8, const FRAC_BITS: u8>
 where

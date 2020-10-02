@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/intrinsics-type_name-as-const-argument.rs:9:44
    |
 LL |     T: Trait<{std::intrinsics::type_name::<T>()}>

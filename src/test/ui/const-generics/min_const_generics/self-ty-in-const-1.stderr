@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/self-ty-in-const-1.rs:4:41
    |
 LL |     fn t1() -> [u8; std::mem::size_of::<Self>()];
