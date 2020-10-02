@@ -46,9 +46,11 @@ function fetch_github_commit_archive {
 }
 
 included="src/llvm-project src/doc/book src/doc/rust-by-example"
-read -ra modules <<< "$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
+modules="$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
+modules=($modules)
 use_git=""
-read -ra urls <<< "$(git config --file .gitmodules --get-regexp '\.url$' | cut -d' ' -f2)"
+urls="$(git config --file .gitmodules --get-regexp '\.url$' | cut -d' ' -f2)"
+urls=($urls)
 
 for i in "${!modules[@]}"; do
     module="${modules[$i]}"
