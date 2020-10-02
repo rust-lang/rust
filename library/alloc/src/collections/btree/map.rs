@@ -297,14 +297,23 @@ pub struct IntoIter<K, V> {
     length: usize,
 }
 
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<K, V> IntoIter<K, V> {
+    /// Returns an iterator of references over the remaining items.
+    #[inline]
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {
         let range = Range {
             front: self.front.as_ref().map(|f| f.reborrow()),
             back: self.back.as_ref().map(|b| b.reborrow()),
         };
-        f.debug_list().entries(range).finish()
+
+        Iter { range: range, length: self.length }
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -351,9 +360,15 @@ impl<K, V: fmt::Debug> fmt::Debug for Values<'_, K, V> {
 ///
 /// [`values_mut`]: BTreeMap::values_mut
 #[stable(feature = "map_values_mut", since = "1.10.0")]
-#[derive(Debug)]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
+}
+
+#[stable(feature = "map_values_mut", since = "1.10.0")]
+impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
+    }
 }
 
 /// An owning iterator over the keys of a `BTreeMap`.
@@ -363,9 +378,15 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 ///
 /// [`into_keys`]: BTreeMap::into_keys
 #[unstable(feature = "map_into_keys_values", issue = "75294")]
-#[derive(Debug)]
 pub struct IntoKeys<K, V> {
     inner: IntoIter<K, V>,
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K: fmt::Debug, V> fmt::Debug for IntoKeys<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.inner.iter().map(|(key, _)| key)).finish()
+    }
 }
 
 /// An owning iterator over the values of a `BTreeMap`.
@@ -375,9 +396,15 @@ pub struct IntoKeys<K, V> {
 ///
 /// [`into_values`]: BTreeMap::into_values
 #[unstable(feature = "map_into_keys_values", issue = "75294")]
-#[derive(Debug)]
 pub struct IntoValues<K, V> {
     inner: IntoIter<K, V>,
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V: fmt::Debug> fmt::Debug for IntoValues<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
+    }
 }
 
 /// An iterator over a sub-range of entries in a `BTreeMap`.
@@ -1465,6 +1492,14 @@ impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 
+impl<'a, K, V> IterMut<'a, K, V> {
+    /// Returns an iterator of references over the remaining items.
+    #[inline]
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {
+        Iter { range: self.range.iter(), length: self.length }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> IntoIterator for BTreeMap<K, V> {
     type Item = (K, V);
@@ -1948,6 +1983,15 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
         unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
+    }
+
+    /// Returns an iterator of references over the remaining items.
+    #[inline]
+    pub(super) fn iter(&self) -> Range<'_, K, V> {
+        Range {
+            front: self.front.as_ref().map(|f| f.reborrow()),
+            back: self.back.as_ref().map(|b| b.reborrow()),
+        }
     }
 }
 

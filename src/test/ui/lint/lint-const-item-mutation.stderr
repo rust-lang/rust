@@ -1,5 +1,5 @@
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:17:5
+  --> $DIR/lint-const-item-mutation.rs:34:5
    |
 LL |     ARRAY[0] = 5;
    |     ^^^^^^^^^^^^
@@ -7,39 +7,39 @@ LL |     ARRAY[0] = 5;
    = note: `#[warn(const_item_mutation)]` on by default
    = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:12:1
+  --> $DIR/lint-const-item-mutation.rs:26:1
    |
 LL | const ARRAY: [u8; 1] = [25];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:18:5
+  --> $DIR/lint-const-item-mutation.rs:35:5
    |
 LL |     MY_STRUCT.field = false;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:13:1
+  --> $DIR/lint-const-item-mutation.rs:27:1
    |
 LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:19:5
+  --> $DIR/lint-const-item-mutation.rs:36:5
    |
 LL |     MY_STRUCT.inner_array[0] = 'b';
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:13:1
+  --> $DIR/lint-const-item-mutation.rs:27:1
    |
 LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:20:5
+  --> $DIR/lint-const-item-mutation.rs:37:5
    |
 LL |     MY_STRUCT.use_mut();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -52,13 +52,13 @@ note: mutable reference created due to call to this method
 LL |     fn use_mut(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:13:1
+  --> $DIR/lint-const-item-mutation.rs:27:1
    |
 LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:21:5
+  --> $DIR/lint-const-item-mutation.rs:38:5
    |
 LL |     &mut MY_STRUCT;
    |     ^^^^^^^^^^^^^^
@@ -66,13 +66,13 @@ LL |     &mut MY_STRUCT;
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:13:1
+  --> $DIR/lint-const-item-mutation.rs:27:1
    |
 LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:22:5
+  --> $DIR/lint-const-item-mutation.rs:39:5
    |
 LL |     (&mut MY_STRUCT).use_mut();
    |     ^^^^^^^^^^^^^^^^
@@ -80,10 +80,48 @@ LL |     (&mut MY_STRUCT).use_mut();
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
-  --> $DIR/lint-const-item-mutation.rs:13:1
+  --> $DIR/lint-const-item-mutation.rs:27:1
    |
 LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: 6 warnings emitted
+warning: attempting to modify a `const` item
+  --> $DIR/lint-const-item-mutation.rs:51:5
+   |
+LL |     MUTABLE2.msg = "wow";
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
+note: `const` item defined here
+  --> $DIR/lint-const-item-mutation.rs:30:1
+   |
+LL | const MUTABLE2: Mutable2 = Mutable2 { msg: "", other: String::new() };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: taking a mutable reference to a `const` item
+  --> $DIR/lint-const-item-mutation.rs:52:5
+   |
+LL |     VEC.push(0);
+   |     ^^^^^^^^^^^
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: the mutable reference will refer to this temporary, not the original `const` item
+note: mutable reference created due to call to this method
+  --> $SRC_DIR/alloc/src/vec.rs:LL:COL
+   |
+LL | /     pub fn push(&mut self, value: T) {
+LL | |         // This will panic or abort if we would allocate > isize::MAX bytes
+LL | |         // or if the length increment would overflow for zero-sized types.
+LL | |         if self.len == self.buf.capacity() {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+note: `const` item defined here
+  --> $DIR/lint-const-item-mutation.rs:31:1
+   |
+LL | const VEC: Vec<i32> = Vec::new();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 8 warnings emitted
 

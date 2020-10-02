@@ -2042,13 +2042,9 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<K, V> fmt::Debug for ValuesMut<'_, K, V>
-where
-    K: fmt::Debug,
-    V: fmt::Debug,
-{
+impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.inner.iter()).finish()
+        f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
     }
 }
 
@@ -2076,7 +2072,7 @@ impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
 impl<K, V> FusedIterator for IntoKeys<K, V> {}
 
 #[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K: Debug, V: Debug> fmt::Debug for IntoKeys<K, V> {
+impl<K: Debug, V> fmt::Debug for IntoKeys<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(k, _)| k)).finish()
     }
@@ -2106,7 +2102,7 @@ impl<K, V> ExactSizeIterator for IntoValues<K, V> {
 impl<K, V> FusedIterator for IntoValues<K, V> {}
 
 #[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K: Debug, V: Debug> fmt::Debug for IntoValues<K, V> {
+impl<K, V: Debug> fmt::Debug for IntoValues<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(_, v)| v)).finish()
     }
