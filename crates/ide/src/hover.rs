@@ -1275,7 +1275,7 @@ fn bar() { fo<|>o(); }
                     Implementaion(
                         FilePosition {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             offset: 13,
                         },
@@ -1289,9 +1289,9 @@ fn bar() { fo<|>o(); }
     fn test_hover_extern_crate() {
         check(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 extern crate st<|>d;
-//- /std/lib.rs
+//- /std/lib.rs crate:std
 //! Standard library for this test
 //!
 //! Printed?
@@ -1307,9 +1307,9 @@ extern crate st<|>d;
         );
         check(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 extern crate std as ab<|>c;
-//- /std/lib.rs
+//- /std/lib.rs crate:std
 //! Standard library for this test
 //!
 //! Printed?
@@ -1989,7 +1989,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
                     Implementaion(
                         FilePosition {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             offset: 6,
                         },
@@ -2008,7 +2008,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
                     Implementaion(
                         FilePosition {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             offset: 7,
                         },
@@ -2027,7 +2027,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
                     Implementaion(
                         FilePosition {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             offset: 6,
                         },
@@ -2046,7 +2046,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
                     Implementaion(
                         FilePosition {
                             file_id: FileId(
-                                1,
+                                0,
                             ),
                             offset: 5,
                         },
@@ -2069,7 +2069,7 @@ fn foo_<|>test() {}
                         Runnable {
                             nav: NavigationTarget {
                                 file_id: FileId(
-                                    1,
+                                    0,
                                 ),
                                 full_range: 0..24,
                                 focus_range: Some(
@@ -2112,7 +2112,7 @@ mod tests<|> {
                         Runnable {
                             nav: NavigationTarget {
                                 file_id: FileId(
-                                    1,
+                                    0,
                                 ),
                                 full_range: 0..46,
                                 focus_range: Some(
@@ -2151,7 +2151,7 @@ fn main() { let s<|>t = S{ f1:0 }; }
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..19,
                                     focus_range: Some(
@@ -2190,7 +2190,7 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 17..37,
                                     focus_range: Some(
@@ -2209,7 +2209,7 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                 mod_path: "test::Arg",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..16,
                                     focus_range: Some(
@@ -2248,7 +2248,7 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 17..37,
                                     focus_range: Some(
@@ -2267,7 +2267,7 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                 mod_path: "test::Arg",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..16,
                                     focus_range: Some(
@@ -2309,7 +2309,7 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                 mod_path: "test::A",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..14,
                                     focus_range: Some(
@@ -2328,7 +2328,7 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                 mod_path: "test::B",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 15..29,
                                     focus_range: Some(
@@ -2347,7 +2347,7 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                 mod_path: "test::M::C",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 42..60,
                                     focus_range: Some(
@@ -2386,7 +2386,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..12,
                                     focus_range: Some(
@@ -2426,7 +2426,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..15,
                                     focus_range: Some(
@@ -2445,7 +2445,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 16..25,
                                     focus_range: Some(
@@ -2485,7 +2485,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..12,
                                     focus_range: Some(
@@ -2504,7 +2504,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::Bar",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 13..25,
                                     focus_range: Some(
@@ -2547,7 +2547,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..15,
                                     focus_range: Some(
@@ -2566,7 +2566,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::Bar",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 16..31,
                                     focus_range: Some(
@@ -2585,7 +2585,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::S1",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 32..44,
                                     focus_range: Some(
@@ -2604,7 +2604,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::S2",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 45..57,
                                     focus_range: Some(
@@ -2641,7 +2641,7 @@ fn foo(ar<|>g: &impl Foo) {}
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..12,
                                     focus_range: Some(
@@ -2681,7 +2681,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..12,
                                     focus_range: Some(
@@ -2700,7 +2700,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                 mod_path: "test::Bar",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 13..28,
                                     focus_range: Some(
@@ -2719,7 +2719,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 29..39,
                                     focus_range: Some(
@@ -2764,7 +2764,7 @@ mod future {
                                 mod_path: "test::future::Future",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 101..163,
                                     focus_range: Some(
@@ -2783,7 +2783,7 @@ mod future {
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..9,
                                     focus_range: Some(
@@ -2821,7 +2821,7 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..15,
                                     focus_range: Some(
@@ -2840,7 +2840,7 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 16..27,
                                     focus_range: Some(
@@ -2883,7 +2883,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::B",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 42..55,
                                     focus_range: Some(
@@ -2902,7 +2902,7 @@ fn main() { let s<|>t = foo(); }
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..12,
                                     focus_range: Some(
@@ -2939,7 +2939,7 @@ fn foo(ar<|>g: &dyn Foo) {}
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..12,
                                     focus_range: Some(
@@ -2977,7 +2977,7 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..15,
                                     focus_range: Some(
@@ -2996,7 +2996,7 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 16..27,
                                     focus_range: Some(
@@ -3037,7 +3037,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 mod_path: "test::ImplTrait",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..21,
                                     focus_range: Some(
@@ -3056,7 +3056,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 mod_path: "test::B",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 43..57,
                                     focus_range: Some(
@@ -3075,7 +3075,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 mod_path: "test::DynTrait",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 22..42,
                                     focus_range: Some(
@@ -3094,7 +3094,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 58..69,
                                     focus_range: Some(
@@ -3142,7 +3142,7 @@ fn main() { let s<|>t = test().get(); }
                                 mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        1,
+                                        0,
                                     ),
                                     full_range: 0..62,
                                     focus_range: Some(

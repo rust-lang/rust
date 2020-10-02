@@ -439,7 +439,7 @@ fn foo() { enum FooInner { } }
             [
                 NavigationTarget {
                     file_id: FileId(
-                        1,
+                        0,
                     ),
                     full_range: 0..17,
                     focus_range: Some(
@@ -455,7 +455,7 @@ fn foo() { enum FooInner { } }
                 },
                 NavigationTarget {
                     file_id: FileId(
-                        1,
+                        0,
                     ),
                     full_range: 29..46,
                     focus_range: Some(

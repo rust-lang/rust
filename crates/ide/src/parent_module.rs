@@ -63,15 +63,9 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 
 #[cfg(test)]
 mod tests {
-    use base_db::Env;
-    use cfg::CfgOptions;
     use test_utils::mark;
 
-    use crate::{
-        mock_analysis::{analysis_and_position, MockAnalysis},
-        Change, CrateGraph,
-        Edition::Edition2018,
-    };
+    use crate::mock_analysis::{analysis_and_position, single_file};
 
     #[test]
     fn test_resolve_parent_module() {
@@ -84,7 +78,7 @@ mod tests {
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("foo MODULE FileId(1) 0..8");
+        nav.assert_match("foo MODULE FileId(0) 0..8");
     }
 
     #[test]
@@ -103,7 +97,7 @@ mod tests {
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("foo MODULE FileId(1) 0..8");
+        nav.assert_match("foo MODULE FileId(0) 0..8");
     }
 
     #[test]
@@ -119,37 +113,19 @@ mod tests {
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("baz MODULE FileId(1) 32..44");
+        nav.assert_match("baz MODULE FileId(0) 32..44");
     }
 
     #[test]
     fn test_resolve_crate_root() {
-        let mock = MockAnalysis::with_files(
+        let (analysis, file_id) = single_file(
             r#"
-//- /bar.rs
+//- /main.rs
 mod foo;
 //- /foo.rs
-// empty
+<|>
 "#,
         );
-        let root_file = mock.id_of("/bar.rs");
-        let mod_file = mock.id_of("/foo.rs");
-        let mut host = mock.analysis_host();
-        assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
-
-        let mut crate_graph = CrateGraph::default();
-        let crate_id = crate_graph.add_crate_root(
-            root_file,
-            Edition2018,
-            None,
-            CfgOptions::default(),
-            Env::default(),
-            Default::default(),
-        );
-        let mut change = Change::new();
-        change.set_crate_graph(crate_graph);
-        host.apply_change(change);
-
-        assert_eq!(host.analysis().crate_for(mod_file).unwrap(), vec![crate_id]);
+        assert_eq!(analysis.crate_for(file_id).unwrap().len(), 1);
     }
 }

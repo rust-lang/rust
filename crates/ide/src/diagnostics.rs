@@ -219,7 +219,7 @@ mod tests {
     use test_utils::assert_eq_text;
 
     use crate::{
-        mock_analysis::{analysis_and_position, single_file, MockAnalysis},
+        mock_analysis::{analysis_and_position, many_files, single_file},
         DiagnosticsConfig,
     };
 
@@ -282,9 +282,7 @@ mod tests {
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
     /// apply to the file containing the cursor.
     fn check_no_diagnostics(ra_fixture: &str) {
-        let mock = MockAnalysis::with_files(ra_fixture);
-        let files = mock.files().map(|(it, _)| it).collect::<Vec<_>>();
-        let analysis = mock.analysis();
+        let (analysis, files) = many_files(ra_fixture);
         let diagnostics = files
             .into_iter()
             .flat_map(|file_id| {
@@ -304,7 +302,7 @@ mod tests {
     fn test_wrap_return_type() {
         check_fix(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 fn div(x: i32, y: i32) -> Result<i32, ()> {
@@ -313,7 +311,7 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
     }
     x / y<|>
 }
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -335,7 +333,7 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
     fn test_wrap_return_type_handles_generic_functions() {
         check_fix(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 fn div<T>(x: T) -> Result<T, i32> {
@@ -344,7 +342,7 @@ fn div<T>(x: T) -> Result<T, i32> {
     }
     <|>x
 }
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -366,7 +364,7 @@ fn div<T>(x: T) -> Result<T, i32> {
     fn test_wrap_return_type_handles_type_aliases() {
         check_fix(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 type MyResult<T> = Result<T, ()>;
@@ -377,7 +375,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     }
     x <|>/ y
 }
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -401,12 +399,12 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
         check_no_diagnostics(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 fn foo() -> Result<(), i32> { 0 }
 
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -418,14 +416,14 @@ pub mod result {
     fn test_wrap_return_type_not_applicable_when_return_type_is_not_result() {
         check_no_diagnostics(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
 
 enum SomeOtherEnum { Ok(i32), Err(String) }
 
 fn foo() -> SomeOtherEnum { 0 }
 
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
@@ -567,7 +565,7 @@ fn test_fn() {
                                     file_system_edits: [
                                         CreateFile {
                                             anchor: FileId(
-                                                1,
+                                                0,
                                             ),
                                             dst: "foo.rs",
                                         },

@@ -300,7 +300,7 @@ mod tests {
     //     "#,
     //         expect![[r#"
     //             md bar;
-    //         "#]],
+    //         "#]],foo
     //     );
     // }
 
@@ -308,7 +308,7 @@ mod tests {
     fn already_declared_bin_module_completion_omitted() {
         check(
             r#"
-            //- /src/bin.rs
+            //- /src/bin.rs crate:main
             fn main() {}
             //- /src/bin/foo.rs
             mod <|>

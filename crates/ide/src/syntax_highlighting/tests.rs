@@ -462,12 +462,12 @@ macro_rules! noop {
 fn test_extern_crate() {
     check_highlighting(
         r#"
-        //- /main.rs
+        //- /main.rs crate:main deps:std,alloc
         extern crate std;
         extern crate alloc as abc;
-        //- /std/lib.rs
+        //- /std/lib.rs crate:std
         pub struct S;
-        //- /alloc/lib.rs
+        //- /alloc/lib.rs crate:alloc
         pub struct A
         "#,
         expect_file!["./test_data/highlight_extern_crate.html"],

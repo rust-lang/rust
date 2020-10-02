@@ -422,10 +422,10 @@ fn foo() { let _ = U::<|> }
     fn completes_use_paths_across_crates() {
         check(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:foo
 use foo::<|>;
 
-//- /foo/lib.rs
+//- /foo/lib.rs crate:foo
 pub mod bar { pub struct S; }
 "#,
             expect![[r#"

@@ -602,7 +602,7 @@ mod foo<|>;
                         source_file_edits: [
                             SourceFileEdit {
                                 file_id: FileId(
-                                    2,
+                                    1,
                                 ),
                                 edit: TextEdit {
                                     indels: [
@@ -617,10 +617,10 @@ mod foo<|>;
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
-                                    3,
+                                    2,
                                 ),
                                 anchor: FileId(
-                                    3,
+                                    2,
                                 ),
                                 dst: "foo2.rs",
                             },
@@ -655,7 +655,7 @@ use crate::foo<|>::FooContent;
                         source_file_edits: [
                             SourceFileEdit {
                                 file_id: FileId(
-                                    1,
+                                    0,
                                 ),
                                 edit: TextEdit {
                                     indels: [
@@ -668,7 +668,7 @@ use crate::foo<|>::FooContent;
                             },
                             SourceFileEdit {
                                 file_id: FileId(
-                                    3,
+                                    2,
                                 ),
                                 edit: TextEdit {
                                     indels: [
@@ -683,10 +683,10 @@ use crate::foo<|>::FooContent;
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
-                                    2,
+                                    1,
                                 ),
                                 anchor: FileId(
-                                    2,
+                                    1,
                                 ),
                                 dst: "quux.rs",
                             },
@@ -715,7 +715,7 @@ mod fo<|>o;
                         source_file_edits: [
                             SourceFileEdit {
                                 file_id: FileId(
-                                    1,
+                                    0,
                                 ),
                                 edit: TextEdit {
                                     indels: [
@@ -730,10 +730,10 @@ mod fo<|>o;
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
-                                    2,
+                                    1,
                                 ),
                                 anchor: FileId(
-                                    2,
+                                    1,
                                 ),
                                 dst: "../foo2/mod.rs",
                             },
@@ -763,7 +763,7 @@ mod outer { mod fo<|>o; }
                         source_file_edits: [
                             SourceFileEdit {
                                 file_id: FileId(
-                                    1,
+                                    0,
                                 ),
                                 edit: TextEdit {
                                     indels: [
@@ -778,10 +778,10 @@ mod outer { mod fo<|>o; }
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
-                                    2,
+                                    1,
                                 ),
                                 anchor: FileId(
-                                    2,
+                                    1,
                                 ),
                                 dst: "bar.rs",
                             },
@@ -834,7 +834,7 @@ pub mod foo<|>;
                         source_file_edits: [
                             SourceFileEdit {
                                 file_id: FileId(
-                                    2,
+                                    1,
                                 ),
                                 edit: TextEdit {
                                     indels: [
@@ -847,7 +847,7 @@ pub mod foo<|>;
                             },
                             SourceFileEdit {
                                 file_id: FileId(
-                                    1,
+                                    0,
                                 ),
                                 edit: TextEdit {
                                     indels: [
@@ -862,10 +862,10 @@ pub mod foo<|>;
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
-                                    3,
+                                    2,
                                 ),
                                 anchor: FileId(
-                                    3,
+                                    2,
                                 ),
                                 dst: "foo2.rs",
                             },

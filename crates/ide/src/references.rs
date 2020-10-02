@@ -190,10 +190,11 @@ fn get_struct_def_name_for_struct_literal_search(
 
 #[cfg(test)]
 mod tests {
+    use base_db::FileId;
     use expect_test::{expect, Expect};
     use stdx::format_to;
 
-    use crate::{mock_analysis::MockAnalysis, SearchScope};
+    use crate::{mock_analysis::analysis_and_position, SearchScope};
 
     #[test]
     fn test_struct_literal_after_space() {
@@ -211,9 +212,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(1) 0..26 7..10 Other
+                Foo STRUCT FileId(0) 0..26 7..10 Other
 
-                FileId(1) 101..104 StructLiteral
+                FileId(0) 101..104 StructLiteral
             "#]],
         );
     }
@@ -229,10 +230,10 @@ struct Foo<|> {}
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(1) 0..13 7..10 Other
+                Foo STRUCT FileId(0) 0..13 7..10 Other
 
-                FileId(1) 41..44 Other
-                FileId(1) 54..57 StructLiteral
+                FileId(0) 41..44 Other
+                FileId(0) 54..57 StructLiteral
             "#]],
         );
     }
@@ -248,9 +249,9 @@ struct Foo<T> <|>{}
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(1) 0..16 7..10 Other
+                Foo STRUCT FileId(0) 0..16 7..10 Other
 
-                FileId(1) 64..67 StructLiteral
+                FileId(0) 64..67 StructLiteral
             "#]],
         );
     }
@@ -267,9 +268,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(1) 0..16 7..10 Other
+                Foo STRUCT FileId(0) 0..16 7..10 Other
 
-                FileId(1) 54..57 StructLiteral
+                FileId(0) 54..57 StructLiteral
             "#]],
         );
     }
@@ -290,12 +291,12 @@ fn main() {
     i = 5;
 }"#,
             expect![[r#"
-                i IDENT_PAT FileId(1) 24..25 Other Write
+                i IDENT_PAT FileId(0) 24..25 Other Write
 
-                FileId(1) 50..51 Other Write
-                FileId(1) 54..55 Other Read
-                FileId(1) 76..77 Other Write
-                FileId(1) 94..95 Other Write
+                FileId(0) 50..51 Other Write
+                FileId(0) 54..55 Other Read
+                FileId(0) 76..77 Other Write
+                FileId(0) 94..95 Other Write
             "#]],
         );
     }
@@ -314,10 +315,10 @@ fn bar() {
 }
 "#,
             expect![[r#"
-                spam IDENT_PAT FileId(1) 19..23 Other
+                spam IDENT_PAT FileId(0) 19..23 Other
 
-                FileId(1) 34..38 Other Read
-                FileId(1) 41..45 Other Read
+                FileId(0) 34..38 Other Read
+                FileId(0) 41..45 Other Read
             "#]],
         );
     }
@@ -329,9 +330,9 @@ fn bar() {
 fn foo(i : u32) -> u32 { i<|> }
 "#,
             expect![[r#"
-                i IDENT_PAT FileId(1) 7..8 Other
+                i IDENT_PAT FileId(0) 7..8 Other
 
-                FileId(1) 25..26 Other Read
+                FileId(0) 25..26 Other Read
             "#]],
         );
     }
@@ -343,9 +344,9 @@ fn foo(i : u32) -> u32 { i<|> }
 fn foo(i<|> : u32) -> u32 { i }
 "#,
             expect![[r#"
-                i IDENT_PAT FileId(1) 7..8 Other
+                i IDENT_PAT FileId(0) 7..8 Other
 
-                FileId(1) 25..26 Other Read
+                FileId(0) 25..26 Other Read
             "#]],
         );
     }
@@ -364,9 +365,9 @@ fn main(s: Foo) {
 }
 "#,
             expect![[r#"
-                spam RECORD_FIELD FileId(1) 17..30 21..25 Other
+                spam RECORD_FIELD FileId(0) 17..30 21..25 Other
 
-                FileId(1) 67..71 Other Read
+                FileId(0) 67..71 Other Read
             "#]],
         );
     }
@@ -381,7 +382,7 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                f FN FileId(1) 27..43 30..31 Other
+                f FN FileId(0) 27..43 30..31 Other
 
             "#]],
         );
@@ -398,7 +399,7 @@ enum Foo {
 }
 "#,
             expect![[r#"
-                B VARIANT FileId(1) 22..23 22..23 Other
+                B VARIANT FileId(0) 22..23 22..23 Other
 
             "#]],
         );
@@ -439,10 +440,10 @@ fn f() {
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(2) 17..51 28..31 Other
+                Foo STRUCT FileId(1) 17..51 28..31 Other
 
-                FileId(1) 53..56 StructLiteral
-                FileId(3) 79..82 StructLiteral
+                FileId(0) 53..56 StructLiteral
+                FileId(2) 79..82 StructLiteral
             "#]],
         );
     }
@@ -469,9 +470,9 @@ pub struct Foo {
 }
 "#,
             expect![[r#"
-                foo SOURCE_FILE FileId(2) 0..35 Other
+                foo SOURCE_FILE FileId(1) 0..35 Other
 
-                FileId(1) 14..17 Other
+                FileId(0) 14..17 Other
             "#]],
         );
     }
@@ -497,10 +498,10 @@ pub(super) struct Foo<|> {
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(3) 0..41 18..21 Other
+                Foo STRUCT FileId(2) 0..41 18..21 Other
 
-                FileId(2) 20..23 Other
-                FileId(2) 47..50 StructLiteral
+                FileId(1) 20..23 Other
+                FileId(1) 47..50 StructLiteral
             "#]],
         );
     }
@@ -525,20 +526,20 @@ pub(super) struct Foo<|> {
             code,
             None,
             expect![[r#"
-                quux FN FileId(1) 19..35 26..30 Other
+                quux FN FileId(0) 19..35 26..30 Other
 
+                FileId(1) 16..20 StructLiteral
                 FileId(2) 16..20 StructLiteral
-                FileId(3) 16..20 StructLiteral
             "#]],
         );
 
         check_with_scope(
             code,
-            Some("/bar.rs"),
+            Some(SearchScope::single_file(FileId(2))),
             expect![[r#"
-                quux FN FileId(1) 19..35 26..30 Other
+                quux FN FileId(0) 19..35 26..30 Other
 
-                FileId(3) 16..20 StructLiteral
+                FileId(2) 16..20 StructLiteral
             "#]],
         );
     }
@@ -556,10 +557,10 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                m1 MACRO_CALL FileId(1) 0..46 29..31 Other
+                m1 MACRO_CALL FileId(0) 0..46 29..31 Other
 
-                FileId(1) 63..65 StructLiteral
-                FileId(1) 73..75 StructLiteral
+                FileId(0) 63..65 StructLiteral
+                FileId(0) 73..75 StructLiteral
             "#]],
         );
     }
@@ -574,10 +575,10 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                i IDENT_PAT FileId(1) 23..24 Other Write
+                i IDENT_PAT FileId(0) 23..24 Other Write
 
-                FileId(1) 34..35 Other Write
-                FileId(1) 38..39 Other Read
+                FileId(0) 34..35 Other Write
+                FileId(0) 38..39 Other Read
             "#]],
         );
     }
@@ -596,10 +597,10 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                f RECORD_FIELD FileId(1) 15..21 15..16 Other
+                f RECORD_FIELD FileId(0) 15..21 15..16 Other
 
-                FileId(1) 55..56 Other Read
-                FileId(1) 68..69 Other Write
+                FileId(0) 55..56 Other Read
+                FileId(0) 68..69 Other Write
             "#]],
         );
     }
@@ -614,9 +615,9 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                i IDENT_PAT FileId(1) 19..20 Other
+                i IDENT_PAT FileId(0) 19..20 Other
 
-                FileId(1) 26..27 Other Write
+                FileId(0) 26..27 Other Write
             "#]],
         );
     }
@@ -638,9 +639,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                new FN FileId(1) 54..81 61..64 Other
+                new FN FileId(0) 54..81 61..64 Other
 
-                FileId(1) 126..129 StructLiteral
+                FileId(0) 126..129 StructLiteral
             "#]],
         );
     }
@@ -660,10 +661,10 @@ use crate::f;
 fn g() { f(); }
 "#,
             expect![[r#"
-                f FN FileId(1) 22..31 25..26 Other
+                f FN FileId(0) 22..31 25..26 Other
 
-                FileId(2) 11..12 Other
-                FileId(2) 24..25 StructLiteral
+                FileId(1) 11..12 Other
+                FileId(1) 24..25 StructLiteral
             "#]],
         );
     }
@@ -672,11 +673,8 @@ fn g() { f(); }
         check_with_scope(ra_fixture, None, expect)
     }
 
-    fn check_with_scope(ra_fixture: &str, search_scope: Option<&str>, expect: Expect) {
-        let (mock_analysis, pos) = MockAnalysis::with_files_and_position(ra_fixture);
-        let search_scope =
-            search_scope.map(|path| SearchScope::single_file(mock_analysis.id_of(path)));
-        let analysis = mock_analysis.analysis();
+    fn check_with_scope(ra_fixture: &str, search_scope: Option<SearchScope>, expect: Expect) {
+        let (analysis, pos) = analysis_and_position(ra_fixture);
         let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
 
         let mut actual = String::new();

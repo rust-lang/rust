@@ -271,10 +271,10 @@ fn quux() { <|> }
     fn completes_extern_prelude() {
         check(
             r#"
-//- /lib.rs
+//- /lib.rs crate:main deps:other_crate
 use <|>;
 
-//- /other_crate/lib.rs
+//- /other_crate/lib.rs crate:other_crate
 // nothing here
 "#,
             expect![[r#"
@@ -350,10 +350,10 @@ fn foo() {
     fn completes_prelude() {
         check(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 fn foo() { let x: <|> }
 
-//- /std/lib.rs
+//- /std/lib.rs crate:std
 #[prelude_import]
 use prelude::*;
 
@@ -371,16 +371,16 @@ mod prelude { struct Option; }
     fn completes_std_prelude_if_core_is_defined() {
         check(
             r#"
-//- /main.rs
+//- /main.rs crate:main deps:core,std
 fn foo() { let x: <|> }
 
-//- /core/lib.rs
+//- /core/lib.rs crate:core
 #[prelude_import]
 use prelude::*;
 
 mod prelude { struct Option; }
 
-//- /std/lib.rs
+//- /std/lib.rs crate:std deps:core
 #[prelude_import]
 use prelude::*;
 

@@ -117,13 +117,13 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
 impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
 
 pub struct ChangeFixture {
-    file_position: Option<(FileId, RangeOrOffset)>,
-    files: Vec<FileId>,
-    change: Change,
+    pub file_position: Option<(FileId, RangeOrOffset)>,
+    pub files: Vec<FileId>,
+    pub change: Change,
 }
 
 impl ChangeFixture {
-    fn parse(ra_fixture: &str) -> ChangeFixture {
+    pub fn parse(ra_fixture: &str) -> ChangeFixture {
         let fixture = Fixture::parse(ra_fixture);
         let mut change = Change::new();
 
@@ -132,6 +132,7 @@ impl ChangeFixture {
         let mut crates = FxHashMap::default();
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
+        let mut default_cfg = CfgOptions::default();
 
         let mut file_set = FileSet::default();
         let source_root_prefix = "/".to_string();
@@ -171,6 +172,7 @@ impl ChangeFixture {
             } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
+                default_cfg = meta.cfg;
             }
 
             change.change_file(file_id, Some(Arc::new(text)));
@@ -185,8 +187,8 @@ impl ChangeFixture {
             crate_graph.add_crate_root(
                 crate_root,
                 Edition::Edition2018,
-                None,
-                CfgOptions::default(),
+                Some("test".to_string()),
+                default_cfg,
                 Env::default(),
                 Default::default(),
             );
