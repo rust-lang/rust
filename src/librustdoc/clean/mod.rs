@@ -1283,6 +1283,156 @@ impl Clean<Item> for ty::AssocItem {
     }
 }
 
+fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &DocContext<'_>) -> Type {
+    use rustc_hir::GenericParamCount;
+    let hir::Ty { hir_id, span, ref kind } = *hir_ty;
+    let qpath = match kind {
+        hir::TyKind::Path(qpath) => qpath,
+        _ => unreachable!(),
+    };
+    match qpath {
+        hir::QPath::Resolved(None, ref path) => {
+            if let Res::Def(DefKind::TyParam, did) = path.res {
+                if let Some(new_ty) = cx.ty_substs.borrow().get(&did).cloned() {
+                    return new_ty;
+                }
+                if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did.into()) {
+                    return ImplTrait(bounds);
+                }
+            }
+
+            let mut alias = None;
+            if let Res::Def(DefKind::TyAlias, def_id) = path.res {
+                // Substitute private type aliases
+                if let Some(def_id) = def_id.as_local() {
+                    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
+                    if !cx.renderinfo.borrow().access_levels.is_exported(def_id.to_def_id()) {
+                        alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
+                    }
+                }
+            };
+
+            if let Some(&hir::ItemKind::TyAlias(ref ty, ref generics)) = alias {
+                let provided_params = &path.segments.last().expect("segments were empty");
+                let mut ty_substs = FxHashMap::default();
+                let mut lt_substs = FxHashMap::default();
+                let mut ct_substs = FxHashMap::default();
+                let generic_args = provided_params.generic_args();
+                {
+                    let mut indices: GenericParamCount = Default::default();
+                    for param in generics.params.iter() {
+                        match param.kind {
+                            hir::GenericParamKind::Lifetime { .. } => {
+                                let mut j = 0;
+                                let lifetime = generic_args.args.iter().find_map(|arg| match arg {
+                                    hir::GenericArg::Lifetime(lt) => {
+                                        if indices.lifetimes == j {
+                                            return Some(lt);
+                                        }
+                                        j += 1;
+                                        None
+                                    }
+                                    _ => None,
+                                });
+                                if let Some(lt) = lifetime.cloned() {
+                                    let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
+                                    let cleaned = if !lt.is_elided() {
+                                        lt.clean(cx)
+                                    } else {
+                                        self::types::Lifetime::elided()
+                                    };
+                                    lt_substs.insert(lt_def_id.to_def_id(), cleaned);
+                                }
+                                indices.lifetimes += 1;
+                            }
+                            hir::GenericParamKind::Type { ref default, .. } => {
+                                let ty_param_def_id = cx.tcx.hir().local_def_id(param.hir_id);
+                                let mut j = 0;
+                                let type_ = generic_args.args.iter().find_map(|arg| match arg {
+                                    hir::GenericArg::Type(ty) => {
+                                        if indices.types == j {
+                                            return Some(ty);
+                                        }
+                                        j += 1;
+                                        None
+                                    }
+                                    _ => None,
+                                });
+                                if let Some(ty) = type_ {
+                                    ty_substs.insert(ty_param_def_id.to_def_id(), ty.clean(cx));
+                                } else if let Some(default) = *default {
+                                    ty_substs
+                                        .insert(ty_param_def_id.to_def_id(), default.clean(cx));
+                                }
+                                indices.types += 1;
+                            }
+                            hir::GenericParamKind::Const { .. } => {
+                                let const_param_def_id = cx.tcx.hir().local_def_id(param.hir_id);
+                                let mut j = 0;
+                                let const_ = generic_args.args.iter().find_map(|arg| match arg {
+                                    hir::GenericArg::Const(ct) => {
+                                        if indices.consts == j {
+                                            return Some(ct);
+                                        }
+                                        j += 1;
+                                        None
+                                    }
+                                    _ => None,
+                                });
+                                if let Some(ct) = const_ {
+                                    ct_substs.insert(const_param_def_id.to_def_id(), ct.clean(cx));
+                                }
+                                // FIXME(const_generics:defaults)
+                                indices.consts += 1;
+                            }
+                        }
+                    }
+                }
+                return cx.enter_alias(ty_substs, lt_substs, ct_substs, || ty.clean(cx));
+            }
+            resolve_type(cx, path.clean(cx), hir_id)
+        }
+        hir::QPath::Resolved(Some(ref qself), ref p) => {
+            let segments = if p.is_global() { &p.segments[1..] } else { &p.segments };
+            let trait_segments = &segments[..segments.len() - 1];
+            let trait_path = self::Path {
+                global: p.is_global(),
+                res: Res::Def(
+                    DefKind::Trait,
+                    cx.tcx.associated_item(p.res.def_id()).container.id(),
+                ),
+                segments: trait_segments.clean(cx),
+            };
+            Type::QPath {
+                name: p.segments.last().expect("segments were empty").ident.name.clean(cx),
+                self_type: box qself.clean(cx),
+                trait_: box resolve_type(cx, trait_path, hir_id),
+            }
+        }
+        hir::QPath::TypeRelative(ref qself, ref segment) => {
+            let mut res = Res::Err;
+            /*
+            let hir_ty = hir::Ty {
+                kind: hir::TyKind::Path((*qpath).clone()),
+                hir_id,
+                span,
+            };
+            */
+            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+            if let ty::Projection(proj) = ty.kind() {
+                res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
+            }
+            let trait_path = hir::Path { span, res, segments: &[] };
+            Type::QPath {
+                name: segment.ident.name.clean(cx),
+                self_type: box qself.clean(cx),
+                trait_: box resolve_type(cx, trait_path.clean(cx), hir_id),
+            }
+        }
+        hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),
+    }
+}
+
 impl Clean<Type> for hir::Ty<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         use rustc_hir::*;
@@ -1318,145 +1468,7 @@ impl Clean<Type> for hir::Ty<'_> {
                     unreachable!()
                 }
             }
-            TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
-                if let Res::Def(DefKind::TyParam, did) = path.res {
-                    if let Some(new_ty) = cx.ty_substs.borrow().get(&did).cloned() {
-                        return new_ty;
-                    }
-                    if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did.into()) {
-                        return ImplTrait(bounds);
-                    }
-                }
-
-                let mut alias = None;
-                if let Res::Def(DefKind::TyAlias, def_id) = path.res {
-                    // Substitute private type aliases
-                    if let Some(def_id) = def_id.as_local() {
-                        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-                        if !cx.renderinfo.borrow().access_levels.is_exported(def_id.to_def_id()) {
-                            alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
-                        }
-                    }
-                };
-
-                if let Some(&hir::ItemKind::TyAlias(ref ty, ref generics)) = alias {
-                    let provided_params = &path.segments.last().expect("segments were empty");
-                    let mut ty_substs = FxHashMap::default();
-                    let mut lt_substs = FxHashMap::default();
-                    let mut ct_substs = FxHashMap::default();
-                    let generic_args = provided_params.generic_args();
-                    {
-                        let mut indices: GenericParamCount = Default::default();
-                        for param in generics.params.iter() {
-                            match param.kind {
-                                hir::GenericParamKind::Lifetime { .. } => {
-                                    let mut j = 0;
-                                    let lifetime =
-                                        generic_args.args.iter().find_map(|arg| match arg {
-                                            hir::GenericArg::Lifetime(lt) => {
-                                                if indices.lifetimes == j {
-                                                    return Some(lt);
-                                                }
-                                                j += 1;
-                                                None
-                                            }
-                                            _ => None,
-                                        });
-                                    if let Some(lt) = lifetime.cloned() {
-                                        let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
-                                        let cleaned = if !lt.is_elided() {
-                                            lt.clean(cx)
-                                        } else {
-                                            self::types::Lifetime::elided()
-                                        };
-                                        lt_substs.insert(lt_def_id.to_def_id(), cleaned);
-                                    }
-                                    indices.lifetimes += 1;
-                                }
-                                hir::GenericParamKind::Type { ref default, .. } => {
-                                    let ty_param_def_id = cx.tcx.hir().local_def_id(param.hir_id);
-                                    let mut j = 0;
-                                    let type_ =
-                                        generic_args.args.iter().find_map(|arg| match arg {
-                                            hir::GenericArg::Type(ty) => {
-                                                if indices.types == j {
-                                                    return Some(ty);
-                                                }
-                                                j += 1;
-                                                None
-                                            }
-                                            _ => None,
-                                        });
-                                    if let Some(ty) = type_ {
-                                        ty_substs.insert(ty_param_def_id.to_def_id(), ty.clean(cx));
-                                    } else if let Some(default) = *default {
-                                        ty_substs
-                                            .insert(ty_param_def_id.to_def_id(), default.clean(cx));
-                                    }
-                                    indices.types += 1;
-                                }
-                                hir::GenericParamKind::Const { .. } => {
-                                    let const_param_def_id =
-                                        cx.tcx.hir().local_def_id(param.hir_id);
-                                    let mut j = 0;
-                                    let const_ =
-                                        generic_args.args.iter().find_map(|arg| match arg {
-                                            hir::GenericArg::Const(ct) => {
-                                                if indices.consts == j {
-                                                    return Some(ct);
-                                                }
-                                                j += 1;
-                                                None
-                                            }
-                                            _ => None,
-                                        });
-                                    if let Some(ct) = const_ {
-                                        ct_substs
-                                            .insert(const_param_def_id.to_def_id(), ct.clean(cx));
-                                    }
-                                    // FIXME(const_generics:defaults)
-                                    indices.consts += 1;
-                                }
-                            }
-                        }
-                    }
-                    return cx.enter_alias(ty_substs, lt_substs, ct_substs, || ty.clean(cx));
-                }
-                resolve_type(cx, path.clean(cx), self.hir_id)
-            }
-            TyKind::Path(hir::QPath::Resolved(Some(ref qself), ref p)) => {
-                let segments = if p.is_global() { &p.segments[1..] } else { &p.segments };
-                let trait_segments = &segments[..segments.len() - 1];
-                let trait_path = self::Path {
-                    global: p.is_global(),
-                    res: Res::Def(
-                        DefKind::Trait,
-                        cx.tcx.associated_item(p.res.def_id()).container.id(),
-                    ),
-                    segments: trait_segments.clean(cx),
-                };
-                Type::QPath {
-                    name: p.segments.last().expect("segments were empty").ident.name.clean(cx),
-                    self_type: box qself.clean(cx),
-                    trait_: box resolve_type(cx, trait_path, self.hir_id),
-                }
-            }
-            TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
-                let mut res = Res::Err;
-                let ty = hir_ty_to_ty(cx.tcx, self);
-                if let ty::Projection(proj) = ty.kind() {
-                    res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
-                }
-                let trait_path = hir::Path { span: self.span, res, segments: &[] };
-                Type::QPath {
-                    name: segment.ident.name.clean(cx),
-                    self_type: box qself.clean(cx),
-                    trait_: box resolve_type(cx, trait_path.clean(cx), self.hir_id),
-                }
-            }
-            TyKind::Path(hir::QPath::LangItem(..)) => {
-                bug!("clean: requiring documentation of lang item")
-            }
+            TyKind::Path(_) => clean_qpath(&self, cx),
             TyKind::TraitObject(ref bounds, ref lifetime) => {
                 match bounds[0].clean(cx).trait_ {
                     ResolvedPath { path, param_names: None, did, is_generic } => {
