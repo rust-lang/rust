@@ -85,7 +85,6 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::thir::{Expr, ExprRef, LintLevel};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::GeneratorKind;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
@@ -364,7 +363,7 @@ impl DropTree {
                         target: blocks[drop_data.1].unwrap(),
                         // The caller will handle this if needed.
                         unwind: None,
-                        location: drop_data.0.local.into(),
+                        place: drop_data.0.local.into(),
                     };
                     cfg.terminate(block, drop_data.0.source_info, terminator);
                 }
@@ -1389,7 +1388,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { .. } => {
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::InlineAsm {.. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
             }
         }
