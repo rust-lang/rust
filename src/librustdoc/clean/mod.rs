@@ -1290,6 +1290,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &DocContext<'_>) -> Type {
         hir::TyKind::Path(qpath) => qpath,
         _ => unreachable!(),
     };
+
     match qpath {
         hir::QPath::Resolved(None, ref path) => {
             if let Res::Def(DefKind::TyParam, did) = path.res {
@@ -1393,6 +1394,12 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &DocContext<'_>) -> Type {
             resolve_type(cx, path.clean(cx), hir_id)
         }
         hir::QPath::Resolved(Some(ref qself), ref p) => {
+            // Try to normalize `<X as Y>::T` to a type
+            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+            if let Some(normalized_value) = normalize(cx.tcx, ty) {
+                return normalized_value.clean(cx);
+            }
+
             let segments = if p.is_global() { &p.segments[1..] } else { &p.segments };
             let trait_segments = &segments[..segments.len() - 1];
             let trait_path = self::Path {
@@ -1410,18 +1417,12 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &DocContext<'_>) -> Type {
             }
         }
         hir::QPath::TypeRelative(ref qself, ref segment) => {
-            let mut res = Res::Err;
-            /*
-            let hir_ty = hir::Ty {
-                kind: hir::TyKind::Path((*qpath).clone()),
-                hir_id,
-                span,
-            };
-            */
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            if let ty::Projection(proj) = ty.kind() {
-                res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
-            }
+            let res = if let ty::Projection(proj) = ty.kind() {
+                Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id)
+            } else {
+                Res::Err
+            };
             let trait_path = hir::Path { span, res, segments: &[] };
             Type::QPath {
                 name: segment.ident.name.clean(cx),
@@ -1496,10 +1497,42 @@ impl Clean<Type> for hir::Ty<'_> {
     }
 }
 
+/// Returns `None` if the type could not be normalized
+fn normalize(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    use crate::rustc_trait_selection::infer::TyCtxtInferExt;
+    use crate::rustc_trait_selection::traits::query::normalize::AtExt;
+    use rustc_middle::traits::ObligationCause;
+    use rustc_middle::ty::ParamEnv;
+
+    // Try to normalize `<X as Y>::T` to a type
+    // FIXME: rustdoc won't be able to perform 'partial' normalization
+    // until this param env is actually correct
+    // 'partial': `<Vec<T> as IntoIterator>::IntoIter>` -> `vec::IntoIter<T>`
+    let param_env = ParamEnv::empty();
+    let lifted = ty.lift_to_tcx(tcx).unwrap();
+    let normalized = tcx.infer_ctxt().enter(|infcx| {
+        infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .normalize(lifted)
+            .map(|resolved| infcx.resolve_vars_if_possible(resolved.value))
+    });
+    match normalized {
+        Ok(normalized_value) => {
+            debug!("resolved {:?} to {:?}", ty, normalized_value);
+            Some(normalized_value)
+        }
+        Err(err) => {
+            debug!("failed to resolve {:?}: {:?}", ty, err);
+            None
+        }
+    }
+}
+
 impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         debug!("cleaning type: {:?}", self);
-        match *self.kind() {
+        let ty = normalize(cx.tcx, self.lift_to_tcx(cx.tcx).unwrap()).unwrap_or(self);
+        match *ty.kind() {
             ty::Never => Never,
             ty::Bool => Primitive(PrimitiveType::Bool),
             ty::Char => Primitive(PrimitiveType::Char),
