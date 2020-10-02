@@ -1014,14 +1014,20 @@ fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
         .iter()
         .filter_map(move |stmt| match stmt.kind {
             StmtKind::Local(..) | StmtKind::Item(..) => None,
-            StmtKind::Expr(e) | StmtKind::Semi(e) => if_chain! {
-                if let ExprKind::AssignOp(_, var, _) = e.kind;
-                // skip StartKind::Range
-                if loop_counters.iter().skip(1).any(|counter| Some(counter.id) == var_def_id(cx, var));
-                then { None } else { Some(e) }
-            },
+            StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
         })
         .chain((*expr).into_iter())
+        .filter(move |e| {
+            if let ExprKind::AssignOp(_, place, _) = e.kind {
+                !loop_counters
+                    .iter()
+                    // skip StartKind::Range
+                    .skip(1)
+                    .any(|counter| same_var(cx, place, counter.id))
+            } else {
+                true
+            }
+        })
         .map(get_assignment)
 }
 
