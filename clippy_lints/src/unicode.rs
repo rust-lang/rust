@@ -8,18 +8,18 @@ use rustc_span::source_map::Span;
 use unicode_normalization::UnicodeNormalization;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for the Unicode zero-width space in the code.
+    /// **What it does:** Checks for invisible Unicode characters in the code.
     ///
     /// **Why is this bad?** Having an invisible character in the code makes for all
     /// sorts of April fools, but otherwise is very much frowned upon.
     ///
     /// **Known problems:** None.
     ///
-    /// **Example:** You don't see it, but there may be a zero-width space
-    /// somewhere in this text.
+    /// **Example:** You don't see it, but there may be a zero-width space or soft hyphen
+    /// some­where in this text.
     pub ZERO_WIDTH_SPACE,
     correctness,
-    "using a zero-width space in a string literal, which is confusing"
+    "using an invisible character in a string literal, which is confusing"
 }
 
 declare_clippy_lint! {
@@ -91,14 +91,14 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
 
 fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
     let string = snippet(cx, span, "");
-    if string.contains('\u{200B}') {
+    if let Some(invisible) = string.chars().find(|c| ['\u{200B}', '\u{ad}'].contains(&c)) {
         span_lint_and_sugg(
             cx,
             ZERO_WIDTH_SPACE,
             span,
-            "zero-width space detected",
+            &format!("invisible character detected: {:?}", invisible),
             "consider replacing the string with",
-            string.replace("\u{200B}", "\\u{200B}"),
+            string.replace("\u{200B}", "\\u{200B}").replace("\u{ad}", "\\u{AD}"),
             Applicability::MachineApplicable,
         );
     }

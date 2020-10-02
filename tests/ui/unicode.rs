@@ -2,6 +2,8 @@
 fn zero() {
     print!("Here >​< is a ZWS, and ​another");
     print!("This\u{200B}is\u{200B}fine");
+    print!("Here >­< is a SHY, and ­another");
+    print!("This\u{ad}is\u{ad}fine");
 }
 
 #[warn(clippy::unicode_not_nfc)]
