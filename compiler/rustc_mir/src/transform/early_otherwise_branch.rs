@@ -250,12 +250,6 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 return None;
             }
 
-            // check that the value being matched on is the same. The
-            if this_bb_discr_info.targets_with_values.iter().find(|x| x.0 == value).is_none() {
-                trace!("NO: values being matched on are not the same");
-                return None;
-            }
-
             // only allow optimization if the left and right of the tuple being matched are the same variants.
             // so the following should not optimize
             //  ```rust
