@@ -212,17 +212,15 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         let discr = self.find_switch_discriminant_info(bb, switch)?;
 
         // go through each target, finding a discriminant read, and a switch
-        let results = discr.targets_with_values.iter().map(|(value, target)| {
-            self.find_discriminant_switch_pairing(&discr, target.clone(), value.clone())
-        });
+        let mut results = vec![];
 
-        // if the optimization did not apply for one of the targets, then abort
-        if results.clone().any(|x| x.is_none()) || results.len() == 0 {
-            trace!("NO: not all of the targets matched the pattern for optimization");
-            return None;
+        for (value, target) in discr.targets_with_values.iter() {
+            let info =
+                self.find_discriminant_switch_pairing(&discr, target.clone(), value.clone())?;
+            results.push(info);
         }
 
-        Some(results.flatten().collect())
+        Some(results)
     }
 
     fn find_discriminant_switch_pairing(
