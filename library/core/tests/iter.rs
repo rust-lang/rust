@@ -143,6 +143,72 @@ fn test_iterator_chain() {
 }
 
 #[test]
+fn test_iterator_chain_advance_by() {
+    fn test_chain(xs: &[i32], ys: &[i32]) {
+        let len = xs.len() + ys.len();
+
+        for i in 0..xs.len() {
+            let mut iter = xs.iter().chain(ys);
+            iter.advance_by(i).unwrap();
+            assert_eq!(iter.next(), Some(&xs[i]));
+            assert_eq!(iter.advance_by(100), Err(len - i - 1));
+        }
+
+        for i in 0..ys.len() {
+            let mut iter = xs.iter().chain(ys);
+            iter.advance_by(xs.len() + i).unwrap();
+            assert_eq!(iter.next(), Some(&ys[i]));
+            assert_eq!(iter.advance_by(100), Err(ys.len() - i - 1));
+        }
+
+        let mut iter = xs.iter().chain(ys);
+        iter.advance_by(len).unwrap();
+        assert_eq!(iter.next(), None);
+
+        let mut iter = xs.iter().chain(ys);
+        assert_eq!(iter.advance_by(len + 1), Err(len));
+    }
+
+    test_chain(&[], &[]);
+    test_chain(&[], &[0, 1, 2, 3, 4, 5]);
+    test_chain(&[0, 1, 2, 3, 4, 5], &[]);
+    test_chain(&[0, 1, 2, 3, 4, 5], &[30, 40, 50, 60]);
+}
+
+#[test]
+fn test_iterator_chain_advance_back_by() {
+    fn test_chain(xs: &[i32], ys: &[i32]) {
+        let len = xs.len() + ys.len();
+
+        for i in 0..ys.len() {
+            let mut iter = xs.iter().chain(ys);
+            iter.advance_back_by(i).unwrap();
+            assert_eq!(iter.next_back(), Some(&ys[ys.len() - i - 1]));
+            assert_eq!(iter.advance_back_by(100), Err(len - i - 1));
+        }
+
+        for i in 0..xs.len() {
+            let mut iter = xs.iter().chain(ys);
+            iter.advance_back_by(ys.len() + i).unwrap();
+            assert_eq!(iter.next_back(), Some(&xs[xs.len() - i - 1]));
+            assert_eq!(iter.advance_back_by(100), Err(xs.len() - i - 1));
+        }
+
+        let mut iter = xs.iter().chain(ys);
+        iter.advance_back_by(len).unwrap();
+        assert_eq!(iter.next_back(), None);
+
+        let mut iter = xs.iter().chain(ys);
+        assert_eq!(iter.advance_back_by(len + 1), Err(len));
+    }
+
+    test_chain(&[], &[]);
+    test_chain(&[], &[0, 1, 2, 3, 4, 5]);
+    test_chain(&[0, 1, 2, 3, 4, 5], &[]);
+    test_chain(&[0, 1, 2, 3, 4, 5], &[30, 40, 50, 60]);
+}
+
+#[test]
 fn test_iterator_chain_nth() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];
