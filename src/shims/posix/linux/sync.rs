@@ -77,6 +77,7 @@ pub fn futex<'tcx>(
             this.memory.check_ptr_access(addr.to_scalar()?, Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
+            // FIXME: this fails if `addr` is not a pointer type.
             let futex_val = this.read_scalar_at_offset(addr.into(), 0, this.machine.layouts.i32)?.to_i32()?;
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
