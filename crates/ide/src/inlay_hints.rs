@@ -254,10 +254,11 @@ fn should_not_display_type_hint(
                 ast::ForExpr(it) => {
                     // We *should* display hint only if user provided "in {expr}" and we know the type of expr (and it's not unit).
                     // Type of expr should be iterable.
-                    let type_is_known = |ty: Option<hir::Type>| ty.map(|ty| !ty.is_unit() && !ty.is_unknown()).unwrap_or(false);
-                    let should_display = it.in_token().is_some()
-                        && it.iterable().map(|expr| type_is_known(sema.type_of_expr(&expr))).unwrap_or(false);
-                    return !should_display;
+                    return it.in_token().is_none() ||
+                        it.iterable()
+                            .and_then(|iterable_expr|sema.type_of_expr(&iterable_expr))
+                            .map(|iterable_ty| iterable_ty.is_unknown() || iterable_ty.is_unit())
+                            .unwrap_or(true)
                 },
                 _ => (),
             }
