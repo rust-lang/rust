@@ -1,3 +1,5 @@
+#![feature(vec_try_remove)]
+
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveError::*;
@@ -516,6 +518,21 @@ fn test_slice_out_of_bounds_5() {
 fn test_swap_remove_empty() {
     let mut vec = Vec::<i32>::new();
     vec.swap_remove(0);
+}
+
+#[test]
+fn test_try_remove() {
+    let mut vec = vec![1, 2, 3];
+    // We are attempting to remove vec[0] which contains 1
+    assert_eq!(vec.try_remove(0), Some(1));
+    // Now `vec` looks like: [2, 3]
+    // We will now try to remove vec[2] which does not exist
+    // This should return `None`
+    assert_eq!(vec.try_remove(2), None);
+
+    // We will try the same thing with an empty vector
+    let mut v = vec![];
+    assert!(v.try_remove(0).is_none());
 }
 
 #[test]
