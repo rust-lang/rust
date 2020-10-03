@@ -1257,6 +1257,14 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
+        // Reuses other if doing so allows us to turn a certain reallocation within self
+        // into a potential, future reallocation in other.
+        // The capacity limit ensures that we are not stealing a large preallocation from `other`
+        // that is not commensurate with the avoided reallocation in self.
+        if self.len == 0 && self.capacity() < other.len && other.capacity() / 2 <= other.len {
+            mem::swap(self, other);
+            return;
+        }
         unsafe {
             self.append_elements(other.as_slice() as _);
             other.set_len(0);
