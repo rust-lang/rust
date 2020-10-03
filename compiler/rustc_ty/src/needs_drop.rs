@@ -90,7 +90,7 @@ where
             };
 
             for component in components {
-                match *component.kind() {
+                match component.kind() {
                     _ if component.is_copy_modulo_regions(tcx.at(DUMMY_SP), self.param_env) => (),
 
                     ty::Closure(_, substs) => {
@@ -107,7 +107,7 @@ where
 
                         let witness = substs.witness();
                         let interior_tys = match witness.kind() {
-                            ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
+                            ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(&tys),
                             _ => {
                                 tcx.sess.delay_span_bug(
                                     tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP),

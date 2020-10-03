@@ -416,7 +416,7 @@ fn lint_literal<'tcx>(
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
 ) {
-    match *cx.typeck_results().node_type(e.hir_id).kind() {
+    match cx.typeck_results().node_type(e.hir_id).kind() {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
@@ -512,7 +512,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match *cx.typeck_results().node_type(expr.hir_id).kind() {
+            match cx.typeck_results().node_type(expr.hir_id).kind() {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {
@@ -689,7 +689,7 @@ crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: C
 /// If the type passed in was not scalar, returns None.
 fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = cx.tcx;
-    Some(match *ty.kind() {
+    Some(match ty.kind() {
         ty::Adt(field_def, field_substs) => {
             let inner_field_ty = {
                 let first_non_zst_ty =

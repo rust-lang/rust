@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             }
 
             // Emit lint diagnostic.
-            let target = match *cx.typeck_results().expr_ty_adjusted(receiver_arg).kind() {
+            let target = match cx.typeck_results().expr_ty_adjusted(receiver_arg).kind() {
                 ty::Ref(_, inner_ty, _) if inner_ty.is_array() => "[T; N]",
                 ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Slice(..)) => "[T]",
 

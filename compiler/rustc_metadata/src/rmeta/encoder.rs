@@ -1491,7 +1491,7 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id.to_def_id()] <- &self.tcx.get_attrs(def_id.to_def_id())[..]);
         self.encode_item_type(def_id.to_def_id());
-        if let ty::Closure(def_id, substs) = *ty.kind() {
+        if let ty::Closure(def_id, substs) = ty.kind() {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
         self.encode_generics(def_id.to_def_id());

@@ -35,7 +35,7 @@ struct ExprVisitor<'tcx> {
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
 fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let (def, substs) = match *ty.kind() {
+    let (def, substs) = match ty.kind() {
         ty::Adt(def, substs) => (def, substs),
         _ => return ty,
     };
@@ -81,7 +81,7 @@ impl ExprVisitor<'tcx> {
             // Special-case transmutting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx, from);
-            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) {
+            if let (ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) {
                 if size_to == Pointer.size(&self.tcx) {
                     struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
                         .note(&format!("source type: {}", from))
@@ -149,7 +149,7 @@ impl ExprVisitor<'tcx> {
             64 => InlineAsmType::I64,
             _ => unreachable!(),
         };
-        let asm_ty = match *ty.kind() {
+        let asm_ty = match ty.kind() {
             ty::Never | ty::Error(_) => return None,
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
