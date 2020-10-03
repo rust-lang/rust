@@ -210,7 +210,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
     }
 
     fn print_type(self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        match *ty.kind() {
+        match ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)

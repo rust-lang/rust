@@ -356,7 +356,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match *ty.kind() {
+        match ty.kind() {
             // Basic types, handled above.
             ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never => {
                 unreachable!()

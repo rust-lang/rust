@@ -446,7 +446,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         ]
                         .contains(&Some(trait_ref.def_id()));
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
-                            *trait_ref.skip_binder().self_ty().kind()
+                            trait_ref.skip_binder().self_ty().kind()
                         {
                             !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                         } else {
@@ -683,7 +683,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     None => return,
                 };
 
-                let found_did = match *found_trait_ty.kind() {
+                let found_did = match found_trait_ty.kind() {
                     ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) => Some(did),
                     ty::Adt(def, _) => Some(def.did),
                     _ => None,
@@ -1271,7 +1271,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         match (type_category(a), type_category(b)) {
             (Some(cat_a), Some(cat_b)) => match (a.kind(), b.kind()) {
-                (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => def_a == def_b,
+                (ty::Adt(def_a, _), ty::Adt(def_b, _)) => def_a == def_b,
                 _ => cat_a == cat_b,
             },
             // infer and error can be equated to all types
@@ -1654,7 +1654,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::Param(ty::ParamTy { name, .. }) = *ty.kind() {
+                if let ty::Param(ty::ParamTy { name, .. }) = ty.kind() {
                     let infcx = self.infcx;
                     self.var_map.entry(ty).or_insert_with(|| {
                         infcx.next_ty_var(TypeVariableOrigin {

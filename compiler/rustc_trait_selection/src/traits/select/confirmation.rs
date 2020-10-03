@@ -445,7 +445,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (generator_def_id, substs) = match *self_ty.kind() {
+        let (generator_def_id, substs) = match self_ty.kind() {
             ty::Generator(id, substs, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
@@ -494,7 +494,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match *self_ty.kind() {
+        let (closure_def_id, substs) = match self_ty.kind() {
             ty::Closure(id, substs) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
@@ -592,7 +592,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested = vec![];
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
+            (ty::Dynamic(ref data_a, r_a), ty::Dynamic(ref data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
                 let existential_predicates = data_a.map_bound(|data_a| {
                     let iter = data_a
@@ -630,7 +630,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(ref data, r)) => {
+            (_, ty::Dynamic(ref data, r)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
                 if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
@@ -677,7 +677,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `[T; n]` -> `[T]`
-            (&ty::Array(a, _), &ty::Slice(b)) => {
+            (ty::Array(a, _), ty::Slice(b)) => {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
@@ -687,7 +687,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `Struct<T>` -> `Struct<U>`
-            (&ty::Adt(def, substs_a), &ty::Adt(_, substs_b)) => {
+            (ty::Adt(def, substs_a), ty::Adt(_, substs_b)) => {
                 let maybe_unsizing_param_idx = |arg: GenericArg<'tcx>| match arg.unpack() {
                     GenericArgKind::Type(ty) => match ty.kind() {
                         ty::Param(p) => Some(p.index),
@@ -765,7 +765,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
+            (ty::Tuple(tys_a), ty::Tuple(tys_b)) => {
                 assert_eq!(tys_a.len(), tys_b.len());
 
                 // The last field of the tuple has to exist.

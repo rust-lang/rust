@@ -347,7 +347,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         "`Self`",
                         err,
                         None,
-                        projection,
+                        projection.as_ref(),
                         trait_ref,
                         Some((ident, bounds)),
                     );
@@ -362,7 +362,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
-                        self.tcx, &generics, "`Self`", err, None, projection, trait_ref, None,
+                        self.tcx,
+                        &generics,
+                        "`Self`",
+                        err,
+                        None,
+                        projection.as_ref(),
+                        trait_ref,
+                        None,
                     );
                     return;
                 }
@@ -387,7 +394,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         "the associated type",
                         err,
                         Some(fn_sig),
-                        projection,
+                        projection.as_ref(),
                         trait_ref,
                         None,
                     );
@@ -406,7 +413,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         "the associated type",
                         err,
                         None,
-                        projection,
+                        projection.as_ref(),
                         trait_ref,
                         None,
                     );
@@ -482,7 +489,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             None => return,
         };
 
-        if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
+        if let ty::Ref(region, base_ty, mutbl) = real_ty.kind() {
             let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty, span);
             if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                 // Re-add the `&`
@@ -563,7 +570,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             Some(ty) => ty,
         };
 
-        let (def_id, output_ty, callable) = match *self_ty.kind() {
+        let (def_id, output_ty, callable) = match self_ty.kind() {
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
             ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
             _ => return,
@@ -814,7 +821,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return;
             }
 
-            if let ty::Ref(region, t_type, mutability) = *trait_ref.skip_binder().self_ty().kind() {
+            if let ty::Ref(region, t_type, mutability) = trait_ref.skip_binder().self_ty().kind() {
                 if region.is_late_bound() || t_type.has_escaping_bound_vars() {
                     // Avoid debug assertion in `mk_obligation_for_def_id`.
                     //
@@ -871,7 +878,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) {
         let is_empty_tuple =
-            |ty: ty::Binder<Ty<'_>>| *ty.skip_binder().kind() == ty::Tuple(ty::List::empty());
+            |ty: ty::Binder<Ty<'_>>| ty.skip_binder().kind() == ty::Tuple(ty::List::empty());
 
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
@@ -1321,7 +1328,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         ty.kind()
                     );
 
-                    match *ty.kind() {
+                    match ty.kind() {
                         ty::Generator(did, ..) => {
                             generator = generator.or(Some(did));
                             outer_generator = Some(did);

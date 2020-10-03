@@ -866,7 +866,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Closure(def_id, substs) => {
                 // I am a horrible monster and I pray for death. When
                 // we encounter a closure here, it is always a closure

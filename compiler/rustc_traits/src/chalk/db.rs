@@ -333,7 +333,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap();
             let self_ty = trait_ref.self_ty();
             let provides = match (self_ty.kind(), app_ty.name) {
-                (&ty::Adt(impl_adt_def, ..), Adt(id)) => impl_adt_def.did == id.0.did,
+                (ty::Adt(impl_adt_def, ..), Adt(id)) => impl_adt_def.did == id.0.did,
                 (_, AssociatedType(_ty_id)) => {
                     // FIXME(chalk): See https://github.com/rust-lang/rust/pull/77152#discussion_r494484774
                     false
@@ -363,10 +363,10 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                     | (ast::FloatTy::F64, chalk_ir::FloatTy::F64) => true,
                     _ => false,
                 },
-                (&ty::Tuple(..), Tuple(..)) => true,
-                (&ty::Array(..), Array) => true,
-                (&ty::Slice(..), Slice) => true,
-                (&ty::RawPtr(type_and_mut), Raw(mutability)) => {
+                (ty::Tuple(..), Tuple(..)) => true,
+                (ty::Array(..), Array) => true,
+                (ty::Slice(..), Slice) => true,
+                (ty::RawPtr(type_and_mut), Raw(mutability)) => {
                     match (type_and_mut.mutbl, mutability) {
                         (ast::Mutability::Mut, chalk_ir::Mutability::Mut) => true,
                         (ast::Mutability::Mut, chalk_ir::Mutability::Not) => false,
@@ -374,19 +374,19 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
                     }
                 }
-                (&ty::Ref(.., mutability1), Ref(mutability2)) => match (mutability1, mutability2) {
+                (ty::Ref(.., mutability1), Ref(mutability2)) => match (mutability1, mutability2) {
                     (ast::Mutability::Mut, chalk_ir::Mutability::Mut) => true,
                     (ast::Mutability::Mut, chalk_ir::Mutability::Not) => false,
                     (ast::Mutability::Not, chalk_ir::Mutability::Mut) => false,
                     (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
                 },
-                (&ty::Opaque(def_id, ..), OpaqueType(opaque_ty_id)) => def_id == opaque_ty_id.0,
-                (&ty::FnDef(def_id, ..), FnDef(fn_def_id)) => def_id == fn_def_id.0,
-                (&ty::Str, Str) => true,
-                (&ty::Never, Never) => true,
-                (&ty::Closure(def_id, ..), Closure(closure_id)) => def_id == closure_id.0,
-                (&ty::Foreign(def_id), Foreign(foreign_def_id)) => def_id == foreign_def_id.0,
-                (&ty::Error(..), Error) => false,
+                (ty::Opaque(def_id, ..), OpaqueType(opaque_ty_id)) => def_id == opaque_ty_id.0,
+                (ty::FnDef(def_id, ..), FnDef(fn_def_id)) => def_id == fn_def_id.0,
+                (ty::Str, Str) => true,
+                (ty::Never, Never) => true,
+                (ty::Closure(def_id, ..), Closure(closure_id)) => def_id == closure_id.0,
+                (ty::Foreign(def_id), Foreign(foreign_def_id)) => def_id == foreign_def_id.0,
+                (ty::Error(..), Error) => false,
                 _ => false,
             };
             if provides {

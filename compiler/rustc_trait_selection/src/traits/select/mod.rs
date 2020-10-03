@@ -1170,7 +1170,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let tcx = self.infcx.tcx;
-        let predicates = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
+        let predicates = match placeholder_trait_predicate.trait_ref.self_ty().kind() {
             ty::Projection(ref data) => {
                 tcx.projection_predicates(data.item_def_id).subst(tcx, data.substs)
             }
@@ -1558,7 +1558,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
     fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
-        match *t.kind() {
+        match t.kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool

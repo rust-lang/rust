@@ -421,7 +421,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        match *obligation.self_ty().skip_binder().kind() {
+        match obligation.self_ty().skip_binder().kind() {
             ty::Closure(_, closure_substs) => {
                 debug!("assemble_unboxed_candidates: kind={:?} obligation={:?}", kind, obligation);
                 match self.infcx.closure_kind(closure_substs) {
@@ -460,7 +460,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
         let self_ty = obligation.self_ty().skip_binder();
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
                 candidates.ambiguous = true; // Could wind up being a fn() type.
@@ -701,7 +701,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let may_apply = match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+            (ty::Dynamic(ref data_a, ..), ty::Dynamic(ref data_b, ..)) => {
                 // Upcasts permit two things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -721,27 +721,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(..)) => true,
+            (_, ty::Dynamic(..)) => true,
 
             // Ambiguous handling is below `T` -> `Trait`, because inference
             // variables can still implement `Unsize<Trait>` and nested
             // obligations will have the final say (likely deferred).
-            (&ty::Infer(ty::TyVar(_)), _) | (_, &ty::Infer(ty::TyVar(_))) => {
+            (ty::Infer(ty::TyVar(_)), _) | (_, ty::Infer(ty::TyVar(_))) => {
                 debug!("assemble_candidates_for_unsizing: ambiguous");
                 candidates.ambiguous = true;
                 false
             }
 
             // `[T; n]` -> `[T]`
-            (&ty::Array(..), &ty::Slice(_)) => true,
+            (ty::Array(..), ty::Slice(_)) => true,
 
             // `Struct<T>` -> `Struct<U>`
-            (&ty::Adt(def_id_a, _), &ty::Adt(def_id_b, _)) if def_id_a.is_struct() => {
+            (ty::Adt(def_id_a, _), ty::Adt(def_id_b, _)) if def_id_a.is_struct() => {
                 def_id_a == def_id_b
             }
 
             // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => tys_a.len() == tys_b.len(),
+            (ty::Tuple(tys_a), ty::Tuple(tys_b)) => tys_a.len() == tys_b.len(),
 
             _ => false,
         };
