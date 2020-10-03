@@ -1,4 +1,3 @@
-#![allow(invalid_html_tags)]
 #![deny(broken_intra_doc_links)]
 //~^ NOTE lint level is defined
 

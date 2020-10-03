@@ -46,9 +46,7 @@ fn drop_tag(
     f: &impl Fn(&str, &Range<usize>),
 ) {
     let tag_name_low = tag_name.to_lowercase();
-    if let Some(pos) = tags.iter().rev().position(|(t, _)| t.to_lowercase() == tag_name_low) {
-        // Because this is from a `rev` iterator, the position is reversed as well!
-        let pos = tags.len() - 1 - pos;
+    if let Some(pos) = tags.iter().rposition(|(t, _)| t.to_lowercase() == tag_name_low) {
         // If the tag is nested inside a "<script>" or a "<style>" tag, no warning should
         // be emitted.
         let should_not_warn = tags.iter().take(pos + 1).any(|(at, _)| {
@@ -83,9 +81,9 @@ fn extract_tag(
     range: Range<usize>,
     f: &impl Fn(&str, &Range<usize>),
 ) {
-    let mut iter = text.chars().enumerate().peekable();
+    let mut iter = text.char_indices().peekable();
 
-    'top: while let Some((start_pos, c)) = iter.next() {
+    while let Some((start_pos, c)) = iter.next() {
         if c == '<' {
             let mut tag_name = String::new();
             let mut is_closing = false;
@@ -118,19 +116,10 @@ fn extract_tag(
                             tags.push((tag_name, r));
                         }
                     }
-                    continue 'top;
+                    break;
                 }
-                // Some chars like 💩 are longer than 1 character, so we need to skip the other
-                // bytes as well to prevent stopping "in the middle" of a char.
-                for _ in 0..c.len_utf8() {
-                    iter.next();
-                }
+                iter.next();
             }
-        }
-        // Some chars like 💩 are longer than 1 character, so we need to skip the other
-        // bytes as well to prevent stopping "in the middle" of a char.
-        for _ in 0..c.len_utf8() - 1 {
-            iter.next();
         }
     }
 }

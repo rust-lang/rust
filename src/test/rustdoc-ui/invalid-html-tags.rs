@@ -2,6 +2,7 @@
 
 //! <p>💩<p>
 //~^ ERROR unclosed HTML tag `p`
+//~^^ ERROR unclosed HTML tag `p`
 
 /// <img><input>
 /// <script>
