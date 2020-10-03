@@ -1,3 +1,6 @@
+//~ NOTE not a function
+//~^ NOTE not a foreign function or static
+//~^^ NOTE not a function or static
 // This test enumerates as many compiler-builtin ungated attributes as
 // possible (that is, all the mutually compatible ones), and checks
 // that we get "expected" (*) warnings for each in the various weird
@@ -34,9 +37,6 @@
 // ignore-tidy-linelength
 
 #![feature(test, plugin_registrar)]
-//~^ NOTE not a function
-//~^^ NOTE not a foreign function or static
-//~^^^ NOTE not a function or static
 #![warn(unused_attributes, unknown_lints)]
 //~^ NOTE the lint level is defined here
 //~| NOTE the lint level is defined here
@@ -247,42 +247,6 @@ mod plugin_registrar {
     //~^ WARN unused attribute
     //~| WARN use of deprecated attribute
     //~| HELP may be removed in a future compiler version
-}
-
-#[main]
-//~^ WARN unused attribute
-mod main {
-    mod inner { #![main] }
-    //~^ WARN unused attribute
-
-    // for `fn f()` case, see feature-gate-main.rs
-
-    #[main] struct S;
-    //~^ WARN unused attribute
-
-    #[main] type T = S;
-    //~^ WARN unused attribute
-
-    #[main] impl S { }
-    //~^ WARN unused attribute
-}
-
-#[start]
-//~^ WARN unused attribute
-mod start {
-    mod inner { #![start] }
-    //~^ WARN unused attribute
-
-    // for `fn f()` case, see feature-gate-start.rs
-
-    #[start] struct S;
-    //~^ WARN unused attribute
-
-    #[start] type T = S;
-    //~^ WARN unused attribute
-
-    #[start] impl S { }
-    //~^ WARN unused attribute
 }
 
 // At time of unit test authorship, if compiling without `--test` then

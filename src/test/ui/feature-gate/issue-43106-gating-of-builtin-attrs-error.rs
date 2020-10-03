@@ -1,3 +1,6 @@
+//~ NOTE: not an `extern crate` item
+//~^ NOTE: not a function or static
+//~^^ NOTE: not a function or closure
 // This is testing whether various builtin attributes signals an
 // error or warning when put in "weird" places.
 //
@@ -7,22 +10,19 @@
 
 // ignore-tidy-linelength
 
-#![deny(unused_attributes)]
-//~^ NOTE not a function or static
-//~^^ NOTE the lint level is defined here
-//~^^^ NOTE not an `extern crate` item
-//~^^^^ NOTE not a function or static
-//~^^^^^ NOTE not a function or closure
-
 #![macro_export]
+//~^ ERROR: `macro_export` attribute cannot be used at crate level
 #![main]
+//~^ ERROR: `main` attribute cannot be used at crate level
 #![start]
+//~^ ERROR: `start` attribute cannot be used at crate level
 #![repr()]
+//~^ ERROR: `repr` attribute cannot be used at crate level
 #![path = "3800"]
+//~^ ERROR: `path` attribute cannot be used at crate level
 #![automatically_derived]
+//~^ ERROR: `automatically_derived` attribute cannot be used at crate level
 #![no_mangle]
-//~^ ERROR attribute should be applied to a function or static
-//~^^ WARN
 #![no_link]
 //~^ ERROR: attribute should be applied to an `extern crate` item
 #![export_name = "2200"]
@@ -105,6 +105,42 @@ mod export_name {
     #[export_name = "2200"] impl S { }
     //~^ ERROR attribute should be applied to a function or static
     //~| NOTE not a function or static
+}
+
+#[main]
+//~^ ERROR: `main` attribute can only be used on functions
+mod main {
+    mod inner { #![main] }
+    //~^ ERROR: `main` attribute can only be used on functions
+
+    // for `fn f()` case, see feature-gate-main.rs
+
+    #[main] struct S;
+    //~^ ERROR: `main` attribute can only be used on functions
+
+    #[main] type T = S;
+    //~^ ERROR: `main` attribute can only be used on functions
+
+    #[main] impl S { }
+    //~^ ERROR: `main` attribute can only be used on functions
+}
+
+#[start]
+//~^ ERROR: `start` attribute can only be used on functions
+mod start {
+    mod inner { #![start] }
+    //~^ ERROR: `start` attribute can only be used on functions
+
+    // for `fn f()` case, see feature-gate-start.rs
+
+    #[start] struct S;
+    //~^ ERROR: `start` attribute can only be used on functions
+
+    #[start] type T = S;
+    //~^ ERROR: `start` attribute can only be used on functions
+
+    #[start] impl S { }
+    //~^ ERROR: `start` attribute can only be used on functions
 }
 
 fn main() {}

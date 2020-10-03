@@ -518,7 +518,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![macro_export]
+    /// #![ignore]
     /// ```
     ///
     /// {{produces}}
