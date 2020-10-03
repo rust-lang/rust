@@ -23,7 +23,10 @@ use hir_def::{
     src::HasSource,
     AdtId, EnumId, FunctionId, Lookup, ModuleDefId, StructId,
 };
-use hir_expand::{diagnostics::DiagnosticSink, name::Name};
+use hir_expand::{
+    diagnostics::DiagnosticSink,
+    name::{AsName, Name},
+};
 use syntax::{
     ast::{self, NameOwner},
     AstPtr,
@@ -288,55 +291,61 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             self.sink.push(diagnostic);
         }
 
-        // let fn_params_list = match fn_src.value.param_list() {
-        //     Some(params) => params,
-        //     None => {
-        //         if !fn_param_replacements.is_empty() {
-        //             log::error!(
-        //                 "Replacements ({:?}) were generated for a function parameters which had no parameters list: {:?}",
-        //                 fn_param_replacements, fn_src
-        //             );
-        //         }
-        //         return;
-        //     }
-        // };
-        // let mut fn_params_iter = fn_params_list.params();
-        // for param_to_rename in fn_param_replacements {
-        //     // We assume that parameters in replacement are in the same order as in the
-        //     // actual params list, but just some of them (ones that named correctly) are skipped.
-        //     let ast_ptr = loop {
-        //         match fn_params_iter.next() {
-        //             Some(element)
-        //                 if pat_equals_to_name(element.pat(), &param_to_rename.current_name) =>
-        //             {
-        //                 break element.pat().unwrap()
-        //             }
-        //             Some(_) => {}
-        //             None => {
-        //                 log::error!(
-        //                     "Replacement ({:?}) was generated for a function parameter which was not found: {:?}",
-        //                     param_to_rename, fn_src
-        //                 );
-        //                 return;
-        //             }
-        //         }
-        //     };
+        let struct_fields_list = match struct_src.value.field_list() {
+            Some(ast::FieldList::RecordFieldList(fields)) => fields,
+            _ => {
+                if !struct_fields_replacements.is_empty() {
+                    log::error!(
+                        "Replacements ({:?}) were generated for a structure fields which had no fields list: {:?}",
+                        struct_fields_replacements, struct_src
+                    );
+                }
+                return;
+            }
+        };
+        let mut struct_fields_iter = struct_fields_list.fields();
+        for field_to_rename in struct_fields_replacements {
+            // We assume that parameters in replacement are in the same order as in the
+            // actual params list, but just some of them (ones that named correctly) are skipped.
+            let ast_ptr = loop {
+                match struct_fields_iter.next() {
+                    Some(element) if names_equal(element.name(), &field_to_rename.current_name) => {
+                        break element.name().unwrap()
+                    }
+                    Some(_) => {}
+                    None => {
+                        log::error!(
+                            "Replacement ({:?}) was generated for a function parameter which was not found: {:?}",
+                            field_to_rename, struct_src
+                        );
+                        return;
+                    }
+                }
+            };
 
-        //     let diagnostic = IncorrectCase {
-        //         file: fn_src.file_id,
-        //         ident_type: "Argument".to_string(),
-        //         ident: AstPtr::new(&ast_ptr).into(),
-        //         expected_case: param_to_rename.expected_case,
-        //         ident_text: param_to_rename.current_name.to_string(),
-        //         suggested_text: param_to_rename.suggested_text,
-        //     };
+            let diagnostic = IncorrectCase {
+                file: struct_src.file_id,
+                ident_type: "Field".to_string(),
+                ident: AstPtr::new(&ast_ptr).into(),
+                expected_case: field_to_rename.expected_case,
+                ident_text: field_to_rename.current_name.to_string(),
+                suggested_text: field_to_rename.suggested_text,
+            };
 
-        //     self.sink.push(diagnostic);
-        // }
+            self.sink.push(diagnostic);
+        }
     }
 
     fn validate_enum(&mut self, db: &dyn HirDatabase, enum_id: EnumId) {
         let data = db.enum_data(enum_id);
+    }
+}
+
+fn names_equal(left: Option<ast::Name>, right: &Name) -> bool {
+    if let Some(left) = left {
+        &left.as_name() == right
+    } else {
+        false
     }
 }
 
@@ -381,6 +390,16 @@ fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
             r#"
 struct non_camel_case_name {}
     // ^^^^^^^^^^^^^^^^^^^ Structure `non_camel_case_name` should have a CamelCase name, e.g. `NonCamelCaseName`
+"#,
+        );
+    }
+
+    #[test]
+    fn incorrect_struct_field() {
+        check_diagnostics(
+            r#"
+struct SomeStruct { SomeField: u8 }
+                 // ^^^^^^^^^ Field `SomeField` should have a snake_case name, e.g. `some_field`
 "#,
         );
     }
