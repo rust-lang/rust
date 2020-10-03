@@ -219,6 +219,7 @@ target | std | host | notes
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
 `x86_64-wrs-vxworks` | ? |  |
+`x86_64-pebble` |  |  | 64-bit Pebble
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets
 [^apple]: These targets are only available on macOS.
