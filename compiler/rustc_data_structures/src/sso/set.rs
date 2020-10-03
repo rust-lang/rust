@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fmt;
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -9,20 +8,20 @@ use super::map::SsoHashMap;
 ///
 /// Stores elements in a small array up to a certain length
 /// and switches to `HashSet` when that length is exceeded.
-///
-/// Implements subset of HashSet API.
-///
-/// Missing HashSet API:
-///   all hasher-related
-///   try_reserve (unstable)
-///   shrink_to (unstable)
-///   drain_filter (unstable)
-///   replace
-///   get_or_insert/get_or_insert_owned/get_or_insert_with (unstable)
-///   difference/symmetric_difference/intersection/union
-///   is_disjoint/is_subset/is_superset
-///   PartialEq/Eq (requires SsoHashMap implementation)
-///   BitOr/BitAnd/BitXor/Sub
+//
+// FIXME: Implements subset of HashSet API.
+//
+// Missing HashSet API:
+//   all hasher-related
+//   try_reserve (unstable)
+//   shrink_to (unstable)
+//   drain_filter (unstable)
+//   replace
+//   get_or_insert/get_or_insert_owned/get_or_insert_with (unstable)
+//   difference/symmetric_difference/intersection/union
+//   is_disjoint/is_subset/is_superset
+//   PartialEq/Eq (requires SsoHashMap implementation)
+//   BitOr/BitAnd/BitXor/Sub
 #[derive(Clone)]
 pub struct SsoHashSet<T> {
     map: SsoHashMap<T, ()>,
@@ -115,21 +114,13 @@ impl<T: Eq + Hash> SsoHashSet<T> {
 
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     #[inline]
-    pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
-    where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn take(&mut self, value: &T) -> Option<T> {
         self.map.remove_entry(value).map(entry_to_key)
     }
 
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
     #[inline]
-    pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
-    where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn get(&self, value: &T) -> Option<&T> {
         self.map.get_key_value(value).map(entry_to_key)
     }
 
@@ -146,21 +137,13 @@ impl<T: Eq + Hash> SsoHashSet<T> {
     /// Removes a value from the set. Returns whether the value was
     /// present in the set.
     #[inline]
-    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
-    where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn remove(&mut self, value: &T) -> bool {
         self.map.remove(value).is_some()
     }
 
     /// Returns `true` if the set contains a value.
     #[inline]
-    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
-    where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)
     }
 }

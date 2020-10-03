@@ -1,7 +1,6 @@
 use super::either_iter::EitherIter;
 use crate::fx::FxHashMap;
 use arrayvec::ArrayVec;
-use std::borrow::Borrow;
 use std::fmt;
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -30,19 +29,45 @@ const SSO_ARRAY_SIZE: usize = 8;
 ///
 /// Stores elements in a small array up to a certain length
 /// and switches to `HashMap` when that length is exceeded.
-///
-/// Implements subset of HashMap API.
-///
-/// Missing HashMap API:
-///   all hasher-related
-///   try_reserve (unstable)
-///   shrink_to (unstable)
-///   drain_filter (unstable)
-///   into_keys/into_values (unstable)
-///   all raw_entry-related
-///   PartialEq/Eq (requires sorting the array)
-///   Entry::or_insert_with_key (unstable)
-///   Vacant/Occupied entries and related
+//
+// FIXME: Implements subset of HashMap API.
+//
+// Missing HashMap API:
+//   all hasher-related
+//   try_reserve (unstable)
+//   shrink_to (unstable)
+//   drain_filter (unstable)
+//   into_keys/into_values (unstable)
+//   all raw_entry-related
+//   PartialEq/Eq (requires sorting the array)
+//   Entry::or_insert_with_key (unstable)
+//   Vacant/Occupied entries and related
+//
+// FIXME: In HashMap most methods accepting key reference
+// accept reference to generic `Q` where `K: Borrow<Q>`.
+//
+// However, using this approach in `HashMap::get` apparently
+// breaks inlining and noticeably reduces performance.
+//
+// Performance *should* be the same given that borrow is
+// a NOP in most cases, but in practice that's not the case.
+//
+// Further investigation is required.
+//
+// Affected methods:
+//   SsoHashMap::get
+//   SsoHashMap::get_mut
+//   SsoHashMap::get_entry
+//   SsoHashMap::get_key_value
+//   SsoHashMap::contains_key
+//   SsoHashMap::remove
+//   SsoHashMap::remove_entry
+//   Index::index
+//   SsoHashSet::take
+//   SsoHashSet::get
+//   SsoHashSet::remove
+//   SsoHashSet::contains
+
 #[derive(Clone)]
 pub enum SsoHashMap<K, V> {
     Array(ArrayVec<[(K, V); SSO_ARRAY_SIZE]>),
@@ -232,14 +257,10 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
 
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
-    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn remove(&mut self, key: &K) -> Option<V> {
         match self {
             SsoHashMap::Array(array) => {
-                if let Some(index) = array.iter().position(|(k, _v)| k.borrow() == key) {
+                if let Some(index) = array.iter().position(|(k, _v)| k == key) {
                     Some(array.swap_remove(index).1)
                 } else {
                     None
@@ -251,14 +272,10 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
 
     /// Removes a key from the map, returning the stored key and value if the
     /// key was previously in the map.
-    pub fn remove_entry<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)>
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         match self {
             SsoHashMap::Array(array) => {
-                if let Some(index) = array.iter().position(|(k, _v)| k.borrow() == key) {
+                if let Some(index) = array.iter().position(|(k, _v)| k == key) {
                     Some(array.swap_remove(index))
                 } else {
                     None
@@ -269,15 +286,11 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     }
 
     /// Returns a reference to the value corresponding to the key.
-    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn get(&self, key: &K) -> Option<&V> {
         match self {
             SsoHashMap::Array(array) => {
                 for (k, v) in array {
-                    if k.borrow() == key {
+                    if k == key {
                         return Some(v);
                     }
                 }
@@ -288,15 +301,11 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
-    pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V>
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         match self {
             SsoHashMap::Array(array) => {
                 for (k, v) in array {
-                    if (*k).borrow() == key {
+                    if k == key {
                         return Some(v);
                     }
                 }
@@ -307,15 +316,11 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     }
 
     /// Returns the key-value pair corresponding to the supplied key.
-    pub fn get_key_value<Q: ?Sized>(&self, key: &Q) -> Option<(&K, &V)>
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
         match self {
             SsoHashMap::Array(array) => {
                 for (k, v) in array {
-                    if k.borrow() == key {
+                    if k == key {
                         return Some((k, v));
                     }
                 }
@@ -326,13 +331,9 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     }
 
     /// Returns `true` if the map contains a value for the specified key.
-    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn contains_key(&self, key: &K) -> bool {
         match self {
-            SsoHashMap::Array(array) => array.iter().any(|(k, _v)| k.borrow() == key),
+            SsoHashMap::Array(array) => array.iter().any(|(k, _v)| k == key),
             SsoHashMap::Map(map) => map.contains_key(key),
         }
     }
@@ -483,15 +484,14 @@ where
     }
 }
 
-impl<'a, K, Q: ?Sized, V> Index<&'a Q> for SsoHashMap<K, V>
+impl<'a, K, V> Index<&'a K> for SsoHashMap<K, V>
 where
-    K: Eq + Hash + Borrow<Q>,
-    Q: Eq + Hash,
+    K: Eq + Hash,
 {
     type Output = V;
 
     #[inline]
-    fn index(&self, key: &Q) -> &V {
+    fn index(&self, key: &K) -> &V {
         self.get(key).expect("no entry found for key")
     }
 }
