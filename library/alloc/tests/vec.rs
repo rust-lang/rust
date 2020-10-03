@@ -1,5 +1,3 @@
-#![feature(vec_try_remove)]
-
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveError::*;
@@ -531,7 +529,7 @@ fn test_try_remove() {
     assert_eq!(vec.try_remove(2), None);
 
     // We will try the same thing with an empty vector
-    let mut v = vec![];
+    let mut v: Vec<u8> = vec![];
     assert!(v.try_remove(0).is_none());
 }
 
