@@ -1,4 +1,6 @@
-# stdsimd
+# stdsimd - Rust's standard library portable SIMD API
+
+[![Build Status](https://travis-ci.com/rust-lang/stdsimd.svg?branch=master)](https://travis-ci.com/rust-lang/stdsimd)
 
 Code repository for the [Portable SIMD Project Group](https://github.com/rust-lang/project-portable-simd).
 
