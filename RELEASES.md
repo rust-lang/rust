@@ -90,7 +90,7 @@ Compatibility Notes
 
 Internal Only
 --------
-- [Improved default settings for bootstrapping in `x.py`.][73964] You can read details about this change in the ["Changes To `x.py` Defaults"](https://blog.rust-lang.org/inside-rust/2020/08/30/changes-to-x-py-defaults.html) post on the Inside Rust blog.
+- [Improved default settings for bootstrapping in `x.py`.][73964] You can read details about this change in the ["Changes to `x.py` defaults"](https://blog.rust-lang.org/inside-rust/2020/08/30/changes-to-x-py-defaults.html) post on the Inside Rust blog.
 
 [1.47.0-cfg]: https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard
 [75048]: https://github.com/rust-lang/rust/pull/75048/
