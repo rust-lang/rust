@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Non-breaking changes since the last major version]
 
-None.
+- `x.py check` needs opt-in to check tests (--all-targets) [#77473](https://github.com/rust-lang/rust/pull/77473)
 
 ## [Version 2] - 2020-09-25
 
