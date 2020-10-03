@@ -393,7 +393,7 @@ To try to move PRs forward, the Triage WG regularly goes through all PRs that
 are waiting for review and haven't been discussed for at least a week. If you
 don't get a review within around 10 days, feel free to ask the Triage WG on
 Zulip ([#t-release/triage]). They have knowledge of when to ping, who might be
-on vacation, etc...
+on vacation, etc.
 
 The reviewer may request some changes using the GitHub code review interface.
 They may also request special procedures (such as a [crater] run; [see
