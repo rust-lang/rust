@@ -58,7 +58,7 @@ if command -v "g${GREPPER}"; then
 fi
 
 LOG=$(mktemp -t cgrep.XXXXXX)
-trap 'rm -f $LOG' EXIT
+trap "rm -f $LOG" EXIT
 
 printf "[[[ begin stdout ]]]\n\033[90m"
 tee "$LOG"
