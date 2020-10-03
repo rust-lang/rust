@@ -185,14 +185,14 @@ const ROOT_NODE: DropIdx = DropIdx::from_u32(0);
 /// * Drops on return and loop exit paths
 ///
 /// Once no more nodes could be added to the tree, we lower it to MIR in one go
-/// in `build_drop_tree`.
+/// in `build_mir`.
 #[derive(Debug)]
 struct DropTree {
     /// Drops in the tree.
     drops: IndexVec<DropIdx, (DropData, DropIdx)>,
     /// Map for finding the inverse of the `next_drop` relation:
     ///
-    /// `previous_drops[(drops[i].1, drops[i].0.local, drops[i].0.kind] == i`
+    /// `previous_drops[(drops[i].1, drops[i].0.local, drops[i].0.kind)] == i`
     previous_drops: FxHashMap<(DropIdx, Local, DropKind), DropIdx>,
     /// Edges into the `DropTree` that need to be added once it's lowered.
     entry_points: Vec<(DropIdx, BasicBlock)>,
