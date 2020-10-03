@@ -113,6 +113,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Dynamically invoked syscalls
             "syscall" => {
+                // FIXME: The libc syscall() function is a variadic function.
+                // It's valid to call it with more arguments than a syscall
+                // needs, so none of these syscalls should use check_arg_count.
+                // However, depending on the calling convention it might depend
+                // on the type and size of the arguments whether a call with
+                // the wrong number of arguments (or types) is valid or not.
+                // So this needs to be researched first.
                 let sys_getrandom = this
                     .eval_libc("SYS_getrandom")?
                     .to_machine_usize(this)?;
