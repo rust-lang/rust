@@ -370,32 +370,22 @@ impl<I: IntoIterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
 /// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
 /// kept separate because of issue #42760.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum DocFragment {
-    /// A doc fragment created from a `///` or `//!` doc comment.
-    SugaredDoc(usize, rustc_span::Span, String),
-    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
-    RawDoc(usize, rustc_span::Span, String),
-    /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
-    /// given filename and the file contents.
-    Include(usize, rustc_span::Span, String, String),
+pub struct DocFragment {
+    pub line: usize,
+    pub span: rustc_span::Span,
+    pub doc: String,
+    pub kind: DocFragmentKind,
 }
 
-impl DocFragment {
-    pub fn as_str(&self) -> &str {
-        match *self {
-            DocFragment::SugaredDoc(_, _, ref s) => &s[..],
-            DocFragment::RawDoc(_, _, ref s) => &s[..],
-            DocFragment::Include(_, _, _, ref s) => &s[..],
-        }
-    }
-
-    pub fn span(&self) -> rustc_span::Span {
-        match *self {
-            DocFragment::SugaredDoc(_, span, _)
-            | DocFragment::RawDoc(_, span, _)
-            | DocFragment::Include(_, span, _, _) => span,
-        }
-    }
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum DocFragmentKind {
+    /// A doc fragment created from a `///` or `//!` doc comment.
+    SugaredDoc,
+    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
+    RawDoc,
+    /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
+    /// given filename and the file contents.
+    Include { filename: String },
 }
 
 impl<'a> FromIterator<&'a DocFragment> for String {
@@ -407,12 +397,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
             if !acc.is_empty() {
                 acc.push('\n');
             }
-            match *frag {
-                DocFragment::SugaredDoc(_, _, ref docs)
-                | DocFragment::RawDoc(_, _, ref docs)
-                | DocFragment::Include(_, _, _, ref docs) => acc.push_str(docs),
-            }
-
+            acc.push_str(&frag.doc);
             acc
         })
     }
@@ -547,15 +532,15 @@ impl Attributes {
             .filter_map(|attr| {
                 if let Some(value) = attr.doc_str() {
                     let value = beautify_doc_string(value);
-                    let mk_fragment: fn(_, _, _) -> _ = if attr.is_doc_comment() {
-                        DocFragment::SugaredDoc
+                    let kind = if attr.is_doc_comment() {
+                        DocFragmentKind::SugaredDoc
                     } else {
-                        DocFragment::RawDoc
+                        DocFragmentKind::RawDoc
                     };
 
                     let line = doc_line;
                     doc_line += value.lines().count();
-                    doc_strings.push(mk_fragment(line, attr.span, value));
+                    doc_strings.push(DocFragment { line, span: attr.span, doc: value, kind });
 
                     if sp.is_none() {
                         sp = Some(attr.span);
@@ -575,9 +560,12 @@ impl Attributes {
                             {
                                 let line = doc_line;
                                 doc_line += contents.lines().count();
-                                doc_strings.push(DocFragment::Include(
-                                    line, attr.span, filename, contents,
-                                ));
+                                doc_strings.push(DocFragment {
+                                    line,
+                                    span: attr.span,
+                                    doc: contents,
+                                    kind: DocFragmentKind::Include { filename },
+                                });
                             }
                         }
                     }
@@ -621,7 +609,7 @@ impl Attributes {
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     pub fn doc_value(&self) -> Option<&str> {
-        self.doc_strings.first().map(|s| s.as_str())
+        self.doc_strings.first().map(|s| s.doc.as_str())
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined

@@ -232,7 +232,12 @@ impl fold::DocFolder for CoverageCalculator {
                 let mut tests = Tests { found_tests: 0 };
 
                 find_testable_code(
-                    &i.attrs.doc_strings.iter().map(|d| d.as_str()).collect::<Vec<_>>().join("\n"),
+                    &i.attrs
+                        .doc_strings
+                        .iter()
+                        .map(|d| d.doc.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
                     &mut tests,
                     ErrorCodes::No,
                     false,
