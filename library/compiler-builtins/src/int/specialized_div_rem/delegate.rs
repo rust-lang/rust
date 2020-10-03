@@ -2,6 +2,7 @@
 /// binary long division to divide integers larger than what hardware division by itself can do. This
 /// function is intended for microarchitectures that have division hardware, but not fast enough
 /// multiplication hardware for `impl_trifecta` to be faster.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! impl_delegate {
     (

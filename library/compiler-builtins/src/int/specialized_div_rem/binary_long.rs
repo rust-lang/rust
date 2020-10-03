@@ -4,6 +4,7 @@
 /// predicate instructions. For architectures with predicated instructions, one of the algorithms
 /// described in the documentation of these functions probably has higher performance, and a custom
 /// assembly routine should be used instead.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! impl_binary_long {
     (
