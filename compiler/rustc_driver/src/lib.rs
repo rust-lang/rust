@@ -1251,11 +1251,21 @@ pub fn init_env_logger(env: &str) {
         Ok(s) if s.is_empty() => return,
         Ok(_) => {}
     }
-    let builder = tracing_subscriber::FmtSubscriber::builder();
+    let filter = tracing_subscriber::EnvFilter::from_env(env);
+    let layer = tracing_tree::HierarchicalLayer::default()
+        .with_indent_lines(true)
+        .with_ansi(true)
+        .with_targets(true)
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_wraparound(10)
+        .with_verbose_exit(true)
+        .with_verbose_entry(true)
+        .with_indent_amount(2);
 
-    let builder = builder.with_env_filter(tracing_subscriber::EnvFilter::from_env(env));
-
-    builder.init()
+    use tracing_subscriber::layer::SubscriberExt;
+    let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
 pub fn main() -> ! {
