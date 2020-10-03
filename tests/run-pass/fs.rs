@@ -231,16 +231,16 @@ fn test_symlink() {
         let expected_path = path.as_os_str().as_bytes();
 
         // Test that the expected string gets written to a buffer of proper
-        // length, and that a trailing null byte is not written
+        // length, and that a trailing null byte is not written.
         let symlink_c_str = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
         let symlink_c_ptr = symlink_c_str.as_ptr();
 
         // Make the buf one byte larger than it needs to be,
-        // and check that the last byte is not overwritten
+        // and check that the last byte is not overwritten.
         let mut large_buf = vec![0xFF; expected_path.len() + 1];
         let res = unsafe { libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len()) };
         assert_eq!(res, large_buf.len() as isize - 1);
-        // Check that the resovled path was properly written into the buf
+        // Check that the resovled path was properly written into the buf.
         assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
         assert_eq!(large_buf.last(), Some(&0xFF));
 
