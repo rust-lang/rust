@@ -8,3 +8,9 @@ repository = "https://github.com/rust-lang/stdsimd"
 keywords = ["core", "simd", "intrinsics"]
 categories = ["hardware-support", "no-std"]
 license = "MIT OR Apache-2.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.wasm-bindgen]
+version = "0.2"
+
+[dev-dependencies.wasm-bindgen-test]
+version = "0.3"

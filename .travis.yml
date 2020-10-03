@@ -230,6 +230,30 @@ matrix:
       arch: amd64
       env:
         - TARGET=x86_64-apple-darwin
+    
+    # WebAssembly (wasm-bindgen)
+
+    - name: "wasm32-unknown-unknown (node, firefox, chrome)"
+      os: linux
+      arch: amd64
+      addons:
+        firefox: latest
+        chrome : stable
+      install:
+        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      script:
+        - wasm-pack test --node --firefox --chrome --headless crates/core_simd
+    
+    - name: "wasm32-unknown-unknown+simd128 (chrome)"
+      os: linux
+      arch: amd64
+      addons:
+        chrome : stable
+      install:
+        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      script:
+        - RUSTFLAGS="-C target-feature=+simd128"
+        - wasm-pack test --chrome --headless crates/core_simd
 
 script:
   - rustup target add $TARGET
