@@ -55,6 +55,7 @@ pub fn futex<'tcx>(
             let timeout_time = if this.is_null(this.read_scalar(timeout)?.check_init()?)? {
                 None
             } else {
+                this.check_no_isolation("`syscall(SYS_FUTEX, op=FUTEX_WAIT)` with timeout")?;
                 let duration = match this.read_timespec(timeout)? {
                     Some(duration) => duration,
                     None => {
@@ -64,7 +65,6 @@ pub fn futex<'tcx>(
                         return Ok(());
                     }
                 };
-                this.check_no_isolation("FUTEX_WAIT with timeout")?;
                 Some(if op & futex_realtime != 0 {
                     Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
                 } else {
