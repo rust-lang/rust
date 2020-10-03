@@ -18,11 +18,11 @@
 
 /// [std::io::not::here]
 //~^ ERROR unresolved link
-//~| NOTE there is no item named `not` in scope
+//~| NOTE `io` contains no item named `not`
 
 /// [type@std::io::not::here]
 //~^ ERROR unresolved link
-//~| NOTE there is no item named `not` in scope
+//~| NOTE `io` contains no item named `not`
 
 /// [std::io::Error::x]
 //~^ ERROR unresolved link

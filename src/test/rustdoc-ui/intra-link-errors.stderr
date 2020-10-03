@@ -26,13 +26,13 @@ error: unresolved link to `std::io::not::here`
   --> $DIR/intra-link-errors.rs:19:6
    |
 LL | /// [std::io::not::here]
-   |      ^^^^^^^^^^^^^^^^^^ there is no item named `not` in scope
+   |      ^^^^^^^^^^^^^^^^^^ the module `io` contains no item named `not`
 
 error: unresolved link to `std::io::not::here`
   --> $DIR/intra-link-errors.rs:23:6
    |
 LL | /// [type@std::io::not::here]
-   |      ^^^^^^^^^^^^^^^^^^^^^^^ there is no item named `not` in scope
+   |      ^^^^^^^^^^^^^^^^^^^^^^^ the module `io` contains no item named `not`
 
 error: unresolved link to `std::io::Error::x`
   --> $DIR/intra-link-errors.rs:27:6

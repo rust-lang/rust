@@ -1575,11 +1575,16 @@ fn resolution_failure(
                         _ => None,
                     };
                     // See if this was a module: `[path]` or `[std::io::nope]`
-                    if let Some(_module) = last_found_module {
-                        let note = format!(
-                            "there is no item named `{}` in scope",
-                            unresolved
-                        );
+                    if let Some(module) = last_found_module {
+                        let note = if partial_res.is_some() {
+                            let module_name = collector.cx.tcx.item_name(module);
+                            format!(
+                                "the module `{}` contains no item named `{}`",
+                                module_name, unresolved
+                            )
+                        } else {
+                            format!("there is no item named `{}` in scope", unresolved)
+                        };
                         if let Some(span) = sp {
                             diag.span_label(span, &note);
                         } else {
