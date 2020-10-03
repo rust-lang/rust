@@ -1065,39 +1065,23 @@ impl<T> Vec<T> {
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {}) should be < len (is {})", index, len);
         }
-
-        let len = self.len();
-        if index >= len {
-            assert_failed(index, len);
-        }
-        unsafe {
-            // infallible
-            let ret;
-            {
-                // the place we are taking from.
-                let ptr = self.as_mut_ptr().add(index);
-                // copy it out, unsafely having a copy of the value on
-                // the stack and in the vector at the same time.
-                ret = ptr::read(ptr);
-
-                // Shift everything down to fill in that spot.
-                ptr::copy(ptr.offset(1), ptr, len - index - 1);
-            }
-            self.set_len(len - 1);
-            ret
+        if let Some(retval) = self.try_remove(index) {
+            retval
+        } else {
+            assert_failed(index, self.len());
         }
     }
 
     /// Tries to remove an element from the vector. If the element at `index` does not exist,
     /// `None` is returned. Otherwise `Some(T)` is returned
-    /// 
+    ///
     /// # Examples
     /// ```
     /// let mut v = vec![1, 2, 3];
-    /// assert_eq!(v.remove(0), Some(1));
-    /// assert_eq!(v.remove(2), None);
+    /// assert_eq!(v.try_remove(0), Some(1));
+    /// assert_eq!(v.try_remove(2), None);
     /// ```
-    #![unstable(feature = "vec_try_remove", issue = "77481")]
+    #[unstable(feature = "vec_try_remove", issue = "77481")]
     pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
         if index >= len {
@@ -1112,7 +1096,6 @@ impl<T> Vec<T> {
                     // copy it out, unsafely having a copy of the value on
                     // the stack and in the vector at the same time.
                     ret = ptr::read(ptr);
-    
                     // Shift everything down to fill in that spot.
                     ptr::copy(ptr.offset(1), ptr, len - index - 1);
                 }
