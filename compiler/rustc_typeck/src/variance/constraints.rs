@@ -3,8 +3,9 @@
 //! The second pass over the AST determines the set of constraints.
 //! We walk the set of items and, for each member, generate new constraints.
 
-use hir::def_id::{DefId, LocalDefId};
+use rustc_ast::Mutability;
 use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -469,12 +470,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         variance: VarianceTermPtr<'a>,
     ) {
         match mt.mutbl {
-            hir::Mutability::Mut => {
+            Mutability::Mut => {
                 let invar = self.invariant(variance);
                 self.add_constraints_from_ty(current, mt.ty, invar);
             }
 
-            hir::Mutability::Not => {
+            Mutability::Not => {
                 self.add_constraints_from_ty(current, mt.ty, variance);
             }
         }

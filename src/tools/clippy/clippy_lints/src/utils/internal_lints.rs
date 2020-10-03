@@ -3,7 +3,7 @@ use crate::utils::{
     snippet, span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, NodeId};
+use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, Mutability, NodeId};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc_hir::{Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Node, Path, StmtKind, Ty, TyKind};
+use rustc_hir::{Crate, Expr, ExprKind, HirId, Item, MutTy, Node, Path, StmtKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};

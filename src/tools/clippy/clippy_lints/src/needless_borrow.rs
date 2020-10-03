@@ -4,8 +4,9 @@
 
 use crate::utils::{snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
+use rustc_ast::{BorrowKind, Mutability};
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, BorrowKind, Expr, ExprKind, HirId, Item, Mutability, Pat, PatKind};
+use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Item, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};

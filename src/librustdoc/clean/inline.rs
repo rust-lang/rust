@@ -3,11 +3,11 @@
 use std::iter::once;
 
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty;
 use rustc_mir::const_eval::is_min_const_fn;

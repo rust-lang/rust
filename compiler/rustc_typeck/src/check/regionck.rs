@@ -76,6 +76,7 @@ use crate::check::dropck;
 use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
 use crate::middle::region;
+use rustc_ast::{BorrowKind, Mutability};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -407,7 +408,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         }
 
         match expr.kind {
-            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref base) => {
+            hir::ExprKind::AddrOf(BorrowKind::Ref, m, ref base) => {
                 self.link_addr_of(expr, m, &base);
 
                 intravisit::walk_expr(self, expr);
@@ -520,7 +521,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn link_addr_of(
         &mut self,
         expr: &hir::Expr<'_>,
-        mutability: hir::Mutability,
+        mutability: Mutability,
         base: &hir::Expr<'_>,
     ) {
         debug!("link_addr_of(expr={:?}, base={:?})", expr, base);
@@ -615,7 +616,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         &self,
         span: Span,
         id: hir::HirId,
-        mutbl: hir::Mutability,
+        mutbl: Mutability,
         cmt_borrowed: &PlaceWithHirId<'tcx>,
     ) {
         debug!(
@@ -703,7 +704,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         span: Span,
         borrow_region: ty::Region<'tcx>,
         ref_region: ty::Region<'tcx>,
-        ref_mutability: hir::Mutability,
+        ref_mutability: Mutability,
     ) -> bool {
         debug!("link_reborrowed_region: {:?} <= {:?}", borrow_region, ref_region);
         self.sub_regions(infer::Reborrow(span), borrow_region, ref_region);
@@ -736,7 +737,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // know whether this scenario has occurred; but I wanted to show
         // how all the types get adjusted.)
         match ref_mutability {
-            hir::Mutability::Not => {
+            Mutability::Not => {
                 // The reference being reborrowed is a shareable ref of
                 // type `&'a T`. In this case, it doesn't matter where we
                 // *found* the `&T` pointer, the memory it references will
@@ -744,7 +745,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                 true
             }
 
-            hir::Mutability::Mut => {
+            Mutability::Mut => {
                 // The reference being reborrowed is either an `&mut T`. This is
                 // the case where recursion is needed.
                 false

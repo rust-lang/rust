@@ -2,6 +2,7 @@ use super::coercion::CoerceMany;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
 use super::*;
 
+use rustc_ast::{Movability, Mutability};
 use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -51,7 +52,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     decl: &'tcx hir::FnDecl<'tcx>,
     fn_id: hir::HirId,
     body: &'tcx hir::Body<'tcx>,
-    can_be_generator: Option<hir::Movability>,
+    can_be_generator: Option<Movability>,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
     let mut fn_sig = fn_sig;
 
@@ -248,7 +249,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                         ty::Ref(region, ty, mutbl) => match *ty.kind() {
                             ty::Adt(ref adt, _) => {
                                 adt.did == panic_info_did
-                                    && mutbl == hir::Mutability::Not
+                                    && mutbl == Mutability::Not
                                     && *region != RegionKind::ReStatic
                             }
                             _ => false,

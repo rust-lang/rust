@@ -8,7 +8,8 @@ use crate::mir::interpret::{get_slice_bytes, ConstValue};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_hir as ast;
+use rustc_ast as ast;
+use rustc_hir::Unsafety;
 use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
@@ -193,12 +194,12 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ast::Unsafety {
+impl<'tcx> Relate<'tcx> for Unsafety {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ast::Unsafety,
-        b: ast::Unsafety,
-    ) -> RelateResult<'tcx, ast::Unsafety> {
+        a: Unsafety,
+        b: Unsafety,
+    ) -> RelateResult<'tcx, Unsafety> {
         if a != b {
             Err(TypeError::UnsafetyMismatch(expected_found(relation, a, b)))
         } else {

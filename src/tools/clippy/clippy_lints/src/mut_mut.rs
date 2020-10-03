@@ -1,4 +1,6 @@
 use crate::utils::{higher, span_lint};
+use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -61,15 +63,15 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             // Let's ignore the generated code.
             intravisit::walk_expr(self, arg);
             intravisit::walk_expr(self, body);
-        } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, ref e) = expr.kind {
-            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) = e.kind {
+        } else if let hir::ExprKind::AddrOf(ast::BorrowKind::Ref, Mutability::Mut, ref e) = expr.kind {
+            if let hir::ExprKind::AddrOf(ast::BorrowKind::Ref, Mutability::Mut, _) = e.kind {
                 span_lint(
                     self.cx,
                     MUT_MUT,
                     expr.span,
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
-            } else if let ty::Ref(_, _, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind() {
+            } else if let ty::Ref(_, _, Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind() {
                 span_lint(
                     self.cx,
                     MUT_MUT,
@@ -85,14 +87,14 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             _,
             hir::MutTy {
                 ty: ref pty,
-                mutbl: hir::Mutability::Mut,
+                mutbl: Mutability::Mut,
             },
         ) = ty.kind
         {
             if let hir::TyKind::Rptr(
                 _,
                 hir::MutTy {
-                    mutbl: hir::Mutability::Mut,
+                    mutbl: Mutability::Mut,
                     ..
                 },
             ) = pty.kind

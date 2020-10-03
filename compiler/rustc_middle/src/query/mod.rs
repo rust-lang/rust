@@ -9,6 +9,7 @@ use crate::traits::query::{
 use crate::ty::query::queries;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc_ast::Mutability;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_query_system::query::QueryDescription;
 
@@ -463,7 +464,7 @@ rustc_queries! {
         }
 
         /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
-        query static_mutability(def_id: DefId) -> Option<hir::Mutability> {
+        query static_mutability(def_id: DefId) -> Option<Mutability> {
             desc { |tcx| "looking up static mutability of `{}`", tcx.def_path_str(def_id) }
         }
 

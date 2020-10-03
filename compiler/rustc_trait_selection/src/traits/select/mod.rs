@@ -25,6 +25,7 @@ use super::{Overflow, SelectionError, Unimplemented};
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectionCacheKeyExt;
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
@@ -1498,7 +1499,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::RawPtr(..)
             | ty::Never
-            | ty::Ref(_, _, hir::Mutability::Not) => {
+            | ty::Ref(_, _, Mutability::Not) => {
                 // Implementations provided in libcore
                 None
             }
@@ -1509,7 +1510,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
             | ty::Foreign(..)
-            | ty::Ref(_, _, hir::Mutability::Mut) => None,
+            | ty::Ref(_, _, Mutability::Mut) => None,
 
             ty::Array(element_ty, _) => {
                 // (*) binder moved here

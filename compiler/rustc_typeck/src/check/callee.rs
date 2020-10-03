@@ -2,6 +2,7 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::type_error_struct;
 
+use rustc_ast::Mutability;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -231,8 +232,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
 
                     let mutbl = match mutbl {
-                        hir::Mutability::Not => AutoBorrowMutability::Not,
-                        hir::Mutability::Mut => AutoBorrowMutability::Mut {
+                        Mutability::Not => AutoBorrowMutability::Not,
+                        Mutability::Mut => AutoBorrowMutability::Mut {
                             // For initial two-phase borrow
                             // deployment, conservatively omit
                             // overloaded function call ops.

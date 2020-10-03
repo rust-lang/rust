@@ -4,7 +4,7 @@ use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
-use rustc_ast::{self as ast, IntTy, UintTy};
+use rustc_ast::{self as ast, IntTy, UintTy, Mutability};
 use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
@@ -2176,14 +2176,14 @@ where
                 let tcx = cx.tcx();
                 let is_freeze = ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env());
                 let kind = match mt {
-                    hir::Mutability::Not => {
+                    Mutability::Not => {
                         if is_freeze {
                             PointerKind::Frozen
                         } else {
                             PointerKind::Shared
                         }
                     }
-                    hir::Mutability::Mut => {
+                    Mutability::Mut => {
                         // Previously we would only emit noalias annotations for LLVM >= 6 or in
                         // panic=abort mode. That was deemed right, as prior versions had many bugs
                         // in conjunction with unwinding, but later versions didn’t seem to have

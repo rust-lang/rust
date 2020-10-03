@@ -254,7 +254,7 @@ impl Validator<'mir, 'tcx> {
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync = self.const_kind()
-            == hir::ConstContext::Static(hir::Mutability::Not)
+            == hir::ConstContext::Static(Mutability::Not)
             && !tcx.is_thread_local_static(def_id.to_def_id());
 
         if should_check_for_sync {
@@ -342,7 +342,7 @@ impl Validator<'mir, 'tcx> {
             };
 
             match *ty.kind() {
-                ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
+                ty::Ref(_, _, Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
                 ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
                 ty::FnPtr(..) => self.check_op(ops::ty::FnPtr(kind)),
 
@@ -505,7 +505,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 let is_allowed = match ty.kind() {
                     // Inside a `static mut`, `&mut [...]` is allowed.
                     ty::Array(..) | ty::Slice(_)
-                        if self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut) =>
+                        if self.const_kind() == hir::ConstContext::Static(Mutability::Mut) =>
                     {
                         true
                     }

@@ -33,6 +33,7 @@
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
+use rustc_ast::{CaptureBy, Mutability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -82,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_hir_id: hir::HirId,
         span: Span,
         body: &hir::Body<'_>,
-        capture_clause: hir::CaptureBy,
+        capture_clause: CaptureBy,
     ) {
         debug!("analyze_closure(id={:?}, body.id={:?})", closure_hir_id, body.id());
 
@@ -125,8 +126,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 closure_captures.insert(var_hir_id, upvar_id);
 
                 let capture_kind = match capture_clause {
-                    hir::CaptureBy::Value => ty::UpvarCapture::ByValue(None),
-                    hir::CaptureBy::Ref => {
+                    CaptureBy::Value => ty::UpvarCapture::ByValue(None),
+                    CaptureBy::Ref => {
                         let origin = UpvarRegion(upvar_id, span);
                         let upvar_region = self.next_region_var(origin);
                         let upvar_borrow =
@@ -356,7 +357,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
                     // borrowed pointer implies that the
                     // pointer itself must be unique, but not
                     // necessarily *mutable*
-                    ty::Ref(.., hir::Mutability::Mut) => borrow_kind = ty::UniqueImmBorrow,
+                    ty::Ref(.., Mutability::Mut) => borrow_kind = ty::UniqueImmBorrow,
                     _ => (),
                 }
             }

@@ -3,6 +3,7 @@
 pub use self::StructType::*;
 
 use rustc_ast as ast;
+use rustc_ast::{IsAuto, ImplPolarity, Mutability};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{self, Span, Symbol};
 
@@ -155,7 +156,7 @@ pub struct OpaqueTy<'hir> {
 #[derive(Debug)]
 pub struct Static<'hir> {
     pub type_: &'hir hir::Ty<'hir>,
-    pub mutability: hir::Mutability,
+    pub mutability: Mutability,
     pub expr: hir::BodyId,
     pub name: Symbol,
     pub attrs: &'hir [ast::Attribute],
@@ -175,7 +176,7 @@ pub struct Constant<'hir> {
 }
 
 pub struct Trait<'hir> {
-    pub is_auto: hir::IsAuto,
+    pub is_auto: IsAuto,
     pub unsafety: hir::Unsafety,
     pub name: Symbol,
     pub items: Vec<&'hir hir::TraitItem<'hir>>,
@@ -200,7 +201,7 @@ pub struct TraitAlias<'hir> {
 #[derive(Debug)]
 pub struct Impl<'hir> {
     pub unsafety: hir::Unsafety,
-    pub polarity: hir::ImplPolarity,
+    pub polarity: ImplPolarity,
     pub defaultness: hir::Defaultness,
     pub constness: hir::Constness,
     pub generics: &'hir hir::Generics<'hir>,

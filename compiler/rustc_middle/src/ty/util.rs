@@ -11,6 +11,7 @@ use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, GenericParamDefKind, List, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -535,7 +536,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
     pub fn is_mutable_static(self, def_id: DefId) -> bool {
-        self.static_mutability(def_id) == Some(hir::Mutability::Mut)
+        self.static_mutability(def_id) == Some(Mutability::Mut)
     }
 
     /// Get the type of the pointer to the static that we use in MIR.
@@ -1031,8 +1032,8 @@ impl<'tcx> ty::TyS<'tcx> {
 
 pub enum ExplicitSelf<'tcx> {
     ByValue,
-    ByReference(ty::Region<'tcx>, hir::Mutability),
-    ByRawPointer(hir::Mutability),
+    ByReference(ty::Region<'tcx>, Mutability),
+    ByRawPointer(Mutability),
     ByBox,
     Other,
 }

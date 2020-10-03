@@ -5,11 +5,12 @@ use crate::utils::{
 };
 
 use if_chain::if_chain;
+use rustc_ast::BorrowKind;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::BinOpKind;
-use rustc_hir::{BorrowKind, Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;

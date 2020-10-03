@@ -3,6 +3,7 @@ use crate::def_id::DefId;
 use crate::hir::{self, HirId, PatKind};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_ast::Mutability;
 
 use std::iter::{Enumerate, ExactSizeIterator};
 
@@ -179,14 +180,14 @@ impl hir::Pat<'_> {
     //
     // FIXME(tschottdorf): this is problematic as the HIR is being scraped, but
     // ref bindings are be implicit after #42640 (default match binding modes). See issue #44848.
-    pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
+    pub fn contains_explicit_ref_binding(&self) -> Option<Mutability> {
         let mut result = None;
         self.each_binding(|annotation, _, _, _| match annotation {
             hir::BindingAnnotation::Ref => match result {
-                None | Some(hir::Mutability::Not) => result = Some(hir::Mutability::Not),
+                None | Some(Mutability::Not) => result = Some(Mutability::Not),
                 _ => {}
             },
-            hir::BindingAnnotation::RefMut => result = Some(hir::Mutability::Mut),
+            hir::BindingAnnotation::RefMut => result = Some(Mutability::Mut),
             _ => {}
         });
         result

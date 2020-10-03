@@ -285,7 +285,7 @@ fn const_not_var(
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_>) {
     pat.walk_always(|p| {
         if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
-            if let Some(ty::BindByValue(hir::Mutability::Not)) =
+            if let Some(ty::BindByValue(Mutability::Not)) =
                 cx.typeck_results.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
             {
                 let pat_ty = cx.typeck_results.pat_ty(p).peel_refs();

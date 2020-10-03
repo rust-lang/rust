@@ -11,13 +11,14 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
+use rustc_ast::{BorrowKind, Mutability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    def_id, BinOpKind, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, GenericArg, HirId, InlineAsmOperand,
-    Local, LoopSource, MatchSource, Mutability, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+    def_id, BinOpKind, BindingAnnotation, Block, Expr, ExprKind, GenericArg, HirId, InlineAsmOperand,
+    Local, LoopSource, MatchSource, Node, Pat, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass, LintContext};

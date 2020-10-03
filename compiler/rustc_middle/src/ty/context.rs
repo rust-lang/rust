@@ -25,6 +25,7 @@ use crate::ty::{
     TyVid, TypeAndMut,
 };
 use rustc_ast as ast;
+use rustc_ast::{Movability, Mutability};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -2215,22 +2216,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+        self.mk_ref(r, TypeAndMut { ty, mutbl: Mutability::Mut })
     }
 
     #[inline]
     pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+        self.mk_ref(r, TypeAndMut { ty, mutbl: Mutability::Not })
     }
 
     #[inline]
     pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+        self.mk_ptr(TypeAndMut { ty, mutbl: Mutability::Mut })
     }
 
     #[inline]
     pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut { ty, mutbl: hir::Mutability::Not })
+        self.mk_ptr(TypeAndMut { ty, mutbl: Mutability::Not })
     }
 
     #[inline]
@@ -2305,7 +2306,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         id: DefId,
         generator_substs: SubstsRef<'tcx>,
-        movability: hir::Movability,
+        movability: Movability,
     ) -> Ty<'tcx> {
         self.mk_ty(Generator(id, generator_substs, movability))
     }

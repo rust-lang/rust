@@ -1,6 +1,7 @@
 // Type Names for Debug Info.
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, subst::SubstsRef, Ty, TyCtxt};
@@ -75,8 +76,8 @@ pub fn push_debuginfo_type_name<'tcx>(
                 output.push('*');
             }
             match mutbl {
-                hir::Mutability::Not => output.push_str("const "),
-                hir::Mutability::Mut => output.push_str("mut "),
+                Mutability::Not => output.push_str("const "),
+                Mutability::Mut => output.push_str("mut "),
             }
 
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);

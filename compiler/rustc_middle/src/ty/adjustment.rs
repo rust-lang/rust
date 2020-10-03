@@ -1,5 +1,6 @@
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TyCtxt};
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -113,7 +114,7 @@ pub enum Adjust<'tcx> {
 #[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct OverloadedDeref<'tcx> {
     pub region: ty::Region<'tcx>,
-    pub mutbl: hir::Mutability,
+    pub mutbl: Mutability,
     /// The `Span` associated with the field access or method call
     /// that triggered this overloaded deref.
     pub span: Span,
@@ -122,8 +123,8 @@ pub struct OverloadedDeref<'tcx> {
 impl<'tcx> OverloadedDeref<'tcx> {
     pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
         let trait_def_id = match self.mutbl {
-            hir::Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
-            hir::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
+            Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
+            Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
         };
         let method_def_id = tcx
             .associated_items(trait_def_id)
@@ -159,11 +160,11 @@ pub enum AutoBorrowMutability {
     Not,
 }
 
-impl From<AutoBorrowMutability> for hir::Mutability {
+impl From<AutoBorrowMutability> for Mutability {
     fn from(m: AutoBorrowMutability) -> Self {
         match m {
-            AutoBorrowMutability::Mut { .. } => hir::Mutability::Mut,
-            AutoBorrowMutability::Not => hir::Mutability::Not,
+            AutoBorrowMutability::Mut { .. } => Mutability::Mut,
+            AutoBorrowMutability::Not => Mutability::Not,
         }
     }
 }
@@ -174,7 +175,7 @@ pub enum AutoBorrow<'tcx> {
     Ref(ty::Region<'tcx>, AutoBorrowMutability),
 
     /// Converts from T to *T.
-    RawPtr(hir::Mutability),
+    RawPtr(Mutability),
 }
 
 /// Information for `CoerceUnsized` impls, storing information we

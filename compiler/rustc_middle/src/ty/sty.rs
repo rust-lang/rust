@@ -13,6 +13,7 @@ use crate::ty::{
 use crate::ty::{DelaySpanBugEmitted, List, ParamEnv, TyS};
 use polonius_engine::Atom;
 use rustc_ast as ast;
+use rustc_ast::{Movability, Mutability};
 use rustc_data_structures::captures::Captures;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -31,7 +32,7 @@ use ty::util::IntTypeExt;
 #[derive(HashStable, TypeFoldable, Lift)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
-    pub mutbl: hir::Mutability,
+    pub mutbl: Mutability,
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
@@ -127,7 +128,7 @@ pub enum TyKind<'tcx> {
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(Region<'tcx>, Ty<'tcx>, hir::Mutability),
+    Ref(Region<'tcx>, Ty<'tcx>, Mutability),
 
     /// The anonymous type of a function declaration/definition. Each
     /// function has a unique type, which is output (for a function
@@ -160,7 +161,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    Generator(DefId, SubstsRef<'tcx>, Movability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -1949,8 +1950,8 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_mutable_ptr(&self) -> bool {
         match self.kind() {
-            RawPtr(TypeAndMut { mutbl: hir::Mutability::Mut, .. })
-            | Ref(_, _, hir::Mutability::Mut) => true,
+            RawPtr(TypeAndMut { mutbl: Mutability::Mut, .. })
+            | Ref(_, _, Mutability::Mut) => true,
             _ => false,
         }
     }
@@ -2123,7 +2124,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
         match self.kind() {
             Adt(def, _) if def.is_box() => {
-                Some(TypeAndMut { ty: self.boxed_ty(), mutbl: hir::Mutability::Not })
+                Some(TypeAndMut { ty: self.boxed_ty(), mutbl: Mutability::Not })
             }
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl: *mutbl }),
             RawPtr(mt) if explicit => Some(*mt),

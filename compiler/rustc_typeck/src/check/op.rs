@@ -2,6 +2,7 @@
 
 use super::method::MethodCallee;
 use super::FnCtxt;
+use rustc_ast::Mutability;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -208,8 +209,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() {
                         let mutbl = match mutbl {
-                            hir::Mutability::Not => AutoBorrowMutability::Not,
-                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
+                            Mutability::Not => AutoBorrowMutability::Not,
+                            Mutability::Mut => AutoBorrowMutability::Mut {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
                                 allow_two_phase_borrow: AllowTwoPhase::Yes,
@@ -225,8 +226,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind() {
                         let mutbl = match mutbl {
-                            hir::Mutability::Not => AutoBorrowMutability::Not,
-                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
+                            Mutability::Not => AutoBorrowMutability::Not,
+                            Mutability::Mut => AutoBorrowMutability::Mut {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
                                 allow_two_phase_borrow: AllowTwoPhase::Yes,
@@ -845,7 +846,7 @@ enum Op {
 /// Dereferences a single level of immutable referencing.
 fn deref_ty_if_possible(ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.kind() {
-        ty::Ref(_, ty, hir::Mutability::Not) => ty,
+        ty::Ref(_, ty, Mutability::Not) => ty,
         _ => ty,
     }
 }

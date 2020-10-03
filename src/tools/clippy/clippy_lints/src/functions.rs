@@ -4,6 +4,7 @@ use crate::utils::{
     trait_ref_of_method, type_is_unsafe_function,
 };
 use rustc_ast::ast::Attribute;
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -521,7 +522,7 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &m
         ty::Tuple(ref substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
         ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, span, tys),
         ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
-            mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, span, tys)
+            mutbl == Mutability::Mut || is_mutable_ty(cx, ty, span, tys)
         },
         // calling something constitutes a side effect, so return true on all callables
         // also never calls need not be used, so return true for them, too
@@ -630,7 +631,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     tys.clear();
                 }
             },
-            Assign(ref target, ..) | AssignOp(_, ref target, _) | AddrOf(_, hir::Mutability::Mut, ref target) => {
+            Assign(ref target, ..) | AssignOp(_, ref target, _) | AddrOf(_, Mutability::Mut, ref target) => {
                 self.mutates_static |= is_mutated_static(self.cx, target)
             },
             _ => {},

@@ -9,6 +9,7 @@ use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_ast::util::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -169,7 +170,7 @@ pub struct Pick<'tcx> {
     // Indicates that an autoref is applied after the optional autoderefs
     //
     // B = A | &A | &mut A
-    pub autoref: Option<hir::Mutability>,
+    pub autoref: Option<Mutability>,
 
     // Indicates that the source expression should be "unsized" to a
     // target type. This should probably eventually go away in favor
@@ -649,10 +650,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
             ty::RawPtr(ty::TypeAndMut { ty: _, mutbl }) => {
                 let (lang_def_id1, lang_def_id2) = match mutbl {
-                    hir::Mutability::Not => {
+                    Mutability::Not => {
                         (lang_items.const_ptr_impl(), lang_items.const_slice_ptr_impl())
                     }
-                    hir::Mutability::Mut => {
+                    Mutability::Mut => {
                         (lang_items.mut_ptr_impl(), lang_items.mut_slice_ptr_impl())
                     }
                 };
@@ -1091,8 +1092,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         span_bug!(self.span, "{:?} was applicable but now isn't?", step.self_ty)
                     });
                 self.pick_by_value_method(step, self_ty).or_else(|| {
-                    self.pick_autorefd_method(step, self_ty, hir::Mutability::Not)
-                        .or_else(|| self.pick_autorefd_method(step, self_ty, hir::Mutability::Mut))
+                    self.pick_autorefd_method(step, self_ty, Mutability::Not)
+                        .or_else(|| self.pick_autorefd_method(step, self_ty, Mutability::Mut))
                 })
             })
             .next()
@@ -1134,7 +1135,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &mut self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        mutbl: hir::Mutability,
+        mutbl: Mutability,
     ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 

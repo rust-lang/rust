@@ -9,11 +9,12 @@ use crate::utils::{
     span_lint_and_then,
 };
 use if_chain::if_chain;
+use rustc_ast::{BorrowKind, Mutability};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::{
-    Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, Local, MatchSource, Mutability, Node, Pat,
+    Arm, BindingAnnotation, Block, Expr, ExprKind, Guard, Local, MatchSource, Node, Pat,
     PatKind, QPath, RangeEnd,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};

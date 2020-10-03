@@ -50,7 +50,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
             if elem == ProjectionElem::Deref {
                 let ty = Place::ty_from(self.local, proj_base, body, tcx).ty;
                 match ty.kind() {
-                    ty::Ref(_, _, hir::Mutability::Not) if i == 0 => {
+                    ty::Ref(_, _, Mutability::Not) if i == 0 => {
                         // For references to thread-local statics, we do need
                         // to track the borrow.
                         if body.local_decls[self.local].is_ref_to_thread_local() {
@@ -58,7 +58,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                         }
                         return true;
                     }
-                    ty::RawPtr(..) | ty::Ref(_, _, hir::Mutability::Not) => {
+                    ty::RawPtr(..) | ty::Ref(_, _, Mutability::Not) => {
                         // For both derefs of raw pointers and `&T`
                         // references, the original path is `Copy` and
                         // therefore not significant.  In particular,

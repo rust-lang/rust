@@ -1,5 +1,6 @@
 use crate::check::coercion::CoerceMany;
 use crate::check::{Diverges, Expectation, FnCtxt, Needs};
+use rustc_ast::Mutability;
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
@@ -488,8 +489,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .filter_map(|a| a.pat.contains_explicit_ref_binding())
             .max_by_key(|m| match *m {
-                hir::Mutability::Mut => 1,
-                hir::Mutability::Not => 0,
+                Mutability::Mut => 1,
+                Mutability::Not => 0,
             });
 
         if let Some(m) = contains_ref_bindings {

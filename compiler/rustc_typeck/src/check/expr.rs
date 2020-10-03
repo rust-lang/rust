@@ -22,6 +22,7 @@ use crate::type_error_struct;
 
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use rustc_ast as ast;
+use rustc_ast::{BorrowKind, Mutability};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -369,8 +370,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_addr_of(
         &self,
-        kind: hir::BorrowKind,
-        mutbl: hir::Mutability,
+        kind: BorrowKind,
+        mutbl: Mutability,
         oprnd: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
@@ -396,11 +397,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
             _ if tm.ty.references_error() => self.tcx.ty_error(),
-            hir::BorrowKind::Raw => {
+            BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
                 self.tcx.mk_ptr(tm)
             }
-            hir::BorrowKind::Ref => {
+            BorrowKind::Ref => {
                 // Note: at this point, we cannot say what the best lifetime
                 // is to use for resulting pointer.  We want to use the
                 // shortest lifetime possible so as to avoid spurious borrowck

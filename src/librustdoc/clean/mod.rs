@@ -10,6 +10,7 @@ pub mod types;
 pub mod utils;
 
 use rustc_ast as ast;
+use rustc_ast::IsAuto;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -1057,11 +1058,11 @@ impl Clean<Item> for doctree::TraitAlias<'_> {
     }
 }
 
-impl Clean<bool> for hir::IsAuto {
+impl Clean<bool> for IsAuto {
     fn clean(&self, _: &DocContext<'_>) -> bool {
         match *self {
-            hir::IsAuto::Yes => true,
-            hir::IsAuto::No => false,
+            IsAuto::Yes => true,
+            IsAuto::No => false,
         }
     }
 }

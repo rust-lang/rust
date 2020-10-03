@@ -1,4 +1,4 @@
-use rustc_ast::{FloatTy, IntTy, UintTy};
+use rustc_ast::{FloatTy, IntTy, UintTy, Mutability};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -370,8 +370,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
             ty::Ref(r, ty, mutbl) => {
                 self.push(match mutbl {
-                    hir::Mutability::Not => "R",
-                    hir::Mutability::Mut => "Q",
+                    Mutability::Not => "R",
+                    Mutability::Mut => "Q",
                 });
                 if *r != ty::ReErased {
                     self = r.print(self)?;
@@ -381,8 +381,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
             ty::RawPtr(mt) => {
                 self.push(match mt.mutbl {
-                    hir::Mutability::Not => "P",
-                    hir::Mutability::Mut => "O",
+                    Mutability::Not => "P",
+                    Mutability::Mut => "O",
                 });
                 self = mt.ty.print(self)?;
             }

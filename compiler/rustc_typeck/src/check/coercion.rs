@@ -37,6 +37,7 @@
 
 use crate::astconv::AstConv;
 use crate::check::FnCtxt;
+use rustc_ast::Mutability;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -84,13 +85,13 @@ type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
 /// Coercing a mutable reference to an immutable works, while
 /// coercing `&T` to `&mut T` should be forbidden.
 fn coerce_mutbls<'tcx>(
-    from_mutbl: hir::Mutability,
-    to_mutbl: hir::Mutability,
+    from_mutbl: Mutability,
+    to_mutbl: Mutability,
 ) -> RelateResult<'tcx, ()> {
     match (from_mutbl, to_mutbl) {
-        (hir::Mutability::Mut, hir::Mutability::Mut | hir::Mutability::Not)
-        | (hir::Mutability::Not, hir::Mutability::Not) => Ok(()),
-        (hir::Mutability::Not, hir::Mutability::Mut) => Err(TypeError::Mutability),
+        (Mutability::Mut, Mutability::Mut | Mutability::Not)
+        | (Mutability::Not, Mutability::Not) => Ok(()),
+        (Mutability::Not, Mutability::Mut) => Err(TypeError::Mutability),
     }
 }
 
@@ -242,7 +243,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         a: Ty<'tcx>,
         b: Ty<'tcx>,
         r_b: ty::Region<'tcx>,
-        mutbl_b: hir::Mutability,
+        mutbl_b: Mutability,
     ) -> CoerceResult<'tcx> {
         debug!("coerce_borrowed_pointer(a={:?}, b={:?})", a, b);
 
@@ -392,7 +393,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        if ty == a && mt_a.mutbl == hir::Mutability::Not && autoderef.step_count() == 1 {
+        if ty == a && mt_a.mutbl == Mutability::Not && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
             // we started with.  In that case, just skip it
@@ -404,7 +405,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x` both have `&mut `type would be a move of
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
-            assert_eq!(mutbl_b, hir::Mutability::Not); // can only coerce &T -> &U
+            assert_eq!(mutbl_b, Mutability::Not); // can only coerce &T -> &U
             return success(vec![], ty, obligations);
         }
 
@@ -420,8 +421,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => span_bug!(span, "expected a ref type, got {:?}", ty),
         };
         let mutbl = match mutbl_b {
-            hir::Mutability::Not => AutoBorrowMutability::Not,
-            hir::Mutability::Mut => {
+            Mutability::Not => AutoBorrowMutability::Not,
+            Mutability::Mut => {
                 AutoBorrowMutability::Mut { allow_two_phase_borrow: self.allow_two_phase }
             }
         };
@@ -497,8 +498,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let coercion = Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
                 let mutbl = match mutbl_b {
-                    hir::Mutability::Not => AutoBorrowMutability::Not,
-                    hir::Mutability::Mut => AutoBorrowMutability::Mut {
+                    Mutability::Not => AutoBorrowMutability::Not,
+                    Mutability::Mut => AutoBorrowMutability::Mut {
                         // We don't allow two-phase borrows here, at least for initial
                         // implementation. If it happens that this coercion is a function argument,
                         // the reborrow in coerce_borrowed_ptr will pick it up.
@@ -798,7 +799,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        mutbl_b: hir::Mutability,
+        mutbl_b: Mutability,
     ) -> CoerceResult<'tcx> {
         debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
 
@@ -1026,7 +1027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     match *self.node_ty(expr.hir_id).kind() {
                         ty::Ref(_, _, mt_orig) => {
-                            let mutbl_adj: hir::Mutability = mutbl_adj.into();
+                            let mutbl_adj: Mutability = mutbl_adj.into();
                             // Reborrow that we can safely ignore, because
                             // the next adjustment can only be a Deref
                             // which will be merged into it.

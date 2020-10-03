@@ -545,7 +545,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             decl,
             body_id,
             span,
-            Some(hir::Movability::Static),
+            Some(Movability::Static),
         );
         let generator = hir::Expr {
             hir_id: self.lower_node_id(closure_node_id),
@@ -751,7 +751,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
         generator_kind: Option<hir::GeneratorKind>,
         movability: Movability,
-    ) -> Option<hir::Movability> {
+    ) -> Option<Movability> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) => {
                 if decl.inputs.len() > 1 {
@@ -1638,7 +1638,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn expr_mut_addr_of(&mut self, span: Span, e: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
         self.expr(
             span,
-            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e),
+            hir::ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, e),
             ThinVec::new(),
         )
     }

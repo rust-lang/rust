@@ -4,8 +4,9 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, TyKind, UnOp};
+use rustc_hir::{Expr, ExprKind, GenericArg, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, cast::CastKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

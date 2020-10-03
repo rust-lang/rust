@@ -252,8 +252,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::AddressOf { mutability, arg } => {
                 let place = match mutability {
-                    hir::Mutability::Not => this.as_read_only_place(block, arg),
-                    hir::Mutability::Mut => this.as_place(block, arg),
+                    Mutability::Not => this.as_read_only_place(block, arg),
+                    Mutability::Mut => this.as_place(block, arg),
                 };
                 let address_of = Rvalue::AddressOf(mutability, unpack!(block = place));
                 this.cfg.push_assign(block, source_info, destination, address_of);

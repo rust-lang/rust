@@ -1,4 +1,5 @@
 use either::Either;
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -311,7 +312,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
             if is_loop_move {
-                if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
+                if let ty::Ref(_, _, Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
                     err.span_suggestion_verbose(
                         span.shrink_to_lo(),

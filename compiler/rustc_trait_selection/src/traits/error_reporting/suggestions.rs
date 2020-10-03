@@ -7,6 +7,7 @@ use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::normalize_projection_type;
 
+use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
@@ -825,8 +826,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
 
                 let suggested_ty = match mutability {
-                    hir::Mutability::Mut => self.tcx.mk_imm_ref(region, t_type),
-                    hir::Mutability::Not => self.tcx.mk_mut_ref(region, t_type),
+                    Mutability::Mut => self.tcx.mk_imm_ref(region, t_type),
+                    Mutability::Not => self.tcx.mk_mut_ref(region, t_type),
                 };
 
                 let new_obligation = self.mk_trait_obligation_with_new_self_ty(
@@ -843,7 +844,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         .sess
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
-                    if points_at_arg && mutability == hir::Mutability::Not && refs_number > 0 {
+                    if points_at_arg && mutability == Mutability::Not && refs_number > 0 {
                         err.span_suggestion_verbose(
                             sp,
                             "consider changing this borrow's mutability",

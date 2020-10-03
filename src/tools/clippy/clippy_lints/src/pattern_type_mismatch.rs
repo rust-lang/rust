@@ -1,6 +1,7 @@
 use crate::utils::{last_path_segment, span_lint_and_help};
+use rustc_ast::Mutability;
 use rustc_hir::{
-    intravisit, Body, Expr, ExprKind, FieldPat, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatKind,
+    intravisit, Body, Expr, ExprKind, FieldPat, FnDecl, HirId, LocalSource, MatchSource, Pat, PatKind,
     QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};

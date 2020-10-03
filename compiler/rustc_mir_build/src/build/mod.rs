@@ -864,7 +864,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             match hir_typeck_results
                                 .extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
                             {
-                                Some(ty::BindByValue(hir::Mutability::Mut)) => {
+                                Some(ty::BindByValue(Mutability::Mut)) => {
                                     mutability = Mutability::Mut;
                                 }
                                 Some(_) => mutability = Mutability::Not,

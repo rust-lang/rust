@@ -29,6 +29,7 @@
 #![feature(min_const_generics)]
 #![feature(once_cell)]
 #![allow(rustc::default_hash_types)]
+#![allow(rustc::pub_cross_crate_reexport)]
 
 #[macro_use]
 extern crate tracing;

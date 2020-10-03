@@ -4,6 +4,7 @@ use crate::astconv::AstConv;
 use crate::check::{callee, FnCtxt};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
@@ -159,8 +160,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             let region = self.next_region_var(infer::Autoref(self.span, pick.item));
             target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
             let mutbl = match mutbl {
-                hir::Mutability::Not => AutoBorrowMutability::Not,
-                hir::Mutability::Mut => AutoBorrowMutability::Mut {
+                Mutability::Not => AutoBorrowMutability::Not,
+                Mutability::Mut => AutoBorrowMutability::Mut {
                     // Method call receivers are the primary use case
                     // for two-phase borrows.
                     allow_two_phase_borrow: AllowTwoPhase::Yes,

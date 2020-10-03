@@ -1,5 +1,6 @@
 use crate::check::method::MethodCallee;
 use crate::check::{FnCtxt, PlaceOp};
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
@@ -25,7 +26,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ok = self.try_overloaded_deref(expr.span, oprnd_ty)?;
         let method = self.register_infer_ok_obligations(ok);
-        if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
+        if let ty::Ref(region, _, Mutability::Not) = method.sig.inputs()[0].kind() {
             self.apply_adjustments(
                 oprnd_expr,
                 vec![Adjustment {
@@ -108,12 +109,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let method = self.register_infer_ok_obligations(ok);
 
                 let mut adjustments = self.adjust_steps(autoderef);
-                if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
+                if let ty::Ref(region, _, Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(region, AutoBorrowMutability::Not)),
                         target: self.tcx.mk_ref(
                             region,
-                            ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: adjusted_ty },
+                            ty::TypeAndMut { mutbl: Mutability::Not, ty: adjusted_ty },
                         ),
                     });
                 } else {
@@ -328,7 +329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("convert_place_op_to_mutable: method={:?}", method);
         self.write_method_call(expr.hir_id, method);
 
-        let region = if let ty::Ref(r, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind() {
+        let region = if let ty::Ref(r, _, Mutability::Mut) = method.sig.inputs()[0].kind() {
             r
         } else {
             span_bug!(expr.span, "input to mutable place op is not a mut ref?");

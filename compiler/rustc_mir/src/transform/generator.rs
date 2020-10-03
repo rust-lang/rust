@@ -948,7 +948,7 @@ fn create_generator_drop_shim<'tcx>(
 
     // Change the generator argument from &mut to *mut
     body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
-        tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
+        tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: Mutability::Mut }),
         source_info,
     );
     if tcx.sess.opts.debugging_opts.mir_emit_retag {
@@ -1262,7 +1262,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                     substs.upvar_tys().collect(),
                     substs.witness(),
                     substs.discr_ty(tcx),
-                    movability == hir::Movability::Movable,
+                    movability == Movability::Movable,
                 )
             }
             _ => {

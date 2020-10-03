@@ -54,7 +54,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::Mutability;
+use rustc_ast::Mutability;
 use rustc_middle::middle::stability;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;

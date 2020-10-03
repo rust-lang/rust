@@ -2,6 +2,7 @@ use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -1228,8 +1229,8 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_ident_span(def_id, item.ident);
 
         record!(self.tables.kind[def_id] <- match item.kind {
-            hir::ItemKind::Static(_, hir::Mutability::Mut, _) => EntryKind::MutStatic,
-            hir::ItemKind::Static(_, hir::Mutability::Not, _) => EntryKind::ImmStatic,
+            hir::ItemKind::Static(_, Mutability::Mut, _) => EntryKind::MutStatic,
+            hir::ItemKind::Static(_, Mutability::Not, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
                 let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
                 EntryKind::Const(
@@ -1740,8 +1741,8 @@ impl EncodeContext<'a, 'tcx> {
                 };
                 EntryKind::ForeignFn(self.lazy(data))
             }
-            hir::ForeignItemKind::Static(_, hir::Mutability::Mut) => EntryKind::ForeignMutStatic,
-            hir::ForeignItemKind::Static(_, hir::Mutability::Not) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemKind::Static(_, Mutability::Mut) => EntryKind::ForeignMutStatic,
+            hir::ForeignItemKind::Static(_, Mutability::Not) => EntryKind::ForeignImmStatic,
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         });
         record!(self.tables.visibility[def_id] <-

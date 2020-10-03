@@ -5,6 +5,7 @@
 //! candidates. See the [rustc dev guide] for more details.
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
+use rustc_ast::{Movability, Mutability};
 use rustc_hir as hir;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -578,11 +579,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
                 {
                     match movability {
-                        hir::Movability::Static => {
+                        Movability::Static => {
                             // Immovable generators are never `Unpin`, so
                             // suppress the normal auto-impl candidate for it.
                         }
-                        hir::Movability::Movable => {
+                        Movability::Movable => {
                             // Movable generators are always `Unpin`, so add an
                             // unconditional builtin candidate.
                             candidates.vec.push(BuiltinCandidate { has_nested: false });

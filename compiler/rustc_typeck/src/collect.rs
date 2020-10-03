@@ -21,7 +21,7 @@ use crate::constrained_generic_params as cgp;
 use crate::errors;
 use crate::middle::resolve_lifetime as rl;
 use rustc_ast as ast;
-use rustc_ast::MetaItemKind;
+use rustc_ast::{IsAuto, ImplPolarity, MetaItemKind, Mutability};
 use rustc_attr::{list_contains_name, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
@@ -1024,7 +1024,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     let item = tcx.hir().expect_item(hir_id);
 
     let (is_auto, unsafety) = match item.kind {
-        hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
+        hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == IsAuto::Yes, unsafety),
         hir::ItemKind::TraitAlias(..) => (false, hir::Unsafety::Normal),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
@@ -1616,21 +1616,21 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
-        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative(span), of_trait, .. } => {
+        hir::ItemKind::Impl { polarity: ImplPolarity::Negative(span), of_trait, .. } => {
             if is_rustc_reservation {
                 let span = span.to(of_trait.as_ref().map(|t| t.path.span).unwrap_or(*span));
                 tcx.sess.span_err(span, "reservation impls can't be negative");
             }
             ty::ImplPolarity::Negative
         }
-        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Positive, of_trait: None, .. } => {
+        hir::ItemKind::Impl { polarity: ImplPolarity::Positive, of_trait: None, .. } => {
             if is_rustc_reservation {
                 tcx.sess.span_err(item.span, "reservation impls can't be inherent");
             }
             ty::ImplPolarity::Positive
         }
         hir::ItemKind::Impl {
-            polarity: hir::ImplPolarity::Positive, of_trait: Some(_), ..
+            polarity: ImplPolarity::Positive, of_trait: Some(_), ..
         } => {
             if is_rustc_reservation {
                 ty::ImplPolarity::Reservation
@@ -2311,7 +2311,7 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> {
+fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Mutability> {
     match tcx.hir().get_if_local(def_id) {
         Some(
             Node::Item(&hir::Item { kind: hir::ItemKind::Static(_, mutbl, _), .. })

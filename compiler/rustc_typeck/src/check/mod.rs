@@ -101,6 +101,7 @@ pub use inherited::{Inherited, InheritedBuilder};
 
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
+use rustc_ast::{Movability, Mutability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -162,10 +163,10 @@ pub enum Needs {
 }
 
 impl Needs {
-    fn maybe_mut_place(m: hir::Mutability) -> Self {
+    fn maybe_mut_place(m: Mutability) -> Self {
         match m {
-            hir::Mutability::Mut => Needs::MutPlace,
-            hir::Mutability::Not => Needs::None,
+            Mutability::Mut => Needs::MutPlace,
+            Mutability::Not => Needs::None,
         }
     }
 }
@@ -640,7 +641,7 @@ struct GeneratorTypes<'tcx> {
     interior: Ty<'tcx>,
 
     /// Indicates if the generator is movable or static (immovable).
-    movability: hir::Movability,
+    movability: Movability,
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return

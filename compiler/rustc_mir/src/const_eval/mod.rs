@@ -2,7 +2,7 @@
 
 use std::convert::TryFrom;
 
-use rustc_hir::Mutability;
+use rustc_ast::Mutability;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};

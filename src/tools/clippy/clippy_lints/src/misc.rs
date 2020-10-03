@@ -1,9 +1,10 @@
 use if_chain::if_chain;
+use rustc_ast::Mutability;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    self as hir, def, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Mutability, PatKind, Stmt,
+    self as hir, def, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, PatKind, Stmt,
     StmtKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};

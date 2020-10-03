@@ -20,7 +20,7 @@ use rustc_hir::{self, GeneratorKind};
 use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
-pub use rustc_ast::Mutability;
+pub use rustc_ast::{Movability, Mutability};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
@@ -2084,7 +2084,7 @@ pub enum AggregateKind<'tcx> {
     Adt(&'tcx AdtDef, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
     Closure(DefId, SubstsRef<'tcx>),
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    Generator(DefId, SubstsRef<'tcx>, Movability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]

@@ -1,6 +1,6 @@
 use rustc_hir::BindingAnnotation;
 use rustc_hir::BindingAnnotation::*;
-use rustc_hir::Mutability;
+use rustc_ast::Mutability;
 
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Debug, Copy, HashStable)]
 pub enum BindingMode {

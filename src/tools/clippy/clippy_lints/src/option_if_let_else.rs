@@ -4,9 +4,10 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{is_type_diagnostic_item, paths, span_lint_and_sugg};
 use if_chain::if_chain;
 
+use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, PatKind, UnOp};
+use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, PatKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};

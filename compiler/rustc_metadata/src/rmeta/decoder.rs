@@ -5,6 +5,7 @@ use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder};
@@ -1517,10 +1518,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn static_mutability(&self, id: DefIndex) -> Option<hir::Mutability> {
+    fn static_mutability(&self, id: DefIndex) -> Option<Mutability> {
         match self.kind(id) {
-            EntryKind::ImmStatic | EntryKind::ForeignImmStatic => Some(hir::Mutability::Not),
-            EntryKind::MutStatic | EntryKind::ForeignMutStatic => Some(hir::Mutability::Mut),
+            EntryKind::ImmStatic | EntryKind::ForeignImmStatic => Some(Mutability::Not),
+            EntryKind::MutStatic | EntryKind::ForeignMutStatic => Some(Mutability::Mut),
             _ => None,
         }
     }

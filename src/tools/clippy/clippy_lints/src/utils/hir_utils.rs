@@ -1,9 +1,10 @@
 use crate::consts::{constant_context, constant_simple};
 use crate::utils::differing_macro_contexts;
+use rustc_ast::{BorrowKind, CaptureBy};
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{
-    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FieldPat, FnRetTy,
+    BinOpKind, Block, BlockCheckMode, BodyId, Expr, ExprKind, Field, FieldPat, FnRetTy,
     GenericArg, GenericArgs, Guard, InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatKind, Path,
     PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };

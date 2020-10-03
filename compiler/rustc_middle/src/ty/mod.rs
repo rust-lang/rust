@@ -18,6 +18,7 @@ use crate::ty;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -2704,10 +2705,10 @@ impl<'tcx> ClosureKind {
 }
 
 impl BorrowKind {
-    pub fn from_mutbl(m: hir::Mutability) -> BorrowKind {
+    pub fn from_mutbl(m: Mutability) -> BorrowKind {
         match m {
-            hir::Mutability::Mut => MutBorrow,
-            hir::Mutability::Not => ImmBorrow,
+            Mutability::Mut => MutBorrow,
+            Mutability::Not => ImmBorrow,
         }
     }
 
@@ -2715,15 +2716,15 @@ impl BorrowKind {
     /// kind. Because borrow kinds are richer than mutabilities, we sometimes have to pick a
     /// mutability that is stronger than necessary so that it at least *would permit* the borrow in
     /// question.
-    pub fn to_mutbl_lossy(self) -> hir::Mutability {
+    pub fn to_mutbl_lossy(self) -> Mutability {
         match self {
-            MutBorrow => hir::Mutability::Mut,
-            ImmBorrow => hir::Mutability::Not,
+            MutBorrow => Mutability::Mut,
+            ImmBorrow => Mutability::Not,
 
             // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
-            UniqueImmBorrow => hir::Mutability::Mut,
+            UniqueImmBorrow => Mutability::Mut,
         }
     }
 

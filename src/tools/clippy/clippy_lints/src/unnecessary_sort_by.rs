@@ -1,8 +1,9 @@
 use crate::utils;
 use crate::utils::sugg::Sugg;
 use if_chain::if_chain;
+use rustc_ast::Mutability;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
+use rustc_hir::{Expr, ExprKind, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, subst::GenericArgKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

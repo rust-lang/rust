@@ -12,6 +12,7 @@ use std::iter;
 use bind_instead_of_map::BindInsteadOfMap;
 use if_chain::if_chain;
 use rustc_ast::ast;
+use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
@@ -1875,7 +1876,7 @@ fn lint_expect_fun_call(
         let mut arg_root = arg;
         loop {
             arg_root = match &arg_root.kind {
-                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
+                hir::ExprKind::AddrOf(ast::BorrowKind::Ref, _, expr) => expr,
                 hir::ExprKind::MethodCall(method_name, _, call_args, _) => {
                     if call_args.len() == 1
                         && (method_name.ident.name == sym!(as_str) || method_name.ident.name == sym!(as_ref))
@@ -1953,7 +1954,7 @@ fn lint_expect_fun_call(
         applicability: &mut Applicability,
     ) -> Vec<String> {
         if_chain! {
-            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref format_arg) = a.kind;
+            if let hir::ExprKind::AddrOf(ast::BorrowKind::Ref, _, ref format_arg) = a.kind;
             if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.kind;
             if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.kind;
 
@@ -1970,7 +1971,7 @@ fn lint_expect_fun_call(
 
     fn is_call(node: &hir::ExprKind<'_>) -> bool {
         match node {
-            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => {
+            hir::ExprKind::AddrOf(ast::BorrowKind::Ref, _, expr) => {
                 is_call(&expr.kind)
             },
             hir::ExprKind::Call(..)
@@ -3329,8 +3330,8 @@ fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(&'st
             _ => unreachable!(),
         };
         let method_name = match mutbl {
-            hir::Mutability::Not => "iter",
-            hir::Mutability::Mut => "iter_mut",
+            Mutability::Not => "iter",
+            Mutability::Mut => "iter_mut",
         };
         (ty_name, method_name)
     })
@@ -3403,7 +3404,7 @@ fn lint_option_as_ref_deref<'tcx>(
     map_args: &[hir::Expr<'_>],
     is_mut: bool,
 ) {
-    let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
+    let same_mutability = |m| (is_mut && m == &Mutability::Mut) || (!is_mut && m == &Mutability::Not);
 
     let option_ty = cx.typeck_results().expr_ty(&as_ref_args[0]);
     if !is_type_diagnostic_item(cx, option_ty, sym!(option_type)) {
@@ -3455,7 +3456,7 @@ fn lint_option_as_ref_deref<'tcx>(
                         }
                     }
                 },
-                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref inner) if same_mutability(m) => {
+                hir::ExprKind::AddrOf(ast::BorrowKind::Ref, m, ref inner) if same_mutability(m) => {
                     if_chain! {
                         if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner1) = inner.kind;
                         if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner2) = inner1.kind;
@@ -3667,14 +3668,14 @@ impl SelfKind {
             }
         }
 
-        fn matches_ref<'a>(cx: &LateContext<'a>, mutability: hir::Mutability, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
+        fn matches_ref<'a>(cx: &LateContext<'a>, mutability: Mutability, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
             if let ty::Ref(_, t, m) = *ty.kind() {
                 return m == mutability && t == parent_ty;
             }
 
             let trait_path = match mutability {
-                hir::Mutability::Not => &paths::ASREF_TRAIT,
-                hir::Mutability::Mut => &paths::ASMUT_TRAIT,
+                Mutability::Not => &paths::ASREF_TRAIT,
+                Mutability::Mut => &paths::ASMUT_TRAIT,
             };
 
             let trait_def_id = match get_trait_def_id(cx, trait_path) {
@@ -3686,8 +3687,8 @@ impl SelfKind {
 
         match self {
             Self::Value => matches_value(cx, parent_ty, ty),
-            Self::Ref => matches_ref(cx, hir::Mutability::Not, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty),
-            Self::RefMut => matches_ref(cx, hir::Mutability::Mut, parent_ty, ty),
+            Self::Ref => matches_ref(cx, Mutability::Not, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty),
+            Self::RefMut => matches_ref(cx, Mutability::Mut, parent_ty, ty),
             Self::No => ty != parent_ty,
         }
     }

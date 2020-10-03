@@ -5,7 +5,7 @@
 //! structures.
 
 use self::cx::Cx;
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece, Mutability, Movability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::infer::canonical::Canonical;
@@ -219,7 +219,7 @@ crate enum ExprKind<'tcx> {
     },
     /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
     AddressOf {
-        mutability: hir::Mutability,
+        mutability: Mutability,
         arg: ExprRef<'tcx>,
     },
     Break {
@@ -268,7 +268,7 @@ crate enum ExprKind<'tcx> {
         closure_id: DefId,
         substs: UpvarSubsts<'tcx>,
         upvars: Vec<ExprRef<'tcx>>,
-        movability: Option<hir::Movability>,
+        movability: Option<Movability>,
     },
     Literal {
         literal: &'tcx Const<'tcx>,

@@ -1,6 +1,7 @@
 use crate::utils::span_lint_and_help;
 
-use rustc_hir::{CaptureBy, Expr, ExprKind, PatKind};
+use rustc_ast::CaptureBy;
+use rustc_hir::{Expr, ExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 

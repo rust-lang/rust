@@ -1,4 +1,5 @@
 use crate::utils::{match_def_path, paths, span_lint, trait_ref_of_method};
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{Adt, Array, RawPtr, Ref, Slice, Tuple, Ty, TypeAndMut};
@@ -113,7 +114,7 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
 fn is_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
     match *ty.kind() {
         RawPtr(TypeAndMut { ty: inner_ty, mutbl }) | Ref(_, inner_ty, mutbl) => {
-            mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span)
+            mutbl == Mutability::Mut || is_mutable_type(cx, inner_ty, span)
         },
         Slice(inner_ty) => is_mutable_type(cx, inner_ty, span),
         Array(inner_ty, size) => {

@@ -417,7 +417,7 @@ impl CloneShimBuilder<'tcx> {
 
         let ref_loc = self.make_place(
             Mutability::Not,
-            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Not }),
+            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: Mutability::Not }),
         );
 
         // `let ref_loc: &ty = &src;`
@@ -722,7 +722,7 @@ fn build_call_shim<'tcx>(
                 LocalDecl::new(
                     tcx.mk_ref(
                         tcx.lifetimes.re_erased,
-                        ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
+                        ty::TypeAndMut { ty: sig.inputs()[0], mutbl: Mutability::Mut },
                     ),
                     span,
                 )

@@ -56,6 +56,7 @@ use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
@@ -1060,7 +1061,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         fn push_ty_ref<'tcx>(
             region: &ty::Region<'tcx>,
             ty: Ty<'tcx>,
-            mutbl: hir::Mutability,
+            mutbl: Mutability,
             s: &mut DiagnosticStyledString,
         ) {
             let mut r = region.to_string();

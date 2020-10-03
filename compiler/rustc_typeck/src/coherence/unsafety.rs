@@ -1,6 +1,7 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
+use rustc_ast::ImplPolarity;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -22,7 +23,7 @@ impl UnsafetyChecker<'tcx> {
         item: &'v hir::Item<'v>,
         impl_generics: Option<&hir::Generics<'_>>,
         unsafety: hir::Unsafety,
-        polarity: hir::ImplPolarity,
+        polarity: ImplPolarity,
     ) {
         let local_did = self.tcx.hir().local_def_id(item.hir_id);
         if let Some(trait_ref) = self.tcx.impl_trait_ref(local_did) {
@@ -31,7 +32,7 @@ impl UnsafetyChecker<'tcx> {
                 generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle")
             });
             match (trait_def.unsafety, unsafe_attr, unsafety, polarity) {
-                (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
+                (Unsafety::Normal, None, Unsafety::Unsafe, ImplPolarity::Positive) => {
                     struct_span_err!(
                         self.tcx.sess,
                         item.span,
@@ -42,7 +43,7 @@ impl UnsafetyChecker<'tcx> {
                     .emit();
                 }
 
-                (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
+                (Unsafety::Unsafe, _, Unsafety::Normal, ImplPolarity::Positive) => {
                     struct_span_err!(
                         self.tcx.sess,
                         item.span,
@@ -57,7 +58,7 @@ impl UnsafetyChecker<'tcx> {
                     Unsafety::Normal,
                     Some(attr_name),
                     Unsafety::Normal,
-                    hir::ImplPolarity::Positive,
+                    ImplPolarity::Positive,
                 ) => {
                     struct_span_err!(
                         self.tcx.sess,
@@ -69,13 +70,13 @@ impl UnsafetyChecker<'tcx> {
                     .emit();
                 }
 
-                (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
+                (_, _, Unsafety::Unsafe, ImplPolarity::Negative(_)) => {
                     // Reported in AST validation
                     self.tcx.sess.delay_span_bug(item.span, "unsafe negative impl");
                 }
-                (_, _, Unsafety::Normal, hir::ImplPolarity::Negative(_))
-                | (Unsafety::Unsafe, _, Unsafety::Unsafe, hir::ImplPolarity::Positive)
-                | (Unsafety::Normal, Some(_), Unsafety::Unsafe, hir::ImplPolarity::Positive)
+                (_, _, Unsafety::Normal, ImplPolarity::Negative(_))
+                | (Unsafety::Unsafe, _, Unsafety::Unsafe, ImplPolarity::Positive)
+                | (Unsafety::Normal, Some(_), Unsafety::Unsafe, ImplPolarity::Positive)
                 | (Unsafety::Normal, None, Unsafety::Normal, _) => {
                     // OK
                 }

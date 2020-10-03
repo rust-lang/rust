@@ -2,11 +2,11 @@
 //! Clippy.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast::{Item, ItemKind};
+use rustc_ast::{Item, ItemKind, Mutability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
+use rustc_hir::{GenericArg, HirId, MutTy, Path, PathSegment, QPath, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};

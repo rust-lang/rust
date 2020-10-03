@@ -8,6 +8,7 @@
 //! is computed by selecting an idea from this table.
 
 use rustc_errors::struct_span_err;
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -122,7 +123,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     item.span,
                 );
             }
-            ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Not })
+            ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: Mutability::Not })
                 if matches!(inner.kind(), ty::Slice(_)) =>
             {
                 self.check_primitive_impl(
@@ -134,7 +135,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     item.span,
                 );
             }
-            ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Mut })
+            ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: Mutability::Mut })
                 if matches!(inner.kind(), ty::Slice(_)) =>
             {
                 self.check_primitive_impl(
@@ -146,7 +147,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     item.span,
                 );
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Not }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: Mutability::Not }) => {
                 self.check_primitive_impl(
                     def_id,
                     lang_items.const_ptr_impl(),
@@ -156,7 +157,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     item.span,
                 );
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Mut }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: Mutability::Mut }) => {
                 self.check_primitive_impl(
                     def_id,
                     lang_items.mut_ptr_impl(),

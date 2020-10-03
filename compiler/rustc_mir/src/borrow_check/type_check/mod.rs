@@ -2164,7 +2164,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_from = match op.ty(body, tcx).kind() {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_from,
-                                mutbl: hir::Mutability::Mut,
+                                mutbl: Mutability::Mut,
                             }) => ty_from,
                             _ => {
                                 span_mirbug!(
@@ -2179,7 +2179,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_to = match ty.kind() {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_to,
-                                mutbl: hir::Mutability::Not,
+                                mutbl: Mutability::Not,
                             }) => ty_to,
                             _ => {
                                 span_mirbug!(
@@ -2213,7 +2213,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let opt_ty_elem = match ty_from.kind() {
                             ty::RawPtr(ty::TypeAndMut {
-                                mutbl: hir::Mutability::Not,
+                                mutbl: Mutability::Not,
                                 ty: array_ty,
                             }) => match array_ty.kind() {
                                 ty::Array(ty_elem, _) => Some(ty_elem),
@@ -2237,7 +2237,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_to = match ty.kind() {
                             ty::RawPtr(ty::TypeAndMut {
-                                mutbl: hir::Mutability::Not,
+                                mutbl: Mutability::Not,
                                 ty: ty_to,
                             }) => ty_to,
                             _ => {
@@ -2522,13 +2522,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             });
 
                             match mutbl {
-                                hir::Mutability::Not => {
+                                Mutability::Not => {
                                     // Immutable reference. We don't need the base
                                     // to be valid for the entire lifetime of
                                     // the borrow.
                                     break;
                                 }
-                                hir::Mutability::Mut => {
+                                Mutability::Mut => {
                                     // Mutable reference. We *do* need the base
                                     // to be valid, because after the base becomes
                                     // invalid, someone else can use our mutable deref.

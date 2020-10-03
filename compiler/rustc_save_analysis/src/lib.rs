@@ -10,6 +10,7 @@ mod span_utils;
 mod sig;
 
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast_pretty::pprust::attribute_to_string;
 use rustc_hir as hir;
@@ -858,7 +859,7 @@ impl<'tcx> SaveContext<'tcx> {
 struct PathCollector<'l> {
     tcx: TyCtxt<'l>,
     collected_paths: Vec<(hir::HirId, &'l hir::QPath<'l>)>,
-    collected_idents: Vec<(hir::HirId, Ident, hir::Mutability)>,
+    collected_idents: Vec<(hir::HirId, Ident, Mutability)>,
 }
 
 impl<'l> PathCollector<'l> {
@@ -892,10 +893,10 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
                     // the data pointed at, so showing the initialising expression
                     // is still worthwhile.
                     hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Ref => {
-                        hir::Mutability::Not
+                        Mutability::Not
                     }
                     hir::BindingAnnotation::Mutable | hir::BindingAnnotation::RefMut => {
-                        hir::Mutability::Mut
+                        Mutability::Mut
                     }
                 };
                 self.collected_idents.push((p.hir_id, ident, immut));

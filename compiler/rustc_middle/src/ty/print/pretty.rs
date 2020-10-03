@@ -6,6 +6,7 @@ use crate::ty::{self, ConstInt, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable}
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_ast as ast;
+use rustc_ast::{Movability, Mutability};
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -518,8 +519,8 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write(
                     "*{} ",
                     match tm.mutbl {
-                        hir::Mutability::Mut => "mut",
-                        hir::Mutability::Not => "const",
+                        Mutability::Mut => "mut",
+                        Mutability::Not => "const",
                     }
                 ));
                 p!(print(tm.ty))
@@ -643,8 +644,8 @@ pub trait PrettyPrinter<'tcx>:
             ty::Generator(did, substs, movability) => {
                 p!(write("["));
                 match movability {
-                    hir::Movability::Movable => {}
-                    hir::Movability::Static => p!(write("static ")),
+                    Movability::Movable => {}
+                    Movability::Static => p!(write("static ")),
                 }
 
                 if !self.tcx().sess.verbose() {

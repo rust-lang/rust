@@ -7,6 +7,7 @@ use crate::errors::{
 };
 use crate::require_same_types;
 
+use rustc_ast::Mutability;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -175,7 +176,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | sym::prefetch_write_instruction => (
                 1,
                 vec![
-                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: Mutability::Not }),
                     tcx.types.i32,
                 ],
                 tcx.mk_unit(),
@@ -188,16 +189,16 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::offset | sym::arith_offset => (
                 1,
                 vec![
-                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: Mutability::Not }),
                     tcx.types.isize,
                 ],
-                tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
+                tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: Mutability::Not }),
             ),
             sym::copy | sym::copy_nonoverlapping => (
                 1,
                 vec![
-                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
-                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: Mutability::Not }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: Mutability::Mut }),
                     tcx.types.usize,
                 ],
                 tcx.mk_unit(),
@@ -205,8 +206,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::volatile_copy_memory | sym::volatile_copy_nonoverlapping_memory => (
                 1,
                 vec![
-                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
-                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: Mutability::Mut }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: Mutability::Not }),
                     tcx.types.usize,
                 ],
                 tcx.mk_unit(),
@@ -214,7 +215,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::write_bytes | sym::volatile_set_memory => (
                 1,
                 vec![
-                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: Mutability::Mut }),
                     tcx.types.u8,
                     tcx.types.usize,
                 ],
@@ -349,12 +350,12 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 )
             }
 
-            sym::va_start | sym::va_end => match mk_va_list_ty(hir::Mutability::Mut) {
+            sym::va_start | sym::va_end => match mk_va_list_ty(Mutability::Mut) {
                 Some((va_list_ref_ty, _)) => (0, vec![va_list_ref_ty], tcx.mk_unit()),
                 None => bug!("`va_list` language item needed for C-variadic intrinsics"),
             },
 
-            sym::va_copy => match mk_va_list_ty(hir::Mutability::Not) {
+            sym::va_copy => match mk_va_list_ty(Mutability::Not) {
                 Some((va_list_ref_ty, va_list_ty)) => {
                     let va_list_ptr_ty = tcx.mk_mut_ptr(va_list_ty);
                     (0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.mk_unit())
@@ -362,7 +363,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 None => bug!("`va_list` language item needed for C-variadic intrinsics"),
             },
 
-            sym::va_arg => match mk_va_list_ty(hir::Mutability::Mut) {
+            sym::va_arg => match mk_va_list_ty(Mutability::Mut) {
                 Some((va_list_ref_ty, _)) => (1, vec![va_list_ref_ty], param(0)),
                 None => bug!("`va_list` language item needed for C-variadic intrinsics"),
             },

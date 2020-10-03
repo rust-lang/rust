@@ -51,7 +51,7 @@ enum InternMode {
     /// A static and its current mutability.  Below shared references inside a `static mut`,
     /// this is *immutable*, and below mutable references inside an `UnsafeCell`, this
     /// is *mutable*.
-    Static(hir::Mutability),
+    Static(Mutability),
     /// The "base value" of a const, which can have `UnsafeCell` (as in `const FOO: Cell<i32>`),
     /// but that interior mutability is simply ignored.
     ConstBase,
@@ -291,7 +291,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
 pub enum InternKind {
     /// The `mutability` of the static, ignoring the type which may have interior mutability.
-    Static(hir::Mutability),
+    Static(Mutability),
     Constant,
     Promoted,
 }

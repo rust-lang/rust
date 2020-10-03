@@ -1,8 +1,8 @@
 //! Performs various peephole optimizations.
 
 use crate::transform::{MirPass, MirSource};
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::Mutability;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{
     visit::PlaceContext,

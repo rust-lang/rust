@@ -2,6 +2,7 @@
 #![recursion_limit = "256"]
 
 use rustc_ast as ast;
+use rustc_ast::{BorrowKind, CaptureBy, IsAuto, ImplPolarity, Mutability};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
@@ -477,7 +478,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::Mutability::Mut {
+                if m == Mutability::Mut {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -598,7 +599,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Static(ref ty, m, expr) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::Mutability::Mut {
+                if m == Mutability::Mut {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -719,7 +720,7 @@ impl<'a> State<'a> {
                     self.word_nbsp("const");
                 }
 
-                if let hir::ImplPolarity::Negative(_) = polarity {
+                if let ImplPolarity::Negative(_) = polarity {
                     self.s.word("!");
                 }
 
@@ -1257,14 +1258,14 @@ impl<'a> State<'a> {
 
     fn print_expr_addr_of(
         &mut self,
-        kind: hir::BorrowKind,
-        mutability: hir::Mutability,
+        kind: BorrowKind,
+        mutability: Mutability,
         expr: &hir::Expr<'_>,
     ) {
         self.s.word("&");
         match kind {
-            hir::BorrowKind::Ref => self.print_mutability(mutability, false),
-            hir::BorrowKind::Raw => {
+            BorrowKind::Ref => self.print_mutability(mutability, false),
+            BorrowKind::Raw => {
                 self.word_nbsp("raw");
                 self.print_mutability(mutability, true);
             }
@@ -1825,11 +1826,11 @@ impl<'a> State<'a> {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Not, false);
+                        self.print_mutability(Mutability::Not, false);
                     }
                     hir::BindingAnnotation::RefMut => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Mut, false);
+                        self.print_mutability(Mutability::Mut, false);
                     }
                     hir::BindingAnnotation::Unannotated => {}
                     hir::BindingAnnotation::Mutable => {
@@ -2114,10 +2115,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
+    pub fn print_capture_clause(&mut self, capture_clause: CaptureBy) {
         match capture_clause {
-            hir::CaptureBy::Value => self.word_space("move"),
-            hir::CaptureBy::Ref => {}
+            CaptureBy::Value => self.word_space("move"),
+            CaptureBy::Ref => {}
         }
     }
 
@@ -2268,10 +2269,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_mutability(&mut self, mutbl: hir::Mutability, print_const: bool) {
+    pub fn print_mutability(&mut self, mutbl: Mutability, print_const: bool) {
         match mutbl {
-            hir::Mutability::Mut => self.word_nbsp("mut"),
-            hir::Mutability::Not => {
+            Mutability::Mut => self.word_nbsp("mut"),
+            Mutability::Not => {
                 if print_const {
                     self.word_nbsp("const")
                 }
@@ -2410,10 +2411,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_is_auto(&mut self, s: hir::IsAuto) {
+    pub fn print_is_auto(&mut self, s: IsAuto) {
         match s {
-            hir::IsAuto::Yes => self.word_nbsp("auto"),
-            hir::IsAuto::No => {}
+            IsAuto::Yes => self.word_nbsp("auto"),
+            IsAuto::No => {}
         }
     }
 }

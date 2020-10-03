@@ -1,5 +1,6 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+use rustc_ast::Movability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
@@ -173,7 +174,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 mutability: Mutability::Not,
             };
             let bm = *tables.pat_binding_modes().get(var_hir_id).expect("missing binding mode");
-            if bm == ty::BindByValue(hir::Mutability::Mut) {
+            if bm == ty::BindByValue(Mutability::Mut) {
                 upvar.mutability = Mutability::Mut;
             }
             upvar
@@ -278,7 +279,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let movable_generator = match tcx.hir().get(id) {
         Node::Expr(&hir::Expr {
-            kind: hir::ExprKind::Closure(.., Some(hir::Movability::Static)),
+            kind: hir::ExprKind::Closure(.., Some(Movability::Static)),
             ..
         }) => false,
         _ => true,
@@ -2217,10 +2218,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ty::Ref(_, _, mutbl) => {
                                 match mutbl {
                                     // Shared borrowed data is never mutable
-                                    hir::Mutability::Not => Err(place),
+                                    Mutability::Not => Err(place),
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
-                                    hir::Mutability::Mut => {
+                                    Mutability::Mut => {
                                         let mode = match self.is_upvar_field_projection(place) {
                                             Some(field) if self.upvars[field.index()].by_ref => {
                                                 is_local_mutation_allowed
@@ -2238,10 +2239,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ty::RawPtr(tnm) => {
                                 match tnm.mutbl {
                                     // `*const` raw pointers are not mutable
-                                    hir::Mutability::Not => Err(place),
+                                    Mutability::Not => Err(place),
                                     // `*mut` raw pointers are always mutable, regardless of
                                     // context. The users have to check by themselves.
-                                    hir::Mutability::Mut => Ok(RootPlace {
+                                    Mutability::Mut => Ok(RootPlace {
                                         place_local: place.local,
                                         place_projection: place.projection,
                                         is_local_mutation_allowed,

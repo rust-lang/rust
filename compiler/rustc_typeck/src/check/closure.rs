@@ -3,6 +3,7 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
+use rustc_ast::{CaptureBy, Movability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -36,10 +37,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_closure(
         &self,
         expr: &hir::Expr<'_>,
-        _capture: hir::CaptureBy,
+        _capture: CaptureBy,
         decl: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
-        gen: Option<hir::Movability>,
+        gen: Option<Movability>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         debug!("check_expr_closure(expr={:?},expected={:?})", expr, expected);
@@ -61,7 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         opt_kind: Option<ty::ClosureKind>,
         decl: &'tcx hir::FnDecl<'tcx>,
         body: &'tcx hir::Body<'tcx>,
-        gen: Option<hir::Movability>,
+        gen: Option<Movability>,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> Ty<'tcx> {
         debug!("check_closure(opt_kind={:?}, expected_sig={:?})", opt_kind, expected_sig);

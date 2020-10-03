@@ -1,6 +1,7 @@
 use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
 use crate::borrow_check::{AccessDepth, Deep, Shallow};
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_middle::mir::{Body, BorrowKind, Local, Place, PlaceElem, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, TyCtxt};
@@ -231,11 +232,11 @@ fn place_components_conflict<'tcx>(
                     debug!("borrow_conflicts_with_place: shallow access behind ptr");
                     return false;
                 }
-                (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Not), _) => {
+                (ProjectionElem::Deref, ty::Ref(_, _, Mutability::Not), _) => {
                     // Shouldn't be tracked
                     bug!("Tracking borrow behind shared reference.");
                 }
-                (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Mut), AccessDepth::Drop) => {
+                (ProjectionElem::Deref, ty::Ref(_, _, Mutability::Mut), AccessDepth::Drop) => {
                     // Values behind a mutable reference are not access either by dropping a
                     // value, or by StorageDead
                     debug!("borrow_conflicts_with_place: drop access behind ptr");

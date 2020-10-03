@@ -2,6 +2,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
 use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -249,7 +250,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 } else {
                     // Unknown type name, it's long or has type arguments
                     match mutbl {
-                        hir::Mutability::Mut => "mutable reference",
+                        Mutability::Mut => "mutable reference",
                         _ => "reference",
                     }
                     .into()
@@ -301,7 +302,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "raw pointer".into(),
             ty::Ref(.., mutbl) => match mutbl {
-                hir::Mutability::Mut => "mutable reference",
+                Mutability::Mut => "mutable reference",
                 _ => "reference",
             }
             .into(),

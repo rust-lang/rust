@@ -13,6 +13,7 @@
 //! just returns them for other code to use.
 
 use either::Either;
+use rustc_ast::Movability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
@@ -98,7 +99,7 @@ pub enum DefiningTy<'tcx> {
     /// The MIR is a generator. The signature is that generators take
     /// no parameters and return the result of
     /// `ClosureSubsts::generator_return_ty`.
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    Generator(DefId, SubstsRef<'tcx>, Movability),
 
     /// The MIR is a fn item with the given `DefId` and substs. The signature
     /// of the function can be bound then with the `fn_sig` query.

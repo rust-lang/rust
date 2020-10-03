@@ -2,6 +2,7 @@
 //! up data structures required by type-checking/codegen.
 
 use crate::errors::{CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem};
+use rustc_ast::Mutability;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -319,7 +320,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
         let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                            mt_b: ty::TypeAndMut<'tcx>,
                            mk_ptr: &dyn Fn(Ty<'tcx>) -> Ty<'tcx>| {
-            if (mt_a.mutbl, mt_b.mutbl) == (hir::Mutability::Not, hir::Mutability::Mut) {
+            if (mt_a.mutbl, mt_b.mutbl) == (Mutability::Not, Mutability::Mut) {
                 infcx
                     .report_mismatched_types(
                         &cause,

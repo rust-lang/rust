@@ -32,6 +32,7 @@ use super::FnCtxt;
 
 use crate::hir::def_id::DefId;
 use crate::type_error_struct;
+use rustc_ast::Mutability;
 use rustc_ast as ast;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
@@ -767,7 +768,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     ) -> Result<CastKind, CastError> {
         // array-ptr-cast.
 
-        if m_expr.mutbl == hir::Mutability::Not && m_cast.mutbl == hir::Mutability::Not {
+        if m_expr.mutbl == Mutability::Not && m_cast.mutbl == Mutability::Not {
             if let ty::Array(ety, _) = m_expr.ty.kind() {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of

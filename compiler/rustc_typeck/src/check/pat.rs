@@ -1,6 +1,7 @@
 use crate::check::FnCtxt;
 use rustc_ast as ast;
 
+use rustc_ast::Mutability;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
@@ -112,7 +113,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 }
 
-const INITIAL_BM: BindingMode = BindingMode::BindByValue(hir::Mutability::Not);
+const INITIAL_BM: BindingMode = BindingMode::BindByValue(Mutability::Not);
 
 /// Mode for adjusting the expected type and binding mode.
 enum AdjustMode {
@@ -355,10 +356,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // (depending on whether we observe `&` or `&mut`).
                 ty::BindByValue(_) |
                 // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                ty::BindByReference(hir::Mutability::Mut) => inner_mutability,
+                ty::BindByReference(Mutability::Mut) => inner_mutability,
                 // Once a `ref`, always a `ref`.
                 // This is because a `& &mut` cannot mutate the underlying value.
-                ty::BindByReference(m @ hir::Mutability::Not) => m,
+                ty::BindByReference(m @ Mutability::Not) => m,
             });
         }
 
@@ -1542,7 +1543,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         inner: &'tcx Pat<'tcx>,
-        mutbl: hir::Mutability,
+        mutbl: Mutability,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
@@ -1586,7 +1587,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Create a reference type with a fresh region variable.
-    fn new_ref_ty(&self, span: Span, mutbl: hir::Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn new_ref_ty(&self, span: Span, mutbl: Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
         let mt = ty::TypeAndMut { ty, mutbl };
         self.tcx.mk_ref(region, mt)

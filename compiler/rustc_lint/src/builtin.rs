@@ -1168,7 +1168,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
         if let Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) =
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
-            if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
+            if to_mt == Mutability::Mut && from_mt == Mutability::Not {
                 let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
                                consider instead using an UnsafeCell";
                 cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| lint.build(msg).emit());

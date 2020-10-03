@@ -3,6 +3,8 @@ use crate::thir::cx::to_ref::ToRef;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 use crate::thir::*;
+use rustc_ast as ast;
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
@@ -229,11 +231,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             }
         }
 
-        hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, ref arg) => {
+        hir::ExprKind::AddrOf(ast::BorrowKind::Ref, mutbl, ref arg) => {
             ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg: arg.to_ref() }
         }
 
-        hir::ExprKind::AddrOf(hir::BorrowKind::Raw, mutability, ref arg) => {
+        hir::ExprKind::AddrOf(ast::BorrowKind::Raw, mutability, ref arg) => {
             ExprKind::AddressOf { mutability, arg: arg.to_ref() }
         }
 
@@ -759,11 +761,11 @@ impl ToBorrowKind for AutoBorrowMutability {
     }
 }
 
-impl ToBorrowKind for hir::Mutability {
+impl ToBorrowKind for Mutability {
     fn to_borrow_kind(&self) -> BorrowKind {
         match *self {
-            hir::Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
-            hir::Mutability::Not => BorrowKind::Shared,
+            Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
+            Mutability::Not => BorrowKind::Shared,
         }
     }
 }
@@ -929,7 +931,7 @@ fn convert_var<'tcx>(
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(
                             region,
-                            ty::TypeAndMut { ty: closure_ty, mutbl: hir::Mutability::Not },
+                            ty::TypeAndMut { ty: closure_ty, mutbl: Mutability::Not },
                         );
                         Expr {
                             ty: closure_ty,
@@ -949,7 +951,7 @@ fn convert_var<'tcx>(
                     ty::ClosureKind::FnMut => {
                         let ref_closure_ty = cx.tcx.mk_ref(
                             region,
-                            ty::TypeAndMut { ty: closure_ty, mutbl: hir::Mutability::Mut },
+                            ty::TypeAndMut { ty: closure_ty, mutbl: Mutability::Mut },
                         );
                         Expr {
                             ty: closure_ty,

@@ -5,13 +5,13 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use if_chain::if_chain;
-use rustc_ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
+use rustc_ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy, Mutability};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt, StmtKind,
+    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Node, QPath, Stmt, StmtKind,
     TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};

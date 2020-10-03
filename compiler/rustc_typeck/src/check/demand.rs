@@ -1,4 +1,5 @@
 use crate::check::FnCtxt;
+use rustc_ast::{BorrowKind, Mutability};
 use rustc_infer::infer::InferOk;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCause;
@@ -451,10 +452,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // bar(&x); // error, expected &mut
                 // ```
                 let ref_ty = match mutability {
-                    hir::Mutability::Mut => {
+                    Mutability::Mut => {
                         self.tcx.mk_mut_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
                     }
-                    hir::Mutability::Not => {
+                    Mutability::Not => {
                         self.tcx.mk_imm_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
                     }
                 };
@@ -505,7 +506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ..
                         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
                         {
-                            if mutability == hir::Mutability::Mut {
+                            if mutability == Mutability::Mut {
                                 // Found the following case:
                                 // fn foo(opt: &mut Option<String>){ opt = None }
                                 //                                   ---   ^^^^
@@ -525,13 +526,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
 
                         return Some(match mutability {
-                            hir::Mutability::Mut => (
+                            Mutability::Mut => (
                                 sp,
                                 "consider mutably borrowing here",
                                 format!("{}&mut {}", field_name, sugg_expr),
                                 Applicability::MachineApplicable,
                             ),
-                            hir::Mutability::Not => (
+                            Mutability::Not => (
                                 sp,
                                 "consider borrowing here",
                                 format!("{}&{}", field_name, sugg_expr),
@@ -542,7 +543,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             (
-                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
+                hir::ExprKind::AddrOf(BorrowKind::Ref, _, ref expr),
                 _,
                 &ty::Ref(_, checked, _),
             ) if {
@@ -585,10 +586,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Ok(src) = sm.span_to_snippet(sp) {
                             let derefs = &"*".repeat(steps);
                             if let Some((src, applicability)) = match mutbl_b {
-                                hir::Mutability::Mut => {
+                                Mutability::Mut => {
                                     let new_prefix = "&mut ".to_owned() + derefs;
                                     match mutbl_a {
-                                        hir::Mutability::Mut => {
+                                        Mutability::Mut => {
                                             if let Some(s) =
                                                 self.replace_prefix(&src, "&mut ", &new_prefix)
                                             {
@@ -597,7 +598,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 None
                                             }
                                         }
-                                        hir::Mutability::Not => {
+                                        Mutability::Not => {
                                             if let Some(s) =
                                                 self.replace_prefix(&src, "&", &new_prefix)
                                             {
@@ -608,10 +609,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         }
                                     }
                                 }
-                                hir::Mutability::Not => {
+                                Mutability::Not => {
                                     let new_prefix = "&".to_owned() + derefs;
                                     match mutbl_a {
-                                        hir::Mutability::Mut => {
+                                        Mutability::Mut => {
                                             if let Some(s) =
                                                 self.replace_prefix(&src, "&mut ", &new_prefix)
                                             {
@@ -620,7 +621,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 None
                                             }
                                         }
-                                        hir::Mutability::Not => {
+                                        Mutability::Not => {
                                             if let Some(s) =
                                                 self.replace_prefix(&src, "&", &new_prefix)
                                             {

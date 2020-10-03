@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
             let closure_expr = remove_blocks(&closure_body.value);
             then {
                 match closure_body.params[0].pat.kind {
-                    hir::PatKind::Ref(ref inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
+                    hir::PatKind::Ref(ref inner, Mutability::Not) => if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated, .., name, None
                     ) = inner.kind {
                         if ident_eq(name, closure_expr) {

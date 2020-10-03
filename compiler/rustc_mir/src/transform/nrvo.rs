@@ -1,4 +1,4 @@
-use rustc_hir::Mutability;
+use rustc_ast::Mutability;
 use rustc_index::bit_set::HybridBitSet;
 use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};

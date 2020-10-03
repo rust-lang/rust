@@ -7,6 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
+use rustc_ast::Mutability;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -1332,7 +1333,7 @@ fn generic_simd_intrinsic(
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
         let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).kind() {
-            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mut => {
+            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == Mutability::Mut => {
                 (ptr_count(arg_tys[1].simd_type(tcx)), non_ptr(arg_tys[1].simd_type(tcx)))
             }
             _ => {

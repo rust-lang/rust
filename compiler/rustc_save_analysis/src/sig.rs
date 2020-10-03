@@ -29,7 +29,7 @@ use crate::{id_from_def_id, id_from_hir_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
-use rustc_ast::Mutability;
+use rustc_ast::{IsAuto, ImplPolarity, Mutability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir_pretty::id_to_string;
@@ -158,8 +158,8 @@ impl<'hir> Sig for hir::Ty<'hir> {
             }
             hir::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
-                    hir::Mutability::Mut => "*mut ",
-                    hir::Mutability::Not => "*const ",
+                    Mutability::Mut => "*mut ",
+                    Mutability::Not => "*const ",
                 };
                 let nested = mt.ty.make(offset + prefix.len(), id, scx)?;
                 let text = format!("{}{}", prefix, nested.text);
@@ -169,7 +169,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let mut prefix = "&".to_owned();
                 prefix.push_str(&lifetime.name.ident().to_string());
                 prefix.push(' ');
-                if let hir::Mutability::Mut = mt.mutbl {
+                if let Mutability::Mut = mt.mutbl {
                     prefix.push_str("mut ");
                 };
 
@@ -332,7 +332,7 @@ impl<'hir> Sig for hir::Item<'hir> {
         match self.kind {
             hir::ItemKind::Static(ref ty, m, ref body) => {
                 let mut text = "static ".to_owned();
-                if m == hir::Mutability::Mut {
+                if m == Mutability::Mut {
                     text.push_str("mut ");
                 }
                 let name = self.ident.to_string();
@@ -466,7 +466,7 @@ impl<'hir> Sig for hir::Item<'hir> {
             hir::ItemKind::Trait(is_auto, unsafety, ref generics, bounds, _) => {
                 let mut text = String::new();
 
-                if is_auto == hir::IsAuto::Yes {
+                if is_auto == IsAuto::Yes {
                     text.push_str("auto ");
                 }
 
@@ -530,7 +530,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 text.push(' ');
 
                 let trait_sig = if let Some(ref t) = *of_trait {
-                    if let hir::ImplPolarity::Negative(_) = polarity {
+                    if let ImplPolarity::Negative(_) = polarity {
                         text.push('!');
                     }
                     let trait_sig = t.path.make(offset + text.len(), id, scx)?;

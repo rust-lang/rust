@@ -9,6 +9,7 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_span::def_id::DefId;
@@ -708,8 +709,8 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
         clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
         clean::RawPointer(m, ref t) => {
             let m = match m {
-                hir::Mutability::Mut => "mut",
-                hir::Mutability::Not => "const",
+                Mutability::Mut => "mut",
+                Mutability::Not => "const",
             };
             match **t {
                 clean::Generic(_) | clean::ResolvedPath { is_generic: true, .. } => {
@@ -1138,11 +1139,11 @@ impl PrintWithSpace for hir::IsAsync {
     }
 }
 
-impl PrintWithSpace for hir::Mutability {
+impl PrintWithSpace for Mutability {
     fn print_with_space(&self) -> &str {
         match self {
-            hir::Mutability::Not => "",
-            hir::Mutability::Mut => "mut ",
+            Mutability::Not => "",
+            Mutability::Mut => "mut ",
         }
     }
 }

@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::Mutability;
+use rustc_ast::Mutability;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{AssocKind, TyCtxt};

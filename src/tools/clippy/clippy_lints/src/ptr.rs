@@ -6,10 +6,11 @@ use crate::utils::{
     span_lint_and_then, walk_ptrs_hir_ty,
 };
 use if_chain::if_chain;
+use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{
     BinOpKind, BodyId, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind,
-    Lifetime, MutTy, Mutability, Node, PathSegment, QPath, TraitFn, TraitItem, TraitItemKind, Ty, TyKind,
+    Lifetime, MutTy, Node, PathSegment, QPath, TraitFn, TraitItem, TraitItemKind, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;

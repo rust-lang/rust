@@ -3,6 +3,7 @@
 use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, ObligationCause};
 
+use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -33,7 +34,7 @@ pub fn can_type_implement_copy(
             | ty::Char
             | ty::RawPtr(..)
             | ty::Never
-            | ty::Ref(_, _, hir::Mutability::Not) => return Ok(()),
+            | ty::Ref(_, _, Mutability::Not) => return Ok(()),
 
             ty::Adt(adt, substs) => (adt, substs),
 
