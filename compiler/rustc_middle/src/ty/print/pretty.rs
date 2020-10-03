@@ -2067,7 +2067,9 @@ define_print_and_forward_display! {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
             }
             ty::PredicateAtom::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                p!("the closure `", print_value_path(closure_def_id, &[]), write("` implements the trait `{}`", kind))
+                p!("the closure `",
+                print_value_path(closure_def_id, &[]),
+                write("` implements the trait `{}`", kind))
             }
             ty::PredicateAtom::ConstEvaluatable(def, substs) => {
                 p!("the constant `", print_value_path(def.did, substs), "` can be evaluated")
