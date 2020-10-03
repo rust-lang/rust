@@ -385,10 +385,21 @@ team member you've been working with), you can specifically request them by
 writing `r? @user` (e.g. `r? @eddyb`) in either the original post or a followup
 comment.
 
+Please note that the reviewers are humans, who for the most part work on `rustc`
+in their free time. This means that they can take some time to respond and review
+your PR. It also means that reviewers can miss some PRs that are assigned to them.
+
+To try to move PRs forward, the Triage WG regularely goes through all PRs that
+are waiting for review and haven't been discussed for at least a week. If you
+don't get a review within around 10 days, feel free to ask the Triage WG on
+Zulip ([#t-release/triage]). They have knowledge of when to ping, who might be
+on vacation, etc...
+
 The reviewer may request some changes using the GitHub code review interface.
 They may also request special procedures (such as a [crater] run; [see
 below][break]) for some PRs.
 
+[#t-release/triage]: https://rust-lang.zulipchat.com/#narrow/stream/242269-t-release.2Ftriage
 [break]: #breaking-changes
 
 When the PR is ready to be merged, the reviewer will issue a command to
