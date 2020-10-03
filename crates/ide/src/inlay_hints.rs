@@ -189,7 +189,7 @@ fn get_bind_pat_hints(
 
     let ty = sema.type_of_pat(&pat.clone().into())?;
 
-    if should_not_display_type_hint(sema.db, &pat, &ty) {
+    if should_not_display_type_hint(sema, &pat, &ty) {
         return None;
     }
 
@@ -215,10 +215,12 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &Typ
 }
 
 fn should_not_display_type_hint(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     bind_pat: &ast::IdentPat,
     pat_ty: &Type,
 ) -> bool {
+    let db = sema.db;
+
     if pat_ty.is_unknown() {
         return true;
     }
@@ -248,6 +250,15 @@ fn should_not_display_type_hint(
                 ast::WhileExpr(it) => {
                     return it.condition().and_then(|condition| condition.pat()).is_some()
                         && pat_is_enum_variant(db, bind_pat, pat_ty);
+                },
+                ast::ForExpr(it) => {
+                    // We *should* display hint only if user provided "in {expr}" and we know the type of expr (and it's not unit).
+                    // Type of expr should be iterable.
+                    return it.in_token().is_none() ||
+                        it.iterable()
+                            .and_then(|iterable_expr|sema.type_of_expr(&iterable_expr))
+                            .map(|iterable_ty| iterable_ty.is_unknown() || iterable_ty.is_unit())
+                            .unwrap_or(true)
                 },
                 _ => (),
             }
@@ -491,19 +502,6 @@ fn main() {
 
     let return_42 = || 42;
       //^^^^^^^^^ || -> i32
-}"#,
-        );
-    }
-
-    #[test]
-    fn for_expression() {
-        check(
-            r#"
-fn main() {
-    let mut start = 0;
-      //^^^^^^^^^ i32
-    for increment in 0..2 { start += increment; }
-      //^^^^^^^^^ i32
 }"#,
         );
     }
@@ -922,6 +920,110 @@ fn main() {
                     },
                 ]
             "#]],
+        );
+    }
+
+    #[test]
+    fn incomplete_for_no_hint() {
+        check(
+            r#"
+fn main() {
+    let data = &[1i32, 2, 3];
+      //^^^^ &[i32; _]
+    for i
+}"#,
+        );
+        check(
+            r#"
+//- /main.rs crate:main deps:core
+pub struct Vec<T> {}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self { Vec {} }
+    pub fn push(&mut self, t: T) {}
+}
+
+impl<T> IntoIterator for Vec<T> {
+    type Item=T;
+}
+
+fn main() {
+    let mut data = Vec::new();
+      //^^^^^^^^ Vec<&str>
+    data.push("foo");
+    for i in
+
+    println!("Unit expr");
+}
+
+//- /core.rs crate:core
+#[prelude_import] use iter::*;
+mod iter {
+    trait IntoIterator {
+        type Item;
+    }
+}
+//- /alloc.rs crate:alloc deps:core
+mod collections {
+    struct Vec<T> {}
+    impl<T> Vec<T> {
+        fn new() -> Self { Vec {} }
+        fn push(&mut self, t: T) { }
+    }
+    impl<T> IntoIterator for Vec<T> {
+        type Item=T;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_for_hint() {
+        check(
+            r#"
+//- /main.rs crate:main deps:core
+pub struct Vec<T> {}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self { Vec {} }
+    pub fn push(&mut self, t: T) {}
+}
+
+impl<T> IntoIterator for Vec<T> {
+    type Item=T;
+}
+
+fn main() {
+    let mut data = Vec::new();
+      //^^^^^^^^ Vec<&str>
+    data.push("foo");
+    for i in data {
+      //^ &str
+      let z = i;
+        //^ &str
+    }
+}
+
+//- /core.rs crate:core
+#[prelude_import] use iter::*;
+mod iter {
+    trait IntoIterator {
+        type Item;
+    }
+}
+//- /alloc.rs crate:alloc deps:core
+mod collections {
+    struct Vec<T> {}
+    impl<T> Vec<T> {
+        fn new() -> Self { Vec {} }
+        fn push(&mut self, t: T) { }
+    }
+    impl<T> IntoIterator for Vec<T> {
+        type Item=T;
+    }
+}
+"#,
         );
     }
 }
