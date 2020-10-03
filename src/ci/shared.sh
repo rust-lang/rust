@@ -104,7 +104,7 @@ function ciCommandAddPath {
     if isAzurePipelines; then
         echo "##vso[task.prependpath]${path}"
     elif isGitHubActions; then
-        echo "::add-path::${path}"
+        echo "${path}" >> "${GITHUB_PATH}"
     else
         echo "ciCommandAddPath only works inside CI!"
         exit 1
@@ -122,7 +122,7 @@ function ciCommandSetEnv {
     if isAzurePipelines; then
         echo "##vso[task.setvariable variable=${name}]${value}"
     elif isGitHubActions; then
-        echo "::set-env name=${name}::${value}"
+        echo "${name}=${value}" >> "${GITHUB_ENV}"
     else
         echo "ciCommandSetEnv only works inside CI!"
         exit 1

@@ -35,6 +35,7 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 
 use rustc_ast as ast;
+use rustc_data_structures::mini_map::MiniMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
@@ -379,6 +380,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             needs_wf: false,
             root_ty: ty,
             param_env: self.param_env,
+            cache: MiniMap::new(),
         };
 
         let ty = match generalize.relate(ty, ty) {
@@ -438,6 +440,8 @@ struct Generalizer<'cx, 'tcx> {
     root_ty: Ty<'tcx>,
 
     param_env: ty::ParamEnv<'tcx>,
+
+    cache: MiniMap<Ty<'tcx>, RelateResult<'tcx, Ty<'tcx>>>,
 }
 
 /// Result from a generalization operation. This includes
@@ -535,13 +539,16 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
+        if let Some(result) = self.cache.get(&t) {
+            return result.clone();
+        }
         debug!("generalize: t={:?}", t);
 
         // Check to see whether the type we are generalizing references
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
-        match t.kind {
+        let result = match t.kind {
             ty::Infer(ty::TyVar(vid)) => {
                 let vid = self.infcx.inner.borrow_mut().type_variables().root_var(vid);
                 let sub_vid = self.infcx.inner.borrow_mut().type_variables().sub_root_var(vid);
@@ -598,7 +605,10 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 Ok(t)
             }
             _ => relate::super_relate_tys(self, t, t),
-        }
+        };
+
+        self.cache.insert(t, result.clone());
+        return result;
     }
 
     fn regions(

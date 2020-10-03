@@ -4,7 +4,7 @@
 // Test that the type length limit can be changed.
 
 #![allow(dead_code)]
-#![type_length_limit="256"]
+#![type_length_limit="4"]
 
 macro_rules! link {
     ($id:ident, $t:ty) => {

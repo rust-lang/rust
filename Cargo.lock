@@ -3424,6 +3424,7 @@ dependencies = [
 name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "bitflags",
  "cfg-if",
  "crossbeam-utils 0.7.2",
@@ -3599,6 +3600,7 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -3738,6 +3740,7 @@ dependencies = [
 name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "bitflags",
  "byteorder",
  "chalk-ir",
