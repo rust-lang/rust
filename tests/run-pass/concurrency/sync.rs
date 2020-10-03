@@ -312,6 +312,34 @@ fn check_rwlock_unlock_bug2() {
     h.join().unwrap();
 }
 
+fn park_timeout() {
+    let start = Instant::now();
+
+    thread::park_timeout(Duration::from_millis(200));
+    // Normally, waiting in park/park_timeout may spuriously wake up early, but we
+    // know Miri's timed synchronization primitives do not do that.
+
+    assert!((200..500).contains(&start.elapsed().as_millis()));
+}
+
+fn park_unpark() {
+    let t1 = thread::current();
+    let t2 = thread::spawn(move || {
+        thread::park();
+        thread::sleep(Duration::from_millis(200));
+        t1.unpark();
+    });
+
+    let start = Instant::now();
+
+    t2.thread().unpark();
+    thread::park();
+    // Normally, waiting in park/park_timeout may spuriously wake up early, but we
+    // know Miri's timed synchronization primitives do not do that.
+
+    assert!((200..500).contains(&start.elapsed().as_millis()));
+}
+
 fn main() {
     check_barriers();
     check_conditional_variables_notify_one();
@@ -327,4 +355,6 @@ fn main() {
     check_once();
     check_rwlock_unlock_bug1();
     check_rwlock_unlock_bug2();
+    park_timeout();
+    park_unpark();
 }

@@ -293,7 +293,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let target_os = &this.tcx.sess.target.target.target_os;
         assert!(target_os == "linux" || target_os == "macos", "`getcwd` is only available for the UNIX target family");
 
-        this.check_no_isolation("getcwd")?;
+        this.check_no_isolation("`getcwd`")?;
 
         let buf = this.read_scalar(buf_op)?.check_init()?;
         let size = this.read_scalar(size_op)?.to_machine_usize(&*this.tcx)?;
@@ -320,7 +320,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentDirectoryW");
 
-        this.check_no_isolation("GetCurrentDirectoryW")?;
+        this.check_no_isolation("`GetCurrentDirectoryW`")?;
 
         let size = u64::from(this.read_scalar(size_op)?.to_u32()?);
         let buf = this.read_scalar(buf_op)?.check_init()?;
@@ -339,7 +339,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let target_os = &this.tcx.sess.target.target.target_os;
         assert!(target_os == "linux" || target_os == "macos", "`getcwd` is only available for the UNIX target family");
 
-        this.check_no_isolation("chdir")?;
+        this.check_no_isolation("`chdir`")?;
 
         let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
 
@@ -360,7 +360,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "SetCurrentDirectoryW");
 
-        this.check_no_isolation("SetCurrentDirectoryW")?;
+        this.check_no_isolation("`SetCurrentDirectoryW`")?;
 
         let path = this.read_path_from_wide_str(this.read_scalar(path_op)?.check_init()?)?;
 

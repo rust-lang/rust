@@ -690,7 +690,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        this.check_no_isolation("pthread_cond_timedwait")?;
+        this.check_no_isolation("`pthread_cond_timedwait`")?;
 
         let id = cond_get_or_create_id(this, cond_op)?;
         let mutex_id = mutex_get_or_create_id(this, mutex_op)?;

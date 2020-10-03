@@ -22,7 +22,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("linux", "clock_gettime");
-        this.check_no_isolation("clock_gettime")?;
+        this.check_no_isolation("`clock_gettime`")?;
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
         let tp = this.deref_operand(tp_op)?;
@@ -60,7 +60,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "gettimeofday");
-        this.check_no_isolation("gettimeofday")?;
+        this.check_no_isolation("`gettimeofday`")?;
 
         // Using tz is obsolete and should always be null
         let tz = this.read_scalar(tz_op)?.check_init()?;
@@ -91,7 +91,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "GetSystemTimeAsFileTime");
-        this.check_no_isolation("GetSystemTimeAsFileTime")?;
+        this.check_no_isolation("`GetSystemTimeAsFileTime`")?;
 
         let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC")?;
         let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC")?;
@@ -119,7 +119,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceCounter");
-        this.check_no_isolation("QueryPerformanceCounter")?;
+        this.check_no_isolation("`QueryPerformanceCounter`")?;
 
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
@@ -135,7 +135,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceFrequency");
-        this.check_no_isolation("QueryPerformanceFrequency")?;
+        this.check_no_isolation("`QueryPerformanceFrequency`")?;
 
         // Retrieves the frequency of the hardware performance counter.
         // The frequency of the performance counter is fixed at system boot and
@@ -150,7 +150,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
 
         this.assert_target_os("macos", "mach_absolute_time");
-        this.check_no_isolation("mach_absolute_time")?;
+        this.check_no_isolation("`mach_absolute_time`")?;
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
@@ -163,7 +163,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "mach_timebase_info");
-        this.check_no_isolation("mach_timebase_info")?;
+        this.check_no_isolation("`mach_timebase_info`")?;
 
         let info = this.deref_operand(info_op)?;
 
@@ -188,7 +188,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let this = self.eval_context_mut();
 
-        this.check_no_isolation("nanosleep")?;
+        this.check_no_isolation("`nanosleep`")?;
 
         let duration = match this.read_timespec(req_op)? {
             Some(duration) => duration,
