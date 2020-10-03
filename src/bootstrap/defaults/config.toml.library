@@ -8,3 +8,7 @@ bench-stage = 0
 [rust]
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
 incremental = true
+# This allows building even with warnings present.
+# This is convenient especially for larger changes and refactoring,
+# since it doesn't require constantly changing imports and variable names.
+deny-warnings = false
