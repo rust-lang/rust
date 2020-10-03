@@ -1860,7 +1860,7 @@ impl<T: ?Sized> Weak<T> {
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcBox.
-        // SAFETY: we use wrapping_offset here because the pointer may be dangling (iff T: Sized).
+        // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized).
         let ptr = unsafe {
             set_data_ptr(ptr as *mut RcBox<T>, (ptr as *mut u8).wrapping_offset(-offset))
         };
