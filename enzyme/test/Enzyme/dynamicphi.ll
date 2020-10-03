@@ -93,9 +93,9 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %7 = mul nuw nsw i64 8, %iv.next2
 ; CHECK-NEXT:   %phi_realloccache4 = call i8* @realloc(i8* %6, i64 %7)
 ; CHECK-NEXT:   %phi_realloccast5 = bitcast i8* %phi_realloccache4 to double*
-; CHECK-NEXT:   store double* %phi_realloccast5, double** %4, align 8, !invariant.group !1
+; CHECK-NEXT:   store double* %phi_realloccast5, double** %4, align 8
 ; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %phi_realloccast5, i64 %iv1
-; CHECK-NEXT:   store double %phi, double* %8, align 8, !invariant.group !2
+; CHECK-NEXT:   store double %phi, double* %8, align 8
 ; CHECK-NEXT:   %phiadd = fadd fast double %phi, 1.000000e+00
 ; CHECK-NEXT:   %jand = and i64 %iv1, 1234
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %jand, %n
@@ -122,7 +122,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %12 = getelementptr inbounds i64, i64* %loopLimit_realloccast, i64 %11
 ; CHECK-NEXT:   %13 = load i64, i64* %12, align 8, !invariant.group !0
 ; CHECK-NEXT:   %.phi.trans.insert = getelementptr inbounds double*, double** %phi_realloccast, i64 %11
-; CHECK-NEXT:   %[[pre6:.+]] = load double*, double** %.phi.trans.insert, align 8, !invariant.group !1
+; CHECK-NEXT:   %[[pre6:.+]] = load double*, double** %.phi.trans.insert, align 8, !invariant.group !2
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertfor.body.ph:                                ; preds = %invertfor.body
@@ -138,7 +138,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %13, %incinvertfor.outerbody ], [ %22, %incinvertfor.body ]
 ; CHECK-NEXT:   %16 = fadd fast double %"innersum'de.1", %"add'de.1"
 ; CHECK-NEXT:   %17 = getelementptr inbounds double, double* %[[pre6]], i64 %"iv1'ac.0"
-; CHECK-NEXT:   %18 = load double, double* %17, align 8, !invariant.group !2
+; CHECK-NEXT:   %18 = load double, double* %17, align 8, !invariant.group !1
 ; CHECK-NEXT:   %m0diffephi = fmul fast double %"add'de.1", %18
 ; CHECK-NEXT:   %19 = fadd fast double %"phiadd'de.1", %m0diffephi
 ; CHECK-NEXT:   %20 = fadd fast double %19, %m0diffephi

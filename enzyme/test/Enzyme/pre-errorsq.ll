@@ -85,7 +85,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   store i64 %rows, i64* %1
 ; CHECK-NEXT:   %[[rowsm2:.+]] = add i64 %rows, -2
 ; CHECK-NEXT:   %[[a1:.+]] = add nuw i64 %[[rowsm2]], 1
-; CHECK-NEXT:   %[[m4:.+]] = mul nuw i64 %[[a1]], 4
+; CHECK-NEXT:   %[[m4:.+]] = mul nuw nsw i64 %[[a1]], 4
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[m4]], 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %loaded_malloccache = bitcast i8* %malloccall to double*
@@ -154,7 +154,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   %[[mul:.+]] = mul nuw nsw i64 %"iv'ac.0", %[[_unwrap3]]
 ; CHECK-NEXT:   %[[idx:.+]] = add nuw nsw i64 %"iv1'ac.0", %[[mul]]
 ; CHECK-NEXT:   %[[gepidx:.+]] = getelementptr inbounds double, double* %[[ev]], i64 %[[idx]]
-; CHECK-NEXT:   %[[ld:.+]] = load double, double* %[[gepidx]], align 8, !invariant.group ![[fda:.+]], !enzyme_fromcache
+; CHECK-NEXT:   %[[ld:.+]] = load double, double* %[[gepidx]], align 8, !invariant.group ![[fda:.+]]
 ; CHECK-NEXT:   %m0diffeloaded = fmul fast double %[[dadd:.+]], %[[ld]]
 ; CHECK-NEXT:   %m1diffeloaded = fmul fast double %[[dadd]], %[[ld]]
 ; CHECK-NEXT:   %[[diffe:.+]] = fadd fast double %m0diffeloaded, %m1diffeloaded

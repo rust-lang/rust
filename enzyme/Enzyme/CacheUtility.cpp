@@ -33,56 +33,56 @@ llvm::cl::opt<bool>
                        cl::desc("Place 8 bools together in a single byte"));
 
 CacheUtility::~CacheUtility(){}
-
+ 
+/// Erase this instruction both from LLVM modules and any local data-structures
 void CacheUtility::erase(Instruction* I) {
     assert(I);
 
-    for (auto v : scopeMap) {
-      if (v.second.first == I) {
+    for (const auto &pair : scopeMap) {
+      if (pair.second.first == I) {
         llvm::errs() << *newFunc << "\n";
         dumpScope();
-        llvm::errs() << *v.first << "\n";
+        llvm::errs() << *pair.first << "\n";
         llvm::errs() << *I << "\n";
         assert(0 && "erasing something in scope map");
       }
     }
-    if (auto ci = dyn_cast<CallInst>(I))
-      for (auto v : scopeFrees) {
-        if (v.second.count(ci)) {
+    if (auto CI = dyn_cast<CallInst>(I)) {
+      for (const auto& pair : scopeFrees) {
+        if (pair.second.count(CI)) {
           llvm::errs() << *newFunc << "\n";
-          llvm::errs() << *v.first << "\n";
+          llvm::errs() << *pair.first << "\n";
           llvm::errs() << *I << "\n";
           assert(0 && "erasing something in scopeFrees map");
         }
       }
-    if (auto ci = dyn_cast<CallInst>(I))
-      for (auto v : scopeAllocs) {
-        if (std::find(v.second.begin(), v.second.end(), ci) != v.second.end()) {
+      for (const auto &pair : scopeAllocs) {
+        if (std::find(pair.second.begin(), pair.second.end(), CI) != pair.second.end()) {
           llvm::errs() << *newFunc << "\n";
-          llvm::errs() << *v.first << "\n";
+          llvm::errs() << *pair.first << "\n";
           llvm::errs() << *I << "\n";
           assert(0 && "erasing something in scopeAllocs map");
         }
       }
-    for (auto v : scopeStores) {
-      if (std::find(v.second.begin(), v.second.end(), I) != v.second.end()) {
+    }
+    for (const auto& pair : scopeInstructions) {
+      if (std::find(pair.second.begin(), pair.second.end(), I) != pair.second.end()) {
         llvm::errs() << *newFunc << "\n";
-        llvm::errs() << *v.first << "\n";
+        llvm::errs() << *pair.first << "\n";
         llvm::errs() << *I << "\n";
-        assert(0 && "erasing something in scopeStores map");
+        assert(0 && "erasing something in scopeInstructions map");
       }
     }
 
-    auto found = scopeMap.find(I);
-    if (found != scopeMap.end()) {
-      scopeFrees.erase(found->second.first);
-      scopeAllocs.erase(found->second.first);
-      scopeStores.erase(found->second.first);
+    if (auto found = findInMap(scopeMap, (Value*)I)) {
+      scopeFrees.erase(found->first);
+      scopeAllocs.erase(found->first);
+      scopeInstructions.erase(found->first);
     }
-    if (auto ai = dyn_cast<AllocaInst>(I)) {
-      scopeFrees.erase(ai);
-      scopeAllocs.erase(ai);
-      scopeStores.erase(ai);
+    if (auto AI = dyn_cast<AllocaInst>(I)) {
+      scopeFrees.erase(AI);
+      scopeAllocs.erase(AI);
+      scopeInstructions.erase(AI);
     }
     scopeMap.erase(I);
     SE.eraseValueFromMap(I);
@@ -97,7 +97,7 @@ void CacheUtility::erase(Instruction* I) {
 
 // Create a new canonical induction variable of Type Ty for Loop L
 // Return the variable and the increment instruction
-static std::pair<PHINode *, Instruction *> insertNewCanonicalIV(Loop *L, Type *Ty) {
+static std::pair<PHINode *, Instruction *> InsertNewCanonicalIV(Loop *L, Type *Ty) {
   assert(L);
   assert(Ty);
 
@@ -107,29 +107,26 @@ static std::pair<PHINode *, Instruction *> insertNewCanonicalIV(Loop *L, Type *T
   PHINode *CanonicalIV = B.CreatePHI(Ty, 1, "iv");
 
   B.SetInsertPoint(Header->getFirstNonPHIOrDbg());
-  Instruction *inc = cast<Instruction>(
-      B.CreateAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1),
+  Instruction *Inc = cast<Instruction>(
+      B.CreateAdd(CanonicalIV, ConstantInt::get(Ty, 1),
                   "iv.next", /*NUW*/ true, /*NSW*/ true));
 
   for (BasicBlock *Pred : predecessors(Header)) {
     assert(Pred);
     if (L->contains(Pred)) {
-      CanonicalIV->addIncoming(inc, Pred);
+      CanonicalIV->addIncoming(Inc, Pred);
     } else {
-      CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0),
+      CanonicalIV->addIncoming(ConstantInt::get(Ty, 0),
                                Pred);
     }
   }
-  return std::pair<PHINode *, Instruction *>(CanonicalIV, inc);
+  return std::pair<PHINode *, Instruction *>(CanonicalIV, Inc);
 }
 
 // Attempt to rewrite all phinode's in the loop in terms of the 
 // induction variable
-void removeRedundantIVs(const Loop *L, BasicBlock *Header,
-                        BasicBlock *Preheader, PHINode *CanonicalIV,
-                        MustExitScalarEvolution &SE, CacheUtility &gutils,
-                        Instruction *increment,
-                        const SmallVectorImpl<BasicBlock *> &&latches) {
+void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
+                        MustExitScalarEvolution &SE, CacheUtility &gutils) {
   assert(Header);
   assert(CanonicalIV);
 
@@ -145,9 +142,12 @@ void removeRedundantIVs(const Loop *L, BasicBlock *Header,
       PHINode *PN = cast<PHINode>(II);
       if (PN == CanonicalIV)
         continue;
-      if (PN->getType()->isPointerTy())
-        continue;
       if (!SE.isSCEVable(PN->getType()))
+        continue;
+      // TODO handle pointer phi's
+      // the reason this doesn't support yet is simply because
+      // we may expand code for phi where not possible
+      if (PN->getType()->isPointerTy())
         continue;
       const SCEV *S = SE.getSCEV(PN);
       if (SE.getCouldNotCompute() == S)
@@ -181,7 +181,14 @@ void removeRedundantIVs(const Loop *L, BasicBlock *Header,
   for (Instruction *PN : IVsToRemove) {
     gutils.erase(PN);
   }
+}
 
+void CanonicalizeLatches(const Loop *L, BasicBlock *Header,
+                        BasicBlock *Preheader, PHINode *CanonicalIV,
+                        MustExitScalarEvolution &SE, CacheUtility &gutils,
+                        Instruction *Increment,
+                        const SmallVectorImpl<BasicBlock *> &&latches) {
+  // Attempt to explicitly rewrite the latch
   if (latches.size() == 1 && isa<BranchInst>(latches[0]->getTerminator()) &&
       cast<BranchInst>(latches[0]->getTerminator())->isConditional())
     for (auto use : CanonicalIV->users()) {
@@ -258,31 +265,31 @@ void removeRedundantIVs(const Loop *L, BasicBlock *Header,
     }
 
   // Replace previous increment usage with new increment value
-  if (increment) {
-    increment->moveAfter(CanonicalIV->getParent()->getFirstNonPHI());
+  if (Increment) {
+    Increment->moveAfter(CanonicalIV->getParent()->getFirstNonPHI());
     std::vector<Instruction *> toerase;
+    // Replace existing increments with canonical Increment
     for (auto use : CanonicalIV->users()) {
-      auto bo = dyn_cast<BinaryOperator>(use);
-
-      if (bo == nullptr)
+      auto BO = dyn_cast<BinaryOperator>(use);
+      if (BO == nullptr)
         continue;
-      if (bo->getOpcode() != BinaryOperator::Add)
+      if (BO->getOpcode() != BinaryOperator::Add)
         continue;
-      if (use == increment)
+      if (use == Increment)
         continue;
 
       Value *toadd = nullptr;
-      if (bo->getOperand(0) == CanonicalIV) {
-        toadd = bo->getOperand(1);
+      if (BO->getOperand(0) == CanonicalIV) {
+        toadd = BO->getOperand(1);
       } else {
-        assert(bo->getOperand(1) == CanonicalIV);
-        toadd = bo->getOperand(0);
+        assert(BO->getOperand(1) == CanonicalIV);
+        toadd = BO->getOperand(0);
       }
-      if (auto ci = dyn_cast<ConstantInt>(toadd)) {
-        if (!ci->isOne())
+      if (auto CI = dyn_cast<ConstantInt>(toadd)) {
+        if (!CI->isOne())
           continue;
-        bo->replaceAllUsesWith(increment);
-        toerase.push_back(bo);
+        BO->replaceAllUsesWith(Increment);
+        toerase.push_back(BO);
       } else {
         continue;
       }
@@ -290,21 +297,22 @@ void removeRedundantIVs(const Loop *L, BasicBlock *Header,
     for (auto inst : toerase) {
       gutils.erase(inst);
     }
+    toerase.clear();
 
     if (latches.size() == 1 && isa<BranchInst>(latches[0]->getTerminator()) &&
         cast<BranchInst>(latches[0]->getTerminator())->isConditional())
-      for (auto use : increment->users()) {
+      for (auto use : Increment->users()) {
         if (auto cmp = dyn_cast<ICmpInst>(use)) {
           if (cast<BranchInst>(latches[0]->getTerminator())->getCondition() !=
               cmp)
             continue;
 
           // Force i+1 to be on LHS
-          if (cmp->getOperand(0) != increment) {
+          if (cmp->getOperand(0) != Increment) {
             // Below also swaps predicate correctly
             cmp->swapOperands();
           }
-          assert(cmp->getOperand(0) == increment);
+          assert(cmp->getOperand(0) == Increment);
 
           auto scv = SE.getSCEVAtScope(cmp->getOperand(1), L);
           if (cmp->isUnsigned() ||
@@ -360,125 +368,129 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
   if (L == nullptr)
     return false;
 
-  // Already canonicalized
-  if (loopContexts.find(L) == loopContexts.end()) {
+  // Previously handled this loop
+  if (auto found = findInMap(loopContexts, L)) {
+    loopContext = *found;
+    return true;
+  }
 
-    loopContexts[L].parent = L->getParentLoop();
+  // Need to canonicalize
+  loopContexts[L].parent = L->getParentLoop();
 
-    loopContexts[L].header = L->getHeader();
-    assert(loopContexts[L].header && "loop must have header");
+  loopContexts[L].header = L->getHeader();
+  assert(loopContexts[L].header && "loop must have header");
 
-    loopContexts[L].preheader = L->getLoopPreheader();
-    if (!L->getLoopPreheader()) {
-      llvm::errs() << "fn: " << *L->getHeader()->getParent() << "\n";
-      llvm::errs() << "L: " << *L << "\n";
-    }
-    assert(loopContexts[L].preheader && "loop must have preheader");
-    getExitBlocks(L, loopContexts[L].exitBlocks);
+  loopContexts[L].preheader = L->getLoopPreheader();
+  if (!L->getLoopPreheader()) {
+    llvm::errs() << "fn: " << *L->getHeader()->getParent() << "\n";
+    llvm::errs() << "L: " << *L << "\n";
+  }
+  assert(loopContexts[L].preheader && "loop must have preheader");
+  getExitBlocks(L, loopContexts[L].exitBlocks);
 
-    auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
-    PHINode *CanonicalIV = pair.first;
-    assert(CanonicalIV);
-    loopContexts[L].var = CanonicalIV;
-    loopContexts[L].incvar = pair.second;
-    removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader,
-                       CanonicalIV, SE, *this, pair.second,
-                       getLatches(L, loopContexts[L].exitBlocks));
-    loopContexts[L].antivaralloc =
-        IRBuilder<>(inversionAllocs)
-            .CreateAlloca(CanonicalIV->getType(), nullptr,
-                          CanonicalIV->getName() + "'ac");
+  auto pair = InsertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
+  PHINode *CanonicalIV = pair.first;
+  assert(CanonicalIV);
+  loopContexts[L].var = CanonicalIV;
+  loopContexts[L].incvar = pair.second;
+  RemoveRedundantIVs(loopContexts[L].header, CanonicalIV, SE, *this);
+  CanonicalizeLatches(L, loopContexts[L].header, loopContexts[L].preheader,
+                      CanonicalIV, SE, *this, pair.second,
+                    getLatches(L, loopContexts[L].exitBlocks));
+  loopContexts[L].antivaralloc =
+      IRBuilder<>(inversionAllocs)
+          .CreateAlloca(CanonicalIV->getType(), nullptr,
+                        CanonicalIV->getName() + "'ac");
 #if LLVM_VERSION_MAJOR >= 10
-    loopContexts[L].antivaralloc->setAlignment(
-        Align(cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8));
+  loopContexts[L].antivaralloc->setAlignment(
+      Align(cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8));
 #else
-    loopContexts[L].antivaralloc->setAlignment(
-        cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8);
+  loopContexts[L].antivaralloc->setAlignment(
+      cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8);
 #endif
 
-    SCEVUnionPredicate BackedgePred;
+  SCEVUnionPredicate BackedgePred;
 
-    const SCEV *Limit = nullptr;
-    {
+  const SCEV *Limit = nullptr;
+  {
 
-      const SCEV *MayExitMaxBECount = nullptr;
+    const SCEV *MayExitMaxBECount = nullptr;
 
-      SmallVector<BasicBlock *, 8> ExitingBlocks;
-      L->getExitingBlocks(ExitingBlocks);
+    SmallVector<BasicBlock *, 8> ExitingBlocks;
+    L->getExitingBlocks(ExitingBlocks);
 
-      for (BasicBlock *ExitBB : ExitingBlocks) {
-        assert(L->contains(ExitBB));
-        auto EL = SE.computeExitLimit(L, ExitBB, /*AllowPredicates*/ true);
+    for (BasicBlock *ExitBB : ExitingBlocks) {
+      assert(L->contains(ExitBB));
+      auto EL = SE.computeExitLimit(L, ExitBB, /*AllowPredicates*/ true);
 
-        if (MayExitMaxBECount != SE.getCouldNotCompute()) {
-          if (!MayExitMaxBECount || EL.ExactNotTaken == SE.getCouldNotCompute())
-            MayExitMaxBECount = EL.ExactNotTaken;
-          else {
-            if (MayExitMaxBECount != EL.ExactNotTaken) {
-              llvm::errs() << "Missed cache optimization opportunity! could allocate max!\n";
-              MayExitMaxBECount = SE.getCouldNotCompute();
-              break;
-            }
-
-            MayExitMaxBECount = SE.getUMaxFromMismatchedTypes(MayExitMaxBECount,
-                                                              EL.ExactNotTaken);
+      if (MayExitMaxBECount != SE.getCouldNotCompute()) {
+        if (!MayExitMaxBECount || EL.ExactNotTaken == SE.getCouldNotCompute())
+          MayExitMaxBECount = EL.ExactNotTaken;
+        else {
+          if (MayExitMaxBECount != EL.ExactNotTaken) {
+            llvm::errs() << "Missed cache optimization opportunity! could allocate max!\n";
+            MayExitMaxBECount = SE.getCouldNotCompute();
+            break;
           }
-        } else {
-          MayExitMaxBECount = SE.getCouldNotCompute();
+
+          MayExitMaxBECount = SE.getUMaxFromMismatchedTypes(MayExitMaxBECount,
+                                                            EL.ExactNotTaken);
         }
-      }
-      if (ExitingBlocks.size() == 0) {
+      } else {
         MayExitMaxBECount = SE.getCouldNotCompute();
       }
-      Limit = MayExitMaxBECount;
     }
-    assert(Limit);
-
-    Value *LimitVar = nullptr;
-
-    if (SE.getCouldNotCompute() != Limit) {
-
-      if (CanonicalIV == nullptr) {
-        report_fatal_error("Couldn't get canonical IV.");
-      }
-
-      if (Limit->getType() != CanonicalIV->getType())
-        Limit = SE.getZeroExtendExpr(Limit, CanonicalIV->getType());
-
-      fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
-                             "enzyme");
-      LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
-                                   loopContexts[L].preheader->getTerminator());
-      loopContexts[L].dynamic = false;
-    } else {
-      llvm::errs() << "SE could not compute loop limit of "
-                   << L->getHeader()->getName() << " "
-                   << L->getHeader()->getParent()->getName() << "\n";
-
-      LimitVar = createCacheForScope(LimitContext(loopContexts[L].preheader),
-                                            CanonicalIV->getType(), "loopLimit",
-                                            /*shouldfree*/ false);
-
-      for (auto ExitBlock : loopContexts[L].exitBlocks) {
-        IRBuilder<> B(&ExitBlock->front());
-        auto Limit = B.CreatePHI(CanonicalIV->getType(), 1);
-
-        for (BasicBlock *Pred : predecessors(ExitBlock)) {
-          if (LI.getLoopFor(Pred) == L) {
-            Limit->addIncoming(CanonicalIV, Pred);
-          } else {
-            Limit->addIncoming(UndefValue::get(CanonicalIV->getType()),
-                                 Pred);
-          }
-        }
-
-        storeInstructionInCache(loopContexts[L].preheader, Limit,
-                                       cast<AllocaInst>(LimitVar));
-      }
-      loopContexts[L].dynamic = true;
+    if (ExitingBlocks.size() == 0) {
+      MayExitMaxBECount = SE.getCouldNotCompute();
     }
-    loopContexts[L].limit = LimitVar;
+    Limit = MayExitMaxBECount;
   }
+  assert(Limit);
+
+  Value *LimitVar = nullptr;
+
+  if (SE.getCouldNotCompute() != Limit) {
+
+    if (CanonicalIV == nullptr) {
+      report_fatal_error("Couldn't get canonical IV.");
+    }
+
+    if (Limit->getType() != CanonicalIV->getType())
+      Limit = SE.getZeroExtendExpr(Limit, CanonicalIV->getType());
+
+    fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
+                            "enzyme");
+    LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
+                                  loopContexts[L].preheader->getTerminator());
+    loopContexts[L].dynamic = false;
+  } else {
+    llvm::errs() << "SE could not compute loop limit of "
+                  << L->getHeader()->getName() << " "
+                  << L->getHeader()->getParent()->getName() << "\n";
+
+    LimitVar = createCacheForScope(LimitContext(loopContexts[L].preheader),
+                                          CanonicalIV->getType(), "loopLimit",
+                                          /*shouldfree*/ false);
+
+    for (auto ExitBlock : loopContexts[L].exitBlocks) {
+      IRBuilder<> B(&ExitBlock->front());
+      auto Limit = B.CreatePHI(CanonicalIV->getType(), 1);
+
+      for (BasicBlock *Pred : predecessors(ExitBlock)) {
+        if (LI.getLoopFor(Pred) == L) {
+          Limit->addIncoming(CanonicalIV, Pred);
+        } else {
+          Limit->addIncoming(UndefValue::get(CanonicalIV->getType()),
+                                Pred);
+        }
+      }
+
+      storeInstructionInCache(loopContexts[L].preheader, Limit,
+                                      cast<AllocaInst>(LimitVar));
+    }
+    loopContexts[L].dynamic = true;
+  }
+  loopContexts[L].limit = LimitVar;
 
   loopContext = loopContexts.find(L)->second;
   return true;
@@ -494,7 +506,10 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
 
     auto sublimits = getSubLimits(ctx);
 
-    /* goes from inner loop to outer loop*/
+    // List of types stored in the cache for each Loop-Chunk
+    // This is stored from innner-most chunk to outermost
+    // Thus it begins with the underlying type, and adds pointers
+    // to the previous type.
     std::vector<Type *> types = {T};
     bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
     if (EfficientBoolCache && isi1 && sublimits.size() != 0)
@@ -503,7 +518,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
       types.push_back(PointerType::getUnqual(types.back()));
     }
 
-    assert(inversionAllocs && "must be able to allocate inverted caches");
+    // Allocate the outermost type on the stack
     IRBuilder<> entryBuilder(inversionAllocs);
     entryBuilder.setFastMathFlags(getFast());
     AllocaInst *alloc =
@@ -530,6 +545,9 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
 
     Value *storeInto = alloc;
 
+    // Iterating from outermost chunk to innermost chunk
+    // Allocate and store the requisite memory if needed
+    // and lookup the next level pointer of the cache
     for (int i = sublimits.size() - 1; i >= 0; i--) {
       const auto &containedloops = sublimits[i].second;
 
@@ -540,6 +558,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
           newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType) /
               8);
 
+      // Allocate and store the required memory
       if (allocateInternal) {
 
         IRBuilder<> allocationBuilder(
@@ -563,6 +582,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
         }
 
         StoreInst *storealloc = nullptr;
+        // Statically allocate memory for all iterations if possible
         if (!sublimits[i].second.back().first.dynamic) {
           auto firstallocation = CallInst::CreateMalloc(
               &allocationBuilder.GetInsertBlock()->back(), size->getType(),
@@ -572,15 +592,18 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
             malloccall = cast<CallInst>(
                 cast<Instruction>(firstallocation)->getOperand(0));
           }
-          if (auto bi =
+
+          // Assert computation of size of array doesn't wrap
+          if (auto BI =
                   dyn_cast<BinaryOperator>(malloccall->getArgOperand(0))) {
-            if ((bi->getOperand(0) == byteSizeOfType &&
-                 bi->getOperand(1) == size) ||
-                (bi->getOperand(1) == byteSizeOfType &&
-                 bi->getOperand(0) == size))
-              bi->setHasNoSignedWrap(true);
-            bi->setHasNoUnsignedWrap(true);
+            if ((BI->getOperand(0) == byteSizeOfType &&
+                 BI->getOperand(1) == size) ||
+                (BI->getOperand(1) == byteSizeOfType &&
+                 BI->getOperand(0) == size))
+              BI->setHasNoSignedWrap(true);
+            BI->setHasNoUnsignedWrap(true);
           }
+
           if (auto ci = dyn_cast<ConstantInt>(size)) {
             malloccall->addDereferenceableAttr(
                 llvm::AttributeList::ReturnIndex,
@@ -600,11 +623,24 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
               allocationBuilder.CreateStore(firstallocation, storeInto);
 
           scopeAllocs[alloc].push_back(malloccall);
+
+          // Mark the store as invariant since the allocation is static and 
+          // will not be changed
+          if (CachePointerInvariantGroups.find(std::make_pair((Value *)alloc, i)) ==
+              CachePointerInvariantGroups.end()) {
+            MDNode *invgroup = MDNode::getDistinct(alloc->getContext(), {});
+            CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)] = invgroup;
+          }
+          storealloc->setMetadata(
+              LLVMContext::MD_invariant_group,
+              CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
         } else {
+          // Reallocate memory dynamically as a fallback
+          // TODO change this to a power-of-two allocation strategy
           auto zerostore = allocationBuilder.CreateStore(
               ConstantPointerNull::get(PointerType::getUnqual(myType)),
               storeInto);
-          scopeStores[alloc].push_back(zerostore);
+          scopeInstructions[alloc].push_back(zerostore);
 
           IRBuilder<> build(containedloops.back().first.incvar->getNextNode());
           Value *allocation = build.CreateLoad(storeInto);
@@ -635,16 +671,12 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
               allocation->getType(), name + "_realloccast");
           scopeAllocs[alloc].push_back(cast<CallInst>(realloccall));
           storealloc = build.CreateStore(allocation, storeInto);
+          // Unlike the static case we can not mark the memory as invariant
+          // since we are reloading/storing based off the number of loop iterations
         }
 
-        if (CachePointerInvariantGroups.find(std::make_pair((Value *)alloc, i)) ==
-            CachePointerInvariantGroups.end()) {
-          MDNode *invgroup = MDNode::getDistinct(alloc->getContext(), {});
-          CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)] = invgroup;
-        }
-        storealloc->setMetadata(
-            LLVMContext::MD_invariant_group,
-            CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
+        // Regardless of how allocated (dynamic vs static), mark it
+        // as having the requisite alignment
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
         if ((bsize & (bsize - 1)) == 0) {
 #if LLVM_VERSION_MAJOR >= 10
@@ -653,74 +685,110 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
           storealloc->setAlignment(bsize);
 #endif
         }
-        scopeStores[alloc].push_back(storealloc);
+        scopeInstructions[alloc].push_back(storealloc);
       }
 
+      // Free the memory, if requested
       if (shouldFree) {
-          freeCache(containedloops.back().first.preheader, sublimits, i, alloc, byteSizeOfType, storeInto, CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
+        if (CachePointerInvariantGroups.find(std::make_pair((Value *)alloc, i)) ==
+            CachePointerInvariantGroups.end()) {
+          MDNode *invgroup = MDNode::getDistinct(alloc->getContext(), {});
+          CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)] = invgroup;
+        }
+        freeCache(containedloops.back().first.preheader, sublimits, i, alloc, byteSizeOfType, storeInto, CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
       }
 
+      // If we are not the final iteration, lookup the next pointer by indexing
+      // into the relevant location of the current chunk allocation
       if (i != 0) {
         IRBuilder<> v(&sublimits[i - 1].second.back().first.preheader->back());
 
-        SmallVector<Value *, 3> indices;
-        SmallVector<Value *, 3> limits;
-        ValueToValueMapTy available;
-        for (auto riter = containedloops.rbegin(), rend = containedloops.rend();
-             riter != rend; ++riter) {
-          // Only include dynamic index on last iteration (== skip dynamic index
-          // on non-last iterations)
-          // if (i != 0 && riter+1 == rend) break;
-
-          const auto &idx = riter->first;
-          Value *var = idx.var;
-          if (var == nullptr)
-            var = ConstantInt::get(idx.limit->getType(), 0);
-          indices.push_back(var);
-          if (idx.var)
-            available[var] = var;
-
-          Value *lim = unwrapM(riter->second, v, available,
-                               UnwrapMode::AttemptFullUnwrapWithLookup);
-          assert(lim);
-          if (limits.size() == 0) {
-            limits.push_back(lim);
-          } else {
-            limits.push_back(v.CreateMul(lim, limits.back(), "", /*NUW*/ true,
-                                         /*NSW*/ true));
-          }
-        }
-
-        assert(indices.size() > 0);
-
-        Value *idx = indices[0];
-        for (unsigned ind = 1; ind < indices.size(); ++ind) {
-          idx = v.CreateAdd(idx,
-                            v.CreateMul(indices[ind], limits[ind - 1], "",
-                                        /*NUW*/ true, /*NSW*/ true),
-                            "", /*NUW*/ true, /*NSW*/ true);
-        }
+        Value* idx = computeIndexOfChunk(/*inForwardPass*/true, v, containedloops);
 
         storeInto = v.CreateGEP(v.CreateLoad(storeInto), idx);
         cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
       }
     }
     return alloc;
+}
+
+Value* CacheUtility::computeIndexOfChunk(bool inForwardPass, IRBuilder<> &v, const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops) {
+  // List of loop indices in chunk from innermost to outermost
+  SmallVector<Value *, 3> indices;
+  // List of cumulative indices in chunk from innermost to outermost 
+  // where limit[i] = prod(loop limit[0..i])
+  SmallVector<Value *, 3> limits;
+
+  // list of contained loop induction variables available for limit
+  // computation
+  ValueToValueMapTy available;
+
+  // Iterate from innermost loop to outermost loop within a chunk
+  for (const auto &pair : containedloops) {
+    const auto &idx = pair.first;
+    Value *var = idx.var;
+
+    // In the SingleIteration, var may be null (since there's no legal phinode)
+    // In that case the current iteration is simply the constnat Zero
+    if (var == nullptr)
+      var = ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 0);
+    else if (!inForwardPass) {
+      var = v.CreateLoad(idx.antivaralloc);
+      available[idx.var] = var;
+    } else {
+      var = idx.var;
+      available[idx.var] = var;
+    }
+
+    indices.push_back(var);
+
+    Value *lim = unwrapM(pair.second, v, available,
+                          UnwrapMode::AttemptFullUnwrapWithLookup);
+    assert(lim);
+    if (limits.size() == 0) {
+      limits.push_back(lim);
+    } else {
+      limits.push_back(v.CreateMul(limits.back(), lim, "",
+                                      /*NUW*/ true, /*NSW*/ true));
+    }
   }
 
+  assert(indices.size() > 0);
 
-//! returns true indices
+  // Compute the index into the pointer
+  Value *idx = indices[0];
+  for (unsigned ind = 1; ind < indices.size(); ++ind) {
+    idx = v.CreateAdd(idx,
+                      v.CreateMul(indices[ind], limits[ind - 1], "",
+                                  /*NUW*/ true, /*NSW*/ true),
+                      "", /*NUW*/ true, /*NSW*/ true);
+  }
+  return idx;
+}
+
+/// Given a LimitContext ctx, representing a location inside a loop nest,
+/// break each of the loops up into chunks of loops where each chunk's number
+/// of iterations can be computed at the chunk preheader. Every dynamic loop
+/// defines the start of a chunk. SubLimitType is a vector of chunk objects.
+/// More specifically it is a vector of { # iters in a Chunk (sublimit), Chunk }
+/// Each chunk object is a vector of loops contained within the chunk.
+/// For every loop, this returns pair of the LoopContext and the limit of that loop
+/// Both the vector of Chunks and vector of Loops within a Chunk go from innermost
+/// loop to outermost loop.
 CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
-
-  // The following ficticious context is part of an experimental
-  // mechanism for merging stores into a unified memcpy
+  // Given a ``SingleIteration'' Limit Context, return a chunking of
+  // one loop with size 1, and header/preheader of the BasicBlock
+  // This is done to create a context for a block outside a loop
+  // and is part of an experimental mechanism for merging stores
+  // into a unified memcpy
   if (ctx.ForceSingleIteration) {
     LoopContext idx;
     auto subctx = ctx.Block;
     auto zero =
         ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 0);
     auto one = ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 1);
-    idx.var = nullptr;
+    // The iteration count is always zero so we can set it as such
+    idx.var = nullptr;// = zero;
     idx.incvar = nullptr;
     idx.antivaralloc = nullptr;
     idx.limit = zero;
@@ -734,53 +802,74 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
     return sublimits;
   }
 
-std::vector<LoopContext> contexts;
-for (BasicBlock *blk = ctx.Block; blk != nullptr;) {
-    LoopContext idx;
-    if (!getContext(blk, idx)) {
-    break;
-    }
-    contexts.emplace_back(idx);
-    blk = idx.preheader;
-}
+  // Store the LoopContext's in InnerMost => Outermost order
+  std::vector<LoopContext> contexts;
+  for (BasicBlock *blk = ctx.Block; blk != nullptr;) {
+      LoopContext idx;
+      if (!getContext(blk, idx)) {
+      break;
+      }
+      contexts.emplace_back(idx);
+      blk = idx.preheader;
+  }
 
+// Legal preheaders for loop i (indexed from inner => outer)
 std::vector<BasicBlock *> allocationPreheaders(contexts.size(), nullptr);
+// Limit of loop i (indexed from inner => outer)
 std::vector<Value *> limits(contexts.size(), nullptr);
-for (int i = contexts.size() - 1; i >= 0; --i) {
-    if ((unsigned)i == contexts.size() - 1) {
-    allocationPreheaders[i] = contexts[i].preheader;
-    } else if (contexts[i].dynamic) {
-    allocationPreheaders[i] = contexts[i].preheader;
-    } else {
-    allocationPreheaders[i] = allocationPreheaders[i + 1];
-    }
 
-    if (contexts[i].dynamic) {
+// Iterate from outermost loop to innermost loop
+for (int i = contexts.size() - 1; i >= 0; --i) {
+  // The outermost loop's preheader is the preheader directly
+  // outside the loop nest
+  if ((unsigned)i == contexts.size() - 1) {
+    allocationPreheaders[i] = contexts[i].preheader;
+  } else if (contexts[i].dynamic) {
+    // For dynamic loops, the preheader is now forced to be the preheader
+    // of that loop
+    allocationPreheaders[i] = contexts[i].preheader;
+  } else {
+    // Otherwise try to use the preheader of the loop just outside this
+    // one to allocate all iterations across both loops together
+    allocationPreheaders[i] = allocationPreheaders[i + 1];
+  }
+
+  // Dynamic loops are considered to have a limit of one for allocation purposes
+  // This is because we want to allocate 1 x (# of iterations inside chunk)
+  // inside every dynamic iteration
+  if (contexts[i].dynamic) {
     limits[i] = ConstantInt::get(Type::getInt64Ty(ctx.Block->getContext()), 1);
-    } else {
+  } else {
+    // Map of previous induction variables we are allowed to use as part
+    // of the computation of the number of iterations in this chunk
     ValueToValueMapTy prevMap;
 
+    // Iterate from outermost loop down
     for (int j = contexts.size() - 1;; --j) {
-        if (allocationPreheaders[i] == contexts[j].preheader)
-        break;
+      // If the preheader allocating memory for loop i
+      // is distinct from this preheader, we are therefore allocating
+      // memory in a different chunk. We can use induction variables
+      // from chunks outside us to compute loop bounds so add it to the
+      // map
+      if (allocationPreheaders[i] != contexts[j].preheader) {
         prevMap[contexts[j].var] = contexts[j].var;
+      } else {
+        break;
+      }
     }
 
     IRBuilder<> allocationBuilder(&allocationPreheaders[i]->back());
     Value *limitMinus1 = nullptr;
 
-    // TODO ensure unwrapM considers the legality of illegal caching / etc
-    //   legalRecompute does not fulfill this need as its whether its legal
-    //   at a certain location, where as legalRecompute specifies it being
-    //   recomputable anywhere
-    // if (legalRecompute(contexts[i].limit, prevMap)) {
+    // Attempt to compute the limit of this loop at the corresponding
+    // allocation preheader. This is null if it was not legal to compute
     limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, prevMap,
                             UnwrapMode::AttemptFullUnwrap);
 
     // We have a loop with static bounds, but whose limit is not available
     // to be computed at the current loop preheader (such as the innermost
     // loop of triangular iteration domain) Handle this case like a dynamic
-    // loop
+    // loop and create a new chunk.
     if (limitMinus1 == nullptr) {
         allocationPreheaders[i] = contexts[i].preheader;
         allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
@@ -788,50 +877,66 @@ for (int i = contexts.size() - 1; i >= 0; --i) {
                             UnwrapMode::AttemptFullUnwrap);
     }
     assert(limitMinus1 != nullptr);
-    static std::map<std::pair<Value *, BasicBlock *>, Value *> limitCache;
+
+    // We now need to compute the actual limit as opposed to the limit
+    // minus one. For efficiency, avoid doing this multiple times for
+    // the same <limitMinus1, Block requested at> pair by caching inside
+    // of LimitCache.
     auto cidx = std::make_pair(limitMinus1, allocationPreheaders[i]);
-    if (limitCache.find(cidx) == limitCache.end()) {
-        limitCache[cidx] = allocationBuilder.CreateNUWAdd(
+    if (LimitCache.find(cidx) == LimitCache.end()) {
+        LimitCache[cidx] = allocationBuilder.CreateNUWAdd(
             limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
     }
-    limits[i] = limitCache[cidx];
-    }
+    limits[i] = LimitCache[cidx];
+  }
 }
 
-SubLimitType sublimits;
+  SubLimitType sublimits;
 
-Value *size = nullptr;
-std::vector<std::pair<LoopContext, Value *>> lims;
-for (unsigned i = 0; i < contexts.size(); ++i) {
+  // Total number of iterations of current chunk of loops
+  Value *size = nullptr;
+  // Loops inside current chunk (stored innermost to outermost)
+  std::vector<std::pair<LoopContext, Value *>> lims;
+
+  // Iterate from innermost to outermost loops
+  for (unsigned i = 0; i < contexts.size(); ++i) {
     IRBuilder<> allocationBuilder(&allocationPreheaders[i]->back());
     lims.push_back(std::make_pair(contexts[i], limits[i]));
+    // Compute the cumulative size
     if (size == nullptr) {
-    size = limits[i];
+      // If starting with no cumulative size, this is the cumulative size
+      size = limits[i];
     } else {
-    static std::map<std::pair<Value *, BasicBlock *>, Value *> sizeCache;
-    auto cidx = std::make_pair(size, allocationPreheaders[i]);
-    if (sizeCache.find(cidx) == sizeCache.end()) {
-        sizeCache[cidx] = allocationBuilder.CreateNUWMul(size, limits[i]);
-    }
-    size = sizeCache[cidx];
+      // Otherwise new size = old size * limits[i];
+      auto cidx = std::make_tuple(size, limits[i], allocationPreheaders[i]);
+      if (SizeCache.find(cidx) == SizeCache.end()) {
+        SizeCache[cidx] = allocationBuilder.CreateMul(size, limits[i], "",
+                                      /*NUW*/ true, /*NSW*/ true);
+      }
+      size = SizeCache[cidx];
     }
 
-    // We are now starting a new allocation context
+    // If we are starting a new chunk in the next iteration
+    // push this chunk to sublimits and clear the cumulative calculations
     if ((i + 1 < contexts.size()) &&
         (allocationPreheaders[i] != allocationPreheaders[i + 1])) {
-    sublimits.push_back(std::make_pair(size, lims));
-    size = nullptr;
-    lims.clear();
+      sublimits.push_back(std::make_pair(size, lims));
+      size = nullptr;
+      lims.clear();
     }
-}
+  }
 
-if (size != nullptr) {
+  // For any remaining loop chunks, add them to the list
+  if (size != nullptr) {
     sublimits.push_back(std::make_pair(size, lims));
     lims.clear();
-}
-return sublimits;
+  }
+
+  return sublimits;
 }
 
+/// Given an allocation defined at a particular ctx, store the value val
+/// in the cache at the location defined in the given builder
 void CacheUtility::storeInstructionInCache(LimitContext ctx, IRBuilder<> &BuilderM,
                                Value *val, AllocaInst *cache) {
     assert(BuilderM.GetInsertBlock()->getParent() == newFunc);
@@ -842,14 +947,15 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx, IRBuilder<> &Builde
     v.setFastMathFlags(getFast());
 
     // Note for dynamic loops where the allocation is stored somewhere inside
-    // the loop,
-    // we must ensure that we load the allocation after the store ensuring
-    // memory exists to simplify things and ensure we always store after a
-    // potential realloc occurs in this loop This is okay as there should be no
-    // load to the cache in the same block where this instruction is defined
-    // (since we will just use this instruction)
+    // the loop, we must ensure that we load the allocation after actually
+    // storing the allocation itself.
+    // To simplify things and ensure we always store after a
+    // potential realloc occurs in this loop, we put our store after
+    // any existing stores in the loop.
+    // This is okay as there should be no load to the cache in the same block
+    // where this instruction is defined as we will just use this instruction
     // TODO check that the store is actually aliasing/related
-    if (BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end())
+    if (BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
       for (auto I = BuilderM.GetInsertBlock()->rbegin(),
                 E = BuilderM.GetInsertBlock()->rend();
            I != E; ++I) {
@@ -864,12 +970,18 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx, IRBuilder<> &Builde
           }
         }
       }
+    }
+
     bool isi1 = val->getType()->isIntegerTy() &&
                 cast<IntegerType>(val->getType())->getBitWidth() == 1;
     Value *loc =
-        getCachePointer(/*inForwardPass*/true, v, ctx, cache, isi1, /*storeinstorecache*/ true);
+        getCachePointer(/*inForwardPass*/true, v, ctx, cache, isi1, /*storeInInstructionsMap*/ true);
 
     Value *tostore = val;
+
+    // If we are doing the efficient bool cache, the actual value
+    // we want to store needs to have the existing surrounding bits
+    // set appropriately
     if (EfficientBoolCache && isi1) {
       if (auto gep = dyn_cast<GetElementPtrInst>(loc)) {
         auto bo = cast<BinaryOperator>(*gep->idx_begin());
@@ -901,13 +1013,18 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx, IRBuilder<> &Builde
            cast<PointerType>(loc->getType())->getElementType());
     StoreInst *storeinst = v.CreateStore(tostore, loc);
 
-    if (tostore == val &&
-        ValueInvariantGroups.find(cache) == ValueInvariantGroups.end()) {
-      MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
-      ValueInvariantGroups[cache] = invgroup;
+    // If the value stored doesnt change (per efficient bool cache),
+    // mark it as invariant
+    if (tostore == val) {
+      if (ValueInvariantGroups.find(cache) == ValueInvariantGroups.end()) {
+        MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
+        ValueInvariantGroups[cache] = invgroup;
+      }
+      storeinst->setMetadata(LLVMContext::MD_invariant_group,
+                            ValueInvariantGroups[cache]);
     }
-    storeinst->setMetadata(LLVMContext::MD_invariant_group,
-                           ValueInvariantGroups[cache]);
+
+    // Set alignment
     ConstantInt *byteSizeOfType = ConstantInt::get(
         Type::getInt64Ty(cache->getContext()),
         ctx.Block->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(
@@ -921,17 +1038,21 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx, IRBuilder<> &Builde
       storeinst->setAlignment(bsize);
 #endif
     }
-    scopeStores[cache].push_back(storeinst);
+    scopeInstructions[cache].push_back(storeinst);
 }
 
+/// Given an allocation defined at a particular ctx, store the instruction
+/// in the cache right after the instruction is executed
 void CacheUtility::storeInstructionInCache(LimitContext ctx, llvm::Instruction *inst,
                             llvm::AllocaInst *cache) {
     assert(ctx.Block);
     assert(inst);
     assert(cache);
 
+    // Find the correct place to issue the store
     IRBuilder<> v(inst->getParent());
-
+    // If this is a PHINode, we need to store after all phinodes,
+    // otherwise just after inst sufficies
     if (&*inst->getParent()->rbegin() != inst) {
         auto pn = dyn_cast<PHINode>(inst);
         Instruction *putafter = (pn && pn->getNumIncomingValues() > 0)
@@ -944,172 +1065,143 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx, llvm::Instruction *
     storeInstructionInCache(ctx, v, inst, cache);
 }
 
+/// Given an allocation specified by the LimitContext ctx and cache, compute a pointer
+/// that can hold the underlying type being cached. This value should be computed at BuilderM.
+/// Optionally, instructions needed to generate this pointer can be stored in scopeInstructions 
 Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM, LimitContext ctx, Value *cache,
-                         bool isi1, bool storeInStoresMap,
+                         bool isi1, bool storeInInstructionsMap,
                          Value *extraSize) {
-    assert(ctx.Block);
-    assert(cache);
+  assert(ctx.Block);
+  assert(cache);
 
-    auto sublimits = getSubLimits(ctx);
+  auto sublimits = getSubLimits(ctx);
 
-    ValueToValueMapTy available;
+  ValueToValueMapTy available;
 
-    Value *next = cache;
-    assert(next->getType()->isPointerTy());
-    for (int i = sublimits.size() - 1; i >= 0; i--) {
-      next = BuilderM.CreateLoad(next);
-      if (storeInStoresMap && isa<AllocaInst>(cache))
-        scopeStores[cast<AllocaInst>(cache)].push_back(cast<Instruction>(next));
+  Value *next = cache;
+  assert(next->getType()->isPointerTy());
 
-      if (!next->getType()->isPointerTy()) {
-        llvm::errs() << *newFunc << "\n";
-        llvm::errs() << "cache: " << *cache << "\n";
-        llvm::errs() << "next: " << *next << "\n";
-      }
-      assert(next->getType()->isPointerTy());
-      if (CachePointerInvariantGroups.find(std::make_pair(cache, i)) ==
-          CachePointerInvariantGroups.end()) {
-        MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
-        CachePointerInvariantGroups[std::make_pair(cache, i)] = invgroup;
-      }
-      cast<LoadInst>(next)->setMetadata(
-          LLVMContext::MD_invariant_group,
-          CachePointerInvariantGroups[std::make_pair(cache, i)]);
-      ConstantInt *byteSizeOfType = ConstantInt::get(
-          Type::getInt64Ty(cache->getContext()),
-          newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
-              next->getType()) /
-              8);
-      cast<LoadInst>(next)->setMetadata(
-          LLVMContext::MD_dereferenceable,
-          MDNode::get(cache->getContext(),
-                      {ConstantAsMetadata::get(byteSizeOfType)}));
-      unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-      if ((bsize & (bsize - 1)) == 0) {
-#if LLVM_VERSION_MAJOR >= 10
-        cast<LoadInst>(next)->setAlignment(Align(bsize));
-#else
-        cast<LoadInst>(next)->setAlignment(bsize);
-#endif
-      }
+  // Iterate from outermost loop to innermost loop
+  for (int i = sublimits.size() - 1; i >= 0; i--) {
+    // Lookup the next allocation pointer
+    next = BuilderM.CreateLoad(next);
+    if (storeInInstructionsMap && isa<AllocaInst>(cache))
+      scopeInstructions[cast<AllocaInst>(cache)].push_back(cast<Instruction>(next));
 
-      const auto &containedloops = sublimits[i].second;
-
-      SmallVector<Value *, 3> indices;
-      SmallVector<Value *, 3> limits;
-      for (auto riter = containedloops.begin(), rend = containedloops.end();
-           riter != rend; ++riter) {
-        // Only include dynamic index on last iteration (== skip dynamic index
-        // on non-last iterations)
-        // if (i != 0 && riter+1 == rend) break;
-        const auto &idx = riter->first;
-        if (riter + 1 != rend) {
-          assert(!idx.dynamic);
-        }
-        if (!inForwardPass) {
-          Value *av;
-          if (idx.var)
-            av = BuilderM.CreateLoad(idx.antivaralloc);
-          else
-            av = ConstantInt::get(idx.limit->getType(), 0);
-
-          indices.push_back(av);
-          if (idx.var)
-            available[idx.var] = av;
-        } else {
-          assert(idx.limit);
-          indices.push_back(
-              idx.var ? (Value *)idx.var
-                      : (Value *)ConstantInt::get(idx.limit->getType(), 0));
-          if (idx.var)
-            available[idx.var] = idx.var;
-        }
-
-        Value *lim = unwrapM(riter->second, BuilderM, available,
-                             UnwrapMode::AttemptFullUnwrapWithLookup);
-        assert(lim);
-        if (limits.size() == 0) {
-          limits.push_back(lim);
-        } else {
-          limits.push_back(BuilderM.CreateMul(lim, limits.back(), "",
-                                              /*NUW*/ true, /*NSW*/ true));
-        }
-      }
-
-      if (indices.size() > 0) {
-        Value *idx = indices[0];
-        for (unsigned ind = 1; ind < indices.size(); ++ind) {
-          idx = BuilderM.CreateAdd(
-              idx,
-              BuilderM.CreateMul(indices[ind], limits[ind - 1], "",
-                                 /*NUW*/ true, /*NSW*/ true),
-              "", /*NUW*/ true, /*NSW*/ true);
-        }
-        if (EfficientBoolCache && isi1 && i == 0)
-          idx = BuilderM.CreateLShr(
-              idx,
-              ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 3));
-        if (i == 0 && extraSize) {
-          Value *es = lookupM(extraSize, BuilderM);
-          assert(es);
-          idx = BuilderM.CreateMul(idx, es, "", /*NUW*/ true, /*NSW*/ true);
-        }
-        next = BuilderM.CreateGEP(next, {idx});
-        cast<GetElementPtrInst>(next)->setIsInBounds(true);
-        if (storeInStoresMap && isa<AllocaInst>(cache))
-          scopeStores[cast<AllocaInst>(cache)].push_back(cast<Instruction>(next));
-      }
+    if (!next->getType()->isPointerTy()) {
+      llvm::errs() << *newFunc << "\n";
+      llvm::errs() << "cache: " << *cache << "\n";
+      llvm::errs() << "next: " << *next << "\n";
       assert(next->getType()->isPointerTy());
     }
-    return next;
+
+    // Set appropriate invairant lookup flags
+    if (CachePointerInvariantGroups.find(std::make_pair(cache, i)) ==
+        CachePointerInvariantGroups.end()) {
+      MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
+      CachePointerInvariantGroups[std::make_pair(cache, i)] = invgroup;
+    }
+    cast<LoadInst>(next)->setMetadata(
+        LLVMContext::MD_invariant_group,
+        CachePointerInvariantGroups[std::make_pair(cache, i)]);
+
+    // Set dereferenceable and alignment flags
+    ConstantInt *byteSizeOfType = ConstantInt::get(
+        Type::getInt64Ty(cache->getContext()),
+        newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
+            next->getType()) /
+            8);
+    cast<LoadInst>(next)->setMetadata(
+        LLVMContext::MD_dereferenceable,
+        MDNode::get(cache->getContext(),
+                    {ConstantAsMetadata::get(byteSizeOfType)}));
+    unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+    if ((bsize & (bsize - 1)) == 0) {
+#if LLVM_VERSION_MAJOR >= 10
+      cast<LoadInst>(next)->setAlignment(Align(bsize));
+#else
+      cast<LoadInst>(next)->setAlignment(bsize);
+#endif
+    }
+
+    const auto &containedloops = sublimits[i].second;
+
+    if (containedloops.size() > 0) {
+      Value *idx = computeIndexOfChunk(inForwardPass, BuilderM, containedloops);
+      if (EfficientBoolCache && isi1 && i == 0)
+        idx = BuilderM.CreateLShr(
+            idx,
+            ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 3));
+      if (i == 0 && extraSize) {
+        Value *es = lookupM(extraSize, BuilderM);
+        assert(es);
+        idx = BuilderM.CreateMul(idx, es, "", /*NUW*/ true, /*NSW*/ true);
+      }
+      next = BuilderM.CreateGEP(next, {idx});
+      cast<GetElementPtrInst>(next)->setIsInBounds(true);
+      if (storeInInstructionsMap && isa<AllocaInst>(cache))
+        scopeInstructions[cast<AllocaInst>(cache)].push_back(cast<Instruction>(next));
+    }
+    assert(next->getType()->isPointerTy());
   }
+  return next;
+}
 
 
+/// Given an allocation specified by the LimitContext ctx and cache, lookup the underlying cached value.
 Value *CacheUtility::lookupValueFromCache(bool inForwardPass, IRBuilder<> &BuilderM, LimitContext ctx,
                               Value *cache, bool isi1,
                               Value *extraSize,
                               Value *extraOffset) {
-    auto cptr = getCachePointer(inForwardPass, BuilderM, ctx, cache, isi1,
-                                /*storeInStoresMap*/ false, extraSize);
-    if (extraOffset) {
-      cptr = BuilderM.CreateGEP(cptr, {extraOffset});
-      cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
-    }
-    auto result = BuilderM.CreateLoad(cptr);
+  // Get the underlying cache pointer
+  auto cptr = getCachePointer(inForwardPass, BuilderM, ctx, cache, isi1,
+                              /*storeInInstructionsMap*/ false, extraSize);
 
-    if (ValueInvariantGroups.find(cache) == ValueInvariantGroups.end()) {
-      MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
-      ValueInvariantGroups[cache] = invgroup;
-    }
-    result->setMetadata("enzyme_fromcache",
-                        MDNode::get(result->getContext(), {}));
-    result->setMetadata(LLVMContext::MD_invariant_group,
-                        ValueInvariantGroups[cache]);
-    ConstantInt *byteSizeOfType = ConstantInt::get(
-        Type::getInt64Ty(cache->getContext()),
-        newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
-            result->getType()) /
-            8);
-    unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-    if ((bsize & (bsize - 1)) == 0) {
-#if LLVM_VERSION_MAJOR >= 10
-      result->setAlignment(Align(bsize));
-#else
-      result->setAlignment(bsize);
-#endif
-    }
-    if (EfficientBoolCache && isi1) {
-      if (auto gep = dyn_cast<GetElementPtrInst>(cptr)) {
-        auto bo = cast<BinaryOperator>(*gep->idx_begin());
-        assert(bo->getOpcode() == BinaryOperator::LShr);
-        Value *res = BuilderM.CreateLShr(
-            result,
-            BuilderM.CreateAnd(
-                BuilderM.CreateTrunc(bo->getOperand(0),
-                                     Type::getInt8Ty(cache->getContext())),
-                ConstantInt::get(Type::getInt8Ty(cache->getContext()), 7)));
-        return BuilderM.CreateTrunc(res, Type::getInt1Ty(result->getContext()));
-      }
-    }
-    return result;
+  // Optionally apply the additional offset
+  if (extraOffset) {
+    cptr = BuilderM.CreateGEP(cptr, {extraOffset});
+    cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
   }
+
+  // Retrieve the actual result
+  auto result = BuilderM.CreateLoad(cptr);
+
+  // Apply requisite invariant, alignment, etc
+  if (ValueInvariantGroups.find(cache) == ValueInvariantGroups.end()) {
+    MDNode *invgroup = MDNode::getDistinct(cache->getContext(), {});
+    ValueInvariantGroups[cache] = invgroup;
+  }
+  CacheLookups.insert(result);
+  result->setMetadata(LLVMContext::MD_invariant_group,
+                      ValueInvariantGroups[cache]);
+  ConstantInt *byteSizeOfType = ConstantInt::get(
+      Type::getInt64Ty(cache->getContext()),
+      newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
+          result->getType()) /
+          8);
+  unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+  if ((bsize & (bsize - 1)) == 0) {
+#if LLVM_VERSION_MAJOR >= 10
+    result->setAlignment(Align(bsize));
+#else
+    result->setAlignment(bsize);
+#endif
+  }
+
+  // If using the efficient bool cache, do the corresponding
+  // mask and shift to retrieve the actual value
+  if (EfficientBoolCache && isi1) {
+    if (auto gep = dyn_cast<GetElementPtrInst>(cptr)) {
+      auto bo = cast<BinaryOperator>(*gep->idx_begin());
+      assert(bo->getOpcode() == BinaryOperator::LShr);
+      Value *res = BuilderM.CreateLShr(
+          result,
+          BuilderM.CreateAnd(
+              BuilderM.CreateTrunc(bo->getOperand(0),
+                                    Type::getInt8Ty(cache->getContext())),
+              ConstantInt::get(Type::getInt8Ty(cache->getContext()), 7)));
+      return BuilderM.CreateTrunc(res, Type::getInt1Ty(result->getContext()));
+    }
+  }
+  return result;
+}

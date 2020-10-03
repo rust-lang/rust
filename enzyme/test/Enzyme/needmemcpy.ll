@@ -290,7 +290,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %2 = load double, double* %"x'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'ipa", align 8
 ; CHECK-NEXT:   %3 = getelementptr inbounds double, double* %mul.i_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %4 = load double, double* %3, align 8, !invariant.group ![[ig]], !enzyme_fromcache !{{[0-9]+}}
+; CHECK-NEXT:   %4 = load double, double* %3, align 8, !invariant.group ![[ig]]
 ; CHECK-NEXT:   %m0diffediv = fmul fast double %2, %4
 ; CHECK-NEXT:   %m1diffemul.i = fmul fast double %2, %div
 ; CHECK-NEXT:   %5 = fadd fast double %"div'de.0", %m0diffediv

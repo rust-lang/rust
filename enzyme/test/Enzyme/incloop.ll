@@ -207,7 +207,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"a'", i64 %_unwrap6
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %12 = getelementptr inbounds double, double* %_cache.0, i64 %"iv'ac.0"
-; CHECK-NEXT:   %13 = load double, double* %12, align 8, !invariant.group ![[igroup]], !enzyme_fromcache !
+; CHECK-NEXT:   %13 = load double, double* %12, align 8, !invariant.group ![[igroup]]
 ; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %13
 ; CHECK-NEXT:   %m1diffe = fmul fast double %differeturn, %13
 ; CHECK-NEXT:   %14 = fadd fast double %m0diffe, %m1diffe

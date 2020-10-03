@@ -372,7 +372,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %[[iv54:.+]] = mul nsw i64 %"iv3'ac.0", 4
 ; CHECK-NEXT:   %[[iv35a:.+]] = add nsw i64 %"iv5'ac.0", %[[iv54]]
 ; CHECK-NEXT:   %[[bcq:.+]] = getelementptr inbounds i64, i64* %res.i.sroa.0.2_malloccache, i64 %[[iv35a]]
-; CHECK-NEXT:   %[[ilx:.+]] = load i64, i64* %[[bcq]], align 8, !invariant.group !6, !enzyme_fromcache !7
+; CHECK-NEXT:   %[[ilx:.+]] = load i64, i64* %[[bcq]], align 8, !invariant.group !6
 ; CHECK-NEXT:   %[[unwrap13:.+]] = bitcast i64 %[[ilx]] to double
 ; CHECK-NEXT:   %m0diffe = fmul fast double %[[fad]], %[[unwrap13]]
 ; CHECK-NEXT:   %[[m2a:.+]] = fadd fast double %m0diffe, %m0diffe
@@ -561,7 +561,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[inciv:.+]], %incinvertfor.body ], [ 3, %for.body ]
 ; CHECK-NEXT:   %[[ge1:.+]] = getelementptr inbounds double, double* %tapeArg, i64 %"iv'ac.0"
 ; TODO make this use iga6
-; CHECK-NEXT:   %[[loc:.+]] = load double, double* %[[ge1]], align 8, !invariant.group ![[iga6_other:[0-9]+]], !enzyme_fromcache !{{[0-9]+}}
+; CHECK-NEXT:   %[[loc:.+]] = load double, double* %[[ge1]], align 8, !invariant.group ![[iga6_other:[0-9]+]]
 ; CHECK-NEXT:   %m0diffea6 = fmul fast double %differeturn, %[[loc]]
 ; CHECK-NEXT:   %[[adx:.+]] = fadd fast double %m0diffea6, %m0diffea6
 ; CHECK-NEXT:   %mul.i.i.i_unwrap = mul nsw i64 4, %"iv'ac.0"

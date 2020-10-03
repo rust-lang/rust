@@ -506,12 +506,10 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int 
           if (!inLoop) {
 
             // Remove stores into
-            auto stores = scopeStores[found->first];
-            scopeStores.erase(found->first);
+            auto stores = scopeInstructions[found->first];
+            scopeInstructions.erase(found->first);
             for (int i = stores.size() - 1; i >= 0; i--) {
-              if (auto inst = dyn_cast<Instruction>(stores[i])) {
-                erase(inst);
-              }
+              erase(stores[i]);
             }
 
             std::vector<User *> users;
@@ -542,12 +540,10 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int 
             }
           } else {
             // Remove stores into
-            auto stores = scopeStores[found->first];
-            scopeStores.erase(found->first);
+            auto stores = scopeInstructions[found->first];
+            scopeInstructions.erase(found->first);
             for (int i = stores.size() - 1; i >= 0; i--) {
-              if (auto inst = dyn_cast<Instruction>(stores[i])) {
-                erase(inst);
-              }
+              erase(stores[i]);
             }
 
             // Remove allocations for scopealloc since it is already allocated
@@ -851,8 +847,7 @@ bool GradientUtils::legalRecompute(const Value *val,
   }
 
   // If this is a load from cache already, dont force a cache of this
-  if (isa<LoadInst>(val) &&
-      cast<LoadInst>(val)->getMetadata("enzyme_fromcache"))
+  if (isa<LoadInst>(val) && CacheLookups.count(cast<LoadInst>(val)))
     return true;
 
   // TODO consider callinst here
@@ -950,8 +945,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
     if (!legalRecompute(op, available)) {
 
       // If this is a load from cache already, dont force a cache of this
-      if (isa<LoadInst>(op) &&
-          cast<LoadInst>(op)->getMetadata("enzyme_fromcache"))
+      if (isa<LoadInst>(op) && CacheLookups.count(cast<LoadInst>(op)))
         continue;
 
       // If a plcaeholder phi for inversion (and we know from above not
@@ -1448,7 +1442,14 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
 #endif
 
     else {
-      IRBuilder<> bb(getNewFromOriginal(phi));
+      auto NewV = getNewFromOriginal(phi);
+      IRBuilder<> bb(NewV);
+      // Note if the original phi node get's scev'd in NewF, it may
+      // no longer be a phi and we need a new place to insert this phi
+      // TODO consider allowing the inverted pointer to become a scev
+      if (!isa<PHINode>(NewV)) {
+        bb.SetInsertPoint(bb.GetInsertBlock()->getFirstNonPHI());
+      }
       auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
       invertedPointers[phi] = which;
 
@@ -1879,16 +1880,14 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
                 auto dst_arg = v.CreateBitCast(
                     outer, Type::getInt8PtrTy(inst->getContext()));
-                scopeStores[cache].push_back(cast<Instruction>(dst_arg));
+                scopeInstructions[cache].push_back(cast<Instruction>(dst_arg));
                 auto src_arg = v.CreateBitCast(
                     start, Type::getInt8PtrTy(inst->getContext()));
                 auto len_arg = v.CreateMul(
                     ConstantInt::get(lim->getType(), step->getAPInt()), lim, "",
                     true, true);
                 if (Instruction* I = dyn_cast<Instruction>(len_arg))
-                  scopeStores[cache].push_back(I);
-                // if (!isa<Constant>(lim))
-                //  scopeStores[cache].push_back(lim);
+                  scopeInstructions[cache].push_back(I);
                 auto volatile_arg = ConstantInt::getFalse(inst->getContext());
 
                 Value *nargs[] = {dst_arg, src_arg, len_arg, volatile_arg};
@@ -1939,7 +1938,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
                 // TODO alignment
 
-                scopeStores[cache].push_back(mem);
+                scopeInstructions[cache].push_back(mem);
               }
 
               assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));

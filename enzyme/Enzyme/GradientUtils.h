@@ -203,10 +203,10 @@ public:
       llvm::AllocaInst *cache = found->second.first;
       if (storeInCache) {
         assert(isa<Instruction>(B));
-        if (scopeStores.find(cache) != scopeStores.end()) {
-          for (auto st : scopeStores[cache])
+        if (scopeInstructions.find(cache) != scopeInstructions.end()) {
+          for (auto st : scopeInstructions[cache])
             cast<StoreInst>(st)->eraseFromParent();
-          scopeStores.clear();
+          scopeInstructions.erase(cache);
           storeInstructionInCache(found->second.second, cast<Instruction>(B),
                                           cache);
         } 
@@ -957,20 +957,6 @@ public:
       Value *bcdif = BuilderM.CreateBitCast(dif, addingType);
 
       res = faddForSelect(bcold, bcdif);
-      if (Instruction *oldinst = dyn_cast<Instruction>(bcold)) {
-        if (oldinst->getNumUses() == 0) {
-          // if (oldinst == &*BuilderM.GetInsertPoint())
-          // BuilderM.SetInsertPoint(oldinst->getNextNode());
-          // oldinst->eraseFromParent();
-        }
-      }
-      if (Instruction *difinst = dyn_cast<Instruction>(bcdif)) {
-        if (difinst->getNumUses() == 0) {
-          // if (difinst == &*BuilderM.GetInsertPoint())
-          // BuilderM.SetInsertPoint(difinst->getNextNode());
-          // difinst->eraseFromParent();
-        }
-      }
       if (SelectInst *select = dyn_cast<SelectInst>(res)) {
         assert(addedSelects.back() == select);
         addedSelects.erase(addedSelects.end() - 1);
@@ -979,9 +965,6 @@ public:
             BuilderM.CreateBitCast(select->getTrueValue(), val->getType()),
             BuilderM.CreateBitCast(select->getFalseValue(), val->getType()));
         assert(select->getNumUses() == 0);
-        // if (select == &*BuilderM.GetInsertPoint())
-        // BuilderM.SetInsertPoint(select->getNextNode());
-        // select->eraseFromParent();
       } else {
         res = BuilderM.CreateBitCast(res, val->getType());
       }
@@ -1137,8 +1120,6 @@ public:
       forfree->setAlignment(bsize);
 #endif
     }
-    // forfree->setMetadata(LLVMContext::MD_invariant_load,
-    // MDNode::get(forfree->getContext(), {}));
     auto ci = cast<CallInst>(CallInst::CreateFree(
         tbuild.CreatePointerCast(forfree,
                                   Type::getInt8PtrTy(newFunc->getContext())),
