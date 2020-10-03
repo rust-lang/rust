@@ -389,7 +389,7 @@ Please note that the reviewers are humans, who for the most part work on `rustc`
 in their free time. This means that they can take some time to respond and review
 your PR. It also means that reviewers can miss some PRs that are assigned to them.
 
-To try to move PRs forward, the Triage WG regularely goes through all PRs that
+To try to move PRs forward, the Triage WG regularly goes through all PRs that
 are waiting for review and haven't been discussed for at least a week. If you
 don't get a review within around 10 days, feel free to ask the Triage WG on
 Zulip ([#t-release/triage]). They have knowledge of when to ping, who might be
