@@ -23,7 +23,7 @@ pub fn foo() {}
 /// </h1>
 /// </hello>
 //~^ ERROR unopened HTML tag `hello`
-pub fn f() {}
+pub fn bar() {}
 
 /// <div>
 ///    <br/> <p>
@@ -67,3 +67,9 @@ pub fn d() {}
 ///   </div>
 /// </style>
 pub fn e() {}
+
+// Closing tags need to have ">" at the end, otherwise it's not a closing tag!
+/// <div></div >
+/// <div></div
+//~^ ERROR unclosed HTML tag `div`
+pub fn f() {}

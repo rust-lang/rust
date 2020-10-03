@@ -70,5 +70,11 @@ error: unclosed HTML tag `script`
 LL | /// <script
    |     ^^^^^^
 
-error: aborting due to 11 previous errors
+error: unclosed HTML tag `div`
+  --> $DIR/invalid-html-tags.rs:73:5
+   |
+LL | /// <div></div
+   |     ^^^^^
+
+error: aborting due to 12 previous errors
 

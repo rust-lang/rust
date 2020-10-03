@@ -111,6 +111,26 @@ fn extract_tag(
                             r.end += 1;
                         }
                         if is_closing {
+                            // In case we have "</div >" or even "</div         >".
+                            if c != '>' {
+                                if !c.is_whitespace() {
+                                    // It seems like it's not a valid HTML tag.
+                                    break;
+                                }
+                                let mut found = false;
+                                for (new_pos, c) in text[pos..].char_indices() {
+                                    if !c.is_whitespace() {
+                                        if c == '>' {
+                                            r.end = range.start + new_pos + 1;
+                                            found = true;
+                                        }
+                                        break;
+                                    }
+                                }
+                                if !found {
+                                    break;
+                                }
+                            }
                             drop_tag(tags, tag_name, r, f);
                         } else {
                             tags.push((tag_name, r));
