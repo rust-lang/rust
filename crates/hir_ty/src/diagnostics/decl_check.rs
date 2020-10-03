@@ -21,7 +21,10 @@ use hir_def::{
     AdtId, FunctionId, Lookup, ModuleDefId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::Name};
-use syntax::{ast::NameOwner, AstPtr};
+use syntax::{
+    ast::{self, NameOwner},
+    AstPtr,
+};
 
 use crate::{
     db::HirDatabase,
@@ -122,7 +125,8 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             } else {
                 // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
                 log::error!(
-                    "Replacement was generated for a function without a name: {:?}",
+                    "Replacement ({:?}) was generated for a function without a name: {:?}",
+                    replacement,
                     fn_src
                 );
                 return;
@@ -130,6 +134,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
             let diagnostic = IncorrectCase {
                 file: fn_src.file_id,
+                ident_type: "Function".to_string(),
                 ident: AstPtr::new(&ast_ptr).into(),
                 expected_case: replacement.expected_case,
                 ident_text: replacement.current_name.to_string(),
@@ -139,21 +144,88 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             self.sink.push(diagnostic);
         }
 
-        // let item_tree = db.item_tree(loc.id.file_id);
-        // let fn_def = &item_tree[fn_loc.id.value];
-        // let (_, source_map) = db.body_with_source_map(func.into());
+        let fn_params_list = match fn_src.value.param_list() {
+            Some(params) => params,
+            None => {
+                if !fn_param_replacements.is_empty() {
+                    log::error!(
+                        "Replacements ({:?}) were generated for a function parameters which had no parameters list: {:?}",
+                        fn_param_replacements, fn_src
+                    );
+                }
+                return;
+            }
+        };
+        let mut fn_params_iter = fn_params_list.params();
+        for param_to_rename in fn_param_replacements {
+            // We assume that parameters in replacement are in the same order as in the
+            // actual params list, but just some of them (ones that named correctly) are skipped.
+            let ast_ptr = loop {
+                match fn_params_iter.next() {
+                    Some(element)
+                        if pat_equals_to_name(element.pat(), &param_to_rename.current_name) =>
+                    {
+                        break element.pat().unwrap()
+                    }
+                    Some(_) => {}
+                    None => {
+                        log::error!(
+                            "Replacement ({:?}) was generated for a function parameter which was not found: {:?}",
+                            param_to_rename, fn_src
+                        );
+                        return;
+                    }
+                }
+            };
+
+            let diagnostic = IncorrectCase {
+                file: fn_src.file_id,
+                ident_type: "Argument".to_string(),
+                ident: AstPtr::new(&ast_ptr).into(),
+                expected_case: param_to_rename.expected_case,
+                ident_text: param_to_rename.current_name.to_string(),
+                suggested_text: param_to_rename.suggested_text,
+            };
+
+            self.sink.push(diagnostic);
+        }
     }
 
     fn validate_adt(&mut self, db: &dyn HirDatabase, adt: AdtId) {}
 }
 
+fn pat_equals_to_name(pat: Option<ast::Pat>, name: &Name) -> bool {
+    if let Some(ast::Pat::IdentPat(ident)) = pat {
+        ident.to_string() == name.to_string()
+    } else {
+        false
+    }
+}
+
 fn to_lower_snake_case(ident: &str) -> Option<String> {
+    // First, assume that it's UPPER_SNAKE_CASE.
+    if let Some(normalized) = to_lower_snake_case_from_upper_snake_case(ident) {
+        return Some(normalized);
+    }
+
+    // Otherwise, assume that it's CamelCase.
     let lower_snake_case = stdx::to_lower_snake_case(ident);
 
     if lower_snake_case == ident {
         None
     } else {
         Some(lower_snake_case)
+    }
+}
+
+fn to_lower_snake_case_from_upper_snake_case(ident: &str) -> Option<String> {
+    let is_upper_snake_case = ident.chars().all(|c| c.is_ascii_uppercase() || c == '_');
+
+    if is_upper_snake_case {
+        let string = ident.chars().map(|c| c.to_ascii_lowercase()).collect();
+        Some(string)
+    } else {
+        None
     }
 }
 
@@ -166,7 +238,20 @@ mod tests {
         check_diagnostics(
             r#"
 fn NonSnakeCaseName() {}
-// ^^^^^^^^^^^^^^^^ Argument `NonSnakeCaseName` should have a snake_case name, e.g. `non_snake_case_name`
+// ^^^^^^^^^^^^^^^^ Function `NonSnakeCaseName` should have a snake_case name, e.g. `non_snake_case_name`
+"#,
+        );
+    }
+
+    #[test]
+    fn incorrect_function_params() {
+        check_diagnostics(
+            r#"
+fn foo(SomeParam: u8) {}
+    // ^^^^^^^^^ Argument `SomeParam` should have a snake_case name, e.g. `some_param`
+
+fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
+                     // ^^^^^^^^^^ Argument `CAPS_PARAM` should have a snake_case name, e.g. `caps_param`
 "#,
         );
     }

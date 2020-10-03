@@ -269,6 +269,7 @@ pub struct IncorrectCase {
     pub file: HirFileId,
     pub ident: SyntaxNodePtr,
     pub expected_case: CaseType,
+    pub ident_type: String,
     pub ident_text: String,
     pub suggested_text: String,
 }
@@ -280,7 +281,8 @@ impl Diagnostic for IncorrectCase {
 
     fn message(&self) -> String {
         format!(
-            "Argument `{}` should have a {} name, e.g. `{}`",
+            "{} `{}` should have a {} name, e.g. `{}`",
+            self.ident_type,
             self.ident_text,
             self.expected_case.to_string(),
             self.suggested_text
