@@ -267,6 +267,26 @@ fn quux() { <|> }
         );
     }
 
+    /// Regression test for issue #6091.
+    #[test]
+    fn correctly_completes_module_items_prefixed_with_underscore() {
+        check_edit(
+            "_alpha",
+            r#"
+fn main() {
+    _<|>
+}
+fn _alpha() {}
+"#,
+            r#"
+fn main() {
+    _alpha()$0
+}
+fn _alpha() {}
+"#,
+        )
+    }
+
     #[test]
     fn completes_extern_prelude() {
         check(
