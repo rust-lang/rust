@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-67945-2.rs:12:20
+   |
+LL | struct Bug<S> {
+   |            - this type parameter
+...
+LL |         let x: S = MaybeUninit::uninit();
+   |                -   ^^^^^^^^^^^^^^^^^^^^^ expected type parameter `S`, found union `MaybeUninit`
+   |                |
+   |                expected due to this
+   |
+   = note: expected type parameter `S`
+                       found union `MaybeUninit<_>`
+
+error[E0392]: parameter `S` is never used
+  --> $DIR/issue-67945-2.rs:9:12
+   |
+LL | struct Bug<S> {
+   |            ^ unused parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0392.
+For more information about an error, try `rustc --explain E0308`.
