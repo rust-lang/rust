@@ -1509,7 +1509,16 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         Weak { ptr: NonNull::new(usize::MAX as *mut ArcInner<T>).expect("MAX is not 0") }
     }
+}
 
+/// Helper type to allow accessing the reference counts without
+/// making any assertions about the data field.
+struct WeakInner<'a> {
+    weak: &'a atomic::AtomicUsize,
+    strong: &'a atomic::AtomicUsize,
+}
+
+impl<T: ?Sized> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1629,28 +1638,20 @@ impl<T> Weak<T> {
     /// [`forget`]: std::mem::forget
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        if ptr.is_null() {
-            Self::new()
-        } else {
-            // See Arc::from_raw for details
-            unsafe {
-                let offset = data_offset(ptr);
-                let fake_ptr = ptr as *mut ArcInner<T>;
-                let ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
-                Weak { ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw") }
-            }
-        }
+        // SAFETY: data_offset is safe to call, because this pointer originates from a Weak.
+        // See Weak::as_ptr for context on how the input pointer is derived.
+        let offset = unsafe { data_offset(ptr) };
+
+        // Reverse the offset to find the original ArcInner.
+        // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized)
+        let ptr = unsafe {
+            set_data_ptr(ptr as *mut ArcInner<T>, (ptr as *mut u8).wrapping_offset(-offset))
+        };
+
+        // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
+        unsafe { Weak { ptr: NonNull::new_unchecked(ptr) } }
     }
-}
 
-/// Helper type to allow accessing the reference counts without
-/// making any assertions about the data field.
-struct WeakInner<'a> {
-    weak: &'a atomic::AtomicUsize,
-    strong: &'a atomic::AtomicUsize,
-}
-
-impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Arc`], delaying
     /// dropping of the inner value if successful.
     ///
