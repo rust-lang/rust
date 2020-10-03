@@ -152,6 +152,7 @@ not available.
 
 target | std | host | notes
 -------|-----|------|-------
+`aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ? |  |
