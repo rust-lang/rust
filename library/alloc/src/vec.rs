@@ -1088,6 +1088,39 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Tries to remove an element from the vector. If the element at `index` does not exist,
+    /// `None` is returned. Otherwise `Some(T)` is returned
+    /// 
+    /// # Examples
+    /// ```
+    /// let mut v = vec![1, 2, 3];
+    /// assert_eq!(v.remove(0), Some(1));
+    /// assert_eq!(v.remove(2), None);
+    /// ```
+    pub fn try_remove(&mut self, index: usize) -> Option<T> {
+        let len = self.len();
+        if index >= len {
+            None
+        } else {
+            unsafe {
+                // infallible
+                let ret;
+                {
+                    // the place we are taking from.
+                    let ptr = self.as_mut_ptr().add(index);
+                    // copy it out, unsafely having a copy of the value on
+                    // the stack and in the vector at the same time.
+                    ret = ptr::read(ptr);
+    
+                    // Shift everything down to fill in that spot.
+                    ptr::copy(ptr.offset(1), ptr, len - index - 1);
+                }
+                self.set_len(len - 1);
+                Some(ret)
+            }
+        }
+    }
+
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
