@@ -537,7 +537,8 @@ impl<'a> AstValidator<'a> {
     fn check_c_varadic_type(&self, fk: FnKind<'a>) {
         match (fk.ctxt(), fk.header()) {
             (Some(FnCtxt::Foreign), _) => return,
-            (Some(FnCtxt::Free), Some(header)) => match header.ext {
+            (Some(FnCtxt::Free), Some(header))
+            | (Some(FnCtxt::Assoc(AssocCtxt::Impl)), Some(header)) => match header.ext {
                 Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }) | Extern::Implicit
                     if matches!(header.unsafety, Unsafe::Yes(_)) =>
                 {
