@@ -181,10 +181,12 @@
                   this.handleReqFailure(e);
                   return;
                 }
-                const reMajorVersion = /v(\d+)/;
+
+                const excludedTagVersions = new Set(['v0.7', 'v0.8.1']);
+
                 const tagOptions = tags
                   .map(tag => tag.name)
-                  .filter(tag => tag.startsWith('v'));
+                  .filter(tag => tag.startsWith('v') && !excludedTagVersions.has(tag));
                 this.versionOptions = this.versionOptions.concat(tagOptions);
               },
               updated() {
