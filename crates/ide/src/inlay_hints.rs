@@ -506,19 +506,6 @@ fn main() {
     }
 
     #[test]
-    fn for_expression() {
-        check(
-            r#"
-fn main() {
-    let mut start = 0;
-      //^^^^^^^^^ i32
-    for increment in 0..2 { start += increment; }
-      //^^^^^^^^^ i32
-}"#,
-        );
-    }
-
-    #[test]
     fn if_expr() {
         check(
             r#"
@@ -963,7 +950,7 @@ fn main() {
     let mut data = Vec::new();
       //^^^^^^^^ Vec<&str>
     data.push("foo");
-    for i in 
+    for i in
 
     println!("Unit expr");
 }
