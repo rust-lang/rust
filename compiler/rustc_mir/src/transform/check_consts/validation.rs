@@ -874,13 +874,13 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             }
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
-            TerminatorKind::Abort => self.check_op(ops::Abort),
 
             TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
                 self.check_op(ops::Generator(hir::GeneratorKind::Gen))
             }
 
-            TerminatorKind::Assert { .. }
+            TerminatorKind::Abort
+            | TerminatorKind::Assert { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }

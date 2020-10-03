@@ -42,18 +42,6 @@ pub trait NonConstOp: std::fmt::Debug {
 }
 
 #[derive(Debug)]
-pub struct Abort;
-impl NonConstOp for Abort {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        mcf_status_in_item(ccx)
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        mcf_build_error(ccx, span, "abort is not stable in const fn")
-    }
-}
-
-#[derive(Debug)]
 pub struct FloatingPointOp;
 impl NonConstOp for FloatingPointOp {
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
