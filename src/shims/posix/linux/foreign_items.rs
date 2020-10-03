@@ -116,10 +116,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: The libc syscall() function is a variadic function.
                 // It's valid to call it with more arguments than a syscall
                 // needs, so none of these syscalls should use check_arg_count.
-                // However, depending on the calling convention it might depend
-                // on the type and size of the arguments whether a call with
-                // the wrong number of arguments (or types) is valid or not.
+                // It's even valid to call it with the wrong type of arguments,
+                // as long as they'd end up in the same place with the calling
+                // convention used. (E.g. using a `usize` instead of a pointer.)
+                // It's not directly clear which number, size, and type of arguments
+                // are acceptable in which cases and which aren't. (E.g. some
+                // types might take up the space of two registers.)
                 // So this needs to be researched first.
+
                 let sys_getrandom = this
                     .eval_libc("SYS_getrandom")?
                     .to_machine_usize(this)?;
