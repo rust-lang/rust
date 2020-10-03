@@ -3,6 +3,7 @@ use rustc_middle::mir;
 use crate::*;
 use crate::helpers::check_arg_count;
 use shims::posix::fs::EvalContextExt as _;
+use shims::posix::linux::sync::futex;
 use shims::posix::sync::EvalContextExt as _;
 use shims::posix::thread::EvalContextExt as _;
 
@@ -112,12 +113,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Dynamically invoked syscalls
             "syscall" => {
+                // FIXME: The libc syscall() function is a variadic function.
+                // It's valid to call it with more arguments than a syscall
+                // needs, so none of these syscalls should use check_arg_count.
+                // It's even valid to call it with the wrong type of arguments,
+                // as long as they'd end up in the same place with the calling
+                // convention used. (E.g. using a `usize` instead of a pointer.)
+                // It's not directly clear which number, size, and type of arguments
+                // are acceptable in which cases and which aren't. (E.g. some
+                // types might take up the space of two registers.)
+                // So this needs to be researched first.
+
                 let sys_getrandom = this
                     .eval_libc("SYS_getrandom")?
                     .to_machine_usize(this)?;
 
                 let sys_statx = this
                     .eval_libc("SYS_statx")?
+                    .to_machine_usize(this)?;
+
+                let sys_futex = this
+                    .eval_libc("SYS_futex")?
                     .to_machine_usize(this)?;
 
                 if args.is_empty() {
@@ -138,6 +154,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         let &[_, dirfd, pathname, flags, mask, statxbuf] = check_arg_count(args)?;
                         let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
                         this.write_scalar(Scalar::from_machine_isize(result.into(), this), dest)?;
+                    }
+                    // `futex` is used by some synchonization primitives.
+                    id if id == sys_futex => {
+                        futex(this, args, dest)?;
                     }
                     id => throw_unsup_format!("miri does not support syscall ID {}", id),
                 }

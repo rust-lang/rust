@@ -555,7 +555,7 @@ pub fn check_arg_count<'a, 'tcx, const N: usize>(args: &'a [OpTy<'tcx, Tag>]) ->
 
 pub fn isolation_error(name: &str) -> InterpResult<'static> {
     throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
-        "`{}` not available when isolation is enabled",
+        "{} not available when isolation is enabled",
         name,
     )))
 }

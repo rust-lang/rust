@@ -96,12 +96,26 @@ struct Condvar {
     waiters: VecDeque<CondvarWaiter>,
 }
 
+/// The futex state.
+#[derive(Default, Debug)]
+struct Futex {
+    waiters: VecDeque<FutexWaiter>,
+}
+
+/// A thread waiting on a futex.
+#[derive(Debug)]
+struct FutexWaiter {
+    /// The thread that is waiting on this futex.
+    thread: ThreadId,
+}
+
 /// The state of all synchronization variables.
 #[derive(Default, Debug)]
 pub(super) struct SynchronizationState {
     mutexes: IndexVec<MutexId, Mutex>,
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
+    futexes: HashMap<Pointer, Futex>,
 }
 
 // Private extension trait for local helper methods
@@ -402,5 +416,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn condvar_remove_waiter(&mut self, id: CondvarId, thread: ThreadId) {
         let this = self.eval_context_mut();
         this.machine.threads.sync.condvars[id].waiters.retain(|waiter| waiter.thread != thread);
+    }
+
+    fn futex_wait(&mut self, addr: Pointer<stacked_borrows::Tag>, thread: ThreadId) {
+        let this = self.eval_context_mut();
+        let waiters = &mut this.machine.threads.sync.futexes.entry(addr.erase_tag()).or_default().waiters;
+        assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
+        waiters.push_back(FutexWaiter { thread });
+    }
+
+    fn futex_wake(&mut self, addr: Pointer<stacked_borrows::Tag>) -> Option<ThreadId> {
+        let this = self.eval_context_mut();
+        let waiters = &mut this.machine.threads.sync.futexes.get_mut(&addr.erase_tag())?.waiters;
+        waiters.pop_front().map(|waiter| waiter.thread)
+    }
+
+    fn futex_remove_waiter(&mut self, addr: Pointer<stacked_borrows::Tag>, thread: ThreadId) {
+        let this = self.eval_context_mut();
+        if let Some(futex) = this.machine.threads.sync.futexes.get_mut(&addr.erase_tag()) {
+            futex.waiters.retain(|waiter| waiter.thread != thread);
+        }
     }
 }
