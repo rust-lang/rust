@@ -325,7 +325,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
 ) -> RelateResult<'tcx, Ty<'tcx>> {
     let tcx = relation.tcx();
     debug!("super_relate_tys: a={:?} b={:?}", a, b);
-    match (a.kind(), b.kind()) {
+    match (&a.kind(), &b.kind()) {
         (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_tys")

@@ -39,7 +39,7 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
 
     #[inline]
     fn variant(&self) -> &Self::Variant {
-        self.kind()
+        &self.kind
     }
 }
 

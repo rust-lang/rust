@@ -613,13 +613,13 @@ static_assert_size!(TyS<'_>, 32);
 
 impl<'tcx> Ord for TyS<'tcx> {
     fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
-        self.kind().cmp(other.kind())
+        self.kind().cmp(&other.kind())
     }
 }
 
 impl<'tcx> PartialOrd for TyS<'tcx> {
     fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
-        Some(self.kind().cmp(other.kind()))
+        Some(self.kind().cmp(&other.kind()))
     }
 }
 

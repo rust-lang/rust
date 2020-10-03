@@ -508,7 +508,7 @@ pub trait PrettyPrinter<'tcx>:
     fn pretty_print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         define_scoped_cx!(self);
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Bool => p!(write("bool")),
             ty::Char => p!(write("char")),
             ty::Int(t) => p!(write("{}", t.name_str())),
@@ -1118,7 +1118,7 @@ pub trait PrettyPrinter<'tcx>:
 
         let u8_type = self.tcx().types.u8;
 
-        match (ct, ty.kind()) {
+        match (ct, &ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
             (
                 ConstValue::Slice { data, start, end },
@@ -1171,7 +1171,7 @@ pub trait PrettyPrinter<'tcx>:
                 );
                 let fields = contents.fields.iter().copied();
 
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Array(..) => {
                         p!(write("["), comma_sep(fields), write("]"));
                     }

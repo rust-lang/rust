@@ -759,7 +759,7 @@ impl CanonicalUserType<'tcx> {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
-                                assert_eq!(*debruijn, ty::INNERMOST);
+                                assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == b.var
                             }
                             _ => false,
@@ -1943,7 +1943,7 @@ impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
-        &self.0.kind()
+        &self.0.kind
     }
 }
 // N.B., an `Interned<PredicateInner>` compares and hashes as a `PredicateKind`.

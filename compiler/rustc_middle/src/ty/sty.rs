@@ -82,7 +82,7 @@ impl BoundRegion {
 
 /// N.B., if you change this, you'll probably want to change the corresponding
 /// AST structure in `librustc_ast/ast.rs` as well.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable, Debug)]
 #[derive(HashStable)]
 #[rustc_diagnostic_item = "TyKind"]
 pub enum TyKind<'tcx> {
@@ -416,7 +416,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     pub fn sig(self) -> ty::PolyFnSig<'tcx> {
         let ty = self.sig_as_fn_ptr_ty();
         match ty.kind() {
-            ty::FnPtr(sig) => *sig,
+            ty::FnPtr(sig) => sig,
             _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind()),
         }
     }
@@ -1744,8 +1744,8 @@ impl RegionKind {
 /// Type utilities
 impl<'tcx> TyS<'tcx> {
     #[inline(always)]
-    pub fn kind(&self) -> &TyKind<'tcx> {
-        &self.kind
+    pub fn kind(&self) -> TyKind<'tcx> {
+        self.kind
     }
 
     #[inline(always)]
@@ -1860,13 +1860,13 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_bool(&self) -> bool {
-        *self.kind() == Bool
+        self.kind() == Bool
     }
 
     /// Returns `true` if this type is a `str`.
     #[inline]
     pub fn is_str(&self) -> bool {
-        *self.kind() == Str
+        self.kind() == Str
     }
 
     #[inline]
@@ -2125,8 +2125,8 @@ impl<'tcx> TyS<'tcx> {
             Adt(def, _) if def.is_box() => {
                 Some(TypeAndMut { ty: self.boxed_ty(), mutbl: hir::Mutability::Not })
             }
-            Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl: *mutbl }),
-            RawPtr(mt) if explicit => Some(*mt),
+            Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl }),
+            RawPtr(mt) if explicit => Some(mt),
             _ => None,
         }
     }
@@ -2141,8 +2141,8 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
-            FnDef(def_id, substs) => tcx.fn_sig(*def_id).subst(tcx, substs),
-            FnPtr(f) => *f,
+            FnDef(def_id, substs) => tcx.fn_sig(def_id).subst(tcx, substs),
+            FnPtr(f) => f,
             Error(_) => {
                 // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
@@ -2203,7 +2203,7 @@ impl<'tcx> TyS<'tcx> {
         match self.kind() {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
             TyKind::Generator(def_id, substs, _) => {
-                Some(substs.as_generator().variant_range(*def_id, tcx))
+                Some(substs.as_generator().variant_range(def_id, tcx))
             }
             _ => None,
         }
@@ -2227,7 +2227,7 @@ impl<'tcx> TyS<'tcx> {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
             TyKind::Generator(def_id, substs, _) => {
-                Some(substs.as_generator().discriminant_for_variant(*def_id, tcx, variant_index))
+                Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index))
             }
             _ => None,
         }

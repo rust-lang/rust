@@ -271,7 +271,7 @@ fn characteristic_def_id_of_type_cached<'a>(
     ty: Ty<'a>,
     visited: &mut MiniSet<Ty<'a>>,
 ) -> Option<DefId> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(adt_def, _) => Some(adt_def.did),
 
         ty::Dynamic(data, ..) => data.principal_def_id(),
