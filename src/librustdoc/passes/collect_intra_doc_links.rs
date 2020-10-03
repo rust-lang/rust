@@ -1577,13 +1577,12 @@ fn resolution_failure(
                     // See if this was a module: `[path]` or `[std::io::nope]`
                     if let Some(module) = last_found_module {
                         let note = if partial_res.is_some() {
+                            // Part of the link resolved; e.g. `std::io::nonexistent`
                             let module_name = collector.cx.tcx.item_name(module);
-                            format!(
-                                "the module `{}` contains no item named `{}`",
-                                module_name, unresolved
-                            )
+                            format!("no item named `{}` in module `{}`", unresolved, module_name)
                         } else {
-                            format!("there is no item named `{}` in scope", unresolved)
+                            // None of the link resolved; e.g. `Notimported`
+                            format!("no item named `{}` in scope", unresolved)
                         };
                         if let Some(span) = sp {
                             diag.span_label(span, &note);
