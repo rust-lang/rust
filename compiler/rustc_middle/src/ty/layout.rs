@@ -2787,8 +2787,9 @@ where
                     _ => return,
                 }
 
-                let max_by_val_size =
-                    if is_ret { call::max_ret_by_val(cx) } else { Pointer.size(cx) };
+                // Return structures up to 2 pointers in size by value, matching `ScalarPair`. LLVM
+                // will usually return these in 2 registers, which is more efficient than by-ref.
+                let max_by_val_size = if is_ret { Pointer.size(cx) * 2 } else { Pointer.size(cx) };
                 let size = arg.layout.size;
 
                 if arg.layout.is_unsized() || size > max_by_val_size {
