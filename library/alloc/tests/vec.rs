@@ -3,7 +3,7 @@ use std::cell::Cell;
 use std::collections::TryReserveError::*;
 use std::fmt::Debug;
 use std::iter::InPlaceIterable;
-use std::mem::size_of;
+use std::mem::{size_of, swap};
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
@@ -1941,4 +1941,16 @@ fn test_vec_macro_repeat() {
     let el = Box::new(1);
     let n = 3;
     assert_eq!(vec![el; n], vec![Box::new(1), Box::new(1), Box::new(1)]);
+}
+
+#[test]
+fn test_vec_swap() {
+    let mut a: Vec<isize> = vec![0, 1, 2, 3, 4, 5, 6];
+    a.swap(2, 4);
+    assert_eq!(a[2], 4);
+    assert_eq!(a[4], 2);
+    let mut n = 42;
+    swap(&mut n, &mut a[0]);
+    assert_eq!(a[0], 42);
+    assert_eq!(n, 0);
 }
