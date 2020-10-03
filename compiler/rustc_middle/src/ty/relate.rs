@@ -490,7 +490,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env()).val;
 
     // FIXME(eddyb) doesn't look like everything below checks that `a.ty == b.ty`.
-    // We could probably always assert it early, as `const` generic parameters
+    // We could probably always assert it early, as const generic parameters
     // are not allowed to depend on other generic parameters, i.e. are concrete.
     // (although there could be normalization differences)
 

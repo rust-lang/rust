@@ -1,0 +1,52 @@
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/closing-args-token.rs:11:9
+   |
+LL |     S::<5 + 2 >> 7>;
+   |         ^^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     S::<{ 5 + 2 } >> 7>;
+   |         ^       ^
+
+error: comparison operators cannot be chained
+  --> $DIR/closing-args-token.rs:11:16
+   |
+LL |     S::<5 + 2 >> 7>;
+   |                ^  ^
+   |
+help: split the comparison into two
+   |
+LL |     S::<5 + 2 >> 7 && 7>;
+   |                    ^^^^
+
+error: comparison operators cannot be chained
+  --> $DIR/closing-args-token.rs:17:20
+   |
+LL |     S::<{ 5 + 2 } >> 7>;
+   |                    ^  ^
+   |
+help: split the comparison into two
+   |
+LL |     S::<{ 5 + 2 } >> 7 && 7>;
+   |                        ^^^^
+
+error: expected expression, found `;`
+  --> $DIR/closing-args-token.rs:22:16
+   |
+LL |     T::<0 >= 3>;
+   |                ^ expected expression
+
+error: comparison operators cannot be chained
+  --> $DIR/closing-args-token.rs:28:12
+   |
+LL |     T::<x >>= 2 > 0>;
+   |            ^^   ^
+   |
+help: split the comparison into two
+   |
+LL |     T::<x >>= 2 && 2 > 0>;
+   |                 ^^^^
+
+error: aborting due to 5 previous errors
+
