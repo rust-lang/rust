@@ -9,6 +9,8 @@
 // If you see these lines in the pull request, feel free to call me stupid :P.
 #![allow(dead_code, unused_imports, unused_variables)]
 
+mod str_helpers;
+
 use std::sync::Arc;
 
 use hir_def::{
@@ -18,7 +20,7 @@ use hir_def::{
     item_tree::ItemTreeNode,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     src::HasSource,
-    AdtId, FunctionId, Lookup, ModuleDefId,
+    AdtId, EnumId, FunctionId, Lookup, ModuleDefId, StructId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::Name};
 use syntax::{
@@ -28,7 +30,7 @@ use syntax::{
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{CaseType, IncorrectCase},
+    diagnostics::{decl_check::str_helpers::*, CaseType, IncorrectCase},
     lower::CallableDefId,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
 };
@@ -191,7 +193,23 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         }
     }
 
-    fn validate_adt(&mut self, db: &dyn HirDatabase, adt: AdtId) {}
+    fn validate_adt(&mut self, db: &dyn HirDatabase, adt: AdtId) {
+        match adt {
+            AdtId::StructId(struct_id) => self.validate_struct(db, struct_id),
+            AdtId::EnumId(enum_id) => self.validate_enum(db, enum_id),
+            AdtId::UnionId(_) => {
+                // Unions aren't yet supported by this validator.
+            }
+        }
+    }
+
+    fn validate_struct(&mut self, db: &dyn HirDatabase, struct_id: StructId) {
+        let data = db.struct_data(struct_id);
+    }
+
+    fn validate_enum(&mut self, db: &dyn HirDatabase, enum_id: EnumId) {
+        let data = db.enum_data(enum_id);
+    }
 }
 
 fn pat_equals_to_name(pat: Option<ast::Pat>, name: &Name) -> bool {
@@ -199,33 +217,6 @@ fn pat_equals_to_name(pat: Option<ast::Pat>, name: &Name) -> bool {
         ident.to_string() == name.to_string()
     } else {
         false
-    }
-}
-
-fn to_lower_snake_case(ident: &str) -> Option<String> {
-    // First, assume that it's UPPER_SNAKE_CASE.
-    if let Some(normalized) = to_lower_snake_case_from_upper_snake_case(ident) {
-        return Some(normalized);
-    }
-
-    // Otherwise, assume that it's CamelCase.
-    let lower_snake_case = stdx::to_lower_snake_case(ident);
-
-    if lower_snake_case == ident {
-        None
-    } else {
-        Some(lower_snake_case)
-    }
-}
-
-fn to_lower_snake_case_from_upper_snake_case(ident: &str) -> Option<String> {
-    let is_upper_snake_case = ident.chars().all(|c| c.is_ascii_uppercase() || c == '_');
-
-    if is_upper_snake_case {
-        let string = ident.chars().map(|c| c.to_ascii_lowercase()).collect();
-        Some(string)
-    } else {
-        None
     }
 }
 
