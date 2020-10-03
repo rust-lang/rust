@@ -166,12 +166,13 @@ macro_rules! test_shuffle_lanes {
     }
 }
 //~^^^^^ ERROR: invalid monomorphization of `simd_shuffle2` intrinsic
-//~^^^^^^ ERROR: invalid monomorphization of `simd_shuffle4` intrinsic
-//~^^^^^^^ ERROR: invalid monomorphization of `simd_shuffle8` intrinsic
-//~^^^^^^^^ ERROR: invalid monomorphization of `simd_shuffle16` intrinsic
-//~^^^^^^^^^ ERROR: invalid monomorphization of `simd_shuffle32` intrinsic
-//~^^^^^^^^^^ ERROR: invalid monomorphization of `simd_shuffle64` intrinsic
+//~| ERROR: invalid monomorphization of `simd_shuffle4` intrinsic
+//~| ERROR: invalid monomorphization of `simd_shuffle8` intrinsic
+//~| ERROR: invalid monomorphization of `simd_shuffle16` intrinsic
+//~| ERROR: invalid monomorphization of `simd_shuffle32` intrinsic
+//~| ERROR: invalid monomorphization of `simd_shuffle64` intrinsic
 // Because the test is mostly embedded in a macro, all the errors have the same origin point.
+// And unfortunately, standard comments, as in the UI test harness, disappear in macros!
 
 fn main() {
     test_shuffle_lanes!(2, u8x2, simd_shuffle2, (2, 1));
