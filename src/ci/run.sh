@@ -132,7 +132,7 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   rm -rf build
 fi
 
-"$SRC"/configure "$RUST_CONFIGURE_ARGS"
+"$SRC"/configure $RUST_CONFIGURE_ARGS
 
 retry make prepare
 
