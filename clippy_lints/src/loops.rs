@@ -4,9 +4,10 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
-    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
+    indent_of, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment,
+    match_trait_method, match_type, match_var, multispan_sugg, qpath_res, single_segment_path, snippet,
+    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
+    span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -452,6 +453,31 @@ declare_clippy_lint! {
     "the same item is pushed inside of a for loop"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks whether a for loop has a single element.
+    ///
+    /// **Why is this bad?** There is no reason to have a loop of a
+    /// single element.
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let item1 = 2;
+    /// for item in &[item1] {
+    ///     println!("{}", item);
+    /// }
+    /// ```
+    /// could be written as
+    /// ```rust
+    /// let item1 = 2;
+    /// let item = &item1;
+    /// println!("{}", item);
+    /// ```
+    pub SINGLE_ELEMENT_LOOP,
+    complexity,
+    "there is no reason to have a single element loop"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     NEEDLESS_RANGE_LOOP,
@@ -469,6 +495,7 @@ declare_lint_pass!(Loops => [
     MUT_RANGE_BOUND,
     WHILE_IMMUTABLE_CONDITION,
     SAME_ITEM_PUSH,
+    SINGLE_ELEMENT_LOOP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -777,6 +804,7 @@ fn check_for_loop<'tcx>(
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
+    check_for_single_element_loop(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
 }
 
@@ -1862,6 +1890,43 @@ fn check_for_loop_over_map_kv<'tcx>(
                     },
                 );
             }
+        }
+    }
+}
+
+fn check_for_single_element_loop<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    arg: &'tcx Expr<'_>,
+    body: &'tcx Expr<'_>,
+    expr: &'tcx Expr<'_>,
+) {
+    if_chain! {
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg_expr) = arg.kind;
+        if let PatKind::Binding(.., target, _) = pat.kind;
+        if let ExprKind::Array(ref arg_expr_list) = arg_expr.kind;
+        if let [arg_expression] = arg_expr_list;
+        if let ExprKind::Path(ref list_item) = arg_expression.kind;
+        if let Some(list_item_name) = single_segment_path(list_item).map(|ps| ps.ident.name);
+        if let ExprKind::Block(ref block, _) = body.kind;
+        if !block.stmts.is_empty();
+
+        then {
+            let for_span = get_span_of_entire_for_loop(expr);
+            let mut block_str = snippet(cx, block.span, "..").into_owned();
+            block_str.remove(0);
+            block_str.pop();
+
+
+            span_lint_and_sugg(
+                cx,
+                SINGLE_ELEMENT_LOOP,
+                for_span,
+                "for loop over a single element",
+                "try",
+                format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
+                Applicability::MachineApplicable
+            )
         }
     }
 }
