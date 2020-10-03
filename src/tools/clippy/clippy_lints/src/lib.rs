@@ -179,7 +179,6 @@ mod derive;
 mod doc;
 mod double_comparison;
 mod double_parens;
-mod drop_bounds;
 mod drop_forget_ref;
 mod duration_subsec;
 mod else_if_without_else;
@@ -478,6 +477,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::regex_macro",
         "the regex! macro has been removed from the regex crate in 2018",
     );
+    store.register_removed(
+        "clippy::drop_bounds",
+        "this lint has been uplifted to rustc and is now called `drop_bounds`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
@@ -532,7 +535,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &doc::NEEDLESS_DOCTEST_MAIN,
         &double_comparison::DOUBLE_COMPARISONS,
         &double_parens::DOUBLE_PARENS,
-        &drop_bounds::DROP_BOUNDS,
         &drop_forget_ref::DROP_COPY,
         &drop_forget_ref::DROP_REF,
         &drop_forget_ref::FORGET_COPY,
@@ -959,7 +961,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box strings::StringLitAsBytes);
     store.register_late_pass(|| box derive::Derive);
     store.register_late_pass(|| box types::CharLitAsU8);
-    store.register_late_pass(|| box drop_bounds::DropBounds);
     store.register_late_pass(|| box get_last_with_len::GetLastWithLen);
     store.register_late_pass(|| box drop_forget_ref::DropForgetRef);
     store.register_late_pass(|| box empty_enum::EmptyEnum);
@@ -1282,7 +1283,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&doc::NEEDLESS_DOCTEST_MAIN),
         LintId::of(&double_comparison::DOUBLE_COMPARISONS),
         LintId::of(&double_parens::DOUBLE_PARENS),
-        LintId::of(&drop_bounds::DROP_BOUNDS),
         LintId::of(&drop_forget_ref::DROP_COPY),
         LintId::of(&drop_forget_ref::DROP_REF),
         LintId::of(&drop_forget_ref::FORGET_COPY),
@@ -1714,7 +1714,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&copies::IF_SAME_THEN_ELSE),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
         LintId::of(&derive::DERIVE_ORD_XOR_PARTIAL_ORD),
-        LintId::of(&drop_bounds::DROP_BOUNDS),
         LintId::of(&drop_forget_ref::DROP_COPY),
         LintId::of(&drop_forget_ref::DROP_REF),
         LintId::of(&drop_forget_ref::FORGET_COPY),

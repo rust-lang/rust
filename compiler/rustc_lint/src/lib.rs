@@ -53,6 +53,7 @@ mod non_ascii_idents;
 mod nonstandard_style;
 mod passes;
 mod redundant_semicolon;
+mod traits;
 mod types;
 mod unused;
 
@@ -75,6 +76,7 @@ use internal::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
 use redundant_semicolon::*;
+use traits::*;
 use types::*;
 use unused::*;
 
@@ -157,6 +159,7 @@ macro_rules! late_lint_passes {
                 MissingDebugImplementations: MissingDebugImplementations::default(),
                 ArrayIntoIter: ArrayIntoIter,
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
+                DropTraitConstraints: DropTraitConstraints,
             ]
         );
     };
