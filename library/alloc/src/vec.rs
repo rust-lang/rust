@@ -1077,6 +1077,7 @@ impl<T> Vec<T> {
     ///
     /// # Examples
     /// ```
+    /// #![feature(vec_try_remove)]
     /// let mut v = vec![1, 2, 3];
     /// assert_eq!(v.try_remove(0), Some(1));
     /// assert_eq!(v.try_remove(2), None);
