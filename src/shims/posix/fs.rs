@@ -1372,13 +1372,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match result {
             Ok(resolved) => {
                 let mut path_bytes = this.os_str_to_bytes(resolved.as_ref())?;
-                if path_bytes.len() > bufsize as usize {
-                    path_bytes = &path_bytes[..(bufsize as usize)]
+                let bufsize: usize = bufsize.try_into().unwrap();
+                if path_bytes.len() > bufsize {
+                    path_bytes = &path_bytes[..bufsize]
                 }
                 // 'readlink' truncates the resolved path if
                 // the provided buffer is not large enough
                 this.memory.write_bytes(buf, path_bytes.iter().copied())?;
-                Ok(path_bytes.len() as i64)
+                Ok(path_bytes.len().try_into().unwrap())
             }
             Err(e) => {
                 this.set_last_error_from_io_error(e)?;
