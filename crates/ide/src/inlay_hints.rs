@@ -947,13 +947,46 @@ fn main() {
         );
         check(
             r#"
+//- /main.rs crate:main deps:core
+pub struct Vec<T> {}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self { Vec {} }
+    pub fn push(&mut self, t: T) {}
+}
+
+impl<T> IntoIterator for Vec<T> {
+    type Item=T;
+}
+
 fn main() {
-    let data = &[1i32, 2, 3];
-      //^^^^ &[i32; _]
-    for i in
+    let mut data = Vec::new();
+      //^^^^^^^^ Vec<&str>
+    data.push("foo");
+    for i in 
 
     println!("Unit expr");
-}"#,
+}
+
+//- /core.rs crate:core
+#[prelude_import] use iter::*;
+mod iter {
+    trait IntoIterator {
+        type Item;
+    }
+}
+//- /alloc.rs crate:alloc deps:core
+mod collections {
+    struct Vec<T> {}
+    impl<T> Vec<T> {
+        fn new() -> Self { Vec {} }
+        fn push(&mut self, t: T) { }
+    }
+    impl<T> IntoIterator for Vec<T> {
+        type Item=T;
+    }
+}
+"#,
         );
     }
 
@@ -961,14 +994,48 @@ fn main() {
     fn complete_for_hint() {
         check(
             r#"
+//- /main.rs crate:main deps:core
+pub struct Vec<T> {}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self { Vec {} }
+    pub fn push(&mut self, t: T) {}
+}
+
+impl<T> IntoIterator for Vec<T> {
+    type Item=T;
+}
+
 fn main() {
-    let data = &[ 1, 2, 3 ];
-      //^^^^ &[i32; _]
-    for i in data.into_iter() {
-      //^ &i32
-      println!("{}", i);
+    let mut data = Vec::new();
+      //^^^^^^^^ Vec<&str>
+    data.push("foo");
+    for i in data {
+      //^ &str
+      let z = i;
+        //^ &str
     }
-}"#,
+}
+
+//- /core.rs crate:core
+#[prelude_import] use iter::*;
+mod iter {
+    trait IntoIterator {
+        type Item;
+    }
+}
+//- /alloc.rs crate:alloc deps:core
+mod collections {
+    struct Vec<T> {}
+    impl<T> Vec<T> {
+        fn new() -> Self { Vec {} }
+        fn push(&mut self, t: T) { }
+    }
+    impl<T> IntoIterator for Vec<T> {
+        type Item=T;
+    }
+}
+"#,
         );
     }
 }
