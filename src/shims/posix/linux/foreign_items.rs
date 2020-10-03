@@ -113,16 +113,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Dynamically invoked syscalls
             "syscall" => {
-                // FIXME: The libc syscall() function is a variadic function.
-                // It's valid to call it with more arguments than a syscall
-                // needs, so none of these syscalls should use check_arg_count.
-                // It's even valid to call it with the wrong type of arguments,
-                // as long as they'd end up in the same place with the calling
-                // convention used. (E.g. using a `usize` instead of a pointer.)
-                // It's not directly clear which number, size, and type of arguments
-                // are acceptable in which cases and which aren't. (E.g. some
-                // types might take up the space of two registers.)
-                // So this needs to be researched first.
+                // The syscall variadic function is legal to call with more arguments than needed,
+                // extra arguments are simply ignored. However, all arguments need to be scalars;
+                // other types might be treated differently by the calling convention.
+                for arg in args {
+                    if !matches!(arg.layout.abi, rustc_target::abi::Abi::Scalar(_)) {
+                        throw_ub_format!("`syscall` arguments must all have scalar layout, but {} does not", arg.layout.ty);
+                    }
+                }
 
                 let sys_getrandom = this
                     .eval_libc("SYS_getrandom")?
@@ -144,22 +142,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                     id if id == sys_getrandom => {
                         // The first argument is the syscall id, so skip over it.
-                        let &[_, ptr, len, flags] = check_arg_count(args)?;
-                        getrandom(this, ptr, len, flags, dest)?;
+                        if args.len() < 4 {
+                            throw_ub_format!("incorrect number of arguments for `getrandom` syscall: got {}, expected at least 4", args.len());
+                        }
+                        getrandom(this, args[1], args[2], args[3], dest)?;
                     }
                     // `statx` is used by `libstd` to retrieve metadata information on `linux`
                     // instead of using `stat`,`lstat` or `fstat` as on `macos`.
                     id if id == sys_statx => {
                         // The first argument is the syscall id, so skip over it.
-                        let &[_, dirfd, pathname, flags, mask, statxbuf] = check_arg_count(args)?;
-                        let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
+                        if args.len() < 6 {
+                            throw_ub_format!("incorrect number of arguments for `statx` syscall: got {}, expected at least 6", args.len());
+                        }
+                        let result = this.linux_statx(args[1], args[2], args[3], args[4], args[5])?;
                         this.write_scalar(Scalar::from_machine_isize(result.into(), this), dest)?;
                     }
                     // `futex` is used by some synchonization primitives.
                     id if id == sys_futex => {
                         futex(this, args, dest)?;
                     }
-                    id => throw_unsup_format!("miri does not support syscall ID {}", id),
+                    id => throw_unsup_format!("Miri does not support syscall ID {}", id),
                 }
             }
 

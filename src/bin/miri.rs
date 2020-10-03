@@ -221,7 +221,7 @@ fn main() {
                             ),
                             FromHexError::OddLength =>
                                 panic!("-Zmiri-seed should have an even number of digits"),
-                            err => panic!("Unknown error decoding -Zmiri-seed as hex: {:?}", err),
+                            err => panic!("unknown error decoding -Zmiri-seed as hex: {:?}", err),
                         });
                     if seed_raw.len() > 8 {
                         panic!(format!(
