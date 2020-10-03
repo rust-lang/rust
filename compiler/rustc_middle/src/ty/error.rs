@@ -353,7 +353,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         );
                     }
                 }
-                match (&values.expected.kind(), &values.found.kind()) {
+                match (values.expected.kind(), values.found.kind()) {
                     (ty::Float(_), ty::Infer(ty::IntVar(_))) => {
                         if let Ok(
                             // Issue #53280
@@ -372,11 +372,11 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     (ty::Param(expected), ty::Param(found)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let e_span = self.def_span(generics.type_param(expected, self).def_id);
+                        let e_span = self.def_span(generics.type_param(&expected, self).def_id);
                         if !sp.contains(e_span) {
                             db.span_label(e_span, "expected type parameter");
                         }
-                        let f_span = self.def_span(generics.type_param(found, self).def_id);
+                        let f_span = self.def_span(generics.type_param(&found, self).def_id);
                         if !sp.contains(f_span) {
                             db.span_label(f_span, "found type parameter");
                         }
@@ -395,14 +395,14 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        let p_span = self.def_span(generics.type_param(&p, self).def_id);
                         if !sp.contains(p_span) {
                             db.span_label(p_span, "this type parameter");
                         }
                         let hir = self.hir();
                         let mut note = true;
                         if let Some(generics) = generics
-                            .type_param(p, self)
+                            .type_param(&p, self)
                             .def_id
                             .as_local()
                             .map(|id| hir.local_def_id_to_hir_id(id))
@@ -437,7 +437,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     (ty::Param(p), ty::Dynamic(..) | ty::Opaque(..))
                     | (ty::Dynamic(..) | ty::Opaque(..), ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        let p_span = self.def_span(generics.type_param(&p, self).def_id);
                         if !sp.contains(p_span) {
                             db.span_label(p_span, "this type parameter");
                         }
@@ -477,7 +477,7 @@ impl<T> Trait<T> for X {
                     }
                     (ty::Param(p), ty::Closure(..) | ty::Generator(..)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        let p_span = self.def_span(generics.type_param(&p, self).def_id);
                         if !sp.contains(p_span) {
                             db.span_label(p_span, "this type parameter");
                         }
@@ -489,7 +489,7 @@ impl<T> Trait<T> for X {
                     }
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        let p_span = self.def_span(generics.type_param(&p, self).def_id);
                         if !sp.contains(p_span) {
                             db.span_label(p_span, "this type parameter");
                         }
@@ -497,7 +497,7 @@ impl<T> Trait<T> for X {
                     (ty::Projection(proj_ty), _) => {
                         self.expected_projection(
                             db,
-                            proj_ty,
+                            &proj_ty,
                             values,
                             body_owner_def_id,
                             &cause.code,
@@ -512,7 +512,7 @@ impl<T> Trait<T> for X {
                             db,
                             &msg,
                             body_owner_def_id,
-                            proj_ty,
+                            &proj_ty,
                             values.expected,
                         ) {
                             db.help(&msg);

@@ -1118,7 +1118,7 @@ pub trait PrettyPrinter<'tcx>:
 
         let u8_type = self.tcx().types.u8;
 
-        match (ct, &ty.kind()) {
+        match (ct, ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
             (
                 ConstValue::Slice { data, start, end },
@@ -1142,7 +1142,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("{:?}", s));
                 Ok(self)
             }
-            (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
+            (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if t == u8_type => {
                 let n = n.val.try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let n = Size::from_bytes(n);

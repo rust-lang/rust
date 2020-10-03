@@ -39,6 +39,7 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
 
     #[inline]
     fn variant(&self) -> &Self::Variant {
+        // FIXME(@lcnr): Look into instead returning `Self::Variant` directly here
         &self.kind
     }
 }
