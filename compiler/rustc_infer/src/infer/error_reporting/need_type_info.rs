@@ -55,15 +55,13 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
                         || match (inner.unpack(), self.target.unpack()) {
                             (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
                                 match (inner_ty.kind(), target_ty.kind()) {
-                                    (
-                                        &ty::Infer(ty::TyVar(a_vid)),
-                                        &ty::Infer(ty::TyVar(b_vid)),
-                                    ) => self
-                                        .infcx
-                                        .inner
-                                        .borrow_mut()
-                                        .type_variables()
-                                        .sub_unified(a_vid, b_vid),
+                                    (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
+                                        self.infcx
+                                            .inner
+                                            .borrow_mut()
+                                            .type_variables()
+                                            .sub_unified(a_vid, b_vid)
+                                    }
                                     _ => false,
                                 }
                             }
@@ -239,7 +237,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> InferenceDiagnosticsData {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
-                if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
+                if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind() {
                     let mut inner = self.inner.borrow_mut();
                     let ty_vars = &inner.type_variables();
                     let var_origin = ty_vars.var_origin(ty_vid);
@@ -428,7 +426,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             (_, Some(_)) => String::new(),
             (Some(ty), _) if ty.is_closure() => {
                 let substs =
-                    if let ty::Closure(_, substs) = *ty.kind() { substs } else { unreachable!() };
+                    if let ty::Closure(_, substs) = ty.kind() { substs } else { unreachable!() };
                 let fn_sig = substs.as_closure().sig();
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
@@ -464,7 +462,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let suffix = match local_visitor.found_node_ty {
             Some(ty) if ty.is_closure() => {
                 let substs =
-                    if let ty::Closure(_, substs) = *ty.kind() { substs } else { unreachable!() };
+                    if let ty::Closure(_, substs) = ty.kind() { substs } else { unreachable!() };
                 let fn_sig = substs.as_closure().sig();
                 let ret = fn_sig.output().skip_binder().to_string();
 

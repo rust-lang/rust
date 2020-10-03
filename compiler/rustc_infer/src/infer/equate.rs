@@ -78,15 +78,15 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
         debug!("{}.tys: replacements ({:?}, {:?})", self.tag(), a, b);
 
         match (a.kind(), b.kind()) {
-            (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
+            (ty::Infer(TyVar(a_id)), ty::Infer(TyVar(b_id))) => {
                 infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
             }
 
-            (&ty::Infer(TyVar(a_id)), _) => {
+            (ty::Infer(TyVar(a_id)), _) => {
                 self.fields.instantiate(b, RelationDir::EqTo, a_id, self.a_is_expected)?;
             }
 
-            (_, &ty::Infer(TyVar(b_id))) => {
+            (_, ty::Infer(TyVar(b_id))) => {
                 self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
             }
 

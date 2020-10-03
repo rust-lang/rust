@@ -77,7 +77,7 @@ where
         // is (e.g.) `Box<i32>`. A more obvious solution might be to
         // iterate on the subtype obligations that are returned, but I
         // think this suffices. -nmatsakis
-        (&ty::Infer(TyVar(..)), _) => {
+        (ty::Infer(TyVar(..)), _) => {
             let v = infcx.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::LatticeVariable,
                 span: this.cause().span,
@@ -85,7 +85,7 @@ where
             this.relate_bound(v, b, a)?;
             Ok(v)
         }
-        (_, &ty::Infer(TyVar(..))) => {
+        (_, ty::Infer(TyVar(..))) => {
             let v = infcx.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::LatticeVariable,
                 span: this.cause().span,

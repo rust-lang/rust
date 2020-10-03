@@ -569,7 +569,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
-                if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) =
+                if let (ty::Adt(exp_adt, _), ty::Adt(found_adt, _)) =
                     (exp_found.expected.kind(), exp_found.found.kind())
                 {
                     report_path_match(err, exp_adt.did, found_adt.did);
@@ -856,7 +856,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
                 return Some(());
             }
-            if let &ty::Adt(def, _) = ta.kind() {
+            if let ty::Adt(def, _) = ta.kind() {
                 let path_ = self.tcx.def_path_str(def.did);
                 if path_ == other_path {
                     self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
@@ -1042,16 +1042,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // helper functions
         fn equals<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
             match (a.kind(), b.kind()) {
-                (a, b) if *a == *b => true,
-                (&ty::Int(_), &ty::Infer(ty::InferTy::IntVar(_)))
+                (a, b) if a == b => true,
+                (ty::Int(_), ty::Infer(ty::InferTy::IntVar(_)))
                 | (
-                    &ty::Infer(ty::InferTy::IntVar(_)),
-                    &ty::Int(_) | &ty::Infer(ty::InferTy::IntVar(_)),
+                    ty::Infer(ty::InferTy::IntVar(_)),
+                    ty::Int(_) | ty::Infer(ty::InferTy::IntVar(_)),
                 )
-                | (&ty::Float(_), &ty::Infer(ty::InferTy::FloatVar(_)))
+                | (ty::Float(_), ty::Infer(ty::InferTy::FloatVar(_)))
                 | (
-                    &ty::Infer(ty::InferTy::FloatVar(_)),
-                    &ty::Float(_) | &ty::Infer(ty::InferTy::FloatVar(_)),
+                    ty::Infer(ty::InferTy::FloatVar(_)),
+                    ty::Float(_) | ty::Infer(ty::InferTy::FloatVar(_)),
                 ) => true,
                 _ => false,
             }
@@ -1075,7 +1075,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // process starts here
         match (t1.kind(), t2.kind()) {
-            (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
+            (ty::Adt(def1, sub1), ty::Adt(def2, sub2)) => {
                 let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
                 let sub_no_defaults_2 = self.strip_generic_default_params(def2.did, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
@@ -1270,13 +1270,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             // When finding T != &T, highlight only the borrow
-            (&ty::Ref(r1, ref_ty1, mutbl1), _) if equals(&ref_ty1, &t2) => {
+            (ty::Ref(r1, ref_ty1, mutbl1), _) if equals(&ref_ty1, &t2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 push_ty_ref(&r1, ref_ty1, mutbl1, &mut values.0);
                 values.1.push_normal(t2.to_string());
                 values
             }
-            (_, &ty::Ref(r2, ref_ty2, mutbl2)) if equals(&t1, &ref_ty2) => {
+            (_, ty::Ref(r2, ref_ty2, mutbl2)) if equals(&t1, &ref_ty2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 values.0.push_normal(t1.to_string());
                 push_ty_ref(&r2, ref_ty2, mutbl2, &mut values.1);
@@ -1284,7 +1284,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             // When encountering &T != &mut T, highlight only the borrow
-            (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2))
+            (ty::Ref(r1, ref_ty1, mutbl1), ty::Ref(r2, ref_ty2, mutbl2))
                 if equals(&ref_ty1, &ref_ty2) =>
             {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
@@ -1294,7 +1294,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             // When encountering tuples of the same size, highlight only the differing types
-            (&ty::Tuple(substs1), &ty::Tuple(substs2)) if substs1.len() == substs2.len() => {
+            (ty::Tuple(substs1), ty::Tuple(substs2)) if substs1.len() == substs2.len() => {
                 let mut values =
                     (DiagnosticStyledString::normal("("), DiagnosticStyledString::normal("("));
                 let len = substs1.len();
@@ -1315,11 +1315,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+                let sig1 = self.tcx.fn_sig(did1).subst(self.tcx, substs1);
+                let sig2 = self.tcx.fn_sig(did2).subst(self.tcx, substs2);
                 let mut values = self.cmp_fn_sig(&sig1, &sig2);
-                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did1, substs1));
-                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did2, substs2));
+                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(did1, substs1));
+                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(did2, substs2));
                 let same_path = path1 == path2;
                 values.0.push(path1, !same_path);
                 values.1.push(path2, !same_path);
@@ -1327,26 +1327,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, substs1), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
-                let mut values = self.cmp_fn_sig(&sig1, sig2);
+                let sig1 = self.tcx.fn_sig(did1).subst(self.tcx, substs1);
+                let mut values = self.cmp_fn_sig(&sig1, &sig2);
                 values.0.push_highlighted(format!(
                     " {{{}}}",
-                    self.tcx.def_path_str_with_substs(*did1, substs1)
+                    self.tcx.def_path_str_with_substs(did1, substs1)
                 ));
                 values
             }
 
             (ty::FnPtr(sig1), ty::FnDef(did2, substs2)) => {
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
-                let mut values = self.cmp_fn_sig(sig1, &sig2);
+                let sig2 = self.tcx.fn_sig(did2).subst(self.tcx, substs2);
+                let mut values = self.cmp_fn_sig(&sig1, &sig2);
                 values.1.push_normal(format!(
                     " {{{}}}",
-                    self.tcx.def_path_str_with_substs(*did2, substs2)
+                    self.tcx.def_path_str_with_substs(did2, substs2)
                 ));
                 values
             }
 
-            (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(sig1, sig2),
+            (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(&sig1, &sig2),
 
             _ => {
                 if t1 == t2 {
@@ -1542,7 +1542,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             self.tcx
                                 .sess
                                 .source_map()
-                                .mk_substr_filename(self.tcx.def_span(*def_id)),
+                                .mk_substr_filename(self.tcx.def_span(def_id)),
                         ),
                         (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
                         (false, _) => "".to_string(),
@@ -1623,7 +1623,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             exp_span, exp_found.expected, exp_found.found
         );
 
-        if let ty::Opaque(def_id, _) = *exp_found.expected.kind() {
+        if let ty::Opaque(def_id, _) = exp_found.expected.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output
             let item_def_id = self
@@ -1678,9 +1678,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) =
             (exp_found.expected.kind(), exp_found.found.kind())
         {
-            if let ty::Adt(found_def, found_substs) = *found_ty.kind() {
+            if let ty::Adt(found_def, found_substs) = found_ty.kind() {
                 let path_str = format!("{:?}", exp_def);
-                if exp_def == &found_def {
+                if exp_def == found_def {
                     let opt_msg = "you can convert from `&Option<T>` to `Option<&T>` using \
                                        `.as_ref()`";
                     let result_msg = "you can convert from `&Result<T, E>` to \
@@ -1697,7 +1697,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     {
                         let mut show_suggestion = true;
                         for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
-                            match *exp_ty.kind() {
+                            match exp_ty.kind() {
                                 ty::Ref(_, exp_ty, _) => {
                                     match (exp_ty.kind(), found_ty.kind()) {
                                         (_, ty::Param(_))
@@ -2291,7 +2291,7 @@ impl TyCategory {
     }
 
     pub fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
             ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
             ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),

@@ -46,7 +46,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         ty: Ty<'tcx>,
         visited: &mut MiniSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Param(p) => self.param_bound(p),
             ty::Projection(data) => self.projection_bound(data, visited),
             ty::FnDef(_, substs) => {

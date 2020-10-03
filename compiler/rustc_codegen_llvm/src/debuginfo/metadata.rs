@@ -572,7 +572,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
 
     debug!("type_metadata: {:?}", t);
 
-    let ptr_metadata = |ty: Ty<'tcx>| match *ty.kind() {
+    let ptr_metadata = |ty: Ty<'tcx>| match ty.kind() {
         ty::Slice(typ) => Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)),
         ty::Str => Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span)),
         ty::Dynamic(..) => Ok(MetadataCreationResult::new(
@@ -592,7 +592,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
         }
     };
 
-    let MetadataCreationResult { metadata, already_stored_in_typemap } = match *t.kind() {
+    let MetadataCreationResult { metadata, already_stored_in_typemap } = match t.kind() {
         ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
@@ -1457,14 +1457,14 @@ struct EnumMemberDescriptionFactory<'ll, 'tcx> {
 
 impl EnumMemberDescriptionFactory<'ll, 'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
-        let generator_variant_info_data = match *self.enum_type.kind() {
+        let generator_variant_info_data = match self.enum_type.kind() {
             ty::Generator(def_id, ..) => {
                 Some(generator_layout_and_saved_local_names(cx.tcx, def_id))
             }
             _ => None,
         };
 
-        let variant_info_for = |index: VariantIdx| match *self.enum_type.kind() {
+        let variant_info_for = |index: VariantIdx| match self.enum_type.kind() {
             ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
             ty::Generator(def_id, _, _) => {
                 let (generator_layout, generator_saved_local_names) =
@@ -2327,7 +2327,7 @@ fn set_members_of_composite_type(
 
 /// Computes the type parameters for a type, if any, for the given metadata.
 fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'ll DIArray> {
-    if let ty::Adt(def, substs) = *ty.kind() {
+    if let ty::Adt(def, substs) = ty.kind() {
         if substs.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did);
             let names = get_parameter_names(cx, generics);

@@ -85,7 +85,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let (def_id, substs) = match *callee_ty.kind() {
+        let (def_id, substs) = match callee_ty.kind() {
             ty::FnDef(def_id, substs) => (def_id, substs),
             _ => bug!("expected fn item type, found {}", callee_ty),
         };
@@ -1124,7 +1124,7 @@ fn generic_simd_intrinsic(
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
     fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: u64, no_pointers: usize) -> String {
         let p0s: String = "p0".repeat(no_pointers);
-        match *elem_ty.kind() {
+        match elem_ty.kind() {
             ty::Int(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
             ty::Uint(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
             ty::Float(v) => format!("v{}{}f{}", vec_len, p0s, v.bit_width()),
@@ -1139,7 +1139,7 @@ fn generic_simd_intrinsic(
         mut no_pointers: usize,
     ) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
-        let mut elem_ty = match *elem_ty.kind() {
+        let mut elem_ty = match elem_ty.kind() {
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),
@@ -1681,7 +1681,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
-        let (signed, elem_width, elem_ty) = match *in_elem.kind() {
+        let (signed, elem_width, elem_ty) = match in_elem.kind() {
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_uint_from_ty(i)),
             _ => {

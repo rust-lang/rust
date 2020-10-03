@@ -154,16 +154,16 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
     let (source, target) =
         cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, cx.param_env());
     match (source.kind(), target.kind()) {
-        (&ty::Array(_, len), &ty::Slice(_)) => {
+        (ty::Array(_, len), ty::Slice(_)) => {
             cx.const_usize(len.eval_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
-        (&ty::Dynamic(..), &ty::Dynamic(..)) => {
+        (ty::Dynamic(..), ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::Dynamic(ref data, ..)) => {
+        (_, ty::Dynamic(ref data, ..)) => {
             let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target)).field(cx, FAT_PTR_EXTRA);
             cx.const_ptrcast(
                 meth::get_vtable(cx, source, data.principal()),
@@ -183,13 +183,13 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (src_ty.kind(), dst_ty.kind()) {
-        (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
-        | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
+        (ty::Ref(_, a, _), ty::Ref(_, b, _) | ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
+        | (ty::RawPtr(ty::TypeAndMut { ty: a, .. }), ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bx.cx().type_is_sized(a));
             let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+        (ty::Adt(def_a, _), ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             let src_layout = bx.cx().layout_of(src_ty);
@@ -232,7 +232,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     match (src_ty.kind(), dst_ty.kind()) {
-        (&ty::Ref(..), &ty::Ref(..) | &ty::RawPtr(..)) | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
+        (ty::Ref(..), ty::Ref(..) | ty::RawPtr(..)) | (ty::RawPtr(..), ty::RawPtr(..)) => {
             let (base, info) = match bx.load_operand(src).val {
                 OperandValue::Pair(base, info) => {
                     // fat-ptr to fat-ptr unsize preserves the vtable
@@ -250,7 +250,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             OperandValue::Pair(base, info).store(bx, dst);
         }
 
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+        (ty::Adt(def_a, _), ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             for i in 0..def_a.variants[VariantIdx::new(0)].fields.len() {
