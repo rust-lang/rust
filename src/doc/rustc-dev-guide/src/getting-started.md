@@ -390,8 +390,8 @@ in their free time. This means that they can take some time to respond and revie
 your PR. It also means that reviewers can miss some PRs that are assigned to them.
 
 To try to move PRs forward, the Triage WG regularly goes through all PRs that
-are waiting for review and haven't been discussed for at least a week. If you
-don't get a review within around 10 days, feel free to ask the Triage WG on
+are waiting for review and haven't been discussed for at least 2 weeks. If you
+don't get a review within 2 weeks, feel free to ask the Triage WG on
 Zulip ([#t-release/triage]). They have knowledge of when to ping, who might be
 on vacation, etc.
 
