@@ -170,7 +170,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         debug!("deduce_expectations_from_expected_type(expected_ty={:?})", expected_ty);
 
-        match *expected_ty.kind() {
+        match expected_ty.kind() {
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
                     let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
@@ -611,7 +611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // be inferring.
         let ret_ty = ret_coercion.borrow().expected_ty();
         let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
-        let ret_vid = match *ret_ty.kind() {
+        let ret_vid = match ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => ret_vid,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),

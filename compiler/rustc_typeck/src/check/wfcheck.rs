@@ -1001,7 +1001,7 @@ fn check_opaque_types<'fcx, 'tcx>(
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
         ty_op: |ty| {
-            if let ty::Opaque(def_id, substs) = *ty.kind() {
+            if let ty::Opaque(def_id, substs) = ty.kind() {
                 trace!("check_opaque_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
 

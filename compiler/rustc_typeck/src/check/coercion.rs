@@ -197,7 +197,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         //
         // Note: does not attempt to resolve type variables we encounter.
         // See above for details.
-        match *b.kind() {
+        match b.kind() {
             ty::RawPtr(mt_b) => {
                 return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
             }
@@ -207,7 +207,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => {}
         }
 
-        match *a.kind() {
+        match a.kind() {
             ty::FnDef(..) => {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
@@ -252,7 +252,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
-        let (r_a, mt_a) = match *a.kind() {
+        let (r_a, mt_a) = match a.kind() {
             ty::Ref(r_a, ty, mutbl) => {
                 let mt_a = ty::TypeAndMut { ty, mutbl };
                 coerce_mutbls(mt_a.mutbl, mutbl_b)?;
@@ -491,7 +491,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
         let reborrow = match (source.kind(), target.kind()) {
-            (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
+            (ty::Ref(_, ty_a, mutbl_a), ty::Ref(_, _, mutbl_b)) => {
                 coerce_mutbls(mutbl_a, mutbl_b)?;
 
                 let coercion = Coercion(self.cause.span);
@@ -515,7 +515,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     },
                 ))
             }
-            (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(ty::TypeAndMut { mutbl: mt_b, .. })) => {
+            (ty::Ref(_, ty_a, mt_a), ty::RawPtr(ty::TypeAndMut { mutbl: mt_b, .. })) => {
                 coerce_mutbls(mt_a, mt_b)?;
 
                 Some((
@@ -721,7 +721,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
-                if let ty::FnDef(def_id, _) = *a.kind() {
+                if let ty::FnDef(def_id, _) = a.kind() {
                     if b_sig.unsafety() == hir::Unsafety::Normal
                         && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                     {
@@ -802,7 +802,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> CoerceResult<'tcx> {
         debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
 
-        let (is_ref, mt_a) = match *a.kind() {
+        let (is_ref, mt_a) = match a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::RawPtr(mt) => (false, mt),
             _ => return self.unify_and(a, b, identity),
@@ -1024,7 +1024,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let noop = match self.typeck_results.borrow().expr_adjustments(expr) {
                 &[Adjustment { kind: Adjust::Deref(_), .. }, Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. }] =>
                 {
-                    match *self.node_ty(expr.hir_id).kind() {
+                    match self.node_ty(expr.hir_id).kind() {
                         ty::Ref(_, _, mt_orig) => {
                             let mutbl_adj: hir::Mutability = mutbl_adj.into();
                             // Reborrow that we can safely ignore, because

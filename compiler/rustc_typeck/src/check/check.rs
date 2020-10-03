@@ -237,15 +237,15 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl() {
         if panic_impl_did == hir.local_def_id(fn_id).to_def_id() {
             if let Some(panic_info_did) = tcx.lang_items().panic_info() {
-                if *declared_ret_ty.kind() != ty::Never {
+                if declared_ret_ty.kind() != ty::Never {
                     sess.span_err(decl.output.span(), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
                 let span = hir.span(fn_id);
                 if inputs.len() == 1 {
-                    let arg_is_panic_info = match *inputs[0].kind() {
-                        ty::Ref(region, ty, mutbl) => match *ty.kind() {
+                    let arg_is_panic_info = match inputs[0].kind() {
+                        ty::Ref(region, ty, mutbl) => match ty.kind() {
                             ty::Adt(ref adt, _) => {
                                 adt.did == panic_info_did
                                     && mutbl == hir::Mutability::Not
@@ -281,7 +281,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(alloc_error_handler_did) = tcx.lang_items().oom() {
         if alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id() {
             if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
-                if *declared_ret_ty.kind() != ty::Never {
+                if declared_ret_ty.kind() != ty::Never {
                     sess.span_err(decl.output.span(), "return type should be `!`");
                 }
 
@@ -1316,7 +1316,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
                 struct VisitTypes(Vec<DefId>);
                 impl<'tcx> ty::fold::TypeVisitor<'tcx> for VisitTypes {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                        match *t.kind() {
+                        match t.kind() {
                             ty::Opaque(def, _) => {
                                 self.0.push(def);
                                 false

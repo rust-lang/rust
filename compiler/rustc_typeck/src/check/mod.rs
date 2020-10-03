@@ -375,7 +375,7 @@ where
         }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Opaque(def_id, substs) => {
                     debug!("fixup_opaque_types: found type {:?}", ty);
                     // Here, we replace any inference variables that occur within

@@ -342,7 +342,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
+        while let ty::Ref(_, inner_ty, inner_mutability) = expected.kind() {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
@@ -1557,7 +1557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // to avoid creating needless variables. This also helps with
             // the bad  interactions of the given hack detailed in (note_1).
             debug!("check_pat_ref: expected={:?}", expected);
-            match *expected.kind() {
+            match expected.kind() {
                 ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
                 _ => {
                     let inner_ty = self.next_ty_var(TypeVariableOrigin {
@@ -1613,7 +1613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let expected = self.structurally_resolved_type(span, expected);
-        let (element_ty, opt_slice_ty, inferred) = match *expected.kind() {
+        let (element_ty, opt_slice_ty, inferred) = match expected.kind() {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;

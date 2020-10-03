@@ -410,8 +410,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
 
         match (&expr.kind, expected.kind(), checked_ty.kind()) {
-            (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
-                (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
+            (_, ty::Ref(_, exp, _), ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
+                (ty::Str, ty::Array(arr, _) | ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
                             if let Some(src) = self.replace_prefix(&src, "b\"", "\"") {
@@ -425,7 +425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
+                (ty::Array(arr, _) | ty::Slice(arr), ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
                             if let Some(src) = self.replace_prefix(&src, "\"", "b\"") {
@@ -441,7 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {}
             },
-            (_, &ty::Ref(_, _, mutability), _) => {
+            (_, ty::Ref(_, _, mutability), _) => {
                 // Check if it can work when put into a ref. For example:
                 //
                 // ```
@@ -544,7 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
                 _,
-                &ty::Ref(_, checked, _),
+                ty::Ref(_, checked, _),
             ) if {
                 self.infcx.can_sub(self.param_env, checked, &expected).is_ok() && !is_macro
             } =>
@@ -573,11 +573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                 }
             }
-            (
-                _,
-                &ty::RawPtr(TypeAndMut { ty: ty_b, mutbl: mutbl_b }),
-                &ty::Ref(_, ty_a, mutbl_a),
-            ) => {
+            (_, ty::RawPtr(TypeAndMut { ty: ty_b, mutbl: mutbl_b }), ty::Ref(_, ty_a, mutbl_a)) => {
                 if let Some(steps) = self.deref_steps(ty_a, ty_b) {
                     // Only suggest valid if dereferencing needed.
                     if steps > 0 {
@@ -853,8 +849,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion(expr.span, msg, suggestion, Applicability::MachineApplicable);
             };
 
-        match (&expected_ty.kind(), &checked_ty.kind()) {
-            (&ty::Int(ref exp), &ty::Int(ref found)) => {
+        match (expected_ty.kind(), checked_ty.kind()) {
+            (ty::Int(ref exp), ty::Int(ref found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if exp < found => (true, false),
@@ -867,7 +863,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
+            (ty::Uint(ref exp), ty::Uint(ref found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if exp < found => (true, false),
@@ -880,7 +876,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Int(exp), &ty::Uint(found)) => {
+            (ty::Int(exp), ty::Uint(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if found < exp => (false, true),
@@ -890,7 +886,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Uint(exp), &ty::Int(found)) => {
+            (ty::Uint(exp), ty::Int(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if found > exp => (true, false),
@@ -900,7 +896,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Float(ref exp), &ty::Float(ref found)) => {
+            (ty::Float(ref exp), ty::Float(ref found)) => {
                 if found.bit_width() < exp.bit_width() {
                     suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
@@ -921,7 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
+            (ty::Uint(_) | ty::Int(_), ty::Float(_)) => {
                 if literal_is_ty_suffixed(expr) {
                     err.span_suggestion(
                         expr.span,
@@ -940,7 +936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&ty::Float(ref exp), &ty::Uint(ref found)) => {
+            (ty::Float(ref exp), ty::Uint(ref found)) => {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.span_suggestion(
@@ -974,7 +970,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&ty::Float(ref exp), &ty::Int(ref found)) => {
+            (ty::Float(ref exp), ty::Int(ref found)) => {
                 // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.span_suggestion(

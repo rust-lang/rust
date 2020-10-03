@@ -436,7 +436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // concatenation (e.g., "Hello " + "World!"). This means
                         // we don't want the note in the else clause to be emitted
                     } else if let [ty] = &visitor.0[..] {
-                        if let ty::Param(p) = *ty.kind() {
+                        if let ty::Param(p) = ty.kind() {
                             // Check if the method would be found if the type param wasn't
                             // involved. If so, it means that adding a trait bound to the param is
                             // enough. Otherwise we do not give the suggestion.
@@ -494,7 +494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
     ) -> bool /* did we suggest to call a function because of missing parenthesis? */ {
         err.span_label(span, ty.to_string());
-        if let FnDef(def_id, _) = *ty.kind() {
+        if let FnDef(def_id, _) = ty.kind() {
             let source_map = self.tcx.sess.source_map();
             if !self.tcx.has_typeck_results(def_id) {
                 return false;
@@ -502,7 +502,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We're emitting a suggestion, so we can just ignore regions
             let fn_sig = self.tcx.fn_sig(def_id).skip_binder();
 
-            let other_ty = if let FnDef(def_id, _) = *other_ty.kind() {
+            let other_ty = if let FnDef(def_id, _) = other_ty.kind() {
                 if !self.tcx.has_typeck_results(def_id) {
                     return false;
                 }
@@ -569,9 +569,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         match (lhs_ty.kind(), rhs_ty.kind()) {
-            (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-                if (*l_ty.kind() == Str || is_std_string(l_ty)) && (
-                        *r_ty.kind() == Str || is_std_string(r_ty) ||
+            (Ref(_, l_ty, _), Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
+                if (l_ty.kind() == Str || is_std_string(l_ty)) && (
+                        r_ty.kind() == Str || is_std_string(r_ty) ||
                         &format!("{:?}", rhs_ty) == "&&str"
                     ) =>
             {
@@ -604,8 +604,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
-                if (*l_ty.kind() == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
+            (Ref(_, l_ty, _), Adt(..)) // Handle `&str` & `&String` + `String`
+                if (l_ty.kind() == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
                     op.span,
@@ -675,7 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.note("unsigned values cannot be negated");
                         }
                         Str | Never | Char | Tuple(_) | Array(_, _) => {}
-                        Ref(_, ref lty, _) if *lty.kind() == Str => {}
+                        Ref(_, ref lty, _) if lty.kind() == Str => {}
                         _ => {
                             let missing_trait = match op {
                                 hir::UnOp::UnNeg => "std::ops::Neg",

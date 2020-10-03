@@ -70,11 +70,11 @@ enum PointerKind<'tcx> {
     /// Slice
     Length,
     /// The unsize info of this projection
-    OfProjection(&'tcx ty::ProjectionTy<'tcx>),
+    OfProjection(ty::ProjectionTy<'tcx>),
     /// The unsize info of this opaque ty
     OfOpaque(DefId, SubstsRef<'tcx>),
     /// The unsize info of this parameter
-    OfParam(&'tcx ty::ParamTy),
+    OfParam(ty::ParamTy),
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -97,7 +97,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ok(Some(PointerKind::Thin));
         }
 
-        Ok(match *t.kind() {
+        Ok(match t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(ref tty, ..) => Some(PointerKind::Vtable(tty.principal_def_id())),
             ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().fields.last() {
@@ -115,9 +115,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
-            ty::Projection(ref pi) => Some(PointerKind::OfProjection(pi)),
+            ty::Projection(pi) => Some(PointerKind::OfProjection(pi)),
             ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
-            ty::Param(ref p) => Some(PointerKind::OfParam(p)),
+            ty::Param(p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,
 
@@ -348,7 +348,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx.ty_to_string(self.cast_ty)
                 );
                 let mut sugg = None;
-                if let ty::Ref(reg, _, mutbl) = *self.cast_ty.kind() {
+                if let ty::Ref(reg, _, mutbl) = self.cast_ty.kind() {
                     if fcx
                         .try_coerce(
                             self.expr,
@@ -602,7 +602,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
-                match *self.expr_ty.kind() {
+                match self.expr_ty.kind() {
                     ty::FnDef(..) => {
                         // Attempt a coercion to a fn pointer type.
                         let f = fcx.normalize_associated_types_in(
@@ -629,7 +629,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // a cast.
                     ty::Ref(_, inner_ty, mutbl) => {
                         return match t_cast {
-                            Int(_) | Float => match *inner_ty.kind() {
+                            Int(_) | Float => match inner_ty.kind() {
                                 ty::Int(_)
                                 | ty::Uint(_)
                                 | ty::Float(_)

@@ -649,7 +649,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                 "link_region(borrow_region={:?}, borrow_kind={:?}, pointer_ty={:?})",
                 borrow_region, borrow_kind, borrow_place
             );
-            match *pointer_ty.kind() {
+            match pointer_ty.kind() {
                 ty::RawPtr(_) => return,
                 ty::Ref(ref_region, _, ref_mutability) => {
                     if self.link_reborrowed_region(span, borrow_region, ref_region, ref_mutability)

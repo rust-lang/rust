@@ -581,7 +581,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("assemble_probe: self_ty={:?}", self_ty);
         let lang_items = self.tcx.lang_items();
 
-        match *self_ty.value.value.kind() {
+        match self_ty.value.value.kind() {
             ty::Dynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
                     // Subtle: we can't use `instantiate_query_response` here: using it will
@@ -1120,7 +1120,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 pick.autoderefs = step.autoderefs;
 
                 // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::Ref(_, _, mutbl) = *step.self_ty.value.value.kind() {
+                if let ty::Ref(_, _, mutbl) = step.self_ty.value.value.kind() {
                     pick.autoderefs += 1;
                     pick.autoref = Some(mutbl);
                 }

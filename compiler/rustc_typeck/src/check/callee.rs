@@ -114,7 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // If the callee is a bare function or a closure, then we're all set.
-        match *adjusted_ty.kind() {
+        match adjusted_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let adjustments = self.adjust_steps(autoderef);
                 self.apply_adjustments(callee_expr, adjustments);
@@ -285,7 +285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let (fn_sig, def_span) = match *callee_ty.kind() {
+        let (fn_sig, def_span) = match callee_ty.kind() {
             ty::FnDef(def_id, _) => {
                 (callee_ty.fn_sig(self.tcx), self.tcx.hir().span_if_local(def_id))
             }

@@ -943,7 +943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
             trait_ref, self_ty, expected_vid
         );
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => {
                 // FIXME: consider using `sub_root_var` here so we
                 // can see through subtyping.
@@ -2063,7 +2063,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
     ) -> bool {
         let hir = self.tcx.hir();
-        let (def_id, sig) = match *found.kind() {
+        let (def_id, sig) = match found.kind() {
             ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig()),
             _ => return false,
@@ -2571,10 +2571,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
-        let (sig, did, substs) = match (&expected.kind(), &found.kind()) {
+        let (sig, did, substs) = match (expected.kind(), found.kind()) {
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+                let sig1 = self.tcx.fn_sig(did1).subst(self.tcx, substs1);
+                let sig2 = self.tcx.fn_sig(did2).subst(self.tcx, substs2);
                 if sig1 != sig2 {
                     return;
                 }
@@ -2582,14 +2582,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "different `fn` items always have unique types, even if their signatures are \
                      the same",
                 );
-                (sig1, *did1, substs1)
+                (sig1, did1, substs1)
             }
             (ty::FnDef(did, substs), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.fn_sig(*did).subst(self.tcx, substs);
-                if sig1 != *sig2 {
+                let sig1 = self.tcx.fn_sig(did).subst(self.tcx, substs);
+                if sig1 != sig2 {
                     return;
                 }
-                (sig1, *did, substs)
+                (sig1, did, substs)
             }
             _ => return,
         };
@@ -2771,7 +2771,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
             let ty = self.normalize_ty(span, tcx.at(span).type_of(impl_def_id));
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();

@@ -148,10 +148,10 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
 
         use ty::TyKind::*;
         match (source.kind(), target.kind()) {
-            (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-                if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b => {}
-            (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
-            (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
+            (Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
+                if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == mutbl_b => {}
+            (RawPtr(tm_a), RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
+            (Adt(def_a, substs_a), Adt(def_b, substs_b))
                 if def_a.is_struct() && def_b.is_struct() =>
             {
                 if def_a != def_b {
@@ -332,23 +332,23 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
             (mt_a.ty, mt_b.ty, unsize_trait, None)
         };
         let (source, target, trait_def_id, kind) = match (source.kind(), target.kind()) {
-            (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
+            (ty::Ref(r_a, ty_a, mutbl_a), ty::Ref(r_b, ty_b, mutbl_b)) => {
                 infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
                 let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
                 let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
                 check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
             }
 
-            (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(mt_b)) => {
+            (ty::Ref(_, ty_a, mutbl_a), ty::RawPtr(mt_b)) => {
                 let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
                 check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
             }
 
-            (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => {
+            (ty::RawPtr(mt_a), ty::RawPtr(mt_b)) => {
                 check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
             }
 
-            (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b))
+            (ty::Adt(def_a, substs_a), ty::Adt(def_b, substs_b))
                 if def_a.is_struct() && def_b.is_struct() =>
             {
                 if def_a != def_b {

@@ -351,7 +351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::UnOp::UnNot => {
                     let result = self.check_user_unop(expr, oprnd_t, unop);
                     // If it's builtin, we can reuse the type, this helps inference.
-                    if !(oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool) {
+                    if !(oprnd_t.is_integral() || oprnd_t.kind() == ty::Bool) {
                         oprnd_t = result;
                     }
                 }
@@ -997,7 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let element_ty = if !args.is_empty() {
             let coerce_to = expected
                 .to_option(self)
-                .and_then(|uty| match *uty.kind() {
+                .and_then(|uty| match uty.kind() {
                     ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                     _ => None,
                 })
@@ -1035,7 +1035,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let count = self.to_const(count);
 
         let uty = match expected {
-            ExpectHasType(uty) => match *uty.kind() {
+            ExpectHasType(uty) => match uty.kind() {
                 ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                 _ => None,
             },
@@ -1633,7 +1633,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let mut err = self.no_such_field_err(field.span, field, expr_t);
 
-        match *expr_t.peel_refs().kind() {
+        match expr_t.peel_refs().kind() {
             ty::Array(_, len) => {
                 self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
             }
@@ -1932,7 +1932,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // function.
         if is_input {
             let ty = self.structurally_resolved_type(expr.span, &ty);
-            match *ty.kind() {
+            match ty.kind() {
                 ty::FnDef(..) => {
                     let fnptr_ty = self.tcx.mk_fn_ptr(ty.fn_sig(self.tcx));
                     self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);

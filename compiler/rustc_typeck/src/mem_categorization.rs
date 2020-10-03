@@ -482,7 +482,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
-        let (region, mutbl) = match *base_ty.kind() {
+        let (region, mutbl) = match base_ty.kind() {
             ty::Ref(region, _, mutbl) => (region, mutbl),
             _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference"),
         };
