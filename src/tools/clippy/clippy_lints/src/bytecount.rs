@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                                 _ => { return; }
                             }
                         };
-                        if ty::Uint(UintTy::U8) != *cx.typeck_results().expr_ty(needle).peel_refs().kind() {
+                        if ty::Uint(UintTy::U8) != cx.typeck_results().expr_ty(needle).peel_refs().kind() {
                             return;
                         }
                         let haystack = if let ExprKind::MethodCall(ref path, _, ref args, _) =

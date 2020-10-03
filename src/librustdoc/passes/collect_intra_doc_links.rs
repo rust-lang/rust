@@ -675,7 +675,7 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
                         debug!("adt def_id: {:?}", def.did);
                         def.did == type_
                     }
-                    ty::Foreign(def_id) => *def_id == type_,
+                    ty::Foreign(def_id) => def_id == type_,
                     _ => false,
                 };
         });

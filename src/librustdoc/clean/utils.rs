@@ -473,8 +473,8 @@ pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<Strin
     cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = cx.tcx.type_of(def_id);
         match (val, ty.kind()) {
-            (_, &ty::Ref(..)) => None,
-            (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
+            (_, ty::Ref(..)) => None,
+            (ConstValue::Scalar(_), ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
                 let const_ = ty::Const::from_value(cx.tcx, val, ty);
                 Some(print_const_with_custom_print_scalar(cx, const_))

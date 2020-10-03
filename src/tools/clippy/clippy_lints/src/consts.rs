@@ -123,7 +123,7 @@ impl Constant {
             (&Self::Str(ref ls), &Self::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Self::Char(ref l), &Self::Char(ref r)) => Some(l.cmp(r)),
             (&Self::Int(l), &Self::Int(r)) => {
-                if let ty::Int(int_ty) = *cmp_type.kind() {
+                if let ty::Int(int_ty) = cmp_type.kind() {
                     Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty)))
                 } else {
                     Some(l.cmp(&r))
@@ -281,7 +281,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             Bool(b) => Some(Bool(!b)),
             Int(value) => {
                 let value = !value;
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Int(ity) => Some(Int(unsext(self.lcx.tcx, value as i128, ity))),
                     ty::Uint(ity) => Some(Int(clip(self.lcx.tcx, value, ity))),
                     _ => None,
@@ -295,7 +295,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         use self::Constant::{Int, F32, F64};
         match *o {
             Int(value) => {
-                let ity = match *ty.kind() {
+                let ity = match ty.kind() {
                     ty::Int(ity) => ity,
                     _ => return None,
                 };
@@ -402,7 +402,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
-            (Constant::Int(l), Some(Constant::Int(r))) => match *self.typeck_results.expr_ty_opt(left)?.kind() {
+            (Constant::Int(l), Some(Constant::Int(r))) => match self.typeck_results.expr_ty_opt(left)?.kind() {
                 ty::Int(ity) => {
                     let l = sext(self.lcx.tcx, l, ity);
                     let r = sext(self.lcx.tcx, r, ity);

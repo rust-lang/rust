@@ -85,9 +85,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         }
         if_chain! {
             if let PatKind::Binding(BindingAnnotation::Ref, .., name, _) = pat.kind;
-            if let ty::Ref(_, tam, mutbl) = *cx.typeck_results().pat_ty(pat).kind();
+            if let ty::Ref(_, tam, mutbl) = cx.typeck_results().pat_ty(pat).kind();
             if mutbl == Mutability::Not;
-            if let ty::Ref(_, _, mutbl) = *tam.kind();
+            if let ty::Ref(_, _, mutbl) = tam.kind();
             // only lint immutable refs, because borrowed `&mut T` cannot be moved out
             if mutbl == Mutability::Not;
             then {

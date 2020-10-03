@@ -192,7 +192,7 @@ fn find_first_mismatch<'tcx>(
         }
     }
 
-    if let TyKind::Ref(_, _, mutability) = *ty.kind() {
+    if let TyKind::Ref(_, _, mutability) = ty.kind() {
         if is_non_ref_pattern(&pat.kind) {
             return Some((pat.span, mutability, level));
         }

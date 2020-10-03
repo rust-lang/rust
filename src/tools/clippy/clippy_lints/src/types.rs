@@ -1431,7 +1431,7 @@ fn check_loss_of_sign(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast
     if_chain! {
         if let Some((const_val, _)) = const_val;
         if let Constant::Int(n) = const_val;
-        if let ty::Int(ity) = *cast_from.kind();
+        if let ty::Int(ity) = cast_from.kind();
         if sext(cx.tcx, n, ity) >= 0;
         then {
             return
@@ -1764,7 +1764,7 @@ fn lint_fn_to_numeric_cast(
                     format!("{} as usize", from_snippet),
                     applicability,
                 );
-            } else if *cast_to.kind() != ty::Uint(UintTy::Usize) {
+            } else if cast_to.kind() != ty::Uint(UintTy::Usize) {
                 span_lint_and_sugg(
                     cx,
                     FN_TO_NUMERIC_CAST,
@@ -1981,7 +1981,7 @@ impl<'tcx> LateLintPass<'tcx> for CharLitAsU8 {
             if let ExprKind::Cast(e, _) = &expr.kind;
             if let ExprKind::Lit(l) = &e.kind;
             if let LitKind::Char(c) = l.node;
-            if ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(expr).kind();
+            if ty::Uint(UintTy::U8) == cx.typeck_results().expr_ty(expr).kind();
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let snippet = snippet_with_applicability(cx, e.span, "'x'", &mut applicability);
@@ -2121,16 +2121,16 @@ fn detect_extreme_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Op
     let cv = constant(cx, cx.typeck_results(), expr)?.0;
 
     let which = match (ty.kind(), cv) {
-        (&ty::Bool, Constant::Bool(false)) | (&ty::Uint(_), Constant::Int(0)) => Minimum,
-        (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MIN >> (128 - int_bits(cx.tcx, ity)), ity) => {
+        (ty::Bool, Constant::Bool(false)) | (ty::Uint(_), Constant::Int(0)) => Minimum,
+        (ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MIN >> (128 - int_bits(cx.tcx, ity)), ity) => {
             Minimum
         },
 
-        (&ty::Bool, Constant::Bool(true)) => Maximum,
-        (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MAX >> (128 - int_bits(cx.tcx, ity)), ity) => {
+        (ty::Bool, Constant::Bool(true)) => Maximum,
+        (ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MAX >> (128 - int_bits(cx.tcx, ity)), ity) => {
             Maximum
         },
-        (&ty::Uint(uty), Constant::Int(i)) if clip(cx.tcx, u128::MAX, uty) == i => Maximum,
+        (ty::Uint(uty), Constant::Int(i)) if clip(cx.tcx, u128::MAX, uty) == i => Maximum,
 
         _ => return None,
     };
@@ -2282,7 +2282,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> 
 fn node_as_const_fullint<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<FullInt> {
     let val = constant(cx, cx.typeck_results(), expr)?.0;
     if let Constant::Int(const_int) = val {
-        match *cx.typeck_results().expr_ty(expr).kind() {
+        match cx.typeck_results().expr_ty(expr).kind() {
             ty::Int(ity) => Some(FullInt::S(sext(cx.tcx, const_int, ity))),
             ty::Uint(_) => Some(FullInt::U(const_int)),
             _ => None,

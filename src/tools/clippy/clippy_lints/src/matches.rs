@@ -621,7 +621,7 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
         };
 
         let ty = cx.typeck_results().expr_ty(ex);
-        if *ty.kind() != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
+        if ty.kind() != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
         }
@@ -712,7 +712,7 @@ fn check_single_match_opt_like(
 
 fn check_match_bool(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
-    if *cx.typeck_results().expr_ty(ex).kind() == ty::Bool {
+    if cx.typeck_results().expr_ty(ex).kind() == ty::Bool {
         span_lint_and_then(
             cx,
             MATCH_BOOL,
@@ -1018,7 +1018,7 @@ fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
                 let input_ty = substs.type_at(0);
                 if let ty::Adt(_, substs) = output_ty.kind();
                 let output_ty = substs.type_at(0);
-                if let ty::Ref(_, output_ty, _) = *output_ty.kind();
+                if let ty::Ref(_, output_ty, _) = output_ty.kind();
                 if input_ty != output_ty;
                 then {
                     ".map(|x| x as _)"

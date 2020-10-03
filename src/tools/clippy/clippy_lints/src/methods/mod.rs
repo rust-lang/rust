@@ -1539,7 +1539,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 }
 
                 match self_ty.kind() {
-                    ty::Ref(_, ty, _) if *ty.kind() == ty::Str => {
+                    ty::Ref(_, ty, _) if ty.kind() == ty::Str => {
                         for &(method, pos) in &PATTERN_METHODS {
                             if method_call.ident.name.as_str() == method && args.len() > pos {
                                 lint_single_char_pattern(cx, expr, &args[pos]);
@@ -1665,7 +1665,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             }
 
             // if return type is impl trait, check the associated types
-            if let ty::Opaque(def_id, _) = *ret_ty.kind() {
+            if let ty::Opaque(def_id, _) = ret_ty.kind() {
                 // one of the associated types must be Self
                 for &(predicate, _span) in cx.tcx.predicates_of(def_id).predicates {
                     if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
@@ -1882,7 +1882,7 @@ fn lint_expect_fun_call(
                         && {
                             let arg_type = cx.typeck_results().expr_ty(&call_args[0]);
                             let base_type = arg_type.peel_refs();
-                            *base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym!(string_type))
+                            base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym!(string_type))
                         }
                     {
                         &call_args[0]
@@ -1904,7 +1904,7 @@ fn lint_expect_fun_call(
             return false;
         }
         if let ty::Ref(_, ty, ..) = arg_ty.kind() {
-            if *ty.kind() == ty::Str && can_be_static_str(cx, arg) {
+            if ty.kind() == ty::Str && can_be_static_str(cx, arg) {
                 return false;
             }
         };
@@ -2174,7 +2174,7 @@ fn lint_string_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::E
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
         let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
-        let ref_str = if *self_ty.kind() == ty::Str {
+        let ref_str = if self_ty.kind() == ty::Str {
             ""
         } else if is_type_diagnostic_item(cx, self_ty, sym!(string_type)) {
             "&"
@@ -3136,7 +3136,7 @@ fn lint_chars_cmp(
             let mut applicability = Applicability::MachineApplicable;
             let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0][0]).peel_refs();
 
-            if *self_ty.kind() != ty::Str {
+            if self_ty.kind() != ty::Str {
                 return false;
             }
 
@@ -3668,7 +3668,7 @@ impl SelfKind {
         }
 
         fn matches_ref<'a>(cx: &LateContext<'a>, mutability: hir::Mutability, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-            if let ty::Ref(_, t, m) = *ty.kind() {
+            if let ty::Ref(_, t, m) = ty.kind() {
                 return m == mutability && t == parent_ty;
             }
 

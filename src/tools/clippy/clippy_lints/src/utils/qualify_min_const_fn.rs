@@ -341,7 +341,7 @@ fn check_terminator(
             fn_span: _,
         } => {
             let fn_ty = func.ty(body, tcx);
-            if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
+            if let ty::FnDef(fn_def_id, _) = fn_ty.kind() {
                 if !rustc_mir::const_eval::is_min_const_fn(tcx, fn_def_id)
                 {
                     return Err((

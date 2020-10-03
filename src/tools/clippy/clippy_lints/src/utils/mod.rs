@@ -1406,7 +1406,7 @@ pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bo
 pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
-        ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
+        ty::Ref(_, inner, _) if inner.kind() == ty::Str => true,
         ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
         ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
         _ => false,
@@ -1421,7 +1421,7 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     let expr_kind = expr_type.kind();
     let is_primitive = match expr_kind {
         ty::Slice(element_type) => is_recursively_primitive_type(element_type),
-        ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &ty::Slice(_)) => {
+        ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Slice(_)) => {
             if let ty::Slice(element_type) = inner_ty.kind() {
                 is_recursively_primitive_type(element_type)
             } else {
