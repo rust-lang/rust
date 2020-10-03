@@ -2199,19 +2199,11 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         // But it is a conservative choice.
         let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
         if !has_advanced || iterator.len() >= iterator.cap / 2 {
-            unsafe {
-                let it = ManuallyDrop::new(iterator);
-                if has_advanced {
-                    ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
-                }
-                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
-            }
+            return iterator.into_vec();
         }
 
         let mut vec = Vec::new();
-        // must delegate to spec_extend() since extend() itself delegates
-        // to spec_from for empty Vecs
-        vec.spec_extend(iterator);
+        iterator.move_to(&mut vec);
         vec
     }
 }
@@ -2391,11 +2383,12 @@ where
 }
 
 impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
-    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
-        unsafe {
-            self.append_elements(iterator.as_slice() as _);
+    fn spec_extend(&mut self, iterator: IntoIter<T>) {
+        if mem::size_of::<T>() > 0 && self.len == 0 && self.capacity() < iterator.len() {
+            *self = iterator.into_vec();
+            return;
         }
-        iterator.ptr = iterator.end;
+        iterator.move_to(self);
     }
 }
 
@@ -2927,6 +2920,23 @@ impl<T> IntoIter<T> {
         self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
         self.ptr = self.buf.as_ptr();
         self.end = self.buf.as_ptr();
+    }
+
+    /// Shifts the remaining elements to the front and then converts the whole allocation to a Vec
+    fn into_vec(self) -> Vec<T> {
+        if self.ptr != self.buf.as_ptr() as *const _ {
+            unsafe { ptr::copy(self.ptr, self.buf.as_ptr(), self.len()) }
+        }
+
+        let iter = ManuallyDrop::new(self);
+        unsafe { Vec::from_raw_parts(iter.buf.as_ptr(), iter.len(), iter.cap) }
+    }
+
+    fn move_to(mut self, dest: &mut Vec<T>) {
+        unsafe {
+            dest.append_elements(self.as_slice() as _);
+        }
+        self.ptr = self.end;
     }
 }
 
