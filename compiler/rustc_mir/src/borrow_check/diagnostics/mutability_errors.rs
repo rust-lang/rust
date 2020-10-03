@@ -511,7 +511,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if let Some(ty::FnDef(def_id, _)) =
                 tables.node_type_opt(func.hir_id).as_ref().map(|ty| ty.kind())
             {
-                let arg = match hir.get_if_local(*def_id) {
+                let arg = match hir.get_if_local(def_id) {
                     Some(
                         hir::Node::Item(hir::Item {
                             ident, kind: hir::ItemKind::Fn(sig, ..), ..

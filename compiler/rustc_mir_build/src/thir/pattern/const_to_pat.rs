@@ -372,7 +372,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 slice: None,
                 suffix: Vec::new(),
             },
-            ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
+            ty::Ref(_, pointee_ty, ..) => match pointee_ty.kind() {
                 // These are not allowed and will error elsewhere anyway.
                 ty::Dynamic(..) => {
                     self.saw_const_match_error.set(true);

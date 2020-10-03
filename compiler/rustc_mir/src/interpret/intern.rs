@@ -195,7 +195,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
-        if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
+        if let ty::Ref(_, referenced_ty, ref_mutability) = ty.kind() {
             let value = self.ecx.read_immediate(mplace.into())?;
             let mplace = self.ecx.ref_to_mplace(value)?;
             assert_eq!(mplace.layout.ty, referenced_ty);

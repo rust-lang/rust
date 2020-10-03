@@ -228,7 +228,7 @@ fn liberated_closure_env_ty(
 ) -> Ty<'_> {
     let closure_ty = tcx.typeck_body(body_id).node_type(closure_expr_id);
 
-    let (closure_def_id, closure_substs) = match *closure_ty.kind() {
+    let (closure_def_id, closure_substs) = match closure_ty.kind() {
         ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
         _ => bug!("closure expr does not have closure type: {:?}", closure_ty),
     };

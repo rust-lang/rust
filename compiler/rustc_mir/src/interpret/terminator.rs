@@ -55,7 +55,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi) = match *func.layout.ty.kind() {
+                let (fn_val, abi) = match func.layout.ty.kind() {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(func)?.check_init()?;

@@ -600,7 +600,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             ) => {
                 let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.monomorphize(source_ty);
-                match *source_ty.kind() {
+                match source_ty.kind() {
                     ty::Closure(def_id, substs) => {
                         let instance = Instance::resolve_closure(
                             self.tcx,
@@ -741,7 +741,7 @@ fn visit_fn_use<'tcx>(
     source: Span,
     output: &mut Vec<Spanned<MonoItem<'tcx>>>,
 ) {
-    if let ty::FnDef(def_id, substs) = *ty.kind() {
+    if let ty::FnDef(def_id, substs) = ty.kind() {
         let instance = if is_direct_call {
             ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
         } else {

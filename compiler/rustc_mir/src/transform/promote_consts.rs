@@ -220,7 +220,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
         match terminator.kind {
             TerminatorKind::Call { ref func, .. } => {
-                if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
+                if let ty::FnDef(def_id, _) = func.ty(self.ccx.body, self.ccx.tcx).kind() {
                     let fn_sig = self.ccx.tcx.fn_sig(def_id);
                     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
                         let name = self.ccx.tcx.item_name(def_id);
@@ -745,7 +745,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
         if !self.explicit && self.maybe_runtime() {
-            if let ty::FnDef(def_id, _) = *fn_ty.kind() {
+            if let ty::FnDef(def_id, _) = fn_ty.kind() {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
                 if !self.tcx.is_promotable_const_fn(def_id) {
@@ -754,7 +754,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
         }
 
-        let is_const_fn = match *fn_ty.kind() {
+        let is_const_fn = match fn_ty.kind() {
             ty::FnDef(def_id, _) => {
                 is_const_fn(self.tcx, def_id)
                     || is_unstable_const_fn(self.tcx, def_id).is_some()

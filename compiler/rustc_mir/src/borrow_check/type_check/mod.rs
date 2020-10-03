@@ -386,7 +386,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
 
-            if let ty::FnDef(def_id, substs) = *constant.literal.ty.kind() {
+            if let ty::FnDef(def_id, substs) = constant.literal.ty.kind() {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
                 self.cx.normalize_and_prove_instantiated_predicates(
                     instantiated_predicates,
@@ -738,7 +738,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let tcx = self.tcx();
 
         let (variant, substs) = match base_ty {
-            PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
+            PlaceTy { ty, variant_index: Some(variant_index) } => match ty.kind() {
                 ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
                 ty::Generator(def_id, substs, _) => {
                     let mut variants = substs.as_generator().state_tys(def_id, tcx);
@@ -757,7 +757,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
                 _ => bug!("can't have downcast of non-adt non-generator type"),
             },
-            PlaceTy { ty, variant_index: None } => match *ty.kind() {
+            PlaceTy { ty, variant_index: None } => match ty.kind() {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
                     (&adt_def.variants[VariantIdx::new(0)], substs)
                 }
@@ -1284,7 +1284,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     for (&opaque_def_id, opaque_decl) in &opaque_type_map {
                         let resolved_ty = infcx.resolve_vars_if_possible(&opaque_decl.concrete_ty);
                         let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
-                            *def_id == opaque_def_id
+                            def_id == opaque_def_id
                         } else {
                             false
                         };

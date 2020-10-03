@@ -47,7 +47,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::ReifyFnPointer) => {
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match src.layout.ty.kind() {
                     ty::FnDef(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
                         ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
@@ -87,7 +87,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::ClosureFnPointer(_)) => {
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match src.layout.ty.kind() {
                     ty::Closure(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
                         ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
@@ -196,9 +196,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_scalar: {}, {} -> {}", v, src_layout.ty, cast_ty);
         use rustc_middle::ty::TyKind::*;
-        match *cast_ty.kind() {
+        match cast_ty.kind() {
             Int(_) | Uint(_) | RawPtr(_) => {
-                let size = match *cast_ty.kind() {
+                let size = match cast_ty.kind() {
                     Int(t) => Integer::from_attr(self, attr::IntType::SignedInt(t)).size(),
                     Uint(t) => Integer::from_attr(self, attr::IntType::UnsignedInt(t)).size(),
                     RawPtr(_) => self.pointer_size(),
@@ -228,7 +228,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
     {
         use rustc_middle::ty::TyKind::*;
-        match *dest_ty.kind() {
+        match dest_ty.kind() {
             // float -> uint
             Uint(t) => {
                 let size = Integer::from_attr(self, attr::IntType::UnsignedInt(t)).size();

@@ -215,7 +215,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestKind::SwitchInt { switch_ty, ref options } => {
                 let target_blocks = make_target_blocks(self);
-                let terminator = if *switch_ty.kind() == ty::Bool {
+                let terminator = if switch_ty.kind() == ty::Bool {
                     assert!(!options.is_empty() && options.len() <= 2);
                     if let [first_bb, second_bb] = *target_blocks {
                         let (true_bb, false_bb) = match options[0] {
@@ -407,7 +407,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let deref_ty = match *ty.kind() {
+        let deref_ty = match ty.kind() {
             ty::Ref(_, deref_ty, _) => deref_ty,
             _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
         };

@@ -92,7 +92,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
 
                 if let ty::FnDef(func_id, _) = func_ty.kind() {
-                    self.check_target_features(*func_id);
+                    self.check_target_features(func_id);
                 }
             }
 

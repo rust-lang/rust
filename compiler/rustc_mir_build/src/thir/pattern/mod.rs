@@ -560,7 +560,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Tuple(ref pats, ddpos) => {
                 let tys = match ty.kind() {
-                    ty::Tuple(ref tys) => tys,
+                    ty::Tuple(tys) => tys,
                     _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
                 };
                 let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
@@ -1058,7 +1058,7 @@ crate fn compare_const_vals<'tcx>(
 
     if let (Some(a), Some(b)) = (a_bits, b_bits) {
         use rustc_apfloat::Float;
-        return match *ty.kind() {
+        return match ty.kind() {
             ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);

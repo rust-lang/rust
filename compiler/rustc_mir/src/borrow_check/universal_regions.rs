@@ -524,7 +524,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let defining_ty =
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
-                match *defining_ty.kind() {
+                match defining_ty.kind() {
                     ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
                     ty::Generator(def_id, substs, movability) => {
                         DefiningTy::Generator(def_id, substs, movability)

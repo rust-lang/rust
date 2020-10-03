@@ -86,7 +86,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ..
         } = &terminator.kind
         {
-            if let ty::FnDef(id, _) = *const_ty.kind() {
+            if let ty::FnDef(id, _) = const_ty.kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
@@ -365,7 +365,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // If the type is a box, the field is described from the boxed type
             self.describe_field_from_ty(&ty.boxed_ty(), field, variant_index)
         } else {
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
@@ -739,7 +739,7 @@ impl BorrowedContentSource<'tcx> {
     }
 
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
-        match *func.kind() {
+        match func.kind() {
             ty::FnDef(def_id, substs) => {
                 let trait_id = tcx.trait_of_item(def_id)?;
 

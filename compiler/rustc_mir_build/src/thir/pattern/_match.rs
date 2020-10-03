@@ -370,7 +370,7 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander<'tcx> {
     fn fold_pattern(&mut self, pat: &Pat<'tcx>) -> Pat<'tcx> {
         debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.kind(), pat.kind);
         match (pat.ty.kind(), &*pat.kind) {
-            (&ty::Ref(_, rty, _), &PatKind::Constant { value: Const { val, ty: const_ty } })
+            (ty::Ref(_, rty, _), &PatKind::Constant { value: Const { val, ty: const_ty } })
                 if const_ty.is_ref() =>
             {
                 let crty =
@@ -1262,7 +1262,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => Fields::empty(),
             },
-            Slice(slice) => match *ty.kind() {
+            Slice(slice) => match ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
                     Fields::wildcards_from_tys(cx, (0..arity).map(|_| ty))
@@ -1580,7 +1580,7 @@ fn all_constructors<'a, 'tcx>(
                 .unwrap(),
         )
     };
-    match *pcx.ty.kind() {
+    match pcx.ty.kind() {
         ty::Bool => {
             [true, false].iter().map(|&b| ConstantValue(ty::Const::from_bool(cx.tcx, b))).collect()
         }
@@ -1717,7 +1717,7 @@ impl<'tcx> IntRange<'tcx> {
 
     #[inline]
     fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Char => Some((Size::from_bytes(4), 0)),
             ty::Int(ity) => {
                 let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
@@ -1818,7 +1818,7 @@ impl<'tcx> IntRange<'tcx> {
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     fn signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u128 {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Int(ity) => {
                 let bits = Integer::from_attr(&tcx, SignedInt(ity)).size().bits() as u128;
                 1u128 << (bits - 1)

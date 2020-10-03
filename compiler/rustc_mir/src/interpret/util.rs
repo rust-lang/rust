@@ -33,7 +33,7 @@ where
                 return false;
             }
 
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Param(_) => true,
                 ty::Closure(def_id, substs)
                 | ty::Generator(def_id, substs, ..)

@@ -364,7 +364,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .struct_span_err(*span, "captured variable cannot escape `FnMut` closure body");
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Opaque(def_id, _) = *output_ty.kind() {
+        if let ty::Opaque(def_id, _) = output_ty.kind() {
             output_ty = self.infcx.tcx.type_of(def_id)
         };
 
@@ -571,7 +571,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let (Some(f), Some(ty::RegionKind::ReStatic)) =
             (self.to_error_region(fr), self.to_error_region(outlived_fr))
         {
-            if let Some(&ty::Opaque(did, substs)) = self
+            if let Some(ty::Opaque(did, substs)) = self
                 .infcx
                 .tcx
                 .is_suitable_region(f)

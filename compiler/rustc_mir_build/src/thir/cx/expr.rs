@@ -379,7 +379,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         hir::ExprKind::Closure(..) => {
             let closure_ty = cx.typeck_results().expr_ty(expr);
-            let (def_id, substs, movability) = match *closure_ty.kind() {
+            let (def_id, substs, movability) = match closure_ty.kind() {
                 ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
                 ty::Generator(def_id, substs, movability) => {
                     (def_id, UpvarSubsts::Generator(substs), Some(movability))
@@ -1053,7 +1053,7 @@ fn overloaded_place<'a, 'tcx>(
     // Reconstruct the output assuming it's a reference with the
     // same region and mutability as the receiver. This holds for
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
-    let (region, mutbl) = match *recv_ty.kind() {
+    let (region, mutbl) = match recv_ty.kind() {
         ty::Ref(region, _, mutbl) => (region, mutbl),
         _ => span_bug!(span, "overloaded_place: receiver is not a reference"),
     };

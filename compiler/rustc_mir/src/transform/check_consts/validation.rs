@@ -341,7 +341,7 @@ impl Validator<'mir, 'tcx> {
                 GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
             };
 
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
                 ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
                 ty::FnPtr(..) => self.check_op(ops::ty::FnPtr(kind)),
@@ -397,7 +397,7 @@ impl Validator<'mir, 'tcx> {
                         match pred.self_ty().kind() {
                             ty::Param(p) => {
                                 let generics = tcx.generics_of(current);
-                                let def = generics.type_param(p, tcx);
+                                let def = generics.type_param(&p, tcx);
                                 let span = tcx.def_span(def.def_id);
 
                                 // These are part of the function signature, so treat them like
@@ -739,7 +739,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 let fn_ty = func.ty(body, tcx);
 
-                let (mut callee, substs) = match *fn_ty.kind() {
+                let (mut callee, substs) = match fn_ty.kind() {
                     ty::FnDef(def_id, substs) => (def_id, substs),
 
                     ty::FnPtr(_) => {
