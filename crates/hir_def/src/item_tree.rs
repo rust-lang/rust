@@ -507,6 +507,8 @@ pub struct Function {
     pub has_self_param: bool,
     pub has_body: bool,
     pub is_unsafe: bool,
+    /// List of function parameters names. Does not include `self`.
+    pub param_names: Box<[Option<Name>]>,
     pub params: Box<[TypeRef]>,
     pub is_varargs: bool,
     pub ret_type: TypeRef,

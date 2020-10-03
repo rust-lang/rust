@@ -19,6 +19,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionData {
     pub name: Name,
+    pub param_names: Vec<Option<Name>>,
     pub params: Vec<TypeRef>,
     pub ret_type: TypeRef,
     pub attrs: Attrs,
@@ -39,6 +40,7 @@ impl FunctionData {
 
         Arc::new(FunctionData {
             name: func.name.clone(),
+            param_names: func.param_names.to_vec(),
             params: func.params.to_vec(),
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(ModItem::from(loc.id.value).into()).clone(),

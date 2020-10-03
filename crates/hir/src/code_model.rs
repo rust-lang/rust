@@ -255,6 +255,37 @@ impl ModuleDef {
             ModuleDef::BuiltinType(it) => Some(it.as_name()),
         }
     }
+
+    pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
+        match self {
+            ModuleDef::Adt(it) => match it {
+                Adt::Struct(it) => {
+                    hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink)
+                }
+                Adt::Enum(it) => hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink),
+                Adt::Union(it) => hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink),
+            },
+            ModuleDef::Trait(it) => {
+                hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink)
+            }
+            ModuleDef::Function(it) => {
+                hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink)
+            }
+            ModuleDef::TypeAlias(it) => {
+                hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink)
+            }
+            ModuleDef::Module(it) => {
+                hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink)
+            }
+            ModuleDef::Const(it) => {
+                hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink)
+            }
+            ModuleDef::Static(it) => {
+                hir_ty::diagnostics::validate_module_item(db, it.id.into(), sink)
+            }
+            _ => return,
+        }
+    }
 }
 
 pub use hir_def::{
