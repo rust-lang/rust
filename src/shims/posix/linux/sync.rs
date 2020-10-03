@@ -30,6 +30,8 @@ pub fn futex<'tcx>(
 
     // The raw pointer value is used to identify the mutex.
     // Not all mutex operations actually read from this address or even require this address to exist.
+    // This will make FUTEX_WAKE fail on an integer cast to a pointer. But FUTEX_WAIT on
+    // such a pointer can never work anyway, so that seems fine.
     let futex_ptr = this.force_ptr(addr.to_scalar()?)?;
 
     let thread = this.get_active_thread();
