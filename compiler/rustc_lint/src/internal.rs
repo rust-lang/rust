@@ -234,6 +234,37 @@ fn gen_args(segment: &PathSegment<'_>) -> String {
 }
 
 declare_tool_lint! {
+    pub rustc::PUB_CROSS_CRATE_REEXPORT,
+    Allow,
+    "re-exporting items across crates",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(PubReexportChecker => [PUB_CROSS_CRATE_REEXPORT]);
+
+impl<'tcx> LateLintPass<'tcx> for PubReexportChecker {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &'tcx rustc_hir::Item<'tcx>) {
+        use rustc_hir::def_id::LOCAL_CRATE;
+
+        if item.vis.node.is_pub() {
+            if let rustc_hir::ItemKind::Use(path, _kind) = item.kind {
+                if path.res.def_id().krate != LOCAL_CRATE {
+                    cx.struct_span_lint(
+                        PUB_CROSS_CRATE_REEXPORT,
+                        item.span,
+                        |lint| {
+                            lint.build("publicly re-exporting an item from a different crate")
+                                .note("facade crates are discouraged; import from the original crate instead")
+                                .emit();
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+
+declare_tool_lint! {
     pub rustc::LINT_PASS_IMPL_WITHOUT_MACRO,
     Allow,
     "`impl LintPass` without the `declare_lint_pass!` or `impl_lint_pass!` macros"
