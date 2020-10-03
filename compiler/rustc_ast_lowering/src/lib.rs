@@ -2291,9 +2291,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::TraitRef<'hir> {
         let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
             hir::QPath::Resolved(None, path) => path,
-            qpath => panic!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
+            qpath => self
+                .sess
+                .diagnostic()
+                .span_bug(p.path.span, &format!("lower_trait_ref: unexpected QPath `{:?}`", qpath)),
         };
-        hir::TraitRef { path, hir_ref_id: self.lower_node_id(p.ref_id) }
+
+        hir::TraitRef::new(path, self.lower_node_id(p.ref_id), |span, message| {
+            self.sess.diagnostic().delay_span_bug(span, message)
+        })
     }
 
     fn lower_poly_trait_ref(
@@ -2620,11 +2626,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
                 match path.res {
                     Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
-                        let principal = hir::PolyTraitRef {
-                            bound_generic_params: &[],
-                            trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },
-                            span,
-                        };
+                        let trait_ref = hir::TraitRef::new(path, hir_id, |span, message| {
+                            self.sess.diagnostic().delay_span_bug(span, message)
+                        });
+                        let principal =
+                            hir::PolyTraitRef { bound_generic_params: &[], trait_ref, span };
 
                         // The original ID is taken by the `PolyTraitRef`,
                         // so the `Ty` itself needs a different one.

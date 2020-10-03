@@ -2385,21 +2385,43 @@ pub enum UseKind {
 /// that the `ref_id` is for. Note that `ref_id`'s value is not the `HirId` of the
 /// trait being referred to but just a unique `HirId` that serves as a key
 /// within the resolution map.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic, Clone, Copy)]
 pub struct TraitRef<'hir> {
     pub path: &'hir Path<'hir>,
     // Don't hash the `ref_id`. It is tracked via the thing it is used to access.
     #[stable_hasher(ignore)]
     pub hir_ref_id: HirId,
+    // `TraitRef` can only be constructed via `TraitRef::new()`
+    _priv: (),
 }
 
-impl TraitRef<'_> {
-    /// Gets the `DefId` of the referenced trait. It _must_ actually be a trait or trait alias.
+impl TraitRef<'hir> {
+    /// Create a new `TraitRef` object from the given path and `HirId`. It _must_ actually be a
+    /// trait or trait alias.
+    ///
+    /// About the `on_res_failed` argument: passing in a `Session` would be simpler,
+    /// because then we could call `Session::delay_span_bug` directly. But we want to
+    /// avoid the need for `librustc_hir` to depend on `librustc_session`, so we
+    /// use a closure instead.
+    pub fn new<F>(path: &'hir Path<'hir>, hir_ref_id: HirId, on_res_failed: F) -> Self
+    where
+        F: FnOnce(Span, &str),
+    {
+        if !matches!(path.res, Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) {
+            on_res_failed(
+                path.span,
+                &format!("TraitRef::new(): unexpected Path resolution: `{:?}`", path.res),
+            );
+        }
+
+        Self { path, hir_ref_id, _priv: () }
+    }
+
+    /// Gets the `DefId` of the referenced trait.
     pub fn trait_def_id(&self) -> Option<DefId> {
         match self.path.res {
             Res::Def(DefKind::Trait | DefKind::TraitAlias, did) => Some(did),
-            Res::Err => None,
-            _ => unreachable!(),
+            _ => None,
         }
     }
 }
