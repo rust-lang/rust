@@ -434,7 +434,7 @@ impl m256iExt for __m256i {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdimd_internal", issue = "none")]
+#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m128Ext: Sized {
     fn as_m128(self) -> __m128;
 
