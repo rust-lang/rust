@@ -76,11 +76,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
                                 {
                                     // We now know that the Switch matches on the const place, and it is statementless
                                     // Now find which value in the Switch matches the const value.
-                                    let const_value = _const.literal.eval_bits(
+                                    let const_value = _const.literal.try_eval_bits(
                                         self.tcx,
                                         self.param_env,
                                         switch_ty,
-                                    );
+                                    )?;
                                     let found_value_idx_option = targets
                                         .iter()
                                         .enumerate()
