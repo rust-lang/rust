@@ -62,6 +62,18 @@ fn convert_path_separator<'a>(
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+
+    #[cfg(unix)]
+    fn bytes_to_os_str<'a>(&self, bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
+        Ok(OsStr::from_bytes(bytes))
+    }
+    #[cfg(not(unix))]
+    fn bytes_to_os_str<'a>(&self, bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
+        let s = std::str::from_utf8(bytes)
+            .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
+        Ok(OsStr::new(s))
+    }
+
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
     fn read_os_str_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
@@ -69,20 +81,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         'tcx: 'a,
         'mir: 'a,
     {
-        #[cfg(unix)]
-        fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
-            Ok(OsStr::from_bytes(bytes))
-        }
-        #[cfg(not(unix))]
-        fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
-            let s = std::str::from_utf8(bytes)
-                .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
-            Ok(OsStr::new(s))
-        }
-
         let this = self.eval_context_ref();
         let bytes = this.memory.read_c_str(scalar)?;
-        bytes_to_os_str(bytes)
+        self.bytes_to_os_str(bytes)
     }
 
     /// Helper function to read an OsString from a 0x0000-terminated sequence of u16,
@@ -105,6 +106,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let u16_vec = self.eval_context_ref().memory.read_wide_str(scalar)?;
         u16vec_to_osstring(u16_vec)
+    }
+
+    #[cfg(unix)]
+    fn os_str_to_bytes<'a>(&self, os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+        Ok(os_str.as_bytes())
+    }
+
+    #[cfg(not(unix))]
+    fn os_str_to_bytes<'a>(&self, os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+        // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
+        // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
+        // valid.
+        os_str
+            .to_str()
+            .map(|s| s.as_bytes())
+            .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
     }
 
     /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
@@ -251,21 +268,4 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let os_str = convert_path_separator(Cow::Borrowed(path.as_os_str()), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
         this.write_os_str_to_wide_str(&os_str, scalar, size)
     }
-
-    #[cfg(unix)]
-    fn os_str_to_bytes<'a>(&mut self, os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-        Ok(os_str.as_bytes())
-    }
-
-    #[cfg(not(unix))]
-    fn os_str_to_bytes<'a>(&mut self, os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-        // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
-        // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
-        // valid.
-        os_str
-            .to_str()
-            .map(|s| s.as_bytes())
-            .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
-    }
-
 }
