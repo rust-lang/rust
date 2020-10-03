@@ -34,10 +34,10 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
         let bbs_with_switch =
             body.basic_blocks().iter_enumerated().filter(|(_, bb)| is_switch(bb.terminator()));
 
+        let helper = Helper { body, tcx };
         let opts_to_apply: Vec<OptimizationToApply<'tcx>> = bbs_with_switch
             .flat_map(|(bb_idx, bb)| {
                 let switch = bb.terminator();
-                let helper = Helper { body, tcx };
                 let info = helper.go(bb, switch)?;
                 Some(OptimizationToApply { info, basic_block_first_switch: bb_idx })
             })
