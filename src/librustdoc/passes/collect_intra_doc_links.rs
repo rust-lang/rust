@@ -1576,22 +1576,27 @@ fn resolution_failure(
                     };
                     // See if this was a module: `[path]` or `[std::io::nope]`
                     if let Some(module) = last_found_module {
-                        let module_name = collector.cx.tcx.item_name(module);
-                        let note = format!(
-                            "the module `{}` contains no item named `{}`",
-                            module_name, unresolved
-                        );
+                        let note = if partial_res.is_some() {
+                            // Part of the link resolved; e.g. `std::io::nonexistent`
+                            let module_name = collector.cx.tcx.item_name(module);
+                            format!("no item named `{}` in module `{}`", unresolved, module_name)
+                        } else {
+                            // None of the link resolved; e.g. `Notimported`
+                            format!("no item named `{}` in scope", unresolved)
+                        };
                         if let Some(span) = sp {
                             diag.span_label(span, &note);
                         } else {
                             diag.note(&note);
                         }
+
                         // If the link has `::` in it, assume it was meant to be an intra-doc link.
                         // Otherwise, the `[]` might be unrelated.
                         // FIXME: don't show this for autolinks (`<>`), `()` style links, or reference links
                         if !path_str.contains("::") {
                             diag.help(r#"to escape `[` and `]` characters, add '\' before them like `\[` or `\]`"#);
                         }
+
                         continue;
                     }
 

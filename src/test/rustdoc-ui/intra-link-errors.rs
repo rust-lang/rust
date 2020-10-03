@@ -6,23 +6,23 @@
 
 /// [path::to::nonexistent::module]
 //~^ ERROR unresolved link
-//~| NOTE `intra_link_errors` contains no item named `path`
+//~| NOTE no item named `path` in scope
 
 /// [path::to::nonexistent::macro!]
 //~^ ERROR unresolved link
-//~| NOTE `intra_link_errors` contains no item named `path`
+//~| NOTE no item named `path` in scope
 
 /// [type@path::to::nonexistent::type]
 //~^ ERROR unresolved link
-//~| NOTE `intra_link_errors` contains no item named `path`
+//~| NOTE no item named `path` in scope
 
 /// [std::io::not::here]
 //~^ ERROR unresolved link
-//~| NOTE `io` contains no item named `not`
+//~| NOTE no item named `not` in module `io`
 
 /// [type@std::io::not::here]
 //~^ ERROR unresolved link
-//~| NOTE `io` contains no item named `not`
+//~| NOTE no item named `not` in module `io`
 
 /// [std::io::Error::x]
 //~^ ERROR unresolved link
