@@ -1097,6 +1097,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v.remove(0), Some(1));
     /// assert_eq!(v.remove(2), None);
     /// ```
+    #![unstable(feature = "vec_try_remove", issue = "77481")]
     pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
         if index >= len {
