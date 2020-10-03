@@ -65,6 +65,7 @@ pub fn futex<'tcx>(
                         return Ok(());
                     }
                 };
+                this.check_no_isolation("FUTEX_WAIT with timeout")?;
                 Some(if op & futex_realtime != 0 {
                     Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
                 } else {
