@@ -32,8 +32,12 @@ pub fn to_lower_snake_case(s: &str) -> String {
     let mut buf = String::with_capacity(s.len());
     let mut prev = false;
     for c in s.chars() {
+        // `&& prev` is required to not insert `_` before the first symbol.
         if c.is_ascii_uppercase() && prev {
-            buf.push('_')
+            // This check is required to not translate `Weird_Case` into `weird__case`.
+            if buf.chars().last() != Some('_') {
+                buf.push('_')
+            }
         }
         prev = true;
 

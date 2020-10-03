@@ -61,7 +61,9 @@ fn is_upper_snake_case(ident: &str) -> bool {
 
 fn is_camel_case(ident: &str) -> bool {
     // We assume that the string is either snake case or camel case.
-    ident.chars().all(|c| c != '_')
+    // `_` is allowed only at the beginning or in the end of identifier, not between characters.
+    ident.trim_matches('_').chars().all(|c| c != '_')
+        && ident.chars().find(|c| c.is_alphabetic()).map(|c| c.is_ascii_uppercase()).unwrap_or(true)
 }
 
 #[cfg(test)]
@@ -80,13 +82,18 @@ mod tests {
     fn test_to_lower_snake_case() {
         check(to_lower_snake_case, "lower_snake_case", expect![[""]]);
         check(to_lower_snake_case, "UPPER_SNAKE_CASE", expect![["upper_snake_case"]]);
+        check(to_lower_snake_case, "Weird_Case", expect![["weird_case"]]);
         check(to_lower_snake_case, "CamelCase", expect![["camel_case"]]);
     }
 
     #[test]
     fn test_to_camel_case() {
         check(to_camel_case, "CamelCase", expect![[""]]);
+        check(to_camel_case, "CamelCase_", expect![[""]]);
+        check(to_camel_case, "_CamelCase", expect![[""]]);
         check(to_camel_case, "lower_snake_case", expect![["LowerSnakeCase"]]);
         check(to_camel_case, "UPPER_SNAKE_CASE", expect![["UpperSnakeCase"]]);
+        check(to_camel_case, "Weird_Case", expect![["WeirdCase"]]);
+        check(to_camel_case, "name", expect![["Name"]]);
     }
 }
