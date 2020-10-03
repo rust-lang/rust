@@ -4,18 +4,18 @@
 can use them like any other lints by doing this:
 
 ```rust,ignore
-#![allow(missing_docs)] // allowing the lint, no message
-#![warn(missing_docs)] // warn if there is missing docs
-#![deny(missing_docs)] // rustdoc will fail if there is missing docs
+#![allow(missing_docs)] // allows the lint, no diagnostics will be reported
+#![warn(missing_docs)] // warn if there are missing docs
+#![deny(missing_docs)] // error if there are missing docs
 ```
 
 Here is the list of the lints provided by `rustdoc`:
 
 ## broken_intra_doc_links
 
-This lint **warns by default**. This lint detects when an [intra-doc link] fails to get resolved. For example:
+This lint **warns by default**. This lint detects when an [intra-doc link] fails to be resolved. For example:
 
- [intra-doc link]: linking-to-items-by-name.html
+[intra-doc link]: linking-to-items-by-name.md
 
 ```rust
 /// I want to link to [`Nonexistent`] but it doesn't exist!
