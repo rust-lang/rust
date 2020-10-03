@@ -1541,6 +1541,11 @@ pub enum StatementKind<'tcx> {
     /// counter varible at runtime, each time the code region is executed.
     Coverage(Box<Coverage>),
 
+    /// Denotes a call to the intrinsic function copy_overlapping, where `src_dst` denotes the
+    /// memory being read from and written to(one field to save memory), and size
+    /// indicates how many bytes are being copied over.
+    CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -1659,6 +1664,11 @@ impl Debug for Statement<'_> {
                     write!(fmt, "Coverage::{:?}", coverage.kind)
                 }
             }
+            CopyNonOverlapping(box crate::mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref size,
+            }) => write!(fmt, "src {:?} -> dst {:?}, {:?} bytes", src, dst, size),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -1668,6 +1678,13 @@ impl Debug for Statement<'_> {
 pub struct Coverage {
     pub kind: CoverageKind,
     pub code_region: Option<CodeRegion>,
+}
+
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+pub struct CopyNonOverlapping<'tcx> {
+    pub src: Place<'tcx>,
+    pub dst: Place<'tcx>,
+    pub size: Operand<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -436,6 +436,23 @@ macro_rules! make_mir_visitor {
                             location
                         )
                     }
+                    StatementKind::CopyNonOverlapping(box crate::mir::CopyNonOverlapping{
+                      ref $($mutability)? src,
+                      ref $($mutability)? dst,
+                      ref $($mutability)? size,
+                    }) => {
+                      self.visit_place(
+                            src,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::CopyNonOverlapping),
+                            location
+                      );
+                      self.visit_place(
+                            dst,
+                            PlaceContext::MutatingUse(MutatingUseContext::CopyNonOverlapping),
+                            location
+                      );
+                      self.visit_operand(size, location)
+                    }
                     StatementKind::Nop => {}
                 }
             }
@@ -1151,6 +1168,8 @@ pub enum NonMutatingUseContext {
     ///     f(&x.y);
     ///
     Projection,
+    /// Source from copy_nonoverlapping.
+    CopyNonOverlapping,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1180,6 +1199,8 @@ pub enum MutatingUseContext {
     Projection,
     /// Retagging, a "Stacked Borrows" shadow state operation
     Retag,
+    /// Memory written to in copy_nonoverlapping.
+    CopyNonOverlapping,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

@@ -115,6 +115,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_coverage(&mut bx, coverage.clone());
                 bx
             }
+            mir::StatementKind::CopyNonOverlapping(box mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref size,
+            }) => {
+              bx.memcpy(
+                dst,
+                todo!(),
+                src,
+                todo!(),
+                size,
+                todo!(),
+              );
+              bx
+            }
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)

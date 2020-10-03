@@ -293,7 +293,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
                 | MutatingUseContext::AddressOf
-                | MutatingUseContext::Projection,
+                | MutatingUseContext::Projection
+                | MutatingUseContext::CopyNonOverlapping,
             )
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Inspect
@@ -301,7 +302,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::ShallowBorrow
                 | NonMutatingUseContext::AddressOf
-                | NonMutatingUseContext::Projection,
+                | NonMutatingUseContext::Projection
+                | NonMutatingUseContext::CopyNonOverlapping,
             ) => {
                 self.not_ssa(local);
             }
