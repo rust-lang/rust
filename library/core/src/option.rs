@@ -566,8 +566,7 @@ impl<T> Option<T> {
     // Setting a new value
     /////////////////////////////////////////////////////////////////////////
 
-    /// Inserts `v` into the option then returns a mutable reference
-    /// to the contained value.
+    /// Inserts `value` into the option then returns a mutable reference to it.
     ///
     /// # Example
     ///
@@ -585,8 +584,8 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable(feature = "option_insert", reason = "newly added", issue = "none")]
-    pub fn insert(&mut self, val: T) -> &mut T {
-        *self = Some(val);
+    pub fn insert(&mut self, value: T) -> &mut T {
+        *self = Some(value);
 
         match self {
             Some(v) => v,
@@ -825,7 +824,7 @@ impl<T> Option<T> {
     // Entry-like operations to insert if None and return a reference
     /////////////////////////////////////////////////////////////////////////
 
-    /// Inserts `v` into the option if it is [`None`], then
+    /// Inserts `value` into the option if it is [`None`], then
     /// returns a mutable reference to the contained value.
     ///
     /// # Examples
@@ -844,12 +843,12 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
-    pub fn get_or_insert(&mut self, val: T) -> &mut T {
-        self.get_or_insert_with(|| val)
+    pub fn get_or_insert(&mut self, value: T) -> &mut T {
+        self.get_or_insert_with(|| value)
     }
 
-    /// Inserts a value computed from `f` into the option if it is [`None`], then
-    /// returns a mutable reference to the contained value.
+    /// Inserts a value computed from `f` into the option if it is [`None`],
+    /// then returns a mutable reference to the contained value.
     ///
     /// # Examples
     ///
