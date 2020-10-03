@@ -407,6 +407,22 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::FalseUnwind { ref mut unwind, .. } => Some(unwind),
         }
     }
+
+    pub fn as_switch(&self) -> Option<(&Operand<'tcx>, Ty<'tcx>, &SwitchTargets)> {
+        match self {
+            TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
+                Some((discr, switch_ty, targets))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn as_goto(&self) -> Option<BasicBlock> {
+        match self {
+            TerminatorKind::Goto { target } => Some(*target),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> Debug for TerminatorKind<'tcx> {

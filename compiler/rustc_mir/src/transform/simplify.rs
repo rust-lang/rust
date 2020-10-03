@@ -320,28 +320,31 @@ pub struct SimplifyLocals;
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("running SimplifyLocals on {:?}", body.source);
+        simplify_locals(body, tcx);
+    }
+}
 
-        // First, we're going to get a count of *actual* uses for every `Local`.
-        let mut used_locals = UsedLocals::new(body);
+pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
+    // First, we're going to get a count of *actual* uses for every `Local`.
+    let mut used_locals = UsedLocals::new(body);
 
-        // Next, we're going to remove any `Local` with zero actual uses. When we remove those
-        // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
-        // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
-        // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
-        // fixedpoint where there are no more unused locals.
-        remove_unused_definitions(&mut used_locals, body);
+    // Next, we're going to remove any `Local` with zero actual uses. When we remove those
+    // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
+    // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
+    // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
+    // fixedpoint where there are no more unused locals.
+    remove_unused_definitions(&mut used_locals, body);
 
-        // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
-        let map = make_local_map(&mut body.local_decls, &used_locals);
+    // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
+    let map = make_local_map(&mut body.local_decls, &used_locals);
 
-        // Only bother running the `LocalUpdater` if we actually found locals to remove.
-        if map.iter().any(Option::is_none) {
-            // Update references to all vars and tmps now
-            let mut updater = LocalUpdater { map, tcx };
-            updater.visit_body(body);
+    // Only bother running the `LocalUpdater` if we actually found locals to remove.
+    if map.iter().any(Option::is_none) {
+        // Update references to all vars and tmps now
+        let mut updater = LocalUpdater { map, tcx };
+        updater.visit_body(body);
 
-            body.local_decls.shrink_to_fit();
-        }
+        body.local_decls.shrink_to_fit();
     }
 }
 
