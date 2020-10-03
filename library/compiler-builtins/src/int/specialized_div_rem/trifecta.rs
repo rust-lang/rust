@@ -1,28 +1,21 @@
-/// Creates unsigned and signed division functions optimized for division of integers with bitwidths
+/// Creates an unsigned division function optimized for division of integers with bitwidths
 /// larger than the largest hardware integer division supported. These functions use large radix
 /// division algorithms that require both fast division and very fast widening multiplication on the
 /// target microarchitecture. Otherwise, `impl_delegate` should be used instead.
 #[macro_export]
 macro_rules! impl_trifecta {
     (
-        $unsigned_name:ident, // name of the unsigned division function
-        $signed_name:ident, // name of the signed division function
+        $fn:ident, // name of the unsigned division function
         $zero_div_fn:ident, // function called when division by zero is attempted
         $half_division:ident, // function for division of a $uX by a $uX
         $n_h:expr, // the number of bits in $iH or $uH
         $uH:ident, // unsigned integer with half the bit width of $uX
         $uX:ident, // unsigned integer with half the bit width of $uD
-        $uD:ident, // unsigned integer type for the inputs and outputs of `$unsigned_name`
-        $iD:ident, // signed integer type for the inputs and outputs of `$signed_name`
-        $($unsigned_attr:meta),*; // attributes for the unsigned function
-        $($signed_attr:meta),* // attributes for the signed function
+        $uD:ident // unsigned integer type for the inputs and outputs of `$unsigned_name`
     ) => {
         /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
         /// tuple.
-        $(
-            #[$unsigned_attr]
-        )*
-        pub fn $unsigned_name(duo: $uD, div: $uD) -> ($uD, $uD) {
+        pub fn $fn(duo: $uD, div: $uD) -> ($uD, $uD) {
             // This is called the trifecta algorithm because it uses three main algorithms: short
             // division for small divisors, the two possibility algorithm for large divisors, and an
             // undersubtracting long division algorithm for intermediate cases.
@@ -34,7 +27,9 @@ macro_rules! impl_trifecta {
                 (tmp as $uX, (tmp >> ($n_h * 2)) as $uX)
             }
             fn carrying_mul_add(lhs: $uX, mul: $uX, add: $uX) -> ($uX, $uX) {
-                let tmp = (lhs as $uD).wrapping_mul(mul as $uD).wrapping_add(add as $uD);
+                let tmp = (lhs as $uD)
+                    .wrapping_mul(mul as $uD)
+                    .wrapping_add(add as $uD);
                 (tmp as $uX, (tmp >> ($n_h * 2)) as $uX)
             }
 
@@ -62,9 +57,9 @@ macro_rules! impl_trifecta {
                 // The quotient cannot be more than 1. The highest set bit of `duo` needs to be at
                 // least one place higher than `div` for the quotient to be more than 1.
                 if duo >= div {
-                    return (1, duo - div)
+                    return (1, duo - div);
                 } else {
-                    return (0, duo)
+                    return (0, duo);
                 }
             }
 
@@ -76,10 +71,7 @@ macro_rules! impl_trifecta {
                 // `duo < 2^n` so it will fit in a $uX. `div` will also fit in a $uX (because of the
                 // `div_lz <= duo_lz` branch) so no numerical error.
                 let (quo, rem) = $half_division(duo as $uX, div as $uX);
-                return (
-                    quo as $uD,
-                    rem as $uD
-                )
+                return (quo as $uD, rem as $uD);
             }
 
             // `{2^n, 2^div_sb} <= duo < 2^n_d`
@@ -99,22 +91,16 @@ macro_rules! impl_trifecta {
                 let div_0 = div as $uH as $uX;
                 let (quo_hi, rem_3) = $half_division(duo_hi, div_0);
 
-                let duo_mid =
-                    ((duo >> $n_h) as $uH as $uX)
-                    | (rem_3 << $n_h);
+                let duo_mid = ((duo >> $n_h) as $uH as $uX) | (rem_3 << $n_h);
                 let (quo_1, rem_2) = $half_division(duo_mid, div_0);
 
-                let duo_lo =
-                    (duo as $uH as $uX)
-                    | (rem_2 << $n_h);
+                let duo_lo = (duo as $uH as $uX) | (rem_2 << $n_h);
                 let (quo_0, rem_1) = $half_division(duo_lo, div_0);
 
                 return (
-                    (quo_0 as $uD)
-                    | ((quo_1 as $uD) << $n_h)
-                    | ((quo_hi as $uD) << n),
-                    rem_1 as $uD
-                )
+                    (quo_0 as $uD) | ((quo_1 as $uD) << $n_h) | ((quo_hi as $uD) << n),
+                    rem_1 as $uD,
+                );
             }
 
             // relative leading significant bits, cannot overflow because of above branches
@@ -237,13 +223,10 @@ macro_rules! impl_trifecta {
                         (quo - 1) as $uD,
                         // Both the addition and subtraction can overflow, but when combined end up
                         // as a correct positive number.
-                        duo.wrapping_add(div).wrapping_sub(tmp)
-                    )
+                        duo.wrapping_add(div).wrapping_sub(tmp),
+                    );
                 } else {
-                    return (
-                        quo as $uD,
-                        duo - tmp
-                    )
+                    return (quo as $uD, duo - tmp);
                 }
             }
 
@@ -372,13 +355,10 @@ macro_rules! impl_trifecta {
                     if duo < tmp {
                         return (
                             quo + ((quo_part - 1) as $uD),
-                            duo.wrapping_add(div).wrapping_sub(tmp)
-                        )
+                            duo.wrapping_add(div).wrapping_sub(tmp),
+                        );
                     } else {
-                        return (
-                            quo + (quo_part as $uD),
-                            duo - tmp
-                        )
+                        return (quo + (quo_part as $uD), duo - tmp);
                     }
                 }
 
@@ -387,15 +367,9 @@ macro_rules! impl_trifecta {
                 if div_lz <= duo_lz {
                     // quotient can have 0 or 1 added to it
                     if div <= duo {
-                        return (
-                            quo + 1,
-                            duo - div
-                        )
+                        return (quo + 1, duo - div);
                     } else {
-                        return (
-                            quo,
-                            duo
-                        )
+                        return (quo, duo);
                     }
                 }
 
@@ -404,38 +378,9 @@ macro_rules! impl_trifecta {
                 if n <= duo_lz {
                     // simple division and addition
                     let tmp = $half_division(duo as $uX, div as $uX);
-                    return (
-                        quo + (tmp.0 as $uD),
-                        tmp.1 as $uD
-                    )
+                    return (quo + (tmp.0 as $uD), tmp.1 as $uD);
                 }
             }
         }
-
-        /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
-        /// tuple.
-        $(
-            #[$signed_attr]
-        )*
-        pub fn $signed_name(duo: $iD, div: $iD) -> ($iD, $iD) {
-            match (duo < 0, div < 0) {
-                (false, false) => {
-                    let t = $unsigned_name(duo as $uD, div as $uD);
-                    (t.0 as $iD, t.1 as $iD)
-                },
-                (true, false) => {
-                    let t = $unsigned_name(duo.wrapping_neg() as $uD, div as $uD);
-                    ((t.0 as $iD).wrapping_neg(), (t.1 as $iD).wrapping_neg())
-                },
-                (false, true) => {
-                    let t = $unsigned_name(duo as $uD, div.wrapping_neg() as $uD);
-                    ((t.0 as $iD).wrapping_neg(), t.1 as $iD)
-                },
-                (true, true) => {
-                    let t = $unsigned_name(duo.wrapping_neg() as $uD, div.wrapping_neg() as $uD);
-                    (t.0 as $iD, (t.1 as $iD).wrapping_neg())
-                },
-            }
-        }
-    }
+    };
 }

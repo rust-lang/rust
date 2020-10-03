@@ -1,29 +1,23 @@
-/// Creates unsigned and signed division functions that use a combination of hardware division and
+/// Creates an unsigned division function that uses a combination of hardware division and
 /// binary long division to divide integers larger than what hardware division by itself can do. This
 /// function is intended for microarchitectures that have division hardware, but not fast enough
 /// multiplication hardware for `impl_trifecta` to be faster.
 #[macro_export]
 macro_rules! impl_delegate {
     (
-        $unsigned_name:ident, // name of the unsigned division function
-        $signed_name:ident, // name of the signed division function
+        $fn:ident, // name of the unsigned division function
         $zero_div_fn:ident, // function called when division by zero is attempted
         $half_normalization_shift:ident, // function for finding the normalization shift of $uX
         $half_division:ident, // function for division of a $uX by a $uX
         $n_h:expr, // the number of bits in $iH or $uH
         $uH:ident, // unsigned integer with half the bit width of $uX
         $uX:ident, // unsigned integer with half the bit width of $uD.
-        $uD:ident, // unsigned integer type for the inputs and outputs of `$unsigned_name`
-        $iD:ident, // signed integer type for the inputs and outputs of `$signed_name`
-        $($unsigned_attr:meta),*; // attributes for the unsigned function
-        $($signed_attr:meta),* // attributes for the signed function
+        $uD:ident, // unsigned integer type for the inputs and outputs of `$fn`
+        $iD:ident // signed integer type with the same bitwidth as `$uD`
     ) => {
         /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
         /// tuple.
-        $(
-            #[$unsigned_attr]
-        )*
-        pub fn $unsigned_name(duo: $uD, div: $uD) -> ($uD, $uD) {
+        pub fn $fn(duo: $uD, div: $uD) -> ($uD, $uD) {
             // The two possibility algorithm, undersubtracting long division algorithm, or any kind
             // of reciprocal based algorithm will not be fastest, because they involve large
             // multiplications that we assume to not be fast enough relative to the divisions to
@@ -38,17 +32,15 @@ macro_rules! impl_delegate {
             let div_hi = (div >> n) as $uX;
 
             match (div_lo == 0, div_hi == 0, duo_hi == 0) {
-                (true, true, _) => {
-                    $zero_div_fn()
-                }
+                (true, true, _) => $zero_div_fn(),
                 (_, false, true) => {
                     // `duo` < `div`
-                    return (0, duo)
+                    return (0, duo);
                 }
                 (false, true, true) => {
                     // delegate to smaller division
                     let tmp = $half_division(duo_lo, div_lo);
-                    return (tmp.0 as $uD, tmp.1 as $uD)
+                    return (tmp.0 as $uD, tmp.1 as $uD);
                 }
                 (false, true, false) => {
                     if duo_hi < div_lo {
@@ -96,7 +88,7 @@ macro_rules! impl_delegate {
                                     // Delegate to get the rest of the quotient. Note that the
                                     // `div_lo` here is the original unshifted `div`.
                                     let tmp = $half_division(duo as $uX, div_lo);
-                                    return ((quo_lo | tmp.0) as $uD, tmp.1 as $uD)
+                                    return ((quo_lo | tmp.0) as $uD, tmp.1 as $uD);
                                 }
                             }
                             div >>= 1;
@@ -105,7 +97,7 @@ macro_rules! impl_delegate {
                     } else if duo_hi == div_lo {
                         // `quo_hi == 1`. This branch is cheap and helps with edge cases.
                         let tmp = $half_division(duo as $uX, div as $uX);
-                        return ((1 << n) | (tmp.0 as $uD), tmp.1 as $uD)
+                        return ((1 << n) | (tmp.0 as $uD), tmp.1 as $uD);
                     } else {
                         // `div_lo < duo_hi`
                         // `rem_hi == 0`
@@ -114,22 +106,16 @@ macro_rules! impl_delegate {
                             let div_0 = div_lo as $uH as $uX;
                             let (quo_hi, rem_3) = $half_division(duo_hi, div_0);
 
-                            let duo_mid =
-                                ((duo >> $n_h) as $uH as $uX)
-                                | (rem_3 << $n_h);
+                            let duo_mid = ((duo >> $n_h) as $uH as $uX) | (rem_3 << $n_h);
                             let (quo_1, rem_2) = $half_division(duo_mid, div_0);
 
-                            let duo_lo =
-                                (duo as $uH as $uX)
-                                | (rem_2 << $n_h);
+                            let duo_lo = (duo as $uH as $uX) | (rem_2 << $n_h);
                             let (quo_0, rem_1) = $half_division(duo_lo, div_0);
 
                             return (
-                                (quo_0 as $uD)
-                                | ((quo_1 as $uD) << $n_h)
-                                | ((quo_hi as $uD) << n),
-                                rem_1 as $uD
-                            )
+                                (quo_0 as $uD) | ((quo_1 as $uD) << $n_h) | ((quo_hi as $uD) << n),
+                                rem_1 as $uD,
+                            );
                         }
 
                         // This is basically a short division composed of a half division for the hi
@@ -161,7 +147,7 @@ macro_rules! impl_delegate {
                                     let tmp = $half_division(duo as $uX, div_lo);
                                     return (
                                         (tmp.0) as $uD | (quo_lo as $uD) | ((quo_hi as $uD) << n),
-                                        tmp.1 as $uD
+                                        tmp.1 as $uD,
                                     );
                                 }
                             }
@@ -187,7 +173,7 @@ macro_rules! impl_delegate {
                             duo = sub;
                             quo_lo |= pow_lo;
                             if duo < div_original {
-                                return (quo_lo as $uD, duo)
+                                return (quo_lo as $uD, duo);
                             }
                         }
                         div >>= 1;
@@ -196,31 +182,5 @@ macro_rules! impl_delegate {
                 }
             }
         }
-
-        /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
-        /// tuple.
-        $(
-            #[$signed_attr]
-        )*
-        pub fn $signed_name(duo: $iD, div: $iD) -> ($iD, $iD) {
-            match (duo < 0, div < 0) {
-                (false, false) => {
-                    let t = $unsigned_name(duo as $uD, div as $uD);
-                    (t.0 as $iD, t.1 as $iD)
-                },
-                (true, false) => {
-                    let t = $unsigned_name(duo.wrapping_neg() as $uD, div as $uD);
-                    ((t.0 as $iD).wrapping_neg(), (t.1 as $iD).wrapping_neg())
-                },
-                (false, true) => {
-                    let t = $unsigned_name(duo as $uD, div.wrapping_neg() as $uD);
-                    ((t.0 as $iD).wrapping_neg(), t.1 as $iD)
-                },
-                (true, true) => {
-                    let t = $unsigned_name(duo.wrapping_neg() as $uD, div.wrapping_neg() as $uD);
-                    (t.0 as $iD, (t.1 as $iD).wrapping_neg())
-                },
-            }
-        }
-    }
+    };
 }

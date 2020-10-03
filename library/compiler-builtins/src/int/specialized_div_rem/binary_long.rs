@@ -1,4 +1,4 @@
-/// Creates unsigned and signed division functions that use binary long division, designed for
+/// Creates an unsigned division function that uses binary long division, designed for
 /// computer architectures without division instructions. These functions have good performance for
 /// microarchitectures with large branch miss penalties and architectures without the ability to
 /// predicate instructions. For architectures with predicated instructions, one of the algorithms
@@ -7,29 +7,23 @@
 #[macro_export]
 macro_rules! impl_binary_long {
     (
-        $unsigned_name:ident, // name of the unsigned division function
-        $signed_name:ident, // name of the signed division function
+        $fn:ident, // name of the unsigned division function
         $zero_div_fn:ident, // function called when division by zero is attempted
         $normalization_shift:ident, // function for finding the normalization shift
         $n:tt, // the number of bits in a $iX or $uX
-        $uX:ident, // unsigned integer type for the inputs and outputs of `$unsigned_name`
-        $iX:ident, // signed integer type for the inputs and outputs of `$signed_name`
-        $($unsigned_attr:meta),*; // attributes for the unsigned function
-        $($signed_attr:meta),* // attributes for the signed function
+        $uX:ident, // unsigned integer type for the inputs and outputs of `$fn`
+        $iX:ident // signed integer type with same bitwidth as `$uX`
     ) => {
         /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
         /// tuple.
-        $(
-            #[$unsigned_attr]
-        )*
-        pub fn $unsigned_name(duo: $uX, div: $uX) -> ($uX, $uX) {
+        pub fn $fn(duo: $uX, div: $uX) -> ($uX, $uX) {
             let mut duo = duo;
             // handle edge cases before calling `$normalization_shift`
             if div == 0 {
                 $zero_div_fn()
             }
             if duo < div {
-                return (0, duo)
+                return (0, duo);
             }
 
             // There are many variations of binary division algorithm that could be used. This
@@ -430,7 +424,7 @@ macro_rules! impl_binary_long {
             let mut i = shl;
             loop {
                 if i == 0 {
-                    break
+                    break;
                 }
                 i -= 1;
                 // shift left 1 and subtract
@@ -550,47 +544,5 @@ macro_rules! impl_binary_long {
             return ((duo & mask) | quo, duo >> shl);
             */
         }
-
-        /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
-        /// tuple.
-        $(
-            #[$signed_attr]
-        )*
-        pub fn $signed_name(duo: $iX, div: $iX) -> ($iX, $iX) {
-            // There is a way of doing this without any branches, but requires too many extra
-            // operations to be faster.
-            /*
-            let duo_s = duo >> ($n - 1);
-            let div_s = div >> ($n - 1);
-            let duo = (duo ^ duo_s).wrapping_sub(duo_s);
-            let div = (div ^ div_s).wrapping_sub(div_s);
-            let quo_s = duo_s ^ div_s;
-            let rem_s = duo_s;
-            let tmp = $unsigned_name(duo as $uX, div as $uX);
-            (
-                ((tmp.0 as $iX) ^ quo_s).wrapping_sub(quo_s),
-                ((tmp.1 as $iX) ^ rem_s).wrapping_sub(rem_s),
-            )
-            */
-
-            match (duo < 0, div < 0) {
-                (false, false) => {
-                    let t = $unsigned_name(duo as $uX, div as $uX);
-                    (t.0 as $iX, t.1 as $iX)
-                },
-                (true, false) => {
-                    let t = $unsigned_name(duo.wrapping_neg() as $uX, div as $uX);
-                    ((t.0 as $iX).wrapping_neg(), (t.1 as $iX).wrapping_neg())
-                },
-                (false, true) => {
-                    let t = $unsigned_name(duo as $uX, div.wrapping_neg() as $uX);
-                    ((t.0 as $iX).wrapping_neg(), t.1 as $iX)
-                },
-                (true, true) => {
-                    let t = $unsigned_name(duo.wrapping_neg() as $uX, div.wrapping_neg() as $uX);
-                    (t.0 as $iX, (t.1 as $iX).wrapping_neg())
-                },
-            }
-        }
-    }
+    };
 }
