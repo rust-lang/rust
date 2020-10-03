@@ -257,7 +257,7 @@ impl fmt::Display for CaseType {
         let repr = match self {
             CaseType::LowerSnakeCase => "snake_case",
             CaseType::UpperSnakeCase => "UPPER_SNAKE_CASE",
-            CaseType::UpperCamelCase => "UpperCamelCase",
+            CaseType::UpperCamelCase => "CamelCase",
         };
 
         write!(f, "{}", repr)
