@@ -9,7 +9,7 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-mod rename;
+pub(crate) mod rename;
 
 use hir::Semantics;
 use ide_db::{

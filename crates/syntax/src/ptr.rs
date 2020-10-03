@@ -23,6 +23,10 @@ impl SyntaxNodePtr {
         SyntaxNodePtr { range: node.text_range(), kind: node.kind() }
     }
 
+    pub fn text_range(&self) -> TextRange {
+        self.range.clone()
+    }
+
     pub fn to_node(&self, root: &SyntaxNode) -> SyntaxNode {
         assert!(root.parent().is_none());
         successors(Some(root.clone()), |node| {
