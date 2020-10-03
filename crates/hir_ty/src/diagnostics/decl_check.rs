@@ -315,7 +315,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                     Some(_) => {}
                     None => {
                         log::error!(
-                            "Replacement ({:?}) was generated for a function parameter which was not found: {:?}",
+                            "Replacement ({:?}) was generated for a structure field which was not found: {:?}",
                             field_to_rename, struct_src
                         );
                         return;
@@ -338,6 +338,131 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
     fn validate_enum(&mut self, db: &dyn HirDatabase, enum_id: EnumId) {
         let data = db.enum_data(enum_id);
+
+        // 1. Check the enum name.
+        let enum_name = data.name.to_string();
+        let enum_name_replacement = if let Some(new_name) = to_camel_case(&enum_name) {
+            let replacement = Replacement {
+                current_name: data.name.clone(),
+                suggested_text: new_name,
+                expected_case: CaseType::UpperCamelCase,
+            };
+            Some(replacement)
+        } else {
+            None
+        };
+
+        // 2. Check the field names.
+        let mut enum_fields_replacements = Vec::new();
+
+        for (_, variant) in data.variants.iter() {
+            let variant_name = variant.name.to_string();
+            if let Some(new_name) = to_camel_case(&variant_name) {
+                let replacement = Replacement {
+                    current_name: variant.name.clone(),
+                    suggested_text: new_name,
+                    expected_case: CaseType::UpperCamelCase,
+                };
+                enum_fields_replacements.push(replacement);
+            }
+        }
+
+        // 3. If there is at least one element to spawn a warning on, go to the source map and generate a warning.
+        self.create_incorrect_case_diagnostic_for_enum(
+            enum_id,
+            db,
+            enum_name_replacement,
+            enum_fields_replacements,
+        )
+    }
+
+    /// Given the information about incorrect names in the struct declaration, looks up into the source code
+    /// for exact locations and adds diagnostics into the sink.
+    fn create_incorrect_case_diagnostic_for_enum(
+        &mut self,
+        enum_id: EnumId,
+        db: &dyn HirDatabase,
+        enum_name_replacement: Option<Replacement>,
+        enum_variants_replacements: Vec<Replacement>,
+    ) {
+        // XXX: only look at sources if we do have incorrect names
+        if enum_name_replacement.is_none() && enum_variants_replacements.is_empty() {
+            return;
+        }
+
+        let enum_loc = enum_id.lookup(db.upcast());
+        let enum_src = enum_loc.source(db.upcast());
+
+        if let Some(replacement) = enum_name_replacement {
+            let ast_ptr = if let Some(name) = enum_src.value.name() {
+                name
+            } else {
+                // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
+                log::error!(
+                    "Replacement ({:?}) was generated for a enum without a name: {:?}",
+                    replacement,
+                    enum_src
+                );
+                return;
+            };
+
+            let diagnostic = IncorrectCase {
+                file: enum_src.file_id,
+                ident_type: "Enum".to_string(),
+                ident: AstPtr::new(&ast_ptr).into(),
+                expected_case: replacement.expected_case,
+                ident_text: replacement.current_name.to_string(),
+                suggested_text: replacement.suggested_text,
+            };
+
+            self.sink.push(diagnostic);
+        }
+
+        let enum_variants_list = match enum_src.value.variant_list() {
+            Some(variants) => variants,
+            _ => {
+                if !enum_variants_replacements.is_empty() {
+                    log::error!(
+                        "Replacements ({:?}) were generated for a enum variants which had no fields list: {:?}",
+                        enum_variants_replacements, enum_src
+                    );
+                }
+                return;
+            }
+        };
+        let mut enum_variants_iter = enum_variants_list.variants();
+        for variant_to_rename in enum_variants_replacements {
+            // We assume that parameters in replacement are in the same order as in the
+            // actual params list, but just some of them (ones that named correctly) are skipped.
+            let ast_ptr = loop {
+                match enum_variants_iter.next() {
+                    Some(variant)
+                        if names_equal(variant.name(), &variant_to_rename.current_name) =>
+                    {
+                        break variant.name().unwrap()
+                    }
+                    Some(_) => {}
+                    None => {
+                        log::error!(
+                            "Replacement ({:?}) was generated for a enum variant which was not found: {:?}",
+                            variant_to_rename, enum_src
+                        );
+                        return;
+                    }
+                }
+            };
+
+            let diagnostic = IncorrectCase {
+                file: enum_src.file_id,
+                ident_type: "Variant".to_string(),
+                ident: AstPtr::new(&ast_ptr).into(),
+                expected_case: variant_to_rename.expected_case,
+                ident_text: variant_to_rename.current_name.to_string(),
+                suggested_text: variant_to_rename.suggested_text,
+            };
+
+            self.sink.push(diagnostic);
+        }
     }
 }
 
@@ -400,6 +525,26 @@ struct non_camel_case_name {}
             r#"
 struct SomeStruct { SomeField: u8 }
                  // ^^^^^^^^^ Field `SomeField` should have a snake_case name, e.g. `some_field`
+"#,
+        );
+    }
+
+    #[test]
+    fn incorrect_enum_name() {
+        check_diagnostics(
+            r#"
+enum some_enum { Val(u8) }
+  // ^^^^^^^^^ Enum `some_enum` should have a CamelCase name, e.g. `SomeEnum`
+"#,
+        );
+    }
+
+    #[test]
+    fn incorrect_enum_variant_name() {
+        check_diagnostics(
+            r#"
+enum SomeEnum { SOME_VARIANT(u8) }
+             // ^^^^^^^^^^^^ Variant `SOME_VARIANT` should have a CamelCase name, e.g. `SomeVariant`
 "#,
         );
     }

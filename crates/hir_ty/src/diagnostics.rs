@@ -298,7 +298,7 @@ impl Diagnostic for IncorrectCase {
     }
 
     fn is_experimental(&self) -> bool {
-        false
+        true
     }
 }
 

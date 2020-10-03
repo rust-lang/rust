@@ -853,5 +853,31 @@ pub fn some_fn(val: TestStruct) -> TestStruct {
 }
 "#,
         );
+
+        check_fixes(
+            r#"
+pub fn some_fn(NonSnakeCase<|>: u8) -> u8 {
+    NonSnakeCase
+}
+"#,
+            r#"
+pub fn some_fn(non_snake_case: u8) -> u8 {
+    non_snake_case
+}
+"#,
+        );
+
+        check_fixes(
+            r#"
+pub fn SomeFn<|>(val: u8) -> u8 {
+    if val != 0 { SomeFn(val - 1) } else { val }
+}
+"#,
+            r#"
+pub fn some_fn(val: u8) -> u8 {
+    if val != 0 { some_fn(val - 1) } else { val }
+}
+"#,
+        );
     }
 }
