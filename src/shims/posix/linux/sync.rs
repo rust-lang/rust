@@ -17,8 +17,8 @@ pub fn futex<'tcx>(
     // may or may not be left out from the `syscall()` call.
     // Therefore we don't use `check_arg_count` here, but only check for the
     // number of arguments to fall within a range.
-    if !(4..=7).contains(&args.len()) {
-        throw_ub_format!("incorrect number of arguments for futex syscall: got {}, expected between 4 and 7 (inclusive)", args.len());
+    if args.len() < 4 {
+        throw_ub_format!("incorrect number of arguments for `futex` syscall: got {}, expected at least 4", args.len());
     }
 
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
@@ -49,13 +49,13 @@ pub fn futex<'tcx>(
         // or *timeout expires. `timeout == null` for an infinite timeout.
         op if op & !futex_realtime == futex_wait => {
             if args.len() < 5 {
-                throw_ub_format!("incorrect number of arguments for FUTEX_WAIT syscall: got {}, expected at least 5", args.len());
+                throw_ub_format!("incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 5", args.len());
             }
             let timeout = args[4];
             let timeout_time = if this.is_null(this.read_scalar(timeout)?.check_init()?)? {
                 None
             } else {
-                this.check_no_isolation("`syscall(SYS_FUTEX, op=FUTEX_WAIT)` with timeout")?;
+                this.check_no_isolation("`futex` syscall with `op=FUTEX_WAIT` and non-null timeout")?;
                 let duration = match this.read_timespec(timeout)? {
                     Some(duration) => duration,
                     None => {
@@ -126,7 +126,7 @@ pub fn futex<'tcx>(
             }
             this.write_scalar(Scalar::from_machine_isize(n, this), dest)?;
         }
-        op => throw_unsup_format!("miri does not support SYS_futex operation {}", op),
+        op => throw_unsup_format!("Miri does not support `futex` syscall with op={}", op),
     }
 
     Ok(())
