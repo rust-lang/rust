@@ -1727,15 +1727,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "log_settings"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19af41f0565d7c19b2058153ad0b42d4d5ce89ec4dbf06ed6741114a8b63e7cd"
-dependencies = [
- "lazy_static",
-]
-
-[[package]]
 name = "lsp-codec"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3523,6 +3514,7 @@ dependencies = [
  "rustc_target",
  "tracing",
  "tracing-subscriber",
+ "tracing-tree",
  "winapi 0.3.9",
 ]
 
@@ -3810,7 +3802,6 @@ version = "0.0.0"
 dependencies = [
  "either",
  "itertools 0.9.0",
- "log_settings",
  "polonius-engine",
  "regex",
  "rustc_apfloat",
@@ -5105,9 +5096,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-tree"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1a3dc4774db3a6b2d66a4f8d8de670e874ec3ed55615860c994927419b32c5f"
+checksum = "43aac8afb493b08e1e1904956f7407c1e671b9c83b26a17e1bd83d6a3520e350"
 dependencies = [
  "ansi_term 0.12.1",
  "atty",
