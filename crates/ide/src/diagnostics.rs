@@ -135,7 +135,6 @@ fn diagnostic_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabas
 
 fn warning_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
     Diagnostic {
-        // name: Some(d.name().into()),
         range: sema.diagnostics_display_range(d).range,
         message: d.message(),
         severity: Severity::WeakWarning,

@@ -1,9 +1,14 @@
 //! Provides validators for the item declarations.
+//!
 //! This includes the following items:
+//!
 //! - variable bindings (e.g. `let x = foo();`)
 //! - struct fields (e.g. `struct Foo { field: u8 }`)
-//! - enum fields (e.g. `enum Foo { Variant { field: u8 } }`)
+//! - enum variants (e.g. `enum Foo { Variant { field: u8 } }`)
 //! - function/method arguments (e.g. `fn foo(arg: u8)`)
+//! - constants (e.g. `const FOO: u8 = 10;`)
+//! - static items (e.g. `static FOO: u8 = 10;`)
+//! - match arm bindings (e.g. `foo @ Some(_)`)
 
 mod str_helpers;
 
@@ -48,7 +53,6 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
     }
 
     pub(super) fn validate_item(&mut self, db: &dyn HirDatabase) {
-        // let def = self.owner.into();
         match self.owner {
             ModuleDefId::FunctionId(func) => self.validate_func(db, func),
             ModuleDefId::AdtId(adt) => self.validate_adt(db, adt),

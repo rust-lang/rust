@@ -21,7 +21,7 @@ pub fn validate_module_item(
     owner: ModuleDefId,
     sink: &mut DiagnosticSink<'_>,
 ) {
-    let _p = profile::span("validate_body");
+    let _p = profile::span("validate_module_item");
     let mut validator = decl_check::DeclValidator::new(owner, sink);
     validator.validate_item(db);
 }
