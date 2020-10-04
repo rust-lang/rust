@@ -20,13 +20,13 @@
    16|      0|    } else {
    17|      0|        return;
    18|      0|    }
-   19|      0|
-   20|      0|    let mut countdown = 0;
+   19|       |
+   20|       |    let mut countdown = 0;
    21|      2|    if true {
                      ^1
    22|      2|        countdown = 10;
    23|      2|    }
-   24|      0|
+   24|       |
    25|      2|    if countdown > 7 {
                      ^1
    26|      2|        countdown -= 4;
@@ -40,13 +40,13 @@
    32|      0|    } else {
    33|      0|        return;
    34|      0|    }
-   35|      0|
-   36|      0|    let mut countdown = 0;
+   35|       |
+   36|       |    let mut countdown = 0;
    37|      2|    if true {
                      ^1
    38|      2|        countdown = 10;
    39|      2|    }
-   40|      0|
+   40|       |
    41|      2|    if countdown > 7 {
                      ^1
    42|      2|        countdown -= 4;
