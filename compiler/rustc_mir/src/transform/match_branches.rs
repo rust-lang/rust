@@ -46,7 +46,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
 
         let def_id = body.source.def_id();
         let param_env = tcx.param_env(def_id);
-        
+
         let (bbs, local_decls) = body.basic_blocks_and_local_decls_mut();
         let mut should_cleanup = false;
         'outer: for bb_idx in bbs.indices() {

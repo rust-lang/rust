@@ -1281,7 +1281,18 @@ impl Body<'hir> {
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
+#[derive(
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Hash,
+    HashStable_Generic,
+    Encodable,
+    Decodable,
+    Debug,
+    Copy
+)]
 pub enum GeneratorKind {
     /// An explicit `async` block or the body of an async function.
     Async(AsyncGeneratorKind),
@@ -1313,7 +1324,18 @@ impl GeneratorKind {
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
+#[derive(
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Hash,
+    HashStable_Generic,
+    Encodable,
+    Decodable,
+    Debug,
+    Copy
+)]
 pub enum AsyncGeneratorKind {
     /// An explicit `async` block written by the user.
     Block,
@@ -2308,7 +2330,7 @@ pub struct InlineAsm<'hir> {
     pub line_spans: &'hir [Span],
 }
 
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Hash, HashStable_Generic, PartialEq)]
 pub struct LlvmInlineAsmOutput {
     pub constraint: Symbol,
     pub is_rw: bool,
@@ -2319,7 +2341,7 @@ pub struct LlvmInlineAsmOutput {
 // NOTE(eddyb) This is used within MIR as well, so unlike the rest of the HIR,
 // it needs to be `Clone` and `Decodable` and use plain `Vec<T>` instead of
 // arena-allocated slice.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq)]
+#[derive(Clone, Encodable, Decodable, Debug, Hash, HashStable_Generic, PartialEq)]
 pub struct LlvmInlineAsmInner {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,

@@ -25,6 +25,7 @@ pub mod const_debuginfo;
 pub mod const_prop;
 pub mod coverage;
 pub mod deaggregator;
+pub mod deduplicate_blocks;
 pub mod dest_prop;
 pub mod dump_mir;
 pub mod early_otherwise_branch;
@@ -510,6 +511,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &const_debuginfo::ConstDebugInfo,
         &simplify::SimplifyLocals,
         &multiple_return_terminators::MultipleReturnTerminators,
+        &deduplicate_blocks::DeduplicateBlocks,
     ];
 
     // Optimizations to run even if mir optimizations have been disabled.
