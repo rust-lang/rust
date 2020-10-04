@@ -220,7 +220,6 @@ TypeTree TypeAnalyzer::getAnalysis(Value *Val) {
   if (!isa<UndefValue>(Val) && Val->getType()->isIntegerTy() &&
       cast<IntegerType>(Val->getType())->getBitWidth() < 16)
     return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
-
   if (auto C = dyn_cast<Constant>(Val)) {
     TypeTree result = getConstantAnalysis(C, fntypeinfo, interprocedural);
     if (auto found = findInMap(analysis, Val)) {
@@ -270,7 +269,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, BaseType Data, Value *Origin) {
 
 void TypeAnalyzer::addToWorkList(Value *Val) {
   // Only consider instructions/arguments
-  if (!isa<Instruction>(Val) && !isa<Argument>(Val))
+  if (!isa<Instruction>(Val) && !isa<Argument>(Val) && !isa<ConstantExpr>(Val) && !isa<GlobalVariable>(Val))
     return;
 
   // Don't add this value to list twice
@@ -279,6 +278,8 @@ void TypeAnalyzer::addToWorkList(Value *Val) {
 
   // Verify this value comes from the function being analyzed
   if (auto I = dyn_cast<Instruction>(Val)) {
+    if (fntypeinfo.Function != I->getParent()->getParent())
+      return;
     if (fntypeinfo.Function != I->getParent()->getParent()) {
       llvm::errs() << "function: " << *fntypeinfo.Function << "\n";
       llvm::errs() << "instf: " << *I->getParent()->getParent() << "\n";
@@ -318,21 +319,6 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
     assert(fntypeinfo.Function == I->getParent()->getParent());
   } else if (auto Arg = dyn_cast<Argument>(Val))
     assert(fntypeinfo.Function == Arg->getParent());
-
-  if (auto pt = dyn_cast<PointerType>(Val->getType())) {
-    if (auto st = dyn_cast<StructType>(pt->getElementType())) {
-      if (st->hasName() && st->getName().startswith("struct.Eigen::internal::mapbase_evaluator")) {
-        if (Data[{-1, 0}] == BaseType::Integer || Data[{0, 0}] == BaseType::Integer) {
-          llvm::errs() << *fntypeinfo.Function << "\n";
-          dump();
-          llvm::errs() << "illegal mt update for val: " << *Val << "\n";
-          if (Origin)
-            llvm::errs() << " + " << *Origin << "\n";
-          assert(0 && "illegal mt update");
-        }
-      }
-    }
-  }
 
   bool pointerUse = false;
   if (Instruction* I = dyn_cast<Instruction>(Val)) {
@@ -625,6 +611,10 @@ void TypeAnalyzer::run() {
 }
 
 void TypeAnalyzer::visitValue(Value &val) {
+  if (auto CE = dyn_cast<ConstantExpr>(&val)) {
+    visitConstantExpr(*CE);
+  }
+
   if (isa<Constant>(&val)) {
     return;
   }
@@ -635,6 +625,16 @@ void TypeAnalyzer::visitValue(Value &val) {
   if (auto inst = dyn_cast<Instruction>(&val)) {
     visit(*inst);
   }
+}
+
+void TypeAnalyzer::visitConstantExpr(ConstantExpr &CE) {
+    auto I = CE.getAsInstruction();
+    I->insertBefore(fntypeinfo.Function->getEntryBlock().getTerminator());
+    analysis[I] = analysis[&CE];
+    visit(*I);
+    updateAnalysis(&CE, analysis[I], &CE);
+    analysis.erase(I);
+    I->eraseFromParent();
 }
 
 void TypeAnalyzer::visitCmpInst(CmpInst &cmp) {

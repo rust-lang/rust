@@ -169,8 +169,12 @@ static inline void propagateArgumentInformation(TargetLibraryInfo& TLI, CallInst
     /// Only the src/dst in memset/memcpy/memmove impact the activity of the
     /// instruction
     if (auto F = CI.getCalledFunction()) {
-      if (F->getIntrinsicID() == Intrinsic::memset || 
-          F->getIntrinsicID() == Intrinsic::memcpy || 
+      // memset cannot propagate activity as it sets
+      // data to a given single byte which is inactive
+      if (F->getIntrinsicID() == Intrinsic::memset) {
+        return;
+      }
+      if (F->getIntrinsicID() == Intrinsic::memcpy || 
           F->getIntrinsicID() == Intrinsic::memmove) {
         propagateFromOperand(CI.getOperand(0));
         propagateFromOperand(CI.getOperand(1));
@@ -242,6 +246,16 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
       return true;
     }
   }
+
+  if (isa<MemSetInst>(I)) {
+    // memset's are definitionally inactive since
+    // they copy a byte which cannot be active
+    if (printconst)
+      llvm::errs() << " constant instruction as memset " << *I << "\n";
+    ConstantInstructions.insert(I);
+    return true;
+  }
+
 
 
   if (printconst)
@@ -398,6 +412,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     case Intrinsic::expect:
     case Intrinsic::type_test:
     case Intrinsic::donothing:
+    case Intrinsic::prefetch:
     #if LLVM_VERSION_MAJOR >= 8
     case Intrinsic::is_constant:
     #endif
@@ -479,6 +494,45 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         llvm::errs() << " VALUE const as global int pointer " << *Val
                      << " type - " << res.str() << "\n";
       return true;
+    }
+
+    // If this is a global local to this translation unit with inactive initializer
+    // and no active uses, it is definitionally inactive
+    bool usedJustInThisModule = GI->hasInternalLinkage() || GI->hasPrivateLinkage() || GI->hasPrivateLinkage();
+
+
+    if (printconst)
+      llvm::errs() << "pre attempting just used in module for: " << *GI << " dir" << (char)directions << " justusedin:" << usedJustInThisModule << "\n";    
+  
+    if (directions == 3 && usedJustInThisModule) {
+      // TODO this assumes global initializer cannot refer to itself (lest infinite loop)
+      if (!GI->hasInitializer() || isConstantValue(TR, GI->getInitializer())) {
+
+        if (printconst)
+          llvm::errs() << "attempting just used in module for: " << *GI << "\n";
+        // Not looking at users to prove inactive (definition of down)
+        // If all users are inactive, this is therefore inactive. 
+        // Since we won't look at origins to prove, we can inductively assume this is inactive
+        
+        // As an optimization if we are going down already
+        // and we won't use ourselves (done by PHI's), we
+        // dont need to inductively assume we're true
+        // and can instead use this object!
+        if (directions == DOWN) {
+          if (isValueInactiveFromUsers(TR, Val)) {
+            ConstantValues.insert(Val);
+            return true;
+          }
+        } else {
+          auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
+          DownHypothesis->ConstantValues.insert(Val);
+          if (DownHypothesis->isValueInactiveFromUsers(TR, Val)) {
+            insertConstantsFrom(*DownHypothesis);
+            ConstantValues.insert(Val);
+            return true;
+          }
+        }
+      }
     }
 
     // Otherwise we have to assume this global is active since it can
@@ -606,12 +660,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     std::shared_ptr<ActivityAnalyzer> Hypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, directions));
     Hypothesis->ActiveValues.insert(Val);
 
-    llvm::Function* ParentF = nullptr;
-    if(auto inst = dyn_cast<Instruction>(Val))
-      ParentF = inst->getParent()->getParent();
-    else if(auto arg = dyn_cast<Argument>(Val))
-      ParentF = arg->getParent();
-    else {
+    if(isa<Instruction>(Val) || isa<Argument>(Val)) {
+      // These are handled by iterating through all
+    } else {
       llvm::errs() << "unknown pointer value type: " << *Val << "\n";
       assert(0 && "unknown pointer value type");
       llvm_unreachable("unknown pointer value type");
@@ -619,7 +670,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
     // Search through all the instructions in this function
     // for potential loads / stores of this value
-    for(BasicBlock& BB : *ParentF) {
+    for(BasicBlock& BB : *TR.info.Function) {
       if (potentialStore && potentiallyActiveLoad) break;
       for(Instruction& I : BB) {
         if (potentialStore && potentiallyActiveLoad) break;
@@ -630,6 +681,42 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI)) {
               continue;
             }
+            if (F->getName() == "__cxa_guard_acquire" ||
+                F->getName() == "__cxa_guard_release" ||
+                F->getName() == "__cxa_guard_abort") {
+                continue;
+                }
+
+            bool noUse = true;
+            switch (F->getIntrinsicID()) {
+            case Intrinsic::assume:
+            case Intrinsic::stacksave:
+            case Intrinsic::stackrestore:
+            case Intrinsic::lifetime_start:
+            case Intrinsic::lifetime_end:
+            case Intrinsic::dbg_addr:
+            case Intrinsic::dbg_declare:
+            case Intrinsic::dbg_value:
+            case Intrinsic::invariant_start:
+            case Intrinsic::invariant_end:
+            case Intrinsic::var_annotation:
+            case Intrinsic::ptr_annotation:
+            case Intrinsic::annotation:
+            case Intrinsic::codeview_annotation:
+            case Intrinsic::expect:
+            case Intrinsic::type_test:
+            case Intrinsic::donothing:
+            case Intrinsic::prefetch:
+            #if LLVM_VERSION_MAJOR >= 8
+            case Intrinsic::is_constant:
+            #endif
+              noUse = true;
+              break;
+            default:
+              noUse = false;
+              break;
+            }
+            if (noUse) continue;
           }
         }
 
@@ -901,6 +988,14 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
     }
   }
 
+  if (isa<MemSetInst>(inst)) {
+    // memset's are definitionally inactive since
+    // they copy a byte which cannot be active
+    if (printconst)
+      llvm::errs() << " constant instruction as memset " << *inst << "\n";
+    return true;
+  }
+
   // Calls to print/assert/cxa guard are definitionally inactive
   if (auto op = dyn_cast<CallInst>(inst)) {
     if (auto called = op->getCalledFunction()) {
@@ -942,6 +1037,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
     case Intrinsic::expect:
     case Intrinsic::type_test:
     case Intrinsic::donothing:
+    case Intrinsic::prefetch:
     #if LLVM_VERSION_MAJOR >= 8
     case Intrinsic::is_constant:
     #endif
@@ -1040,12 +1136,41 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* va
       llvm::errs() << "      considering use of " << *val << " - " << *a
                     << "\n";
 
+    if (!isa<Instruction>(a)) {
+      if (isa<ConstantExpr>(a)) {
+        if (!isValueInactiveFromUsers(TR, a)) {
+          llvm::errs() << "   inactive user of " << *val << " in " << *a << "\n";
+          return false;
+        }
+        else
+          continue;
+      }
+      if (isa<ConstantData>(a)) {
+        continue;
+      }
+
+      if (printconst)
+        llvm::errs() << "      unknown non instruction use of " << *val << " - " << *a
+                      << "\n";
+      return false;
+    }
+
     if (isa<AllocaInst>(a)) {
       if (printconst)
         llvm::errs() << "found constant(" << (int)directions
                       << ")  allocainst use:" << *val << " user " << *a
                       << "\n";
       continue;
+    }
+
+    // if this instruction is in a different function, conservatively assume
+    // it is active
+    if (cast<Instruction>(a)->getParent()->getParent() != TR.info.Function) {
+      if (printconst)
+        llvm::errs() << "found use in different function(" << (int)directions
+                      << ")  val:" << *val << " user " << *a
+                      << "\n";
+      return false;
     }
 
     // This use is only active if specified

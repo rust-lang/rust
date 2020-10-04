@@ -555,8 +555,7 @@ private:
     //! fallback to analysis
     if (isa<Function>(val) || isa<InlineAsm>(val) || isa<Constant>(val) ||
         isa<UndefValue>(val) || isa<MetadataAsValue>(val)) {
-      // Note that not actually passing in type results here as (hopefully) it
-      // shouldn't be needed
+      //llvm::errs() << "calling icv on: " << *val << "\n";
       return ATA->isConstantValue(*my_TR, val);
     }
 

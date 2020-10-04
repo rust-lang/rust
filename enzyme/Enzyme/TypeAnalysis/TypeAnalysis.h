@@ -189,6 +189,8 @@ public:
 
   void visitValue(llvm::Value &val);
 
+  void visitConstantExpr(llvm::ConstantExpr& CE);
+
   void visitCmpInst(llvm::CmpInst &I);
 
   void visitAllocaInst(llvm::AllocaInst &I);
