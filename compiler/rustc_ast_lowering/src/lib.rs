@@ -538,6 +538,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                         self.visit_fn_ret_ty(&f.decl.output)
                     }
+                    TyKind::ImplTrait(_, ref bounds) => {
+                        self.with_hir_id_owner(None, |this| {
+                            walk_list!(this, visit_param_bound, bounds);
+                        });
+                    }
                     _ => visit::walk_ty(self, t),
                 }
             }
