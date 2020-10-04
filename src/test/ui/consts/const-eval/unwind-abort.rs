@@ -6,6 +6,7 @@ const fn foo() {
 }
 
 const _: () = foo(); //~ any use of this value will cause an error
+// Ensure that the CTFE engine handles calls to `#[unwind(aborts)]` gracefully
 
 fn main() {
     let _ = foo();
