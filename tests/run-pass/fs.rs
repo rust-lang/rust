@@ -29,7 +29,19 @@ fn main() {
 }
 
 fn tmp() -> PathBuf {
-    std::env::var("MIRI_TEMP").map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
+    std::env::var("MIRI_TEMP")
+        .map(|tmp| {
+            // MIRI_TEMP is set outside of our emulated
+            // program, so it may have path separators that don't
+            // correspond to our target platform. We normalize them here
+            // before constructing a `PathBuf`
+
+            #[cfg(windows)]
+            return PathBuf::from(tmp.replace("/", "\\"));
+
+            #[cfg(not(windows))]
+            return PathBuf::from(tmp.replace("\\", "/"));
+        }).unwrap_or_else(|_| std::env::temp_dir())
 }
 
 /// Prepare: compute filename and make sure the file does not exist.
