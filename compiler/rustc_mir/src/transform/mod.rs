@@ -9,7 +9,7 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
-use rustc_middle::ty::{self, InstanceDef, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
@@ -48,6 +48,8 @@ pub mod simplify_try;
 pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
 pub mod validate;
+
+pub use rustc_middle::mir::MirSource;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::check_unsafety::provide(providers);
@@ -130,33 +132,6 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
         .visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
 
     set
-}
-
-/// Where a specific `mir::Body` comes from.
-#[derive(Debug, Copy, Clone)]
-pub struct MirSource<'tcx> {
-    pub instance: InstanceDef<'tcx>,
-
-    /// If `Some`, this is a promoted rvalue within the parent function.
-    pub promoted: Option<Promoted>,
-}
-
-impl<'tcx> MirSource<'tcx> {
-    pub fn item(def_id: DefId) -> Self {
-        MirSource {
-            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
-            promoted: None,
-        }
-    }
-
-    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
-        self.instance.with_opt_param()
-    }
-
-    #[inline]
-    pub fn def_id(&self) -> DefId {
-        self.instance.def_id()
-    }
 }
 
 /// Generates a default name for the pass based on the name of the

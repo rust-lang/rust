@@ -111,6 +111,38 @@ impl MirPhase {
     }
 }
 
+/// Where a specific `mir::Body` comes from.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable)]
+pub struct MirSource<'tcx> {
+    pub instance: InstanceDef<'tcx>,
+
+    /// If `Some`, this is a promoted rvalue within the parent function.
+    pub promoted: Option<Promoted>,
+}
+
+impl<'tcx> MirSource<'tcx> {
+    pub fn item(def_id: DefId) -> Self {
+        MirSource {
+            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
+            promoted: None,
+        }
+    }
+
+    pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
+        MirSource { instance, promoted: None }
+    }
+
+    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
+        self.instance.with_opt_param()
+    }
+
+    #[inline]
+    pub fn def_id(&self) -> DefId {
+        self.instance.def_id()
+    }
+}
+
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
 pub struct Body<'tcx> {
