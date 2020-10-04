@@ -349,17 +349,15 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
 }
 
 pub fn provide(providers: &mut Providers) {
+    use rustc_codegen_ssa::target_features::{all_known_features, supported_target_features};
     providers.supported_target_features = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         if tcx.sess.opts.actually_rustdoc {
             // rustdoc needs to be able to document functions that use all the features, so
             // provide them all.
-            llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
+            all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
         } else {
-            llvm_util::supported_target_features(tcx.sess)
-                .iter()
-                .map(|&(a, b)| (a.to_string(), b))
-                .collect()
+            supported_target_features(tcx.sess).iter().map(|&(a, b)| (a.to_string(), b)).collect()
         }
     };
 
