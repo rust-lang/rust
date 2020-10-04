@@ -36,12 +36,6 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             return;
         }
 
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            // The `DestinationPropagation` pass runs at level 2, so this pass is redundant (and
-            // fails some asserts).
-            return;
-        }
-
         let returned_local = match local_eligible_for_nrvo(body) {
             Some(l) => l,
             None => {
