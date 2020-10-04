@@ -52,15 +52,15 @@
 
 using namespace llvm;
 
-cl::opt<bool> printconst("enzyme_printconst", cl::init(false), cl::Hidden,
-                         cl::desc("Print constant detection algorithm"));
+cl::opt<bool> printconst("enzyme-print-activity", cl::init(false), cl::Hidden,
+                         cl::desc("Print activity analysis algorithm"));
 
 cl::opt<bool> nonmarkedglobals_inactive(
-    "enzyme_nonmarkedglobals_inactive", cl::init(false), cl::Hidden,
+    "enzyme-globals-default-inactive", cl::init(false), cl::Hidden,
     cl::desc("Consider all nonmarked globals to be inactive"));
 
-cl::opt<bool> emptyfnconst("enzyme_emptyfnconst", cl::init(false), cl::Hidden,
-                           cl::desc("Empty functions are considered constant"));
+cl::opt<bool> emptyfnconst("enzyme-emptyfn-inactive", cl::init(false), cl::Hidden,
+                           cl::desc("Empty functions are considered inactive"));
 
 #include "llvm/IR/InstIterator.h"
 #include <map>

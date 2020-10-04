@@ -59,20 +59,20 @@
 using namespace llvm;
 
 llvm::cl::opt<bool>
-    enzyme_print("enzyme_print", cl::init(false), cl::Hidden,
+    enzyme_print("enzyme-print", cl::init(false), cl::Hidden,
                  cl::desc("Print before and after fns for autodiff"));
 
 cl::opt<bool> looseTypeAnalysis("enzyme-loose-types", cl::init(false),
                                 cl::Hidden,
                                 cl::desc("Allow looser use of types"));
 
-cl::opt<bool> cache_reads_always("enzyme_always_cache_reads", cl::init(false),
+cl::opt<bool> cache_reads_always("enzyme-cache-always", cl::init(false),
                                  cl::Hidden,
                                  cl::desc("Force always caching of all reads"));
 
-cl::opt<bool> cache_reads_never("enzyme_never_cache_reads", cl::init(false),
+cl::opt<bool> cache_reads_never("enzyme-cache-never", cl::init(false),
                                 cl::Hidden,
-                                cl::desc("Force never caching of all reads"));
+                                cl::desc("Disable caching of all reads"));
 
 cl::opt<bool> nonmarkedglobals_inactiveloads(
     "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,

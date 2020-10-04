@@ -29,7 +29,7 @@ using namespace llvm;
 
 /// Pack 8 bools together in a single byte
 llvm::cl::opt<bool>
-    EfficientBoolCache("enzyme_smallbool", cl::init(false), cl::Hidden,
+    EfficientBoolCache("enzyme-smallbool", cl::init(false), cl::Hidden,
                        cl::desc("Place 8 bools together in a single byte"));
 
 CacheUtility::~CacheUtility(){}

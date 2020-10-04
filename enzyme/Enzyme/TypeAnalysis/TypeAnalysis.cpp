@@ -48,8 +48,8 @@
 
 #include "TBAA.h"
 
-llvm::cl::opt<bool> PrintType("enzyme_printtype", cl::init(false), cl::Hidden,
-                              cl::desc("Print type detection algorithm"));
+llvm::cl::opt<bool> PrintType("enzyme-print-type", cl::init(false), cl::Hidden,
+                              cl::desc("Print type analysis algorithm"));
 
 TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA, uint8_t direction)
     : intseen(), fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false), DT(*fn.Function) {
