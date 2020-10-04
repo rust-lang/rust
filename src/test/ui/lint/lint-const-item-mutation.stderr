@@ -86,6 +86,19 @@ LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attempting to modify a `const` item
+  --> $DIR/lint-const-item-mutation.rs:50:5
+   |
+LL |     MUTABLE.msg = "wow";
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
+note: `const` item defined here
+  --> $DIR/lint-const-item-mutation.rs:29:1
+   |
+LL | const MUTABLE: Mutable = Mutable { msg: "" };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: attempting to modify a `const` item
   --> $DIR/lint-const-item-mutation.rs:51:5
    |
 LL |     MUTABLE2.msg = "wow";
@@ -123,5 +136,5 @@ note: `const` item defined here
 LL | const VEC: Vec<i32> = Vec::new();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: 8 warnings emitted
+warning: 9 warnings emitted
 

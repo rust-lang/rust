@@ -4,7 +4,9 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
+use rustc_session::lint::Level;
 use rustc_span::def_id::DefId;
+use rustc_span::sym;
 
 use crate::transform::{MirPass, MirSource};
 
@@ -32,31 +34,38 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
         }
     }
 
-    fn is_const_item_without_destructor(&self, local: Local) -> Option<DefId> {
-        let def_id = self.is_const_item(local)?;
-        let mut any_dtor = |_tcx, _def_id| Ok(());
-
-        // We avoid linting mutation of a const item if the const's type has a
-        // Drop impl. The Drop logic observes the mutation which was performed.
-        //
-        //     pub struct Log { msg: &'static str }
-        //     pub const LOG: Log = Log { msg: "" };
-        //     impl Drop for Log {
-        //         fn drop(&mut self) { println!("{}", self.msg); }
-        //     }
-        //
-        //     LOG.msg = "wow";  // prints "wow"
-        //
-        // FIXME(https://github.com/rust-lang/rust/issues/77425):
-        // Drop this exception once there is a stable attribute to suppress the
-        // const item mutation lint for a single specific const only. Something
-        // equivalent to:
-        //
-        //     #[const_mutation_allowed]
-        //     pub const LOG: Log = Log { msg: "" };
-        match self.tcx.calculate_dtor(def_id, &mut any_dtor) {
-            Some(_) => None,
-            None => Some(def_id),
+    // In addition to considering lint levels inside of Body as normal, we also
+    // look at whether the *definition* of the const being mutated is annotated
+    // with #[allow(const_item_mutation)].
+    fn is_suppressed_at_definition(&self, const_item: DefId) -> bool {
+        if let Some(local_const_item) = const_item.as_local() {
+            let const_item_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_const_item);
+            if let Some(lint_level_at_definition) = self
+                .tcx
+                .lint_levels(const_item.krate)
+                .level_and_source(CONST_ITEM_MUTATION, const_item_hir_id, self.tcx.sess)
+            {
+                let (level, _lint_source) = lint_level_at_definition;
+                level == Level::Allow
+            } else {
+                false
+            }
+        } else {
+            let attrs = self.tcx.get_attrs(const_item);
+            for attr in attrs {
+                if attr.name_or_empty() != sym::allow {
+                    continue;
+                }
+                for meta in attr.meta_item_list().unwrap_or_else(Vec::new) {
+                    if meta
+                        .ident()
+                        .map_or(false, |ident| ident.as_str() == CONST_ITEM_MUTATION.name_lower())
+                    {
+                        return true;
+                    }
+                }
+            }
+            false
         }
     }
 
@@ -66,6 +75,10 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
         location: Location,
         decorate: impl for<'b> FnOnce(LintDiagnosticBuilder<'b>) -> DiagnosticBuilder<'b>,
     ) {
+        if self.is_suppressed_at_definition(const_item) {
+            return;
+        }
+
         let source_info = self.body.source_info(location);
         let lint_root = self.body.source_scopes[source_info.scope]
             .local_data
@@ -88,7 +101,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
             // Assigning directly to a constant (e.g. `FOO = true;`) is a hard error,
             // so emitting a lint would be redundant.
             if !lhs.projection.is_empty() {
-                if let Some(def_id) = self.is_const_item_without_destructor(lhs.local) {
+                if let Some(def_id) = self.is_const_item(lhs.local) {
                     // Don't lint on writes through a pointer
                     // (e.g. `unsafe { *FOO = 0; *BAR.field = 1; }`)
                     if !matches!(lhs.projection.last(), Some(PlaceElem::Deref)) {

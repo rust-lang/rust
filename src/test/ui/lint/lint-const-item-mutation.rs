@@ -47,7 +47,7 @@ fn main() {
         *MY_STRUCT.raw_ptr = 0;
     }
 
-    MUTABLE.msg = "wow"; // no warning, because Drop observes the mutation
+    MUTABLE.msg = "wow"; //~ WARN attempting to modify
     MUTABLE2.msg = "wow"; //~ WARN attempting to modify
     VEC.push(0); //~ WARN taking a mutable reference to a `const` item
 }

@@ -29,6 +29,7 @@ mod library {
         options: AtomicPtr<Options>,
     }
 
+    #[allow(const_item_mutation)]
     pub const CFG: Cfg = Cfg {
         options: AtomicPtr::new(ptr::null_mut()),
     };
