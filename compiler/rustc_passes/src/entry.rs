@@ -78,29 +78,38 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
 // Beware, this is duplicated in `librustc_builtin_macros/test_harness.rs`
 // (with `ast::Item`), so make sure to keep them in sync.
 fn entry_point_type(sess: &Session, item: &Item<'_>, at_root: bool) -> EntryPointType {
-    match item.kind {
-        ItemKind::Fn(..) => {
-            if sess.contains_name(&item.attrs, sym::start) {
-                EntryPointType::Start
-            } else if sess.contains_name(&item.attrs, sym::main) {
-                EntryPointType::MainAttr
-            } else if item.ident.name == sym::main {
-                if at_root {
-                    // This is a top-level function so can be `main`.
-                    EntryPointType::MainNamed
-                } else {
-                    EntryPointType::OtherMain
-                }
-            } else {
-                EntryPointType::None
-            }
+    if sess.contains_name(&item.attrs, sym::start) {
+        EntryPointType::Start
+    } else if sess.contains_name(&item.attrs, sym::main) {
+        EntryPointType::MainAttr
+    } else if item.ident.name == sym::main {
+        if at_root {
+            // This is a top-level function so can be `main`.
+            EntryPointType::MainNamed
+        } else {
+            EntryPointType::OtherMain
         }
-        _ => EntryPointType::None,
+    } else {
+        EntryPointType::None
     }
+}
+
+fn throw_attr_err(sess: &Session, span: Span, attr: &str) {
+    sess.struct_span_err(span, &format!("`{}` attribute can only be used on functions", attr))
+        .emit();
 }
 
 fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
     match entry_point_type(&ctxt.session, item, at_root) {
+        EntryPointType::None => (),
+        _ if !matches!(item.kind, ItemKind::Fn(..)) => {
+            if let Some(attr) = ctxt.session.find_by_name(item.attrs, sym::start) {
+                throw_attr_err(&ctxt.session, attr.span, "start");
+            }
+            if let Some(attr) = ctxt.session.find_by_name(item.attrs, sym::main) {
+                throw_attr_err(&ctxt.session, attr.span, "main");
+            }
+        }
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
                 ctxt.main_fn = Some((item.hir_id, item.span));
@@ -137,7 +146,6 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
                     .emit();
             }
         }
-        EntryPointType::None => (),
     }
 }
 
