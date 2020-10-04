@@ -146,6 +146,20 @@ Build artifacts include, but are not limited to:
 
 [rlib]: ../serialization.md
 
+#### Assembling the compiler
+
+There is a separate step between building the compiler and making it possible
+to run. This step is called _assembling_ or _uplifting_ the compiler. It copies
+all the necessary build artifacts from `build/stageN-sysroot` to
+`build/stage(N+1)`, which allows you to use `build/stage(N+1)` as a [toolchain]
+with `rustup toolchain link`.
+
+There is [no way to trigger this step on its own][#73519], but `x.py` will
+perform it automatically any time you build with stage N+1.
+
+[toolchain]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html#creating-a-rustup-toolchain
+[#73519]: https://github.com/rust-lang/rust/issues/73519
+
 #### Examples
 
 - `x.py build --stage 0` means to build with the beta `rustc`.
@@ -166,12 +180,11 @@ Build artifacts include, but are not limited to:
 - `x.py test --stage 0 compiler/rustc` builds the compiler but runs no tests:
   it's running `cargo test -p rustc`, but cargo doesn't understand Rust's
   tests. You shouldn't need to use this, use `test` instead (without arguments).
-- `x.py build --stage 0 compiler/rustc` builds the compiler, but does not make
-  it usable: the build artifacts are not assembled into the final compiler
-  ([#73519]). Use `x.py build library/std` instead, which puts the compiler in
-  `stage1/rustc`.
+- `x.py build --stage 0 compiler/rustc` builds the compiler, but does
+  not [assemble] it. Use `x.py build library/std` instead, which puts the
+  compiler in `stage1/rustc`.
 
-[#73519]: https://github.com/rust-lang/rust/issues/73519
+[assemble]: #assembling-the-compiler
 
 ### Building vs. Running
 
