@@ -69,9 +69,8 @@ Other features provided by lang items include:
   `panic` and `panic_bounds_checks` lang items.
 - the traits in `std::marker` used to indicate types of
   various kinds; lang items `send`, `sync` and `copy`.
-- the marker types and variance indicators found in
-  `std::marker`; lang items `covariant_type`,
-  `contravariant_lifetime`, etc.
+- the special marker types used for variance indicators found in
+  `core::marker`; lang item `phantom_data`.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
 `Box` then there is no need to define functions for `exchange_malloc`
@@ -226,7 +225,6 @@ the source code.
   - `str`: `liballoc/str.rs`
   - `const_ptr`: `libcore/ptr.rs`
   - `mut_ptr`: `libcore/ptr.rs`
-  - `unsafe_cell`: `libcore/cell.rs`
 - Runtime
   - `start`: `libstd/rt.rs`
   - `eh_personality`: `libpanic_unwind/emcc.rs` (EMCC)
@@ -276,6 +274,9 @@ the source code.
   - `fn_once`: `libcore/ops/function.rs`
   - `generator_state`: `libcore/ops/generator.rs`
   - `generator`: `libcore/ops/generator.rs`
+- Opting out
+  - `unsafe_cell` (relaxes pointer provenance rules, allowing const-to-mut casts): `libcore/cell.rs`
+  - `manually_drop` (opts out of implicit destructor call): `libcore/mem/manually_drop.rs`
 - Other
   - `coerce_unsized`: `libcore/ops/unsize.rs`
   - `drop`: `libcore/ops/drop.rs`
@@ -289,7 +290,3 @@ the source code.
   - `phantom_data`: `libcore/marker.rs`
   - `discriminant_kind`: `libcore/marker.rs`
   - `freeze`: `libcore/marker.rs`
-  - `debug_trait`: `libcore/fmt/mod.rs`
-  - `non_zero`: `libcore/nonzero.rs`
-  - `arc`: `liballoc/sync.rs`
-  - `rc`: `liballoc/rc.rs`
