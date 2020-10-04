@@ -120,7 +120,7 @@ h3.impl, h3.method, h3.type {
 }
 
 h1, h2, h3, h4,
-.sidebar, a.source, .search-input, .content table :not(code)>a,
+.sidebar, a.source, .search-input, .content table td:first-child > a,
 .collapse-toggle, div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle {
 	font-family: "Fira Sans", sans-serif;
