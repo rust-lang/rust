@@ -8,6 +8,8 @@ pub struct Mutex {
     locked: AtomicUsize,
 }
 
+pub type MovableMutex = Mutex;
+
 // Mutexes have a pretty simple implementation where they contain an `i32`
 // internally that is 0 when unlocked and 1 when the mutex is locked.
 // Acquisition has a fast path where it attempts to cmpxchg the 0 to a 1, and

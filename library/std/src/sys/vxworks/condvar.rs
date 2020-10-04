@@ -6,6 +6,8 @@ pub struct Condvar {
     inner: UnsafeCell<libc::pthread_cond_t>,
 }
 
+pub type MovableCondvar = Box<Condvar>;
+
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 

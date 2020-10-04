@@ -58,21 +58,22 @@ impl Drop for StaticMutexGuard<'_> {
 ///
 /// This mutex does not implement poisoning.
 ///
-/// This is a wrapper around `Box<imp::Mutex>`, to allow the object to be moved
-/// without moving the raw mutex.
-pub struct MovableMutex(Box<imp::Mutex>);
+/// This is either a wrapper around `Box<imp::Mutex>` or `imp::Mutex`,
+/// depending on the platform. It is boxed on platforms where `imp::Mutex` may
+/// not be moved.
+pub struct MovableMutex(imp::MovableMutex);
 
 unsafe impl Sync for MovableMutex {}
 
 impl MovableMutex {
     /// Creates a new mutex.
     pub fn new() -> Self {
-        let mut mutex = box imp::Mutex::new();
+        let mut mutex = imp::MovableMutex::from(imp::Mutex::new());
         unsafe { mutex.init() };
         Self(mutex)
     }
 
-    pub(crate) fn raw(&self) -> &imp::Mutex {
+    pub(super) fn raw(&self) -> &imp::Mutex {
         &self.0
     }
 
