@@ -879,5 +879,31 @@ pub fn some_fn(val: u8) -> u8 {
 }
 "#,
         );
+
+        check_fixes(
+            r#"
+fn some_fn() {
+    let whatAWeird_Formatting<|> = 10;
+    another_func(whatAWeird_Formatting);
+}
+"#,
+            r#"
+fn some_fn() {
+    let what_a_weird_formatting = 10;
+    another_func(what_a_weird_formatting);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_uppercase_const_no_diagnostics() {
+        check_no_diagnostics(
+            r#"
+fn foo() {
+    const ANOTHER_ITEM<|>: &str = "some_item";
+}
+"#,
+        );
     }
 }

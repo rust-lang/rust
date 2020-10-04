@@ -281,7 +281,7 @@ impl Diagnostic for IncorrectCase {
 
     fn message(&self) -> String {
         format!(
-            "{} `{}` should have a {} name, e.g. `{}`",
+            "{} `{}` should have {} name, e.g. `{}`",
             self.ident_type,
             self.ident_text,
             self.expected_case.to_string(),
@@ -339,6 +339,8 @@ mod tests {
                         let impl_data = self.impl_data(impl_id);
                         for item in impl_data.items.iter() {
                             if let AssocItemId::FunctionId(f) = item {
+                                let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
+                                validate_module_item(self, ModuleDefId::FunctionId(*f), &mut sink);
                                 fns.push(*f)
                             }
                         }
