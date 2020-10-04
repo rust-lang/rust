@@ -263,13 +263,18 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                             Some(parent) => parent,
                             None => continue,
                         };
+                        let name_ast = match ident_pat.name() {
+                            Some(name_ast) => name_ast,
+                            None => continue,
+                        };
 
-                        // We have to check that it's either `let var = ...` or `Variant(_) @  var` statement,
+                        // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
                         // because e.g. match arms are patterns as well.
                         // In other words, we check that it's a named variable binding.
-                        if !ast::LetStmt::cast(parent.clone()).is_some()
-                            && !ast::IdentPat::cast(parent).is_some()
-                        {
+                        let is_binding = ast::LetStmt::cast(parent.clone()).is_some()
+                            || (ast::MatchArm::cast(parent).is_some()
+                                && ident_pat.at_token().is_some());
+                        if !is_binding {
                             // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
                             continue;
                         }
@@ -277,7 +282,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                         let diagnostic = IncorrectCase {
                             file: source_ptr.file_id,
                             ident_type: "Variable".to_string(),
-                            ident: AstPtr::new(&ident_pat).into(),
+                            ident: AstPtr::new(&name_ast).into(),
                             expected_case: replacement.expected_case,
                             ident_text: replacement.current_name.to_string(),
                             suggested_text: replacement.suggested_text,
@@ -801,8 +806,8 @@ enum Option { Some, None }
 
 fn main() {
     match Option::None {
-        None @ SOME_VAR => (),
-            // ^^^^^^^^ Variable `SOME_VAR` should have snake_case name, e.g. `some_var`
+        SOME_VAR @ None => (),
+     // ^^^^^^^^ Variable `SOME_VAR` should have snake_case name, e.g. `some_var`
         Some => (),
     }
 }
