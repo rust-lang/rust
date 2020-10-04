@@ -4,6 +4,7 @@ use std::fs::{read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileT
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::time::SystemTime;
+use std::borrow::Cow;
 
 use log::trace;
 
@@ -1351,6 +1352,41 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
+        }
+    }
+
+    fn readlink(
+        &mut self,
+        pathname_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+        bufsize_op: OpTy<'tcx, Tag>
+    ) -> InterpResult<'tcx, i64> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("readlink")?;
+
+        let pathname = this.read_path_from_c_str(this.read_scalar(pathname_op)?.check_init()?)?;
+        let buf = this.read_scalar(buf_op)?.check_init()?;
+        let bufsize = this.read_scalar(bufsize_op)?.to_machine_usize(this)?;
+
+        let result = std::fs::read_link(pathname);
+        match result {
+            Ok(resolved) => {
+                let resolved = this.convert_path_separator(Cow::Borrowed(resolved.as_ref()), crate::shims::os_str::PathConversion::HostToTarget);
+                let mut path_bytes = crate::shims::os_str::os_str_to_bytes(resolved.as_ref())?;
+                let bufsize: usize = bufsize.try_into().unwrap();
+                if path_bytes.len() > bufsize {
+                    path_bytes = &path_bytes[..bufsize]
+                }
+                // 'readlink' truncates the resolved path if
+                // the provided buffer is not large enough.
+                this.memory.write_bytes(buf, path_bytes.iter().copied())?;
+                Ok(path_bytes.len().try_into().unwrap())
+            }
+            Err(e) => {
+                this.set_last_error_from_io_error(e)?;
+                Ok(-1)
+            }
         }
     }
 }

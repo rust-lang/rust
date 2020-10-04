@@ -1,11 +1,17 @@
 // ignore-windows: File handling is not implemented yet
 // compile-flags: -Zmiri-disable-isolation
 
+#![feature(rustc_private)]
+
 use std::fs::{
     File, create_dir, OpenOptions, read_dir, remove_dir, remove_dir_all, remove_file, rename,
 };
-use std::io::{Read, Write, ErrorKind, Result, Seek, SeekFrom};
+use std::ffi::CString;
+use std::io::{Read, Write, Error, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
+
+extern crate libc;
+
 
 fn main() {
     test_file();
@@ -19,10 +25,23 @@ fn main() {
     test_errors();
     test_rename();
     test_directory();
+    test_dup_stdout_stderr();
 }
 
 fn tmp() -> PathBuf {
-    std::env::var("MIRI_TEMP").map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
+    std::env::var("MIRI_TEMP")
+        .map(|tmp| {
+            // MIRI_TEMP is set outside of our emulated
+            // program, so it may have path separators that don't
+            // correspond to our target platform. We normalize them here
+            // before constructing a `PathBuf`
+
+            #[cfg(windows)]
+            return PathBuf::from(tmp.replace("/", "\\"));
+
+            #[cfg(not(windows))]
+            return PathBuf::from(tmp.replace("\\", "/"));
+        }).unwrap_or_else(|_| std::env::temp_dir())
 }
 
 /// Prepare: compute filename and make sure the file does not exist.
@@ -215,6 +234,43 @@ fn test_symlink() {
     let mut contents = Vec::new();
     symlink_file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+
+        let expected_path = path.as_os_str().as_bytes();
+
+        // Test that the expected string gets written to a buffer of proper
+        // length, and that a trailing null byte is not written.
+        let symlink_c_str = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+        let symlink_c_ptr = symlink_c_str.as_ptr();
+
+        // Make the buf one byte larger than it needs to be,
+        // and check that the last byte is not overwritten.
+        let mut large_buf = vec![0xFF; expected_path.len() + 1];
+        let res = unsafe { libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len()) };
+        // Check that the resovled path was properly written into the buf.
+        assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
+        assert_eq!(large_buf.last(), Some(&0xFF));
+        assert_eq!(res, large_buf.len() as isize - 1);
+
+        // Test that the resolved path is truncated if the provided buffer
+        // is too small.
+        let mut small_buf = [0u8; 2];
+        let res = unsafe { libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len()) };
+        assert_eq!(small_buf, &expected_path[..small_buf.len()]);
+        assert_eq!(res, small_buf.len() as isize);
+
+        // Test that we report a proper error for a missing path.
+        let bad_path = CString::new("MIRI_MISSING_FILE_NAME").unwrap();
+        let res = unsafe { libc::readlink(bad_path.as_ptr(), small_buf.as_mut_ptr().cast(), small_buf.len()) };
+        assert_eq!(res, -1);
+        assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+    }
+
+
     // Test that metadata of a symbolic link is correct.
     check_metadata(bytes, &symlink_path).unwrap();
     // Test that the metadata of a symbolic link is correct when not following it.
@@ -291,4 +347,14 @@ fn test_directory() {
     remove_dir(&dir_path).unwrap();
     // Reading the metadata of a non-existent directory should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, check_metadata(&[], &dir_path).unwrap_err().kind());
+}
+
+fn test_dup_stdout_stderr() {
+    let bytes = b"hello dup fd\n";
+    unsafe {
+        let new_stdout = libc::fcntl(1, libc::F_DUPFD, 0);
+        let new_stderr = libc::fcntl(2, libc::F_DUPFD, 0);
+        libc::write(new_stdout, bytes.as_ptr() as *const libc::c_void, bytes.len());
+        libc::write(new_stderr, bytes.as_ptr() as *const libc::c_void, bytes.len());
+    }
 }

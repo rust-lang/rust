@@ -14,54 +14,41 @@ use rustc_target::abi::LayoutOf;
 use crate::*;
 
 /// Represent how path separator conversion should be done.
-enum Pathconversion {
+pub enum PathConversion {
     HostToTarget,
     TargetToHost,
 }
 
-/// Perform path separator conversion if needed.
-fn convert_path_separator<'a>(
-    os_str: Cow<'a, OsStr>,
-    target_os: &str,
-    direction: Pathconversion,
-) -> Cow<'a, OsStr> {
-    #[cfg(windows)]
-    return if target_os == "windows" {
-        // Windows-on-Windows, all fine.
-        os_str
-    } else {
-        // Unix target, Windows host.
-        let (from, to) = match direction {
-            Pathconversion::HostToTarget => ('\\', '/'),
-            Pathconversion::TargetToHost => ('/', '\\'),
-        };
-        let converted = os_str
-            .encode_wide()
-            .map(|wchar| if wchar == from as u16 { to as u16 } else { wchar })
-            .collect::<Vec<_>>();
-        Cow::Owned(OsString::from_wide(&converted))
-    };
-    #[cfg(unix)]
-    return if target_os == "windows" {
-        // Windows target, Unix host.
-        let (from, to) = match direction {
-            Pathconversion::HostToTarget => ('/', '\\'),
-            Pathconversion::TargetToHost => ('\\', '/'),
-        };
-        let converted = os_str
-            .as_bytes()
-            .iter()
-            .map(|&wchar| if wchar == from as u8 { to as u8 } else { wchar })
-            .collect::<Vec<_>>();
-        Cow::Owned(OsString::from_vec(converted))
-    } else {
-        // Unix-on-Unix, all is fine.
-        os_str
-    };
+#[cfg(unix)]
+pub fn os_str_to_bytes<'a, 'tcx>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+    Ok(os_str.as_bytes())
+}
+
+#[cfg(not(unix))]
+pub fn os_str_to_bytes<'a, 'tcx>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+    // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
+    // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
+    // valid.
+    os_str
+        .to_str()
+        .map(|s| s.as_bytes())
+        .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
+}
+
+#[cfg(unix)]
+pub fn bytes_to_os_str<'a, 'tcx>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
+    Ok(OsStr::from_bytes(bytes))
+}
+#[cfg(not(unix))]
+pub fn bytes_to_os_str<'a, 'tcx>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
+    let s = std::str::from_utf8(bytes)
+        .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
+    Ok(OsStr::new(s))
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
     fn read_os_str_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
@@ -69,17 +56,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         'tcx: 'a,
         'mir: 'a,
     {
-        #[cfg(unix)]
-        fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
-            Ok(OsStr::from_bytes(bytes))
-        }
-        #[cfg(not(unix))]
-        fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
-            let s = std::str::from_utf8(bytes)
-                .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
-            Ok(OsStr::new(s))
-        }
-
         let this = self.eval_context_ref();
         let bytes = this.memory.read_c_str(scalar)?;
         bytes_to_os_str(bytes)
@@ -118,20 +94,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         scalar: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-        #[cfg(unix)]
-        fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-            Ok(os_str.as_bytes())
-        }
-        #[cfg(not(unix))]
-        fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-            // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
-            // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
-            // valid.
-            os_str
-                .to_str()
-                .map(|s| s.as_bytes())
-                .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
-        }
 
         let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
@@ -226,7 +188,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_c_str(scalar)?;
 
-        Ok(match convert_path_separator(Cow::Borrowed(os_str), &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost) {
+        Ok(match this.convert_path_separator(Cow::Borrowed(os_str), PathConversion::TargetToHost) {
             Cow::Borrowed(x) => Cow::Borrowed(Path::new(x)),
             Cow::Owned(y) => Cow::Owned(PathBuf::from(y)),
         })
@@ -237,7 +199,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_wide_str(scalar)?;
 
-        Ok(convert_path_separator(Cow::Owned(os_str), &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost).into_owned().into())
+        Ok(this.convert_path_separator(Cow::Owned(os_str), PathConversion::TargetToHost).into_owned().into())
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of bytes),
@@ -249,7 +211,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = convert_path_separator(Cow::Borrowed(path.as_os_str()), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
+        let os_str = this.convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
         this.write_os_str_to_c_str(&os_str, scalar, size)
     }
 
@@ -262,7 +224,50 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = convert_path_separator(Cow::Borrowed(path.as_os_str()), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
+        let os_str = this.convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
         this.write_os_str_to_wide_str(&os_str, scalar, size)
     }
+
+    fn convert_path_separator<'a>(
+        &self,
+        os_str: Cow<'a, OsStr>,
+        direction: PathConversion,
+    ) -> Cow<'a, OsStr> {
+        let this = self.eval_context_ref();
+        let target_os = &this.tcx.sess.target.target.target_os;
+        #[cfg(windows)]
+        return if target_os == "windows" {
+            // Windows-on-Windows, all fine.
+            os_str
+        } else {
+            // Unix target, Windows host.
+            let (from, to) = match direction {
+                PathConversion::HostToTarget => ('\\', '/'),
+                PathConversion::TargetToHost => ('/', '\\'),
+            };
+            let converted = os_str
+                .encode_wide()
+                .map(|wchar| if wchar == from as u16 { to as u16 } else { wchar })
+                .collect::<Vec<_>>();
+            Cow::Owned(OsString::from_wide(&converted))
+        };
+        #[cfg(unix)]
+        return if target_os == "windows" {
+            // Windows target, Unix host.
+            let (from, to) = match direction {
+                PathConversion::HostToTarget => ('/', '\\'),
+                PathConversion::TargetToHost => ('\\', '/'),
+            };
+            let converted = os_str
+                .as_bytes()
+                .iter()
+                .map(|&wchar| if wchar == from as u8 { to as u8 } else { wchar })
+                .collect::<Vec<_>>();
+            Cow::Owned(OsString::from_vec(converted))
+        } else {
+            // Unix-on-Unix, all is fine.
+            os_str
+        };
+    }
 }
+
