@@ -1,9 +1,73 @@
-pub fn to_camel_case(ident: &str) -> Option<String> {
-    let mut output = String::new();
+#[derive(Debug)]
+enum DetectedCase {
+    LowerCamelCase,
+    UpperCamelCase,
+    LowerSnakeCase,
+    UpperSnakeCase,
+    Unknown,
+}
 
-    if is_camel_case(ident) {
-        return None;
+fn detect_case(ident: &str) -> DetectedCase {
+    let trimmed_ident = ident.trim_matches('_');
+    let first_lowercase =
+        trimmed_ident.chars().next().map(|chr| chr.is_ascii_lowercase()).unwrap_or(false);
+    let mut has_lowercase = first_lowercase;
+    let mut has_uppercase = false;
+    let mut has_underscore = false;
+
+    for chr in trimmed_ident.chars() {
+        if chr == '_' {
+            has_underscore = true;
+        } else if chr.is_ascii_uppercase() {
+            has_uppercase = true;
+        } else if chr.is_ascii_lowercase() {
+            has_lowercase = true;
+        }
     }
+
+    if has_uppercase {
+        if !has_lowercase {
+            DetectedCase::UpperSnakeCase
+        } else if !has_underscore {
+            if first_lowercase {
+                DetectedCase::LowerCamelCase
+            } else {
+                DetectedCase::UpperCamelCase
+            }
+        } else {
+            // It has uppercase, it has lowercase, it has underscore.
+            // No assumptions here
+            DetectedCase::Unknown
+        }
+    } else {
+        DetectedCase::LowerSnakeCase
+    }
+}
+
+pub fn to_camel_case(ident: &str) -> Option<String> {
+    let detected_case = detect_case(ident);
+
+    match detected_case {
+        DetectedCase::UpperCamelCase => return None,
+        DetectedCase::LowerCamelCase => {
+            let mut first_capitalized = false;
+            let output = ident
+                .chars()
+                .map(|chr| {
+                    if !first_capitalized && chr.is_ascii_lowercase() {
+                        first_capitalized = true;
+                        chr.to_ascii_uppercase()
+                    } else {
+                        chr
+                    }
+                })
+                .collect();
+            return Some(output);
+        }
+        _ => {}
+    }
+
+    let mut output = String::with_capacity(ident.len());
 
     let mut capital_added = false;
     for chr in ident.chars() {
@@ -23,47 +87,37 @@ pub fn to_camel_case(ident: &str) -> Option<String> {
         }
     }
 
-    if output == ident {
-        None
-    } else {
-        Some(output)
-    }
+    Some(output)
 }
 
 pub fn to_lower_snake_case(ident: &str) -> Option<String> {
     // First, assume that it's UPPER_SNAKE_CASE.
-    if let Some(normalized) = to_lower_snake_case_from_upper_snake_case(ident) {
-        return Some(normalized);
+    match detect_case(ident) {
+        DetectedCase::LowerSnakeCase => return None,
+        DetectedCase::UpperSnakeCase => {
+            return Some(ident.chars().map(|chr| chr.to_ascii_lowercase()).collect())
+        }
+        _ => {}
     }
 
     // Otherwise, assume that it's CamelCase.
     let lower_snake_case = stdx::to_lower_snake_case(ident);
+    Some(lower_snake_case)
+}
 
-    if lower_snake_case == ident {
-        None
-    } else {
-        Some(lower_snake_case)
+pub fn to_upper_snake_case(ident: &str) -> Option<String> {
+    match detect_case(ident) {
+        DetectedCase::UpperSnakeCase => return None,
+        DetectedCase::LowerSnakeCase => {
+            return Some(ident.chars().map(|chr| chr.to_ascii_uppercase()).collect())
+        }
+        _ => {}
     }
-}
 
-fn to_lower_snake_case_from_upper_snake_case(ident: &str) -> Option<String> {
-    if is_upper_snake_case(ident) {
-        let string = ident.chars().map(|c| c.to_ascii_lowercase()).collect();
-        Some(string)
-    } else {
-        None
-    }
-}
-
-fn is_upper_snake_case(ident: &str) -> bool {
-    ident.chars().all(|c| c.is_ascii_uppercase() || c == '_')
-}
-
-fn is_camel_case(ident: &str) -> bool {
-    // We assume that the string is either snake case or camel case.
-    // `_` is allowed only at the beginning or in the end of identifier, not between characters.
-    ident.trim_matches('_').chars().all(|c| c != '_')
-        && ident.chars().find(|c| c.is_alphabetic()).map(|c| c.is_ascii_uppercase()).unwrap_or(true)
+    // Normalize the string from whatever form it's in currently, and then just make it uppercase.
+    let upper_snake_case =
+        stdx::to_lower_snake_case(ident).chars().map(|c| c.to_ascii_uppercase()).collect();
+    Some(upper_snake_case)
 }
 
 #[cfg(test)]
@@ -84,6 +138,7 @@ mod tests {
         check(to_lower_snake_case, "UPPER_SNAKE_CASE", expect![["upper_snake_case"]]);
         check(to_lower_snake_case, "Weird_Case", expect![["weird_case"]]);
         check(to_lower_snake_case, "CamelCase", expect![["camel_case"]]);
+        check(to_lower_snake_case, "lowerCamelCase", expect![["lower_camel_case"]]);
     }
 
     #[test]
@@ -91,9 +146,19 @@ mod tests {
         check(to_camel_case, "CamelCase", expect![[""]]);
         check(to_camel_case, "CamelCase_", expect![[""]]);
         check(to_camel_case, "_CamelCase", expect![[""]]);
+        check(to_camel_case, "lowerCamelCase", expect![["LowerCamelCase"]]);
         check(to_camel_case, "lower_snake_case", expect![["LowerSnakeCase"]]);
         check(to_camel_case, "UPPER_SNAKE_CASE", expect![["UpperSnakeCase"]]);
         check(to_camel_case, "Weird_Case", expect![["WeirdCase"]]);
         check(to_camel_case, "name", expect![["Name"]]);
+    }
+
+    #[test]
+    fn test_to_upper_snake_case() {
+        check(to_upper_snake_case, "UPPER_SNAKE_CASE", expect![[""]]);
+        check(to_upper_snake_case, "lower_snake_case", expect![["LOWER_SNAKE_CASE"]]);
+        check(to_upper_snake_case, "Weird_Case", expect![["WEIRD_CASE"]]);
+        check(to_upper_snake_case, "CamelCase", expect![["CAMEL_CASE"]]);
+        check(to_upper_snake_case, "lowerCamelCase", expect![["LOWER_CAMEL_CASE"]]);
     }
 }
