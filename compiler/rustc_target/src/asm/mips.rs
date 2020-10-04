@@ -32,11 +32,12 @@ impl MipsInlineAsmRegClass {
 
     pub fn supported_types(
         self,
-        _arch: InlineAsmArch,
+        arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<&'static str>)] {
-        match self {
-            Self::reg => types! { _: I8, I16, I32, F32; },
-            Self::freg => types! { _: F32, F64; },
+        match (self, arch) {
+            (Self::reg, InlineAsmArch::Mips64) => types! { _: I8, I16, I32, I64, F32, F64; },
+            (Self::reg, _) => types! { _: I8, I16, I32, F32; },
+            (Self::freg, _) => types! { _: F32, F64; },
         }
     }
 }
