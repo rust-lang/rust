@@ -110,11 +110,7 @@ impl<'tcx> ConstKind<'tcx> {
             struct Meh;
             impl<'tcx> ty::fold::TypeVisitor<'tcx> for Meh {
                 fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-                    if matches!(ty.kind, ty::Bound(..)) {
-                        true
-                    } else {
-                        ty.super_visit_with(self)
-                    }
+                    if matches!(ty.kind, ty::Bound(..)) { true } else { ty.super_visit_with(self) }
                 }
 
                 fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> bool {
@@ -125,18 +121,19 @@ impl<'tcx> ConstKind<'tcx> {
                     }
                 }
             }
-            
+
             // HACK(eddyb) when the query key would contain inference variables,
             // attempt using identity substs and `ParamEnv` instead, that will succeed
             // when the expression doesn't depend on any parameters.
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
-            let param_env_and_substs =
-                if param_env_and_substs.needs_infer() || param_env_and_substs.visit_with(&mut Meh) {
-                    tcx.param_env(def.did).and(InternalSubsts::identity_for_item(tcx, def.did))
-                } else {
-                    param_env_and_substs
-                };
+            let param_env_and_substs = if param_env_and_substs.needs_infer()
+                || param_env_and_substs.visit_with(&mut Meh)
+            {
+                tcx.param_env(def.did).and(InternalSubsts::identity_for_item(tcx, def.did))
+            } else {
+                param_env_and_substs
+            };
 
             // FIXME(eddyb) maybe the `const_eval_*` methods should take
             // `ty::ParamEnvAnd<SubstsRef>` instead of having them separate.

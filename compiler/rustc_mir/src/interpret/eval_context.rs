@@ -530,11 +530,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         struct Meh;
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for Meh {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-                if matches!(ty.kind(), ty::Bound(..)) {
-                    true
-                } else {
-                    ty.super_visit_with(self)
-                }
+                if matches!(ty.kind(), ty::Bound(..)) { true } else { ty.super_visit_with(self) }
             }
 
             fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> bool {
