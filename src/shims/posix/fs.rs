@@ -1372,7 +1372,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let result = std::fs::read_link(pathname);
         match result {
             Ok(resolved) => {
-                let resolved = this.convert_path_separator(Cow::Borrowed(resolved.as_ref()), crate::shims::os_str::Pathconversion::HostToTarget);
+                let resolved = this.convert_path_separator(Cow::Borrowed(resolved.as_ref()), crate::shims::os_str::PathConversion::HostToTarget);
                 let mut path_bytes = crate::shims::os_str::os_str_to_bytes(resolved.as_ref())?;
                 let bufsize: usize = bufsize.try_into().unwrap();
                 if path_bytes.len() > bufsize {
