@@ -4,7 +4,7 @@ use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 pub fn target() -> TargetResult {
     let base = opts(Arch::Arm64_macabi);
     Ok(Target {
-        llvm_target: "arm64-apple-ios-macabi".to_string(),
+        llvm_target: "arm64-apple-ios14.2-macabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
         target_c_int_width: "32".to_string(),
@@ -15,7 +15,7 @@ pub fn target() -> TargetResult {
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
-            features: "+neon,+fp-armv8,+apple-a7".to_string(),
+            features: "+neon,+fp-armv8,+apple-a12".to_string(),
             eliminate_frame_pointer: false,
             max_atomic_width: Some(128),
             unsupported_abis: super::arm_base::unsupported_abis(),
@@ -24,11 +24,9 @@ pub fn target() -> TargetResult {
             // These arguments are not actually invoked - they just have
             // to look right to pass App Store validation.
             bitcode_llvm_cmdline: "-triple\0\
-                arm64-apple-ios-macabi\0\
+                arm64-apple-ios14.2-macabi\0\
                 -emit-obj\0\
                 -disable-llvm-passes\0\
-                -target-abi\0\
-                darwinpcs\0\
                 -Os\0"
                 .to_string(),
             ..base
