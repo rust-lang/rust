@@ -283,7 +283,6 @@ impl Ctx {
         let name = func.name()?.as_name();
 
         let mut params = Vec::new();
-        let mut param_names = Vec::new();
         let mut has_self_param = false;
         if let Some(param_list) = func.param_list() {
             if let Some(self_param) = param_list.self_param() {
@@ -306,18 +305,6 @@ impl Ctx {
                 has_self_param = true;
             }
             for param in param_list.params() {
-                let param_name = param
-                    .pat()
-                    .map(|name| {
-                        if let ast::Pat::IdentPat(ident) = name {
-                            Some(ident.name()?.as_name())
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten();
-                param_names.push(param_name);
-
                 let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                 params.push(type_ref);
             }
@@ -354,7 +341,6 @@ impl Ctx {
             has_body,
             is_unsafe: func.unsafe_token().is_some(),
             params: params.into_boxed_slice(),
-            param_names: param_names.into_boxed_slice(),
             is_varargs,
             ret_type,
             ast_id,
