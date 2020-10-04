@@ -99,7 +99,9 @@ mod dl {
         let s = CString::new(filename.as_bytes()).unwrap();
 
         let mut dlerror = error::lock();
-        let ret = unsafe { libc::dlopen(s.as_ptr(), libc::RTLD_LAZY | libc::RTLD_LOCAL) };
+        let ret = unsafe {
+            libc::dlopen(s.as_ptr(), libc::RTLD_LAZY | libc::RTLD_LOCAL | libc::RTLD_DEEPBIND)
+        };
 
         if !ret.is_null() {
             return Ok(ret.cast());
