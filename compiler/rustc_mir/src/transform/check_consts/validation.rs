@@ -882,6 +882,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             }
 
             TerminatorKind::Abort => {
+                // Cleanup blocks are skipped for const checking (see `visit_basic_block_data`).
                 span_bug!(self.span, "`Abort` terminator outside of cleanup block")
             }
 
