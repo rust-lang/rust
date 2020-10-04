@@ -1,8 +1,10 @@
 // no-prefer-dynamic
 
 #![crate_type = "rlib"]
+#![no_std]
 
-use std::fmt;
+extern crate alloc;
+use alloc::fmt;
 
 pub fn work_with(p: &fmt::Debug) {
     drop(p);

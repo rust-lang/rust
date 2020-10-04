@@ -26,6 +26,8 @@ extern "Rust" {
     fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
     #[rustc_allocator_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
+    #[rustc_allocator_nounwind]
+    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
 /// The global memory allocator.
@@ -334,6 +336,24 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 /// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
 /// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
 #[stable(feature = "global_alloc", since = "1.28.0")]
+#[cfg(not(any(test, bootstrap)))]
+#[rustc_allocator_nounwind]
+pub fn handle_alloc_error(layout: Layout) -> ! {
+    unsafe {
+        __rust_alloc_error_handler(layout.size(), layout.align());
+    }
+}
+
+// For alloc test `std::alloc::handle_alloc_error` can be used directly.
+#[cfg(test)]
+pub use std::alloc::handle_alloc_error;
+
+// In stage0 (bootstrap) `__rust_alloc_error_handler`,
+// might not be generated yet, because an old compiler is used,
+// so use the old direct call.
+#[cfg(all(bootstrap, not(test)))]
+#[stable(feature = "global_alloc", since = "1.28.0")]
+#[doc(hidden)]
 #[rustc_allocator_nounwind]
 pub fn handle_alloc_error(layout: Layout) -> ! {
     extern "Rust" {
@@ -341,4 +361,31 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
         fn oom_impl(layout: Layout) -> !;
     }
     unsafe { oom_impl(layout) }
+}
+
+#[cfg(not(any(test, bootstrap)))]
+#[doc(hidden)]
+#[allow(unused_attributes)]
+#[unstable(feature = "alloc_internals", issue = "none")]
+pub mod __default_lib_allocator {
+    use crate::alloc::Layout;
+
+    // called via generated `__rust_alloc_error_handler`
+
+    // if there is no `#[alloc_error_handler]`
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_oom(size: usize, _align: usize) -> ! {
+        panic!("memory allocation of {} bytes failed", size)
+    }
+
+    // if there is a `#[alloc_error_handler]`
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> ! {
+        let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
+        extern "Rust" {
+            #[lang = "oom"]
+            fn oom_impl(layout: Layout) -> !;
+        }
+        unsafe { oom_impl(layout) }
+    }
 }

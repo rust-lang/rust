@@ -593,6 +593,9 @@ declare_features! (
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
     (active, cmse_nonsecure_entry, "1.48.0", Some(75835), None),
 
+    /// Allows rustc to inject a default alloc_error_handler
+    (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

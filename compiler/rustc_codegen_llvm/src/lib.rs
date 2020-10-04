@@ -95,8 +95,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx>,
         mods: &mut ModuleLlvm,
         kind: AllocatorKind,
+        has_alloc_error_handler: bool,
     ) {
-        unsafe { allocator::codegen(tcx, mods, kind) }
+        unsafe { allocator::codegen(tcx, mods, kind, has_alloc_error_handler) }
     }
     fn compile_codegen_unit(
         &self,
