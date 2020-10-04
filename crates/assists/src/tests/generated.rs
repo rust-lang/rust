@@ -454,8 +454,8 @@ fn foo() {
     bar("", baz());
 }
 
-fn bar(arg: &str, baz: Baz) {
-    ${0:todo!()}
+fn bar(arg: &str, baz: Baz) ${0:-> ()} {
+    todo!()
 }
 
 "#####,
