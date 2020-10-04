@@ -21,7 +21,7 @@ Depending on what you're trying to measure, there are several different approach
   eg. `cargo -Ztimings build`.
   You can use this flag on the compiler itself with `CARGOFLAGS="-Ztimings" ./x.py build`
   
-## Optimizing rustc's self-compile-times with cargo-llvm-lines
+## Optimizing rustc's bootstrap times with `cargo-llvm-lines`
 
 Using [cargo-llvm-lines](https://github.com/dtolnay/cargo-llvm-lines) you can count the 
 number of lines of LLVM IR across all instantiations of a generic function.
@@ -38,8 +38,8 @@ cargo install cargo-llvm-lines
 RUSTFLAGS="--emit=llvm-ir" ./x.py build --stage 0 compiler/rustc
 
 # Single crate, eg. rustc_middle
-cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/debug/deps/rustc_middle* > llvm-lines-middle.txt
-# Whole compiler at once
+cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/debug/deps/rustc_middle-a539a639bdab6513.ll > llvm-lines-middle.txt
+# Specify all crates of the compiler. (Relies on the glob support of your shell.)
 cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/debug/deps/*.ll > llvm-lines.txt
 ```
 
@@ -72,7 +72,7 @@ you will be compiling rustc _a lot_.
 I recommend changing a few settings in `config.toml` to make it bearable:
 ```
 [rust]
-# A debug build takes _a fourth_ as long on my machine, 
+# A debug build takes _a third_ as long on my machine, 
 # but compiling more than stage0 rustc becomes unbearably slow.
 optimize = false
 
@@ -81,15 +81,14 @@ incremental = false
 # We won't be running it, so no point in compiling debug checks.
 debug = false
 
-# Caution: This changes the output of llvm-lines.
-# Using a single codegen unit gives more accurate output, but is slower to compile.
-# Changing it to the number of cores on my machine increased the output 
-# from 3.5GB to 4.1GB and decreased compile times from 5½ min to 4 min.
-codegen-units = 1
-#codegen-units = 0 # num_cpus
+# Using a single codegen unit gives less output, but is slower to compile.
+codegen-units = 0  # num_cpus
 ```
 
-What I'm still not sure about is if inlining in MIR optimizations affect llvm-lines.
-The output with `-Zmir-opt-level=0` and `-Zmir-opt-level=1` is the same,
-but it feels like that some functions that show up at the top should be to small
-to have such a high impact. Inlining should only happens in LLVM though.
+The llvm-lines output is affected by several options.
+`optimize = false` increases it from 2.1GB to 3.5GB and `codegen-units = 0` to 4.1GB.
+
+MIR optimizations have little impact. Compared to the default `RUSTFLAGS="-Zmir-opt-level=1"`,
+level 0 adds 0.3GB and level 2 removes 0.2GB. 
+Inlining currently only happens in LLVM, but this might change in the future.
+
