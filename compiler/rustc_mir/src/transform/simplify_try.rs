@@ -630,7 +630,8 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                 // All successor basic blocks must be equal or contain statements that are pairwise considered equal.
                 for ((target_and_value_l,bb_l), (target_and_value_r,bb_r)) in iter_bbs_reachable.tuple_windows() {
                     let trivial_checks = bb_l.is_cleanup == bb_r.is_cleanup
-                    && bb_l.terminator().kind == bb_r.terminator().kind;
+                                            && bb_l.terminator().kind == bb_r.terminator().kind
+                                            && bb_l.statements.len() == bb_r.statements.len();
                     let statement_check = || {
                         bb_l.statements.iter().zip(&bb_r.statements).try_fold(StatementEquality::TrivialEqual, |acc,(l,r)| {
                             let stmt_equality = self.statement_equality(*adt_matched_on, &l, target_and_value_l, &r, target_and_value_r);
