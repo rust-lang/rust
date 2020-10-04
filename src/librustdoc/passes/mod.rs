@@ -8,7 +8,7 @@ use std::mem;
 use std::ops::Range;
 
 use self::Condition::*;
-use crate::clean::{self, GetDefId, Item};
+use crate::clean::{self, DocFragmentKind, GetDefId, Item};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
 
@@ -314,11 +314,11 @@ crate fn span_of_attrs(attrs: &clean::Attributes) -> Option<Span> {
     if attrs.doc_strings.is_empty() {
         return None;
     }
-    let start = attrs.doc_strings[0].span();
+    let start = attrs.doc_strings[0].span;
     if start == DUMMY_SP {
         return None;
     }
-    let end = attrs.doc_strings.last().expect("no doc strings provided").span();
+    let end = attrs.doc_strings.last().expect("no doc strings provided").span;
     Some(start.to(end))
 }
 
@@ -333,10 +333,8 @@ crate fn source_span_for_markdown_range(
     md_range: &Range<usize>,
     attrs: &clean::Attributes,
 ) -> Option<Span> {
-    let is_all_sugared_doc = attrs.doc_strings.iter().all(|frag| match frag {
-        clean::DocFragment::SugaredDoc(..) => true,
-        _ => false,
-    });
+    let is_all_sugared_doc =
+        attrs.doc_strings.iter().all(|frag| frag.kind == DocFragmentKind::SugaredDoc);
 
     if !is_all_sugared_doc {
         return None;
