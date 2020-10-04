@@ -2199,7 +2199,8 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         // But it is a conservative choice.
         let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
         if !has_advanced || iterator.len() >= iterator.cap / 2 {
-            return iterator.into_vec();
+            // Safety: passing 0 is always valid
+            return unsafe { iterator.into_vec(0) };
         }
 
         let mut vec = Vec::new();
@@ -2384,8 +2385,20 @@ where
 
 impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
     fn spec_extend(&mut self, iterator: IntoIter<T>) {
-        if mem::size_of::<T>() > 0 && self.len == 0 && self.capacity() < iterator.len() {
-            *self = iterator.into_vec();
+        // Avoid reallocation if we can use iterator's storage instead. This requires 1 memcpy and 0-1 memmove
+        // while reallocation would require 1 alloc, 1-2 memcpy, 1-2 free
+        if mem::size_of::<T>() > 0
+            && self.capacity() - self.len() < iterator.len()
+            && iterator.cap - iterator.len() >= self.len()
+        {
+            // Safety: we just checked that IntoIter has sufficient capacity to prepend our elements.
+            // Prepending will then fill the uninitialized prefix.
+            *self = unsafe {
+                let mut v = iterator.into_vec(self.len() as isize);
+                ptr::copy_nonoverlapping(self.as_ptr(), v.as_mut_ptr(), self.len);
+                self.set_len(0);
+                v
+            };
             return;
         }
         iterator.move_to(self);
@@ -2922,14 +2935,25 @@ impl<T> IntoIter<T> {
         self.end = self.buf.as_ptr();
     }
 
-    /// Shifts the remaining elements to the front and then converts the whole allocation to a Vec
-    fn into_vec(self) -> Vec<T> {
-        if self.ptr != self.buf.as_ptr() as *const _ {
-            unsafe { ptr::copy(self.ptr, self.buf.as_ptr(), self.len()) }
+    /// Shifts the remaining elements to `offset` and then converts the whole allocation into a Vec
+    /// with `vec.len() == offset + self.len()`
+    ///
+    /// # Safety
+    ///
+    /// When a non-zero offset is passed the resulting Vec will have an uninitialized prefix
+    /// that needs to be filled before the Vec is valid again.
+    ///
+    /// * `offset + self.len()` must not exceed `self.cap`
+    /// * `offset == 0` is always valid
+    /// * `offset` must be positive
+    unsafe fn into_vec(self, offset: isize) -> Vec<T> {
+        let dst = unsafe { self.buf.as_ptr().offset(offset) };
+        if self.ptr != dst as *const _ {
+            unsafe { ptr::copy(self.ptr, dst, self.len()) }
         }
 
         let iter = ManuallyDrop::new(self);
-        unsafe { Vec::from_raw_parts(iter.buf.as_ptr(), iter.len(), iter.cap) }
+        unsafe { Vec::from_raw_parts(iter.buf.as_ptr(), offset as usize + iter.len(), iter.cap) }
     }
 
     fn move_to(mut self, dest: &mut Vec<T>) {
