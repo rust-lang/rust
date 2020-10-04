@@ -163,4 +163,16 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         // we are currently in. So for those it's correct that they have a
         // different owner.
     }
+
+    fn visit_generic_param(&mut self, param: &'hir hir::GenericParam<'hir>) {
+        if let hir::GenericParamKind::Type {
+            synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+            ..
+        } = param.kind
+        {
+            // Do nothing because bodging is fun.
+        } else {
+            intravisit::walk_generic_param(self, param);
+        }
+    }
 }

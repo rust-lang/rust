@@ -360,8 +360,26 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generic_param(&mut self, param: &'hir GenericParam<'hir>) {
-        self.insert(param.span, param.hir_id, Node::GenericParam(param));
-        intravisit::walk_generic_param(self, param);
+        if let hir::GenericParamKind::Type {
+            synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+            ..
+        } = param.kind
+        {
+            debug_assert_eq!(
+                param.hir_id.owner,
+                self.definitions.opt_hir_id_to_local_def_id(param.hir_id).unwrap()
+            );
+            self.with_dep_node_owner(param.hir_id.owner, param, |this, hash| {
+                this.insert_with_hash(param.span, param.hir_id, Node::GenericParam(param), hash);
+
+                this.with_parent(param.hir_id, |this| {
+                    intravisit::walk_generic_param(this, param);
+                });
+            });
+        } else {
+            self.insert(param.span, param.hir_id, Node::GenericParam(param));
+            intravisit::walk_generic_param(self, param);
+        }
     }
 
     fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
