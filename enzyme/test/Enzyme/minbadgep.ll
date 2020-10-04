@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse -instsimplify -adce -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -early-cse -instsimplify -adce -simplifycfg -S | FileCheck %s
 
 @enzyme_const = external dso_local local_unnamed_addr global i32, align 4
 

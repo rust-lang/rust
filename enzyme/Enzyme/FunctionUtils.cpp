@@ -86,17 +86,22 @@
 using namespace llvm;
 
 static cl::opt<bool>
-    enzyme_preopt("enzyme_preopt", cl::init(true), cl::Hidden,
-//    enzyme_preopt("enzyme_preopt", cl::init( (LLVM_VERSION_MAJOR <= 7) ? true : false), cl::Hidden,
+    EnzymePreopt("enzyme-preopt", cl::init(true), cl::Hidden,
                   cl::desc("Run enzyme preprocessing optimizations"));
 
-static cl::opt<bool> autodiff_inline("enzyme_inline", cl::init(false),
-                                     cl::Hidden,
-                                     cl::desc("Force inlining of autodiff"));
+static cl::opt<bool>
+    EnzymePostopt("enzmye-postopt", cl::init(false), cl::Hidden,
+                  cl::desc("Run enzymepostprocessing optimizations"));
+
+
+
+static cl::opt<bool>
+    EnzymeInline("enzyme-inline", cl::init(false), cl::Hidden,
+                   cl::desc("Force inlining of autodiff"));
 
 static cl::opt<int>
-    autodiff_inline_count("enzyme_inline_count", cl::init(10000), cl::Hidden,
-                          cl::desc("Limit of number of functions to inline"));
+    EnzymeInlineCount("enzyme-inline-count", cl::init(10000), cl::Hidden,
+                   cl::desc("Limit of number of functions to inline"));
 
 static bool promoteMemoryToRegister(Function &F, DominatorTree &DT,
                                     AssumptionCache &AC) {
@@ -155,7 +160,7 @@ remover:
   for (inst_iterator I = inst_begin(NewF), E = inst_end(NewF); I != E; ++I) {
     originalInstructions.insert(&*I);
   }
-  if (count >= autodiff_inline_count)
+  if (count >= EnzymeInlineCount)
     return;
   for (inst_iterator I = inst_begin(NewF), E = inst_end(NewF); I != E; ++I)
     if (auto call = dyn_cast<CallInst>(&*I)) {
@@ -185,7 +190,7 @@ remover:
       InlineFunction(call, IFI);
       #endif
       ++count;
-      if (count >= autodiff_inline_count)
+      if (count >= EnzymeInlineCount)
         break;
       else
         goto remover;
@@ -262,9 +267,8 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
                     nullptr);
   NewF->setAttributes(F->getAttributes());
 
-  if (enzyme_preopt) {
-
-    if (autodiff_inline) {
+  if (EnzymePreopt) {
+    if (EnzymeInline) {
       forceRecursiveInlining(NewF, F);
     }
   }
@@ -302,9 +306,8 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
     }
   }
 
-  if (enzyme_preopt) {
-
-    if (autodiff_inline) {
+  if (EnzymePreopt) {
+    if (EnzymeInline) {
       {
         DominatorTree DT(*NewF);
         AssumptionCache AC(*NewF);
@@ -655,12 +658,8 @@ Function *CloneFunctionWithReturns(
   return NewF;
 }
 
-static cl::opt<bool> autodiff_optimize("enzyme_optimize", cl::init(false),
-                                       cl::Hidden,
-                                       cl::desc("Force inlining of autodiff"));
-
 void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
-  if (!autodiff_optimize)
+  if (!EnzymePostopt)
     return;
 
   {

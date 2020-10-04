@@ -62,7 +62,7 @@ llvm::cl::opt<bool>
     enzyme_print("enzyme_print", cl::init(false), cl::Hidden,
                  cl::desc("Print before and after fns for autodiff"));
 
-cl::opt<bool> looseTypeAnalysis("enzyme_loosetypes", cl::init(false),
+cl::opt<bool> looseTypeAnalysis("enzyme-loose-types", cl::init(false),
                                 cl::Hidden,
                                 cl::desc("Allow looser use of types"));
 

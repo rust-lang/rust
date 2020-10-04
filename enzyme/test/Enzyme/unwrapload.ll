@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -early-cse -instcombine -simplifycfg -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -early-cse -instcombine -simplifycfg -adce -S | FileCheck %s
 
 define double @caller(double* %data, i64* %a4) {
 entry:

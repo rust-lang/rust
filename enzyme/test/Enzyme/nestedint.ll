@@ -1,4 +1,4 @@
-; RUN: if [ %llvmver < 10 ]; then %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -simplifycfg -dce -S | FileCheck %s; fi
+; RUN: if [ %llvmver < 10 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -simplifycfg -dce -S | FileCheck %s; fi
 ; Note this doesn't run on LLVM 10 as 10 will simplify the cfg to remove a block unlike lower versions
 ;  The code is still correct but cannot be easily tested in regex
 ; ModuleID = 'seg.ll'

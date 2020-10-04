@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -simplifycfg -early-cse -dce -correlated-propagation -instcombine -loop-deletion -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -simplifycfg -early-cse -dce -correlated-propagation -instcombine -loop-deletion -simplifycfg -S | FileCheck %s
 
 @.str = private unnamed_addr constant [21 x i8] c"ffib'(n=%d, i=1)=%f\0A\00", align 1
 

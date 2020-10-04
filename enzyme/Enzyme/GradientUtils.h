@@ -515,8 +515,9 @@ private:
 
   std::map<llvm::Value *, bool> internal_isConstantValue;
   std::map<const llvm::Instruction *, bool> internal_isConstantInstruction;
-
+  TypeResults* my_TR;
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
+    my_TR = &TR;
     for (auto &Arg : oldFunc->args()) {
       internal_isConstantValue[&Arg] = ATA->isConstantValue(TR, &Arg);
     }
@@ -556,8 +557,7 @@ private:
         isa<UndefValue>(val) || isa<MetadataAsValue>(val)) {
       // Note that not actually passing in type results here as (hopefully) it
       // shouldn't be needed
-      TypeResults TR(TA, FnTypeInfo(oldFunc));
-      return ATA->isConstantValue(TR, val);
+      return ATA->isConstantValue(*my_TR, val);
     }
 
     if (auto gv = dyn_cast<GlobalVariable>(val)) {

@@ -53,6 +53,10 @@ llvm::cl::opt<bool> PrintType("enzyme_printtype", cl::init(false), cl::Hidden,
 
 TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA, uint8_t direction)
     : intseen(), fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false), DT(*fn.Function) {
+
+  assert(fntypeinfo.KnownValues.size() ==
+         fntypeinfo.Function->getFunctionType()->getNumParams());
+
   // Add all instructions in the function
   for (BasicBlock &BB : *fntypeinfo.Function) {
     for (Instruction &I : BB) {
@@ -218,7 +222,12 @@ TypeTree TypeAnalyzer::getAnalysis(Value *Val) {
     return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
 
   if (auto C = dyn_cast<Constant>(Val)) {
-    return getConstantAnalysis(C, fntypeinfo, interprocedural);
+    TypeTree result = getConstantAnalysis(C, fntypeinfo, interprocedural);
+    if (auto found = findInMap(analysis, Val)) {
+      result |= *found;
+      *found = result;
+    }
+    return result;
   }
 
   // Check that this value is from the function being analyzed
@@ -2008,6 +2017,8 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
 }
 
 TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
+  assert(fn.KnownValues.size() ==
+        fn.Function->getFunctionType()->getNumParams());
 
   auto found = analyzedFunctions.find(fn);
   if (found != analyzedFunctions.end()) {
@@ -2066,16 +2077,12 @@ TypeTree TypeAnalysis::query(Value *val, const FnTypeInfo &fn) {
   assert(val);
   assert(val->getType());
 
-  if (auto con = dyn_cast<Constant>(val)) {
-    return getConstantAnalysis(con, fn, *this);
-  }
-
   Function *func = nullptr;
   if (auto arg = dyn_cast<Argument>(val))
     func = arg->getParent();
   else if (auto inst = dyn_cast<Instruction>(val))
     func = inst->getParent()->getParent();
-  else {
+  else if (!isa<Constant>(val)) {
     llvm::errs() << "unknown value: " << *val << "\n";
     assert(0 && "could not handle unknown value type");
   }
@@ -2155,6 +2162,8 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
                      << "\n";
       }
     }
+    llvm::errs() << "fn: " << *fn.Function << "\n";
+    analyzeFunction(fn).dump();
     llvm::errs() << "could not deduce type of integer " << *val
                  << " num:" << num << " q:" << q.str() << " \n";
     assert(0 && "could not deduce type of integer");
@@ -2163,7 +2172,10 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
 }
 
 TypeResults::TypeResults(TypeAnalysis &analysis, const FnTypeInfo &fn)
-    : analysis(analysis), info(fn) {}
+    : analysis(analysis), info(fn) {
+        assert(fn.KnownValues.size() ==
+        fn.Function->getFunctionType()->getNumParams());
+    }
 
 FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
   FnTypeInfo res(info.Function);

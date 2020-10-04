@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse-memssa -correlated-propagation -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -early-cse-memssa -correlated-propagation -simplifycfg -instcombine -adce -S | FileCheck %s
 
 declare dso_local void @__enzyme_autodiff(i8*, ...) local_unnamed_addr #0
 

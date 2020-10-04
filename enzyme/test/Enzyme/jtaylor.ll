@@ -1,4 +1,4 @@
-; RUN: if [ %llvmver -ge 9 ]; then %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -adce -correlated-propagation  -instsimplify -simplifycfg -S | FileCheck %s; fi
+; RUN: if [ %llvmver -ge 9 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -adce -correlated-propagation  -instsimplify -simplifycfg -S | FileCheck %s; fi
 source_filename = "julia"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"

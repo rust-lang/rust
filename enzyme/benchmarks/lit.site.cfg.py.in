@@ -48,7 +48,7 @@ config.substitutions.append(('%bldpath', config.bench_ldpath))
 config.substitutions.append(('%clang', config.llvm_tools_dir + "/clang"))
 config.substitutions.append(('%loadEnzyme', ''
                                  + ' -load=@ENZYME_BINARY_DIR@/Enzyme/LLVMEnzyme-' + config.llvm_ver + config.llvm_shlib_ext
-                                 + ' -enzyme_preopt=0' ))
+                                 + ' -enzyme-preopt=0' ))
 config.substitutions.append(('%desired_wd', ''
                                      + "@ENZYME_SOURCE_DIR@/benchmarks/"
                                                                       ))

@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
 ; This test ensures that the index of gep doesn't lead to a collision where it is mistaken as both a double and a i64 pointer
 ; - in other words, not crashing makes this a success!
 define void @sub(i64* %inp, i64 %idx) {
