@@ -38,7 +38,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
 
         let always_live_locals = AlwaysLiveLocals::new(body);
         let storage_liveness = MaybeStorageLive::new(always_live_locals)
-            .into_engine(tcx, body, def_id)
+            .into_engine(tcx, body)
             .iterate_to_fixpoint()
             .into_results_cursor(body);
 

@@ -24,25 +24,28 @@ pub mod validation;
 pub struct ConstCx<'mir, 'tcx> {
     pub body: &'mir mir::Body<'tcx>,
     pub tcx: TyCtxt<'tcx>,
-    pub def_id: LocalDefId,
     pub param_env: ty::ParamEnv<'tcx>,
     pub const_kind: Option<hir::ConstContext>,
 }
 
 impl ConstCx<'mir, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'mir mir::Body<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Self {
+        let def_id = body.source.def_id().expect_local();
         let param_env = tcx.param_env(def_id);
-        Self::new_with_param_env(tcx, def_id, body, param_env)
+        Self::new_with_param_env(tcx, body, param_env)
     }
 
     pub fn new_with_param_env(
         tcx: TyCtxt<'tcx>,
-        def_id: LocalDefId,
         body: &'mir mir::Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
-        let const_kind = tcx.hir().body_const_context(def_id);
-        ConstCx { body, tcx, def_id: def_id, param_env, const_kind }
+        let const_kind = tcx.hir().body_const_context(body.source.def_id().expect_local());
+        ConstCx { body, tcx, param_env, const_kind }
+    }
+
+    pub fn def_id(&self) -> LocalDefId {
+        self.body.source.def_id().expect_local()
     }
 
     /// Returns the kind of const context this `Item` represents (`const`, `static`, etc.).
@@ -55,7 +58,7 @@ impl ConstCx<'mir, 'tcx> {
     pub fn is_const_stable_const_fn(&self) -> bool {
         self.const_kind == Some(hir::ConstContext::ConstFn)
             && self.tcx.features().staged_api
-            && is_const_stable_const_fn(self.tcx, self.def_id.to_def_id())
+            && is_const_stable_const_fn(self.tcx, self.def_id().to_def_id())
     }
 
     /// Returns the function signature of the item being const-checked if it is a `fn` or `const fn`.
@@ -64,7 +67,7 @@ impl ConstCx<'mir, 'tcx> {
         //
         // FIXME: Is this still an issue?
         let hir_map = self.tcx.hir();
-        let hir_id = hir_map.local_def_id_to_hir_id(self.def_id);
+        let hir_id = hir_map.local_def_id_to_hir_id(self.def_id());
         hir_map.fn_sig_by_hir_id(hir_id)
     }
 }

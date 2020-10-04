@@ -63,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let def = body.source.with_opt_param().expect_local();
 
         let mut rpo = traversal::reverse_postorder(body);
-        let ccx = ConstCx::new(tcx, def.did, body);
+        let ccx = ConstCx::new(tcx, body);
         let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
         let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);
@@ -758,7 +758,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             ty::FnDef(def_id, _) => {
                 is_const_fn(self.tcx, def_id)
                     || is_unstable_const_fn(self.tcx, def_id).is_some()
-                    || is_lang_panic_fn(self.tcx, self.def_id.to_def_id())
+                    || is_lang_panic_fn(self.tcx, def_id)
             }
             _ => false,
         };
@@ -1250,7 +1250,9 @@ crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
     debug!(
         "should_suggest_const_in_array_repeat_expressions_flag: def_id={:?} \
             should_promote={:?} feature_flag={:?}",
-        validator.ccx.def_id, should_promote, feature_flag
+        validator.ccx.def_id(),
+        should_promote,
+        feature_flag
     );
     should_promote && !feature_flag
 }

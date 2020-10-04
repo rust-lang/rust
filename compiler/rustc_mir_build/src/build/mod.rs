@@ -205,7 +205,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
-        lints::check(tcx, &body, def.did);
+        lints::check(tcx, &body);
 
         // The borrow checker will replace all the regions here with its own
         // inference variables. There's no point having non-erased regions here.

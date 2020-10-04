@@ -229,13 +229,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
         return Default::default();
     }
 
-    let ccx = check_consts::ConstCx {
-        body,
-        tcx,
-        def_id: def.did,
-        const_kind,
-        param_env: tcx.param_env(def.did),
-    };
+    let ccx = check_consts::ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def.did) };
 
     let mut validator = check_consts::validation::Validator::new(&ccx);
     validator.check_body();
@@ -346,7 +340,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     let mut body = body.steal();
 
     run_post_borrowck_cleanup_passes(tcx, &mut body);
-    check_consts::post_drop_elaboration::check_live_drops(tcx, def.did, &body);
+    check_consts::post_drop_elaboration::check_live_drops(tcx, &body);
     tcx.alloc_steal_mir(body)
 }
 

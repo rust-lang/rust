@@ -203,7 +203,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def.did.to_def_id())
+        .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
@@ -221,7 +221,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         nll_errors,
     } = nll::compute_regions(
         infcx,
-        def.did,
         free_regions,
         body,
         &promoted,
@@ -242,7 +241,6 @@ fn do_mir_borrowck<'a, 'tcx>(
     nll::dump_annotation(
         infcx,
         &body,
-        def.did.to_def_id(),
         &regioncx,
         &opt_closure_req,
         &opaque_type_values,
@@ -257,15 +255,15 @@ fn do_mir_borrowck<'a, 'tcx>(
     let regioncx = Rc::new(regioncx);
 
     let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), &borrow_set)
-        .into_engine(tcx, &body, def.did.to_def_id())
+        .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
     let flow_uninits = MaybeUninitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def.did.to_def_id())
+        .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
     let flow_ever_inits = EverInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def.did.to_def_id())
+        .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 

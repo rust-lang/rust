@@ -156,7 +156,6 @@ fn populate_polonius_move_facts(
 /// This may result in errors being reported.
 pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def_id: LocalDefId,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
@@ -180,7 +179,6 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
             param_env,
             body,
             promoted,
-            def_id,
             &universal_regions,
             location_table,
             borrow_set,
@@ -270,10 +268,12 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     // Generate various additional constraints.
     invalidation::generate_invalidates(infcx.tcx, &mut all_facts, location_table, body, borrow_set);
 
+    let def_id = body.source.def_id();
+
     // Dump facts if requested.
     let polonius_output = all_facts.and_then(|all_facts| {
         if infcx.tcx.sess.opts.debugging_opts.nll_facts {
-            let def_path = infcx.tcx.def_path(def_id.to_def_id());
+            let def_path = infcx.tcx.def_path(def_id);
             let dir_path =
                 PathBuf::from("nll-facts").join(def_path.to_filename_friendly_no_crate());
             all_facts.write_to_dir(dir_path, location_table).unwrap();
@@ -293,7 +293,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, &body, def_id.to_def_id(), polonius_output.clone());
+        regioncx.solve(infcx, &body, def_id, polonius_output.clone());
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
@@ -364,14 +364,13 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
 pub(super) fn dump_annotation<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     body: &Body<'tcx>,
-    mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
     opaque_type_values: &FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
-    let base_def_id = tcx.closure_base_def_id(mir_def_id);
+    let base_def_id = tcx.closure_base_def_id(body.source.def_id());
     if !tcx.has_attr(base_def_id, sym::rustc_regions) {
         return;
     }
