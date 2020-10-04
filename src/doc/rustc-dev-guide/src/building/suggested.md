@@ -90,9 +90,9 @@ still have to use `x.py` to work on the compiler or standard library, this just
 lets you use `cargo fmt`.
 
 [installing a nightly toolchain]: https://rust-lang.github.io/rustup/concepts/channels.html?highlight=nightl#working-with-nightly-rust
-[setup a worktree for]: ./suggested.html#working-on-multiple-branches-at-the-same-time
-[the section on vscode]: suggested.html#configuring-rust-analyzer-for-rustc
-[the section on rustup]: how-to-build-and-run.html?highlight=rustup#creating-a-rustup-toolchain
+[setup a worktree for]: ./suggested.md#working-on-multiple-branches-at-the-same-time
+[the section on vscode]: suggested.md#configuring-rust-analyzer-for-rustc
+[the section on rustup]: how-to-build-and-run.md?highlight=rustup#creating-a-rustup-toolchain
 
 ## Incremental builds with `--keep-stage`.
 
