@@ -9,7 +9,7 @@
 //!
 //! into just `x`.
 
-use crate::transform::{simplify, MirPass, MirSource};
+use crate::transform::{simplify, MirPass};
 use itertools::Itertools as _;
 use rustc_index::{bit_set::BitSet, vec::IndexVec};
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
@@ -367,13 +367,15 @@ fn optimization_applies<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // FIXME(77359): This optimization can result in unsoundness.
         if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
             return;
         }
 
+        let source = body.source;
         trace!("running SimplifyArmIdentity on {:?}", source);
+
         let local_uses = LocalUseCounter::get_local_uses(body);
         let (basic_blocks, local_decls, debug_info) =
             body.basic_blocks_local_decls_mut_and_var_debug_info();
@@ -528,8 +530,8 @@ fn match_variant_field_place<'tcx>(place: Place<'tcx>) -> Option<(Local, VarFiel
 pub struct SimplifyBranchSame;
 
 impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        trace!("Running SimplifyBranchSame on {:?}", source);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        trace!("Running SimplifyBranchSame on {:?}", body.source);
         let finder = SimplifyBranchSameOptimizationFinder { body, tcx };
         let opts = finder.find();
 

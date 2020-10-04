@@ -4,7 +4,7 @@ use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor}
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use rustc_middle::ty::TyCtxt;
 
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 
 /// This pass looks for MIR that always copies the same local into the return place and eliminates
 /// the copy by renaming all uses of that local to `_0`.
@@ -31,7 +31,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut mir::Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return;
         }
@@ -39,14 +39,14 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
         let returned_local = match local_eligible_for_nrvo(body) {
             Some(l) => l,
             None => {
-                debug!("`{:?}` was ineligible for NRVO", src.def_id());
+                debug!("`{:?}` was ineligible for NRVO", body.source.def_id());
                 return;
             }
         };
 
         debug!(
             "`{:?}` was eligible for NRVO, making {:?} the return place",
-            src.def_id(),
+            body.source.def_id(),
             returned_local
         );
 

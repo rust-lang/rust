@@ -9,7 +9,7 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, InstanceDef, RegionKind, RegionVid};
+use rustc_middle::ty::{self, RegionKind, RegionVid};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -24,7 +24,6 @@ use polonius_engine::{Algorithm, Output};
 use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::{InitKind, InitLocation, MoveData};
 use crate::dataflow::ResultsCursor;
-use crate::transform::MirSource;
 use crate::util as mir_util;
 use crate::util::pretty;
 
@@ -72,8 +71,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    let source = MirSource { instance: InstanceDef::Item(def.to_global()), promoted: None };
-    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
+    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, body, |_, _| Ok(()));
 
     universal_regions
 }
@@ -315,16 +313,15 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
 pub(super) fn dump_mir_results<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
-    source: MirSource<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
-    if !mir_util::dump_enabled(infcx.tcx, "nll", source.def_id()) {
+    if !mir_util::dump_enabled(infcx.tcx, "nll", body.source.def_id()) {
         return;
     }
 
-    mir_util::dump_mir(infcx.tcx, None, "nll", &0, source, body, |pass_where, out| {
+    mir_util::dump_mir(infcx.tcx, None, "nll", &0, body, |pass_where, out| {
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => {
@@ -352,14 +349,14 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
     // Also dump the inference graph constraints as a graphviz file.
     let _: io::Result<()> = try {
         let mut file =
-            pretty::create_dump_file(infcx.tcx, "regioncx.all.dot", None, "nll", &0, source)?;
+            pretty::create_dump_file(infcx.tcx, "regioncx.all.dot", None, "nll", &0, body.source)?;
         regioncx.dump_graphviz_raw_constraints(&mut file)?;
     };
 
     // Also dump the inference graph constraints as a graphviz file.
     let _: io::Result<()> = try {
         let mut file =
-            pretty::create_dump_file(infcx.tcx, "regioncx.scc.dot", None, "nll", &0, source)?;
+            pretty::create_dump_file(infcx.tcx, "regioncx.scc.dot", None, "nll", &0, body.source)?;
         regioncx.dump_graphviz_scc_constraints(&mut file)?;
     };
 }

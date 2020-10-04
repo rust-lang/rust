@@ -1,4 +1,4 @@
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use crate::util::patch::MirPatch;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
@@ -20,7 +20,7 @@ pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) 
 }
 
 impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         remove_noop_landing_pads(tcx, body);
     }
 }

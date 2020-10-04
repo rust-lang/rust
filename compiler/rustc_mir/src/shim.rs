@@ -78,8 +78,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
     run_passes(
         tcx,
         &mut result,
-        instance,
-        None,
         MirPhase::Const,
         &[&[
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
@@ -163,7 +161,9 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     block(&mut blocks, TerminatorKind::Goto { target: return_block });
     block(&mut blocks, TerminatorKind::Return);
 
-    let mut body = new_body(blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
+    let source = MirSource::from_instance(ty::InstanceDef::DropGlue(def_id, ty));
+    let mut body =
+        new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
     if let Some(..) = ty {
         // The first argument (index 0), but add 1 for the return value.
@@ -202,12 +202,14 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 }
 
 fn new_body<'tcx>(
+    source: MirSource<'tcx>,
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     arg_count: usize,
     span: Span,
 ) -> Body<'tcx> {
     Body::new(
+        source,
         basic_blocks,
         IndexVec::from_elem_n(
             SourceScopeData { span, parent_scope: None, local_data: ClearCrossCrate::Clear },
@@ -344,7 +346,11 @@ impl CloneShimBuilder<'tcx> {
     }
 
     fn into_mir(self) -> Body<'tcx> {
-        new_body(self.blocks, self.local_decls, self.sig.inputs().len(), self.span)
+        let source = MirSource::from_instance(ty::InstanceDef::CloneShim(
+            self.def_id,
+            self.sig.inputs_and_output[0],
+        ));
+        new_body(source, self.blocks, self.local_decls, self.sig.inputs().len(), self.span)
     }
 
     fn source_info(&self) -> SourceInfo {
@@ -834,7 +840,8 @@ fn build_call_shim<'tcx>(
         block(&mut blocks, vec![], TerminatorKind::Resume, true);
     }
 
-    let mut body = new_body(blocks, local_decls, sig.inputs().len(), span);
+    let mut body =
+        new_body(MirSource::from_instance(instance), blocks, local_decls, sig.inputs().len(), span);
 
     if let Abi::RustCall = sig.abi {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
@@ -897,18 +904,16 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         is_cleanup: false,
     };
 
-    let body =
-        new_body(IndexVec::from_elem_n(start_block, 1), local_decls, sig.inputs().len(), span);
-
-    crate::util::dump_mir(
-        tcx,
-        None,
-        "mir_map",
-        &0,
-        crate::transform::MirSource::item(ctor_id),
-        &body,
-        |_, _| Ok(()),
+    let source = MirSource::item(ctor_id);
+    let body = new_body(
+        source,
+        IndexVec::from_elem_n(start_block, 1),
+        local_decls,
+        sig.inputs().len(),
+        span,
     );
+
+    crate::util::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
 
     body
 }

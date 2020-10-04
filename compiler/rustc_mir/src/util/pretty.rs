@@ -75,17 +75,16 @@ pub fn dump_mir<'tcx, F>(
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource<'tcx>,
     body: &Body<'tcx>,
     extra_data: F,
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
-    if !dump_enabled(tcx, pass_name, source.def_id()) {
+    if !dump_enabled(tcx, pass_name, body.source.def_id()) {
         return;
     }
 
-    dump_matched_mir_node(tcx, pass_num, pass_name, disambiguator, source, body, extra_data);
+    dump_matched_mir_node(tcx, pass_num, pass_name, disambiguator, body, extra_data);
 }
 
 pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> bool {
@@ -113,20 +112,20 @@ fn dump_matched_mir_node<'tcx, F>(
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource<'tcx>,
     body: &Body<'tcx>,
     mut extra_data: F,
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
     let _: io::Result<()> = try {
-        let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, source)?;
+        let mut file =
+            create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body.source)?;
         let def_path = ty::print::with_forced_impl_filename_line(|| {
             // see notes on #41697 above
-            tcx.def_path_str(source.def_id())
+            tcx.def_path_str(body.source.def_id())
         });
         write!(file, "// MIR for `{}", def_path)?;
-        match source.promoted {
+        match body.source.promoted {
             None => write!(file, "`")?,
             Some(promoted) => write!(file, "::{:?}`", promoted)?,
         }
@@ -137,24 +136,24 @@ fn dump_matched_mir_node<'tcx, F>(
         writeln!(file)?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
         write_user_type_annotations(tcx, body, &mut file)?;
-        write_mir_fn(tcx, source, body, &mut extra_data, &mut file)?;
+        write_mir_fn(tcx, body, &mut extra_data, &mut file)?;
         extra_data(PassWhere::AfterCFG, &mut file)?;
     };
 
     if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
         let _: io::Result<()> = try {
             let mut file =
-                create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
-            write_mir_fn_graphviz(tcx, source.def_id(), body, false, &mut file)?;
+                create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, body.source)?;
+            write_mir_fn_graphviz(tcx, body, false, &mut file)?;
         };
     }
 
     if let Some(spanview) = tcx.sess.opts.debugging_opts.dump_mir_spanview {
         let _: io::Result<()> = try {
             let mut file =
-                create_dump_file(tcx, "html", pass_num, pass_name, disambiguator, source)?;
-            if source.def_id().is_local() {
-                write_mir_fn_spanview(tcx, source.def_id(), body, spanview, &mut file)?;
+                create_dump_file(tcx, "html", pass_num, pass_name, disambiguator, body.source)?;
+            if body.source.def_id().is_local() {
+                write_mir_fn_spanview(tcx, body.source.def_id(), body, spanview, &mut file)?;
             }
         };
     }
@@ -263,15 +262,11 @@ pub fn write_mir_pretty<'tcx>(
             writeln!(w)?;
         }
 
-        write_mir_fn(tcx, MirSource::item(def_id), body, &mut |_, _| Ok(()), w)?;
+        write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
 
-        for (i, body) in tcx.promoted_mir(def_id).iter_enumerated() {
+        for body in tcx.promoted_mir(def_id) {
             writeln!(w)?;
-            let src = MirSource {
-                instance: ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
-                promoted: Some(i),
-            };
-            write_mir_fn(tcx, src, body, &mut |_, _| Ok(()), w)?;
+            write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
         }
     }
     Ok(())
@@ -280,7 +275,6 @@ pub fn write_mir_pretty<'tcx>(
 /// Write out a human-readable textual representation for the given function.
 pub fn write_mir_fn<'tcx, F>(
     tcx: TyCtxt<'tcx>,
-    src: MirSource<'tcx>,
     body: &Body<'tcx>,
     extra_data: &mut F,
     w: &mut dyn Write,
@@ -288,7 +282,7 @@ pub fn write_mir_fn<'tcx, F>(
 where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
-    write_mir_intro(tcx, src, body, w)?;
+    write_mir_intro(tcx, body, w)?;
     for block in body.basic_blocks().indices() {
         extra_data(PassWhere::BeforeBlock(block), w)?;
         write_basic_block(tcx, block, body, extra_data, w)?;
@@ -548,11 +542,10 @@ fn write_scope_tree(
 /// local variables (both user-defined bindings and compiler temporaries).
 pub fn write_mir_intro<'tcx>(
     tcx: TyCtxt<'tcx>,
-    src: MirSource<'tcx>,
     body: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    write_mir_sig(tcx, src, body, w)?;
+    write_mir_sig(tcx, body, w)?;
     writeln!(w, "{{")?;
 
     // construct a scope tree and write it out
@@ -850,25 +843,21 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
     Ok(())
 }
 
-fn write_mir_sig(
-    tcx: TyCtxt<'_>,
-    src: MirSource<'tcx>,
-    body: &Body<'_>,
-    w: &mut dyn Write,
-) -> io::Result<()> {
+fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Result<()> {
     use rustc_hir::def::DefKind;
 
-    trace!("write_mir_sig: {:?}", src.instance);
-    let kind = tcx.def_kind(src.def_id());
+    trace!("write_mir_sig: {:?}", body.source.instance);
+    let def_id = body.source.def_id();
+    let kind = tcx.def_kind(def_id);
     let is_function = match kind {
         DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-        _ => tcx.is_closure(src.def_id()),
+        _ => tcx.is_closure(def_id),
     };
-    match (kind, src.promoted) {
+    match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
         (DefKind::Static, _) => {
-            write!(w, "static {}", if tcx.is_mutable_static(src.def_id()) { "mut " } else { "" })?
+            write!(w, "static {}", if tcx.is_mutable_static(def_id) { "mut " } else { "" })?
         }
         (_, _) if is_function => write!(w, "fn ")?,
         (DefKind::AnonConst, _) => {} // things like anon const, not an item
@@ -877,10 +866,10 @@ fn write_mir_sig(
 
     ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 elsewhere
-        write!(w, "{}", tcx.def_path_str(src.def_id()))
+        write!(w, "{}", tcx.def_path_str(def_id))
     })?;
 
-    if src.promoted.is_none() && is_function {
+    if body.source.promoted.is_none() && is_function {
         write!(w, "(")?;
 
         // fn argument types.

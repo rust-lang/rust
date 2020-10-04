@@ -5,7 +5,7 @@ use crate::dataflow::on_lookup_result_bits;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use crate::dataflow::{Analysis, ResultsCursor};
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use crate::util::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
 use crate::util::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
 use crate::util::patch::MirPatch;
@@ -21,11 +21,11 @@ use std::fmt;
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        debug!("elaborate_drops({:?} @ {:?})", src, body.span);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
 
-        let def_id = src.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(src.def_id());
+        let def_id = body.source.def_id();
+        let param_env = tcx.param_env_reveal_all_normalized(def_id);
         let move_data = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err((move_data, _)) => {

@@ -32,7 +32,7 @@ use std::{cmp, iter, mem};
 
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstCx};
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 
 /// A `MirPass` for promotion.
 ///
@@ -47,7 +47,7 @@ pub struct PromoteTemps<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
@@ -56,11 +56,11 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
             return;
         }
 
-        if src.promoted.is_some() {
+        if body.source.promoted.is_some() {
             return;
         }
 
-        let def = src.with_opt_param().expect_local();
+        let def = body.source.with_opt_param().expect_local();
 
         let mut rpo = traversal::reverse_postorder(body);
         let ccx = ConstCx::new(tcx, def.did, body);
@@ -1167,6 +1167,7 @@ pub fn promote_candidates<'tcx>(
         let initial_locals = iter::once(LocalDecl::new(tcx.types.never, body.span)).collect();
 
         let mut promoted = Body::new(
+            body.source, // `promoted` gets filled in below
             IndexVec::new(),
             // FIXME: maybe try to filter this to avoid blowing up
             // memory usage?
@@ -1190,7 +1191,8 @@ pub fn promote_candidates<'tcx>(
         };
 
         //FIXME(oli-obk): having a `maybe_push()` method on `IndexVec` might be nice
-        if let Some(promoted) = promoter.promote_candidate(def, candidate, promotions.len()) {
+        if let Some(mut promoted) = promoter.promote_candidate(def, candidate, promotions.len()) {
+            promoted.source.promoted = Some(promotions.next_index());
             promotions.push(promoted);
         }
     }

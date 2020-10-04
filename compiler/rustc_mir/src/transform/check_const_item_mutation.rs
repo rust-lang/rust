@@ -6,12 +6,12 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
 use rustc_span::def_id::DefId;
 
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 
 pub struct CheckConstItemMutation;
 
 impl<'tcx> MirPass<'tcx> for CheckConstItemMutation {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut checker = ConstMutationChecker { body, tcx, target_local: None };
         checker.visit_body(&body);
     }

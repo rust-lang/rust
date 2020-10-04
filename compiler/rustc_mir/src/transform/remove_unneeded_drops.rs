@@ -1,6 +1,6 @@
 //! This pass replaces a drop of a type that does not need dropping, with a goto
 
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -11,13 +11,13 @@ use super::simplify::simplify_cfg;
 pub struct RemoveUnneededDrops;
 
 impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        trace!("Running RemoveUnneededDrops on {:?}", source);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        trace!("Running RemoveUnneededDrops on {:?}", body.source);
         let mut opt_finder = RemoveUnneededDropsOptimizationFinder {
             tcx,
             body,
             optimizations: vec![],
-            def_id: source.def_id().expect_local(),
+            def_id: body.source.def_id().expect_local(),
         };
         opt_finder.visit_body(body);
         let should_simplify = !opt_finder.optimizations.is_empty();

@@ -14,7 +14,7 @@ use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, UserTypeAnnotationIndex};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
 use rustc_target::abi::VariantIdx;
 
@@ -157,6 +157,8 @@ pub struct Body<'tcx> {
     /// us to see the difference and forego optimization on the inlined promoted items.
     pub phase: MirPhase,
 
+    pub source: MirSource<'tcx>,
+
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
@@ -240,6 +242,7 @@ pub struct Body<'tcx> {
 
 impl<'tcx> Body<'tcx> {
     pub fn new(
+        source: MirSource<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
         local_decls: LocalDecls<'tcx>,
@@ -259,6 +262,7 @@ impl<'tcx> Body<'tcx> {
 
         let mut body = Body {
             phase: MirPhase::Build,
+            source,
             basic_blocks,
             source_scopes,
             yield_ty: None,
@@ -288,6 +292,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Build,
+            source: MirSource::item(DefId::local(CRATE_DEF_INDEX)),
             basic_blocks,
             source_scopes: IndexVec::new(),
             yield_ty: None,
