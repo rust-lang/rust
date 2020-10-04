@@ -19,7 +19,7 @@ use hir_expand::{
 };
 use syntax::{
     ast::{self, NameOwner},
-    AstPtr,
+    AstNode, AstPtr,
 };
 
 use crate::{
@@ -259,6 +259,21 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                 if let Some(expr) = source_ptr.value.as_ref().left() {
                     let root = source_ptr.file_syntax(db.upcast());
                     if let ast::Pat::IdentPat(ident_pat) = expr.to_node(&root) {
+                        let parent = match ident_pat.syntax().parent() {
+                            Some(parent) => parent,
+                            None => continue,
+                        };
+
+                        // We have to check that it's either `let var = ...` or `Variant(_) @  var` statement,
+                        // because e.g. match arms are patterns as well.
+                        // In other words, we check that it's a named variable binding.
+                        if !ast::LetStmt::cast(parent.clone()).is_some()
+                            && !ast::IdentPat::cast(parent).is_some()
+                        {
+                            // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
+                            continue;
+                        }
+
                         let diagnostic = IncorrectCase {
                             file: source_ptr.file_id,
                             ident_type: "Variable".to_string(),
@@ -663,7 +678,7 @@ fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
             r#"
 fn foo() {
     let SOME_VALUE = 10;
-     // ^^^^^^^^^^ Variable `SOME_VALUE` should have a snake_case name, e.g. `some_value`
+     // ^^^^^^^^^^ Variable `SOME_VALUE` should have snake_case name, e.g. `some_value`
     let AnotherValue = 20;
      // ^^^^^^^^^^^^ Variable `AnotherValue` should have snake_case name, e.g. `another_value`
 }
@@ -756,6 +771,39 @@ impl someStruct {
             // ^^^^^^^^^^^^^^^ Static variable `someConstInFunc` should have UPPER_SNAKE_CASE name, e.g. `SOME_CONST_IN_FUNC`
         let WHY_VAR_IS_CAPS = 10;
          // ^^^^^^^^^^^^^^^ Variable `WHY_VAR_IS_CAPS` should have snake_case name, e.g. `why_var_is_caps`
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_diagnostic_for_enum_varinats() {
+        check_diagnostics(
+            r#"
+enum Option { Some, None }
+
+fn main() {
+    match Option::None {
+        None => (),
+        Some => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn non_let_bind() {
+        check_diagnostics(
+            r#"
+enum Option { Some, None }
+
+fn main() {
+    match Option::None {
+        None @ SOME_VAR => (),
+            // ^^^^^^^^ Variable `SOME_VAR` should have snake_case name, e.g. `some_var`
+        Some => (),
     }
 }
 "#,

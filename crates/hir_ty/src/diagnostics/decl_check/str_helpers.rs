@@ -1,3 +1,6 @@
+//! Functions for string case manipulation, such as detecting the identifier case,
+//! and converting it into appropriate form.
+
 #[derive(Debug)]
 enum DetectedCase {
     LowerCamelCase,
@@ -44,6 +47,8 @@ fn detect_case(ident: &str) -> DetectedCase {
     }
 }
 
+/// Converts an identifier to an UpperCamelCase form.
+/// Returns `None` if the string is already is UpperCamelCase.
 pub fn to_camel_case(ident: &str) -> Option<String> {
     let detected_case = detect_case(ident);
 
@@ -87,9 +92,17 @@ pub fn to_camel_case(ident: &str) -> Option<String> {
         }
     }
 
-    Some(output)
+    if output == ident {
+        // While we didn't detect the correct case at the beginning, there
+        // may be special cases: e.g. `A` is both valid CamelCase and UPPER_SNAKE_CASE.
+        None
+    } else {
+        Some(output)
+    }
 }
 
+/// Converts an identifier to a lower_snake_case form.
+/// Returns `None` if the string is already is lower_snake_case.
 pub fn to_lower_snake_case(ident: &str) -> Option<String> {
     // First, assume that it's UPPER_SNAKE_CASE.
     match detect_case(ident) {
@@ -102,9 +115,18 @@ pub fn to_lower_snake_case(ident: &str) -> Option<String> {
 
     // Otherwise, assume that it's CamelCase.
     let lower_snake_case = stdx::to_lower_snake_case(ident);
-    Some(lower_snake_case)
+
+    if lower_snake_case == ident {
+        // While we didn't detect the correct case at the beginning, there
+        // may be special cases: e.g. `a` is both valid camelCase and snake_case.
+        None
+    } else {
+        Some(lower_snake_case)
+    }
 }
 
+/// Converts an identifier to an UPPER_SNAKE_CASE form.
+/// Returns `None` if the string is already is UPPER_SNAKE_CASE.
 pub fn to_upper_snake_case(ident: &str) -> Option<String> {
     match detect_case(ident) {
         DetectedCase::UpperSnakeCase => return None,
@@ -117,7 +139,14 @@ pub fn to_upper_snake_case(ident: &str) -> Option<String> {
     // Normalize the string from whatever form it's in currently, and then just make it uppercase.
     let upper_snake_case =
         stdx::to_lower_snake_case(ident).chars().map(|c| c.to_ascii_uppercase()).collect();
-    Some(upper_snake_case)
+
+    if upper_snake_case == ident {
+        // While we didn't detect the correct case at the beginning, there
+        // may be special cases: e.g. `A` is both valid CamelCase and UPPER_SNAKE_CASE.
+        None
+    } else {
+        Some(upper_snake_case)
+    }
 }
 
 #[cfg(test)]
@@ -139,6 +168,7 @@ mod tests {
         check(to_lower_snake_case, "Weird_Case", expect![["weird_case"]]);
         check(to_lower_snake_case, "CamelCase", expect![["camel_case"]]);
         check(to_lower_snake_case, "lowerCamelCase", expect![["lower_camel_case"]]);
+        check(to_lower_snake_case, "a", expect![[""]]);
     }
 
     #[test]
@@ -151,6 +181,7 @@ mod tests {
         check(to_camel_case, "UPPER_SNAKE_CASE", expect![["UpperSnakeCase"]]);
         check(to_camel_case, "Weird_Case", expect![["WeirdCase"]]);
         check(to_camel_case, "name", expect![["Name"]]);
+        check(to_camel_case, "A", expect![[""]]);
     }
 
     #[test]
@@ -160,5 +191,6 @@ mod tests {
         check(to_upper_snake_case, "Weird_Case", expect![["WEIRD_CASE"]]);
         check(to_upper_snake_case, "CamelCase", expect![["CAMEL_CASE"]]);
         check(to_upper_snake_case, "lowerCamelCase", expect![["LOWER_CAMEL_CASE"]]);
+        check(to_upper_snake_case, "A", expect![[""]]);
     }
 }
