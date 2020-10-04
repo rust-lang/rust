@@ -243,8 +243,8 @@ use crate::raw_vec::RawVec;
 /// * It would penalize the general case, incurring an additional branch
 ///   on every access.
 ///
-/// `Vec` will never automatically shrink itself, even if completely empty. This
-/// ensures no unnecessary allocations or deallocations occur. Emptying a `Vec`
+/// `Vec` will not automatically shrink itself, even if completely empty, when doing so
+/// would cause unnecessary allocations or deallocations to occur. Emptying a `Vec`
 /// and then filling it back up to the same [`len`] should incur no calls to
 /// the allocator. If you wish to free up unused memory, use
 /// [`shrink_to_fit`].
