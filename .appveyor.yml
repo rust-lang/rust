@@ -3,7 +3,7 @@ environment:
   global:
     PROJECT_NAME: miri
   matrix:
-    - TARGET: i686-pc-windows-msvc
+    - HOST_TARGET: i686-pc-windows-msvc
 matrix:
   fast_finish: true # Immediately finish build once one of the jobs fails.
 cache:
@@ -23,7 +23,7 @@ install:
 # Install Rust. We use the "stable" toolchain for better caching, it is just used to build `rustup-toolchain-install-master`.
 # But we also need to take into account that the build cache might have a different, outdated default.
 - curl -sSf --retry 3 -o rustup-init.exe https://win.rustup.rs/
-- rustup-init.exe -y --default-host %TARGET% --default-toolchain none --profile minimal
+- rustup-init.exe -y --default-host %HOST_TARGET% --default-toolchain none --profile minimal
 - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
 - rustup default stable
 - rustup toolchain uninstall beta nightly
@@ -36,7 +36,8 @@ install:
 - cargo --version
 
 test_script:
-- set PYTHON=C:\msys64\mingw64\bin\python3.exe
+# Add python3 path: https://www.appveyor.com/docs/windows-images-software/#python
+- set PATH=C:\Python35-x64;%PATH%
 - bash ci.sh
 
 after_test:

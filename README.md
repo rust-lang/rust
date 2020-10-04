@@ -1,5 +1,11 @@
-# Miri [![Build Status](https://travis-ci.com/rust-lang/miri.svg?branch=master)](https://travis-ci.com/rust-lang/miri) [![Windows build status](https://ci.appveyor.com/api/projects/status/github/rust-lang/miri?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/miri)
+# Miri
 
+[![Actions build status][actions-badge]][actions-url]
+[![Travis build status](https://travis-ci.com/rust-lang/miri.svg?branch=master)](https://travis-ci.com/rust-lang/miri)
+[![Appveyor Windows build status](https://ci.appveyor.com/api/projects/status/github/rust-lang/miri?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/miri)
+
+[actions-badge]: https://github.com/rust-lang/miri/workflows/CI/badge.svg?branch=master
+[actions-url]: https://github.com/rust-lang/miri/actions
 
 An experimental interpreter for [Rust][rust]'s
 [mid-level intermediate representation][mir] (MIR).  It can run binaries and

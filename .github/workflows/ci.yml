@@ -11,13 +11,14 @@ on:
       - 'master'
   schedule:
     # Use <https://crontab.guru> to conveniently edit cron schedule.
-    - cron: "0 7 * * *" # At 07:00 UTC every day.
+    - cron: '0 7 * * *' # At 07:00 UTC every day.
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     env:
       RUST_BACKTRACE: 1
+      HOST_TARGET: ${{ matrix.host_target }}
     strategy:
       matrix:
         build: [linux64, macos, win32]
@@ -33,6 +34,63 @@ jobs:
             host_target: i686-pc-windows-msvc
     steps:
       - uses: actions/checkout@v2
+
+      # We install gnu-tar because BSD tar is buggy on macOS builders of GHA.
+      # See <https://github.com/actions/cache/issues/403>.
+      - name: Install GNU tar
+        if: runner.os == 'macOS'
+        run: |
+          brew install gnu-tar
+          echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
+
+      # Cache the global cargo directory, but NOT the local `target` directory which
+      # we cannot reuse anyway when the nightly changes (and it grows quite large
+      # over time).
+      - name: Add cache for cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            # contains package information of crates installed via `cargo install`.
+            ~/.cargo/.crates.toml
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo
+
+      - name: Install rustup-toolchain-install-master and xargo
+        run: |
+          cargo install rustup-toolchain-install-master
+          cargo install xargo
+        shell: bash
+
+      - name: Install "master" toolchain
+        run: |
+          if [[ ${{ github.event_name }} == 'schedule' ]]; then
+            RUSTC_HASH=$(git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}')
+          else
+            RUSTC_HASH=$(< rust-version)
+          fi
+          rustup-toolchain-install-master \
+            -f \
+            -n master "$RUSTC_HASH" \
+            -c rust-src \
+            -c rustc-dev \
+            -c llvm-tools \
+            --host ${{ matrix.host_target }}
+          rustup default master
+        shell: bash
+
+      - name: Show Rust version
+        run: |
+          rustup show
+          rustc -Vv
+          cargo -V
+
+      - name: Test
+        run: bash ./ci.sh
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
