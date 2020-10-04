@@ -2956,6 +2956,7 @@ impl<T> IntoIter<T> {
         unsafe { Vec::from_raw_parts(iter.buf.as_ptr(), offset as usize + iter.len(), iter.cap) }
     }
 
+    /// Move remaining elements to the end of `dest`.
     fn move_to(mut self, dest: &mut Vec<T>) {
         unsafe {
             dest.append_elements(self.as_slice() as _);
