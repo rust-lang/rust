@@ -793,14 +793,18 @@ fn generic_simd_intrinsic(
         require_simd!(arg_tys[1], "argument");
         let v_len = arg_tys[1].simd_size(tcx);
         require!(
-            m_len == v_len,
+            // Allow masks for vectors with fewer than 8 elements to be
+            // represented with a u8 or i8.
+            m_len == v_len || (m_len == 8 && v_len < 8),
             "mismatched lengths: mask length `{}` != other vector length `{}`",
             m_len,
             v_len
         );
         let i1 = bx.type_i1();
-        let i1xn = bx.type_vector(i1, m_len);
-        let m_i1s = bx.bitcast(args[0].immediate(), i1xn);
+        let im = bx.type_ix(v_len);
+        let i1xn = bx.type_vector(i1, v_len);
+        let m_im = bx.trunc(args[0].immediate(), im);
+        let m_i1s = bx.bitcast(m_im, i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
