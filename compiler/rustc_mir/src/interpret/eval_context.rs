@@ -527,6 +527,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("resolve: {:?}, {:#?}", def, substs);
         trace!("param_env: {:#?}", self.param_env);
         trace!("substs: {:#?}", substs);
+        struct Meh;
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for Meh {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+                if matches!(ty.kind(), ty::Bound(..)) {
+                    true
+                } else {
+                    ty.super_visit_with(self)
+                }
+            }
+
+            fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> bool {
+                if matches!(ct.val, ty::ConstKind::Bound(..)) {
+                    true
+                } else {
+                    ct.super_visit_with(self)
+                }
+            }
+        }
+        if self.param_env.and(substs).visit_with(&mut Meh) {
+            throw_inval!(TooGeneric)
+        }
         match ty::Instance::resolve_opt_const_arg(*self.tcx, self.param_env, def, substs) {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),

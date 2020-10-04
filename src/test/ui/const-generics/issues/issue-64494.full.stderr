@@ -1,18 +1,12 @@
-error: constant expression depends on a generic parameter
-  --> $DIR/issue-64494.rs:16:53
+error[E0119]: conflicting implementations of trait `MyTrait`:
+  --> $DIR/issue-64494.rs:18:1
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
-   |                                                     ^^^^
-   |
-   = note: this may fail depending on what value the parameter takes
-
-error: constant expression depends on a generic parameter
-  --> $DIR/issue-64494.rs:19:53
-   |
+   | ------------------------------------ first implementation here
+LL |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
-   |                                                     ^^^^
-   |
-   = note: this may fail depending on what value the parameter takes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0119`.

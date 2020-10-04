@@ -7,7 +7,7 @@ LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    = note: type parameters are currently not permitted in anonymous constants
 
 error: generic parameters must not be used inside of non trivial constant values
-  --> $DIR/issue-64494.rs:19:38
+  --> $DIR/issue-64494.rs:18:38
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
    |                                      ^^^^^^ non-trivial anonymous constants must not depend on the parameter `T`
@@ -15,11 +15,11 @@ LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
    = note: type parameters are currently not permitted in anonymous constants
 
 error[E0119]: conflicting implementations of trait `MyTrait`:
-  --> $DIR/issue-64494.rs:19:1
+  --> $DIR/issue-64494.rs:18:1
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    | ------------------------------------ first implementation here
-...
+LL |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
