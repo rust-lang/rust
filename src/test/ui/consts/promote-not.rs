@@ -27,4 +27,9 @@ pub const fn promote_union() {
     let _x: &'static i32 = &unsafe { U { x: 0 }.x }; //~ ERROR temporary value dropped while borrowed
 }
 
+// We do not promote union field accesses in `const`, either.
+const TEST_UNION: () = {
+    let _x: &'static i32 = &unsafe { U { x: 0 }.x }; //~ ERROR temporary value dropped while borrowed
+};
+
 fn main() {}

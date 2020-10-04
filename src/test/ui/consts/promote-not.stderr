@@ -38,6 +38,16 @@ LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
 LL | }
    | - temporary value is freed at the end of this statement
 
-error: aborting due to 4 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:32:29
+   |
+LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
+   |             ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |             |
+   |             type annotation requires that borrow lasts for `'static`
+LL | };
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0716`.
