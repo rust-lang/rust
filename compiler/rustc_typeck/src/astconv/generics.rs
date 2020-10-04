@@ -550,7 +550,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let explicit = !seg.infer_args;
         let impl_trait = generics.params.iter().any(|param| match param.kind {
             ty::GenericParamDefKind::Type {
-                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                synthetic:
+                    Some(hir::SyntheticTyParamKind::ImplTrait | hir::SyntheticTyParamKind::Rustc),
                 ..
             } => true,
             _ => false,
