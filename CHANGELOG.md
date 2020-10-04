@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.4.22] 2020-10-04
+
+### Changed
+
+- Update `rustc-ap-*` crates to v679.0.0
+- Add config option to allow control of leading match arm pipes
+- Support `RUSTFMT` environment variable in `cargo fmt` to run specified `rustfmt` instance
+
+
+### Fixed
+
+- Fix preservation of type aliases within extern blocks
+
+
 ## [1.4.9] 2019-10-07
 
 ### Changed
