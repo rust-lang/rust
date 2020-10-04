@@ -9,18 +9,20 @@ use crate::ptr::read_unaligned;
 use crate::slice::from_raw_parts;
 use crate::sys::net::Socket;
 
-#[cfg(any(target_os = "android", target_os = "linux",))]
-use libc::{gid_t, pid_t, uid_t};
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
 #[allow(non_camel_case_types)]
 mod libc {
+    pub use libc::c_int;
     pub struct ucred;
     pub struct cmsghdr;
     pub type pid_t = i32;
     pub type gid_t = u32;
     pub type uid_t = u32;
 }
+
+#[cfg(any(doc, target_os = "android", target_os = "linux",))]
+use libc::{gid_t, pid_t, uid_t};
 
 pub(super) fn recv_vectored_with_ancillary_from(
     socket: &Socket,
