@@ -201,9 +201,13 @@ impl Inliner<'tcx> {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func: ref op, .. } = terminator.kind {
             if let ty::FnDef(callee_def_id, substs) = *op.ty(caller_body, self.tcx).kind() {
-                let instance = Instance::resolve(self.tcx, self.param_env, callee_def_id, substs)
-                    .ok()
-                    .flatten()?;
+                // To resolve an instance its substs have to be fully normalized, so
+                // we do this here.
+                let normalized_substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
+                let instance =
+                    Instance::resolve(self.tcx, self.param_env, callee_def_id, normalized_substs)
+                        .ok()
+                        .flatten()?;
 
                 if let InstanceDef::Virtual(..) = instance.def {
                     return None;

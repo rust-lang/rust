@@ -17,14 +17,17 @@ use rustc_middle::ty::{self, TyCtxt};
 /// (necessarily) resolve all nested obligations on the impl. Note
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.
+///
 /// Assumes that this is run after the entire crate has been successfully type-checked.
+/// This also expects that `trait_ref` is fully normalized.
 pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
 ) -> Result<ImplSource<'tcx, ()>, ErrorReported> {
-    // Remove any references to regions and normalize; this helps improve caching.
-    let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
-
+    // Remove any references to regions; this helps improve caching.
+    let trait_ref = tcx.erase_regions(&trait_ref);
+    // We expect the input to be fully normalized.
+    debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(param_env, trait_ref));
     debug!(
         "codegen_fulfill_obligation(trait_ref={:?}, def_id={:?})",
         (param_env, trait_ref),
