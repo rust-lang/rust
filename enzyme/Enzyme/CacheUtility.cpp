@@ -32,6 +32,10 @@ llvm::cl::opt<bool>
     EfficientBoolCache("enzyme-smallbool", cl::init(false), cl::Hidden,
                        cl::desc("Place 8 bools together in a single byte"));
 
+llvm::cl::opt<bool> EnzymePrintPerf("enzyme-print-perf", cl::init(false),
+                                cl::Hidden,
+                                cl::desc("Enable Enzyme to print performance info"));
+
 CacheUtility::~CacheUtility(){}
  
 /// Erase this instruction both from LLVM modules and any local data-structures
@@ -428,7 +432,8 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
           MayExitMaxBECount = EL.ExactNotTaken;
         else {
           if (MayExitMaxBECount != EL.ExactNotTaken) {
-            llvm::errs() << "Missed cache optimization opportunity! could allocate max!\n";
+            if (EnzymePrintPerf)
+              llvm::errs() << "Missed cache optimization opportunity! could allocate max!\n";
             MayExitMaxBECount = SE.getCouldNotCompute();
             break;
           }
@@ -464,9 +469,10 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
                                   loopContexts[L].preheader->getTerminator());
     loopContexts[L].dynamic = false;
   } else {
-    llvm::errs() << "SE could not compute loop limit of "
-                  << L->getHeader()->getName() << " "
-                  << L->getHeader()->getParent()->getName() << "\n";
+    if (EnzymePrintPerf)
+      llvm::errs() << "SE could not compute loop limit of "
+                    << L->getHeader()->getName() << " "
+                    << L->getHeader()->getParent()->getName() << "\n";
 
     LimitVar = createCacheForScope(LimitContext(loopContexts[L].preheader),
                                           CanonicalIV->getType(), "loopLimit",

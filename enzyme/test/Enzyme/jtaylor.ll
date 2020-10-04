@@ -101,7 +101,7 @@ declare double @llvm.pow.f64(double, double) #0
 ; Function Attrs: alwaysinline
 define double @enzyme_entry(double) #2 {
 entry:
-  %1 = call double (i8*, ...) @__enzyme_autodiff.Float64(i8* bitcast (double (double)* @julia_overdub_1414 to i8*), metadata !"diffe_out", double %0)
+  %1 = call double (i8*, ...) @__enzyme_autodiff.Float64(i8* bitcast (double (double)* @julia_overdub_1414 to i8*), metadata !"enzyme_out", double %0)
   ret double %1
 }
 

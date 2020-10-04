@@ -1693,13 +1693,13 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
               bool failed = false;
 
-              llvm::errs() << "found potential candidate loads: oli:"
-                           << *origInst << " oli2: " << *orig2 << "\n";
+              //llvm::errs() << "found potential candidate loads: oli:"
+              //             << *origInst << " oli2: " << *orig2 << "\n";
 
               auto scev1 = SE.getSCEV(li->getPointerOperand());
               auto scev2 = SE.getSCEV(li2->getPointerOperand());
-              llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2
-                           << "\n";
+              //llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2
+              //             << "\n";
 
               allInstructionsBetween(
                   OrigLI, orig2, origInst, [&](Instruction *I) -> bool {
@@ -1707,7 +1707,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                         writesToMemoryReadBy(AA, /*maybeReader*/ origInst,
                                              /*maybeWriter*/ I)) {
                       failed = true;
-                      llvm::errs() << "FAILED: " << *I << "\n";
+                      //llvm::errs() << "FAILED: " << *I << "\n";
                       return /*earlyBreak*/ true;
                     }
                     return /*earlyBreak*/ false;
@@ -1732,9 +1732,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                     // li2
                     if (SE.getSCEV(l1.limit) != SE.getCouldNotCompute() &&
                         SE.getSCEV(l1.limit) == SE.getSCEV(l2.limit)) {
-                      llvm::errs()
-                          << " step1: " << *ar1->getStepRecurrence(SE)
-                          << " step2: " << *ar2->getStepRecurrence(SE) << "\n";
+                      //llvm::errs()
+                      //    << " step1: " << *ar1->getStepRecurrence(SE)
+                      //    << " step2: " << *ar2->getStepRecurrence(SE) << "\n";
 
                       inst = li2;
                       idx = std::make_pair(val, BuilderM.GetInsertBlock());

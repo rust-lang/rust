@@ -635,7 +635,6 @@ bool shouldAugmentCall(CallInst *op, const GradientUtils *gutils,
 
   // Don't need to augment calls that are certain to not hit return
   if (isa<UnreachableInst>(op->getParent()->getTerminator())) {
-    llvm::errs() << "augunreachable op " << *op << "\n";
     modifyPrimal = false;
   }
 
@@ -683,14 +682,16 @@ bool legalCombinedForwardReverse(
   #endif
 
   if (origop->getNumUses() != 0 && isa<PointerType>(origop->getType())) {
-    if (called)
-      llvm::errs()
-          << " [not implemented] pointer return for combined forward/reverse "
-          << called->getName() << "\n";
-    else
-      llvm::errs()
-          << " [not implemented] pointer return for combined forward/reverse "
-          << *calledValue << "\n";
+    if (EnzymePrintPerf) {
+      if (called)
+        llvm::errs()
+            << " [not implemented] pointer return for combined forward/reverse "
+            << called->getName() << "\n";
+      else
+        llvm::errs()
+            << " [not implemented] pointer return for combined forward/reverse "
+            << *calledValue << "\n";
+    }
     return false;
   }
 
@@ -719,12 +720,14 @@ bool legalCombinedForwardReverse(
 
     if (isa<BranchInst>(I) || isa<SwitchInst>(I)) {
       legal = false;
-      if (called)
-        llvm::errs() << " [bi] failed to replace function "
-                     << (called->getName()) << " due to " << *I << "\n";
-      else
-        llvm::errs() << " [bi] ailed to replace function "
-                     << (*calledValue) << " due to " << *I << "\n";
+      if (EnzymePrintPerf) {
+        if (called)
+          llvm::errs() << " [bi] failed to replace function "
+                      << (called->getName()) << " due to " << *I << "\n";
+        else
+          llvm::errs() << " [bi] ailed to replace function "
+                      << (*calledValue) << " due to " << *I << "\n";
+      }
       return;
     }
 
@@ -762,32 +765,38 @@ bool legalCombinedForwardReverse(
     }
     if (isa<PHINode>(I)) {
       legal = false;
-      if (called)
-        llvm::errs() << " [phi] failed to replace function "
-                     << (called->getName()) << " due to " << *I << "\n";
-      else
-        llvm::errs() << " [phi] ailed to replace function "
-                     << (*calledValue) << " due to " << *I << "\n";
+      if (EnzymePrintPerf) {
+        if (called)
+          llvm::errs() << " [phi] failed to replace function "
+                      << (called->getName()) << " due to " << *I << "\n";
+        else
+          llvm::errs() << " [phi] ailed to replace function "
+                      << (*calledValue) << " due to " << *I << "\n";
+      }
       return;
     }
     if (is_value_needed_in_reverse<Primal>(TR, gutils, I, /*topLevel*/ true)) {
       legal = false;
-      if (called)
-        llvm::errs() << " [nv] failed to replace function "
-                     << (called->getName()) << " due to " << *I << "\n";
-      else
-        llvm::errs() << " [nv] ailed to replace function "
-                     << (*calledValue) << " due to " << *I << "\n";
+      if (EnzymePrintPerf) {
+        if (called)
+          llvm::errs() << " [nv] failed to replace function "
+                      << (called->getName()) << " due to " << *I << "\n";
+        else
+          llvm::errs() << " [nv] ailed to replace function "
+                      << (*calledValue) << " due to " << *I << "\n";
+      }
       return;
     }
     if (I != origop && !isa<IntrinsicInst>(I) && isa<CallInst>(I)) {
       legal = false;
-      if (called)
-        llvm::errs() << " [ci] failed to replace function "
-                     << (called->getName()) << " due to " << *I << "\n";
-      else
-        llvm::errs() << " [ci] ailed to replace function "
-                     << (*calledValue) << " due to " << *I << "\n";
+      if (EnzymePrintPerf) {
+        if (called)
+          llvm::errs() << " [ci] failed to replace function "
+                      << (called->getName()) << " due to " << *I << "\n";
+        else
+          llvm::errs() << " [ci] ailed to replace function "
+                      << (*calledValue) << " due to " << *I << "\n";
+      }
       return;
     }
     // Do not try moving an instruction that modifies memory, if we already
@@ -797,13 +806,15 @@ bool legalCombinedForwardReverse(
           gutils->getNewFromOriginal(I)->getParent() !=
               gutils->getNewFromOriginal(I->getParent())) {
         legal = false;
-        if (called)
-          llvm::errs() << " [am] failed to replace function "
-                       << (called->getName()) << " due to " << *I << "\n";
-        else
-          llvm::errs() << " [am] ailed to replace function "
-                       << (*calledValue) << " due to " << *I
-                       << "\n";
+        if (EnzymePrintPerf) {
+          if (called)
+            llvm::errs() << " [am] failed to replace function "
+                        << (called->getName()) << " due to " << *I << "\n";
+          else
+            llvm::errs() << " [am] ailed to replace function "
+                        << (*calledValue) << " due to " << *I
+                        << "\n";
+        }
         return;
       }
 
@@ -853,13 +864,15 @@ bool legalCombinedForwardReverse(
         return false;
       if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/ inst,
                                /*maybeWriter*/ post)) {
-        if (called)
-          llvm::errs() << " failed to replace function " << (called->getName())
-                       << " due to " << *post << " usetree: " << *inst << "\n";
-        else
-          llvm::errs() << " failed to replace function "
-                       << (*calledValue) << " due to " << *post
-                       << " usetree: " << *inst << "\n";
+        if (EnzymePrintPerf) {
+          if (called)
+            llvm::errs() << " failed to replace function " << (called->getName())
+                        << " due to " << *post << " usetree: " << *inst << "\n";
+          else
+            llvm::errs() << " failed to replace function "
+                        << (*calledValue) << " due to " << *post
+                        << " usetree: " << *inst << "\n";
+        }
         legal = false;
         return true;
       }
@@ -886,13 +899,15 @@ bool legalCombinedForwardReverse(
     if (inst->getParent() != origop->getParent()) {
       // Don't move a writing instruction (may change speculatable/etc things)
       if (inst->mayWriteToMemory()) {
-        if (called)
-          llvm::errs() << " [nonspec] failed to replace function "
-                       << (called->getName()) << " due to " << *inst << "\n";
-        else
-          llvm::errs() << " [nonspec] ailed to replace function "
-                       << (*calledValue) << " due to " << *inst
-                       << "\n";
+        if (EnzymePrintPerf) {
+          if (called)
+            llvm::errs() << " [nonspec] failed to replace function "
+                        << (called->getName()) << " due to " << *inst << "\n";
+          else
+            llvm::errs() << " [nonspec] ailed to replace function "
+                        << (*calledValue) << " due to " << *inst
+                        << "\n";
+        }
         legal = false;
         // Early exit
         return true;
@@ -901,13 +916,15 @@ bool legalCombinedForwardReverse(
     if (isa<CallInst>(inst) &&
         gutils->originalToNewFn.find(inst) == gutils->originalToNewFn.end()) {
       legal = false;
-      if (called)
-        llvm::errs() << " [premove] failed to replace function "
-                     << (called->getName()) << " due to " << *inst << "\n";
-      else
-        llvm::errs() << " [premove] ailed to replace function "
-                     << (*calledValue) << " due to " << *inst
-                     << "\n";
+      if (EnzymePrintPerf) {
+        if (called)
+          llvm::errs() << " [premove] failed to replace function "
+                      << (called->getName()) << " due to " << *inst << "\n";
+        else
+          llvm::errs() << " [premove] ailed to replace function "
+                      << (*calledValue) << " due to " << *inst
+                      << "\n";
+      }
       // Early exit
       return true;
     }
@@ -918,13 +935,15 @@ bool legalCombinedForwardReverse(
   if (!legal)
     return false;
 
-  if (called)
-    llvm::errs() << " choosing to replace function " << (called->getName())
-                 << " and do both forward/reverse\n";
-  else
-    llvm::errs() << " choosing to replace function "
-                 << (*calledValue)
-                 << " and do both forward/reverse\n";
+  if (EnzymePrintPerf) {
+    if (called)
+      llvm::errs() << " choosing to replace function " << (called->getName())
+                  << " and do both forward/reverse\n";
+    else
+      llvm::errs() << " choosing to replace function "
+                  << (*calledValue)
+                  << " and do both forward/reverse\n";
+  }
 
   return true;
 }
@@ -1064,8 +1083,9 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   if (todiff->empty()) {
     llvm::errs() << "mod: " << *todiff->getParent() << "\n";
     llvm::errs() << *todiff << "\n";
+    assert(0 && "attempting to differentiate function without definition");
+    llvm_unreachable("attempting to differentiate function without definition");
   }
-  assert(!todiff->empty());
   std::map<AugmentedStruct, int> returnMapping;
   AAResults AA(TLI);
   // AA.addAAResult(global_AA);
@@ -1218,6 +1238,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       llvm::errs() << *oBB.getParent() << "\n";
       llvm::errs() << "unknown terminator instance " << *term << "\n";
       assert(0 && "unknown terminator inst");
+      llvm_unreachable("unknown terminator inst");
     }
 
     BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
@@ -1696,8 +1717,8 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       if (!PNfloatType)
         llvm::errs() << " for orig " << *orig << " saw "
                      << TR.intType(orig, /*necessary*/ false).str() << "\n";
-      TR.intType(orig, /*necessary*/ true);
       assert(PNfloatType);
+      TR.intType(orig, /*necessary*/ true);
 
       for (BasicBlock *opred : predecessors(oBB)) {
         auto oval = orig->getIncomingValueForBlock(opred);
@@ -1928,6 +1949,7 @@ Function *CreatePrimalAndGradient(
       llvm::errs() << "]\n";
       llvm::errs() << *foundcalled << "\n";
       assert(0 && "bad type for custom gradient");
+      llvm_unreachable("bad type for custom gradient");
     }
 
     auto st = dyn_cast<StructType>(foundcalled->getReturnType());
@@ -1961,8 +1983,6 @@ Function *CreatePrimalAndGradient(
       if (!hasTape) {
         args.pop_back();
       }
-      llvm::errs() << *NewF << "\n";
-      llvm::errs() << *foundcalled << "\n";
       auto cal = bb.CreateCall(foundcalled, args);
       cal->setCallingConv(foundcalled->getCallingConv());
       Value *val = cal;
@@ -1975,6 +1995,7 @@ Function *CreatePrimalAndGradient(
         } else {
           llvm::errs() << *foundcalled << "\n";
           assert(0 && "illegal type for reverse");
+          llvm_unreachable("illegal type for reverse");
         }
       }
       bb.CreateRet(val);
