@@ -47,6 +47,9 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Check {
+        // Whether to run checking over all targets (e.g., unit / integration
+        // tests).
+        all_targets: bool,
         paths: Vec<PathBuf>,
     },
     Clippy {
@@ -249,6 +252,9 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                     "enable this to generate a Rustfix coverage file, which is saved in \
                         `/<build_base>/rustfix_missing_coverage.txt`",
                 );
+            }
+            "check" => {
+                opts.optflag("", "all-targets", "Check all targets");
             }
             "bench" => {
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
@@ -484,7 +490,9 @@ Arguments:
 
         let cmd = match subcommand.as_str() {
             "build" | "b" => Subcommand::Build { paths },
-            "check" | "c" => Subcommand::Check { paths },
+            "check" | "c" => {
+                Subcommand::Check { paths, all_targets: matches.opt_present("all-targets") }
+            }
             "clippy" => Subcommand::Clippy { paths },
             "fix" => Subcommand::Fix { paths },
             "test" | "t" => Subcommand::Test {

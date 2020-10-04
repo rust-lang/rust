@@ -1701,10 +1701,14 @@ where
 /// Most of the implementation of DrainFilter, independent of the type
 /// of the predicate, thus also serving for BTreeSet::DrainFilter.
 pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
+    /// Reference to the length field in the borrowed map, updated live.
     length: &'a mut usize,
-    // dormant_root is wrapped in an Option to be able to `take` it.
+    /// Burried reference to the root field in the borrowed map.
+    /// Wrapped in `Option` to allow drop handler to `take` it.
     dormant_root: Option<DormantMutRef<'a, node::Root<K, V>>>,
-    // cur_leaf_edge is wrapped in an Option because maps without root lack a leaf edge.
+    /// Contains a leaf edge preceding the next element to be returned, or the last leaf edge.
+    /// Empty if the map has no root, if iteration went beyond the last leaf edge,
+    /// or if a panic occurred in the predicate.
     cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
 }
 

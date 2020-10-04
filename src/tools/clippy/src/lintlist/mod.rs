@@ -424,13 +424,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "double_parens",
     },
     Lint {
-        name: "drop_bounds",
-        group: "correctness",
-        desc: "bounds of the form `T: Drop` are useless",
-        deprecation: None,
-        module: "drop_bounds",
-    },
-    Lint {
         name: "drop_copy",
         group: "correctness",
         desc: "calls to `std::mem::drop` with a value that implements Copy",

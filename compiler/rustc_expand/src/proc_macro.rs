@@ -5,7 +5,8 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, ErrorReported};
+use rustc_lexer::is_ident;
 use rustc_parse::nt_to_tokenstream;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
@@ -182,9 +183,22 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
             .filter_map(|nmi| match nmi {
                 NestedMetaItem::Literal(lit) => {
                     error_reported_filter_map = true;
-                    cx.struct_span_err(lit.span, "expected path to a trait, found literal")
-                        .help("for example, write `#[derive(Debug)]` for `Debug`")
-                        .emit();
+                    let mut err = struct_span_err!(
+                        cx.sess,
+                        lit.span,
+                        E0777,
+                        "expected path to a trait, found literal",
+                    );
+                    let token = lit.token.to_string();
+                    if token.starts_with('"')
+                        && token.len() > 2
+                        && is_ident(&token[1..token.len() - 1])
+                    {
+                        err.help(&format!("try using `#[derive({})]`", &token[1..token.len() - 1]));
+                    } else {
+                        err.help("for example, write `#[derive(Debug)]` for `Debug`");
+                    }
+                    err.emit();
                     None
                 }
                 NestedMetaItem::MetaItem(mi) => Some(mi),
