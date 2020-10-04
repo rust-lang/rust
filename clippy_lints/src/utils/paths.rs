@@ -31,7 +31,6 @@ pub const DISPLAY_FMT_METHOD: [&str; 4] = ["core", "fmt", "Display", "fmt"];
 pub const DISPLAY_TRAIT: [&str; 3] = ["core", "fmt", "Display"];
 pub const DOUBLE_ENDED_ITERATOR: [&str; 4] = ["core", "iter", "traits", "DoubleEndedIterator"];
 pub const DROP: [&str; 3] = ["core", "mem", "drop"];
-pub const DROP_TRAIT: [&str; 4] = ["core", "ops", "drop", "Drop"];
 pub const DURATION: [&str; 3] = ["core", "time", "Duration"];
 pub const EARLY_CONTEXT: [&str; 4] = ["rustc", "lint", "context", "EarlyContext"];
 pub const EXIT: [&str; 3] = ["std", "process", "exit"];
