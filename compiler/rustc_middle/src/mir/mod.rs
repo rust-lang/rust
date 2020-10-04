@@ -10,9 +10,8 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::{
-    self, AdtDef, CanonicalUserTypeAnnotations, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex,
-};
+use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{AdtDef, InstanceDef, Region, UserTypeAnnotationIndex};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::DefId;
@@ -151,7 +150,7 @@ pub struct Body<'tcx> {
     pub local_decls: LocalDecls<'tcx>,
 
     /// User type annotations.
-    pub user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
+    pub user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
 
     /// The number of arguments this function takes.
     ///
@@ -212,7 +211,7 @@ impl<'tcx> Body<'tcx> {
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
         local_decls: LocalDecls<'tcx>,
-        user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
+        user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
