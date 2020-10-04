@@ -602,7 +602,6 @@ Some registers have multiple names. These are all treated by the compiler as ide
 | ARM | `r13` | `sp` |
 | ARM | `r14` | `lr` |
 | ARM | `r15` | `pc` |
-| MIPS32 | `$[2-25]` | Please [see the Wikipedia page][mips-regs] |
 | RISC-V | `x0` | `zero` |
 | RISC-V | `x1` | `ra` |
 | RISC-V | `x2` | `sp` |
@@ -622,8 +621,6 @@ Some registers have multiple names. These are all treated by the compiler as ide
 | Hexagon | `r29` | `sp` |
 | Hexagon | `r30` | `fr` |
 | Hexagon | `r31` | `lr` |
-
-[mips-regs]: https://en.wikibooks.org/wiki/MIPS_Assembly/Register_File#Registers
 
 Some registers cannot be used for input or output operands:
 
