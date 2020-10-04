@@ -4,7 +4,7 @@ use crate::dataflow::impls::MaybeStorageLive;
 use crate::dataflow::{Analysis, ResultsCursor};
 use crate::util::storage::AlwaysLiveLocals;
 
-use super::{MirPass, MirSource};
+use super::MirPass;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, Rvalue,
@@ -31,8 +31,8 @@ pub struct Validator {
 }
 
 impl<'tcx> MirPass<'tcx> for Validator {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let def_id = source.def_id();
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let def_id = body.source.def_id();
         let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
 
@@ -42,7 +42,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             .iterate_to_fixpoint()
             .into_results_cursor(body);
 
-        TypeChecker { when: &self.when, source, body, tcx, param_env, mir_phase, storage_liveness }
+        TypeChecker { when: &self.when, body, tcx, param_env, mir_phase, storage_liveness }
             .visit_body(body);
     }
 }
@@ -141,7 +141,6 @@ pub fn equal_up_to_regions(
 
 struct TypeChecker<'a, 'tcx> {
     when: &'a str,
-    source: MirSource<'tcx>,
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
@@ -158,7 +157,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span,
             &format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.source.instance,
+                self.body.source.instance,
                 self.when,
                 location,
                 msg.as_ref()

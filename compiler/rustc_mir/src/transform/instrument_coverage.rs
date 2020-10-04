@@ -1,4 +1,4 @@
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use crate::util::pretty;
 use crate::util::spanview::{
     source_range_no_file, statement_kind_name, terminator_kind_name, write_spanview_document,
@@ -74,16 +74,11 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo
 }
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
-    fn run_pass(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        mir_source: MirSource<'tcx>,
-        mir_body: &mut mir::Body<'tcx>,
-    ) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
         // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
         // See: https://github.com/rust-lang/rust/pull/73011#discussion_r438317601
-        if mir_source.promoted.is_none() {
-            Instrumentor::new(&self.name(), tcx, mir_source, mir_body).inject_counters();
+        if mir_body.source.promoted.is_none() {
+            Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
         }
     }
 }
@@ -97,7 +92,6 @@ struct CoverageRegion {
 struct Instrumentor<'a, 'tcx> {
     pass_name: &'a str,
     tcx: TyCtxt<'tcx>,
-    mir_source: MirSource<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
     hir_body: &'tcx rustc_hir::Body<'tcx>,
     function_source_hash: Option<u64>,
@@ -106,17 +100,11 @@ struct Instrumentor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
-    fn new(
-        pass_name: &'a str,
-        tcx: TyCtxt<'tcx>,
-        mir_source: MirSource<'tcx>,
-        mir_body: &'a mut mir::Body<'tcx>,
-    ) -> Self {
-        let hir_body = hir_body(tcx, mir_source.def_id());
+    fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
+        let hir_body = hir_body(tcx, mir_body.source.def_id());
         Self {
             pass_name,
             tcx,
-            mir_source,
             mir_body,
             hir_body,
             function_source_hash: None,
@@ -156,7 +144,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
     fn inject_counters(&mut self) {
         let tcx = self.tcx;
-        let def_id = self.mir_source.def_id();
+        let def_id = self.mir_body.source.def_id();
         let mir_body = &self.mir_body;
         let body_span = self.hir_body.value.span;
         debug!(
@@ -239,9 +227,15 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
 
         if let Some(span_viewables) = span_viewables {
-            let mut file =
-                pretty::create_dump_file(tcx, "html", None, self.pass_name, &0, self.mir_source)
-                    .expect("Unexpected error creating MIR spanview HTML file");
+            let mut file = pretty::create_dump_file(
+                tcx,
+                "html",
+                None,
+                self.pass_name,
+                &0,
+                self.mir_body.source,
+            )
+            .expect("Unexpected error creating MIR spanview HTML file");
             write_spanview_document(tcx, def_id, span_viewables, &mut file)
                 .expect("Unexpected IO error dumping coverage spans as HTML");
         }

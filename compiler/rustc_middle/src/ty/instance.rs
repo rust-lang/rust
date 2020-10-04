@@ -22,7 +22,8 @@ pub struct Instance<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub enum InstanceDef<'tcx> {
     /// A user-defined callable item.
     ///

@@ -22,7 +22,7 @@ where
 
     for def_id in def_ids {
         let body = &tcx.optimized_mir(def_id);
-        write_mir_fn_graphviz(tcx, def_id, body, use_subgraphs, w)?;
+        write_mir_fn_graphviz(tcx, body, use_subgraphs, w)?;
     }
 
     if use_subgraphs {
@@ -41,7 +41,6 @@ pub fn graphviz_safe_def_name(def_id: DefId) -> String {
 /// Write a graphviz DOT graph of the MIR.
 pub fn write_mir_fn_graphviz<'tcx, W>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
     body: &Body<'_>,
     subgraph: bool,
     w: &mut W,
@@ -49,6 +48,7 @@ pub fn write_mir_fn_graphviz<'tcx, W>(
 where
     W: Write,
 {
+    let def_id = body.source.def_id();
     let kind = if subgraph { "subgraph" } else { "digraph" };
     let cluster = if subgraph { "cluster_" } else { "" }; // Prints a border around MIR
     let def_name = graphviz_safe_def_name(def_id);

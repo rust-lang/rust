@@ -10,12 +10,11 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::{
-    self, AdtDef, CanonicalUserTypeAnnotations, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex,
-};
+use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{AdtDef, InstanceDef, Region, UserTypeAnnotationIndex};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
 use rustc_target::abi::VariantIdx;
 
@@ -112,6 +111,38 @@ impl MirPhase {
     }
 }
 
+/// Where a specific `mir::Body` comes from.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable)]
+pub struct MirSource<'tcx> {
+    pub instance: InstanceDef<'tcx>,
+
+    /// If `Some`, this is a promoted rvalue within the parent function.
+    pub promoted: Option<Promoted>,
+}
+
+impl<'tcx> MirSource<'tcx> {
+    pub fn item(def_id: DefId) -> Self {
+        MirSource {
+            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
+            promoted: None,
+        }
+    }
+
+    pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
+        MirSource { instance, promoted: None }
+    }
+
+    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
+        self.instance.with_opt_param()
+    }
+
+    #[inline]
+    pub fn def_id(&self) -> DefId {
+        self.instance.def_id()
+    }
+}
+
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
 pub struct Body<'tcx> {
@@ -125,6 +156,8 @@ pub struct Body<'tcx> {
     /// promoted items have already been optimized, whereas ours have not. This field allows
     /// us to see the difference and forego optimization on the inlined promoted items.
     pub phase: MirPhase,
+
+    pub source: MirSource<'tcx>,
 
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
@@ -151,7 +184,7 @@ pub struct Body<'tcx> {
     pub local_decls: LocalDecls<'tcx>,
 
     /// User type annotations.
-    pub user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
+    pub user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
 
     /// The number of arguments this function takes.
     ///
@@ -209,10 +242,11 @@ pub struct Body<'tcx> {
 
 impl<'tcx> Body<'tcx> {
     pub fn new(
+        source: MirSource<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
         local_decls: LocalDecls<'tcx>,
-        user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
+        user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
@@ -228,6 +262,7 @@ impl<'tcx> Body<'tcx> {
 
         let mut body = Body {
             phase: MirPhase::Build,
+            source,
             basic_blocks,
             source_scopes,
             yield_ty: None,
@@ -257,6 +292,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Build,
+            source: MirSource::item(DefId::local(CRATE_DEF_INDEX)),
             basic_blocks,
             source_scopes: IndexVec::new(),
             yield_ty: None,

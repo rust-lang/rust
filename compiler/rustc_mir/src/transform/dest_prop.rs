@@ -99,7 +99,7 @@
 use crate::dataflow::impls::{MaybeInitializedLocals, MaybeLiveLocals};
 use crate::dataflow::Analysis;
 use crate::{
-    transform::{MirPass, MirSource},
+    transform::MirPass,
     util::{dump_mir, PassWhere},
 };
 use itertools::Itertools;
@@ -126,16 +126,18 @@ const MAX_BLOCKS: usize = 250;
 pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Only run at mir-opt-level=2 or higher for now (we don't fix up debuginfo and remove
         // storage statements at the moment).
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
             return;
         }
 
+        let def_id = body.source.def_id();
+
         let candidates = find_candidates(tcx, body);
         if candidates.is_empty() {
-            debug!("{:?}: no dest prop candidates, done", source.def_id());
+            debug!("{:?}: no dest prop candidates, done", def_id);
             return;
         }
 
@@ -152,7 +154,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
         let relevant = relevant_locals.count();
         debug!(
             "{:?}: {} locals ({} relevant), {} blocks",
-            source.def_id(),
+            def_id,
             body.local_decls.len(),
             relevant,
             body.basic_blocks().len()
@@ -160,23 +162,21 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
         if relevant > MAX_LOCALS {
             warn!(
                 "too many candidate locals in {:?} ({}, max is {}), not optimizing",
-                source.def_id(),
-                relevant,
-                MAX_LOCALS
+                def_id, relevant, MAX_LOCALS
             );
             return;
         }
         if body.basic_blocks().len() > MAX_BLOCKS {
             warn!(
                 "too many blocks in {:?} ({}, max is {}), not optimizing",
-                source.def_id(),
+                def_id,
                 body.basic_blocks().len(),
                 MAX_BLOCKS
             );
             return;
         }
 
-        let mut conflicts = Conflicts::build(tcx, body, source, &relevant_locals);
+        let mut conflicts = Conflicts::build(tcx, body, &relevant_locals);
 
         let mut replacements = Replacements::new(body.local_decls.len());
         for candidate @ CandidateAssignment { dest, src, loc } in candidates {
@@ -192,7 +192,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             }
 
             if !tcx.consider_optimizing(|| {
-                format!("DestinationPropagation {:?} {:?}", source.def_id(), candidate)
+                format!("DestinationPropagation {:?} {:?}", def_id, candidate)
             }) {
                 break;
             }
@@ -398,7 +398,6 @@ impl Conflicts<'a> {
     fn build<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &'_ Body<'tcx>,
-        source: MirSource<'tcx>,
         relevant_locals: &'a BitSet<Local>,
     ) -> Self {
         // We don't have to look out for locals that have their address taken, since
@@ -409,7 +408,7 @@ impl Conflicts<'a> {
             body.local_decls.len(),
         );
 
-        let def_id = source.def_id();
+        let def_id = body.source.def_id();
         let mut init = MaybeInitializedLocals
             .into_engine(tcx, body, def_id)
             .iterate_to_fixpoint()
@@ -420,58 +419,49 @@ impl Conflicts<'a> {
             .into_results_cursor(body);
 
         let mut reachable = None;
-        dump_mir(
-            tcx,
-            None,
-            "DestinationPropagation-dataflow",
-            &"",
-            source,
-            body,
-            |pass_where, w| {
-                let reachable =
-                    reachable.get_or_insert_with(|| traversal::reachable_as_bitset(body));
+        dump_mir(tcx, None, "DestinationPropagation-dataflow", &"", body, |pass_where, w| {
+            let reachable = reachable.get_or_insert_with(|| traversal::reachable_as_bitset(body));
 
-                match pass_where {
-                    PassWhere::BeforeLocation(loc) if reachable.contains(loc.block) => {
-                        init.seek_before_primary_effect(loc);
-                        live.seek_after_primary_effect(loc);
+            match pass_where {
+                PassWhere::BeforeLocation(loc) if reachable.contains(loc.block) => {
+                    init.seek_before_primary_effect(loc);
+                    live.seek_after_primary_effect(loc);
 
-                        writeln!(w, "        // init: {:?}", init.get())?;
-                        writeln!(w, "        // live: {:?}", live.get())?;
-                    }
-                    PassWhere::AfterTerminator(bb) if reachable.contains(bb) => {
-                        let loc = body.terminator_loc(bb);
-                        init.seek_after_primary_effect(loc);
-                        live.seek_before_primary_effect(loc);
+                    writeln!(w, "        // init: {:?}", init.get())?;
+                    writeln!(w, "        // live: {:?}", live.get())?;
+                }
+                PassWhere::AfterTerminator(bb) if reachable.contains(bb) => {
+                    let loc = body.terminator_loc(bb);
+                    init.seek_after_primary_effect(loc);
+                    live.seek_before_primary_effect(loc);
 
-                        writeln!(w, "        // init: {:?}", init.get())?;
-                        writeln!(w, "        // live: {:?}", live.get())?;
-                    }
-
-                    PassWhere::BeforeBlock(bb) if reachable.contains(bb) => {
-                        init.seek_to_block_start(bb);
-                        live.seek_to_block_start(bb);
-
-                        writeln!(w, "    // init: {:?}", init.get())?;
-                        writeln!(w, "    // live: {:?}", live.get())?;
-                    }
-
-                    PassWhere::BeforeCFG | PassWhere::AfterCFG | PassWhere::AfterLocation(_) => {}
-
-                    PassWhere::BeforeLocation(_) | PassWhere::AfterTerminator(_) => {
-                        writeln!(w, "        // init: <unreachable>")?;
-                        writeln!(w, "        // live: <unreachable>")?;
-                    }
-
-                    PassWhere::BeforeBlock(_) => {
-                        writeln!(w, "    // init: <unreachable>")?;
-                        writeln!(w, "    // live: <unreachable>")?;
-                    }
+                    writeln!(w, "        // init: {:?}", init.get())?;
+                    writeln!(w, "        // live: {:?}", live.get())?;
                 }
 
-                Ok(())
-            },
-        );
+                PassWhere::BeforeBlock(bb) if reachable.contains(bb) => {
+                    init.seek_to_block_start(bb);
+                    live.seek_to_block_start(bb);
+
+                    writeln!(w, "    // init: {:?}", init.get())?;
+                    writeln!(w, "    // live: {:?}", live.get())?;
+                }
+
+                PassWhere::BeforeCFG | PassWhere::AfterCFG | PassWhere::AfterLocation(_) => {}
+
+                PassWhere::BeforeLocation(_) | PassWhere::AfterTerminator(_) => {
+                    writeln!(w, "        // init: <unreachable>")?;
+                    writeln!(w, "        // live: <unreachable>")?;
+                }
+
+                PassWhere::BeforeBlock(_) => {
+                    writeln!(w, "    // init: <unreachable>")?;
+                    writeln!(w, "    // live: <unreachable>")?;
+                }
+            }
+
+            Ok(())
+        });
 
         let mut this = Self {
             relevant_locals,

@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyC
 use rustc_target::spec::abi::Abi;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use std::collections::VecDeque;
 use std::iter;
 
@@ -37,7 +37,7 @@ struct CallSite<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             if tcx.sess.opts.debugging_opts.instrument_coverage {
                 // The current implementation of source code coverage injects code region counters
@@ -45,7 +45,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
                 // based function.
                 debug!("function inlining is disabled when compiling with `instrument_coverage`");
             } else {
-                Inliner { tcx, source, codegen_fn_attrs: tcx.codegen_fn_attrs(source.def_id()) }
+                Inliner { tcx, codegen_fn_attrs: tcx.codegen_fn_attrs(body.source.def_id()) }
                     .run_pass(body);
             }
         }
@@ -54,7 +54,6 @@ impl<'tcx> MirPass<'tcx> for Inline {
 
 struct Inliner<'tcx> {
     tcx: TyCtxt<'tcx>,
-    source: MirSource<'tcx>,
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
 }
 
@@ -74,11 +73,15 @@ impl Inliner<'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let param_env = self.tcx.param_env_reveal_all_normalized(self.source.def_id());
+        let def_id = caller_body.source.def_id();
+
+        let param_env = self.tcx.param_env_reveal_all_normalized(def_id);
 
         // Only do inlining into fn bodies.
-        let id = self.tcx.hir().local_def_id_to_hir_id(self.source.def_id().expect_local());
-        if self.tcx.hir().body_owner_kind(id).is_fn_or_closure() && self.source.promoted.is_none() {
+        let self_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+        if self.tcx.hir().body_owner_kind(self_hir_id).is_fn_or_closure()
+            && caller_body.source.promoted.is_none()
+        {
             for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated() {
                 if let Some(callsite) =
                     self.get_valid_function_call(bb, bb_data, caller_body, param_env)
@@ -104,8 +107,6 @@ impl Inliner<'tcx> {
 
                 let callee_body = if let Some(callee_def_id) = callsite.callee.as_local() {
                     let callee_hir_id = self.tcx.hir().local_def_id_to_hir_id(callee_def_id);
-                    let self_hir_id =
-                        self.tcx.hir().local_def_id_to_hir_id(self.source.def_id().expect_local());
                     // Avoid a cycle here by only using `optimized_mir` only if we have
                     // a lower `HirId` than the callee. This ensures that the callee will
                     // not inline us. This trick only works without incremental compilation.
@@ -178,7 +179,7 @@ impl Inliner<'tcx> {
 
         // Simplify if we inlined anything.
         if changed {
-            debug!("running simplify cfg on {:?}", self.source);
+            debug!("running simplify cfg on {:?}", caller_body.source);
             CfgSimplifier::new(caller_body).simplify();
             remove_dead_blocks(caller_body);
         }
@@ -300,7 +301,7 @@ impl Inliner<'tcx> {
 
         // FIXME: Give a bonus to functions with only a single caller
 
-        let param_env = tcx.param_env(self.source.def_id());
+        let param_env = tcx.param_env(callee_body.source.def_id());
 
         let mut first_block = true;
         let mut cost = 0;
@@ -430,7 +431,7 @@ impl Inliner<'tcx> {
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
-                debug!("inlined {:?} into {:?}", callsite.callee, self.source);
+                debug!("inlined {:?} into {:?}", callsite.callee, caller_body.source);
 
                 let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());

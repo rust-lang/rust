@@ -17,7 +17,7 @@ use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
@@ -36,7 +36,6 @@ use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathInd
 use crate::dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{Analysis, BorrowckFlowState as Flows, BorrowckResults};
-use crate::transform::MirSource;
 
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
@@ -236,13 +235,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_mir_results(
-        infcx,
-        MirSource { instance: InstanceDef::Item(def.to_global()), promoted: None },
-        &body,
-        &regioncx,
-        &opt_closure_req,
-    );
+    nll::dump_mir_results(infcx, &body, &regioncx, &opt_closure_req);
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.

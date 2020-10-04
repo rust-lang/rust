@@ -1,4 +1,4 @@
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -31,7 +31,7 @@ pub use self::AddCallGuards::*;
  */
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
-    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         self.add_call_guards(body);
     }
 }

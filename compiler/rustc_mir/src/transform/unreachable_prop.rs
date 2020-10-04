@@ -3,7 +3,7 @@
 //! post-order traversal of the blocks.
 
 use crate::transform::simplify;
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -12,7 +12,7 @@ use std::borrow::Cow;
 pub struct UnreachablePropagation;
 
 impl MirPass<'_> for UnreachablePropagation {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level < 3 {
             // Enable only under -Zmir-opt-level=3 as in some cases (check the deeply-nested-opt
             // perf benchmark) LLVM may spend quite a lot of time optimizing the generated code.
