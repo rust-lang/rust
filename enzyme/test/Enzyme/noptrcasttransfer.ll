@@ -2,7 +2,7 @@
 
 define void @derivative(i64* %ptr, i64* %ptrp, i64* %ptr2, i64* %ptr2p) {
 entry:
-  %call = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (i64*, i64*)* @callee to i8*), metadata !"diffe_dup", i64* %ptr, i64* %ptrp, metadata !"diffe_dup", i64* %ptr2, i64* %ptr2p)
+  %call = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (i64*, i64*)* @callee to i8*), metadata !"enzyme_dup", i64* %ptr, i64* %ptrp, metadata !"enzyme_dup", i64* %ptr2, i64* %ptr2p)
   ret void
 }
 

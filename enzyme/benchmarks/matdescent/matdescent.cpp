@@ -7,7 +7,7 @@
 #include <inttypes.h>
 #include <string.h>
 
-extern int diffe_const;
+extern int enzyme_const;
 template<typename Return, typename... T>
 Return __enzyme_autodiff(T...);
 
@@ -332,7 +332,7 @@ static void enzyme_sincos(double *Min, double *Mout, double *Vin, double *Vout) 
   for(int i=0; i<ITERS; i++) {
   for(int i=0; i<N*M; i++) { Mout[i] = 0; }
   //for(int i=0; i<M; i++) { Vout[i] = 0; }
-  res2 = __enzyme_autodiff<double>(matvec_real, Min, Mout, diffe_const, Vin);
+  res2 = __enzyme_autodiff<double>(matvec_real, Min, Mout, enzyme_const, Vin);
   //res2 = __builtin_autodiff(matvec_real, Min, Mout, Vin, Vout);
   for(int i=0; i<N*M; i++) { Min[i] -= Mout[i] * RATE; }
   }

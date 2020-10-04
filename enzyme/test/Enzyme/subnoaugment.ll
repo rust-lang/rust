@@ -7,7 +7,7 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 ; Function Attrs: alwaysinline norecurse nounwind uwtable
 define double @caller(%Type* %K, %Type* %Kp) local_unnamed_addr #0 {
 entry:
-  %call86 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (%Type*)* @matvec to i8*), metadata !"diffe_dup", %Type* noalias %K, %Type* noalias %Kp) #4
+  %call86 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (%Type*)* @matvec to i8*), metadata !"enzyme_dup", %Type* noalias %K, %Type* noalias %Kp) #4
   ret double %call86
 }
 

@@ -7,7 +7,7 @@
 #include <inttypes.h>
 #include <string.h>
 
-extern int diffe_const;
+extern int enzyme_const;
 template<typename Return, typename... T>
 Return __enzyme_autodiff(T...);
 

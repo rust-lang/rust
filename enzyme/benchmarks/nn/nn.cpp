@@ -655,12 +655,12 @@ float neural_network_gradient_update(mnist_image_t * image, const neural_network
 }
 
 
-extern int diffe_const;
+extern int enzyme_const;
 template<typename Return, typename... T>
 Return __enzyme_autodiff(T...);
 
 static void calculateDerivatives(mnist_image_t * image, const neural_network_t * network, neural_network_t* gradient, uint8_t label) {
-    __enzyme_autodiff<void>(neural_network_hypothesis_v2, diffe_const, image, network, gradient, diffe_const, label);
+    __enzyme_autodiff<void>(neural_network_hypothesis_v2, enzyme_const, image, network, gradient, enzyme_const, label);
 }
 
 /**

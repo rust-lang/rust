@@ -15,7 +15,7 @@ using adept::aVector;
 
 using adept::Vector;
 
-extern int diffe_const;
+extern int enzyme_const;
 template<typename Return, typename... T>
 Return __enzyme_autodiff(T...);
 

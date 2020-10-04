@@ -4,9 +4,9 @@ source_filename = "badalloc.c"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
-@diffe_dup = external dso_local local_unnamed_addr global i32, align 4
-@diffe_const = external dso_local local_unnamed_addr global i32, align 4
-@diffe_dupnoneed = external dso_local local_unnamed_addr global i32, align 4
+@enzyme_dup = external dso_local local_unnamed_addr global i32, align 4
+@enzyme_const = external dso_local local_unnamed_addr global i32, align 4
+@enzyme_dupnoneed = external dso_local local_unnamed_addr global i32, align 4
 
 ; Function Attrs: noinline nounwind uwtable
 define dso_local void @project(double* noalias nocapture readonly %cam, double* noalias nocapture %proj) local_unnamed_addr #0 {
@@ -72,9 +72,9 @@ entry:
 ; Function Attrs: nounwind uwtable
 define dso_local void @dcompute_reproj_error(double* %cam, double* %dcam, double* %w, double* %wb, double* %feat, double* %err, double* %derr) local_unnamed_addr #2 {
 entry:
-  %0 = load i32, i32* @diffe_dup, align 4, !tbaa !6
-  %1 = load i32, i32* @diffe_const, align 4, !tbaa !6
-  %2 = load i32, i32* @diffe_dupnoneed, align 4, !tbaa !6
+  %0 = load i32, i32* @enzyme_dup, align 4, !tbaa !6
+  %1 = load i32, i32* @enzyme_const, align 4, !tbaa !6
+  %2 = load i32, i32* @enzyme_dupnoneed, align 4, !tbaa !6
   tail call void (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (double*, double*, double*, double*)* @compute_reproj_error to i8*), i32 %0, double* %cam, double* %dcam, i32 %0, double* %w, double* %wb, i32 %1, double* %feat, i32 %2, double* %err, double* %derr) #4
   ret void
 }

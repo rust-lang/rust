@@ -76,7 +76,6 @@ EIGEN_DEVICE_FUNC static inline void run(const float* start, const float* end, f
 
 
 extern "C" {
-    extern int diffe_const;
     extern double __enzyme_autodiff(void*, const Tensor<float, 2>* __restrict K, const Tensor<float, 2>* __restrict Kp, const Tensor<float, 4>* __restrict I, const Tensor<float, 4>* __restrict Ip, Tensor<float, 4>* __restrict O, Tensor<float, 4>* __restrict Op);
 }
 

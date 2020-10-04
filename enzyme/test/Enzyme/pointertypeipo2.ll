@@ -9,7 +9,7 @@ entry:
   %kernelp = alloca i64, align 8
   %akernel = alloca i64, align 8
   %akernelp = alloca i64, align 8
-  call void (...) @__enzyme_autodiff(void (i64*, i64*)* nonnull @mv, metadata !"diffe_dup", i64* nonnull %kernel, i64* nonnull %kernelp, metadata !"diffe_dup", i64* nonnull %akernel, i64* nonnull %akernelp) #4
+  call void (...) @__enzyme_autodiff(void (i64*, i64*)* nonnull @mv, metadata !"enzyme_dup", i64* nonnull %kernel, i64* nonnull %kernelp, metadata !"enzyme_dup", i64* nonnull %akernel, i64* nonnull %akernelp) #4
   ret double 0.000000e+00
 }
 

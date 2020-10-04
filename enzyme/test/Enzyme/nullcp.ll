@@ -5,7 +5,7 @@ target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
 @.str = private unnamed_addr constant [8 x i8] c"res=%f\0A\00", align 1
-@diffe_dup = external dso_local local_unnamed_addr global i32, align 4
+@enzyme_dup = external dso_local local_unnamed_addr global i32, align 4
 
 ; Function Attrs: nounwind readnone uwtable
 define dso_local zeroext i1 @approx_fp_equality_float(float %f1, float %f2, double %threshold) local_unnamed_addr #0 {
@@ -58,7 +58,7 @@ entry:
   %1 = bitcast [3 x double]* %dout to i8*
   call void @llvm.lifetime.start.p0i8(i64 24, i8* nonnull %1) #6
   call void @llvm.memset.p0i8.i64(i8* nonnull align 16 %1, i8 0, i64 24, i1 false)
-  %2 = load i32, i32* @diffe_dup, align 4, !tbaa !6
+  %2 = load i32, i32* @enzyme_dup, align 4, !tbaa !6
   %call = call fast double @__enzyme_autodiff(i8* bitcast (void (double, i8*)* @compute_loops to i8*), double 2.100000e+00, i32 %2, i8* nonnull %0, i8* nonnull %1) #6
   %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str, i64 0, i64 0), double %call)
   call void @llvm.lifetime.end.p0i8(i64 24, i8* nonnull %1) #6

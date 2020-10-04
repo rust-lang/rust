@@ -7,7 +7,7 @@ define dso_local double @caller() local_unnamed_addr #0 {
 entry:
   %kernel = alloca i64, align 8
   %kernelp = alloca i64, align 8
-  call void (...) @__enzyme_autodiff(void (i64*)* nonnull @mv, metadata !"diffe_dup", i64* nonnull %kernel, i64* nonnull %kernelp) #4
+  call void (...) @__enzyme_autodiff(void (i64*)* nonnull @mv, metadata !"enzyme_dup", i64* nonnull %kernel, i64* nonnull %kernelp) #4
   ret double 0.000000e+00
 }
 

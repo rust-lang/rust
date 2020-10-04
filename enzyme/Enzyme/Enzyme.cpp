@@ -91,13 +91,13 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
 
     if (auto av = dyn_cast<MetadataAsValue>(res)) {
       auto MS = cast<MDString>(av->getMetadata())->getString();
-      if (MS == "diffe_dup") {
+      if (MS == "enzyme_dup") {
         ty = DIFFE_TYPE::DUP_ARG;
-      } else if (MS == "diffe_dupnoneed") {
+      } else if (MS == "enzyme_dupnoneed") {
         ty = DIFFE_TYPE::DUP_NONEED;
-      } else if (MS == "diffe_out") {
+      } else if (MS == "enzyme_out") {
         ty = DIFFE_TYPE::OUT_DIFF;
-      } else if (MS == "diffe_const") {
+      } else if (MS == "enzyme_const") {
         ty = DIFFE_TYPE::CONSTANT;
       } else {
         assert(0 && "illegal diffe metadata string");
@@ -108,20 +108,20 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
                isa<GlobalVariable>(cast<LoadInst>(res)->getOperand(0))) {
       auto gv = cast<GlobalVariable>(cast<LoadInst>(res)->getOperand(0));
       auto MS = gv->getName();
-      if (MS == "diffe_dup") {
+      if (MS == "enzyme_dup") {
         ty = DIFFE_TYPE::DUP_ARG;
         ++i;
         res = CI->getArgOperand(i);
-      } else if (MS == "diffe_dupnoneed") {
+      } else if (MS == "enzyme_dupnoneed") {
         ty = DIFFE_TYPE::DUP_NONEED;
         ++i;
         res = CI->getArgOperand(i);
-      } else if (MS == "diffe_out") {
+      } else if (MS == "enzyme_out") {
         llvm::errs() << "saw metadata for diffe_out\n";
         ty = DIFFE_TYPE::OUT_DIFF;
         ++i;
         res = CI->getArgOperand(i);
-      } else if (MS == "diffe_const") {
+      } else if (MS == "enzyme_const") {
         ty = DIFFE_TYPE::CONSTANT;
         ++i;
         res = CI->getArgOperand(i);
@@ -249,13 +249,6 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
     llvm::errs() << "postfn:\n" << *newFunc << "\n";
   Builder.setFastMathFlags(getFast());
 
-#if 0
-  llvm::errs() << "newFunc: " << *newFunc << "\n";
-  for(auto a : args) {
-    llvm::errs() << " + arg: " << *a << "\n";
-  }
-#endif
-
   CallInst *diffret = cast<CallInst>(Builder.CreateCall(newFunc, args));
   diffret->setCallingConv(CI->getCallingConv());
   diffret->setDebugLoc(CI->getDebugLoc());
@@ -297,7 +290,7 @@ reset:
       if (Fn && (Fn->getName() == "__enzyme_autodiff" ||
                  Fn->getName().startswith("__enzyme_autodiff") ||
                  Fn->getName().contains("__enzyme_autodiff"))) {
-        HandleAutoDiff(CI, TLI, AA); //, LI, DT);
+        HandleAutoDiff(CI, TLI, AA);
         Changed = true;
         goto reset;
       }

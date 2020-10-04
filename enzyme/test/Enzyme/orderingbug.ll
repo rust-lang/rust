@@ -5,7 +5,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; Function Attrs: norecurse nounwind uwtable
 define void @derivative(i32* %mat, i32* %dmat) {
 entry:
-  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (i32*)* @called to i8*), metadata !"diffe_dup", i32* %mat, i32* %dmat)
+  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (i32*)* @called to i8*), metadata !"enzyme_dup", i32* %mat, i32* %dmat)
   ret void
 }
 

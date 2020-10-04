@@ -229,9 +229,9 @@ void ba_objective(
     }
 }
 
-extern int diffe_const;
-extern int diffe_dup;
-extern int diffe_dupnoneed;
+extern int enzyme_const;
+extern int enzyme_dup;
+extern int enzyme_dupnoneed;
 void __enzyme_autodiff(...) noexcept;
 
 void dcompute_reproj_error(
@@ -247,17 +247,17 @@ void dcompute_reproj_error(
 )
 {
     __enzyme_autodiff(compute_reproj_error,
-            diffe_dup, cam, dcam,
-            diffe_dup, X, dX,
-            diffe_dup, w, wb,
-            diffe_const, feat,
-            diffe_dupnoneed, err, derr);
+            enzyme_dup, cam, dcam,
+            enzyme_dup, X, dX,
+            enzyme_dup, w, wb,
+            enzyme_const, feat,
+            enzyme_dupnoneed, err, derr);
 }
 
 void dcompute_zach_weight_error(double const* w, double* dw, double* err, double* derr) {
     __enzyme_autodiff(compute_zach_weight_error,
-            diffe_dup, w, dw,
-            diffe_dupnoneed, err, derr);
+            enzyme_dup, w, dw,
+            enzyme_dupnoneed, err, derr);
 }
 
 }

@@ -1046,7 +1046,7 @@ top:
 ; Function Attrs: alwaysinline
 define double @enzyme_entry(double) #13 {
 entry:
-  %1 = call double (i8*, ...) @__enzyme_autodiff.Float64(i8* bitcast (double (double)* @julia_besselj0_980 to i8*), metadata !"diffe_out", double %0)
+  %1 = call double (i8*, ...) @__enzyme_autodiff.Float64(i8* bitcast (double (double)* @julia_besselj0_980 to i8*), metadata !"enzyme_out", double %0)
   ret double %1
 }
 

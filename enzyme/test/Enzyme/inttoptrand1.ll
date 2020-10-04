@@ -2,7 +2,7 @@
 
 define double @caller(i64* %A, i64* %Ap, double* %res, double* %resp) {
 entry:
-  %call = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (i64*, double*)* @matvec to i8*), metadata !"diffe_dup", i64* %A, i64* %Ap, double* %res, double* %resp)
+  %call = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (i64*, double*)* @matvec to i8*), metadata !"enzyme_dup", i64* %A, i64* %Ap, double* %res, double* %resp)
   ret double %call
 }
 

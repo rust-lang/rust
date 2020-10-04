@@ -3,7 +3,7 @@
 declare double @__enzyme_autodiff(i8*, ...)
 define void @derivative(i64* %this, i64* %dthis) {
 entry:
-  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (i64*)* @myfunc to i8*), metadata !"diffe_dup", i64* %this, i64* %dthis)
+  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (i64*)* @myfunc to i8*), metadata !"enzyme_dup", i64* %this, i64* %dthis)
   ret void
 }
 

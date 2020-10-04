@@ -24,7 +24,7 @@ end:
 ; Function Attrs: nounwind uwtable
 define dso_local void @dsum(i64* %x, i64* %xp, i64 %n) local_unnamed_addr #1 {
 entry:
-  call void (void (i64*, i64)*, ...) @__enzyme_autodiff(void (i64*, i64)* nonnull @sum, metadata !"diffe_dup", i64* %x, i64* %xp, i64 %n)
+  call void (void (i64*, i64)*, ...) @__enzyme_autodiff(void (i64*, i64)* nonnull @sum, metadata !"enzyme_dup", i64* %x, i64* %xp, i64 %n)
   ret void
 }
 

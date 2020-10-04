@@ -4,7 +4,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 
 define void @lame(double* %data, double* %ddata, i64* %W, i64* %Wp) {
 entry:
-  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (double*, i64*)* @matvec to i8*), double* %data, double* %ddata, metadata !"diffe_dup", i64* %W, i64* %Wp)
+  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (double*, i64*)* @matvec to i8*), double* %data, double* %ddata, metadata !"enzyme_dup", i64* %W, i64* %Wp)
   ret void
 }
 

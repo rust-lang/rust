@@ -1,6 +1,6 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse -instsimplify -adce -simplifycfg -S | FileCheck %s
 
-@diffe_const = external dso_local local_unnamed_addr global i32, align 4
+@enzyme_const = external dso_local local_unnamed_addr global i32, align 4
 
 ; Function Attrs: nounwind uwtable
 define dso_local double @mv(double* nocapture readonly %mat, double* nocapture readonly %vec) {
@@ -16,7 +16,7 @@ entry:
 declare dso_local double @_Z17__enzyme_autodiffIdJPFdPdS0_ES0_S0_iS0_EET_DpT0_(double (double*, double*)*, double*, double*, i32, double*)
 
 define dso_local double @_Z11matvec_realPdS_(double* nocapture readonly %mat, double* nocapture %dmat, double* nocapture readonly %vec) {
-  %dc = load i32, i32* @diffe_const
+  %dc = load i32, i32* @enzyme_const
   %call34.i = call fast double @_Z17__enzyme_autodiffIdJPFdPdS0_ES0_S0_iS0_EET_DpT0_(double (double*, double*)* nonnull @mv, double* nonnull %mat, double* nonnull %dmat, i32 %dc, double* nonnull %vec)
   ret double %call34.i
 }

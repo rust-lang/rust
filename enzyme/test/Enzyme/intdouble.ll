@@ -20,7 +20,7 @@ declare void @llvm.lifetime.end.p0i8(i64, i8* nocapture) #1
 ; Function Attrs: noinline nounwind uwtable
 define dso_local void @derivative(i64* %x, i64* %xp) local_unnamed_addr #2 {
 entry:
-  %0 = tail call double (double (i64*)*, ...) @__enzyme_autodiff(double (i64*)* nonnull @intcast, metadata !"diffe_dup", i64* %x, i64* %xp)
+  %0 = tail call double (double (i64*)*, ...) @__enzyme_autodiff(double (i64*)* nonnull @intcast, metadata !"enzyme_dup", i64* %x, i64* %xp)
   ret void
 }
 

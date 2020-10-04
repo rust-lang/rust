@@ -1556,9 +1556,9 @@ $_ZTVN5adept21gradient_out_of_rangeE = comdat any
 @.str.86 = private unnamed_addr constant [8 x i8] c"ode.cpp\00", align 1
 @__PRETTY_FUNCTION__._Z19brusselator_2d_loopPdS_PKdS1_S1_d = private unnamed_addr constant [151 x i8] c"void brusselator_2d_loop(double *__restrict, double *__restrict, const double *__restrict, const double *__restrict, const double *__restrict, double)\00", align 1
 @_ZZ6lorenzRKN5boost5arrayIdLm2048EEERS1_dE1p = private unnamed_addr constant [3 x double] [double 3.400000e+00, double 1.000000e+00, double 1.000000e+01], align 16
-@diffe_dupnoneed = external dso_local local_unnamed_addr global i32, align 4
-@diffe_dup = external dso_local local_unnamed_addr global i32, align 4
-@diffe_const = external dso_local local_unnamed_addr global i32, align 4
+@enzyme_dupnoneed = external dso_local local_unnamed_addr global i32, align 4
+@enzyme_dup = external dso_local local_unnamed_addr global i32, align 4
+@enzyme_const = external dso_local local_unnamed_addr global i32, align 4
 @_ZZ4mainE1p = private unnamed_addr constant [3 x double] [double 3.400000e+00, double 1.000000e+00, double 1.000000e+01], align 16
 @.str.95 = private unnamed_addr constant [30 x i8] c"Enzyme combined %0.6f res=%f\0A\00", align 1
 @.str.96 = private unnamed_addr constant [28 x i8] c"A misuse of arrays occurred\00", align 1
@@ -8720,22 +8720,22 @@ bb:
   call void @llvm.lifetime.start.p0i8(i64 16384, i8* nonnull %tmp8) #4
   %tmp9 = bitcast %"class.boost::array.31"* %arg2 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %tmp8, i8* nonnull align 8 %tmp9, i64 16384, i1 false), !tbaa.struct !66
-  %tmp10 = load i32, i32* @diffe_dupnoneed, align 4, !tbaa !34
+  %tmp10 = load i32, i32* @enzyme_dupnoneed, align 4, !tbaa !34
   %tmp11 = call double* @_ZN5boost5arrayIdLm2048EE4dataEv(%"class.boost::array.31"* nonnull %tmp5)
-  %tmp12 = load i32, i32* @diffe_dupnoneed, align 4, !tbaa !34
+  %tmp12 = load i32, i32* @enzyme_dupnoneed, align 4, !tbaa !34
   %tmp13 = call double* @_ZN5boost5arrayIdLm2048EE4dataEv(%"class.boost::array.31"* nonnull %tmp5)
   %tmp14 = getelementptr inbounds double, double* %tmp13, i64 1024
-  %tmp15 = load i32, i32* @diffe_dup, align 4, !tbaa !34
+  %tmp15 = load i32, i32* @enzyme_dup, align 4, !tbaa !34
   %tmp16 = call double* @_ZNK5boost5arrayIdLm2048EE4dataEv(%"class.boost::array.31"* nonnull %arg1)
   %tmp17 = call double* @_ZN5boost5arrayIdLm2048EE4dataEv(%"class.boost::array.31"* nonnull %tmp4)
-  %tmp18 = load i32, i32* @diffe_dup, align 4, !tbaa !34
+  %tmp18 = load i32, i32* @enzyme_dup, align 4, !tbaa !34
   %tmp19 = call double* @_ZNK5boost5arrayIdLm2048EE4dataEv(%"class.boost::array.31"* nonnull %arg1)
   %tmp20 = getelementptr inbounds double, double* %tmp19, i64 1024
   %tmp21 = call double* @_ZN5boost5arrayIdLm2048EE4dataEv(%"class.boost::array.31"* nonnull %tmp4)
   %tmp22 = getelementptr inbounds double, double* %tmp21, i64 1024
-  %tmp23 = load i32, i32* @diffe_dup, align 4, !tbaa !34
+  %tmp23 = load i32, i32* @enzyme_dup, align 4, !tbaa !34
   %tmp24 = getelementptr inbounds [3 x double], [3 x double]* %tmp, i64 0, i64 0
-  %tmp25 = load i32, i32* @diffe_const, align 4, !tbaa !34
+  %tmp25 = load i32, i32* @enzyme_const, align 4, !tbaa !34
   call void @_Z17__enzyme_autodiffIvJPFvPdS0_PKdS2_S2_dEiDnS0_iDnS0_iS2_S0_iS2_S0_iS2_S0_idEET_DpT0_(void (double*, double*, double*, double*, double*, double)* nonnull @_Z19brusselator_2d_loopPdS_PKdS1_S1_d, i32 %tmp10, i8* null, double* %tmp11, i32 %tmp12, i8* null, double* nonnull %tmp14, i32 %tmp15, double* %tmp16, double* %tmp17, i32 %tmp18, double* nonnull %tmp20, double* nonnull %tmp22, i32 %tmp23, double* %arg, double* nonnull %tmp24, i32 %tmp25, double %arg3)
   %tmp26 = call dereferenceable(8) double* @_ZN5boost5arrayIdLm2048EEixEm(%"class.boost::array.31"* nonnull %tmp4, i64 0)
   %tmp27 = load double, double* %tmp26, align 8, !tbaa !31

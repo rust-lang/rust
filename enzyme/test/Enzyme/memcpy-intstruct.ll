@@ -13,7 +13,7 @@ declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture writeonly, i8* nocapture r
 ; Function Attrs: nounwind uwtable
 define dso_local void @dmemcpy_ptr(i8* %dst, i8* %dstp, i8* %src, i8* %srcp, i64 %n) {
 entry:
-  %0 = tail call double (...) @__enzyme_autodiff.f64(void (i8*, i8*, i64)* nonnull @memcpy_ptr, metadata !"diffe_dup", i8* %dst, i8* %dstp, metadata !"diffe_dup", i8* %src, i8* %srcp, i64 %n)
+  %0 = tail call double (...) @__enzyme_autodiff.f64(void (i8*, i8*, i64)* nonnull @memcpy_ptr, metadata !"enzyme_dup", i8* %dst, i8* %dstp, metadata !"enzyme_dup", i8* %src, i8* %srcp, i64 %n)
   ret void
 }
 

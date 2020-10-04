@@ -18,7 +18,7 @@ entry:
 
 define void @call(i64* %inp, i64* %inpp, i64* %out, i64* %outp) {
 entry:
-  call void (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (i64*, i64*)* @foo to i8*), metadata !"diffe_dup", i64* %inp, i64* %inpp, metadata !"diffe_dup", i64* %out, i64* %outp)
+  call void (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (i64*, i64*)* @foo to i8*), metadata !"enzyme_dup", i64* %inp, i64* %inpp, metadata !"enzyme_dup", i64* %out, i64* %outp)
   ret void
 }
 

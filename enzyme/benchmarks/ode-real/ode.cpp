@@ -15,9 +15,9 @@ using adept::aVector;
 template<typename Return, typename... T>
 Return __enzyme_autodiff(T...);
 extern "C" {
-  extern int diffe_dup;
-  extern int diffe_const;
-  extern int diffe_dupnoneed;
+  extern int enzyme_dup;
+  extern int enzyme_const;
+  extern int enzyme_dupnoneed;
 }
 
 float tdiff(struct timeval *start, struct timeval *end) {
@@ -128,14 +128,14 @@ double foobar(const double* p, const state_type x, const state_type adjoint, dou
     state_type dxdu;
 
     __enzyme_autodiff<void>(brusselator_2d_loop,
-//                            diffe_dup, dxdu.c_array(), dadjoint_inp.c_array(),
-//                            diffe_dup, dxdu.c_array() + N * N, dadjoint_inp.c_array() + N * N,
-                            diffe_dupnoneed, nullptr, dadjoint_inp.data(),
-                            diffe_dupnoneed, nullptr, dadjoint_inp.data() + N * N,
-                            diffe_dup, x.data(), dx.data(),
-                            diffe_dup, x.data() + N * N, dx.data() + N * N,
-                            diffe_dup, p, dp,
-                            diffe_const, t);
+//                            enzyme_dup, dxdu.c_array(), dadjoint_inp.c_array(),
+//                            enzyme_dup, dxdu.c_array() + N * N, dadjoint_inp.c_array() + N * N,
+                            enzyme_dupnoneed, nullptr, dadjoint_inp.data(),
+                            enzyme_dupnoneed, nullptr, dadjoint_inp.data() + N * N,
+                            enzyme_dup, x.data(), dx.data(),
+                            enzyme_dup, x.data() + N * N, dx.data() + N * N,
+                            enzyme_dup, p, dp,
+                            enzyme_const, t);
 
     return dx[0];
 }

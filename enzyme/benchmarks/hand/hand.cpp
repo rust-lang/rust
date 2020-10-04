@@ -644,9 +644,9 @@ void hand_objective_complicated(
 
 //*      tapenade -o hand_tapenade -head "hand_objective(err)/(theta) hand_objective_complicated(err)/(theta us)" hand.c
 
-extern int diffe_const;
-extern int diffe_dup;
-extern int diffe_dupnoneed;
+extern int enzyme_const;
+extern int enzyme_dup;
+extern int enzyme_dupnoneed;
 void __enzyme_autodiff(...) noexcept;
 
 // tapenade -o hand_tapenade -head "hand_objective(err)/(theta) hand_objective_complicated(err)/(theta us)" hand.c
@@ -670,20 +670,20 @@ void dhand_objective(
 )
 {
     __enzyme_autodiff(hand_objective,
-        diffe_dup, theta, dtheta,
-        diffe_const, bone_count,
-        diffe_const, bone_names,
-        diffe_const, parents,
-        diffe_const, base_relatives,
-        diffe_const, inverse_base_absolutes,
-        diffe_const, base_positions,
-        diffe_const, weights,
-        diffe_const, triangles,
-        diffe_const, is_mirrored,
-        diffe_const, corresp_count,
-        diffe_const, correspondences,
-        diffe_const, points,
-        diffe_dupnoneed, err, derr
+        enzyme_dup, theta, dtheta,
+        enzyme_const, bone_count,
+        enzyme_const, bone_names,
+        enzyme_const, parents,
+        enzyme_const, base_relatives,
+        enzyme_const, inverse_base_absolutes,
+        enzyme_const, base_positions,
+        enzyme_const, weights,
+        enzyme_const, triangles,
+        enzyme_const, is_mirrored,
+        enzyme_const, corresp_count,
+        enzyme_const, correspondences,
+        enzyme_const, points,
+        enzyme_dupnoneed, err, derr
     );
 }
 
@@ -708,21 +708,21 @@ void dhand_objective_complicated(
     double* derr
 ) {
     __enzyme_autodiff(hand_objective_complicated,
-        diffe_dup, theta, dtheta,
-        diffe_dup, us, dus,
-        diffe_const, bone_count,
-        diffe_const, bone_names,
-        diffe_const, parents,
-        diffe_const, base_relatives,
-        diffe_const, inverse_base_absolutes,
-        diffe_const, base_positions,
-        diffe_const, weights,
-        diffe_const, triangles,
-        diffe_const, is_mirrored,
-        diffe_const, corresp_count,
-        diffe_const, correspondences,
-        diffe_const, points,
-        diffe_dupnoneed, err, derr
+        enzyme_dup, theta, dtheta,
+        enzyme_dup, us, dus,
+        enzyme_const, bone_count,
+        enzyme_const, bone_names,
+        enzyme_const, parents,
+        enzyme_const, base_relatives,
+        enzyme_const, inverse_base_absolutes,
+        enzyme_const, base_positions,
+        enzyme_const, weights,
+        enzyme_const, triangles,
+        enzyme_const, is_mirrored,
+        enzyme_const, corresp_count,
+        enzyme_const, correspondences,
+        enzyme_const, points,
+        enzyme_dupnoneed, err, derr
     );
 }
 

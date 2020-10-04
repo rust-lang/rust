@@ -170,9 +170,9 @@ void lstm_objective(
     free(ynorm);
 }
 
-extern int diffe_const;
-extern int diffe_dup;
-extern int diffe_dupnoneed;
+extern int enzyme_const;
+extern int enzyme_dup;
+extern int enzyme_dupnoneed;
 void __enzyme_autodiff(...) noexcept;
 
 // *      tapenade -b -o lstm_tapenade -head "lstm_objective(loss)/(main_params extra_params)" lstm.c
@@ -192,14 +192,14 @@ void dlstm_objective(
 )
 {
     __enzyme_autodiff(lstm_objective,
-        diffe_const, l,
-        diffe_const, c,
-        diffe_const, b,
-        diffe_dup, main_params, dmain_params,
-        diffe_dup, extra_params, dextra_params,
-        diffe_const, state,
-        diffe_const, sequence,
-        diffe_dupnoneed, loss, dloss
+        enzyme_const, l,
+        enzyme_const, c,
+        enzyme_const, b,
+        enzyme_dup, main_params, dmain_params,
+        enzyme_dup, extra_params, dextra_params,
+        enzyme_const, state,
+        enzyme_const, sequence,
+        enzyme_dupnoneed, loss, dloss
     );
 }
 

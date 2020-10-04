@@ -65,7 +65,7 @@ declare dso_local double @_Z17__enzyme_autodiffIdJPFdPdS0_ES0_S0_iS0_EET_DpT0_(.
 ; Function Attrs: norecurse uwtable
 define void @caller(double* %a, double* %da, double* %b) {
 entry:
-  %call34.i = call double (...) @_Z17__enzyme_autodiffIdJPFdPdS0_ES0_S0_iS0_EET_DpT0_(double (double*, double*)* nonnull @_Z11matvec_realPdS_, double* nonnull %a, double* nonnull %da, metadata !"diffe_const", double* nonnull %b)
+  %call34.i = call double (...) @_Z17__enzyme_autodiffIdJPFdPdS0_ES0_S0_iS0_EET_DpT0_(double (double*, double*)* nonnull @_Z11matvec_realPdS_, double* nonnull %a, double* nonnull %da, metadata !"enzyme_const", double* nonnull %b)
   ret void
 }
 

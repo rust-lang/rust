@@ -37,7 +37,6 @@ using Eigen::Tensor;
 constexpr size_t IN = 4, OUT = 4, NUM = 5;
 
 extern "C" {
-    extern int diffe_const;
     extern double __enzyme_autodiff(void*, const Tensor<float, 2>* __restrict K, const Tensor<float, 2>* __restrict Kp, const Tensor<float, 4>* __restrict I, const Tensor<float, 4>* __restrict Ip, Tensor<float, 4>* __restrict O, Tensor<float, 4>* __restrict Op);
 }
 

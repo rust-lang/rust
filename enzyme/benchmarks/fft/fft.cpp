@@ -30,7 +30,7 @@ void afoobar(aVector& data, unsigned len) {
 }
 
 extern "C" {
-  int diffe_dupnoneed;
+  int enzyme_dupnoneed;
 }
 
 static double foobar_and_gradient(unsigned len) {
@@ -38,7 +38,7 @@ static double foobar_and_gradient(unsigned len) {
     for(int i=0; i<2*len; i++) inp[i] = 2.0;
     double *dinp = new double[2*len];
     for(int i=0; i<2*len; i++) dinp[i] = 1.0;
-    __enzyme_autodiff<void>(foobar, diffe_dupnoneed, inp, dinp, len);
+    __enzyme_autodiff<void>(foobar, enzyme_dupnoneed, inp, dinp, len);
     double res = dinp[0];
     delete[] dinp;
     delete[] inp;
