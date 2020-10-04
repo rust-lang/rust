@@ -44,10 +44,6 @@ impl<'a> Parser<'a> {
         Parser { state: input.as_bytes() }
     }
 
-    fn is_eof(&self) -> bool {
-        self.state.is_empty()
-    }
-
     /// Run a parser, and restore the pre-parse state if it fails
     fn read_atomically<T, F>(&mut self, inner: F) -> Option<T>
     where
@@ -63,19 +59,12 @@ impl<'a> Parser<'a> {
 
     /// Run a parser, but fail if the entire input wasn't consumed.
     /// Doesn't run atomically.
-    fn read_till_eof<T, F>(&mut self, inner: F) -> Option<T>
-    where
-        F: FnOnce(&mut Parser<'_>) -> Option<T>,
-    {
-        inner(self).filter(|_| self.is_eof())
-    }
-
-    /// Same as read_till_eof, but returns a Result<AddrParseError> on failure
     fn parse_with<T, F>(&mut self, inner: F) -> Result<T, AddrParseError>
     where
         F: FnOnce(&mut Parser<'_>) -> Option<T>,
     {
-        self.read_till_eof(inner).ok_or(AddrParseError(()))
+        let result = inner(self);
+        if self.state.is_empty() { result } else { None }.ok_or(AddrParseError(()))
     }
 
     /// Read the next character from the input
