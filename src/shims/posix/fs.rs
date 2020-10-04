@@ -1371,7 +1371,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let result = std::fs::read_link(pathname);
         match result {
             Ok(resolved) => {
-                let mut path_bytes = this.os_str_to_bytes(resolved.as_ref())?;
+                let mut path_bytes = crate::shims::os_str::os_str_to_bytes(resolved.as_ref())?;
                 let bufsize: usize = bufsize.try_into().unwrap();
                 if path_bytes.len() > bufsize {
                     path_bytes = &path_bytes[..bufsize]
