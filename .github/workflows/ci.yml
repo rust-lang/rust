@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    # Run in PRs and for bors, but not on master.
+    branches:
+      - 'auto'
+      - 'try'
+  pull_request:
+    branches:
+      - 'master'
+  schedule:
+    # Use <https://crontab.guru> to conveniently edit cron schedule.
+    - cron: "0 7 * * *" # At 07:00 UTC every day.
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    env:
+      RUST_BACKTRACE: 1
+    strategy:
+      matrix:
+        build: [linux64, macos, win32]
+        include:
+          - build: linux64
+            os: ubuntu-latest
+            host_target: x86_64-unknown-linux-gnu
+          - build: macos
+            os: macos-latest
+            host_target: x86_64-apple-darwin
+          - build: win32
+            os: windows-latest
+            host_target: i686-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v2
