@@ -781,7 +781,8 @@ impl Function {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
-        hir_ty::diagnostics::validate_body(db, self.id.into(), sink)
+        hir_ty::diagnostics::validate_module_item(db, self.id.into(), sink);
+        hir_ty::diagnostics::validate_body(db, self.id.into(), sink);
     }
 
     /// Whether this function declaration has a definition.

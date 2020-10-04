@@ -906,4 +906,28 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn test_rename_incorrect_case_struct_method() {
+        check_fixes(
+            r#"
+pub struct TestStruct;
+
+impl TestStruct {
+    pub fn SomeFn<|>() -> TestStruct {
+        TestStruct
+    }
+}
+"#,
+            r#"
+pub struct TestStruct;
+
+impl TestStruct {
+    pub fn some_fn() -> TestStruct {
+        TestStruct
+    }
+}
+"#,
+        );
+    }
 }
