@@ -30,7 +30,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     for &cnum in cx.tcx.crates().iter() {
         for &(did, _) in cx.tcx.all_trait_implementations(cnum).iter() {
             cx.tcx.sess.time("build_extern_trait_impl", || {
-                inline::build_impl(cx, did, None, &mut new_items);
+                inline::build_impl(cx, None, did, None, &mut new_items);
             });
         }
     }
@@ -38,7 +38,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     // Also try to inline primitive impls from other crates.
     for &def_id in PrimitiveType::all_impls(cx.tcx).values().flatten() {
         if !def_id.is_local() {
-            inline::build_impl(cx, def_id, None, &mut new_items);
+            inline::build_impl(cx, None, def_id, None, &mut new_items);
 
             // FIXME(eddyb) is this `doc(hidden)` check needed?
             if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
@@ -90,7 +90,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = cx.tcx.hir().local_def_id(impl_node);
             cx.tcx.sess.time("build_local_trait_impl", || {
-                inline::build_impl(cx, impl_did.to_def_id(), None, &mut new_items);
+                inline::build_impl(cx, None, impl_did.to_def_id(), None, &mut new_items);
             });
         }
     }

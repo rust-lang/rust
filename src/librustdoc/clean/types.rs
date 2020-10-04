@@ -373,6 +373,11 @@ impl<I: IntoIterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
 pub struct DocFragment {
     pub line: usize,
     pub span: rustc_span::Span,
+    /// The module this doc-comment came from.
+    ///
+    /// This allows distinguishing between the original documentation and a pub re-export.
+    /// If it is `None`, the item was not re-exported.
+    pub parent_module: Option<DefId>,
     pub doc: String,
     pub kind: DocFragmentKind,
 }
@@ -521,16 +526,25 @@ impl Attributes {
         false
     }
 
-    pub fn from_ast(diagnostic: &::rustc_errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
+    pub fn from_ast(
+        diagnostic: &::rustc_errors::Handler,
+        attrs: &[ast::Attribute],
+        additional_attrs: Option<(&[ast::Attribute], DefId)>,
+    ) -> Attributes {
         let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
-        let other_attrs = attrs
-            .iter()
-            .filter_map(|attr| {
+        // Additional documentation should be shown before the original documentation
+        let other_attrs = additional_attrs
+            .into_iter()
+            .map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
+            .flatten()
+            .chain(attrs.iter().map(|attr| (attr, None)))
+            .filter_map(|(attr, parent_module)| {
                 if let Some(value) = attr.doc_str() {
+                    trace!("got doc_str={:?}", value);
                     let value = beautify_doc_string(value);
                     let kind = if attr.is_doc_comment() {
                         DocFragmentKind::SugaredDoc
@@ -540,7 +554,13 @@ impl Attributes {
 
                     let line = doc_line;
                     doc_line += value.lines().count();
-                    doc_strings.push(DocFragment { line, span: attr.span, doc: value, kind });
+                    doc_strings.push(DocFragment {
+                        line,
+                        span: attr.span,
+                        doc: value,
+                        kind,
+                        parent_module,
+                    });
 
                     if sp.is_none() {
                         sp = Some(attr.span);
@@ -565,6 +585,7 @@ impl Attributes {
                                     span: attr.span,
                                     doc: contents,
                                     kind: DocFragmentKind::Include { filename },
+                                    parent_module: parent_module,
                                 });
                             }
                         }

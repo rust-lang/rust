@@ -767,8 +767,16 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             self.mod_ids.push(item.def_id);
         }
 
+        #[cfg(debug_assertions)]
+        for attr in &item.attrs.doc_strings {
+            if let Some(id) = attr.parent_module {
+                trace!("docs {:?} came from {:?}", attr.doc, id);
+            } else {
+                debug!("no parent found for {:?}", attr.doc);
+            }
+        }
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
-        trace!("got documentation '{}'", dox);
+        //trace!("got documentation '{}'", dox);
 
         // find item's parent to resolve `Self` in item's docs below
         let parent_name = self.cx.as_local_hir_id(item.def_id).and_then(|item_hir| {

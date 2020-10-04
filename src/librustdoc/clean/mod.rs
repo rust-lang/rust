@@ -284,7 +284,7 @@ impl Clean<Item> for doctree::Module<'_> {
 
 impl Clean<Attributes> for [ast::Attribute] {
     fn clean(&self, cx: &DocContext<'_>) -> Attributes {
-        Attributes::from_ast(cx.sess().diagnostic(), self)
+        Attributes::from_ast(cx.sess().diagnostic(), self, None)
     }
 }
 
@@ -2205,9 +2205,14 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
 
             let res = Res::Def(DefKind::Mod, DefId { krate: self.cnum, index: CRATE_DEF_INDEX });
 
-            if let Some(items) =
-                inline::try_inline(cx, res, self.name, Some(self.attrs), &mut visited)
-            {
+            if let Some(items) = inline::try_inline(
+                cx,
+                cx.tcx.parent_module(self.hir_id).to_def_id(),
+                res,
+                self.name,
+                Some(self.attrs),
+                &mut visited,
+            ) {
                 return items;
             }
         }
@@ -2268,9 +2273,14 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             }
             if !denied {
                 let mut visited = FxHashSet::default();
-                if let Some(items) =
-                    inline::try_inline(cx, path.res, name, Some(self.attrs), &mut visited)
-                {
+                if let Some(items) = inline::try_inline(
+                    cx,
+                    cx.tcx.parent_module(self.id).to_def_id(),
+                    path.res,
+                    name,
+                    Some(self.attrs),
+                    &mut visited,
+                ) {
                     return items;
                 }
             }
