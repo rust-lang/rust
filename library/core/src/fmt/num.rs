@@ -9,7 +9,7 @@ use crate::slice;
 use crate::str;
 
 #[doc(hidden)]
-trait Int:
+trait DisplayInt:
     PartialEq + PartialOrd + Div<Output = Self> + Rem<Output = Self> + Sub<Output = Self> + Copy
 {
     fn zero() -> Self;
@@ -21,22 +21,39 @@ trait Int:
     fn to_u128(&self) -> u128;
 }
 
-macro_rules! doit {
-    ($($t:ident)*) => ($(impl Int for $t {
-        fn zero() -> Self { 0 }
-        fn from_u8(u: u8) -> Self { u as Self }
-        fn to_u8(&self) -> u8 { *self as u8 }
-        fn to_u16(&self) -> u16 { *self as u16 }
-        fn to_u32(&self) -> u32 { *self as u32 }
-        fn to_u64(&self) -> u64 { *self as u64 }
-        fn to_u128(&self) -> u128 { *self as u128 }
-    })*)
+macro_rules! impl_int {
+    ($($t:ident)*) => (
+      $(impl DisplayInt for $t {
+          fn zero() -> Self { 0 }
+          fn from_u8(u: u8) -> Self { u as Self }
+          fn to_u8(&self) -> u8 { *self as u8 }
+          fn to_u16(&self) -> u16 { *self as u16 }
+          fn to_u32(&self) -> u32 { *self as u32 }
+          fn to_u64(&self) -> u64 { *self as u64 }
+          fn to_u128(&self) -> u128 { *self as u128 }
+      })*
+    )
 }
-doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+macro_rules! impl_uint {
+    ($($t:ident)*) => (
+      $(impl DisplayInt for $t {
+          fn zero() -> Self { 0 }
+          fn from_u8(u: u8) -> Self { u as Self }
+          fn to_u8(&self) -> u8 { *self as u8 }
+          fn to_u16(&self) -> u16 { *self as u16 }
+          fn to_u32(&self) -> u32 { *self as u32 }
+          fn to_u64(&self) -> u64 { *self as u64 }
+          fn to_u128(&self) -> u128 { *self as u128 }
+      })*
+    )
+}
+
+impl_int! { i8 i16 i32 i64 i128 isize }
+impl_uint! { u8 u16 u32 u64 u128 usize }
 
 /// A type that represents a specific radix
 #[doc(hidden)]
-trait GenericRadix {
+trait GenericRadix: Sized {
     /// The number of digits.
     const BASE: u8;
 
@@ -47,7 +64,7 @@ trait GenericRadix {
     fn digit(x: u8) -> u8;
 
     /// Format an integer using the radix using a formatter.
-    fn fmt_int<T: Int>(&self, mut x: T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt_int<T: DisplayInt>(&self, mut x: T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // The radix can be as low as 2, so we need a buffer of at least 128
         // characters for a base 2 number.
         let zero = T::zero();
@@ -127,13 +144,11 @@ macro_rules! radix {
 
 radix! { Binary,    2, "0b", x @  0 ..=  1 => b'0' + x }
 radix! { Octal,     8, "0o", x @  0 ..=  7 => b'0' + x }
-radix! { LowerHex, 16, "0x", x @  0 ..=  9 => b'0' + x,
-x @ 10 ..= 15 => b'a' + (x - 10) }
-radix! { UpperHex, 16, "0x", x @  0 ..=  9 => b'0' + x,
-x @ 10 ..= 15 => b'A' + (x - 10) }
+radix! { LowerHex, 16, "0x", x @  0 ..=  9 => b'0' + x, x @ 10 ..= 15 => b'a' + (x - 10) }
+radix! { UpperHex, 16, "0x", x @  0 ..=  9 => b'0' + x, x @ 10 ..= 15 => b'A' + (x - 10) }
 
 macro_rules! int_base {
-    ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
+    (fmt::$Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::$Trait for $T {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -143,8 +158,27 @@ macro_rules! int_base {
     };
 }
 
+macro_rules! integer {
+    ($Int:ident, $Uint:ident) => {
+        int_base! { fmt::Binary   for $Int as $Uint  -> Binary }
+        int_base! { fmt::Octal    for $Int as $Uint  -> Octal }
+        int_base! { fmt::LowerHex for $Int as $Uint  -> LowerHex }
+        int_base! { fmt::UpperHex for $Int as $Uint  -> UpperHex }
+
+        int_base! { fmt::Binary   for $Uint as $Uint -> Binary }
+        int_base! { fmt::Octal    for $Uint as $Uint -> Octal }
+        int_base! { fmt::LowerHex for $Uint as $Uint -> LowerHex }
+        int_base! { fmt::UpperHex for $Uint as $Uint -> UpperHex }
+    };
+}
+integer! { isize, usize }
+integer! { i8, u8 }
+integer! { i16, u16 }
+integer! { i32, u32 }
+integer! { i64, u64 }
+integer! { i128, u128 }
 macro_rules! debug {
-    ($T:ident) => {
+    ($($T:ident)*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
             #[inline]
@@ -158,31 +192,14 @@ macro_rules! debug {
                 }
             }
         }
-    };
+    )*};
+}
+debug! {
+  i8 i16 i32 i64 i128 isize
+  u8 u16 u32 u64 u128 usize
 }
 
-macro_rules! integer {
-    ($Int:ident, $Uint:ident) => {
-        int_base! { Binary   for $Int as $Uint  -> Binary }
-        int_base! { Octal    for $Int as $Uint  -> Octal }
-        int_base! { LowerHex for $Int as $Uint  -> LowerHex }
-        int_base! { UpperHex for $Int as $Uint  -> UpperHex }
-        debug! { $Int }
-
-        int_base! { Binary   for $Uint as $Uint -> Binary }
-        int_base! { Octal    for $Uint as $Uint -> Octal }
-        int_base! { LowerHex for $Uint as $Uint -> LowerHex }
-        int_base! { UpperHex for $Uint as $Uint -> UpperHex }
-        debug! { $Uint }
-    };
-}
-integer! { isize, usize }
-integer! { i8, u8 }
-integer! { i16, u16 }
-integer! { i32, u32 }
-integer! { i64, u64 }
-integer! { i128, u128 }
-
+// 2 digit decimal look up table
 static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
       2021222324252627282930313233343536373839\
       4041424344454647484950515253545556575859\
@@ -256,21 +273,20 @@ macro_rules! impl_Display {
             f.pad_integral(is_nonnegative, "", buf_slice)
         }
 
-        $(
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl fmt::Display for $t {
-                #[allow(unused_comparisons)]
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    let is_nonnegative = *self >= 0;
-                    let n = if is_nonnegative {
-                        self.$conv_fn()
-                    } else {
-                        // convert the negative num to positive by summing 1 to it's 2 complement
-                        (!self.$conv_fn()).wrapping_add(1)
-                    };
-                    $name(n, is_nonnegative, f)
-                }
-            })*
+        $(#[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Display for $t {
+            #[allow(unused_comparisons)]
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let is_nonnegative = *self >= 0;
+                let n = if is_nonnegative {
+                    self.$conv_fn()
+                } else {
+                    // convert the negative num to positive by summing 1 to it's 2 complement
+                    (!self.$conv_fn()).wrapping_add(1)
+                };
+                $name(n, is_nonnegative, f)
+            }
+        })*
     };
 }
 
@@ -461,6 +477,185 @@ mod imp {
     impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
     impl_Exp!(i64, u64 as u64 via to_u64 named exp_u64);
 }
-
-impl_Display!(i128, u128 as u128 via to_u128 named fmt_u128);
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
+
+/// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
+fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut isize) {
+    let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
+    let lut_ptr = DEC_DIGITS_LUT.as_ptr();
+    assert!(*curr > 19);
+
+    // SAFETY:
+    // Writes at most 19 characters into the buffer. Guaranteed that any ptr into LUT is at most
+    // 198, so will never OOB. There is a check above that there are at least 19 characters
+    // remaining.
+    unsafe {
+        if n >= 1e16 as u64 {
+            let to_parse = n % 1e16 as u64;
+            n /= 1e16 as u64;
+
+            // Some of these are nops but it looks more elegant this way.
+            let d1 = ((to_parse / 1e14 as u64) % 100) << 1;
+            let d2 = ((to_parse / 1e12 as u64) % 100) << 1;
+            let d3 = ((to_parse / 1e10 as u64) % 100) << 1;
+            let d4 = ((to_parse / 1e8 as u64) % 100) << 1;
+            let d5 = ((to_parse / 1e6 as u64) % 100) << 1;
+            let d6 = ((to_parse / 1e4 as u64) % 100) << 1;
+            let d7 = ((to_parse / 1e2 as u64) % 100) << 1;
+            let d8 = ((to_parse / 1e0 as u64) % 100) << 1;
+
+            *curr -= 16;
+
+            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d3 as isize), buf_ptr.offset(*curr + 4), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d4 as isize), buf_ptr.offset(*curr + 6), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d5 as isize), buf_ptr.offset(*curr + 8), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d6 as isize), buf_ptr.offset(*curr + 10), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d7 as isize), buf_ptr.offset(*curr + 12), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d8 as isize), buf_ptr.offset(*curr + 14), 2);
+        }
+        if n >= 1e8 as u64 {
+            let to_parse = n % 1e8 as u64;
+            n /= 1e8 as u64;
+
+            // Some of these are nops but it looks more elegant this way.
+            let d1 = ((to_parse / 1e6 as u64) % 100) << 1;
+            let d2 = ((to_parse / 1e4 as u64) % 100) << 1;
+            let d3 = ((to_parse / 1e2 as u64) % 100) << 1;
+            let d4 = ((to_parse / 1e0 as u64) % 100) << 1;
+            *curr -= 8;
+
+            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d3 as isize), buf_ptr.offset(*curr + 4), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d4 as isize), buf_ptr.offset(*curr + 6), 2);
+        }
+        // `n` < 1e8 < (1 << 32)
+        let mut n = n as u32;
+        if n >= 1e4 as u32 {
+            let to_parse = n % 1e4 as u32;
+            n /= 1e4 as u32;
+
+            let d1 = (to_parse / 100) << 1;
+            let d2 = (to_parse % 100) << 1;
+            *curr -= 4;
+
+            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
+            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
+        }
+
+        // `n` < 1e4 < (1 << 16)
+        let mut n = n as u16;
+        if n >= 100 {
+            let d1 = (n % 100) << 1;
+            n /= 100;
+            *curr -= 2;
+            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr), 2);
+        }
+
+        // decode last 1 or 2 chars
+        if n < 10 {
+            *curr -= 1;
+            *buf_ptr.offset(*curr) = (n as u8) + b'0';
+        } else {
+            let d1 = n << 1;
+            *curr -= 2;
+            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr), 2);
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for u128 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_u128(*self, true, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for i128 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let is_nonnegative = *self >= 0;
+        let n = if is_nonnegative {
+            self.to_u128()
+        } else {
+            // convert the negative num to positive by summing 1 to it's 2 complement
+            (!self.to_u128()).wrapping_add(1)
+        };
+        fmt_u128(n, is_nonnegative, f)
+    }
+}
+
+/// Specialized optimization for u128. Instead of taking two items at a time, it splits
+/// into at most 2 u64s, and then chunks by 10e16, 10e8, 10e4, 10e2, and then 10e1.
+/// It also has to handle 1 last item, as 10^40 > 2^128 > 10^39, whereas
+/// 10^20 > 2^64 > 10^19.
+fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    // 2^128 is about 3*10^38, so 39 gives an extra byte of space
+    let mut buf = [MaybeUninit::<u8>::uninit(); 39];
+    let mut curr = buf.len() as isize;
+    let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+
+    let (n, rem) = udiv_1e19(n);
+    parse_u64_into(rem, &mut buf, &mut curr);
+
+    if n != 0 {
+        // 0 pad up to point
+        let target = (buf.len() - 19) as isize;
+        // SAFETY: Guaranteed that we wrote at most 19 bytes, and there must be space
+        // remaining since it has length 39
+        unsafe {
+            ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
+        }
+        curr = target;
+
+        let (n, rem) = udiv_1e19(n);
+        parse_u64_into(rem, &mut buf, &mut curr);
+        // Should this following branch be annotated with unlikely?
+        if n != 0 {
+            let target = (buf.len() - 38) as isize;
+            // SAFETY: At this point we wrote at most 38 bytes, pad up to that point,
+            // There can only be at most 1 digit remaining.
+            unsafe {
+                ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
+                curr = target - 1;
+                *buf_ptr.offset(curr) = (n as u8) + b'0';
+            }
+        }
+    }
+
+    // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
+    // UTF-8 since `DEC_DIGITS_LUT` is
+    let buf_slice = unsafe {
+        str::from_utf8_unchecked(slice::from_raw_parts(
+            buf_ptr.offset(curr),
+            buf.len() - curr as usize,
+        ))
+    };
+    f.pad_integral(is_nonnegative, "", buf_slice)
+}
+
+/// Partition of `n` into n > 1e19 and rem <= 1e19
+fn udiv_1e19(n: u128) -> (u128, u64) {
+    const DIV: u64 = 1e19 as u64;
+    let high = (n >> 64) as u64;
+    if high == 0 {
+        let low = n as u64;
+        return ((low / DIV) as u128, low % DIV);
+    }
+    let sr = 65 - high.leading_zeros();
+    let mut q = n << (128 - sr);
+    let mut r = n >> sr;
+    let mut carry = 0;
+
+    for _ in 0..sr {
+        r = (r << 1) | (q >> 127);
+        q = (q << 1) | carry as u128;
+
+        let s = (DIV as u128).wrapping_sub(r).wrapping_sub(1) as i128 >> 127;
+        carry = (s & 1) as u64;
+        r -= (DIV as u128) & s as u128;
+    }
+    ((q << 1) | carry as u128, r as u64)
+}
