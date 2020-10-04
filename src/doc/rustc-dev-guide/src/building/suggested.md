@@ -1,6 +1,6 @@
 # Suggested Workflows
 
-The full bootstrapping process takes quite a while. Here are five suggestions
+The full bootstrapping process takes quite a while. Here are some suggestions
 to make your life easier.
 
 ## Configuring `rust-analyzer` for `rustc`
@@ -78,12 +78,16 @@ rustup override set nightly
 ```
 
 after [installing a nightly toolchain] with `rustup`. Don't forget to do this for all
-directories you have [setup a worktree for].
+directories you have [setup a worktree for]. You may need to use the pinned
+nightly version from `src/stage0.txt`, but often the normal `nightly` channel
+will work.
 
 **Note** see [the section on vscode] for how to configure it with this real rustfmt `x.py` uses, 
 and [the section on rustup] for how to setup `rustup` toolchain for your bootstrapped compiler
 
-**Note** This does _not_ allow you to build `rustc` with cargo directly. You still have to use `x.py` to work on the compiler or standard library, this just lets you use `cargo fmt`.
+**Note** This does _not_ allow you to build `rustc` with cargo directly. You
+still have to use `x.py` to work on the compiler or standard library, this just
+lets you use `cargo fmt`.
 
 [installing a nightly toolchain]: https://rust-lang.github.io/rustup/concepts/channels.html?highlight=nightl#working-with-nightly-rust
 [setup a worktree for]: ./suggested.html#working-on-multiple-branches-at-the-same-time
