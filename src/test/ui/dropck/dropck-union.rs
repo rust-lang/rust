@@ -1,5 +1,3 @@
-#![feature(untagged_unions)]
-
 use std::cell::Cell;
 use std::ops::Deref;
 use std::mem::ManuallyDrop;

@@ -1,8 +1,8 @@
 error[E0204]: the trait `Copy` may not be implemented for this type
-  --> $DIR/union-copy.rs:14:6
+  --> $DIR/union-copy.rs:12:6
    |
-LL |     a: String
-   |     --------- this field does not implement `Copy`
+LL |     a: std::mem::ManuallyDrop<String>
+   |     --------------------------------- this field does not implement `Copy`
 ...
 LL | impl Copy for W {}
    |      ^^^^

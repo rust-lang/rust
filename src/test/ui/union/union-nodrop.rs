@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(untagged_unions)]
-
 #![allow(dead_code)]
 
 use std::mem::needs_drop;

@@ -1,8 +1,6 @@
 // run-pass
 #![allow(dead_code)]
 
-#![feature(untagged_unions)]
-
 use std::mem::{size_of, size_of_val, align_of, align_of_val};
 
 #[repr(align(16))]
@@ -35,6 +33,7 @@ mod hybrid {
     use std::mem::{size_of, align_of};
 
     #[repr(align(16))]
+    #[derive(Copy, Clone)]
     struct S1 {
         a: u16,
         b: u8,

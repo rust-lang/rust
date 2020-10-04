@@ -1,5 +1,4 @@
 // run-pass
-#![feature(untagged_unions)]
 
 #[repr(C)]
 #[derive(Copy, Clone)]

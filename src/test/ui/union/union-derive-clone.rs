@@ -1,5 +1,3 @@
-#![feature(untagged_unions)]
-
 use std::mem::ManuallyDrop;
 
 #[derive(Clone)] //~ ERROR the trait bound `U1: Copy` is not satisfied
