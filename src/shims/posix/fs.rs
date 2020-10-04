@@ -1379,7 +1379,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     path_bytes = &path_bytes[..bufsize]
                 }
                 // 'readlink' truncates the resolved path if
-                // the provided buffer is not large enough
+                // the provided buffer is not large enough.
                 this.memory.write_bytes(buf, path_bytes.iter().copied())?;
                 Ok(path_bytes.len().try_into().unwrap())
             }
