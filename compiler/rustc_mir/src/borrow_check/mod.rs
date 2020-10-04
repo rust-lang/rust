@@ -111,7 +111,7 @@ fn mir_borrowck<'tcx>(
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
-        do_mir_borrowck(&infcx, input_body, promoted, def)
+        do_mir_borrowck(&infcx, input_body, promoted)
     });
     debug!("mir_borrowck done");
 
@@ -122,8 +122,9 @@ fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexVec<Promoted, Body<'tcx>>,
-    def: ty::WithOptConstParam<LocalDefId>,
 ) -> BorrowCheckResult<'tcx> {
+    let def = input_body.source.with_opt_param().as_local().unwrap();
+
     debug!("do_mir_borrowck(def = {:?})", def);
 
     let tcx = infcx.tcx;
@@ -185,7 +186,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     // will have a lifetime tied to the inference context.
     let mut body = input_body.clone();
     let mut promoted = input_promoted.clone();
-    let free_regions = nll::replace_regions_in_mir(infcx, def, param_env, &mut body, &mut promoted);
+    let free_regions = nll::replace_regions_in_mir(infcx, param_env, &mut body, &mut promoted);
     let body = &body; // no further changes
 
     let location_table = &LocationTable::new(&body);

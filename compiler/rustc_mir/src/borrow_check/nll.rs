@@ -2,7 +2,7 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{
@@ -58,11 +58,12 @@ crate struct NllOutput<'tcx> {
 /// `compute_regions`.
 pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
+    let def = body.source.with_opt_param().as_local().unwrap();
+
     debug!("replace_regions_in_mir(def={:?})", def);
 
     // Compute named region information. This also renumbers the inputs/outputs.

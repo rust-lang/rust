@@ -60,15 +60,13 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
             return;
         }
 
-        let def = body.source.with_opt_param().expect_local();
-
         let mut rpo = traversal::reverse_postorder(body);
         let ccx = ConstCx::new(tcx, body);
         let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
         let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);
 
-        let promoted = promote_candidates(def.to_global(), body, tcx, temps, promotable_candidates);
+        let promoted = promote_candidates(body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
     }
 }
@@ -970,10 +968,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(
         mut self,
-        def: ty::WithOptConstParam<DefId>,
         candidate: Candidate,
         next_promoted_id: usize,
     ) -> Option<Body<'tcx>> {
+        let def = self.source.source.with_opt_param();
         let mut rvalue = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
@@ -1133,7 +1131,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 }
 
 pub fn promote_candidates<'tcx>(
-    def: ty::WithOptConstParam<DefId>,
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
@@ -1191,7 +1188,7 @@ pub fn promote_candidates<'tcx>(
         };
 
         //FIXME(oli-obk): having a `maybe_push()` method on `IndexVec` might be nice
-        if let Some(mut promoted) = promoter.promote_candidate(def, candidate, promotions.len()) {
+        if let Some(mut promoted) = promoter.promote_candidate(candidate, promotions.len()) {
             promoted.source.promoted = Some(promotions.next_index());
             promotions.push(promoted);
         }
