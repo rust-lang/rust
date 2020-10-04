@@ -4,6 +4,14 @@
 use std::fmt::Debug;
 use std::hint::black_box;
 
+fn main() {
+    basic();
+    casts();
+    more_casts();
+    ops();
+    nan_casts();
+}
+
 // Helper function to avoid promotion so that this tests "run-time" casts, not CTFE.
 // Doesn't make a big difference when running this in Miri, but it means we can compare this
 // with the LLVM backend by running `rustc -Zmir-opt-level=0 -Zsaturating-float-casts`.
@@ -76,13 +84,6 @@ fn test_both_cast<F, I>(x: F, y: I)
 {
     assert_eq!(x.cast(), y);
     assert_eq!(unsafe { x.cast_unchecked() }, y);
-}
-
-fn main() {
-    basic();
-    casts();
-    more_casts();
-    ops();
 }
 
 fn basic() {
@@ -443,4 +444,18 @@ fn more_casts() {
     // nextDown(f32::MAX) = 2^128 - 2 * 2^104
     const SECOND_LARGEST_F32: f32 = 340282326356119256160033759537265639424.;
     test!(SECOND_LARGEST_F32, f32 -> u128, 0xfffffe00000000000000000000000000);
+}
+
+fn nan_casts() {
+    let nan1 = f64::from_bits(0x7FF0_0001_0000_0001u64);
+    let nan2 = f64::from_bits(0x7FF0_0000_0000_0001u64);
+
+    assert!(nan1.is_nan());
+    assert!(nan2.is_nan());
+
+    let nan1_32 = nan1 as f32;
+    let nan2_32 = nan2 as f32;
+
+    assert!(nan1_32.is_nan());
+    assert!(nan2_32.is_nan());
 }
