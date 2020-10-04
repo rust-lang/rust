@@ -32,7 +32,7 @@ macro_rules! impl_helper {
     })*)
 }
 
-impl_helper! { u8 u16 }
+impl_helper! { u8 u16 u32 }
 
 struct Parser<'a> {
     // parsing as ASCII, so can use byte array
@@ -219,6 +219,14 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Read a % followed by a scope id in base 10.
+    fn read_scope_id(&mut self) -> Option<u32> {
+        self.read_atomically(|p| {
+            p.read_given_char('%')?;
+            p.read_number(10, None)
+        })
+    }
+
     /// Read an IPV4 address with a port
     fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
         self.read_atomically(|p| {
@@ -233,10 +241,11 @@ impl<'a> Parser<'a> {
         self.read_atomically(|p| {
             p.read_given_char('[')?;
             let ip = p.read_ipv6_addr()?;
+            let scope_id = p.read_scope_id().unwrap_or(0);
             p.read_given_char(']')?;
 
             let port = p.read_port()?;
-            Some(SocketAddrV6::new(ip, port, 0, 0))
+            Some(SocketAddrV6::new(ip, port, 0, scope_id))
         })
     }
 
