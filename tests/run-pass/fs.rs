@@ -239,17 +239,17 @@ fn test_symlink() {
         // and check that the last byte is not overwritten.
         let mut large_buf = vec![0xFF; expected_path.len() + 1];
         let res = unsafe { libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len()) };
-        assert_eq!(res, large_buf.len() as isize - 1);
         // Check that the resovled path was properly written into the buf.
         assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
         assert_eq!(large_buf.last(), Some(&0xFF));
+        assert_eq!(res, large_buf.len() as isize - 1);
 
         // Test that the resolved path is truncated if the provided buffer
         // is too small.
         let mut small_buf = [0u8; 2];
         let res = unsafe { libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len()) };
-        assert_eq!(res, small_buf.len() as isize);
         assert_eq!(small_buf, &expected_path[..small_buf.len()]);
+        assert_eq!(res, small_buf.len() as isize);
 
         // Test that we report a proper error for a missing path.
         let bad_path = CString::new("MIRI_MISSING_FILE_NAME").unwrap();
