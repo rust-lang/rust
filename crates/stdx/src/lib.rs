@@ -35,7 +35,7 @@ pub fn to_lower_snake_case(s: &str) -> String {
         // `&& prev` is required to not insert `_` before the first symbol.
         if c.is_ascii_uppercase() && prev {
             // This check is required to not translate `Weird_Case` into `weird__case`.
-            if buf.chars().last() != Some('_') {
+            if !buf.ends_with('_') {
                 buf.push('_')
             }
         }

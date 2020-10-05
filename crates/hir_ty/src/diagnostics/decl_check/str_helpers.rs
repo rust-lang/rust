@@ -13,7 +13,7 @@ enum DetectedCase {
 fn detect_case(ident: &str) -> DetectedCase {
     let trimmed_ident = ident.trim_matches('_');
     let first_lowercase =
-        trimmed_ident.chars().next().map(|chr| chr.is_ascii_lowercase()).unwrap_or(false);
+        trimmed_ident.starts_with(|chr| chr.is_ascii_lowercase());
     let mut has_lowercase = first_lowercase;
     let mut has_uppercase = false;
     let mut has_underscore = false;
@@ -102,7 +102,7 @@ pub fn to_camel_case(ident: &str) -> Option<String> {
 }
 
 /// Converts an identifier to a lower_snake_case form.
-/// Returns `None` if the string is already is lower_snake_case.
+/// Returns `None` if the string is already in lower_snake_case.
 pub fn to_lower_snake_case(ident: &str) -> Option<String> {
     // First, assume that it's UPPER_SNAKE_CASE.
     match detect_case(ident) {
