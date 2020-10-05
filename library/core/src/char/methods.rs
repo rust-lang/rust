@@ -1229,10 +1229,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
-        match *self {
-            'A'..='Z' | 'a'..='z' => true,
-            _ => false,
-        }
+        matches!(*self, 'A'..='Z' | 'a'..='z')
     }
 
     /// Checks if the value is an ASCII uppercase character:
@@ -1265,10 +1262,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_uppercase(&self) -> bool {
-        match *self {
-            'A'..='Z' => true,
-            _ => false,
-        }
+        matches!(*self, 'A'..='Z')
     }
 
     /// Checks if the value is an ASCII lowercase character:
@@ -1301,10 +1295,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_lowercase(&self) -> bool {
-        match *self {
-            'a'..='z' => true,
-            _ => false,
-        }
+        matches!(*self, 'a'..='z')
     }
 
     /// Checks if the value is an ASCII alphanumeric character:
@@ -1340,10 +1331,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
-        match *self {
-            '0'..='9' | 'A'..='Z' | 'a'..='z' => true,
-            _ => false,
-        }
+        matches!(*self, '0'..='9' | 'A'..='Z' | 'a'..='z')
     }
 
     /// Checks if the value is an ASCII decimal digit:
@@ -1376,10 +1364,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_digit(&self) -> bool {
-        match *self {
-            '0'..='9' => true,
-            _ => false,
-        }
+        matches!(*self, '0'..='9')
     }
 
     /// Checks if the value is an ASCII hexadecimal digit:
@@ -1415,10 +1400,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
-        match *self {
-            '0'..='9' | 'A'..='F' | 'a'..='f' => true,
-            _ => false,
-        }
+        matches!(*self, '0'..='9' | 'A'..='F' | 'a'..='f')
     }
 
     /// Checks if the value is an ASCII punctuation character:
@@ -1455,10 +1437,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_punctuation(&self) -> bool {
-        match *self {
-            '!'..='/' | ':'..='@' | '['..='`' | '{'..='~' => true,
-            _ => false,
-        }
+        matches!(*self, '!'..='/' | ':'..='@' | '['..='`' | '{'..='~')
     }
 
     /// Checks if the value is an ASCII graphic character:
@@ -1491,10 +1470,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_graphic(&self) -> bool {
-        match *self {
-            '!'..='~' => true,
-            _ => false,
-        }
+        matches!(*self, '!'..='~')
     }
 
     /// Checks if the value is an ASCII whitespace character:
@@ -1544,10 +1520,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_whitespace(&self) -> bool {
-        match *self {
-            '\t' | '\n' | '\x0C' | '\r' | ' ' => true,
-            _ => false,
-        }
+        matches!(*self, '\t' | '\n' | '\x0C' | '\r' | ' ')
     }
 
     /// Checks if the value is an ASCII control character:
@@ -1582,10 +1555,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_control(&self) -> bool {
-        match *self {
-            '\0'..='\x1F' | '\x7F' => true,
-            _ => false,
-        }
+        matches!(*self, '\0'..='\x1F' | '\x7F')
     }
 }
 
