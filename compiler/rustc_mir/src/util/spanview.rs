@@ -16,9 +16,13 @@ const ANNOTATION_RIGHT_BRACKET: char = '\u{2989}'; // Unicode `Z NOTATION LEFT B
 const NEW_LINE_SPAN: &str = "</span>\n<span class=\"line\">";
 const HEADER: &str = r#"<!DOCTYPE html>
 <html>
-<head>
-    <title>coverage_of_if_else - Code Regions</title>
-    <style>
+<head>"#;
+const START_BODY: &str = r#"</head>
+<body>"#;
+const FOOTER: &str = r#"</body>
+</html>"#;
+
+const STYLE_SECTION: &str = r#"<style>
     .line {
         counter-increment: line;
     }
@@ -72,16 +76,12 @@ const HEADER: &str = r#"<!DOCTYPE html>
         /* requires hover over a span ONLY on its first line */
         display: inline-block;
     }
-    </style>
-</head>
-<body>"#;
-
-const FOOTER: &str = r#"
-</body>
-</html>"#;
+</style>"#;
 
 /// Metadata to highlight the span of a MIR BasicBlock, Statement, or Terminator.
+#[derive(Clone, Debug)]
 pub struct SpanViewable {
+    pub bb: BasicBlock,
     pub span: Span,
     pub id: String,
     pub tooltip: String,
@@ -92,6 +92,7 @@ pub fn write_mir_fn_spanview<'tcx, W>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     spanview: MirSpanview,
+    title: &str,
     w: &mut W,
 ) -> io::Result<()>
 where
@@ -126,16 +127,17 @@ where
             }
         }
     }
-    write_spanview_document(tcx, def_id, span_viewables, w)?;
+    write_document(tcx, def_id, span_viewables, title, w)?;
     Ok(())
 }
 
 /// Generate a spanview HTML+CSS document for the given local function `def_id`, and a pre-generated
 /// list `SpanViewable`s.
-pub fn write_spanview_document<'tcx, W>(
+pub fn write_document<'tcx, W>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     mut span_viewables: Vec<SpanViewable>,
+    title: &str,
     w: &mut W,
 ) -> io::Result<()>
 where
@@ -153,6 +155,9 @@ where
         source_map.span_to_snippet(fn_span).expect("function should have printable source")
     );
     writeln!(w, "{}", HEADER)?;
+    writeln!(w, "<title>{}</title>", title)?;
+    writeln!(w, "{}", STYLE_SECTION)?;
+    writeln!(w, "{}", START_BODY)?;
     write!(
         w,
         r#"<div class="code" style="counter-reset: line {}"><span class="line">{}"#,
@@ -182,6 +187,7 @@ where
             end_pos.to_usize(),
             ordered_viewables.len()
         );
+        let curr_id = &ordered_viewables[0].id;
         let (next_from_pos, next_ordered_viewables) = write_next_viewable_with_overlaps(
             tcx,
             from_pos,
@@ -204,13 +210,17 @@ where
         from_pos = next_from_pos;
         if next_ordered_viewables.len() != ordered_viewables.len() {
             ordered_viewables = next_ordered_viewables;
-            alt = !alt;
+            if let Some(next_ordered_viewable) = ordered_viewables.first() {
+                if &next_ordered_viewable.id != curr_id {
+                    alt = !alt;
+                }
+            }
         }
     }
     if from_pos < end_pos {
         write_coverage_gap(tcx, from_pos, end_pos, w)?;
     }
-    write!(w, r#"</span></div>"#)?;
+    writeln!(w, r#"</span></div>"#)?;
     writeln!(w, "{}", FOOTER)?;
     Ok(())
 }
@@ -273,7 +283,7 @@ fn statement_span_viewable<'tcx>(
     }
     let id = format!("{}[{}]", bb.index(), i);
     let tooltip = tooltip(tcx, &id, span, vec![statement.clone()], &None);
-    Some(SpanViewable { span, id, tooltip })
+    Some(SpanViewable { bb, span, id, tooltip })
 }
 
 fn terminator_span_viewable<'tcx>(
@@ -289,7 +299,7 @@ fn terminator_span_viewable<'tcx>(
     }
     let id = format!("{}:{}", bb.index(), terminator_kind_name(term));
     let tooltip = tooltip(tcx, &id, span, vec![], &data.terminator);
-    Some(SpanViewable { span, id, tooltip })
+    Some(SpanViewable { bb, span, id, tooltip })
 }
 
 fn block_span_viewable<'tcx>(
@@ -304,7 +314,7 @@ fn block_span_viewable<'tcx>(
     }
     let id = format!("{}", bb.index());
     let tooltip = tooltip(tcx, &id, span, data.statements.clone(), &data.terminator);
-    Some(SpanViewable { span, id, tooltip })
+    Some(SpanViewable { bb, span, id, tooltip })
 }
 
 fn compute_block_span<'tcx>(data: &BasicBlockData<'tcx>, body_span: Span) -> Span {
@@ -456,6 +466,7 @@ where
             remaining_viewables.len()
         );
         // Write the overlaps (and the overlaps' overlaps, if any) up to `to_pos`.
+        let curr_id = &remaining_viewables[0].id;
         let (next_from_pos, next_remaining_viewables) = write_next_viewable_with_overlaps(
             tcx,
             from_pos,
@@ -480,7 +491,11 @@ where
         from_pos = next_from_pos;
         if next_remaining_viewables.len() != remaining_viewables.len() {
             remaining_viewables = next_remaining_viewables;
-            subalt = !subalt;
+            if let Some(next_ordered_viewable) = remaining_viewables.first() {
+                if &next_ordered_viewable.id != curr_id {
+                    subalt = !subalt;
+                }
+            }
         }
     }
     if from_pos <= viewable.span.hi() {
@@ -649,8 +664,12 @@ fn fn_span<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Span {
         tcx.hir().local_def_id_to_hir_id(def_id.as_local().expect("expected DefId is local"));
     let fn_decl_span = tcx.hir().span(hir_id);
     let body_span = hir_body(tcx, def_id).value.span;
-    debug_assert_eq!(fn_decl_span.ctxt(), body_span.ctxt());
-    fn_decl_span.to(body_span)
+    if fn_decl_span.ctxt() == body_span.ctxt() {
+        fn_decl_span.to(body_span)
+    } else {
+        // This probably occurs for functions defined via macros
+        body_span
+    }
 }
 
 fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx rustc_hir::Body<'tcx> {

@@ -752,7 +752,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_coverage(&mut self,
-                              _kind: & $($mutability)? Coverage,
+                              _coverage: & $($mutability)? Coverage,
                               _location: Location) {
             }
 

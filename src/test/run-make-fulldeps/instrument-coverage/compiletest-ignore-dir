@@ -1,3 +1,0 @@
-# Directory "instrument-coverage" supports the tests at prefix ../instrument-coverage-*
-
-# Use ./x.py [options] test src/test/run-make-fulldeps/instrument-coverage to run all related tests.

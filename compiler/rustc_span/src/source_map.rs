@@ -428,58 +428,22 @@ impl SourceMap {
         }
     }
 
+    /// Return the SourceFile that contains the given `BytePos`
+    pub fn lookup_source_file(&self, pos: BytePos) -> Lrc<SourceFile> {
+        let idx = self.lookup_source_file_idx(pos);
+        (*self.files.borrow().source_files)[idx].clone()
+    }
+
     /// Looks up source information about a `BytePos`.
     pub fn lookup_char_pos(&self, pos: BytePos) -> Loc {
-        let chpos = self.bytepos_to_file_charpos(pos);
-        match self.lookup_line(pos) {
-            Ok(SourceFileAndLine { sf: f, line: a }) => {
-                let line = a + 1; // Line numbers start at 1
-                let linebpos = f.lines[a];
-                let linechpos = self.bytepos_to_file_charpos(linebpos);
-                let col = chpos - linechpos;
-
-                let col_display = {
-                    let start_width_idx = f
-                        .non_narrow_chars
-                        .binary_search_by_key(&linebpos, |x| x.pos())
-                        .unwrap_or_else(|x| x);
-                    let end_width_idx = f
-                        .non_narrow_chars
-                        .binary_search_by_key(&pos, |x| x.pos())
-                        .unwrap_or_else(|x| x);
-                    let special_chars = end_width_idx - start_width_idx;
-                    let non_narrow: usize = f.non_narrow_chars[start_width_idx..end_width_idx]
-                        .iter()
-                        .map(|x| x.width())
-                        .sum();
-                    col.0 - special_chars + non_narrow
-                };
-                debug!("byte pos {:?} is on the line at byte pos {:?}", pos, linebpos);
-                debug!("char pos {:?} is on the line at char pos {:?}", chpos, linechpos);
-                debug!("byte is on line: {}", line);
-                assert!(chpos >= linechpos);
-                Loc { file: f, line, col, col_display }
-            }
-            Err(f) => {
-                let col_display = {
-                    let end_width_idx = f
-                        .non_narrow_chars
-                        .binary_search_by_key(&pos, |x| x.pos())
-                        .unwrap_or_else(|x| x);
-                    let non_narrow: usize =
-                        f.non_narrow_chars[0..end_width_idx].iter().map(|x| x.width()).sum();
-                    chpos.0 - end_width_idx + non_narrow
-                };
-                Loc { file: f, line: 0, col: chpos, col_display }
-            }
-        }
+        let sf = self.lookup_source_file(pos);
+        let (line, col, col_display) = sf.lookup_file_pos_with_col_display(pos);
+        Loc { file: sf, line, col, col_display }
     }
 
     // If the corresponding `SourceFile` is empty, does not return a line number.
     pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
-        let idx = self.lookup_source_file_idx(pos);
-
-        let f = (*self.files.borrow().source_files)[idx].clone();
+        let f = self.lookup_source_file(pos);
 
         match f.lookup_line(pos) {
             Some(line) => Ok(SourceFileAndLine { sf: f, line }),
@@ -934,27 +898,8 @@ impl SourceMap {
     /// Converts an absolute `BytePos` to a `CharPos` relative to the `SourceFile`.
     pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
         let idx = self.lookup_source_file_idx(bpos);
-        let map = &(*self.files.borrow().source_files)[idx];
-
-        // The number of extra bytes due to multibyte chars in the `SourceFile`.
-        let mut total_extra_bytes = 0;
-
-        for mbc in map.multibyte_chars.iter() {
-            debug!("{}-byte char at {:?}", mbc.bytes, mbc.pos);
-            if mbc.pos < bpos {
-                // Every character is at least one byte, so we only
-                // count the actual extra bytes.
-                total_extra_bytes += mbc.bytes as u32 - 1;
-                // We should never see a byte position in the middle of a
-                // character.
-                assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes as u32);
-            } else {
-                break;
-            }
-        }
-
-        assert!(map.start_pos.to_u32() + total_extra_bytes <= bpos.to_u32());
-        CharPos(bpos.to_usize() - map.start_pos.to_usize() - total_extra_bytes as usize)
+        let sf = &(*self.files.borrow().source_files)[idx];
+        sf.bytepos_to_file_charpos(bpos)
     }
 
     // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.

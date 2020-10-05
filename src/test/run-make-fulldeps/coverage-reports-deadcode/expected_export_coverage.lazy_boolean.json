@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/lazy_boolean.rs",
+          "summary": {
+            "functions": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "lines": {
+              "count": 21,
+              "covered": 19,
+              "percent": 90.47619047619048
+            },
+            "regions": {
+              "count": 16,
+              "covered": 14,
+              "notcovered": 2,
+              "percent": 87.5
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 1,
+          "covered": 1,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 1,
+          "covered": 1,
+          "percent": 100
+        },
+        "lines": {
+          "count": 21,
+          "covered": 19,
+          "percent": 90.47619047619048
+        },
+        "regions": {
+          "count": 16,
+          "covered": 14,
+          "notcovered": 2,
+          "percent": 87.5
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

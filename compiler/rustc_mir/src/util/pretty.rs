@@ -150,26 +150,25 @@ fn dump_matched_mir_node<'tcx, F>(
 
     if let Some(spanview) = tcx.sess.opts.debugging_opts.dump_mir_spanview {
         let _: io::Result<()> = try {
-            let mut file =
-                create_dump_file(tcx, "html", pass_num, pass_name, disambiguator, body.source)?;
+            let file_basename =
+                dump_file_basename(tcx, pass_num, pass_name, disambiguator, body.source);
+            let mut file = create_dump_file_with_basename(tcx, &file_basename, "html")?;
             if body.source.def_id().is_local() {
-                write_mir_fn_spanview(tcx, body, spanview, &mut file)?;
+                write_mir_fn_spanview(tcx, body, spanview, &file_basename, &mut file)?;
             }
         };
     }
 }
 
-/// Returns the path to the filename where we should dump a given MIR.
-/// Also used by other bits of code (e.g., NLL inference) that dump
-/// graphviz data or other things.
-fn dump_path(
+/// Returns the file basename portion (without extension) of a filename path
+/// where we should dump a MIR representation output files.
+fn dump_file_basename(
     tcx: TyCtxt<'_>,
-    extension: &str,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
     source: MirSource<'tcx>,
-) -> PathBuf {
+) -> String {
     let promotion_id = match source.promoted {
         Some(id) => format!("-{:?}", id),
         None => String::new(),
@@ -183,9 +182,6 @@ fn dump_path(
             Some(pass_num) => format!(".{}", pass_num),
         }
     };
-
-    let mut file_path = PathBuf::new();
-    file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
 
     let crate_name = tcx.crate_name(source.def_id().krate);
     let item_name = tcx.def_path(source.def_id()).to_filename_friendly_no_crate();
@@ -206,21 +202,44 @@ fn dump_path(
         _ => String::new(),
     };
 
-    let file_name = format!(
-        "{}.{}{}{}{}.{}.{}.{}",
-        crate_name,
-        item_name,
-        shim_disambiguator,
-        promotion_id,
-        pass_num,
-        pass_name,
-        disambiguator,
-        extension,
-    );
+    format!(
+        "{}.{}{}{}{}.{}.{}",
+        crate_name, item_name, shim_disambiguator, promotion_id, pass_num, pass_name, disambiguator,
+    )
+}
+
+/// Returns the path to the filename where we should dump a given MIR.
+/// Also used by other bits of code (e.g., NLL inference) that dump
+/// graphviz data or other things.
+fn dump_path(tcx: TyCtxt<'_>, basename: &str, extension: &str) -> PathBuf {
+    let mut file_path = PathBuf::new();
+    file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
+
+    let file_name = format!("{}.{}", basename, extension,);
 
     file_path.push(&file_name);
 
     file_path
+}
+
+/// Attempts to open the MIR dump file with the given name and extension.
+fn create_dump_file_with_basename(
+    tcx: TyCtxt<'_>,
+    file_basename: &str,
+    extension: &str,
+) -> io::Result<io::BufWriter<fs::File>> {
+    let file_path = dump_path(tcx, file_basename, extension);
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            io::Error::new(
+                e.kind(),
+                format!("IO error creating MIR dump directory: {:?}; {}", parent, e),
+            )
+        })?;
+    }
+    Ok(io::BufWriter::new(fs::File::create(&file_path).map_err(|e| {
+        io::Error::new(e.kind(), format!("IO error creating MIR dump file: {:?}; {}", file_path, e))
+    })?))
 }
 
 /// Attempts to open a file where we should dump a given MIR or other
@@ -235,11 +254,11 @@ pub(crate) fn create_dump_file(
     disambiguator: &dyn Display,
     source: MirSource<'tcx>,
 ) -> io::Result<io::BufWriter<fs::File>> {
-    let file_path = dump_path(tcx, extension, pass_num, pass_name, disambiguator, source);
-    if let Some(parent) = file_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    Ok(io::BufWriter::new(fs::File::create(&file_path)?))
+    create_dump_file_with_basename(
+        tcx,
+        &dump_file_basename(tcx, pass_num, pass_name, disambiguator, source),
+        extension,
+    )
 }
 
 /// Write out a human-readable textual representation for the given MIR.
