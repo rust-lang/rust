@@ -3,6 +3,7 @@ allow-unauthenticated = [
     "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*",
     "D-*",
     "requires-nightly",
+    "regression-*",
     # I-* without I-nominated
     "I-*", "!I-nominated",
     "AsyncAwait-OnDeck",
