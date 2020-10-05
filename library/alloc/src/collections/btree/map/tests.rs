@@ -1,4 +1,4 @@
-use super::super::{navigate::Position, node, DeterministicRng};
+use super::super::{node, DeterministicRng};
 use super::Entry::{Occupied, Vacant};
 use super::*;
 use crate::boxed::Box;
@@ -7,7 +7,7 @@ use crate::rc::Rc;
 use crate::string::{String, ToString};
 use crate::vec::Vec;
 use std::convert::TryFrom;
-use std::iter::FromIterator;
+use std::iter::{self, FromIterator};
 use std::mem;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
@@ -42,19 +42,6 @@ fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>
     }
 }
 
-struct SeriesChecker<T> {
-    previous: Option<T>,
-}
-
-impl<T: Copy + Debug + Ord> SeriesChecker<T> {
-    fn is_ascending(&mut self, next: T) {
-        if let Some(previous) = self.previous {
-            assert!(previous < next, "{:?} >= {:?}", previous, next);
-        }
-        self.previous = Some(next);
-    }
-}
-
 impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
     /// Panics if the map (or the code navigating it) is corrupted.
     fn check(&self)
@@ -63,44 +50,10 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
     {
         if let Some(root) = &self.root {
             let root_node = root.node_as_ref();
-            let mut checker = SeriesChecker { previous: None };
-            let mut internal_length = 0;
-            let mut internal_kv_count = 0;
-            let mut leaf_length = 0;
-            root_node.visit_nodes_in_order(|pos| match pos {
-                Position::Leaf(node) => {
-                    let is_root = root_node.height() == 0;
-                    let min_len = if is_root { 0 } else { node::MIN_LEN };
-                    assert!(node.len() >= min_len, "{} < {}", node.len(), min_len);
-
-                    for idx in 0..node.len() {
-                        let key = *unsafe { node.key_at(idx) };
-                        checker.is_ascending(key);
-                    }
-                    leaf_length += node.len();
-                }
-                Position::Internal(node) => {
-                    let is_root = root_node.height() == node.height();
-                    let min_len = if is_root { 1 } else { node::MIN_LEN };
-                    assert!(node.len() >= min_len, "{} < {}", node.len(), min_len);
-
-                    for idx in 0..=node.len() {
-                        let edge = unsafe { node::Handle::new_edge(node, idx) };
-                        assert!(edge.descend().ascend().ok().unwrap() == edge);
-                    }
-
-                    internal_length += node.len();
-                }
-                Position::InternalKV(kv) => {
-                    let key = *kv.into_kv().0;
-                    checker.is_ascending(key);
-
-                    internal_kv_count += 1;
-                }
-            });
-            assert_eq!(internal_length, internal_kv_count);
-            assert_eq!(root_node.calc_length(), internal_length + leaf_length);
-            assert_eq!(self.length, internal_length + leaf_length);
+            assert!(root_node.ascend().is_err());
+            root_node.assert_back_pointers();
+            root_node.assert_ascending();
+            assert_eq!(self.length, root_node.assert_and_add_lengths());
         } else {
             assert_eq!(self.length, 0);
         }
@@ -116,28 +69,7 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
         K: Debug,
     {
         if let Some(root) = self.root.as_ref() {
-            let mut result = String::new();
-            let root_node = root.node_as_ref();
-            root_node.visit_nodes_in_order(|pos| match pos {
-                Position::Leaf(leaf) => {
-                    let depth = root_node.height();
-                    let indent = "  ".repeat(depth);
-                    result += &format!("\n{}", indent);
-                    for idx in 0..leaf.len() {
-                        if idx > 0 {
-                            result += ", ";
-                        }
-                        result += &format!("{:?}", unsafe { leaf.key_at(idx) });
-                    }
-                }
-                Position::Internal(_) => {}
-                Position::InternalKV(kv) => {
-                    let depth = root_node.height() - kv.into_node().height();
-                    let indent = "  ".repeat(depth);
-                    result += &format!("\n{}{:?}", indent, kv.into_kv().0);
-                }
-            });
-            result
+            root.node_as_ref().dump_keys()
         } else {
             String::from("not yet allocated")
         }
@@ -170,7 +102,6 @@ fn test_levels() {
         let last_key = *map.last_key_value().unwrap().0;
         map.insert(last_key + 1, ());
     }
-    println!("{}", map.dump_keys());
     map.check();
     // Structure:
     // - 1 element in internal root node with 2 children
@@ -372,7 +303,7 @@ fn test_iter_rev() {
 fn do_test_iter_mut_mutation<T>(size: usize)
 where
     T: Copy + Debug + Ord + TryFrom<usize>,
-    <T as std::convert::TryFrom<usize>>::Error: std::fmt::Debug,
+    <T as TryFrom<usize>>::Error: Debug,
 {
     let zero = T::try_from(0).unwrap();
     let mut map: BTreeMap<T, T> = (0..size).map(|i| (T::try_from(i).unwrap(), zero)).collect();
@@ -857,7 +788,7 @@ mod test_drain_filter {
     fn consuming_nothing() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map: BTreeMap<_, _> = pairs.collect();
-        assert!(map.drain_filter(|_, _| false).eq(std::iter::empty()));
+        assert!(map.drain_filter(|_, _| false).eq(iter::empty()));
         map.check();
     }
 
@@ -878,7 +809,7 @@ mod test_drain_filter {
                 *v += 6;
                 false
             })
-            .eq(std::iter::empty())
+            .eq(iter::empty())
         );
         assert!(map.keys().copied().eq(0..3));
         assert!(map.values().copied().eq(6..9));
