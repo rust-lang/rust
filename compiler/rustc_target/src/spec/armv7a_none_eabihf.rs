@@ -7,7 +7,7 @@
 
 use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Result<Target, String> {
+pub fn target() -> Target {
     let opts = TargetOptions {
         linker: Some("rust-lld".to_owned()),
         features: "+v7,+vfp3,-d32,+thumb2,-neon,+strict-align".to_string(),
@@ -20,7 +20,7 @@ pub fn target() -> Result<Target, String> {
         emit_debug_gdb_scripts: false,
         ..Default::default()
     };
-    Ok(Target {
+    Target {
         llvm_target: "armv7a-none-eabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -32,5 +32,5 @@ pub fn target() -> Result<Target, String> {
         arch: "arm".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: opts,
-    })
+    }
 }

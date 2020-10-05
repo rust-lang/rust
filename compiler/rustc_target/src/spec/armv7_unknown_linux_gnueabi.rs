@@ -1,11 +1,11 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 // This target is for glibc Linux on ARMv7 without thumb-mode, NEON or
 // hardfloat.
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let base = super::linux_base::opts();
-    Ok(Target {
+    Target {
         llvm_target: "armv7-unknown-linux-gnueabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -25,5 +25,5 @@ pub fn target() -> TargetResult {
             target_mcount: "\u{1}__gnu_mcount_nc".to_string(),
             ..base
         },
-    })
+    }
 }

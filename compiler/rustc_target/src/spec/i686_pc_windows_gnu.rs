@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::windows_gnu_base::opts();
     base.cpu = "pentium4".to_string();
     base.pre_link_args
@@ -16,7 +16,7 @@ pub fn target() -> TargetResult {
         .unwrap()
         .push("-Wl,--large-address-aware".to_string());
 
-    Ok(Target {
+    Target {
         llvm_target: "i686-pc-windows-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -30,5 +30,5 @@ pub fn target() -> TargetResult {
         target_vendor: "pc".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
-    })
+    }
 }

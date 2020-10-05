@@ -1,7 +1,7 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "mips-unknown-linux-gnu".to_string(),
         target_endian: "big".to_string(),
         target_pointer_width: "32".to_string(),
@@ -20,5 +20,5 @@ pub fn target() -> TargetResult {
 
             ..super::linux_base::opts()
         },
-    })
+    }
 }

@@ -1,9 +1,9 @@
 // Targets the Cortex-M23 processor (Baseline ARMv8-M)
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "thumbv8m.base-none-eabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -22,5 +22,5 @@ pub fn target() -> TargetResult {
             max_atomic_width: Some(32),
             ..super::thumb_base::opts()
         },
-    })
+    }
 }

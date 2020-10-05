@@ -1,10 +1,10 @@
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::hermit_base::opts();
     base.max_atomic_width = Some(128);
 
-    Ok(Target {
+    Target {
         llvm_target: "aarch64-unknown-hermit".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -16,5 +16,5 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: base,
-    })
+    }
 }

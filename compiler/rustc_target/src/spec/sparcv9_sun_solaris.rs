@@ -1,13 +1,13 @@
-use crate::spec::{LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::solaris_base::opts();
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
     // llvm calls this "v9"
     base.cpu = "v9".to_string();
     base.max_atomic_width = Some(64);
 
-    Ok(Target {
+    Target {
         llvm_target: "sparcv9-sun-solaris".to_string(),
         target_endian: "big".to_string(),
         target_pointer_width: "64".to_string(),
@@ -23,5 +23,5 @@ pub fn target() -> TargetResult {
         target_vendor: "sun".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
-    })
+    }
 }

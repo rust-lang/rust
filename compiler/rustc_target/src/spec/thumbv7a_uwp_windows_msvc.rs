@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::windows_uwp_msvc_base::opts();
     base.max_atomic_width = Some(64);
     base.has_elf_tls = true;
@@ -9,7 +9,7 @@ pub fn target() -> TargetResult {
     // implemented for windows/arm in LLVM
     base.panic_strategy = PanicStrategy::Abort;
 
-    Ok(Target {
+    Target {
         llvm_target: "thumbv7a-pc-windows-msvc".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -26,5 +26,5 @@ pub fn target() -> TargetResult {
             unsupported_abis: super::arm_base::unsupported_abis(),
             ..base
         },
-    })
+    }
 }

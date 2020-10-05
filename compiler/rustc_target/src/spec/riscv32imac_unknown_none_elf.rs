@@ -1,8 +1,8 @@
 use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
-use crate::spec::{Target, TargetOptions, TargetResult};
+use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".to_string(),
         llvm_target: "riscv32".to_string(),
         target_endian: "little".to_string(),
@@ -28,5 +28,5 @@ pub fn target() -> TargetResult {
             eh_frame_header: false,
             ..Default::default()
         },
-    })
+    }
 }

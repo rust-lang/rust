@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
@@ -9,7 +9,7 @@ pub fn target() -> TargetResult {
     pre_link_args.push("-Wl,-znotext".to_string());
     base.stack_probes = true;
 
-    Ok(Target {
+    Target {
         llvm_target: "i686-unknown-freebsd".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -23,5 +23,5 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
-    })
+    }
 }

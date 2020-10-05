@@ -1,9 +1,9 @@
 // Targets the Cortex-M3 processor (ARMv7-M)
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "thumbv7m-none-eabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -16,5 +16,5 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions { max_atomic_width: Some(32), ..super::thumb_base::opts() },
-    })
+    }
 }

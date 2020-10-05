@@ -436,7 +436,6 @@ pub enum LoadTargetError {
 }
 
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
-pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
     ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
@@ -449,8 +448,7 @@ macro_rules! supported_targets {
             match target {
                 $(
                     $($triple)|+ => {
-                        let mut t = $module::target()
-                            .map_err(LoadTargetError::Other)?;
+                        let mut t = $module::target();
                         t.options.is_builtin = true;
 
                         // round-trip through the JSON parser to ensure at
@@ -1135,7 +1133,7 @@ impl Target {
     }
 
     /// Loads a target descriptor from a JSON object.
-    pub fn from_json(obj: Json) -> TargetResult {
+    pub fn from_json(obj: Json) -> Result<Target, String> {
         // While ugly, this code must remain this way to retain
         // compatibility with existing JSON fields and the internal
         // expected naming of the Target and TargetOptions structs.

@@ -1,8 +1,8 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let base = super::linux_musl_base::opts();
-    Ok(Target {
+    Target {
         // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
         // uses it to determine the calling convention and float ABI, and LLVM
         // doesn't support the "musleabihf" value.
@@ -25,5 +25,5 @@ pub fn target() -> TargetResult {
             target_mcount: "\u{1}mcount".to_string(),
             ..base
         },
-    })
+    }
 }

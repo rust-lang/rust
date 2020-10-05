@@ -1,9 +1,9 @@
 use super::apple_sdk_base::{opts, Arch};
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let base = opts(Arch::I386);
-    Ok(Target {
+    Target {
         llvm_target: "i386-apple-ios".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -17,5 +17,5 @@ pub fn target() -> TargetResult {
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { max_atomic_width: Some(64), stack_probes: true, ..base },
-    })
+    }
 }

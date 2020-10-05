@@ -1,8 +1,8 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let base = super::netbsd_base::opts();
-    Ok(Target {
+    Target {
         llvm_target: "armv7-unknown-netbsdelf-eabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -22,5 +22,5 @@ pub fn target() -> TargetResult {
             target_mcount: "__mcount".to_string(),
             ..base
         },
-    })
+    }
 }

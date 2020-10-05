@@ -1,7 +1,7 @@
-use crate::spec::{LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "msp430-none-elf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "16".to_string(),
@@ -60,5 +60,5 @@ pub fn target() -> TargetResult {
 
             ..Default::default()
         },
-    })
+    }
 }

@@ -1,9 +1,9 @@
 // This defines the amd64 target for the Linux Kernel. See the linux-kernel-base module for
 // generic Linux kernel options.
 
-use crate::spec::{CodeModel, LinkerFlavor, Target, TargetResult};
+use crate::spec::{CodeModel, LinkerFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::linux_kernel_base::opts();
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
@@ -13,7 +13,7 @@ pub fn target() -> TargetResult {
     base.code_model = Some(CodeModel::Kernel);
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
 
-    Ok(Target {
+    Target {
         // FIXME: Some dispute, the linux-on-clang folks think this should use "Linux"
         llvm_target: "x86_64-elf".to_string(),
         target_endian: "little".to_string(),
@@ -28,5 +28,5 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
 
         options: base,
-    })
+    }
 }
