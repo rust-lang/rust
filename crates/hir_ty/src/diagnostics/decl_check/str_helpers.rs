@@ -12,8 +12,7 @@ enum DetectedCase {
 
 fn detect_case(ident: &str) -> DetectedCase {
     let trimmed_ident = ident.trim_matches('_');
-    let first_lowercase =
-        trimmed_ident.starts_with(|chr| chr.is_ascii_lowercase());
+    let first_lowercase = trimmed_ident.starts_with(|chr: char| chr.is_ascii_lowercase());
     let mut has_lowercase = first_lowercase;
     let mut has_uppercase = false;
     let mut has_underscore = false;
