@@ -2210,7 +2210,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         .attrs
                         .iter()
                         .filter(|attr| self.sess.check_name(attr, sym::rustc_synthetic))
-                        .map(|_| hir::SyntheticTyParamKind::Rustc)
+                        .map(|_| hir::SyntheticTyParamKind::FromAttr)
                         .next(),
                 };
 

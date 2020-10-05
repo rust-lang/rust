@@ -170,7 +170,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             ..
         } = param.kind
         {
-            // Do nothing because bodging is fun.
+            // Synthetic impl trait parameters are owned by the node of the desugared type.
+            // This means it is correct for them to have a different owner.
         } else {
             intravisit::walk_generic_param(self, param);
         }

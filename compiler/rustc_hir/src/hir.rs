@@ -509,7 +509,7 @@ impl Generics<'hir> {
 pub enum SyntheticTyParamKind {
     ImplTrait,
     // Created by the `#[rustc_synthetic]` attribute.
-    Rustc,
+    FromAttr,
 }
 
 /// A where-clause in a definition.
