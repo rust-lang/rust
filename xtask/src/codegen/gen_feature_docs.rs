@@ -38,7 +38,9 @@ impl Feature {
 
             for block in comment_blocks {
                 let id = block.id;
-                assert!(is_valid_feature_name(&id), "invalid feature name: {:?}", id);
+                if let Err(msg) = is_valid_feature_name(&id) {
+                    panic!("invalid feature name: {:?}:\n  {}", id, msg)
+                }
                 let doc = block.contents.join("\n");
                 let location = Location::new(path.clone(), block.line);
                 acc.push(Feature { id, location, doc })
@@ -49,7 +51,7 @@ impl Feature {
     }
 }
 
-fn is_valid_feature_name(feature: &str) -> bool {
+fn is_valid_feature_name(feature: &str) -> Result<(), String> {
     'word: for word in feature.split_whitespace() {
         for &short in ["to", "and"].iter() {
             if word == short {
@@ -58,14 +60,14 @@ fn is_valid_feature_name(feature: &str) -> bool {
         }
         for &short in ["To", "And"].iter() {
             if word == short {
-                return false;
+                return Err(format!("Don't capitalize {:?}", word));
             }
         }
         if !word.starts_with(char::is_uppercase) {
-            return false;
+            return Err(format!("Capitalize {:?}", word));
         }
     }
-    true
+    Ok(())
 }
 
 impl fmt::Display for Feature {

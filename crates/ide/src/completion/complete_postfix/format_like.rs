@@ -1,4 +1,4 @@
-// Feature: Postfix completion for `format`-like strings.
+// Feature: Format String Completion.
 //
 // `"Result {result} is {2 + 2}"` is expanded to the `"Result {} is {}", result, 2 + 2`.
 //
