@@ -1,11 +1,8 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 #
 # Call `tidy --bless` before each commit
 # Copy this scripts to .git/hooks to activate,
 # and remove it from .git/hooks to deactivate.
-#
-# For help running bash scripts on Windows,
-# see https://stackoverflow.com/a/6413405/6894799
 #
 
 set -Eeuo pipefail
@@ -17,6 +14,8 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
   COMMAND="python $COMMAND"
 fi
 
-echo "Running pre-commit script $COMMAND";
+echo "Running pre-commit script '$COMMAND'";
+
+cd "$ROOT_DIR"
 
 $COMMAND;
