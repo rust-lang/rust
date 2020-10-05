@@ -2232,12 +2232,6 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
 
 impl Clean<Vec<Item>> for doctree::Import<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
-        // We need this comparison because some imports (for std types for example)
-        // are "inserted" as well but directly by the compiler and they should not be
-        // taken into account.
-        if self.span.is_dummy() {
-            return Vec::new();
-        }
         // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
