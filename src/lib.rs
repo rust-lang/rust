@@ -72,7 +72,6 @@ mod num;
 mod optimize;
 mod pointer;
 mod pretty_clif;
-mod target_features_whitelist;
 mod toolchain;
 mod trap;
 mod unsize;
@@ -207,11 +206,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
-                target_features_whitelist::all_known_features()
+                rustc_codegen_ssa::target_features::all_known_features()
                     .map(|(a, b)| (a.to_string(), b))
                     .collect()
             } else {
-                target_features_whitelist::supported_target_features(tcx.sess)
+                rustc_codegen_ssa::target_features::supported_target_features(tcx.sess)
                     .iter()
                     .map(|&(a, b)| (a.to_string(), b))
                     .collect()

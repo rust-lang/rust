@@ -4,6 +4,7 @@
 use crate::prelude::*;
 
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use rustc_span::symbol::sym;
 
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
@@ -87,10 +88,9 @@ fn codegen_inner(
                 .collect::<Vec<Value>>();
 
             let callee_func_ref = module.declare_func_in_func(callee_func_id, &mut bcx.func);
-
             let call_inst = bcx.ins().call(callee_func_ref, &args);
-
             let results = bcx.inst_results(call_inst).to_vec(); // Clone to prevent borrow error
+
             bcx.ins().return_(&results);
             bcx.seal_all_blocks();
             bcx.finalize();
@@ -104,4 +104,50 @@ fn codegen_inner(
             .unwrap();
         unwind_context.add_function(func_id, &ctx, module.isa());
     }
+
+    let sig = Signature {
+        call_conv: CallConv::triple_default(module.isa().triple()),
+        params: vec![AbiParam::new(usize_ty), AbiParam::new(usize_ty)],
+        returns: vec![],
+    };
+
+    let callee_name = kind.fn_name(sym::oom);
+    //eprintln!("Codegen allocator shim {} -> {} ({:?} -> {:?})", caller_name, callee_name, sig.params, sig.returns);
+
+    let func_id = module
+        .declare_function("__rust_alloc_error_handler", Linkage::Export, &sig)
+        .unwrap();
+
+    let callee_func_id = module
+        .declare_function(&callee_name, Linkage::Import, &sig)
+        .unwrap();
+
+    let mut ctx = Context::new();
+    ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig.clone());
+    {
+        let mut func_ctx = FunctionBuilderContext::new();
+        let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+
+        let block = bcx.create_block();
+        bcx.switch_to_block(block);
+        let args = (&[usize_ty, usize_ty])
+            .into_iter()
+            .map(|&ty| bcx.append_block_param(block, ty))
+            .collect::<Vec<Value>>();
+
+        let callee_func_ref = module.declare_func_in_func(callee_func_id, &mut bcx.func);
+        bcx.ins().call(callee_func_ref, &args);
+
+        bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        bcx.seal_all_blocks();
+        bcx.finalize();
+    }
+    module
+        .define_function(
+            func_id,
+            &mut ctx,
+            &mut cranelift_codegen::binemit::NullTrapSink {},
+        )
+        .unwrap();
+    unwind_context.add_function(func_id, &ctx, module.isa());
 }

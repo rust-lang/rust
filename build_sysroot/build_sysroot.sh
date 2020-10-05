@@ -24,7 +24,8 @@ export RUSTFLAGS="$RUSTFLAGS -Zforce-unstable-if-unmarked -Cpanic=abort"
 if [[ "$1" == "--release" ]]; then
     sysroot_channel='release'
     # FIXME Enable incremental again once rust-lang/rust#74946 is fixed
-    CARGO_INCREMENTAL=0 RUSTFLAGS="$RUSTFLAGS -Zmir-opt-level=2" cargo build --target $TARGET_TRIPLE --release
+    # FIXME Enable -Zmir-opt-level=2 again once it doesn't ice anymore
+    CARGO_INCREMENTAL=0 RUSTFLAGS="$RUSTFLAGS" cargo build --target $TARGET_TRIPLE --release
 else
     sysroot_channel='debug'
     cargo build --target $TARGET_TRIPLE
