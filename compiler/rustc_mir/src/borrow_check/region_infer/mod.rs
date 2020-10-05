@@ -548,9 +548,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
-        mir_def_id: DefId,
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
+        let mir_def_id = body.source.def_id();
         self.propagate_constraints(body, infcx.tcx);
 
         let mut errors_buffer = RegionErrors::new();

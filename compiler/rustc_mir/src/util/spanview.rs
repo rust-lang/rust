@@ -90,7 +90,6 @@ pub struct SpanViewable {
 /// Write a spanview HTML+CSS file to analyze MIR element spans.
 pub fn write_mir_fn_spanview<'tcx, W>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
     body: &Body<'tcx>,
     spanview: MirSpanview,
     w: &mut W,
@@ -98,6 +97,7 @@ pub fn write_mir_fn_spanview<'tcx, W>(
 where
     W: Write,
 {
+    let def_id = body.source.def_id();
     let body_span = hir_body(tcx, def_id).value.span;
     let mut span_viewables = Vec::new();
     for (bb, data) in body.basic_blocks().iter_enumerated() {

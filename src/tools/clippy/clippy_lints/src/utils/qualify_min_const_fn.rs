@@ -10,7 +10,8 @@ use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -> McfResult {
+pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> McfResult {
+    let def_id = body.source.def_id();
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);

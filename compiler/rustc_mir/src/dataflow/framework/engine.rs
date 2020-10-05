@@ -81,7 +81,6 @@ where
 {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
-    def_id: DefId,
     dead_unwinds: Option<&'a BitSet<BasicBlock>>,
     entry_sets: IndexVec<BasicBlock, A::Domain>,
     pass_name: Option<&'static str>,
@@ -103,18 +102,13 @@ where
     T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
-    pub fn new_gen_kill(
-        tcx: TyCtxt<'tcx>,
-        body: &'a mir::Body<'tcx>,
-        def_id: DefId,
-        analysis: A,
-    ) -> Self {
+    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
         // If there are no back-edges in the control-flow graph, we only ever need to apply the
         // transfer function for each block exactly once (assuming that we process blocks in RPO).
         //
         // In this case, there's no need to compute the block transfer functions ahead of time.
         if !body.is_cfg_cyclic() {
-            return Self::new(tcx, body, def_id, analysis, None);
+            return Self::new(tcx, body, analysis, None);
         }
 
         // Otherwise, compute and store the cumulative transfer function for each block.
@@ -131,7 +125,7 @@ where
             trans_for_block[bb].apply(state.borrow_mut());
         });
 
-        Self::new(tcx, body, def_id, analysis, Some(apply_trans as Box<_>))
+        Self::new(tcx, body, analysis, Some(apply_trans as Box<_>))
     }
 }
 
@@ -145,19 +139,13 @@ where
     ///
     /// Gen-kill problems should use `new_gen_kill`, which will coalesce transfer functions for
     /// better performance.
-    pub fn new_generic(
-        tcx: TyCtxt<'tcx>,
-        body: &'a mir::Body<'tcx>,
-        def_id: DefId,
-        analysis: A,
-    ) -> Self {
-        Self::new(tcx, body, def_id, analysis, None)
+    pub fn new_generic(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
+        Self::new(tcx, body, analysis, None)
     }
 
     fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a mir::Body<'tcx>,
-        def_id: DefId,
         analysis: A,
         apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
@@ -173,7 +161,6 @@ where
             analysis,
             tcx,
             body,
-            def_id,
             dead_unwinds: None,
             pass_name: None,
             entry_sets,
@@ -209,7 +196,6 @@ where
             analysis,
             body,
             dead_unwinds,
-            def_id,
             mut entry_sets,
             tcx,
             apply_trans_for_block,
@@ -261,7 +247,7 @@ where
 
         let results = Results { analysis, entry_sets };
 
-        let res = write_graphviz_results(tcx, def_id, &body, &results, pass_name);
+        let res = write_graphviz_results(tcx, &body, &results, pass_name);
         if let Err(e) = res {
             warn!("Failed to write graphviz dataflow results: {}", e);
         }
@@ -276,7 +262,6 @@ where
 /// `rustc_mir` attributes.
 fn write_graphviz_results<A>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
     body: &mir::Body<'tcx>,
     results: &Results<'tcx, A>,
     pass_name: Option<&'static str>,
@@ -285,6 +270,7 @@ where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
+    let def_id = body.source.def_id();
     let attrs = match RustcMirAttrs::parse(tcx, def_id) {
         Ok(attrs) => attrs,
 
@@ -323,7 +309,7 @@ where
     debug!("printing dataflow results for {:?} to {}", def_id, path.display());
     let mut buf = Vec::new();
 
-    let graphviz = graphviz::Formatter::new(body, def_id, results, style);
+    let graphviz = graphviz::Formatter::new(body, results, style);
     let mut render_opts =
         vec![dot::RenderOption::Fontname(tcx.sess.opts.debugging_opts.graphviz_font.clone())];
     if tcx.sess.opts.debugging_opts.graphviz_dark_mode {

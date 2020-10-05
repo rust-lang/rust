@@ -6,7 +6,6 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use crate::transform::MirPass;
-use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -41,41 +40,40 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 
         if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_maybe_init).is_some() {
             let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
-                .into_engine(tcx, body, def_id)
+                .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_inits);
+            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_inits);
         }
 
         if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_maybe_uninit).is_some() {
             let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
-                .into_engine(tcx, body, def_id)
+                .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_uninits);
+            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_uninits);
         }
 
         if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_definite_init).is_some() {
             let flow_def_inits = DefinitelyInitializedPlaces::new(tcx, body, &mdpe)
-                .into_engine(tcx, body, def_id)
+                .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_def_inits);
+            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_def_inits);
         }
 
         if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_indirectly_mutable).is_some() {
             let flow_mut_borrowed = MaybeMutBorrowedLocals::mut_borrows_only(tcx, body, param_env)
-                .into_engine(tcx, body, def_id)
+                .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_mut_borrowed);
+            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_mut_borrowed);
         }
 
         if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_liveness).is_some() {
-            let flow_liveness =
-                MaybeLiveLocals.into_engine(tcx, body, def_id).iterate_to_fixpoint();
+            let flow_liveness = MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_liveness);
+            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_liveness);
         }
 
         if has_rustc_mir_with(sess, &attributes, sym::stop_after_dataflow).is_some() {
@@ -103,12 +101,12 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 pub fn sanity_check_via_rustc_peek<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    def_id: DefId,
     _attributes: &[ast::Attribute],
     results: &Results<'tcx, A>,
 ) where
     A: RustcPeekAt<'tcx>,
 {
+    let def_id = body.source.def_id();
     debug!("sanity_check_via_rustc_peek def_id: {:?}", def_id);
 
     let mut cursor = ResultsCursor::new(body, results);

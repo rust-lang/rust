@@ -50,7 +50,7 @@ impl Qualifs<'mir, 'tcx> {
         location: Location,
     ) -> bool {
         let indirectly_mutable = self.indirectly_mutable.get_or_insert_with(|| {
-            let ConstCx { tcx, body, def_id, param_env, .. } = *ccx;
+            let ConstCx { tcx, body, param_env, .. } = *ccx;
 
             // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
             // allowed in a const.
@@ -59,7 +59,7 @@ impl Qualifs<'mir, 'tcx> {
             // without breaking stable code?
             MaybeMutBorrowedLocals::mut_borrows_only(tcx, &body, param_env)
                 .unsound_ignore_borrow_on_drop()
-                .into_engine(tcx, &body, def_id.to_def_id())
+                .into_engine(tcx, &body)
                 .pass_name("const_qualification")
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
@@ -84,10 +84,10 @@ impl Qualifs<'mir, 'tcx> {
         }
 
         let needs_drop = self.needs_drop.get_or_insert_with(|| {
-            let ConstCx { tcx, body, def_id, .. } = *ccx;
+            let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .into_engine(tcx, &body, def_id.to_def_id())
+                .into_engine(tcx, &body)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -111,10 +111,10 @@ impl Qualifs<'mir, 'tcx> {
         }
 
         let has_mut_interior = self.has_mut_interior.get_or_insert_with(|| {
-            let ConstCx { tcx, body, def_id, .. } = *ccx;
+            let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, &body, def_id.to_def_id())
+                .into_engine(tcx, &body)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -157,7 +157,7 @@ impl Qualifs<'mir, 'tcx> {
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, &ccx.body, ccx.def_id.to_def_id())
+                    .into_engine(ccx.tcx, &ccx.body)
                     .iterate_to_fixpoint()
                     .into_results_cursor(&ccx.body);
 
@@ -205,7 +205,8 @@ impl Validator<'mir, 'tcx> {
     }
 
     pub fn check_body(&mut self) {
-        let ConstCx { tcx, body, def_id, .. } = *self.ccx;
+        let ConstCx { tcx, body, .. } = *self.ccx;
+        let def_id = self.ccx.def_id();
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
@@ -219,7 +220,7 @@ impl Validator<'mir, 'tcx> {
             // Prevent const trait methods from being annotated as `stable`.
             // FIXME: Do this as part of stability checking.
             if self.is_const_stable_const_fn() {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(self.def_id);
+                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                 if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
                     struct_span_err!(
                         self.ccx.tcx.sess,
@@ -291,7 +292,7 @@ impl Validator<'mir, 'tcx> {
 
             Status::Unstable(gate) if self.tcx.features().enabled(gate) => {
                 let unstable_in_stable = self.ccx.is_const_stable_const_fn()
-                    && !super::allow_internal_unstable(self.tcx, self.def_id.to_def_id(), gate);
+                    && !super::allow_internal_unstable(self.tcx, self.def_id().to_def_id(), gate);
                 if unstable_in_stable {
                     emit_unstable_in_stable_error(self.ccx, span, gate);
                 }
@@ -367,9 +368,9 @@ impl Validator<'mir, 'tcx> {
     }
 
     fn check_item_predicates(&mut self) {
-        let ConstCx { tcx, def_id, .. } = *self.ccx;
+        let ConstCx { tcx, .. } = *self.ccx;
 
-        let mut current = def_id.to_def_id();
+        let mut current = self.def_id().to_def_id();
         loop {
             let predicates = tcx.predicates_of(current);
             for (predicate, _) in predicates.predicates {
@@ -736,8 +737,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
         match &terminator.kind {
             TerminatorKind::Call { func, .. } => {
-                let ConstCx { tcx, body, def_id: caller, param_env, .. } = *self.ccx;
-                let caller = caller.to_def_id();
+                let ConstCx { tcx, body, param_env, .. } = *self.ccx;
+                let caller = self.def_id().to_def_id();
 
                 let fn_ty = func.ty(body, tcx);
 

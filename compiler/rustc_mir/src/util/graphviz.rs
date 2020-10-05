@@ -72,16 +72,16 @@ where
     writeln!(w, r#"    edge [{}];"#, content_attrs_str)?;
 
     // Graph label
-    write_graph_label(tcx, def_id, body, w)?;
+    write_graph_label(tcx, body, w)?;
 
     // Nodes
     for (block, _) in body.basic_blocks().iter_enumerated() {
-        write_node(def_id, block, body, dark_mode, w)?;
+        write_node(block, body, dark_mode, w)?;
     }
 
     // Edges
     for (source, _) in body.basic_blocks().iter_enumerated() {
-        write_edges(def_id, source, body, w)?;
+        write_edges(source, body, w)?;
     }
     writeln!(w, "}}")
 }
@@ -151,12 +151,12 @@ where
 
 /// Write a graphviz DOT node for the given basic block.
 fn write_node<W: Write>(
-    def_id: DefId,
     block: BasicBlock,
     body: &Body<'_>,
     dark_mode: bool,
     w: &mut W,
 ) -> io::Result<()> {
+    let def_id = body.source.def_id();
     // Start a new node with the label to follow, in one of DOT's pseudo-HTML tables.
     write!(w, r#"    {} [shape="none", label=<"#, node(def_id, block))?;
     write_node_label(block, body, dark_mode, w, 1, |_| Ok(()), |_| Ok(()))?;
@@ -165,12 +165,8 @@ fn write_node<W: Write>(
 }
 
 /// Write graphviz DOT edges with labels between the given basic block and all of its successors.
-fn write_edges<W: Write>(
-    def_id: DefId,
-    source: BasicBlock,
-    body: &Body<'_>,
-    w: &mut W,
-) -> io::Result<()> {
+fn write_edges<W: Write>(source: BasicBlock, body: &Body<'_>, w: &mut W) -> io::Result<()> {
+    let def_id = body.source.def_id();
     let terminator = body[source].terminator();
     let labels = terminator.kind.fmt_successor_labels();
 
@@ -188,10 +184,11 @@ fn write_edges<W: Write>(
 /// all the variables and temporaries.
 fn write_graph_label<'tcx, W: Write>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
     body: &Body<'_>,
     w: &mut W,
 ) -> io::Result<()> {
+    let def_id = body.source.def_id();
+
     write!(w, "    label=<fn {}(", dot::escape_html(&tcx.def_path_str(def_id)))?;
 
     // fn argument types.

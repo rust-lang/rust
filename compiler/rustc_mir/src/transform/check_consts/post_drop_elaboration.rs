@@ -1,4 +1,3 @@
-use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
@@ -24,13 +23,14 @@ pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
 ///
 /// This is separate from the rest of the const checking logic because it must run after drop
 /// elaboration.
-pub fn check_live_drops(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mir::Body<'tcx>) {
+pub fn check_live_drops(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
+    let def_id = body.source.def_id().expect_local();
     let const_kind = tcx.hir().body_const_context(def_id);
     if const_kind.is_none() {
         return;
     }
 
-    let ccx = ConstCx { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
+    let ccx = ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def_id) };
     if !checking_enabled(&ccx) {
         return;
     }

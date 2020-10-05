@@ -153,7 +153,7 @@ fn dump_matched_mir_node<'tcx, F>(
             let mut file =
                 create_dump_file(tcx, "html", pass_num, pass_name, disambiguator, body.source)?;
             if body.source.def_id().is_local() {
-                write_mir_fn_spanview(tcx, body.source.def_id(), body, spanview, &mut file)?;
+                write_mir_fn_spanview(tcx, body, spanview, &mut file)?;
             }
         };
     }
