@@ -15,7 +15,13 @@ const BUFFER_SIZE_BYTES_SPILL: usize = BUFFER_SIZE_ELEMS_SPILL * ELEM_SIZE;
 const BUFFER_SPILL_INDEX: usize = BUFFER_SIZE_ELEMS_SPILL - 1;
 
 #[derive(Debug, Clone)]
+#[repr(C)]
 pub struct SipHasher128 {
+    // The access pattern during hashing consists of accesses to `nbuf` and
+    // `buf` until the buffer is full, followed by accesses to `state` and
+    // `processed`, and then repetition of that pattern until hashing is done.
+    // This is the basis for the ordering of fields below. However, in practice
+    // the cache miss-rate for data access is extremely low regardless of order.
     nbuf: usize,                                      // how many bytes in buf are valid
     buf: [MaybeUninit<u64>; BUFFER_SIZE_ELEMS_SPILL], // unprocessed bytes le
     state: State,                                     // hash State
