@@ -542,8 +542,8 @@ Arguments:
                         |path| format!("{} is not a valid UTF8 string", path.to_string_lossy())
                     ));
 
-                    profile_string.parse().unwrap_or_else(|_| {
-                        eprintln!("error: unknown profile {}", profile_string);
+                    profile_string.parse().unwrap_or_else(|err| {
+                        eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
                         for choice in Profile::all() {
                             eprintln!("- {}", choice);

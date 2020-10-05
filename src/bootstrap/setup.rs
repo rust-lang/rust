@@ -24,13 +24,8 @@ impl Profile {
     }
 }
 
-#[derive(Debug)]
-pub struct ProfileErr {
-    pub name: String,
-}
-
 impl FromStr for Profile {
-    type Err = ProfileErr;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -38,7 +33,7 @@ impl FromStr for Profile {
             "b" | "compiler" => Ok(Profile::Compiler),
             "c" | "llvm" | "codegen" => Ok(Profile::Codegen),
             "d" | "maintainer" | "user" => Ok(Profile::User),
-            _ => Err(ProfileErr { name: s.to_string() }),
+            _ => Err(format!("unknown profile: '{}'", s)),
         }
     }
 }
@@ -116,8 +111,8 @@ d) Install Rust from source"
         io::stdin().read_line(&mut input)?;
         break match input.trim().to_lowercase().parse() {
             Ok(profile) => profile,
-            Err(ProfileErr { name }) => {
-                println!("error: unrecognized option '{}'", name);
+            Err(err) => {
+                println!("error: {}", err);
                 println!("note: press Ctrl+C to exit");
                 continue;
             }
