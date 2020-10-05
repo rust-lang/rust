@@ -79,10 +79,7 @@ pub enum Node {
 
 impl<'tcx> Node {
     pub fn is_from_trait(&self) -> bool {
-        match *self {
-            Node::Trait(..) => true,
-            _ => false,
-        }
+        matches!(self, Node::Trait(..))
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.

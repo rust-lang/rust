@@ -588,10 +588,7 @@ impl<'tcx> TypeckResults<'tcx> {
             return false;
         }
 
-        match self.type_dependent_defs().get(expr.hir_id) {
-            Some(Ok((DefKind::AssocFn, _))) => true,
-            _ => false,
-        }
+        matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
     pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {

@@ -445,19 +445,13 @@ impl<'tcx, Tag> Scalar<Tag> {
     /// Do not call this method!  Dispatch based on the type instead.
     #[inline]
     pub fn is_bits(self) -> bool {
-        match self {
-            Scalar::Raw { .. } => true,
-            _ => false,
-        }
+        matches!(self, Scalar::Raw { .. })
     }
 
     /// Do not call this method!  Dispatch based on the type instead.
     #[inline]
     pub fn is_ptr(self) -> bool {
-        match self {
-            Scalar::Ptr(_) => true,
-            _ => false,
-        }
+        matches!(self, Scalar::Ptr(_))
     }
 
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {

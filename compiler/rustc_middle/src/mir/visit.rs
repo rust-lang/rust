@@ -1164,82 +1164,63 @@ pub enum PlaceContext {
 impl PlaceContext {
     /// Returns `true` if this place context represents a drop.
     pub fn is_drop(&self) -> bool {
-        match *self {
-            PlaceContext::MutatingUse(MutatingUseContext::Drop) => true,
-            _ => false,
-        }
+        matches!(self, PlaceContext::MutatingUse(MutatingUseContext::Drop))
     }
 
     /// Returns `true` if this place context represents a borrow.
     pub fn is_borrow(&self) -> bool {
-        match *self {
+        matches!(
+            self,
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::ShallowBorrow
-                | NonMutatingUseContext::UniqueBorrow,
-            )
-            | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => true,
-            _ => false,
-        }
+                    | NonMutatingUseContext::ShallowBorrow
+                    | NonMutatingUseContext::UniqueBorrow
+            ) | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+        )
     }
 
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     pub fn is_storage_marker(&self) -> bool {
-        match *self {
-            PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead)
+        )
     }
 
     /// Returns `true` if this place context represents a storage live marker.
     pub fn is_storage_live_marker(&self) -> bool {
-        match *self {
-            PlaceContext::NonUse(NonUseContext::StorageLive) => true,
-            _ => false,
-        }
+        matches!(self, PlaceContext::NonUse(NonUseContext::StorageLive))
     }
 
     /// Returns `true` if this place context represents a storage dead marker.
     pub fn is_storage_dead_marker(&self) -> bool {
-        match *self {
-            PlaceContext::NonUse(NonUseContext::StorageDead) => true,
-            _ => false,
-        }
+        matches!(self, PlaceContext::NonUse(NonUseContext::StorageDead))
     }
 
     /// Returns `true` if this place context represents a use that potentially changes the value.
     pub fn is_mutating_use(&self) -> bool {
-        match *self {
-            PlaceContext::MutatingUse(..) => true,
-            _ => false,
-        }
+        matches!(self, PlaceContext::MutatingUse(..))
     }
 
     /// Returns `true` if this place context represents a use that does not change the value.
     pub fn is_nonmutating_use(&self) -> bool {
-        match *self {
-            PlaceContext::NonMutatingUse(..) => true,
-            _ => false,
-        }
+        matches!(self, PlaceContext::NonMutatingUse(..))
     }
 
     /// Returns `true` if this place context represents a use.
     pub fn is_use(&self) -> bool {
-        match *self {
-            PlaceContext::NonUse(..) => false,
-            _ => true,
-        }
+        !matches!(self, PlaceContext::NonUse(..))
     }
 
     /// Returns `true` if this place context represents an assignment statement.
     pub fn is_place_assignment(&self) -> bool {
-        match *self {
+        matches!(
+            self,
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
-                | MutatingUseContext::Call
-                | MutatingUseContext::AsmOutput,
-            ) => true,
-            _ => false,
-        }
+                    | MutatingUseContext::Call
+                    | MutatingUseContext::AsmOutput,
+            )
+        )
     }
 }
