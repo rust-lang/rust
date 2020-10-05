@@ -3,8 +3,13 @@ use crate::util::pretty;
 use crate::util::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::graph::dominators::{self, Dominators};
+// TODO(richkadel): remove?
+//use rustc_data_structures::graph::{self, GraphSuccessors, WithSuccessors};
+use rustc_data_structures::graph::{self, GraphSuccessors};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+// TODO(richkadel): remove?
+//use rustc_data_structures::sync::{Lrc, OnceCell};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -24,7 +29,11 @@ use rustc_span::def_id::DefId;
 use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, CharPos, Pos, SourceFile, Span, Symbol, SyntaxContext};
 
+// TODO(richkadel): remove?
+use smallvec::SmallVec;
+
 use std::cmp::Ordering;
+use std::ops::{Index, IndexMut};
 
 const ID_SEPARATOR: &str = ",";
 
@@ -86,41 +95,44 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo
 }
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
+    fn run_pass(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        mir_body: &mut mir::Body<'tcx>,
+    ) {
+        let mir_source = mir_body.source;
+
         // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
         // See: https://github.com/rust-lang/rust/pull/73011#discussion_r438317601
-        if mir_body.source.promoted.is_some() {
+        if mir_source.promoted.is_some() {
             trace!(
                 "InstrumentCoverage skipped for {:?} (already promoted for Miri evaluation)",
-                mir_body.source.def_id()
+                mir_source.def_id()
             );
             return;
         }
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(mir_body.source.def_id().expect_local());
+        let hir_id = tcx.hir().local_def_id_to_hir_id(mir_source.def_id().expect_local());
         let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
 
         // Only instrument functions, methods, and closures (not constants since they are evaluated
         // at compile time by Miri).
         // FIXME(#73156): Handle source code coverage in const eval
         if !is_fn_like {
-            trace!(
-                "InstrumentCoverage skipped for {:?} (not an FnLikeNode)",
-                mir_body.source.def_id(),
-            );
+            trace!("InstrumentCoverage skipped for {:?} (not an FnLikeNode)", mir_source.def_id());
             return;
         }
         // FIXME(richkadel): By comparison, the MIR pass `ConstProp` includes associated constants,
         // with functions, methods, and closures. I assume Miri is used for associated constants as
         // well. If not, we may need to include them here too.
 
-        trace!("InstrumentCoverage starting for {:?}", mir_body.source.def_id());
+        trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
         Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
-        trace!("InstrumentCoverage starting for {:?}", mir_body.source.def_id());
+        trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
     }
 }
 
-/// A BasicCoverageBlock (BCB) represents the maximal-length sequence of CFG (MIR) BasicBlocks
+/// A BasicCoverageBlockData (BCB) represents the maximal-length sequence of CFG (MIR) BasicBlocks
 /// without conditional branches.
 ///
 /// The BCB allows coverage analysis to be performed on a simplified projection of the underlying
@@ -144,25 +156,40 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 /// Dominator/dominated relationships (which are fundamental to the coverage analysis algorithm)
 /// between two BCBs can be computed using the `mir::Body` `dominators()` with any `BasicBlock`
 /// member of each BCB. (For consistency, BCB's use the first `BasicBlock`, also referred to as the
-/// `bcb_leader_bb`.)
+/// `bcb` `leader_bb`.)
 ///
 /// The BCB CFG projection is critical to simplifying the coverage analysis by ensuring graph
 /// path-based queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch
 /// (control flow) significance.
 #[derive(Debug, Clone)]
-struct BasicCoverageBlock {
-    pub blocks: Vec<BasicBlock>,
+struct BasicCoverageBlockData {
+    basic_blocks: Vec<BasicBlock>,
 }
 
-impl BasicCoverageBlock {
+impl BasicCoverageBlockData {
+    pub fn from(basic_blocks: Vec<BasicBlock>) -> Self {
+        assert!(basic_blocks.len() > 0);
+        Self {
+            basic_blocks,
+        }
+    }
+
     pub fn leader_bb(&self) -> BasicBlock {
-        self.blocks[0]
+        self.basic_blocks[0]
+    }
+
+    pub fn last_bb(&self) -> BasicBlock {
+        *self.basic_blocks.last().unwrap()
+    }
+
+    pub fn basic_blocks(&self) -> std::slice::Iter<'_, BasicBlock> {
+        self.basic_blocks.iter()
     }
 
     pub fn id(&self) -> String {
         format!(
             "@{}",
-            self.blocks
+            self.basic_blocks
                 .iter()
                 .map(|bb| bb.index().to_string())
                 .collect::<Vec<_>>()
@@ -171,23 +198,44 @@ impl BasicCoverageBlock {
     }
 }
 
+// TODO(richkadel): Remove?
+// impl std::ops::Deref for BasicCoverageBlockData {
+//     type Target = [BasicBlock];
+
+//     fn deref(&self) -> &[BasicBlock] {
+//         self.basic_blocks.deref()
+//     }
+// }
+
+rustc_index::newtype_index! {
+    /// A node in the [control-flow graph][CFG] of BasicCoverageBlocks.
+    pub struct BasicCoverageBlock {
+// TODO(richkadel): remove if not needed
+//        derive [HashStable]
+        DEBUG_FORMAT = "bcb{}",
+// TODO(richkadel): remove if not needed
+//        const START_BLOCK = 0,
+    }
+}
+
 struct BasicCoverageBlocks {
-    vec: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
+// TODO(richkadel): remove if not needed
+// struct BasicCoverageBlocks<'a, 'tcx> {
+//     mir_body: &'a mut mir::Body<'tcx>,
+    bcbs: IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
+    bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
+    predecessors: IndexVec<BasicCoverageBlock, BcbPredecessors>,
+    successors: IndexVec<BasicCoverageBlock,Vec<BasicCoverageBlock>>,
 }
 
 impl BasicCoverageBlocks {
+// TODO(richkadel): remove if not needed
+//impl<'a, 'tcx> BasicCoverageBlocks<'a, 'tcx> {
+//    pub fn from_mir(mir_body: &'a mut mir::Body<'tcx>) -> Self {
     pub fn from_mir(mir_body: &mir::Body<'tcx>) -> Self {
-        let mut basic_coverage_blocks =
-            BasicCoverageBlocks { vec: IndexVec::from_elem_n(None, mir_body.basic_blocks().len()) };
-        basic_coverage_blocks.extract_from_mir(mir_body);
-        basic_coverage_blocks
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &BasicCoverageBlock> {
-        self.vec.iter().filter_map(|option| option.as_ref())
-    }
-
-    fn extract_from_mir(&mut self, mir_body: &mir::Body<'tcx>) {
+        let len = mir_body.basic_blocks().len();
+        let mut bcbs = IndexVec::with_capacity(len);
+        let mut bb_to_bcb = IndexVec::from_elem_n(None, len);
         // Traverse the CFG but ignore anything following an `unwind`
         let cfg_without_unwind = ShortCircuitPreorder::new(mir_body, |term_kind| {
             let mut successors = term_kind.successors();
@@ -248,17 +296,17 @@ impl BasicCoverageBlocks {
         // each block terminator's `successors()`. Coverage spans must map to actual source code,
         // so compiler generated blocks and paths can be ignored. To that end the CFG traversal
         // intentionally omits unwind paths.
-        let mut blocks = Vec::new();
+        let mut basic_blocks = Vec::new();
         for (bb, data) in cfg_without_unwind {
-            if let Some(last) = blocks.last() {
+            if let Some(last) = basic_blocks.last() {
                 let predecessors = &mir_body.predecessors()[bb];
                 if predecessors.len() > 1 || !predecessors.contains(last) {
                     // The `bb` has more than one _incoming_ edge, and should start its own
-                    // `BasicCoverageBlock`. (Note, the `blocks` vector does not yet include `bb`;
-                    // it contains a sequence of one or more sequential blocks with no intermediate
-                    // branches in or out. Save these as a new `BasicCoverageBlock` before starting
-                    // the new one.)
-                    self.add_basic_coverage_block(blocks.split_off(0));
+                    // `BasicCoverageBlockData`. (Note, the `basic_blocks` vector does not yet include
+                    // `bb`; it contains a sequence of one or more sequential basic_blocks with no
+                    // intermediate branches in or out. Save these as a new `BasicCoverageBlockData`
+                    // before starting the new one.)
+                    Self::add_basic_coverage_block(&mut bcbs, &mut bb_to_bcb, basic_blocks.split_off(0));
                     debug!(
                         "  because {}",
                         if predecessors.len() > 1 {
@@ -269,7 +317,7 @@ impl BasicCoverageBlocks {
                     );
                 }
             }
-            blocks.push(bb);
+            basic_blocks.push(bb);
 
             let term = data.terminator();
 
@@ -280,9 +328,9 @@ impl BasicCoverageBlocks {
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::SwitchInt { .. } => {
                     // The `bb` has more than one _outgoing_ edge, or exits the function. Save the
-                    // current sequence of `blocks` gathered to this point, as a new
-                    // `BasicCoverageBlock`.
-                    self.add_basic_coverage_block(blocks.split_off(0));
+                    // current sequence of `basic_blocks` gathered to this point, as a new
+                    // `BasicCoverageBlockData`.
+                    Self::add_basic_coverage_block(&mut bcbs, &mut bb_to_bcb, basic_blocks.split_off(0));
                     debug!("  because term.kind = {:?}", term.kind);
                     // Note that this condition is based on `TerminatorKind`, even though it
                     // theoretically boils down to `successors().len() != 1`; that is, either zero
@@ -304,28 +352,236 @@ impl BasicCoverageBlocks {
             }
         }
 
-        if !blocks.is_empty() {
-            // process any remaining blocks into a final `BasicCoverageBlock`
-            self.add_basic_coverage_block(blocks.split_off(0));
+        if !basic_blocks.is_empty() {
+            // process any remaining basic_blocks into a final `BasicCoverageBlockData`
+            Self::add_basic_coverage_block(&mut bcbs, &mut bb_to_bcb, basic_blocks.split_off(0));
             debug!("  because the end of the CFG was reached while traversing");
+        }
+
+        let basic_blocks = &mir_body.basic_blocks();
+        let bb_predecessors = &mir_body.predecessors();
+
+        // Pre-transform MIR `BasicBlock` successors and predecessors into the BasicCoverageBlock
+        // equivalents. Note that since the BasicCoverageBlock graph has been fully simplified, the
+        // each predecessor of a BCB leader_bb should be in a unique BCB, and each successor of a
+        // BCB last_bb should bin in its own unique BCB. Therefore, collecting the BCBs using
+        // `bb_to_bcb` should work without requiring a deduplication step.
+
+        let successors = IndexVec::from_fn_n(|bcb| {
+            let bcb_data = &bcbs[bcb];
+            let bb_data = &basic_blocks[bcb_data.last_bb()];
+            let bcb_successors = bb_data.terminator().successors().filter_map(|&successor_bb| bb_to_bcb[successor_bb]).collect::<Vec<_>>();
+            debug_assert!({
+                let mut sorted = bcb_successors.clone();
+                sorted.sort_unstable();
+                let initial_len = sorted.len();
+                sorted.dedup();
+                sorted.len() == initial_len
+            });
+            bcb_successors
+        }, bcbs.len());
+
+        let predecessors = IndexVec::from_fn_n(|bcb| {
+            let bcb_data = &bcbs[bcb];
+            let bcb_predecessors = bb_predecessors[bcb_data.leader_bb()].iter().filter_map(|&predecessor_bb| bb_to_bcb[predecessor_bb]).collect::<BcbPredecessors>();
+            debug_assert!({
+                let mut sorted = bcb_predecessors.clone();
+                sorted.sort_unstable();
+                let initial_len = sorted.len();
+                sorted.dedup();
+                sorted.len() == initial_len
+            });
+            bcb_predecessors
+        }, bcbs.len());
+
+        Self {
+//            mir_body,
+            bcbs,
+            bb_to_bcb,
+            predecessors,
+            successors,
         }
     }
 
-    fn add_basic_coverage_block(&mut self, blocks: Vec<BasicBlock>) {
-        let leader_bb = blocks[0];
-        let bcb = BasicCoverageBlock { blocks };
-        debug!("adding BCB: {:?}", bcb);
-        self.vec[leader_bb] = Some(bcb);
+// TODO(richkadel): remove if not needed
+    // pub fn iter(&self) -> impl Iterator<Item = &BasicCoverageBlockData> {
+    //     self.bcbs.iter()
+    // }
+
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (BasicCoverageBlock, &BasicCoverageBlockData)> {
+        self.bcbs.iter_enumerated()
+    }
+
+    fn bcb_from_bb(&self, bb: BasicBlock) -> BasicCoverageBlock {
+        self.bb_to_bcb[bb].expect("bb is not in any bcb (pre-filtered, such as unwind paths perhaps?)")
+    }
+
+// TODO(richkadel): remove if not needed
+    // fn bcb_data_from_bb(&self, bb: BasicBlock) -> &BasicCoverageBlockData {
+    //     &self.bcbs[self.bcb_from_bb(bb)]
+    // }
+
+// TODO(richkadel): remove if not needed
+    // fn mir_body(&self) -> &mir::Body<'tcx> {
+    //     self.mir_body
+    // }
+
+// TODO(richkadel): remove if not needed
+    // fn mir_body_mut(&mut self) -> &mut mir::Body<'tcx> {
+    //     self.mir_body
+    // }
+
+    fn add_basic_coverage_block(bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>, bb_to_bcb: &mut IndexVec<BasicBlock, Option<BasicCoverageBlock>>, basic_blocks: Vec<BasicBlock>) {
+        let bcb = BasicCoverageBlock::from_usize(bcbs.len());
+        for &bb in basic_blocks.iter() {
+            bb_to_bcb[bb] = Some(bcb);
+        }
+        let bcb_data = BasicCoverageBlockData::from(basic_blocks);
+        debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
+        bcbs.push(bcb_data);
+    }
+
+    // TODO(richkadel): remove?
+    // #[inline]
+    // pub fn predecessors(&self) -> impl std::ops::Deref<Target = BcbPredecessors> + '_ {
+    //     self.predecessors
+    // }
+
+    #[inline]
+    pub fn compute_bcb_dominators(&self) -> Dominators<BasicCoverageBlock> {
+        dominators::dominators(self)
     }
 }
 
-impl std::ops::Index<BasicBlock> for BasicCoverageBlocks {
-    type Output = BasicCoverageBlock;
+    // TODO(richkadel): remove?
+//impl<'a, 'tcx> graph::DirectedGraph for BasicCoverageBlocks<'a, 'tcx> {
+impl graph::DirectedGraph for BasicCoverageBlocks {
+    type Node = BasicCoverageBlock;
+}
 
-    fn index(&self, index: BasicBlock) -> &Self::Output {
-        self.vec[index].as_ref().expect("is_some if BasicBlock is a BasicCoverageBlock leader")
+    // TODO(richkadel): remove?
+//impl<'a, 'tcx> graph::WithNumNodes for BasicCoverageBlocks<'a, 'tcx> {
+impl graph::WithNumNodes for BasicCoverageBlocks {
+    #[inline]
+    fn num_nodes(&self) -> usize {
+        self.bcbs.len()
     }
 }
+
+    // TODO(richkadel): remove?
+//impl<'a, 'tcx> graph::WithStartNode for BasicCoverageBlocks<'a, 'tcx> {
+impl graph::WithStartNode for BasicCoverageBlocks {
+    #[inline]
+    fn start_node(&self) -> Self::Node {
+        self.bcb_from_bb(mir::START_BLOCK)
+    }
+}
+
+// `BasicBlock` `Predecessors` uses a `SmallVec` of length 4 because, "Typically 95%+ of basic
+// blocks have 4 or fewer predecessors." BasicCoverageBlocks should have the same or less.
+type BcbPredecessors = SmallVec<[BasicCoverageBlock; 4]>;
+// TODO(richkadel): remove?
+//type BcbPredecessors = IndexVec<BasicCoverageBlock, SmallVec<[BasicCoverageBlock; 4]>>;
+
+pub type BcbSuccessors<'a> = std::slice::Iter<'a, BasicCoverageBlock>;
+    // TODO(richkadel): remove?
+//pub type BcbSuccessors = std::slice::Iter<'_, BasicCoverageBlock>;
+
+    // TODO(richkadel): remove?
+//impl<'a, 'tcx> graph::WithSuccessors for BasicCoverageBlocks<'a, 'tcx> {
+impl graph::WithSuccessors for BasicCoverageBlocks {
+    #[inline]
+    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
+        self.successors[node].iter().cloned()
+    }
+}
+
+    // TODO(richkadel): remove?
+//impl<'a, 'tcx, 'b> graph::GraphSuccessors<'b> for BasicCoverageBlocks<'a, 'tcx> {
+//impl<'b> graph::GraphSuccessors<'b> for BasicCoverageBlocks {
+impl<'a> graph::GraphSuccessors<'a> for BasicCoverageBlocks {
+    type Item = BasicCoverageBlock;
+    // TODO(richkadel): remove?
+    //type Iter = std::iter::Cloned<BcbSuccessors<'b>>;
+    //type Iter = std::iter::Cloned<BcbSuccessors>;
+    type Iter = std::iter::Cloned<BcbSuccessors<'a>>;
+}
+
+    // TODO(richkadel): remove?
+//impl graph::GraphPredecessors<'graph> for BasicCoverageBlocks<'a, 'tcx> {
+impl graph::GraphPredecessors<'graph> for BasicCoverageBlocks {
+    type Item = BasicCoverageBlock;
+    // TODO(richkadel): remove?
+    //type Iter = smallvec::IntoIter<BcbPredecessors>;
+    type Iter = smallvec::IntoIter<[BasicCoverageBlock; 4]>;
+}
+
+    // TODO(richkadel): remove?
+//impl graph::WithPredecessors for BasicCoverageBlocks<'a, 'tcx> {
+impl graph::WithPredecessors for BasicCoverageBlocks {
+    #[inline]
+    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
+        self.predecessors[node].clone().into_iter()
+    }
+}
+
+    // TODO(richkadel): remove?
+//impl<'a, 'tcx> Index<BasicCoverageBlock> for BasicCoverageBlocks<'a, 'tcx> {
+impl Index<BasicCoverageBlock> for BasicCoverageBlocks {
+    type Output = BasicCoverageBlockData;
+
+    #[inline]
+    fn index(&self, index: BasicCoverageBlock) -> &BasicCoverageBlockData {
+        &self.bcbs[index]
+    }
+}
+
+    // TODO(richkadel): remove?
+//impl<'a, 'tcx> IndexMut<BasicCoverageBlock> for BasicCoverageBlocks<'a, 'tcx> {
+impl IndexMut<BasicCoverageBlock> for BasicCoverageBlocks {
+    #[inline]
+    fn index_mut(&mut self, index: BasicCoverageBlock) -> &mut BasicCoverageBlockData {
+        &mut self.bcbs[index]
+    }
+}
+
+
+
+        // TODO(richkadel): For any node, N, and one of its successors, H (so N -> H), if (_also_)
+        // N is_dominated_by H, then N -> H is a backedge. That is, we've identified that N -> H is
+        // at least _one_ of possibly multiple arcs that loop back to the start of the loop with
+        // "header" H, and this also means we've identified a loop, that has "header" H.
+        //
+        // H dominates everything inside the loop.
+        //
+        // So a SwitchInt target in a BasicBlock that is_dominated_by H and has a branch target to a
+        // BasicBlock that is:
+        //   * not H, and   ... (what if the SwitchInt branch target _is_ H? `continue`? is this a
+        //     candidate for a middle or optional priority for getting a Counter?)
+        //   * not is_dominated_by H
+        // is a branch that jumps outside the loop, and should get an actual Counter, most likely
+        //
+        // Or perhaps conversely, a SwitchInt dominated by H with a branch that has a target that
+        // ALSO is dominated by H should get a CounterExpression.
+        //
+        //
+        // So I need to identify all of the "H"'s, by identifying all of the backedges.
+        //
+        // If I have multiple H's (multiple loops), how do I decide which loop to compare a branch
+        // target (by dominator) to?
+        //
+        // Can I assume the traversal order is helpful here? I.e., the "last" encountered loop
+        // header is the (only?) one to compare to? (Probably not only... I don't see how that would
+        // work for nested loops.)
+        //
+        // What about multiple loops in sequence?
+        //
+        //
+        // What about nexted loops and jumping out of one or more of them at a time?
+
+
+
+
 
 #[derive(Debug, Copy, Clone)]
 enum CoverageStatement {
@@ -399,7 +655,7 @@ fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
 #[derive(Debug, Clone)]
 struct CoverageSpan {
     span: Span,
-    bcb_leader_bb: BasicBlock,
+    bcb: BasicCoverageBlock,
     coverage_statements: Vec<CoverageStatement>,
     is_closure: bool,
 }
@@ -408,7 +664,7 @@ impl CoverageSpan {
     pub fn for_statement(
         statement: &Statement<'tcx>,
         span: Span,
-        bcb: &BasicCoverageBlock,
+        bcb: BasicCoverageBlock,
         bb: BasicBlock,
         stmt_index: usize,
     ) -> Self {
@@ -422,16 +678,16 @@ impl CoverageSpan {
 
         Self {
             span,
-            bcb_leader_bb: bcb.leader_bb(),
+            bcb,
             coverage_statements: vec![CoverageStatement::Statement(bb, span, stmt_index)],
             is_closure,
         }
     }
 
-    pub fn for_terminator(span: Span, bcb: &'a BasicCoverageBlock, bb: BasicBlock) -> Self {
+    pub fn for_terminator(span: Span, bcb: BasicCoverageBlock, bb: BasicBlock) -> Self {
         Self {
             span,
-            bcb_leader_bb: bcb.leader_bb(),
+            bcb,
             coverage_statements: vec![CoverageStatement::Terminator(bb, span)],
             is_closure: false,
         }
@@ -458,10 +714,10 @@ impl CoverageSpan {
     pub fn is_dominated_by(
         &self,
         other: &CoverageSpan,
-        dominators: &Dominators<BasicBlock>,
+        bcb_dominators: &Dominators<BasicCoverageBlock>,
     ) -> bool {
         debug_assert!(!self.is_in_same_bcb(other));
-        dominators.is_dominated_by(self.bcb_leader_bb, other.bcb_leader_bb)
+        bcb_dominators.is_dominated_by(self.bcb, other.bcb)
     }
 
     pub fn is_mergeable(&self, other: &Self) -> bool {
@@ -469,7 +725,7 @@ impl CoverageSpan {
     }
 
     pub fn is_in_same_bcb(&self, other: &Self) -> bool {
-        self.bcb_leader_bb == other.bcb_leader_bb
+        self.bcb == other.bcb
     }
 }
 
@@ -478,28 +734,44 @@ struct Instrumentor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
     hir_body: &'tcx rustc_hir::Body<'tcx>,
-    dominators: Option<Dominators<BasicBlock>>,
-    basic_coverage_blocks: Option<BasicCoverageBlocks>,
+    bcb_dominators: Dominators<BasicCoverageBlock>,
+//TODO(richkadel): remove?
+//    basic_coverage_blocks: BasicCoverageBlocks<'a, 'tcx>,
+    basic_coverage_blocks: BasicCoverageBlocks,
     function_source_hash: Option<u64>,
     next_counter_id: u32,
     num_expressions: u32,
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
-    fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
+    fn new(
+        pass_name: &'a str,
+        tcx: TyCtxt<'tcx>,
+        mir_body: &'a mut mir::Body<'tcx>,
+    ) -> Self {
         let hir_body = hir_body(tcx, mir_body.source.def_id());
+        let basic_coverage_blocks = BasicCoverageBlocks::from_mir(mir_body);
+        let bcb_dominators = basic_coverage_blocks.compute_bcb_dominators();
         Self {
             pass_name,
             tcx,
             mir_body,
             hir_body,
-            dominators: None,
-            basic_coverage_blocks: None,
+            basic_coverage_blocks,
+            bcb_dominators,
             function_source_hash: None,
             next_counter_id: CounterValueReference::START.as_u32(),
             num_expressions: 0,
         }
     }
+
+    // fn mir_body(&self) -> &mir::Body<'tcx> {
+    //     self.basic_coverage_blocks.mir_body()
+    // }
+
+    // fn mir_body_mut(&mut self) -> &mut mir::Body<'tcx> {
+    //     self.basic_coverage_blocks.mir_body_mut()
+    // }
 
     /// Counter IDs start from one and go up.
     fn next_counter(&mut self) -> CounterValueReference {
@@ -519,16 +791,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         InjectedExpressionIndex::from(next)
     }
 
-    fn dominators(&self) -> &Dominators<BasicBlock> {
-        self.dominators.as_ref().expect("dominators must be initialized before calling")
-    }
-
-    fn basic_coverage_blocks(&self) -> &BasicCoverageBlocks {
-        self.basic_coverage_blocks
-            .as_ref()
-            .expect("basic_coverage_blocks must be initialized before calling")
-    }
-
     fn function_source_hash(&mut self) -> u64 {
         match self.function_source_hash {
             Some(hash) => hash,
@@ -540,19 +802,16 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
     }
 
-    fn inject_counters(&mut self) {
+    fn inject_counters(&'a mut self) {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
-        let def_id = self.mir_body.source.def_id();
-        let mir_body = &self.mir_body;
+        let mir_source = self.mir_body.source;
+        let def_id = mir_source.def_id();
         let body_span = self.body_span();
         let source_file = source_map.lookup_source_file(body_span.lo());
         let file_name = Symbol::intern(&source_file.name.to_string());
 
         debug!("instrumenting {:?}, span: {}", def_id, source_map.span_to_string(body_span));
-
-        self.dominators.replace(mir_body.dominators());
-        self.basic_coverage_blocks.replace(BasicCoverageBlocks::from_mir(mir_body));
 
         let coverage_spans = self.coverage_spans();
 
@@ -564,11 +823,12 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         // Inject a counter for each `CoverageSpan`. There can be multiple `CoverageSpan`s for a
         // given BCB, but only one actual counter needs to be incremented per BCB. `bb_counters`
-        // maps each `bcb_leader_bb` to its `Counter`, when injected. Subsequent `CoverageSpan`s
+        // maps each `bcb` to its `Counter`, when injected. Subsequent `CoverageSpan`s
         // for a BCB that already has a `Counter` will inject a `CounterExpression` instead, and
         // compute its value by adding `ZERO` to the BCB `Counter` value.
-        let mut bb_counters = IndexVec::from_elem_n(None, mir_body.basic_blocks().len());
-        for CoverageSpan { span, bcb_leader_bb: bb, .. } in coverage_spans {
+        let mut bb_counters = IndexVec::from_elem_n(None, self.mir_body.basic_blocks().len());
+        for CoverageSpan { span, bcb, .. } in coverage_spans {
+            let bb = self.basic_coverage_blocks[bcb].leader_bb();
             if let Some(&counter_operand) = bb_counters[bb].as_ref() {
                 let expression =
                     self.make_expression(counter_operand, Op::Add, ExpressionOperandId::ZERO);
@@ -594,15 +854,9 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
 
         if let Some(span_viewables) = span_viewables {
-            let mut file = pretty::create_dump_file(
-                tcx,
-                "html",
-                None,
-                self.pass_name,
-                &0,
-                self.mir_body.source,
-            )
-            .expect("Unexpected error creating MIR spanview HTML file");
+            let mut file =
+                pretty::create_dump_file(tcx, "html", None, self.pass_name, &0, mir_source)
+                    .expect("Unexpected error creating MIR spanview HTML file");
             let crate_name = tcx.crate_name(def_id.krate);
             let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
             let title = format!("{}.{} - Coverage Spans", crate_name, item_name);
@@ -638,6 +892,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let code_region = make_code_region(file_name, source_file, span);
         debug!("  injecting statement {:?} covering {:?}", coverage_kind, code_region);
 
+// TODO(richkadel): remove?
+//        let data = &mut self.mir_body_mut()[block];
         let data = &mut self.mir_body[block];
         let source_info = data.terminator().source_info;
         let statement = Statement {
@@ -647,15 +903,15 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         data.statements.push(statement);
     }
 
-    /// Converts the computed `BasicCoverageBlock`s into `SpanViewable`s.
+    /// Converts the computed `BasicCoverageBlockData`s into `SpanViewable`s.
     fn span_viewables(&self, coverage_spans: &Vec<CoverageSpan>) -> Vec<SpanViewable> {
         let tcx = self.tcx;
-        let mir_body = &self.mir_body;
         let mut span_viewables = Vec::new();
         for coverage_span in coverage_spans {
-            let bcb = self.bcb_from_coverage_span(coverage_span);
-            let CoverageSpan { span, bcb_leader_bb: bb, coverage_statements, .. } = coverage_span;
-            let id = bcb.id();
+            let CoverageSpan { span, bcb, coverage_statements, .. } = coverage_span;
+            let bcb_data = &self.basic_coverage_blocks[*bcb];
+            let id = bcb_data.id();
+            let leader_bb = bcb_data.leader_bb();
             let mut sorted_coverage_statements = coverage_statements.clone();
             sorted_coverage_statements.sort_unstable_by_key(|covstmt| match *covstmt {
                 CoverageStatement::Statement(bb, _, index) => (bb, index),
@@ -663,18 +919,19 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             });
             let tooltip = sorted_coverage_statements
                 .iter()
-                .map(|covstmt| covstmt.format(tcx, mir_body))
+                .map(|covstmt| covstmt.format(tcx, self.mir_body))
                 .collect::<Vec<_>>()
                 .join("\n");
-            span_viewables.push(SpanViewable { bb: *bb, span: *span, id, tooltip });
+            span_viewables.push(SpanViewable { bb: leader_bb, span: *span, id, tooltip });
         }
         span_viewables
     }
 
-    #[inline(always)]
-    fn bcb_from_coverage_span(&self, coverage_span: &CoverageSpan) -> &BasicCoverageBlock {
-        &self.basic_coverage_blocks()[coverage_span.bcb_leader_bb]
-    }
+// TODO(richkadel): remove if not needed
+//    #[inline(always)]
+//    fn bcb_from_coverage_span(&self, coverage_span: &CoverageSpan) -> &BasicCoverageBlockData {
+//        &self.basic_coverage_blocks[coverage_span.bcb]
+//    }
 
     #[inline(always)]
     fn body_span(&self) -> Span {
@@ -682,15 +939,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     // Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of
-    // the `BasicBlock`(s) in the given `BasicCoverageBlock`. One `CoverageSpan` is generated for
+    // the `BasicBlock`(s) in the given `BasicCoverageBlockData`. One `CoverageSpan` is generated for
     // each `Statement` and `Terminator`. (Note that subsequent stages of coverage analysis will
     // merge some `CoverageSpan`s, at which point a `CoverageSpan` may represent multiple
     // `Statement`s and/or `Terminator`s.)
-    fn extract_spans(&self, bcb: &'a BasicCoverageBlock) -> Vec<CoverageSpan> {
+    fn extract_spans(&self, bcb: BasicCoverageBlock, bcb_data: &'a BasicCoverageBlockData) -> Vec<CoverageSpan> {
         let body_span = self.body_span();
         let mir_basic_blocks = self.mir_body.basic_blocks();
-        bcb.blocks
-            .iter()
+        bcb_data.basic_blocks()
             .map(|bbref| {
                 let bb = *bbref;
                 let data = &mir_basic_blocks[bb];
@@ -717,7 +973,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     /// The basic steps are:
     ///
     /// 1. Extract an initial set of spans from the `Statement`s and `Terminator`s of each
-    ///    `BasicCoverageBlock`.
+    ///    `BasicCoverageBlockData`.
     /// 2. Sort the spans by span.lo() (starting position). Spans that start at the same position
     ///    are sorted with longer spans before shorter spans; and equal spans are sorted
     ///    (deterministically) based on "dominator" relationship (if any).
@@ -735,8 +991,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn coverage_spans(&self) -> Vec<CoverageSpan> {
         let mut initial_spans =
             Vec::<CoverageSpan>::with_capacity(self.mir_body.basic_blocks().len() * 2);
-        for bcb in self.basic_coverage_blocks().iter() {
-            for coverage_span in self.extract_spans(bcb) {
+        for (bcb, bcb_data) in self.basic_coverage_blocks.iter_enumerated() {
+            for coverage_span in self.extract_spans(bcb, bcb_data) {
                 initial_spans.push(coverage_span);
             }
         }
@@ -757,14 +1013,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         // dominators always come after the dominated equal spans). When later
                         // comparing two spans in order, the first will either dominate the second,
                         // or they will have no dominator relationship.
-                        self.dominators().rank_partial_cmp(b.bcb_leader_bb, a.bcb_leader_bb)
+                        self.bcb_dominators.rank_partial_cmp(b.bcb, a.bcb)
                     }
                 } else {
                     // Sort hi() in reverse order so shorter spans are attempted after longer spans.
-                    // This guarantees that, if a `prev` span overlaps, and is not equal to, a `curr`
-                    // span, the prev span either extends further left of the curr span, or they
-                    // start at the same position and the prev span extends further right of the end
-                    // of the curr span.
+                    // This guarantees that, if a `prev` span overlaps, and is not equal to, a
+                    // `curr` span, the prev span either extends further left of the curr span, or
+                    // they start at the same position and the prev span extends further right of
+                    // the end of the curr span.
                     b.span.hi().partial_cmp(&a.span.hi())
                 }
             } else {
@@ -773,14 +1029,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             .unwrap()
         });
 
-        let refinery = CoverageSpanRefinery::from_sorted_spans(initial_spans, self.dominators());
+        let refinery = CoverageSpanRefinery::from_sorted_spans(initial_spans, &self.bcb_dominators);
         refinery.to_refined_spans()
     }
 }
 
 struct CoverageSpanRefinery<'a> {
     sorted_spans_iter: std::vec::IntoIter<CoverageSpan>,
-    dominators: &'a Dominators<BasicBlock>,
+    bcb_dominators: &'a Dominators<BasicCoverageBlock>,
     some_curr: Option<CoverageSpan>,
     curr_original_span: Span,
     some_prev: Option<CoverageSpan>,
@@ -792,7 +1048,7 @@ struct CoverageSpanRefinery<'a> {
 impl<'a> CoverageSpanRefinery<'a> {
     fn from_sorted_spans(
         sorted_spans: Vec<CoverageSpan>,
-        dominators: &'a Dominators<BasicBlock>,
+        bcb_dominators: &'a Dominators<BasicCoverageBlock>,
     ) -> Self {
         let refined_spans = Vec::with_capacity(sorted_spans.len());
         let mut sorted_spans_iter = sorted_spans.into_iter();
@@ -800,7 +1056,7 @@ impl<'a> CoverageSpanRefinery<'a> {
         let prev_original_span = prev.span;
         Self {
             sorted_spans_iter,
-            dominators,
+            bcb_dominators,
             refined_spans,
             some_curr: None,
             curr_original_span: Span::with_root_ctxt(BytePos(0), BytePos(0)),
@@ -1019,9 +1275,9 @@ impl<'a> CoverageSpanRefinery<'a> {
     /// `pending_dups` so the new `curr` dup can be moved to `prev` for the next iteration.
     fn hold_pending_dups_unless_dominated(&mut self) {
         // equal coverage spans are ordered by dominators before dominated (if any)
-        debug_assert!(!self.prev().is_dominated_by(self.curr(), self.dominators));
+        debug_assert!(!self.prev().is_dominated_by(self.curr(), self.bcb_dominators));
 
-        if self.curr().is_dominated_by(&self.prev(), self.dominators) {
+        if self.curr().is_dominated_by(&self.prev(), self.bcb_dominators) {
             // If one span dominates the other, assocate the span with the dominator only.
             //
             // For example:
