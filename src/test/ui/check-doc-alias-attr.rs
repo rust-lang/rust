@@ -11,6 +11,5 @@ pub struct Bar;
 #[doc(alias = "\n")] //~ ERROR
 #[doc(alias = "
 ")] //~^ ERROR
-#[doc(alias = " ")] //~ ERROR
 #[doc(alias = "\t")] //~ ERROR
 pub struct Foo;

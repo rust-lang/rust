@@ -287,8 +287,9 @@ impl CheckAttrVisitor<'tcx> {
                             self.doc_alias_str_error(meta);
                             return false;
                         }
-                        if let Some(c) =
-                            doc_alias.chars().find(|&c| c == '"' || c == '\'' || c.is_whitespace())
+                        if let Some(c) = doc_alias
+                            .chars()
+                            .find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
                         {
                             self.tcx
                                 .sess
