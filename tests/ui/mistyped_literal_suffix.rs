@@ -1,6 +1,11 @@
 // run-rustfix
 
-#![allow(dead_code, unused_variables, clippy::excessive_precision, clippy::inconsistent_digit_grouping)]
+#![allow(
+    dead_code,
+    unused_variables,
+    clippy::excessive_precision,
+    clippy::inconsistent_digit_grouping
+)]
 
 fn main() {
     let fail14 = 2_32;
