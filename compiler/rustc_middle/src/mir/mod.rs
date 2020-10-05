@@ -1668,7 +1668,7 @@ impl Debug for Statement<'_> {
                 ref src,
                 ref dst,
                 ref size,
-            }) => write!(fmt, "src {:?} -> dst {:?}, {:?} bytes", src, dst, size),
+            }) => write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?},bytes={:?})", src, dst, size),
             Nop => write!(fmt, "nop"),
         }
     }
