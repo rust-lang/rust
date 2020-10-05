@@ -306,6 +306,8 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::Coverage(..)
             | mir::StatementKind::Nop => {}
+
+            mir::StatementKind::CopyNonOverlapping(..) => todo!(),
         }
     }
 

@@ -150,6 +150,8 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             | StatementKind::Nop
             | StatementKind::Retag(..)
             | StatementKind::StorageLive(..) => {}
+
+            StatementKind::CopyNonOverlapping(..) => todo!(),
         }
     }
 

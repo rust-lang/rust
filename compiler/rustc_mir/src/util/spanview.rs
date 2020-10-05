@@ -245,6 +245,7 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         Retag(..) => "Retag",
         AscribeUserType(..) => "AscribeUserType",
         Coverage(..) => "Coverage",
+        CopyNonOverlapping(..) => "CopyNonOverlapping",
         Nop => "Nop",
     }
 }

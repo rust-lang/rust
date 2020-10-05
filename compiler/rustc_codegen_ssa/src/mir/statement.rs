@@ -120,18 +120,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ref dst,
                 ref size,
             }) => {
-                let dst_val = self.codegen_place(&mut bx, dst.as_ref());
-                let src_val = self.codegen_place(&mut bx, src.as_ref());
+                let dst_val = self.codegen_operand(&mut bx, dst);
+                let src_val = self.codegen_operand(&mut bx, src);
                 let size_val = self.codegen_operand(&mut bx, size);
                 let size = size_val.immediate_or_packed_pair(&mut bx);
+                let dst = dst_val.immediate_or_packed_pair(&mut bx);
+                let src = src_val.immediate_or_packed_pair(&mut bx);
+                use crate::MemFlags;
+                let flags =
+                    (!MemFlags::UNALIGNED) & (!MemFlags::VOLATILE) & (!MemFlags::NONTEMPORAL);
                 bx.memcpy(
-                    dst_val.llval,
-                    dst_val.align,
-                    src_val.llval,
-                    src_val.align,
+                    dst,
+                    dst_val.layout.layout.align.pref,
+                    src,
+                    src_val.layout.layout.align.pref,
                     size,
-                    // TODO probably want to have this change based on alignment above?
-                    crate::MemFlags::empty(),
+                    flags,
                 );
                 bx
             }

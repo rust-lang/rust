@@ -582,6 +582,7 @@ impl Conflicts<'a> {
             | StatementKind::FakeRead(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {}
         }
     }
