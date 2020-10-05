@@ -111,6 +111,12 @@ impl Command {
                     LldFlavor::Link => "link",
                     LldFlavor::Ld64 => "darwin",
                 });
+                if let LldFlavor::Wasm = flavor {
+                    // LLVM expects host-specific formatting for @file
+                    // arguments, but we always generate posix formatted files
+                    // at this time. Indicate as such.
+                    c.arg("--rsp-quoting=posix");
+                }
                 c
             }
         };
