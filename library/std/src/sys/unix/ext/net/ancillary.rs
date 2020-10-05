@@ -21,9 +21,6 @@ mod libc {
     pub type uid_t = u32;
 }
 
-#[cfg(any(doc, target_os = "android", target_os = "linux",))]
-use libc::{gid_t, pid_t, uid_t};
-
 pub(super) fn recv_vectored_with_ancillary_from(
     socket: &Socket,
     bufs: &mut [IoSliceMut<'_>],
@@ -240,37 +237,37 @@ impl SocketCred {
 
     /// Set the PID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn set_pid(&mut self, pid: pid_t) {
+    pub fn set_pid(&mut self, pid: libc::pid_t) {
         self.0.pid = pid;
     }
 
     /// Get the current PID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn get_pid(&self) -> pid_t {
+    pub fn get_pid(&self) -> libc::pid_t {
         self.0.pid
     }
 
     /// Set the UID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn set_uid(&mut self, uid: uid_t) {
+    pub fn set_uid(&mut self, uid: libc::uid_t) {
         self.0.uid = uid;
     }
 
     /// Get the current UID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn get_uid(&self) -> uid_t {
+    pub fn get_uid(&self) -> libc::uid_t {
         self.0.uid
     }
 
     /// Set the GID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn set_gid(&mut self, gid: gid_t) {
+    pub fn set_gid(&mut self, gid: libc::gid_t) {
         self.0.gid = gid;
     }
 
     /// Get the current GID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn get_gid(&self) -> gid_t {
+    pub fn get_gid(&self) -> libc::gid_t {
         self.0.gid
     }
 }
