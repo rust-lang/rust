@@ -2200,7 +2200,7 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
         if !has_advanced || iterator.len() >= iterator.cap / 2 {
             // Safety: passing 0 is always valid
-            return unsafe { iterator.into_vec(0) };
+            return unsafe { iterator.into_vec_with_uninit_prefix(0) };
         }
 
         let mut vec = Vec::new();
@@ -2394,7 +2394,7 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
             // Safety: we just checked that IntoIter has sufficient capacity to prepend our elements.
             // Prepending will then fill the uninitialized prefix.
             *self = unsafe {
-                let mut v = iterator.into_vec(self.len() as isize);
+                let mut v = iterator.into_vec_with_uninit_prefix(self.len() as isize);
                 ptr::copy_nonoverlapping(self.as_ptr(), v.as_mut_ptr(), self.len);
                 self.set_len(0);
                 v
@@ -2946,7 +2946,7 @@ impl<T> IntoIter<T> {
     /// * `offset + self.len()` must not exceed `self.cap`
     /// * `offset == 0` is always valid
     /// * `offset` must be positive
-    unsafe fn into_vec(self, offset: isize) -> Vec<T> {
+    unsafe fn into_vec_with_uninit_prefix(self, offset: isize) -> Vec<T> {
         let dst = unsafe { self.buf.as_ptr().offset(offset) };
         if self.ptr != dst as *const _ {
             unsafe { ptr::copy(self.ptr, dst, self.len()) }
