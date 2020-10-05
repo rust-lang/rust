@@ -13,12 +13,14 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem};
+use rustc_hir::{
+    self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID,
+};
 use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{Span, DUMMY_SP};
 
 pub(crate) fn target_from_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -329,6 +331,17 @@ impl CheckAttrVisitor<'tcx> {
                                 .struct_span_err(
                                     meta.span(),
                                     &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
+                                )
+                                .emit();
+                            return false;
+                        }
+                        if CRATE_HIR_ID == hir_id {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    "`#![doc(alias = \"...\")]` isn't allowed as a crate \
+                                     level attribute",
                                 )
                                 .emit();
                             return false;
@@ -808,9 +821,46 @@ fn is_c_like_enum(item: &Item<'_>) -> bool {
     }
 }
 
+fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
+    const ATTRS_TO_CHECK: &[Symbol] = &[
+        sym::macro_export,
+        sym::repr,
+        sym::path,
+        sym::automatically_derived,
+        sym::start,
+        sym::main,
+    ];
+
+    for attr in attrs {
+        for attr_to_check in ATTRS_TO_CHECK {
+            if tcx.sess.check_name(attr, *attr_to_check) {
+                tcx.sess
+                    .struct_span_err(
+                        attr.span,
+                        &format!(
+                            "`{}` attribute cannot be used at crate level",
+                            attr_to_check.to_ident_string()
+                        ),
+                    )
+                    .emit();
+            }
+        }
+    }
+}
+
 fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir()
         .visit_item_likes_in_module(module_def_id, &mut CheckAttrVisitor { tcx }.as_deep_visitor());
+    if module_def_id.is_top_level_module() {
+        CheckAttrVisitor { tcx }.check_attributes(
+            CRATE_HIR_ID,
+            tcx.hir().krate_attrs(),
+            &DUMMY_SP,
+            Target::Mod,
+            None,
+        );
+        check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());
+    }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
