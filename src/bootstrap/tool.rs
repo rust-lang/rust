@@ -366,7 +366,6 @@ bootstrap_tool!(
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
-    InstallGitHook, "src/tools/install-git-hook", "install-git-hook";
     LintDocs, "src/tools/lint-docs", "lint-docs";
 );
 

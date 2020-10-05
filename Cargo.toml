@@ -8,7 +8,6 @@ members = [
   "src/tools/clippy",
   "src/tools/compiletest",
   "src/tools/error_index_generator",
-  "src/tools/install-git-hook",
   "src/tools/linkchecker",
   "src/tools/lint-docs",
   "src/tools/rustbook",

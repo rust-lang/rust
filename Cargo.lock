@@ -1459,10 +1459,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "install-git-hook"
-version = "0.1.0"
-
-[[package]]
 name = "installer"
 version = "0.0.0"
 dependencies = [
