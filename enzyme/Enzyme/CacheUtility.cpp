@@ -148,15 +148,16 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
         continue;
       if (!SE.isSCEVable(PN->getType()))
         continue;
-      // TODO handle pointer phi's
-      // the reason this doesn't support yet is simply because
-      // we may expand code for phi where not possible
-      if (PN->getType()->isPointerTy())
-        continue;
       const SCEV *S = SE.getSCEV(PN);
       if (SE.getCouldNotCompute() == S)
         continue;
-      Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
+      // we may expand code for phi where not legal (computing with
+      // subloop expressions). Check that this isn't the case
+      if (!SE.dominates(S, Header))
+        continue;
+      // We place that at first non phi as it may produce a non-phi instruction
+      // and must thus be expanded after all phi's
+      Value *NewIV = Exp.expandCodeFor(S, S->getType(), Header->getFirstNonPHI());
       if (NewIV == PN) {
         continue;
       }
