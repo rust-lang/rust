@@ -1275,7 +1275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Report an error for a struct field expression when there are fields which aren't provided.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text
     /// error: missing field `you_can_use_this_field` in initializer of `foo::Foo`
     ///  --> src/main.rs:8:5
     ///   |
@@ -1327,7 +1327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Report an error for a struct field expression when there are no visible fields.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text
     /// error: cannot construct `Foo` with struct literal syntax due to inaccessible fields
     ///  --> src/main.rs:8:5
     ///   |

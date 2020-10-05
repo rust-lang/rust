@@ -1381,7 +1381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a diagnostic reporting a struct pattern which is missing an `..` due to
     /// inaccessible fields.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text
     /// error: pattern requires `..` due to inaccessible fields
     ///   --> src/main.rs:10:9
     ///    |
@@ -1431,7 +1431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Returns a diagnostic reporting a struct pattern which does not mention some fields.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text
     /// error[E0027]: pattern does not mention field `you_cant_use_this_field`
     ///   --> src/main.rs:15:9
     ///    |
