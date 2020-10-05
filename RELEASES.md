@@ -84,6 +84,8 @@ Compatibility Notes
   `Delimiter::None`.
 - [Moved support for the CloudABI target to tier 3.][75568]
 - [`linux-gnu` targets now require minimum kernel 2.6.32 and glibc 2.11.][74163]
+- [We have reports of some proc macros encountering as yet undiagnosed problems in linked C++
+  code, but the root cause is as yet undiagnosed.][76980]
 
 Internal Only
 --------
@@ -93,6 +95,7 @@ Internal Only
   available for `x86_64-unknown-linux-gnu`.)
 
 [1.47.0-cfg]: https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard
+[76980]: https://github.com/rust-lang/rust/issues/76980
 [75048]: https://github.com/rust-lang/rust/pull/75048/
 [74163]: https://github.com/rust-lang/rust/pull/74163/
 [71237]: https://github.com/rust-lang/rust/pull/71237/
