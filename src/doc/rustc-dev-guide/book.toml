@@ -14,6 +14,7 @@ enable = true
 level = 0
 
 [output.linkcheck]
+command = "../../ci/linkcheck.sh"
 follow-web-links = true
 exclude = [ "crates\\.io", "gcc\\.godbolt\\.org", "youtube\\.com", "youtu\\.be", "dl\\.acm\\.org", "cs\\.bgu\\.ac\\.il", "www\\.amazon\\.com", "www\\.rustaceans\\.org" ]
 cache-timeout = 86400
