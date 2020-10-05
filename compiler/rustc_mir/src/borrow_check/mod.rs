@@ -285,7 +285,6 @@ fn do_mir_borrowck<'a, 'tcx>(
                 infcx,
                 param_env,
                 body: promoted_body,
-                mir_def_id: def.did,
                 move_data: &move_data,
                 location_table: &LocationTable::new(promoted_body),
                 movable_generator,
@@ -319,7 +318,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         infcx,
         param_env,
         body,
-        mir_def_id: def.did,
         move_data: &mdpe.move_data,
         location_table,
         movable_generator,
@@ -473,7 +471,6 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
     param_env: ParamEnv<'tcx>,
     body: &'cx Body<'tcx>,
-    mir_def_id: LocalDefId,
     move_data: &'cx MoveData<'tcx>,
 
     /// Map from MIR `Location` to `LocationIndex`; created
