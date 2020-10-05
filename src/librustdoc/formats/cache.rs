@@ -14,13 +14,13 @@ use crate::config::RenderInfo;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
+use crate::html::markdown::short_markdown_summary;
 use crate::html::render::cache::{extern_location, get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
-use crate::html::render::{plain_text_summary, shorten};
 
 thread_local!(crate static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 
-/// This cache is used to store information about the `clean::Crate` being
+/// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
 /// information like all implementors of a trait, all traits a type implements,
 /// documentation for all known traits, etc.
@@ -313,7 +313,9 @@ impl DocFolder for Cache {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::"),
-                            desc: shorten(plain_text_summary(item.doc_value())),
+                            desc: item
+                                .doc_value()
+                                .map_or_else(|| String::new(), short_markdown_summary),
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),

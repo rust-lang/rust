@@ -1015,7 +1015,7 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
                     .iter()
                     .map(|t| Argument {
                         type_: t.clean(cx),
-                        name: names.next().map_or(String::new(), |name| name.to_string()),
+                        name: names.next().map_or_else(|| String::new(), |name| name.to_string()),
                     })
                     .collect(),
             },
