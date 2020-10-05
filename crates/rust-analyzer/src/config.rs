@@ -14,7 +14,7 @@ use ide::{
     AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig,
     MergeBehaviour,
 };
-use lsp_types::ClientCapabilities;
+use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use rustc_hash::FxHashSet;
 use serde::Deserialize;
@@ -327,6 +327,7 @@ impl Config {
             debug: data.hoverActions_enable && data.hoverActions_debug,
             goto_type_def: data.hoverActions_enable && data.hoverActions_gotoTypeDef,
             links_in_hover: data.hoverActions_linksInHover,
+            markdown: true,
         };
 
         log::info!("Config::update() = {:#?}", self);
@@ -334,6 +335,9 @@ impl Config {
 
     pub fn update_caps(&mut self, caps: &ClientCapabilities) {
         if let Some(doc_caps) = caps.text_document.as_ref() {
+            if let Some(value) = doc_caps.hover.as_ref().and_then(|it| it.content_format.as_ref()) {
+                self.hover.markdown = value.contains(&MarkupKind::Markdown)
+            }
             if let Some(value) = doc_caps.definition.as_ref().and_then(|it| it.link_support) {
                 self.client_caps.location_link = value;
             }

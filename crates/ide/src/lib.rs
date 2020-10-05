@@ -46,6 +46,7 @@ mod syntax_highlighting;
 mod syntax_tree;
 mod typing;
 mod link_rewrite;
+mod markdown_remove;
 
 use std::sync::Arc;
 
@@ -376,8 +377,9 @@ impl Analysis {
         &self,
         position: FilePosition,
         links_in_hover: bool,
+        markdown: bool,
     ) -> Cancelable<Option<RangeInfo<HoverResult>>> {
-        self.with_db(|db| hover::hover(db, position, links_in_hover))
+        self.with_db(|db| hover::hover(db, position, links_in_hover, markdown))
     }
 
     /// Computes parameter information for the given call expression.
