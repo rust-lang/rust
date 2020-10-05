@@ -486,10 +486,10 @@ impl<'tcx> TyCtxt<'tcx> {
         // `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
         // However, formatting code relies on function identity (see #58320), so we only do
         // this for generic functions.  Lifetime parameters are ignored.
-        let is_generic = instance.substs.into_iter().any(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(_) => false,
-            _ => true,
-        });
+        let is_generic = instance
+            .substs
+            .into_iter()
+            .any(|kind| !matches!(kind.unpack(), GenericArgKind::Lifetime(_)));
         if is_generic {
             // Get a fresh ID.
             let mut alloc_map = self.alloc_map.lock();

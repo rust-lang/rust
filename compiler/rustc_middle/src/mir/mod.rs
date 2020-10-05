@@ -971,67 +971,59 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - `let x = ...`,
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(_),
-                opt_ty_info: _,
-                opt_match_place: _,
-                pat_span: _,
-            })))) => true,
-
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
-                ImplicitSelfKind::Imm,
-            )))) => true,
-
-            _ => false,
-        }
+        matches!(
+            self.local_info,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(
+                BindingForm::Var(VarBindingForm {
+                    binding_mode: ty::BindingMode::BindByValue(_),
+                    opt_ty_info: _,
+                    opt_match_place: _,
+                    pat_span: _,
+                })
+                | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
+            )))
+        )
     }
 
     /// Returns `true` if local is definitely not a `ref ident` or
     /// `ref mut ident` binding. (Such bindings cannot be made into
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(_),
-                opt_ty_info: _,
-                opt_match_place: _,
-                pat_span: _,
-            })))) => true,
-
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_)))) => true,
-
-            _ => false,
-        }
+        matches!(
+            self.local_info,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(
+                BindingForm::Var(VarBindingForm {
+                    binding_mode: ty::BindingMode::BindByValue(_),
+                    opt_ty_info: _,
+                    opt_match_place: _,
+                    pat_span: _,
+                })
+                | BindingForm::ImplicitSelf(_),
+            )))
+        )
     }
 
     /// Returns `true` if this variable is a named variable or function
     /// parameter declared by the user.
     #[inline]
     pub fn is_user_variable(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::User(_)) => true,
-            _ => false,
-        }
+        matches!(self.local_info, Some(box LocalInfo::User(_)))
     }
 
     /// Returns `true` if this is a reference to a variable bound in a `match`
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))) => true,
-            _ => false,
-        }
+        matches!(
+            self.local_info,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)))
+        )
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
     /// access that static
     pub fn is_ref_to_static(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::StaticRef { .. }) => true,
-            _ => false,
-        }
+        matches!(self.local_info, Some(box LocalInfo::StaticRef { .. }))
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
@@ -2164,10 +2156,7 @@ pub enum BinOp {
 impl BinOp {
     pub fn is_checkable(self) -> bool {
         use self::BinOp::*;
-        match self {
-            Add | Sub | Mul | Shl | Shr => true,
-            _ => false,
-        }
+        matches!(self, Add | Sub | Mul | Shl | Shr)
     }
 }
 

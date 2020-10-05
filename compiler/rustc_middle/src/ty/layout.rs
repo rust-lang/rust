@@ -2610,10 +2610,7 @@ where
             target.target_os == "linux" && target.arch == "sparc64" && target_env_gnu_like;
         let linux_powerpc_gnu_like =
             target.target_os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
-        let rust_abi = match sig.abi {
-            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
-            _ => false,
-        };
+        let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
         // Handle safe Rust thin and fat pointers.
         let adjust_for_rust_scalar = |attrs: &mut ArgAttributes,
