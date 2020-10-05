@@ -41,13 +41,10 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// The span of this particular definition of the opaque type. So
     /// for example:
     ///
-    /// ```
+    /// ```ignore (incomplete snippet)
     /// type Foo = impl Baz;
     /// fn bar() -> Foo {
     /// //          ^^^ This is the span we are looking for!
-    /// // ...
-    /// # unimplemented!()
-    /// }
     /// ```
     ///
     /// In cases where the fn returns `(impl Trait, impl Trait)` or
