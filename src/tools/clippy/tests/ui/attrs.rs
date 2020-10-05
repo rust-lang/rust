@@ -3,7 +3,6 @@
 // Test that the whole restriction group is not enabled
 #![warn(clippy::restriction)]
 #![deny(clippy::restriction)]
-#![forbid(clippy::restriction)]
 #![allow(clippy::missing_docs_in_private_items, clippy::panic, clippy::unreachable)]
 
 #[inline(always)]
