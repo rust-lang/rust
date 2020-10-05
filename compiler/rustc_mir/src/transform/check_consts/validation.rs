@@ -434,11 +434,13 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, block: &BasicBlockData<'tcx>) {
         trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
 
-        // Just as the old checker did, we skip const-checking basic blocks on the unwind path.
-        // These blocks often drop locals that would otherwise be returned from the function.
+        // We don't const-check basic blocks on the cleanup path since we never unwind during
+        // const-eval: a panic causes an immediate compile error. In other words, cleanup blocks
+        // are unreachable during const-eval.
         //
-        // FIXME: This shouldn't be unsound since a panic at compile time will cause a compiler
-        // error anyway, but maybe we should do more here?
+        // We can't be more conservative (e.g., by const-checking cleanup blocks anyways) because
+        // locals that would never be dropped during normal execution are sometimes dropped during
+        // unwinding, which means backwards-incompatible live-drop errors.
         if block.is_cleanup {
             return;
         }
@@ -874,10 +876,14 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             }
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
-            TerminatorKind::Abort => self.check_op(ops::Abort),
 
             TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
                 self.check_op(ops::Generator(hir::GeneratorKind::Gen))
+            }
+
+            TerminatorKind::Abort => {
+                // Cleanup blocks are skipped for const checking (see `visit_basic_block_data`).
+                span_bug!(self.span, "`Abort` terminator outside of cleanup block")
             }
 
             TerminatorKind::Assert { .. }

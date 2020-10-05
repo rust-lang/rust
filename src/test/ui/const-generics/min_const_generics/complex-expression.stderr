@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/complex-expression.rs:9:38
    |
 LL | struct Break0<const N: usize>([u8; { N + 1 }]);
@@ -6,7 +6,7 @@ LL | struct Break0<const N: usize>([u8; { N + 1 }]);
    |
    = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/complex-expression.rs:12:40
    |
 LL | struct Break1<const N: usize>([u8; { { N } }]);
@@ -14,7 +14,7 @@ LL | struct Break1<const N: usize>([u8; { { N } }]);
    |
    = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/complex-expression.rs:16:17
    |
 LL |     let _: [u8; N + 1];
@@ -22,7 +22,7 @@ LL |     let _: [u8; N + 1];
    |
    = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/complex-expression.rs:21:17
    |
 LL |     let _ = [0; N + 1];

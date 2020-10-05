@@ -1907,6 +1907,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
                 let ty = parent_trait_ref.skip_binder().self_ty();
+                if parent_trait_ref.references_error() {
+                    err.cancel();
+                    return;
+                }
+
                 err.note(&format!("required because it appears within the type `{}`", ty));
                 obligated_types.push(ty);
 

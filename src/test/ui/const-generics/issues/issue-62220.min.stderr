@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-62220.rs:8:59
    |
 LL | pub type TruncatedVector<T, const N: usize> = Vector<T, { N - 1 }>;

@@ -9,10 +9,11 @@
 
 // ignore-tidy-filelength
 
+use core::array;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::iter::{once, repeat_with, FromIterator, FusedIterator};
+use core::iter::{repeat_with, FromIterator, FusedIterator};
 use core::mem::{self, replace, ManuallyDrop};
 use core::ops::{Index, IndexMut, Range, RangeBounds, Try};
 use core::ptr::{self, NonNull};
@@ -99,7 +100,7 @@ impl<'a, 'b, T> PairSlices<'a, 'b, T> {
     }
 
     fn remainder(self) -> impl Iterator<Item = &'b [T]> {
-        once(self.b0).chain(once(self.b1))
+        array::IntoIter::new([self.b0, self.b1])
     }
 }
 
