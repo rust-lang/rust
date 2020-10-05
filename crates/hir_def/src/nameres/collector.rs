@@ -1229,9 +1229,10 @@ impl ModCollector<'_, '_> {
         } else {
             let derive = attrs.by_key("proc_macro_derive");
             if let Some(arg) = derive.tt_values().next() {
-                if let [TokenTree::Leaf(Leaf::Ident(trait_name))] = &*arg.token_trees {
+                if let [TokenTree::Leaf(Leaf::Ident(trait_name)), ..] = &*arg.token_trees {
                     trait_name.as_name()
                 } else {
+                    log::trace!("malformed `#[proc_macro_derive]`: {}", arg);
                     return;
                 }
             } else {

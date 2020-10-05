@@ -688,13 +688,20 @@ fn resolves_proc_macros() {
         pub fn derive_macro(_item: TokenStream) -> TokenStream {
             TokenStream
         }
+
+        #[proc_macro_derive(AnotherTrait, attributes(helper_attr))]
+        pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
+            TokenStream
+        }
         ",
         expect![[r#"
             crate
+            AnotherTrait: m
             DummyTrait: m
             TokenStream: t v
             attribute_macro: v m
             derive_macro: v
+            derive_macro_2: v
             function_like_macro: v m
         "#]],
     );
