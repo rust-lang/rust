@@ -1,0 +1,138 @@
+Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/build/bin/llvm-cov show --debug --Xdemangler=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/stage0-tools-bin/rust-demangler --show-line-counts-or-regions --instr-profile=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/lazy_boolean.profdata /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/lazy_boolean 
+Counter in file 0 7:9 -> 9:42, #1
+Counter in file 0 10:8 -> 10:15, (#1 + 0)
+Counter in file 0 10:16 -> 14:6, #2
+Counter in file 0 14:6 -> 14:7, #3
+Counter in file 0 16:9 -> 16:17, #4
+Counter in file 0 18:13 -> 18:18, #5
+Counter in file 0 20:13 -> 20:18, #6
+Counter in file 0 20:18 -> 20:19, #7
+Counter in file 0 20:18 -> 20:19, #8
+Counter in file 0 23:9 -> 23:17, #9
+Counter in file 0 25:13 -> 25:18, (#4 + 0)
+Counter in file 0 27:13 -> 27:18, #10
+Counter in file 0 27:18 -> 27:19, #11
+Counter in file 0 27:18 -> 27:19, #12
+Counter in file 0 29:9 -> 29:17, #13
+Counter in file 0 29:20 -> 29:25, (#9 + 0)
+Counter in file 0 29:29 -> 29:34, #14
+Counter in file 0 29:34 -> 29:35, #15
+Counter in file 0 29:34 -> 29:35, #16
+Counter in file 0 30:9 -> 30:17, #17
+Counter in file 0 30:20 -> 30:25, (#13 + 0)
+Counter in file 0 30:29 -> 30:34, #18
+Counter in file 0 30:34 -> 30:35, #19
+Counter in file 0 30:34 -> 30:35, #20
+Counter in file 0 33:9 -> 34:16, (#17 + 0)
+Counter in file 0 35:5 -> 38:6, #21
+Counter in file 0 38:6 -> 38:7, #22
+Counter in file 0 41:9 -> 41:16, #23
+Counter in file 0 42:5 -> 45:6, #24
+Counter in file 0 47:5 -> 50:6, #25
+Counter in file 0 50:6 -> 50:7, (#24 + 0)
+Counter in file 0 52:8 -> 52:16, #26
+Counter in file 0 52:17 -> 54:6, #27
+Counter in file 0 54:6 -> 54:7, #28
+Counter in file 0 56:8 -> 56:15, #29
+Counter in file 0 56:16 -> 58:6, #30
+Counter in file 0 58:12 -> 60:6, #31
+Counter in file 0 60:6 -> 60:7, (#30 + 0)
+Counter in file 0 61:1 -> 61:2, #32
+Emitting segments for file: ../coverage/lazy_boolean.rs
+Combined regions:
+  7:9 -> 9:42 (count=1)
+  10:8 -> 10:15 (count=1)
+  10:16 -> 14:6 (count=1)
+  14:6 -> 14:7 (count=0)
+  16:9 -> 16:17 (count=1)
+  18:13 -> 18:18 (count=1)
+  20:13 -> 20:18 (count=0)
+  20:18 -> 20:19 (count=1)
+  23:9 -> 23:17 (count=1)
+  25:13 -> 25:18 (count=1)
+  27:13 -> 27:18 (count=1)
+  27:18 -> 27:19 (count=1)
+  29:9 -> 29:17 (count=1)
+  29:20 -> 29:25 (count=1)
+  29:29 -> 29:34 (count=1)
+  29:34 -> 29:35 (count=1)
+  30:9 -> 30:17 (count=1)
+  30:20 -> 30:25 (count=1)
+  30:29 -> 30:34 (count=0)
+  30:34 -> 30:35 (count=1)
+  33:9 -> 34:16 (count=1)
+  35:5 -> 38:6 (count=0)
+  38:6 -> 38:7 (count=1)
+  41:9 -> 41:16 (count=1)
+  42:5 -> 45:6 (count=1)
+  47:5 -> 50:6 (count=0)
+  50:6 -> 50:7 (count=1)
+  52:8 -> 52:16 (count=1)
+  52:17 -> 54:6 (count=0)
+  54:6 -> 54:7 (count=1)
+  56:8 -> 56:15 (count=1)
+  56:16 -> 58:6 (count=1)
+  58:12 -> 60:6 (count=0)
+  60:6 -> 60:7 (count=1)
+  61:1 -> 61:2 (count=1)
+Segment at 7:9 (count = 1), RegionEntry
+Segment at 9:42 (count = 0), Skipped
+Segment at 10:8 (count = 1), RegionEntry
+Segment at 10:15 (count = 0), Skipped
+Segment at 10:16 (count = 1), RegionEntry
+Segment at 14:6 (count = 0), RegionEntry
+Segment at 14:7 (count = 0), Skipped
+Segment at 16:9 (count = 1), RegionEntry
+Segment at 16:17 (count = 0), Skipped
+Segment at 18:13 (count = 1), RegionEntry
+Segment at 18:18 (count = 0), Skipped
+Segment at 20:13 (count = 0), RegionEntry
+Segment at 20:18 (count = 1), RegionEntry
+Segment at 20:19 (count = 0), Skipped
+Segment at 23:9 (count = 1), RegionEntry
+Segment at 23:17 (count = 0), Skipped
+Segment at 25:13 (count = 1), RegionEntry
+Segment at 25:18 (count = 0), Skipped
+Segment at 27:13 (count = 1), RegionEntry
+Segment at 27:18 (count = 1), RegionEntry
+Segment at 27:19 (count = 0), Skipped
+Segment at 29:9 (count = 1), RegionEntry
+Segment at 29:17 (count = 0), Skipped
+Segment at 29:20 (count = 1), RegionEntry
+Segment at 29:25 (count = 0), Skipped
+Segment at 29:29 (count = 1), RegionEntry
+Segment at 29:34 (count = 1), RegionEntry
+Segment at 29:35 (count = 0), Skipped
+Segment at 30:9 (count = 1), RegionEntry
+Segment at 30:17 (count = 0), Skipped
+Segment at 30:20 (count = 1), RegionEntry
+Segment at 30:25 (count = 0), Skipped
+Segment at 30:29 (count = 0), RegionEntry
+Segment at 30:34 (count = 1), RegionEntry
+Segment at 30:35 (count = 0), Skipped
+Segment at 33:9 (count = 1), RegionEntry
+Segment at 34:16 (count = 0), Skipped
+Segment at 35:5 (count = 0), RegionEntry
+Segment at 38:6 (count = 1), RegionEntry
+Segment at 38:7 (count = 0), Skipped
+Segment at 41:9 (count = 1), RegionEntry
+Segment at 41:16 (count = 0), Skipped
+Segment at 42:5 (count = 1), RegionEntry
+Segment at 45:6 (count = 0), Skipped
+Segment at 47:5 (count = 0), RegionEntry
+Segment at 50:6 (count = 1), RegionEntry
+Segment at 50:7 (count = 0), Skipped
+Segment at 52:8 (count = 1), RegionEntry
+Segment at 52:16 (count = 0), Skipped
+Segment at 52:17 (count = 0), RegionEntry
+Segment at 54:6 (count = 1), RegionEntry
+Segment at 54:7 (count = 0), Skipped
+Segment at 56:8 (count = 1), RegionEntry
+Segment at 56:15 (count = 0), Skipped
+Segment at 56:16 (count = 1), RegionEntry
+Segment at 58:6 (count = 0), Skipped
+Segment at 58:12 (count = 0), RegionEntry
+Segment at 60:6 (count = 1), RegionEntry
+Segment at 60:7 (count = 0), Skipped
+Segment at 61:1 (count = 1), RegionEntry
+Segment at 61:2 (count = 0), Skipped
