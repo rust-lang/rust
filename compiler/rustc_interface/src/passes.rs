@@ -551,6 +551,10 @@ fn write_out_deps(
             .map(|fmap| escape_dep_filename(&fmap.unmapped_path.as_ref().unwrap_or(&fmap.name)))
             .collect();
 
+        if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
+            files.push(backend.to_string());
+        }
+
         if sess.binary_dep_depinfo() {
             boxed_resolver.borrow().borrow_mut().access(|resolver| {
                 for cnum in resolver.cstore().crates_untracked() {
