@@ -111,13 +111,19 @@ where
     write!(w, r#"<table border="0" cellborder="1" cellspacing="0">"#)?;
 
     // Basic block number at the top.
+    let (blk, bgcolor) = if data.is_cleanup {
+        (format!("{} (cleanup)", block.index()), "lightblue")
+    } else {
+        let color = if dark_mode { "dimgray" } else { "gray" };
+        (format!("{}", block.index()), color)
+    };
     write!(
         w,
         r#"<tr><td bgcolor="{bgcolor}" {attrs} colspan="{colspan}">{blk}</td></tr>"#,
-        bgcolor = if dark_mode { "dimgray" } else { "gray" },
         attrs = r#"align="center""#,
         colspan = num_cols,
-        blk = block.index()
+        blk = blk,
+        bgcolor = bgcolor
     )?;
 
     init(w)?;
