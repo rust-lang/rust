@@ -1764,7 +1764,7 @@ impl<'a> FromIterator<Cow<'a, str>> for String {
     /// Converts an [`IntoIterator<Item = Cow<'a, str>>`](IntoIterator) into a [`String`].
     ///
     /// If `iter` isn't empty, the data is appended to its first element,
-    /// which is cloned it if it isn't already owned, resulting in an allocation on the heap.
+    /// which is cloned if it isn't already owned, resulting in an allocation on the heap.
     /// If more capacity is required, the data is allocated on the heap.
     fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
         let mut iterator = iter.into_iter();
