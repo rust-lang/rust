@@ -35,7 +35,7 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 
 use rustc_ast as ast;
-use rustc_data_structures::mini_map::MiniMap;
+use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
@@ -429,7 +429,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             needs_wf: false,
             root_ty: ty,
             param_env: self.param_env,
-            cache: MiniMap::new(),
+            cache: SsoHashMap::new(),
         };
 
         let ty = match generalize.relate(ty, ty) {
@@ -490,7 +490,7 @@ struct Generalizer<'cx, 'tcx> {
 
     param_env: ty::ParamEnv<'tcx>,
 
-    cache: MiniMap<Ty<'tcx>, RelateResult<'tcx, Ty<'tcx>>>,
+    cache: SsoHashMap<Ty<'tcx>, RelateResult<'tcx, Ty<'tcx>>>,
 }
 
 /// Result from a generalization operation. This includes

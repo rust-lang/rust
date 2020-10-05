@@ -4,7 +4,7 @@
 
 use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_data_structures::mini_set::MiniSet;
+use rustc_data_structures::sso::SsoHashSet;
 use smallvec::SmallVec;
 
 #[derive(Debug)]
@@ -51,7 +51,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Push onto `out` all the things that must outlive `'a` for the condition
     /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
     pub fn push_outlives_components(self, ty0: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
-        let mut visited = MiniSet::new();
+        let mut visited = SsoHashSet::new();
         compute_components(self, ty0, out, &mut visited);
         debug!("components({:?}) = {:?}", ty0, out);
     }
@@ -61,7 +61,7 @@ fn compute_components(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,
-    visited: &mut MiniSet<GenericArg<'tcx>>,
+    visited: &mut SsoHashSet<GenericArg<'tcx>>,
 ) {
     // Descend through the types, looking for the various "base"
     // components and collecting them into `out`. This is not written
@@ -142,7 +142,7 @@ fn compute_components(
                     // OutlivesProjectionComponents.  Continue walking
                     // through and constrain Pi.
                     let mut subcomponents = smallvec![];
-                    let mut subvisited = MiniSet::new();
+                    let mut subvisited = SsoHashSet::new();
                     compute_components_recursive(tcx, ty.into(), &mut subcomponents, &mut subvisited);
                     out.push(Component::EscapingProjection(subcomponents.into_iter().collect()));
                 }
@@ -194,7 +194,7 @@ fn compute_components_recursive(
     tcx: TyCtxt<'tcx>,
     parent: GenericArg<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,
-    visited: &mut MiniSet<GenericArg<'tcx>>,
+    visited: &mut SsoHashSet<GenericArg<'tcx>>,
 ) {
     for child in parent.walk_shallow(visited) {
         match child.unpack() {
