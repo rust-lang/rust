@@ -50,6 +50,19 @@ impl<'tcx> RustIrDatabase<'tcx> {
             .map(|wc| wc.fold_with(&mut regions_substitutor))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect()
     }
+
+    fn bounds_for<T>(&self, def_id: DefId, bound_vars: SubstsRef<'tcx>) -> Vec<T>
+    where
+        ty::Predicate<'tcx>: LowerInto<'tcx, std::option::Option<T>>,
+    {
+        self.interner
+            .tcx
+            .explicit_item_bounds(def_id)
+            .iter()
+            .map(|(bound, _)| bound.subst(self.interner.tcx, &bound_vars))
+            .filter_map(|bound| LowerInto::<Option<_>>::lower_into(bound, &self.interner))
+            .collect()
+    }
 }
 
 impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'tcx> {
@@ -75,19 +88,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let binders = binders_for(&self.interner, bound_vars);
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
-
-        let bounds = self
-            .interner
-            .tcx
-            .explicit_item_bounds(def_id)
-            .iter()
-            .map(|(bound, _)| bound.subst(self.interner.tcx, &bound_vars))
-            .filter_map(|bound| {
-                LowerInto::<
-                        Option<chalk_solve::rust_ir::QuantifiedInlineBound<RustInterner<'tcx>>>,
-                    >::lower_into(bound, &self.interner)
-            })
-            .collect();
+        let bounds = self.bounds_for(def_id, bound_vars);
 
         Arc::new(chalk_solve::rust_ir::AssociatedTyDatum {
             trait_id: chalk_ir::TraitId(trait_def_id),
@@ -453,17 +454,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let bound_vars = bound_vars_for_item(self.interner.tcx, opaque_ty_id.0);
         let binders = binders_for(&self.interner, bound_vars);
         let where_clauses = self.where_clauses_for(opaque_ty_id.0, bound_vars);
-
-        let bounds: Vec<_> = self
-            .interner
-            .tcx
-            .explicit_item_bounds(opaque_ty_id.0)
-            .iter()
-            .map(|(bound, _)| bound.subst(self.interner.tcx, &bound_vars))
-            .filter_map(|bound| {
-                LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(bound, &self.interner)
-            })
-            .collect();
+        let bounds = self.bounds_for(opaque_ty_id.0, bound_vars);
 
         let value = chalk_solve::rust_ir::OpaqueTyDatumBound {
             bounds: chalk_ir::Binders::new(binders.clone(), bounds),
