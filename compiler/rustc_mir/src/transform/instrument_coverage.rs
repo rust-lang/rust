@@ -4,12 +4,8 @@ use crate::util::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::graph::dominators::{self, Dominators};
-// TODO(richkadel): remove?
-//use rustc_data_structures::graph::{self, GraphSuccessors, WithSuccessors};
 use rustc_data_structures::graph::{self, GraphSuccessors};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-// TODO(richkadel): remove?
-//use rustc_data_structures::sync::{Lrc, OnceCell};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -29,7 +25,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, CharPos, Pos, SourceFile, Span, Symbol, SyntaxContext};
 
-// TODO(richkadel): remove?
 use smallvec::SmallVec;
 
 use std::cmp::Ordering;
@@ -198,30 +193,14 @@ impl BasicCoverageBlockData {
     }
 }
 
-// TODO(richkadel): Remove?
-// impl std::ops::Deref for BasicCoverageBlockData {
-//     type Target = [BasicBlock];
-
-//     fn deref(&self) -> &[BasicBlock] {
-//         self.basic_blocks.deref()
-//     }
-// }
-
 rustc_index::newtype_index! {
     /// A node in the [control-flow graph][CFG] of BasicCoverageBlocks.
     pub struct BasicCoverageBlock {
-// TODO(richkadel): remove if not needed
-//        derive [HashStable]
         DEBUG_FORMAT = "bcb{}",
-// TODO(richkadel): remove if not needed
-//        const START_BLOCK = 0,
     }
 }
 
 struct BasicCoverageBlocks {
-// TODO(richkadel): remove if not needed
-// struct BasicCoverageBlocks<'a, 'tcx> {
-//     mir_body: &'a mut mir::Body<'tcx>,
     bcbs: IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
     bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     predecessors: IndexVec<BasicCoverageBlock, BcbPredecessors>,
@@ -229,9 +208,6 @@ struct BasicCoverageBlocks {
 }
 
 impl BasicCoverageBlocks {
-// TODO(richkadel): remove if not needed
-//impl<'a, 'tcx> BasicCoverageBlocks<'a, 'tcx> {
-//    pub fn from_mir(mir_body: &'a mut mir::Body<'tcx>) -> Self {
     pub fn from_mir(mir_body: &mir::Body<'tcx>) -> Self {
         let len = mir_body.basic_blocks().len();
         let mut bcbs = IndexVec::with_capacity(len);
@@ -395,18 +371,12 @@ impl BasicCoverageBlocks {
         }, bcbs.len());
 
         Self {
-//            mir_body,
             bcbs,
             bb_to_bcb,
             predecessors,
             successors,
         }
     }
-
-// TODO(richkadel): remove if not needed
-    // pub fn iter(&self) -> impl Iterator<Item = &BasicCoverageBlockData> {
-    //     self.bcbs.iter()
-    // }
 
     pub fn iter_enumerated(&self) -> impl Iterator<Item = (BasicCoverageBlock, &BasicCoverageBlockData)> {
         self.bcbs.iter_enumerated()
@@ -415,21 +385,6 @@ impl BasicCoverageBlocks {
     fn bcb_from_bb(&self, bb: BasicBlock) -> BasicCoverageBlock {
         self.bb_to_bcb[bb].expect("bb is not in any bcb (pre-filtered, such as unwind paths perhaps?)")
     }
-
-// TODO(richkadel): remove if not needed
-    // fn bcb_data_from_bb(&self, bb: BasicBlock) -> &BasicCoverageBlockData {
-    //     &self.bcbs[self.bcb_from_bb(bb)]
-    // }
-
-// TODO(richkadel): remove if not needed
-    // fn mir_body(&self) -> &mir::Body<'tcx> {
-    //     self.mir_body
-    // }
-
-// TODO(richkadel): remove if not needed
-    // fn mir_body_mut(&mut self) -> &mut mir::Body<'tcx> {
-    //     self.mir_body
-    // }
 
     fn add_basic_coverage_block(bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>, bb_to_bcb: &mut IndexVec<BasicBlock, Option<BasicCoverageBlock>>, basic_blocks: Vec<BasicBlock>) {
         let bcb = BasicCoverageBlock::from_usize(bcbs.len());
@@ -441,26 +396,16 @@ impl BasicCoverageBlocks {
         bcbs.push(bcb_data);
     }
 
-    // TODO(richkadel): remove?
-    // #[inline]
-    // pub fn predecessors(&self) -> impl std::ops::Deref<Target = BcbPredecessors> + '_ {
-    //     self.predecessors
-    // }
-
     #[inline]
     pub fn compute_bcb_dominators(&self) -> Dominators<BasicCoverageBlock> {
         dominators::dominators(self)
     }
 }
 
-    // TODO(richkadel): remove?
-//impl<'a, 'tcx> graph::DirectedGraph for BasicCoverageBlocks<'a, 'tcx> {
 impl graph::DirectedGraph for BasicCoverageBlocks {
     type Node = BasicCoverageBlock;
 }
 
-    // TODO(richkadel): remove?
-//impl<'a, 'tcx> graph::WithNumNodes for BasicCoverageBlocks<'a, 'tcx> {
 impl graph::WithNumNodes for BasicCoverageBlocks {
     #[inline]
     fn num_nodes(&self) -> usize {
@@ -468,8 +413,6 @@ impl graph::WithNumNodes for BasicCoverageBlocks {
     }
 }
 
-    // TODO(richkadel): remove?
-//impl<'a, 'tcx> graph::WithStartNode for BasicCoverageBlocks<'a, 'tcx> {
 impl graph::WithStartNode for BasicCoverageBlocks {
     #[inline]
     fn start_node(&self) -> Self::Node {
@@ -480,15 +423,9 @@ impl graph::WithStartNode for BasicCoverageBlocks {
 // `BasicBlock` `Predecessors` uses a `SmallVec` of length 4 because, "Typically 95%+ of basic
 // blocks have 4 or fewer predecessors." BasicCoverageBlocks should have the same or less.
 type BcbPredecessors = SmallVec<[BasicCoverageBlock; 4]>;
-// TODO(richkadel): remove?
-//type BcbPredecessors = IndexVec<BasicCoverageBlock, SmallVec<[BasicCoverageBlock; 4]>>;
 
 pub type BcbSuccessors<'a> = std::slice::Iter<'a, BasicCoverageBlock>;
-    // TODO(richkadel): remove?
-//pub type BcbSuccessors = std::slice::Iter<'_, BasicCoverageBlock>;
 
-    // TODO(richkadel): remove?
-//impl<'a, 'tcx> graph::WithSuccessors for BasicCoverageBlocks<'a, 'tcx> {
 impl graph::WithSuccessors for BasicCoverageBlocks {
     #[inline]
     fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
@@ -496,28 +433,16 @@ impl graph::WithSuccessors for BasicCoverageBlocks {
     }
 }
 
-    // TODO(richkadel): remove?
-//impl<'a, 'tcx, 'b> graph::GraphSuccessors<'b> for BasicCoverageBlocks<'a, 'tcx> {
-//impl<'b> graph::GraphSuccessors<'b> for BasicCoverageBlocks {
 impl<'a> graph::GraphSuccessors<'a> for BasicCoverageBlocks {
     type Item = BasicCoverageBlock;
-    // TODO(richkadel): remove?
-    //type Iter = std::iter::Cloned<BcbSuccessors<'b>>;
-    //type Iter = std::iter::Cloned<BcbSuccessors>;
     type Iter = std::iter::Cloned<BcbSuccessors<'a>>;
 }
 
-    // TODO(richkadel): remove?
-//impl graph::GraphPredecessors<'graph> for BasicCoverageBlocks<'a, 'tcx> {
 impl graph::GraphPredecessors<'graph> for BasicCoverageBlocks {
     type Item = BasicCoverageBlock;
-    // TODO(richkadel): remove?
-    //type Iter = smallvec::IntoIter<BcbPredecessors>;
     type Iter = smallvec::IntoIter<[BasicCoverageBlock; 4]>;
 }
 
-    // TODO(richkadel): remove?
-//impl graph::WithPredecessors for BasicCoverageBlocks<'a, 'tcx> {
 impl graph::WithPredecessors for BasicCoverageBlocks {
     #[inline]
     fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
@@ -525,8 +450,6 @@ impl graph::WithPredecessors for BasicCoverageBlocks {
     }
 }
 
-    // TODO(richkadel): remove?
-//impl<'a, 'tcx> Index<BasicCoverageBlock> for BasicCoverageBlocks<'a, 'tcx> {
 impl Index<BasicCoverageBlock> for BasicCoverageBlocks {
     type Output = BasicCoverageBlockData;
 
@@ -536,8 +459,6 @@ impl Index<BasicCoverageBlock> for BasicCoverageBlocks {
     }
 }
 
-    // TODO(richkadel): remove?
-//impl<'a, 'tcx> IndexMut<BasicCoverageBlock> for BasicCoverageBlocks<'a, 'tcx> {
 impl IndexMut<BasicCoverageBlock> for BasicCoverageBlocks {
     #[inline]
     fn index_mut(&mut self, index: BasicCoverageBlock) -> &mut BasicCoverageBlockData {
@@ -735,8 +656,6 @@ struct Instrumentor<'a, 'tcx> {
     mir_body: &'a mut mir::Body<'tcx>,
     hir_body: &'tcx rustc_hir::Body<'tcx>,
     bcb_dominators: Dominators<BasicCoverageBlock>,
-//TODO(richkadel): remove?
-//    basic_coverage_blocks: BasicCoverageBlocks<'a, 'tcx>,
     basic_coverage_blocks: BasicCoverageBlocks,
     function_source_hash: Option<u64>,
     next_counter_id: u32,
@@ -764,14 +683,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             num_expressions: 0,
         }
     }
-
-    // fn mir_body(&self) -> &mir::Body<'tcx> {
-    //     self.basic_coverage_blocks.mir_body()
-    // }
-
-    // fn mir_body_mut(&mut self) -> &mut mir::Body<'tcx> {
-    //     self.basic_coverage_blocks.mir_body_mut()
-    // }
 
     /// Counter IDs start from one and go up.
     fn next_counter(&mut self) -> CounterValueReference {
@@ -892,8 +803,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let code_region = make_code_region(file_name, source_file, span);
         debug!("  injecting statement {:?} covering {:?}", coverage_kind, code_region);
 
-// TODO(richkadel): remove?
-//        let data = &mut self.mir_body_mut()[block];
         let data = &mut self.mir_body[block];
         let source_info = data.terminator().source_info;
         let statement = Statement {
@@ -926,12 +835,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
         span_viewables
     }
-
-// TODO(richkadel): remove if not needed
-//    #[inline(always)]
-//    fn bcb_from_coverage_span(&self, coverage_span: &CoverageSpan) -> &BasicCoverageBlockData {
-//        &self.basic_coverage_blocks[coverage_span.bcb]
-//    }
 
     #[inline(always)]
     fn body_span(&self) -> Span {
