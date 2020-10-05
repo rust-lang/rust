@@ -121,8 +121,6 @@ struct Scope {
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData>,
 
-    moved_locals: Vec<Local>,
-
     /// The drop index that will drop everything in and below this scope on an
     /// unwind path.
     cached_unwind_block: Option<DropIdx>,
@@ -406,7 +404,6 @@ impl<'tcx> Scopes<'tcx> {
             region_scope: region_scope.0,
             region_scope_span: region_scope.1.span,
             drops: vec![],
-            moved_locals: vec![],
             cached_unwind_block: None,
             cached_generator_drop_block: None,
         });
@@ -904,29 +901,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 return;
             }
 
-            Some(local_scope) => self
-                .scopes
-                .scopes
-                .iter_mut()
-                .rfind(|scope| scope.region_scope == local_scope)
-                .unwrap_or_else(|| bug!("scope {:?} not found in scope list!", local_scope)),
+            Some(local_scope) => {
+                let top_scope = self.scopes.scopes.last_mut().unwrap();
+                assert!(
+                    top_scope.region_scope == local_scope,
+                    "local scope ({:?}) is not the topmost scope!",
+                    local_scope
+                );
+
+                top_scope
+            }
         };
 
         // look for moves of a local variable, like `MOVE(_X)`
-        let locals_moved = operands.iter().flat_map(|operand| match operand {
-            Operand::Copy(_) | Operand::Constant(_) => None,
-            Operand::Move(place) => place.as_local(),
-        });
+        let locals_moved = operands
+            .iter()
+            .filter_map(|operand| match operand {
+                Operand::Copy(_) | Operand::Constant(_) => None,
+                Operand::Move(place) => place.as_local(),
+            })
+            .collect::<FxHashSet<_>>();
 
-        for local in locals_moved {
-            // check if we have a Drop for this operand and -- if so
-            // -- add it to the list of moved operands. Note that this
-            // local might not have been an operand created for this
-            // call, it could come from other places too.
-            if scope.drops.iter().any(|drop| drop.local == local && drop.kind == DropKind::Value) {
-                scope.moved_locals.push(local);
-            }
-        }
+        // Remove the drops for the moved operands.
+        scope
+            .drops
+            .retain(|drop| drop.kind == DropKind::Storage || !locals_moved.contains(&drop.local));
+        scope.invalidate_cache();
     }
 
     // Other
@@ -1173,14 +1173,6 @@ fn build_scope_drops<'tcx>(
                 debug_assert_eq!(unwind_drops.drops[unwind_to].0.local, drop_data.local);
                 debug_assert_eq!(unwind_drops.drops[unwind_to].0.kind, drop_data.kind);
                 unwind_to = unwind_drops.drops[unwind_to].1;
-
-                // If the operand has been moved, and we are not on an unwind
-                // path, then don't generate the drop. (We only take this into
-                // account for non-unwind paths so as not to disturb the
-                // caching mechanism.)
-                if scope.moved_locals.iter().any(|&o| o == local) {
-                    continue;
-                }
 
                 unwind_drops.add_entry(block, unwind_to);
 
