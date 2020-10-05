@@ -1,5 +1,8 @@
+//! Removes markdown from strings.
+
 use pulldown_cmark::{Event, Parser};
 
+/// Removes all markdown, keeping the text and code blocks
 pub fn remove_markdown(markdown: &str) -> String {
     let mut out = String::new();
     let parser = Parser::new(markdown);
