@@ -229,6 +229,16 @@ pub(crate) struct FatPtr<T> {
     pub(crate) len: usize,
 }
 
+// Manual impl needed to avoid `T: Clone` bound.
+impl<T> Clone for FatPtr<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+// Manual impl needed to avoid `T: Copy` bound.
+impl<T> Copy for FatPtr<T> {}
+
 /// Forms a raw slice from a pointer and a length.
 ///
 /// The `len` argument is the number of **elements**, not the number of bytes.
