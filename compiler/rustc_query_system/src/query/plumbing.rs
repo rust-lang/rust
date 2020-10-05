@@ -729,34 +729,55 @@ fn force_query_impl<CTX, C>(
     );
 }
 
+pub enum QueryCaller<DK> {
+    Ensure,
+    Get,
+    Force(DepNode<DK>),
+}
+
+#[inline(never)]
+fn call_query_impl<CTX, C>(
+    tcx: CTX,
+    state: &QueryState<CTX::DepKind, CTX::Query, C>,
+    span: Span,
+    key: C::Key,
+    caller: QueryCaller<CTX::DepKind>,
+    query: &QueryVtable<CTX, C::Key, C::Value>,
+) -> Option<C::Stored>
+where
+    C: QueryCache,
+    C::Key: Eq + Clone + crate::dep_graph::DepNodeParams<CTX>,
+    C::Stored: Clone,
+    CTX: QueryContext,
+{
+    match caller {
+        QueryCaller::Ensure => {
+            ensure_query_impl(tcx, state, key, query);
+            None
+        }
+        QueryCaller::Get => {
+            let ret = get_query_impl(tcx, state, span, key, query);
+            Some(ret)
+        }
+        QueryCaller::Force(dep_node) => {
+            force_query_impl(tcx, state, key, span, dep_node, query);
+            None
+        }
+    }
+}
+
 #[inline(always)]
-pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
+pub fn call_query<Q, CTX>(
+    tcx: CTX,
+    span: Span,
+    key: Q::Key,
+    caller: QueryCaller<CTX::DepKind>,
+) -> Option<Q::Stored>
 where
     Q: QueryDescription<CTX>,
     Q::Key: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
     debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
-
-    get_query_impl(tcx, Q::query_state(tcx), span, key, &Q::VTABLE)
-}
-
-#[inline(always)]
-pub fn ensure_query<Q, CTX>(tcx: CTX, key: Q::Key)
-where
-    Q: QueryDescription<CTX>,
-    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
-    CTX: QueryContext,
-{
-    ensure_query_impl(tcx, Q::query_state(tcx), key, &Q::VTABLE)
-}
-
-#[inline(always)]
-pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
-where
-    Q: QueryDescription<CTX>,
-    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
-    CTX: QueryContext,
-{
-    force_query_impl(tcx, Q::query_state(tcx), key, span, dep_node, &Q::VTABLE)
+    call_query_impl(tcx, Q::query_state(tcx), span, key, caller, &Q::VTABLE)
 }
