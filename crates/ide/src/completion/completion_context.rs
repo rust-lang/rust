@@ -221,10 +221,11 @@ impl<'a> CompletionContext<'a> {
         Some(ctx)
     }
 
-    // The range of the identifier that is being completed.
+    /// The range of the identifier that is being completed.
     pub(crate) fn source_range(&self) -> TextRange {
         // check kind of macro-expanded token, but use range of original token
-        if self.token.kind() == IDENT || self.token.kind().is_keyword() {
+        let kind = self.token.kind();
+        if kind == IDENT || kind == UNDERSCORE || kind.is_keyword() {
             mark::hit!(completes_if_prefix_is_keyword);
             self.original_token.text_range()
         } else {
