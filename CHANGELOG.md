@@ -126,12 +126,6 @@ Current beta, release 2020-11-19
 * [`box_vec`], [`vec_box`] and [`borrowed_box`]: add link to the documentation of `Box`
   [#6023](https://github.com/rust-lang/rust-clippy/pull/6023)
 
-### Thanks
-
-This release of Clippy was made possible by the voluntary work of: mikerite, taiki-e, matthiaskrgr, rail-rain, wiomoc, 
-giraffate, tmiasko, HaramanJohal,  Ryan1729, euclio, montrivo, thomcc, alex-700, ebroto, bugadani, Koxiaet, HactarCE, 
-ThibsG, deg4uss3r, stchris, rschoon, chansuke, jrqc, JarredAllen and scottmcm.
-
 ## Rust 1.47
 
 Current stable, released 2020-10-08
