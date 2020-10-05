@@ -2947,6 +2947,8 @@ impl<T> IntoIter<T> {
     /// * `offset == 0` is always valid
     /// * `offset` must be positive
     unsafe fn into_vec_with_uninit_prefix(self, offset: isize) -> Vec<T> {
+        debug_assert!(offset > 0);
+        debug_assert!(offset as usize + self.len() <= self.cap);
         let dst = unsafe { self.buf.as_ptr().offset(offset) };
         if self.ptr != dst as *const _ {
             unsafe { ptr::copy(self.ptr, dst, self.len()) }
