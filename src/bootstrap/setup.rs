@@ -18,6 +18,10 @@ impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
         PathBuf::from(format!("{}/src/bootstrap/defaults/config.{}.toml", src_path.display(), self))
     }
+
+    pub fn all() -> impl Iterator<Item = Self> {
+        [Profile::Compiler, Profile::Codegen, Profile::Library, Profile::User].iter().copied()
+    }
 }
 
 #[derive(Debug)]
