@@ -44,7 +44,11 @@ declare_lint_pass!(MutMutexLock => [MUT_MUTEX_LOCK]);
 impl<'tcx> LateLintPass<'tcx> for MutMutexLock {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, ex: &'tcx Expr<'tcx>) {
         if_chain! {
-            if is_mut_mutex_lock_call(cx, ex).is_some();
+            if let ExprKind::MethodCall(path, _span, args, _) = &ex.kind;
+            if path.ident.name == sym!(lock);
+            let ty = cx.typeck_results().expr_ty(&args[0]);
+            if let ty::Ref(_, inner_ty, Mutability::Mut) = ty.kind();
+            if is_type_diagnostic_item(cx, inner_ty, sym!(mutex_type));
             then {
                 span_lint_and_help(
                     cx,
@@ -55,21 +59,6 @@ impl<'tcx> LateLintPass<'tcx> for MutMutexLock {
                     "use `&mut Mutex::get_mut` instead",
                 );
             }
-        }
-    }
-}
-
-fn is_mut_mutex_lock_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if_chain! {
-        if let ExprKind::MethodCall(path, _span, args, _) = &expr.kind;
-        if path.ident.name == sym!(lock);
-        let ty = cx.typeck_results().expr_ty(&args[0]);
-        if let ty::Ref(_, inner_ty, Mutability::Mut) = ty.kind();
-        if is_type_diagnostic_item(cx, inner_ty, sym!(mutex_type));
-        then {
-            Some(&args[0])
-        } else {
-            None
         }
     }
 }
