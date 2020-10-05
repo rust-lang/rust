@@ -24,7 +24,7 @@
    24|       |    let _ = Firework { strength: 1000 };
    25|       |
    26|       |    Ok(())
-   27|      1|}
+   27|      2|}
    28|       |
    29|       |// Expected program output:
    30|       |//   Exiting with error...

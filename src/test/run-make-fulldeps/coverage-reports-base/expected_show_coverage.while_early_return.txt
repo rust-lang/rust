@@ -3,7 +3,7 @@
     3|       |
     4|       |fn main() -> Result<(),u8> {
     5|      1|    let mut countdown = 10;
-    6|      7|    while
+    6|       |    while
     7|      7|        countdown
     8|      7|            >
     9|      7|        0
@@ -24,7 +24,7 @@
    24|       |                else
    25|       |                {
    26|      1|                    Err(1)
-   27|       |                }
+   27|      0|                }
    28|       |                ;
    29|       |        }
    30|      6|        countdown
@@ -33,7 +33,7 @@
    33|       |        ;
    34|       |    }
    35|      0|    Ok(())
-   36|      1|}
+   36|      2|}
    37|       |
    38|       |// ISSUE(77553): Originally, this test had `Err(1)` on line 22 (instead of `Ok(())`) and
    39|       |// `std::process::exit(2)` on line 26 (instead of `Err(1)`); and this worked as expected on Linux

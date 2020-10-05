@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/nested_loops.rs",
+          "summary": {
+            "functions": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "lines": {
+              "count": 21,
+              "covered": 17,
+              "percent": 80.95238095238095
+            },
+            "regions": {
+              "count": 20,
+              "covered": 16,
+              "notcovered": 4,
+              "percent": 80
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 1,
+          "covered": 1,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 1,
+          "covered": 1,
+          "percent": 100
+        },
+        "lines": {
+          "count": 21,
+          "covered": 17,
+          "percent": 80.95238095238095
+        },
+        "regions": {
+          "count": 20,
+          "covered": 16,
+          "notcovered": 4,
+          "percent": 80
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

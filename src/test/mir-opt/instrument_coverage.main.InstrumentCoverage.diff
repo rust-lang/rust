@@ -26,13 +26,15 @@
       }
   
       bb3: {
-+         Coverage::Counter(2) for /the/src/instrument_coverage.rs:13:13 - 16:2; // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
++         Coverage::Counter(2) for /the/src/instrument_coverage.rs:13:13 - 13:18; // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
++         Coverage::Expression(4294967295) = 2 + 0 for /the/src/instrument_coverage.rs:16:1 - 16:2; // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
           falseEdge -> [real: bb5, imaginary: bb4]; // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
       }
   
       bb4: {
           _1 = const ();                   // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
           StorageDead(_2);                 // scope 0 at /the/src/instrument_coverage.rs:15:5: 15:6
++         Coverage::Counter(3) for /the/src/instrument_coverage.rs:15:6 - 15:7; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
           goto -> bb0;                     // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
       }
   
