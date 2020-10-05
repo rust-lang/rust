@@ -204,6 +204,19 @@ pub(crate) fn frobnicate() {}
 }
 
 #[test]
+fn doctest_convert_integer_literal() {
+    check_doc_test(
+        "convert_integer_literal",
+        r#####"
+const _: i32 = 10<|>;
+"#####,
+        r#####"
+const _: i32 = 0b1010;
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check_doc_test(
         "convert_to_guarded_return",

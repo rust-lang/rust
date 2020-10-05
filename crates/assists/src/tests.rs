@@ -15,18 +15,30 @@ pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
 
 pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_after: &str) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
-    check(assist, ra_fixture_before, ExpectedResult::After(&ra_fixture_after));
+    check(assist, ra_fixture_before, ExpectedResult::After(&ra_fixture_after), None);
+}
+
+// There is no way to choose what assist within a group you want to test against,
+// so this is here to allow you choose.
+pub(crate) fn check_assist_by_label(
+    assist: Handler,
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+    label: &str,
+) {
+    let ra_fixture_after = trim_indent(ra_fixture_after);
+    check(assist, ra_fixture_before, ExpectedResult::After(&ra_fixture_after), Some(label));
 }
 
 // FIXME: instead of having a separate function here, maybe use
 // `extract_ranges` and mark the target as `<target> </target>` in the
 // fixture?
 pub(crate) fn check_assist_target(assist: Handler, ra_fixture: &str, target: &str) {
-    check(assist, ra_fixture, ExpectedResult::Target(target));
+    check(assist, ra_fixture, ExpectedResult::Target(target), None);
 }
 
 pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
-    check(assist, ra_fixture, ExpectedResult::NotApplicable);
+    check(assist, ra_fixture, ExpectedResult::NotApplicable, None);
 }
 
 fn check_doc_test(assist_id: &str, before: &str, after: &str) {
@@ -65,7 +77,7 @@ enum ExpectedResult<'a> {
     Target(&'a str),
 }
 
-fn check(handler: Handler, before: &str, expected: ExpectedResult) {
+fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label: Option<&str>) {
     let (db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
     let text_without_caret = db.file_text(file_with_caret_id).to_string();
 
@@ -77,7 +89,12 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult) {
     let mut acc = Assists::new_resolved(&ctx);
     handler(&mut acc, &ctx);
     let mut res = acc.finish_resolved();
-    let assist = res.pop();
+
+    let assist = match assist_label {
+        Some(label) => res.into_iter().find(|resolved| resolved.assist.label == label),
+        None => res.pop(),
+    };
+
     match (assist, expected) {
         (Some(assist), ExpectedResult::After(after)) => {
             let mut source_change = assist.source_change;
