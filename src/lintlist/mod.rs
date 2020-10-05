@@ -2161,7 +2161,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "string_lit_as_bytes",
-        group: "style",
+        group: "nursery",
         desc: "calling `as_bytes` on a string literal instead of using a byte string literal",
         deprecation: None,
         module: "strings",

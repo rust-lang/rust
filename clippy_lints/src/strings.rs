@@ -80,7 +80,7 @@ declare_clippy_lint! {
     /// let bs = b"a byte string";
     /// ```
     pub STRING_LIT_AS_BYTES,
-    style,
+    nursery,
     "calling `as_bytes` on a string literal instead of using a byte string literal"
 }
 
