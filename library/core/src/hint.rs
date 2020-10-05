@@ -107,7 +107,7 @@ pub fn spin_loop() {
 /// extent to which it can block optimisations may vary depending upon the platform and code-gen
 /// backend used. Programs cannot rely on `black_box` for *correctness* in any way.
 ///
-/// [`std::convert::identity`]: ../convert/fn.identity.html
+/// [`std::convert::identity`]: crate::convert::identity
 #[cfg_attr(not(miri), inline)]
 #[cfg_attr(miri, inline(never))]
 #[unstable(feature = "test", issue = "50297")]
