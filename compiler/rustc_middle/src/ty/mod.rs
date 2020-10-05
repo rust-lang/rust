@@ -3034,10 +3034,12 @@ impl<'tcx> TyCtxt<'tcx> {
                 .hygienic_eq(def_name.span.ctxt(), self.expansion_that_defined(def_parent_def_id))
     }
 
-    fn expansion_that_defined(self, scope: DefId) -> ExpnId {
+    pub fn expansion_that_defined(self, scope: DefId) -> ExpnId {
         match scope.as_local() {
+            // Parsing and expansion aren't incremental, so we don't
+            // need to go through a query for the same-crate case.
             Some(scope) => self.hir().definitions().expansion_that_defined(scope),
-            None => ExpnId::root(),
+            None => self.expn_that_defined(scope),
         }
     }
 

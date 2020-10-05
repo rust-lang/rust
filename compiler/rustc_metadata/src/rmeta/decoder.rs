@@ -1011,6 +1011,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.impl_trait_ref.get(self, id).map(|tr| tr.decode((self, tcx)))
     }
 
+    fn get_expn_that_defined(&self, id: DefIndex, sess: &Session) -> ExpnId {
+        self.root.tables.expn_that_defined.get(self, id).unwrap().decode((self, sess))
+    }
+
     /// Iterates over all the stability attributes in the given crate.
     fn get_lib_features(&self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
         // FIXME: For a proc macro crate, not sure whether we should return the "host"
