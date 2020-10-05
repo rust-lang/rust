@@ -164,7 +164,7 @@ fn parse_args<'a>(
             args.templates.push(template);
             continue;
         } else {
-            return Err(p.expect_one_of(&[], &[]).unwrap_err());
+            return p.unexpected();
         };
 
         allow_templates = false;
@@ -348,7 +348,7 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
         } else if p.eat_keyword(sym::att_syntax) {
             try_set_option(p, args, sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX);
         } else {
-            return Err(p.expect_one_of(&[], &[]).unwrap_err());
+            return p.unexpected();
         }
 
         // Allow trailing commas

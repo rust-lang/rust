@@ -386,7 +386,7 @@ impl<'a> Parser<'a> {
         next
     }
 
-    crate fn unexpected<T>(&mut self) -> PResult<'a, T> {
+    pub fn unexpected<T>(&mut self) -> PResult<'a, T> {
         match self.expect_one_of(&[], &[]) {
             Err(e) => Err(e),
             // We can get `Ok(true)` from `recover_closing_delimiter`
