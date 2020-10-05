@@ -249,6 +249,9 @@ impl FlagComputation {
                 self.add_const(expected);
                 self.add_const(found);
             }
+            ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
+                self.add_ty(ty);
+            }
         }
     }
 

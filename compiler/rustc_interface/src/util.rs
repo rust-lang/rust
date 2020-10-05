@@ -63,8 +63,20 @@ pub fn create_session(
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    make_codegen_backend: Option<
+        Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
+    >,
     descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
+    let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
+        make_codegen_backend(&sopts)
+    } else {
+        get_codegen_backend(&sopts)
+    };
+
+    // target_override is documented to be called before init(), so this is okay
+    let target_override = codegen_backend.target_override(&sopts);
+
     let mut sess = session::build_session(
         sopts,
         input_path,
@@ -72,9 +84,10 @@ pub fn create_session(
         diagnostic_output,
         lint_caps,
         file_loader,
+        target_override,
     );
 
-    let codegen_backend = get_codegen_backend(&sess);
+    codegen_backend.init(&sess);
 
     let mut cfg = config::build_configuration(&sess, config::to_crate_config(cfg));
     add_configuration(&mut cfg, &mut sess, &*codegen_backend);
@@ -219,13 +232,13 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
     }
 }
 
-pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
+pub fn get_codegen_backend(sopts: &config::Options) -> Box<dyn CodegenBackend> {
     static INIT: Once = Once::new();
 
     static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
 
     INIT.call_once(|| {
-        let codegen_name = sess.opts.debugging_opts.codegen_backend.as_deref().unwrap_or("llvm");
+        let codegen_name = sopts.debugging_opts.codegen_backend.as_deref().unwrap_or("llvm");
         let backend = match codegen_name {
             filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
             codegen_name => get_builtin_codegen_backend(codegen_name),
@@ -235,9 +248,7 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
             LOAD = backend;
         }
     });
-    let backend = unsafe { LOAD() };
-    backend.init(sess);
-    backend
+    unsafe { LOAD() }
 }
 
 // This is used for rustdoc, but it uses similar machinery to codegen backend
@@ -693,6 +704,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 rules,
                 id: resolver.next_node_id(),
                 span: rustc_span::DUMMY_SP,
+                tokens: None,
             }
         }
 
@@ -709,6 +721,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 id: resolver.next_node_id(),
                 kind: ast::StmtKind::Expr(expr),
                 span: rustc_span::DUMMY_SP,
+                tokens: None,
             }
         }
 
@@ -725,6 +738,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             id: self.resolver.next_node_id(),
             span: rustc_span::DUMMY_SP,
             kind: ast::StmtKind::Expr(loop_expr),
+            tokens: None,
         };
 
         if self.within_static_or_const {

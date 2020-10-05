@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::HashStable;
+use rustc_span::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub enum PointerCast {
@@ -113,6 +114,9 @@ pub enum Adjust<'tcx> {
 pub struct OverloadedDeref<'tcx> {
     pub region: ty::Region<'tcx>,
     pub mutbl: hir::Mutability,
+    /// The `Span` associated with the field access or method call
+    /// that triggered this overloaded deref.
+    pub span: Span,
 }
 
 impl<'tcx> OverloadedDeref<'tcx> {

@@ -12,9 +12,11 @@ use crate::ptr;
     target_arch = "mips",
     target_arch = "powerpc",
     target_arch = "powerpc64",
+    target_arch = "sparc",
     target_arch = "asmjs",
     target_arch = "wasm32",
-    target_arch = "hexagon"
+    target_arch = "hexagon",
+    target_arch = "riscv32"
 )))]
 pub const MIN_ALIGN: usize = 8;
 #[cfg(all(any(

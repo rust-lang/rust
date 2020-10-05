@@ -6,8 +6,8 @@
 
 struct Test(i32);
 
-// EMIT_MIR retag.{{impl}}-foo.SimplifyCfg-elaborate-drops.after.mir
-// EMIT_MIR retag.{{impl}}-foo_shr.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR retag.{impl#0}-foo.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR retag.{impl#0}-foo_shr.SimplifyCfg-elaborate-drops.after.mir
 impl Test {
     // Make sure we run the pass on a method, not just on bare functions.
     fn foo<'x>(&self, x: &'x mut i32) -> &'x mut i32 {
@@ -25,7 +25,7 @@ impl Drop for Test {
 }
 
 // EMIT_MIR retag.main.SimplifyCfg-elaborate-drops.after.mir
-// EMIT_MIR retag.main-{{closure}}.SimplifyCfg-elaborate-drops.after.mir
+// EMIT_MIR retag.main-{closure#0}.SimplifyCfg-elaborate-drops.after.mir
 fn main() {
     let mut x = 0;
     {

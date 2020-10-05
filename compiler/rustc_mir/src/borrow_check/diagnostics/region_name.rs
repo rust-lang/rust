@@ -147,6 +147,14 @@ impl Display for RegionName {
 }
 
 impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
+    crate fn mir_def_id(&self) -> hir::def_id::LocalDefId {
+        self.body.source.def_id().as_local().unwrap()
+    }
+
+    crate fn mir_hir_id(&self) -> hir::HirId {
+        self.infcx.tcx.hir().local_def_id_to_hir_id(self.mir_def_id())
+    }
+
     /// Generate a synthetic region named `'N`, where `N` is the next value of the counter. Then,
     /// increment the counter.
     ///
@@ -266,12 +274,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 }
 
                 ty::BoundRegion::BrEnv => {
-                    let mir_hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     if let DefiningTy::Closure(_, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
-                            tcx.hir().expect_expr(mir_hir_id).kind
+                            tcx.hir().expect_expr(self.mir_hir_id()).kind
                         {
                             span
                         } else {
@@ -361,8 +368,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         &self,
         argument_index: usize,
     ) -> Option<&hir::Ty<'tcx>> {
-        let mir_hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
-        let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
+        let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(self.mir_hir_id())?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
@@ -396,7 +402,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ) -> Option<RegionNameHighlight> {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(needle_fr, counter);
-        let type_name = self.infcx.extract_type_name(&ty, Some(highlight)).0;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(ty.into(), Some(highlight)).name;
 
         debug!(
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
@@ -404,7 +411,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         );
         if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
-
             Some(RegionNameHighlight::CannotMatchHirTy(span, type_name))
         } else {
             None
@@ -646,11 +652,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
-        let type_name = self.infcx.extract_type_name(&return_ty, Some(highlight)).0;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(return_ty.into(), Some(highlight)).name;
 
-        let mir_hir_id = tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
-
-        let (return_span, mir_description) = match tcx.hir().get(mir_hir_id) {
+        let (return_span, mir_description) = match tcx.hir().get(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(_, return_ty, _, span, gen_move),
                 ..
@@ -698,11 +703,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
-        let type_name = self.infcx.extract_type_name(&yield_ty, Some(highlight)).0;
+        let type_name =
+            self.infcx.extract_inference_diagnostics_data(yield_ty.into(), Some(highlight)).name;
 
-        let mir_hir_id = tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
-
-        let yield_span = match tcx.hir().get(mir_hir_id) {
+        let yield_span = match tcx.hir().get(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(_, _, _, span, _), ..
             }) => (tcx.sess.source_map().end_point(*span)),

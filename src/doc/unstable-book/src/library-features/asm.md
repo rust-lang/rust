@@ -27,6 +27,7 @@ Inline assembly is currently supported on the following architectures:
 - RISC-V
 - NVPTX
 - Hexagon
+- MIPS32
 
 ## Basic usage
 
@@ -345,6 +346,25 @@ The `h` modifier will emit the register name for the high byte of that register 
 
 If you use a smaller data type (e.g. `u16`) with an operand and forget the use template modifiers, the compiler will emit a warning and suggest the correct modifier to use.
 
+## Memory address operands
+
+Sometimes assembly instructions require operands passed via memory addresses/memory locations.
+You have to manually use the memory address syntax specified by the respectively architectures.
+For example, in x86/x86_64 and intel assembly syntax, you should wrap inputs/outputs in `[]`
+to indicate they are memory operands:
+
+```rust,allow_fail
+# #![feature(asm, llvm_asm)]
+# fn load_fpu_control_word(control: u16) {
+unsafe {
+    asm!("fldcw [{}]", in(reg) &control, options(nostack));
+
+    // Previously this would have been written with the deprecated `llvm_asm!` like this
+    llvm_asm!("fldcw $0" :: "m" (control) :: "volatile");
+}
+# }
+```
+
 ## Options
 
 By default, an inline assembly block is treated the same way as an external FFI function call with a custom calling convention: it may read/write memory, have observable side effects, etc. However in many cases, it is desirable to give the compiler more information about what the assembly code is actually doing so that it can optimize better.
@@ -390,7 +410,7 @@ reg_spec := <register class> / "<explicit register>"
 operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"
 reg_operand := dir_spec "(" reg_spec ")" operand_expr
 operand := reg_operand / "const" const_expr / "sym" path
-option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "att_syntax"
+option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "nostack" / "att_syntax"
 options := "options(" option *["," option] [","] ")"
 asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," options] [","] ")"
 ```
@@ -493,6 +513,8 @@ Here is the list of currently supported register classes:
 | ARM | `qreg` | `q[0-15]` | `w` |
 | ARM | `qreg_low8` | `q[0-7]` | `t` |
 | ARM | `qreg_low4` | `q[0-3]` | `x` |
+| MIPS32 | `reg` | `$[2-25]` | `r` |
+| MIPS32 | `freg` | `$f[0-31]` | `f` |
 | NVPTX | `reg16` | None\* | `h` |
 | NVPTX | `reg32` | None\* | `r` |
 | NVPTX | `reg64` | None\* | `l` |
@@ -528,6 +550,8 @@ Each register class has constraints on which value types they can be used with. 
 | ARM | `sreg` | `vfp2` | `i32`, `f32` |
 | ARM | `dreg` | `vfp2` | `i64`, `f64`, `i8x8`, `i16x4`, `i32x2`, `i64x1`, `f32x2` |
 | ARM | `qreg` | `neon` | `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4` |
+| MIPS32 | `reg` | None | `i8`, `i16`, `i32`, `f32` |
+| MIPS32 | `freg` | None | `f32` |
 | NVPTX | `reg16` | None | `i8`, `i16` |
 | NVPTX | `reg32` | None | `i8`, `i16`, `i32`, `f32` |
 | NVPTX | `reg64` | None | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
@@ -576,6 +600,7 @@ Some registers have multiple names. These are all treated by the compiler as ide
 | ARM | `r13` | `sp` |
 | ARM | `r14` | `lr` |
 | ARM | `r15` | `pc` |
+| MIPS32 | `$[2-25]` | Please [see the Wikipedia page][mips-regs] |
 | RISC-V | `x0` | `zero` |
 | RISC-V | `x1` | `ra` |
 | RISC-V | `x2` | `sp` |
@@ -596,12 +621,14 @@ Some registers have multiple names. These are all treated by the compiler as ide
 | Hexagon | `r30` | `fr` |
 | Hexagon | `r31` | `lr` |
 
+[mips-regs]: https://en.wikibooks.org/wiki/MIPS_Assembly/Register_File#Registers
+
 Some registers cannot be used for input or output operands:
 
 | Architecture | Unsupported register | Reason |
 | ------------ | -------------------- | ------ |
 | All | `sp` | The stack pointer must be restored to its original value at the end of an asm code block. |
-| All | `bp` (x86), `x29` (AArch64), `x8` (RISC-V), `fr` (Hexagon) | The frame pointer cannot be used as an input or output. |
+| All | `bp` (x86), `x29` (AArch64), `x8` (RISC-V), `fr` (Hexagon), `$fp` (MIPS) | The frame pointer cannot be used as an input or output. |
 | ARM | `r7` or `r11` | On ARM the frame pointer can be either `r7` or `r11` depending on the target. The frame pointer cannot be used as an input or output. |
 | ARM | `r6` | `r6` is used internally by LLVM as a base pointer and therefore cannot be used as an input or output. |
 | x86 | `k0` | This is a constant zero register which can't be modified. |
@@ -610,6 +637,11 @@ Some registers cannot be used for input or output operands:
 | x86 | `st([0-7])` | x87 registers are not currently supported (but may be in the future). |
 | AArch64 | `xzr` | This is a constant zero register which can't be modified. |
 | ARM | `pc` | This is the program counter, not a real register. |
+| MIPS32 | `$0` or `$zero` | This is a constant zero register which can't be modified. |
+| MIPS32 | `$1` or `$at` | Reserved for assembler. |
+| MIPS32 | `$26`/`$k0`, `$27`/`$k1` | OS-reserved registers. |
+| MIPS32 | `$28`/`$gp` | Global pointer cannot be used as inputs or outputs. |
+| MIPS32 | `$ra` | Return address cannot be used as inputs or outputs. |
 | RISC-V | `x0` | This is a constant zero register which can't be modified. |
 | RISC-V | `gp`, `tp` | These registers are reserved and cannot be used as inputs or outputs. |
 | Hexagon | `lr` | This is the link register which cannot be used as an input or output. |
@@ -657,6 +689,8 @@ The supported modifiers are a subset of LLVM's (and GCC's) [asm template argumen
 | ARM | `dreg` | None | `d0` | `P` |
 | ARM | `qreg` | None | `q0` | `q` |
 | ARM | `qreg` | `e` / `f` | `d0` / `d1` | `e` / `f` |
+| MIPS32 | `reg` | None | `$2` | None |
+| MIPS32 | `freg` | None | `$f0` | None |
 | NVPTX | `reg16` | None | `rs0` | None |
 | NVPTX | `reg32` | None | `r0` | None |
 | NVPTX | `reg64` | None | `rd0` | None |

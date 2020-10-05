@@ -1,4 +1,4 @@
-error[E0019]: constant contains unimplemented expression type
+error[E0015]: inline assembly is not allowed in constants
   --> $DIR/inline_asm.rs:3:24
    |
 LL | const _: () = unsafe { llvm_asm!("nop") };
@@ -8,4 +8,4 @@ LL | const _: () = unsafe { llvm_asm!("nop") };
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0015`.

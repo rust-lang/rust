@@ -108,31 +108,35 @@ use rustc_span::symbol::Symbol;
 use crate::monomorphize::collector::InliningMap;
 use crate::monomorphize::collector::{self, MonoItemCollectionMode};
 
+pub struct PartitioningCx<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    target_cgu_count: usize,
+    inlining_map: &'a InliningMap<'tcx>,
+}
+
 trait Partitioner<'tcx> {
     fn place_root_mono_items(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut dyn Iterator<Item = MonoItem<'tcx>>,
     ) -> PreInliningPartitioning<'tcx>;
 
     fn merge_codegen_units(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        cx: &PartitioningCx<'_, 'tcx>,
         initial_partitioning: &mut PreInliningPartitioning<'tcx>,
-        target_cgu_count: usize,
     );
 
     fn place_inlined_mono_items(
         &mut self,
+        cx: &PartitioningCx<'_, 'tcx>,
         initial_partitioning: PreInliningPartitioning<'tcx>,
-        inlining_map: &InliningMap<'tcx>,
     ) -> PostInliningPartitioning<'tcx>;
 
     fn internalize_symbols(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        cx: &PartitioningCx<'_, 'tcx>,
         partitioning: &mut PostInliningPartitioning<'tcx>,
-        inlining_map: &InliningMap<'tcx>,
     );
 }
 
@@ -157,12 +161,13 @@ pub fn partition<'tcx>(
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
     let mut partitioner = get_partitioner(tcx);
+    let cx = &PartitioningCx { tcx, target_cgu_count: max_cgu_count, inlining_map };
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
     let mut initial_partitioning = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
-        partitioner.place_root_mono_items(tcx, mono_items)
+        partitioner.place_root_mono_items(cx, mono_items)
     };
 
     initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
@@ -172,7 +177,7 @@ pub fn partition<'tcx>(
     // Merge until we have at most `max_cgu_count` codegen units.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
-        partitioner.merge_codegen_units(tcx, &mut initial_partitioning, max_cgu_count);
+        partitioner.merge_codegen_units(cx, &mut initial_partitioning);
         debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
@@ -182,7 +187,7 @@ pub fn partition<'tcx>(
     // local functions the definition of which is marked with `#[inline]`.
     let mut post_inlining = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        partitioner.place_inlined_mono_items(initial_partitioning, inlining_map)
+        partitioner.place_inlined_mono_items(cx, initial_partitioning)
     };
 
     post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
@@ -193,7 +198,7 @@ pub fn partition<'tcx>(
     // more freedom to optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
-        partitioner.internalize_symbols(tcx, &mut post_inlining, inlining_map);
+        partitioner.internalize_symbols(cx, &mut post_inlining);
     }
 
     // Finally, sort by codegen unit name, so that we get deterministic results.
@@ -272,14 +277,8 @@ where
 
     symbols.sort_by_key(|sym| sym.1);
 
-    for pair in symbols.windows(2) {
-        let sym1 = &pair[0].1;
-        let sym2 = &pair[1].1;
-
+    for &[(mono_item1, ref sym1), (mono_item2, ref sym2)] in symbols.array_windows() {
         if sym1 == sym2 {
-            let mono_item1 = pair[0].0;
-            let mono_item2 = pair[1].0;
-
             let span1 = mono_item1.local_span(tcx);
             let span2 = mono_item2.local_span(tcx);
 
@@ -382,7 +381,7 @@ fn collect_and_partition_mono_items<'tcx>(
                 cgus.sort_by_key(|(name, _)| *name);
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
-                    output.push_str(" ");
+                    output.push(' ');
                     output.push_str(&cgu_name.as_str());
 
                     let linkage_abbrev = match linkage {
@@ -399,9 +398,9 @@ fn collect_and_partition_mono_items<'tcx>(
                         Linkage::Common => "Common",
                     };
 
-                    output.push_str("[");
+                    output.push('[');
                     output.push_str(linkage_abbrev);
-                    output.push_str("]");
+                    output.push(']');
                 }
                 output
             })

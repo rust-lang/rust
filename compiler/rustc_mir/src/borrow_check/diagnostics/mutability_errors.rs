@@ -492,7 +492,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err.span_label(sp, format!("cannot {}", act));
 
         let hir = self.infcx.tcx.hir();
-        let closure_id = hir.local_def_id_to_hir_id(self.mir_def_id);
+        let closure_id = self.mir_hir_id();
         let fn_call_id = hir.get_parent_node(closure_id);
         let node = hir.get(fn_call_id);
         let item_id = hir.enclosing_body_owner(fn_call_id);
@@ -631,9 +631,8 @@ fn suggest_ampmut<'tcx>(
                 let lt_name = &src[1..ws_pos];
                 let ty = &src[ws_pos..];
                 return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
-            } else if src.starts_with('&') {
-                let borrowed_expr = &src[1..];
-                return (assignment_rhs_span, format!("&mut {}", borrowed_expr));
+            } else if let Some(stripped) = src.strip_prefix('&') {
+                return (assignment_rhs_span, format!("&mut {}", stripped));
             }
         }
     }

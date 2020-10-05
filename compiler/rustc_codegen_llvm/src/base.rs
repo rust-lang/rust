@@ -108,7 +108,7 @@ pub fn compile_codegen_unit(
 
     // We assume that the cost to run LLVM on a CGU is proportional to
     // the time we needed for codegenning it.
-    let cost = time_to_codegen.as_secs() * 1_000_000_000 + time_to_codegen.subsec_nanos() as u64;
+    let cost = time_to_codegen.as_nanos() as u64;
 
     fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);

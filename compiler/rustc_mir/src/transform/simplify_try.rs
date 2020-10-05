@@ -9,14 +9,14 @@
 //!
 //! into just `x`.
 
-use crate::transform::{simplify, MirPass, MirSource};
+use crate::transform::{simplify, MirPass};
 use itertools::Itertools as _;
 use rustc_index::{bit_set::BitSet, vec::IndexVec};
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
-use std::iter::{Enumerate, Peekable};
+use std::iter::{once, Enumerate, Peekable};
 use std::slice::Iter;
 
 /// Simplifies arms of form `Variant(x) => Variant(x)` to just a move.
@@ -230,8 +230,8 @@ fn get_arm_identity_info<'a, 'tcx>(
             }
         }
     }
-
-    nop_stmts.sort();
+    // We sort primitive usize here so we can use unstable sort
+    nop_stmts.sort_unstable();
 
     // Use one of the statements we're going to discard between the point
     // where the storage location for the variant field becomes live and
@@ -367,12 +367,15 @@ fn optimization_applies<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // FIXME(77359): This optimization can result in unsoundness.
+        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
             return;
         }
 
+        let source = body.source;
         trace!("running SimplifyArmIdentity on {:?}", source);
+
         let local_uses = LocalUseCounter::get_local_uses(body);
         let (basic_blocks, local_decls, debug_info) =
             body.basic_blocks_local_decls_mut_and_var_debug_info();
@@ -527,8 +530,8 @@ fn match_variant_field_place<'tcx>(place: Place<'tcx>) -> Option<(Local, VarFiel
 pub struct SimplifyBranchSame;
 
 impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        trace!("Running SimplifyBranchSame on {:?}", source);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        trace!("Running SimplifyBranchSame on {:?}", body.source);
         let finder = SimplifyBranchSameOptimizationFinder { body, tcx };
         let opts = finder.find();
 
@@ -555,6 +558,12 @@ struct SimplifyBranchSameOptimization {
     bb_to_opt_terminator: BasicBlock,
 }
 
+struct SwitchTargetAndValue {
+    target: BasicBlock,
+    // None in case of the `otherwise` case
+    value: Option<u128>,
+}
+
 struct SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -566,8 +575,16 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
             .basic_blocks()
             .iter_enumerated()
             .filter_map(|(bb_idx, bb)| {
-                let (discr_switched_on, targets) = match &bb.terminator().kind {
-                    TerminatorKind::SwitchInt { targets, discr, .. } => (discr, targets),
+                let (discr_switched_on, targets_and_values) = match &bb.terminator().kind {
+                    TerminatorKind::SwitchInt { targets, discr, values, .. } => {
+                        // if values.len() == targets.len() - 1, we need to include None where no value is present
+                        // such that the zip does not throw away targets. If no `otherwise` case is in targets, the zip will simply throw away the added None
+                        let values_extended = values.iter().map(|x|Some(*x)).chain(once(None));
+                        let targets_and_values:Vec<_> = targets.iter().zip(values_extended)
+                            .map(|(target, value)| SwitchTargetAndValue{target:*target, value})
+                            .collect();
+                        assert_eq!(targets.len(), targets_and_values.len());
+                        (discr, targets_and_values)},
                     _ => return None,
                 };
 
@@ -591,9 +608,9 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     },
                 };
 
-                let mut iter_bbs_reachable = targets
+                let mut iter_bbs_reachable = targets_and_values
                     .iter()
-                    .map(|idx| (*idx, &self.body.basic_blocks()[*idx]))
+                    .map(|target_and_value| (target_and_value, &self.body.basic_blocks()[target_and_value.target]))
                     .filter(|(_, bb)| {
                         // Reaching `unreachable` is UB so assume it doesn't happen.
                         bb.terminator().kind != TerminatorKind::Unreachable
@@ -607,16 +624,17 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     })
                     .peekable();
 
-                let bb_first = iter_bbs_reachable.peek().map(|(idx, _)| *idx).unwrap_or(targets[0]);
+                let bb_first = iter_bbs_reachable.peek().map(|(idx, _)| *idx).unwrap_or(&targets_and_values[0]);
                 let mut all_successors_equivalent = StatementEquality::TrivialEqual;
 
                 // All successor basic blocks must be equal or contain statements that are pairwise considered equal.
-                for ((bb_l_idx,bb_l), (bb_r_idx,bb_r)) in iter_bbs_reachable.tuple_windows() {
+                for ((target_and_value_l,bb_l), (target_and_value_r,bb_r)) in iter_bbs_reachable.tuple_windows() {
                     let trivial_checks = bb_l.is_cleanup == bb_r.is_cleanup
-                    && bb_l.terminator().kind == bb_r.terminator().kind;
+                                            && bb_l.terminator().kind == bb_r.terminator().kind
+                                            && bb_l.statements.len() == bb_r.statements.len();
                     let statement_check = || {
                         bb_l.statements.iter().zip(&bb_r.statements).try_fold(StatementEquality::TrivialEqual, |acc,(l,r)| {
-                            let stmt_equality = self.statement_equality(*adt_matched_on, &l, bb_l_idx, &r, bb_r_idx);
+                            let stmt_equality = self.statement_equality(*adt_matched_on, &l, target_and_value_l, &r, target_and_value_r);
                             if matches!(stmt_equality, StatementEquality::NotEqual) {
                                 // short circuit
                                 None
@@ -638,7 +656,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                         // statements are trivially equal, so just take first
                         trace!("Statements are trivially equal");
                         Some(SimplifyBranchSameOptimization {
-                            bb_to_goto: bb_first,
+                            bb_to_goto: bb_first.target,
                             bb_to_opt_terminator: bb_idx,
                         })
                     }
@@ -673,12 +691,12 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
         &self,
         adt_matched_on: Place<'tcx>,
         x: &Statement<'tcx>,
-        x_bb_idx: BasicBlock,
+        x_target_and_value: &SwitchTargetAndValue,
         y: &Statement<'tcx>,
-        y_bb_idx: BasicBlock,
+        y_target_and_value: &SwitchTargetAndValue,
     ) -> StatementEquality {
         let helper = |rhs: &Rvalue<'tcx>,
-                      place: &Box<Place<'tcx>>,
+                      place: &Place<'tcx>,
                       variant_index: &VariantIdx,
                       side_to_choose| {
             let place_type = place.ty(self.body, self.tcx).ty;
@@ -714,16 +732,20 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
             (
                 StatementKind::Assign(box (_, rhs)),
                 StatementKind::SetDiscriminant { place, variant_index },
-            ) => {
+            )
+            // we need to make sure that the switch value that targets the bb with SetDiscriminant (y), is the same as the variant index
+            if Some(variant_index.index() as u128) == y_target_and_value.value => {
                 // choose basic block of x, as that has the assign
-                helper(rhs, place, variant_index, x_bb_idx)
+                helper(rhs, place, variant_index, x_target_and_value.target)
             }
             (
                 StatementKind::SetDiscriminant { place, variant_index },
                 StatementKind::Assign(box (_, rhs)),
-            ) => {
+            )
+            // we need to make sure that the switch value that targets the bb with SetDiscriminant (x), is the same as the variant index
+            if Some(variant_index.index() as u128) == x_target_and_value.value  => {
                 // choose basic block of y, as that has the assign
-                helper(rhs, place, variant_index, y_bb_idx)
+                helper(rhs, place, variant_index, y_target_and_value.target)
             }
             _ => {
                 trace!("NO: statements `{:?}` and `{:?}` not considered equal", x, y);

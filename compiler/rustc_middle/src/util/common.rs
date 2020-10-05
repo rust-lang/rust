@@ -1,5 +1,3 @@
-#![allow(non_camel_case_types)]
-
 use rustc_data_structures::sync::Lock;
 
 use std::fmt::Debug;

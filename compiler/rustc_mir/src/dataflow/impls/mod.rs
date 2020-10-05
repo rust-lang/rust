@@ -6,19 +6,19 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_target::abi::VariantIdx;
 
 use super::MoveDataParamEnv;
 
 use crate::util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, InitIndex, InitKind, MoveData, MovePathIndex};
-use super::{AnalysisDomain, BottomValue, GenKill, GenKillAnalysis};
+use super::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
 use super::on_lookup_result_bits;
 use crate::dataflow::drop_flag_effects;
+use crate::dataflow::framework::SwitchIntEdgeEffects;
 
 mod borrowed_locals;
 pub(super) mod borrows;
@@ -204,7 +204,7 @@ impl<'a, 'tcx> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 
 /// `EverInitializedPlaces` tracks all places that might have ever been
 /// initialized upon reaching a particular point in the control flow
-/// for a function, without an intervening `Storage Dead`.
+/// for a function, without an intervening `StorageDead`.
 ///
 /// This dataflow is used to determine if an immutable local variable may
 /// be assigned to.
@@ -290,27 +290,25 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
-
+    type Domain = BitSet<MovePathIndex>;
     const NAME: &'static str = "maybe_init";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = uninitialized
+        BitSet::new_empty(self.move_data().move_paths.len())
     }
 
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
             assert!(s == DropFlagState::Present);
             state.insert(path);
         });
     }
-
-    fn pretty_print_idx(&self, w: &mut impl std::io::Write, mpi: Self::Idx) -> std::io::Result<()> {
-        write!(w, "{}", self.move_data().move_paths[mpi])
-    }
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+    type Idx = MovePathIndex;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -354,40 +352,66 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         );
     }
 
-    fn discriminant_switch_effect(
+    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
         &self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _block: mir::BasicBlock,
-        enum_place: mir::Place<'tcx>,
-        _adt: &ty::AdtDef,
-        variant: VariantIdx,
+        block: mir::BasicBlock,
+        discr: &mir::Operand<'tcx>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
-        // Kill all move paths that correspond to variants we know to be inactive along this
-        // particular outgoing edge of a `SwitchInt`.
-        drop_flag_effects::on_all_inactive_variants(
-            self.tcx,
-            self.body,
-            self.move_data(),
-            enum_place,
-            variant,
-            |mpi| trans.kill(mpi),
-        );
+        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+            return;
+        }
+
+        let enum_ = discr.place().and_then(|discr| {
+            switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
+        });
+
+        let (enum_place, enum_def) = match enum_ {
+            Some(x) => x,
+            None => return,
+        };
+
+        let mut discriminants = enum_def.discriminants(self.tcx);
+        edge_effects.apply(|trans, edge| {
+            let value = match edge.value {
+                Some(x) => x,
+                None => return,
+            };
+
+            // MIR building adds discriminants to the `values` array in the same order as they
+            // are yielded by `AdtDef::discriminants`. We rely on this to match each
+            // discriminant in `values` to its corresponding variant in linear time.
+            let (variant, _) = discriminants
+                .find(|&(_, discr)| discr.val == value)
+                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
+
+            // Kill all move paths that correspond to variants we know to be inactive along this
+            // particular outgoing edge of a `SwitchInt`.
+            drop_flag_effects::on_all_inactive_variants(
+                self.tcx,
+                self.body,
+                self.move_data(),
+                enum_place,
+                variant,
+                |mpi| trans.kill(mpi),
+            );
+        });
     }
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
+    type Domain = BitSet<MovePathIndex>;
 
     const NAME: &'static str = "maybe_uninit";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = initialized (start_block_effect counters this at outset)
+        BitSet::new_empty(self.move_data().move_paths.len())
     }
 
     // sets on_entry bits for Arg places
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
         // set all bits to 1 (uninit) before gathering counterevidence
-        assert!(self.bits_per_block(body) == state.domain_size());
         state.insert_all();
 
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
@@ -395,13 +419,11 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             state.remove(path);
         });
     }
-
-    fn pretty_print_idx(&self, w: &mut impl std::io::Write, mpi: Self::Idx) -> std::io::Result<()> {
-        write!(w, "{}", self.move_data().move_paths[mpi])
-    }
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+    type Idx = MovePathIndex;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -445,56 +467,82 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         );
     }
 
-    fn discriminant_switch_effect(
+    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
         &self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _block: mir::BasicBlock,
-        enum_place: mir::Place<'tcx>,
-        _adt: &ty::AdtDef,
-        variant: VariantIdx,
+        block: mir::BasicBlock,
+        discr: &mir::Operand<'tcx>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
+        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+            return;
+        }
+
         if !self.mark_inactive_variants_as_uninit {
             return;
         }
 
-        // Mark all move paths that correspond to variants other than this one as maybe
-        // uninitialized (in reality, they are *definitely* uninitialized).
-        drop_flag_effects::on_all_inactive_variants(
-            self.tcx,
-            self.body,
-            self.move_data(),
-            enum_place,
-            variant,
-            |mpi| trans.gen(mpi),
-        );
+        let enum_ = discr.place().and_then(|discr| {
+            switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
+        });
+
+        let (enum_place, enum_def) = match enum_ {
+            Some(x) => x,
+            None => return,
+        };
+
+        let mut discriminants = enum_def.discriminants(self.tcx);
+        edge_effects.apply(|trans, edge| {
+            let value = match edge.value {
+                Some(x) => x,
+                None => return,
+            };
+
+            // MIR building adds discriminants to the `values` array in the same order as they
+            // are yielded by `AdtDef::discriminants`. We rely on this to match each
+            // discriminant in `values` to its corresponding variant in linear time.
+            let (variant, _) = discriminants
+                .find(|&(_, discr)| discr.val == value)
+                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
+
+            // Mark all move paths that correspond to variants other than this one as maybe
+            // uninitialized (in reality, they are *definitely* uninitialized).
+            drop_flag_effects::on_all_inactive_variants(
+                self.tcx,
+                self.body,
+                self.move_data(),
+                enum_place,
+                variant,
+                |mpi| trans.gen(mpi),
+            );
+        });
     }
 }
 
 impl<'a, 'tcx> AnalysisDomain<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
-    type Idx = MovePathIndex;
+    /// Use set intersection as the join operator.
+    type Domain = lattice::Dual<BitSet<MovePathIndex>>;
 
     const NAME: &'static str = "definite_init";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = initialized (start_block_effect counters this at outset)
+        lattice::Dual(BitSet::new_filled(self.move_data().move_paths.len()))
     }
 
     // sets on_entry bits for Arg places
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
-        state.clear();
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
+        state.0.clear();
 
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
             assert!(s == DropFlagState::Present);
-            state.insert(path);
+            state.0.insert(path);
         });
-    }
-
-    fn pretty_print_idx(&self, w: &mut impl std::io::Write, mpi: Self::Idx) -> std::io::Result<()> {
-        write!(w, "{}", self.move_data().move_paths[mpi])
     }
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
+    type Idx = MovePathIndex;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -540,15 +588,16 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
-    type Idx = InitIndex;
+    type Domain = BitSet<InitIndex>;
 
     const NAME: &'static str = "ever_init";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.move_data().inits.len()
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = no initialized variables by default
+        BitSet::new_empty(self.move_data().inits.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
         for arg_init in 0..body.arg_count {
             state.insert(InitIndex::new(arg_init));
         }
@@ -556,6 +605,8 @@ impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
+    type Idx = InitIndex;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -626,22 +677,41 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BottomValue for MaybeInitializedPlaces<'a, 'tcx> {
-    /// bottom = uninitialized
-    const BOTTOM_VALUE: bool = false;
-}
+/// Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt` is
+/// an enum discriminant.
+///
+/// We expect such blocks to have a call to `discriminant` as their last statement like so:
+///
+/// ```text
+/// ...
+/// _42 = discriminant(_1)
+/// SwitchInt(_42, ..)
+/// ```
+///
+/// If the basic block matches this pattern, this function returns the place corresponding to the
+/// enum (`_1` in the example above) as well as the `AdtDef` of that enum.
+fn switch_on_enum_discriminant(
+    tcx: TyCtxt<'tcx>,
+    body: &'mir mir::Body<'tcx>,
+    block: &'mir mir::BasicBlockData<'tcx>,
+    switch_on: mir::Place<'tcx>,
+) -> Option<(mir::Place<'tcx>, &'tcx ty::AdtDef)> {
+    match block.statements.last().map(|stmt| &stmt.kind) {
+        Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
+            if *lhs == switch_on =>
+        {
+            match &discriminated.ty(body, tcx).ty.kind() {
+                ty::Adt(def, _) => Some((*discriminated, def)),
 
-impl<'a, 'tcx> BottomValue for MaybeUninitializedPlaces<'a, 'tcx> {
-    /// bottom = initialized (start_block_effect counters this at outset)
-    const BOTTOM_VALUE: bool = false;
-}
+                // `Rvalue::Discriminant` is also used to get the active yield point for a
+                // generator, but we do not need edge-specific effects in that case. This may
+                // change in the future.
+                ty::Generator(..) => None,
 
-impl<'a, 'tcx> BottomValue for DefinitelyInitializedPlaces<'a, 'tcx> {
-    /// bottom = initialized (start_block_effect counters this at outset)
-    const BOTTOM_VALUE: bool = true;
-}
+                t => bug!("`discriminant` called on unexpected type {:?}", t),
+            }
+        }
 
-impl<'a, 'tcx> BottomValue for EverInitializedPlaces<'a, 'tcx> {
-    /// bottom = no initialized variables by default
-    const BOTTOM_VALUE: bool = false;
+        _ => None,
+    }
 }

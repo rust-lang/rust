@@ -7,11 +7,8 @@ use super::Map;
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
 ///
-/// This `struct` is created by the [`flat_map`] method on [`Iterator`]. See its
-/// documentation for more.
-///
-/// [`flat_map`]: trait.Iterator.html#method.flat_map
-/// [`Iterator`]: trait.Iterator.html
+/// This `struct` is created by [`Iterator::flat_map`]. See its documentation
+/// for more.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct FlatMap<I, U: IntoIterator, F> {

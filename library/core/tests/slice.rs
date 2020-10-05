@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::result::Result::{Err, Ok};
 
 #[test]
@@ -562,6 +563,148 @@ fn test_array_chunks_zip() {
         .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
         .collect::<Vec<_>>();
     assert_eq!(res, vec![14, 22]);
+}
+
+#[test]
+fn test_array_chunks_mut_infer() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    for a in v.array_chunks_mut() {
+        let sum = a.iter().sum::<i32>();
+        *a = [sum; 3];
+    }
+    assert_eq!(v, &[3, 3, 3, 12, 12, 12, 6]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    v2.array_chunks_mut().for_each(|[a, b]| core::mem::swap(a, b));
+    assert_eq!(v2, &[1, 0, 3, 2, 5, 4, 6]);
+}
+
+#[test]
+fn test_array_chunks_mut_count() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks_mut::<3>();
+    assert_eq!(c.count(), 2);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks_mut::<2>();
+    assert_eq!(c2.count(), 2);
+
+    let v3: &mut [i32] = &mut [];
+    let c3 = v3.array_chunks_mut::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_chunks_mut_nth() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks_mut::<2>();
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.array_chunks_mut::<3>();
+    assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_array_chunks_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks_mut::<2>();
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.array_chunks_mut::<3>();
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c3 = v3.array_chunks_mut::<10>();
+    assert_eq!(c3.nth_back(0), None);
+}
+
+#[test]
+fn test_array_chunks_mut_last() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks_mut::<2>();
+    assert_eq!(c.last().unwrap(), &[4, 5]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks_mut::<2>();
+    assert_eq!(c2.last().unwrap(), &[2, 3]);
+}
+
+#[test]
+fn test_array_chunks_mut_remainder() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c = v.array_chunks_mut::<2>();
+    assert_eq!(c.into_remainder(), &[4]);
+}
+
+#[test]
+fn test_array_chunks_mut_zip() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    for (a, b) in v1.array_chunks_mut::<2>().zip(v2.array_chunks::<2>()) {
+        let sum = b.iter().sum::<i32>();
+        for v in a {
+            *v += sum;
+        }
+    }
+    assert_eq!(v1, [13, 14, 19, 20, 4]);
+}
+
+#[test]
+fn test_array_windows_infer() {
+    let v: &[i32] = &[0, 1, 0, 1];
+    assert_eq!(v.array_windows::<2>().count(), 3);
+    let c = v.array_windows();
+    for &[a, b] in c {
+        assert_eq!(a + b, 1);
+    }
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let total = v2.array_windows().map(|&[a, b, c]| a + b + c).sum::<i32>();
+    assert_eq!(total, 3 + 6 + 9 + 12 + 15);
+}
+
+#[test]
+fn test_array_windows_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.array_windows::<3>();
+    assert_eq!(c.count(), 4);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.array_windows::<6>();
+    assert_eq!(c2.count(), 0);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.array_windows::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_windows_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let snd = v.array_windows::<4>().nth(1);
+    assert_eq!(snd, Some(&[1, 2, 3, 4]));
+    let mut arr_windows = v.array_windows::<2>();
+    assert_ne!(arr_windows.nth(0), arr_windows.nth(0));
+    let last = v.array_windows::<3>().last();
+    assert_eq!(last, Some(&[3, 4, 5]));
+}
+
+#[test]
+fn test_array_windows_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let snd = v.array_windows::<4>().nth_back(1);
+    assert_eq!(snd, Some(&[1, 2, 3, 4]));
+    let mut arr_windows = v.array_windows::<2>();
+    assert_ne!(arr_windows.nth_back(0), arr_windows.nth_back(0));
 }
 
 #[test]
@@ -1837,4 +1980,31 @@ fn test_is_sorted() {
     assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].is_sorted());
     assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
+}
+
+#[test]
+fn test_slice_run_destructors() {
+    // Make sure that destructors get run on slice literals
+    struct Foo<'a> {
+        x: &'a Cell<isize>,
+    }
+
+    impl<'a> Drop for Foo<'a> {
+        fn drop(&mut self) {
+            self.x.set(self.x.get() + 1);
+        }
+    }
+
+    fn foo(x: &Cell<isize>) -> Foo<'_> {
+        Foo { x }
+    }
+
+    let x = &Cell::new(0);
+
+    {
+        let l = &[foo(x)];
+        assert_eq!(l[0].x.get(), 0);
+    }
+
+    assert_eq!(x.get(), 1);
 }

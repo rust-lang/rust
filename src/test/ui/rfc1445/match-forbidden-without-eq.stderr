@@ -5,7 +5,7 @@ LL |         FOO => { }
    |         ^^^
 
 warning: floating-point types cannot be used in patterns
-  --> $DIR/match-forbidden-without-eq.rs:21:9
+  --> $DIR/match-forbidden-without-eq.rs:20:9
    |
 LL |         f32::INFINITY => { }
    |         ^^^^^^^^^^^^^
@@ -14,14 +14,8 @@ LL |         f32::INFINITY => { }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
-error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/match-forbidden-without-eq.rs:13:9
-   |
-LL |         FOO => { }
-   |         ^^^
-
 warning: floating-point types cannot be used in patterns
-  --> $DIR/match-forbidden-without-eq.rs:21:9
+  --> $DIR/match-forbidden-without-eq.rs:20:9
    |
 LL |         f32::INFINITY => { }
    |         ^^^^^^^^^^^^^
@@ -29,5 +23,5 @@ LL |         f32::INFINITY => { }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+error: aborting due to previous error; 2 warnings emitted
 

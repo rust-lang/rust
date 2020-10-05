@@ -6,6 +6,8 @@ Rust MIR: a lowered representation of Rust.
 
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
+#![feature(array_windows)]
+#![feature(bindings_after_at)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -13,19 +15,18 @@ Rust MIR: a lowered representation of Rust.
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
-#![feature(drain_filter)]
+#![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
-#![feature(iter_order_by)]
 #![feature(never_type)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]
-#![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
 #![feature(stmt_expr_attributes)]
 #![feature(trait_alias)]
 #![feature(option_expect_none)]
 #![feature(or_patterns)]
+#![feature(once_cell)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -51,11 +52,15 @@ pub fn provide(providers: &mut Providers) {
     transform::provide(providers);
     monomorphize::partitioning::provide(providers);
     monomorphize::polymorphize::provide(providers);
-    providers.const_eval_validated = const_eval::const_eval_validated_provider;
-    providers.const_eval_raw = const_eval::const_eval_raw_provider;
+    providers.eval_to_const_value_raw = const_eval::eval_to_const_value_raw_provider;
+    providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
     providers.const_caller_location = const_eval::const_caller_location;
     providers.destructure_const = |tcx, param_env_and_value| {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::destructure_const(tcx, param_env, value)
+    };
+    providers.deref_const = |tcx, param_env_and_value| {
+        let (param_env, value) = param_env_and_value.into_parts();
+        const_eval::deref_const(tcx, param_env, value)
     };
 }

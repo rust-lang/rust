@@ -51,10 +51,10 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(target_arch = "s390x")]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(target_arch = "sparc64")]
+#[cfg(any(target_arch = "sparc", target_arch = "sparc64"))]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(target_arch = "riscv64")]
+#[cfg(any(target_arch = "riscv64", target_arch = "riscv32"))]
 pub const unwinder_private_data_size: usize = 2;
 
 #[cfg(target_os = "emscripten")]

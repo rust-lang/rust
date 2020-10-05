@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=2
+// compile-flags: -Z mir-opt-level=2 -Zunsound-mir-opts
 // EMIT_MIR simplify_arm.id.SimplifyArmIdentity.diff
 // EMIT_MIR simplify_arm.id.SimplifyBranchSame.diff
 // EMIT_MIR simplify_arm.id_result.SimplifyArmIdentity.diff

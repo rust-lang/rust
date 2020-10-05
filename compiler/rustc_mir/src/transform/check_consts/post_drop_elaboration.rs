@@ -1,35 +1,39 @@
-use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use super::ops;
+use super::ops::{self, NonConstOp};
 use super::qualifs::{NeedsDrop, Qualif};
 use super::validation::Qualifs;
 use super::ConstCx;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
 /// elaboration.
-pub fn checking_enabled(tcx: TyCtxt<'tcx>) -> bool {
-    tcx.features().const_precise_live_drops
+pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
+    // Const-stable functions must always use the stable live drop checker.
+    if ccx.is_const_stable_const_fn() {
+        return false;
+    }
+
+    ccx.tcx.features().const_precise_live_drops
 }
 
 /// Look for live drops in a const context.
 ///
 /// This is separate from the rest of the const checking logic because it must run after drop
 /// elaboration.
-pub fn check_live_drops(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mir::Body<'tcx>) {
+pub fn check_live_drops(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
+    let def_id = body.source.def_id().expect_local();
     let const_kind = tcx.hir().body_const_context(def_id);
     if const_kind.is_none() {
         return;
     }
 
-    if !checking_enabled(tcx) {
+    let ccx = ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def_id) };
+    if !checking_enabled(&ccx) {
         return;
     }
-
-    let ccx = ConstCx { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
 
     let mut visitor = CheckLiveDrops { ccx: &ccx, qualifs: Qualifs::default() };
 
@@ -52,7 +56,7 @@ impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
 
 impl CheckLiveDrops<'mir, 'tcx> {
     fn check_live_drop(&self, span: Span) {
-        ops::non_const(self.ccx, ops::LiveDrop(None), span);
+        ops::LiveDrop { dropped_at: None }.build_error(self.ccx, span).emit();
     }
 }
 

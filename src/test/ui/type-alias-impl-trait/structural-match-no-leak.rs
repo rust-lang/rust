@@ -12,9 +12,9 @@ const LEAK_FREE: Bar = leak_free();
 fn leak_free_test() {
     match todo!() {
         LEAK_FREE => (),
-        //~^ opaque types cannot be used in patterns
+        //~^ `impl Send` cannot be used in patterns
         _ => (),
     }
 }
 
-fn main() { }
+fn main() {}

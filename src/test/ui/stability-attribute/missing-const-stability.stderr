@@ -1,0 +1,8 @@
+error: `#[stable]` const functions must also be either `#[rustc_const_stable]` or `#[rustc_const_unstable]`
+  --> $DIR/missing-const-stability.rs:6:1
+   |
+LL | pub const fn foo() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -20,7 +20,6 @@ use rustc_hir::Node;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, fast_reject, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
     TypeFoldable, WithConstness,
@@ -663,6 +662,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             obligation
                         )
                     }
+
+                    ty::PredicateAtom::TypeWellFormedFromEnv(..) => span_bug!(
+                        span,
+                        "TypeWellFormedFromEnv predicate should only exist in the environment"
+                    ),
                 }
             }
 
@@ -741,25 +745,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let violations = self.tcx.object_safety_violations(did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
-
             ConstEvalFailure(ErrorHandled::TooGeneric) => {
-                // In this instance, we have a const expression containing an unevaluated
-                // generic parameter. We have no idea whether this expression is valid or
-                // not (e.g. it might result in an error), but we don't want to just assume
-                // that it's okay, because that might result in post-monomorphisation time
-                // errors. The onus is really on the caller to provide values that it can
-                // prove are well-formed.
-                let mut err = self
-                    .tcx
-                    .sess
-                    .struct_span_err(span, "constant expression depends on a generic parameter");
-                // FIXME(const_generics): we should suggest to the user how they can resolve this
-                // issue. However, this is currently not actually possible
-                // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
-                err.note("this may fail depending on what value the parameter takes");
-                err
+                bug!("too generic should have been handled in `is_const_evaluatable`");
             }
-
             // Already reported in the query.
             ConstEvalFailure(ErrorHandled::Reported(ErrorReported)) => {
                 // FIXME(eddyb) remove this once `ErrorReported` becomes a proof token.
@@ -1507,16 +1495,22 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self
-                    .tcx
-                    .lang_items()
-                    .sized_trait()
-                    .map_or(false, |sized_id| sized_id == trait_ref.def_id())
-                {
-                    self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0282).emit();
+                if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+                    self.emit_inference_failure_err(
+                        body_id,
+                        span,
+                        self_ty.into(),
+                        ErrorCode::E0282,
+                    )
+                    .emit();
                     return;
                 }
-                let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0283);
+                let mut err = self.emit_inference_failure_err(
+                    body_id,
+                    span,
+                    self_ty.into(),
+                    ErrorCode::E0283,
+                );
                 err.note(&format!("cannot satisfy `{}`", predicate));
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
@@ -1580,17 +1574,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                match arg.unpack() {
-                    GenericArgKind::Lifetime(lt) => {
-                        span_bug!(span, "unexpected well formed predicate: {:?}", lt)
-                    }
-                    GenericArgKind::Type(ty) => {
-                        self.need_type_info_err(body_id, span, ty, ErrorCode::E0282)
-                    }
-                    GenericArgKind::Const(ct) => {
-                        self.need_type_info_err_const(body_id, span, ct, ErrorCode::E0282)
-                    }
-                }
+                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282)
             }
 
             ty::PredicateAtom::Subtype(data) => {
@@ -1601,7 +1585,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.need_type_info_err(body_id, span, a, ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282)
             }
             ty::PredicateAtom::Projection(data) => {
                 let trait_ref = ty::Binder::bind(data).to_poly_trait_ref(self.tcx);
@@ -1612,7 +1596,12 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 if self_ty.needs_infer() && ty.needs_infer() {
                     // We do this for the `foo.collect()?` case to produce a suggestion.
-                    let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0284);
+                    let mut err = self.emit_inference_failure_err(
+                        body_id,
+                        span,
+                        self_ty.into(),
+                        ErrorCode::E0284,
+                    );
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err
                 } else {

@@ -10,6 +10,7 @@ members = [
   "src/tools/error_index_generator",
   "src/tools/install-git-hook",
   "src/tools/linkchecker",
+  "src/tools/lint-docs",
   "src/tools/rustbook",
   "src/tools/unstable-book-gen",
   "src/tools/tidy",

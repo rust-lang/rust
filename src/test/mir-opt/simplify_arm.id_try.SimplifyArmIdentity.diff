@@ -92,7 +92,7 @@
 +         _0 = move _3;                    // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:24:15: 24:16
           StorageDead(_2);                 // scope 0 at $DIR/simplify-arm.rs:26:1: 26:2
-          goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:24:14: 24:15
+          goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:26:2: 26:2
       }
   
       bb4: {

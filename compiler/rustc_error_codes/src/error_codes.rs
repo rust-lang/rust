@@ -18,7 +18,6 @@ E0010: include_str!("./error_codes/E0010.md"),
 E0013: include_str!("./error_codes/E0013.md"),
 E0014: include_str!("./error_codes/E0014.md"),
 E0015: include_str!("./error_codes/E0015.md"),
-E0019: include_str!("./error_codes/E0019.md"),
 E0023: include_str!("./error_codes/E0023.md"),
 E0025: include_str!("./error_codes/E0025.md"),
 E0026: include_str!("./error_codes/E0026.md"),
@@ -440,6 +439,8 @@ E0751: include_str!("./error_codes/E0751.md"),
 E0752: include_str!("./error_codes/E0752.md"),
 E0753: include_str!("./error_codes/E0753.md"),
 E0754: include_str!("./error_codes/E0754.md"),
+E0755: include_str!("./error_codes/E0755.md"),
+E0756: include_str!("./error_codes/E0756.md"),
 E0758: include_str!("./error_codes/E0758.md"),
 E0759: include_str!("./error_codes/E0759.md"),
 E0760: include_str!("./error_codes/E0760.md"),
@@ -455,9 +456,14 @@ E0769: include_str!("./error_codes/E0769.md"),
 E0770: include_str!("./error_codes/E0770.md"),
 E0771: include_str!("./error_codes/E0771.md"),
 E0773: include_str!("./error_codes/E0773.md"),
+E0774: include_str!("./error_codes/E0774.md"),
+E0775: include_str!("./error_codes/E0775.md"),
+E0776: include_str!("./error_codes/E0776.md"),
+E0777: include_str!("./error_codes/E0777.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
+//  E0019, merged into E0015
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089
 //  E0068,
@@ -631,8 +637,6 @@ E0773: include_str!("./error_codes/E0773.md"),
     E0722, // Malformed `#[optimize]` attribute
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
-    E0755, // `#[ffi_pure]` is only allowed on foreign functions
-    E0756, // `#[ffi_const]` is only allowed on foreign functions
     E0757, // `#[ffi_const]` functions cannot be `#[ffi_pure]`
     E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.
 }

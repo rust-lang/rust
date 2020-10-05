@@ -70,10 +70,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.typeck_results.used_trait_imports = used_trait_imports;
 
-        wbcx.typeck_results.closure_captures = mem::replace(
-            &mut self.typeck_results.borrow_mut().closure_captures,
-            Default::default(),
-        );
+        wbcx.typeck_results.closure_captures =
+            mem::take(&mut self.typeck_results.borrow_mut().closure_captures);
 
         if self.is_tainted_by_errors() {
             // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
@@ -653,7 +651,12 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn report_type_error(&self, t: Ty<'tcx>) {
         if !self.tcx.sess.has_errors() {
             self.infcx
-                .need_type_info_err(Some(self.body.id()), self.span.to_span(self.tcx), t, E0282)
+                .emit_inference_failure_err(
+                    Some(self.body.id()),
+                    self.span.to_span(self.tcx),
+                    t.into(),
+                    E0282,
+                )
                 .emit();
         }
     }
@@ -661,10 +664,10 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn report_const_error(&self, c: &'tcx ty::Const<'tcx>) {
         if !self.tcx.sess.has_errors() {
             self.infcx
-                .need_type_info_err_const(
+                .emit_inference_failure_err(
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),
-                    c,
+                    c.into(),
                     E0282,
                 )
                 .emit();

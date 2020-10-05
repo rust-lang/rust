@@ -4,7 +4,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
-use std::convert::TryInto;
 use std::mem;
 
 use super::abs_domain::Lift;
@@ -363,16 +362,17 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_terminator(&mut self, term: &Terminator<'tcx>) {
         match term.kind {
             TerminatorKind::Goto { target: _ }
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            // In some sense returning moves the return place into the current
+            // call's destination, however, since there are no statements after
+            // this that could possibly access the return place, this doesn't
+            // need recording.
+            | TerminatorKind::Return
             | TerminatorKind::Resume
             | TerminatorKind::Abort
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Unreachable => {}
-
-            TerminatorKind::Return => {
-                self.gather_move(Place::return_place());
-            }
 
             TerminatorKind::Assert { ref cond, .. } => {
                 self.gather_operand(cond);
@@ -481,12 +481,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             };
             let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
             let len: u64 = match base_ty.kind() {
-                ty::Array(_, size) => {
-                    let length = size.eval_usize(self.builder.tcx, self.builder.param_env);
-                    length
-                        .try_into()
-                        .expect("slice pattern of array with more than u32::MAX elements")
-                }
+                ty::Array(_, size) => size.eval_usize(self.builder.tcx, self.builder.param_env),
                 _ => bug!("from_end: false slice pattern of non-array type"),
             };
             for offset in from..to {

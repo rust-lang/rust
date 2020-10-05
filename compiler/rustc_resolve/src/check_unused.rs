@@ -105,7 +105,7 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
         if let ast::ItemKind::Use(..) = item.kind {
-            if item.vis.node.is_pub() || item.span.is_dummy() {
+            if item.vis.kind.is_pub() || item.span.is_dummy() {
                 return;
             }
         }

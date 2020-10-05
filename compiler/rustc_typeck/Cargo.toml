@@ -11,6 +11,7 @@ doctest = false
 [dependencies]
 rustc_arena = { path = "../rustc_arena" }
 tracing = "0.1"
+rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }

@@ -386,6 +386,51 @@ impl<R: Seek> Seek for BufReader<R> {
         self.discard_buffer();
         Ok(result)
     }
+
+    /// Returns the current seek position from the start of the stream.
+    ///
+    /// The value returned is equivalent to `self.seek(SeekFrom::Current(0))`
+    /// but does not flush the internal buffer. Due to this optimization the
+    /// function does not guarantee that calling `.into_inner()` immediately
+    /// afterwards will yield the underlying reader at the same position. Use
+    /// [`BufReader::seek`] instead if you require that guarantee.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the position of the inner reader is smaller
+    /// than the amount of buffered data. That can happen if the inner reader
+    /// has an incorrect implementation of [`Seek::stream_position`], or if the
+    /// position has gone out of sync due to calling [`Seek::seek`] directly on
+    /// the underlying reader.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_convenience)]
+    /// use std::{
+    ///     io::{self, BufRead, BufReader, Seek},
+    ///     fs::File,
+    /// };
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = BufReader::new(File::open("foo.txt")?);
+    ///
+    ///     let before = f.stream_position()?;
+    ///     f.read_line(&mut String::new())?;
+    ///     let after = f.stream_position()?;
+    ///
+    ///     println!("The first line was {} bytes long", after - before);
+    ///     Ok(())
+    /// }
+    /// ```
+    fn stream_position(&mut self) -> io::Result<u64> {
+        let remainder = (self.cap - self.pos) as u64;
+        self.inner.stream_position().map(|pos| {
+            pos.checked_sub(remainder).expect(
+                "overflow when subtracting remaining buffer size from inner stream position",
+            )
+        })
+    }
 }
 
 /// Wraps a writer and buffers its output.

@@ -1,0 +1,44 @@
+    1|       |#![allow(unused_assignments, unused_variables)]
+    2|       |
+    3|       |fn main() {
+    4|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+    5|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+    6|       |    // dependent conditions.
+    7|      1|    let is_true = std::env::args().len() == 1;
+    8|      1|
+    9|      1|    let (mut a, mut b, mut c) = (0, 0, 0);
+   10|      1|    if is_true {
+   11|      1|        a = 1;
+   12|      1|        b = 10;
+   13|      1|        c = 100;
+   14|      1|    }
+   15|       |    let
+   16|      1|        somebool
+   17|       |        =
+   18|      1|            a < b
+   19|       |        ||
+   20|      0|            b < c
+   21|       |    ;
+   22|       |    let
+   23|      1|        somebool
+   24|       |        =
+   25|      1|            b < a
+   26|       |        ||
+   27|      1|            b < c
+   28|       |    ;
+   29|       |    let
+   30|      1|        somebool
+   31|       |        =
+   32|      1|            a < b
+   33|       |        &&
+   34|      1|            b < c
+   35|       |    ;
+   36|       |    let
+   37|      1|        somebool
+   38|       |        =
+   39|      1|            b < a
+   40|       |        &&
+   41|      0|            b < c
+   42|       |    ;
+   43|      1|}
+

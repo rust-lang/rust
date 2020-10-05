@@ -7,6 +7,10 @@ mod generics;
 
 use crate::bounds::Bounds;
 use crate::collect::PlaceholderHirTyCollector;
+use crate::errors::{
+    AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
+    TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified,
+};
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
@@ -31,8 +35,8 @@ use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use smallvec::SmallVec;
+use std::array;
 use std::collections::BTreeSet;
-use std::iter;
 use std::slice;
 
 #[derive(Debug)]
@@ -356,7 +360,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                     self.ast_region_to_region(&lt, Some(param)).into()
                 }
-                (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                (GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
+                    if *has_default {
+                        tcx.check_optional_stability(
+                            param.def_id,
+                            Some(arg.id()),
+                            arg.span(),
+                            |_, _| {
+                                // Default generic parameters may not be marked
+                                // with stability attributes, i.e. when the
+                                // default parameter was defined at the same time
+                                // as the rest of the type. As such, we ignore missing
+                                // stability attributes.
+                            },
+                        )
+                    }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.allow_ty_infer()) {
                         inferred_params.push(ty.span);
                         tcx.ty_error().into()
@@ -684,14 +702,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if unbound.is_none() {
                     unbound = Some(&ptr.trait_ref);
                 } else {
-                    struct_span_err!(
-                        tcx.sess,
-                        span,
-                        E0203,
-                        "type parameter has more than one relaxed default \
-                        bound, only one is supported"
-                    )
-                    .emit();
+                    tcx.sess.emit_err(MultipleRelaxedDefaultBounds { span });
                 }
             }
         }
@@ -927,18 +938,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             dup_bindings
                 .entry(assoc_ty.def_id)
                 .and_modify(|prev_span| {
-                    struct_span_err!(
-                        self.tcx().sess,
-                        binding.span,
-                        E0719,
-                        "the value of the associated type `{}` (from trait `{}`) \
-                         is already specified",
-                        binding.item_name,
-                        tcx.def_path_str(assoc_ty.container.id())
-                    )
-                    .span_label(binding.span, "re-bound here")
-                    .span_label(*prev_span, format!("`{}` bound here first", binding.item_name))
-                    .emit();
+                    self.tcx().sess.emit_err(ValueOfAssociatedStructAlreadySpecified {
+                        span: binding.span,
+                        prev_span: *prev_span,
+                        item_name: binding.item_name,
+                        def_path: tcx.def_path_str(assoc_ty.container.id()),
+                    });
                 })
                 .or_insert(binding.span);
         }
@@ -1051,13 +1056,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0224,
-                "at least one trait is required for an object type"
-            )
-            .emit();
+            tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span });
             return tcx.ty_error();
         }
 
@@ -1347,7 +1346,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
 
             let is_equality = is_equality();
-            let bounds = iter::once(bound).chain(iter::once(bound2)).chain(matching_candidates);
+            let bounds = array::IntoIter::new([bound, bound2]).chain(matching_candidates);
             let mut err = if is_equality.is_some() {
                 // More specific Error Index entry.
                 struct_span_err!(
@@ -1475,7 +1474,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&qself_ty.kind(), qself_res) {
-            (_, Res::SelfTy(Some(_), Some(impl_def_id))) => {
+            (_, Res::SelfTy(Some(_), Some((impl_def_id, _)))) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
                 let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
@@ -1932,12 +1931,29 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(path.segments);
                 tcx.types.self_param
             }
-            Res::SelfTy(_, Some(def_id)) => {
+            Res::SelfTy(_, Some((def_id, forbid_generic))) => {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
                 // Try to evaluate any array length constants.
-                self.normalize_ty(span, tcx.at(span).type_of(def_id))
+                let normalized_ty = self.normalize_ty(span, tcx.at(span).type_of(def_id));
+                if forbid_generic && normalized_ty.needs_subst() {
+                    let mut err = tcx.sess.struct_span_err(
+                        path.span,
+                        "generic `Self` types are currently not permitted in anonymous constants",
+                    );
+                    if let Some(hir::Node::Item(&hir::Item {
+                        kind: hir::ItemKind::Impl { self_ty, .. },
+                        ..
+                    })) = tcx.hir().get_if_local(def_id)
+                    {
+                        err.span_note(self_ty.span, "not a concrete type");
+                    }
+                    err.emit();
+                    tcx.ty_error()
+                } else {
+                    normalized_ty
+                }
             }
             Res::Def(DefKind::AssocTy, def_id) => {
                 debug_assert!(path.segments.len() >= 2);
@@ -2059,15 +2075,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyKind::Typeof(ref _e) => {
-                struct_span_err!(
-                    tcx.sess,
-                    ast_ty.span,
-                    E0516,
-                    "`typeof` is a reserved keyword but unimplemented"
-                )
-                .span_label(ast_ty.span, "reserved keyword")
-                .emit();
-
+                tcx.sess.emit_err(TypeofReservedKeywordUsed { span: ast_ty.span });
                 tcx.ty_error()
             }
             hir::TyKind::Infer => {
@@ -2283,13 +2291,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // error.
         let r = derived_region_bounds[0];
         if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0227,
-                "ambiguous lifetime bound, explicit lifetime bound required"
-            )
-            .emit();
+            tcx.sess.emit_err(AmbiguousLifetimeBound { span });
         }
         Some(r)
     }

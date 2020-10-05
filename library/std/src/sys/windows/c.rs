@@ -1032,7 +1032,7 @@ extern "system" {
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
 compat_fn! {
-    kernel32:
+    "kernel32":
 
     pub fn CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
                                _lpTargetFileName: LPCWSTR,

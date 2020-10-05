@@ -9,13 +9,14 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
-use rustc_middle::ty::{self, InstanceDef, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
 pub mod add_retag;
+pub mod check_const_item_mutation;
 pub mod check_consts;
 pub mod check_packed_ref;
 pub mod check_unsafety;
@@ -23,18 +24,21 @@ pub mod cleanup_post_borrowck;
 pub mod const_prop;
 pub mod copy_prop;
 pub mod deaggregator;
+pub mod dest_prop;
 pub mod dump_mir;
+pub mod early_otherwise_branch;
 pub mod elaborate_drops;
 pub mod generator;
 pub mod inline;
 pub mod instcombine;
 pub mod instrument_coverage;
 pub mod match_branches;
+pub mod multiple_return_terminators;
 pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
-pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
+pub mod remove_unneeded_drops;
 pub mod required_consts;
 pub mod rustc_peek;
 pub mod simplify;
@@ -44,6 +48,8 @@ pub mod simplify_try;
 pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
 pub mod validate;
+
+pub use rustc_middle::mir::MirSource;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::check_unsafety::provide(providers);
@@ -128,33 +134,6 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
     set
 }
 
-/// Where a specific `mir::Body` comes from.
-#[derive(Debug, Copy, Clone)]
-pub struct MirSource<'tcx> {
-    pub instance: InstanceDef<'tcx>,
-
-    /// If `Some`, this is a promoted rvalue within the parent function.
-    pub promoted: Option<Promoted>,
-}
-
-impl<'tcx> MirSource<'tcx> {
-    pub fn item(def_id: DefId) -> Self {
-        MirSource {
-            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
-            promoted: None,
-        }
-    }
-
-    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
-        self.instance.with_opt_param()
-    }
-
-    #[inline]
-    pub fn def_id(&self) -> DefId {
-        self.instance.def_id()
-    }
-}
-
 /// Generates a default name for the pass based on the name of the
 /// type `T`.
 pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
@@ -170,19 +149,16 @@ pub trait MirPass<'tcx> {
         default_name::<Self>()
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
 }
 
 pub fn run_passes(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    instance: InstanceDef<'tcx>,
-    promoted: Option<Promoted>,
     mir_phase: MirPhase,
     passes: &[&[&dyn MirPass<'tcx>]],
 ) {
     let phase_index = mir_phase.phase_index();
-    let source = MirSource { instance, promoted };
     let validate = tcx.sess.opts.debugging_opts.validate_mir;
 
     if body.phase >= mir_phase {
@@ -191,7 +167,7 @@ pub fn run_passes(
 
     if validate {
         validate::Validator { when: format!("input to phase {:?}", mir_phase), mir_phase }
-            .run_pass(tcx, source, body);
+            .run_pass(tcx, body);
     }
 
     let mut index = 0;
@@ -201,13 +177,12 @@ pub fn run_passes(
                 tcx,
                 &format_args!("{:03}-{:03}", phase_index, index),
                 &pass.name(),
-                source,
                 body,
                 is_after,
             );
         };
         run_hooks(body, index, false);
-        pass.run_pass(tcx, source, body);
+        pass.run_pass(tcx, body);
         run_hooks(body, index, true);
 
         if validate {
@@ -215,7 +190,7 @@ pub fn run_passes(
                 when: format!("after {} in phase {:?}", pass.name(), mir_phase),
                 mir_phase,
             }
-            .run_pass(tcx, source, body);
+            .run_pass(tcx, body);
         }
 
         index += 1;
@@ -231,7 +206,7 @@ pub fn run_passes(
 
     if mir_phase == MirPhase::Optimization {
         validate::Validator { when: format!("end of phase {:?}", mir_phase), mir_phase }
-            .run_pass(tcx, source, body);
+            .run_pass(tcx, body);
     }
 }
 
@@ -254,13 +229,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
         return Default::default();
     }
 
-    let ccx = check_consts::ConstCx {
-        body,
-        tcx,
-        def_id: def.did,
-        const_kind,
-        param_env: tcx.param_env(def.did),
-    };
+    let ccx = check_consts::ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def.did) };
 
     let mut validator = check_consts::validation::Validator::new(&ccx);
     validator.check_body();
@@ -288,25 +257,16 @@ fn mir_const<'tcx>(
 
     let mut body = tcx.mir_built(def).steal();
 
-    util::dump_mir(
-        tcx,
-        None,
-        "mir_map",
-        &0,
-        MirSource { instance: InstanceDef::Item(def.to_global()), promoted: None },
-        &body,
-        |_, _| Ok(()),
-    );
+    util::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
 
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def.to_global()),
-        None,
         MirPhase::Const,
         &[&[
             // MIR-level lints.
             &check_packed_ref::CheckPackedRef,
+            &check_const_item_mutation::CheckConstItemMutation,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck,
@@ -327,7 +287,11 @@ fn mir_promoted(
     // this point, before we steal the mir-const result.
     // Also this means promotion can rely on all const checks having been done.
     let _ = tcx.mir_const_qualif_opt_const_arg(def);
-
+    let _ = if let Some(param_did) = def.const_param_did {
+        tcx.mir_abstract_const_of_const_arg((def.did, param_did))
+    } else {
+        tcx.mir_abstract_const(def.did.to_def_id())
+    };
     let mut body = tcx.mir_const(def).steal();
 
     let mut required_consts = Vec::new();
@@ -350,14 +314,7 @@ fn mir_promoted(
         &[]
     };
 
-    run_passes(
-        tcx,
-        &mut body,
-        InstanceDef::Item(def.to_global()),
-        None,
-        MirPhase::ConstPromotion,
-        &[promote, opt_coverage],
-    );
+    run_passes(tcx, &mut body, MirPhase::ConstPromotion, &[promote, opt_coverage]);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
@@ -382,19 +339,14 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
 
-    run_post_borrowck_cleanup_passes(tcx, &mut body, def.did, None);
-    check_consts::post_drop_elaboration::check_live_drops(tcx, def.did, &body);
+    run_post_borrowck_cleanup_passes(tcx, &mut body);
+    check_consts::post_drop_elaboration::check_live_drops(tcx, &body);
     tcx.alloc_steal_mir(body)
 }
 
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
-fn run_post_borrowck_cleanup_passes<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    def_id: LocalDefId,
-    promoted: Option<Promoted>,
-) {
-    debug!("post_borrowck_cleanup({:?})", def_id);
+fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    debug!("post_borrowck_cleanup({:?})", body.source.def_id());
 
     let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
         // Remove all things only needed by analysis
@@ -419,22 +371,10 @@ fn run_post_borrowck_cleanup_passes<'tcx>(
         &deaggregator::Deaggregator,
     ];
 
-    run_passes(
-        tcx,
-        body,
-        InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
-        promoted,
-        MirPhase::DropLowering,
-        &[post_borrowck_cleanup],
-    );
+    run_passes(tcx, body, MirPhase::DropLowering, &[post_borrowck_cleanup]);
 }
 
-fn run_optimization_passes<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    def_id: LocalDefId,
-    promoted: Option<Promoted>,
-) {
+fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mir_opt_level = tcx.sess.opts.debugging_opts.mir_opt_level;
 
     // Lowering generator control-flow and variables has to happen before we do anything else
@@ -453,20 +393,25 @@ fn run_optimization_passes<'tcx>(
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
-        &instcombine::InstCombine,
+        &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,
+        // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
+        &multiple_return_terminators::MultipleReturnTerminators,
+        &instcombine::InstCombine,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
+        &early_otherwise_branch::EarlyOtherwiseBranch,
         &simplify_comparison_integral::SimplifyComparisonIntegral,
         &simplify_try::SimplifyArmIdentity,
         &simplify_try::SimplifyBranchSame,
+        &dest_prop::DestinationPropagation,
         &copy_prop::CopyPropagation,
         &simplify_branches::SimplifyBranches::new("after-copy-prop"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
         &simplify::SimplifyLocals,
+        &multiple_return_terminators::MultipleReturnTerminators,
     ];
 
     // Optimizations to run even if mir optimizations have been disabled.
@@ -488,8 +433,6 @@ fn run_optimization_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
-        promoted,
         MirPhase::GeneratorLowering,
         &[
             if mir_opt_level > 0 {
@@ -505,8 +448,6 @@ fn run_optimization_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
-        promoted,
         MirPhase::Optimization,
         &[
             if mir_opt_level > 0 { optimizations } else { no_optimizations },
@@ -544,7 +485,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) 
     }
 
     let mut body = tcx.mir_drops_elaborated_and_const_checked(def).steal();
-    run_optimization_passes(tcx, &mut body, def.did, None);
+    run_optimization_passes(tcx, &mut body);
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
 
@@ -567,9 +508,9 @@ fn promoted_mir<'tcx>(
     let (_, promoted) = tcx.mir_promoted(def);
     let mut promoted = promoted.steal();
 
-    for (p, mut body) in promoted.iter_enumerated_mut() {
-        run_post_borrowck_cleanup_passes(tcx, &mut body, def.did, Some(p));
-        run_optimization_passes(tcx, &mut body, def.did, Some(p));
+    for body in &mut promoted {
+        run_post_borrowck_cleanup_passes(tcx, body);
+        run_optimization_passes(tcx, body);
     }
 
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");

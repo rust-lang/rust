@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/array-size-in-generic-struct-param.rs:9:48
    |
 LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
@@ -6,7 +6,7 @@ LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
    |
    = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/array-size-in-generic-struct-param.rs:20:15
    |
 LL |     arr: [u8; CFG.arr_size],

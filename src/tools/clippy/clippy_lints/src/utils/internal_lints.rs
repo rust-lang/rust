@@ -1,6 +1,6 @@
 use crate::utils::{
-    is_expn_of, match_def_path, match_qpath, match_type, method_calls, paths, run_lints, snippet, span_lint,
-    span_lint_and_help, span_lint_and_sugg, walk_ptrs_ty, SpanlessEq,
+    is_expn_of, match_def_path, match_qpath, match_type, method_calls, path_to_res, paths, qpath_res, run_lints,
+    snippet, span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, NodeId};
@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc_hir::{Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Path, StmtKind, Ty, TyKind};
+use rustc_hir::{Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Node, Path, StmtKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
@@ -204,6 +204,29 @@ declare_clippy_lint! {
     pub COLLAPSIBLE_SPAN_LINT_CALLS,
     internal,
     "found collapsible `span_lint_and_then` calls"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `utils::match_type()` on a type diagnostic item
+    /// and suggests to use `utils::is_type_diagnostic_item()` instead.
+    ///
+    /// **Why is this bad?** `utils::is_type_diagnostic_item()` does not require hardcoded paths.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust,ignore
+    /// utils::match_type(cx, ty, &paths::VEC)
+    /// ```
+    ///
+    /// Good:
+    /// ```rust,ignore
+    /// utils::is_type_diagnostic_item(cx, ty, sym!(vec_type))
+    /// ```
+    pub MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
+    internal,
+    "using `utils::match_type()` instead of `utils::is_type_diagnostic_item()`"
 }
 
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
@@ -404,7 +427,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
             if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
-            let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&args[0]));
+            let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
                 || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {
@@ -437,7 +460,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
             let args = arg_lists[1];
             if args.len() == 1;
             let self_arg = &args[0];
-            let self_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(self_arg));
+            let self_ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             if match_type(cx, self_ty, &paths::SYNTAX_CONTEXT);
             then {
                 span_lint_and_sugg(
@@ -651,4 +674,90 @@ fn suggest_note(
         ),
         Applicability::MachineApplicable,
     );
+}
+
+declare_lint_pass!(MatchTypeOnDiagItem => [MATCH_TYPE_ON_DIAGNOSTIC_ITEM]);
+
+impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+        if !run_lints(cx, &[MATCH_TYPE_ON_DIAGNOSTIC_ITEM], expr.hir_id) {
+            return;
+        }
+
+        if_chain! {
+            // Check if this is a call to utils::match_type()
+            if let ExprKind::Call(fn_path, [context, ty, ty_path]) = expr.kind;
+            if let ExprKind::Path(fn_qpath) = &fn_path.kind;
+            if match_qpath(&fn_qpath, &["utils", "match_type"]);
+            // Extract the path to the matched type
+            if let Some(segments) = path_to_matched_type(cx, ty_path);
+            let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();
+            if let Some(ty_did) = path_to_res(cx, &segments[..]).and_then(|res| res.opt_def_id());
+            // Check if the matched type is a diagnostic item
+            let diag_items = cx.tcx.diagnostic_items(ty_did.krate);
+            if let Some(item_name) = diag_items.iter().find_map(|(k, v)| if *v == ty_did { Some(k) } else { None });
+            then {
+                let cx_snippet = snippet(cx, context.span, "_");
+                let ty_snippet = snippet(cx, ty.span, "_");
+
+                span_lint_and_sugg(
+                    cx,
+                    MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
+                    expr.span,
+                    "usage of `utils::match_type()` on a type diagnostic item",
+                    "try",
+                    format!("utils::is_type_diagnostic_item({}, {}, sym!({}))", cx_snippet, ty_snippet, item_name),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
+    }
+}
+
+fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Vec<SymbolStr>> {
+    use rustc_hir::ItemKind;
+
+    match &expr.kind {
+        ExprKind::AddrOf(.., expr) => return path_to_matched_type(cx, expr),
+        ExprKind::Path(qpath) => match qpath_res(cx, qpath, expr.hir_id) {
+            Res::Local(hir_id) => {
+                let parent_id = cx.tcx.hir().get_parent_node(hir_id);
+                if let Some(Node::Local(local)) = cx.tcx.hir().find(parent_id) {
+                    if let Some(init) = local.init {
+                        return path_to_matched_type(cx, init);
+                    }
+                }
+            },
+            Res::Def(DefKind::Const | DefKind::Static, def_id) => {
+                if let Some(Node::Item(item)) = cx.tcx.hir().get_if_local(def_id) {
+                    if let ItemKind::Const(.., body_id) | ItemKind::Static(.., body_id) = item.kind {
+                        let body = cx.tcx.hir().body(body_id);
+                        return path_to_matched_type(cx, &body.value);
+                    }
+                }
+            },
+            _ => {},
+        },
+        ExprKind::Array(exprs) => {
+            let segments: Vec<SymbolStr> = exprs
+                .iter()
+                .filter_map(|expr| {
+                    if let ExprKind::Lit(lit) = &expr.kind {
+                        if let LitKind::Str(sym, _) = lit.node {
+                            return Some(sym.as_str());
+                        }
+                    }
+
+                    None
+                })
+                .collect();
+
+            if segments.len() == exprs.len() {
+                return Some(segments);
+            }
+        },
+        _ => {},
+    }
+
+    None
 }

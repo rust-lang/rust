@@ -306,15 +306,17 @@ fn merge_attrs(
     attrs: Attrs<'_>,
     other_attrs: Option<Attrs<'_>>,
 ) -> clean::Attributes {
-    let mut merged_attrs: Vec<ast::Attribute> = Vec::with_capacity(attrs.len());
-    // If we have additional attributes (from a re-export),
+    // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
     // doc comments show up before the original doc comments
     // when we render them.
-    if let Some(a) = other_attrs {
-        merged_attrs.extend(a.iter().cloned());
-    }
-    merged_attrs.extend(attrs.to_vec());
+    let merged_attrs = if let Some(inner) = other_attrs {
+        let mut both = inner.to_vec();
+        both.extend_from_slice(attrs);
+        both
+    } else {
+        attrs.to_vec()
+    };
     merged_attrs.clean(cx)
 }
 
@@ -337,32 +339,35 @@ pub fn build_impl(
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
-            if !cx.renderinfo.borrow().access_levels.is_public(traitref.def_id) {
+            let did = traitref.def_id;
+            if !cx.renderinfo.borrow().access_levels.is_public(did) {
                 return;
             }
-        }
 
-        // Skip foreign unstable traits from lists of trait implementations and
-        // such. This helps prevent dependencies of the standard library, for
-        // example, from getting documented as "traits `u32` implements" which
-        // isn't really too helpful.
-        if let Some(trait_did) = associated_trait {
-            if let Some(stab) = cx.tcx.lookup_stability(trait_did.def_id) {
-                if stab.level.is_unstable() {
+            if let Some(stab) = tcx.lookup_stability(did) {
+                if stab.level.is_unstable() && stab.feature == sym::rustc_private {
                     return;
                 }
             }
         }
     }
 
-    let for_ = if let Some(did) = did.as_local() {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(did);
-        match tcx.hir().expect_item(hir_id).kind {
-            hir::ItemKind::Impl { self_ty, .. } => self_ty.clean(cx),
-            _ => panic!("did given to build_impl was not an impl"),
+    let impl_item = match did.as_local() {
+        Some(did) => {
+            let hir_id = tcx.hir().local_def_id_to_hir_id(did);
+            match tcx.hir().expect_item(hir_id).kind {
+                hir::ItemKind::Impl { self_ty, ref generics, ref items, .. } => {
+                    Some((self_ty, generics, items))
+                }
+                _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
+            }
         }
-    } else {
-        tcx.type_of(did).clean(cx)
+        None => None,
+    };
+
+    let for_ = match impl_item {
+        Some((self_ty, _, _)) => self_ty.clean(cx),
+        None => tcx.type_of(did).clean(cx),
     };
 
     // Only inline impl if the implementing type is
@@ -372,21 +377,22 @@ pub fn build_impl(
             if !cx.renderinfo.borrow().access_levels.is_public(did) {
                 return;
             }
+
+            if let Some(stab) = tcx.lookup_stability(did) {
+                if stab.level.is_unstable() && stab.feature == sym::rustc_private {
+                    return;
+                }
+            }
         }
     }
 
     let predicates = tcx.explicit_predicates_of(did);
-    let (trait_items, generics) = if let Some(did) = did.as_local() {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(did);
-        match tcx.hir().expect_item(hir_id).kind {
-            hir::ItemKind::Impl { ref generics, ref items, .. } => (
-                items.iter().map(|item| tcx.hir().impl_item(item.id).clean(cx)).collect::<Vec<_>>(),
-                generics.clean(cx),
-            ),
-            _ => panic!("did given to build_impl was not an impl"),
-        }
-    } else {
-        (
+    let (trait_items, generics) = match impl_item {
+        Some((_, generics, items)) => (
+            items.iter().map(|item| tcx.hir().impl_item(item.id).clean(cx)).collect::<Vec<_>>(),
+            generics.clean(cx),
+        ),
+        None => (
             tcx.associated_items(did)
                 .in_definition_order()
                 .filter_map(|item| {
@@ -398,7 +404,7 @@ pub fn build_impl(
                 })
                 .collect::<Vec<_>>(),
             clean::enter_impl_trait(cx, || (tcx.generics_of(did), predicates).clean(cx)),
-        )
+        ),
     };
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait.clean(cx).map(|bound| match bound {

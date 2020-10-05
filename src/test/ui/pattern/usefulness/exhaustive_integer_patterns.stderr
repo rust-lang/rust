@@ -135,6 +135,12 @@ error: unreachable pattern
 LL |         &FOO => {}
    |         ^^^^
 
-error: aborting due to 15 previous errors
+error: unreachable pattern
+  --> $DIR/exhaustive_integer_patterns.rs:163:9
+   |
+LL |         BAR => {}
+   |         ^^^
+
+error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

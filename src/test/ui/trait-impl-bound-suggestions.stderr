@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `X: Copy` is not satisfied
+  --> $DIR/trait-impl-bound-suggestions.rs:14:52
+   |
+LL | struct ConstrainedStruct<X: Copy> {
+   |                             ---- required by this bound in `ConstrainedStruct`
+...
+LL |     fn return_the_constrained_type(&self, x: X) -> ConstrainedStruct<X> {
+   |                                                    ^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `X`
+   |
+help: consider further restricting type parameter `X`
+   |
+LL | trait InsufficientlyConstrainedGeneric<X=()> where X: Copy {
+   |                                              ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

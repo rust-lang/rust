@@ -152,11 +152,8 @@ impl SymbolMangler<'tcx> {
         let _ = write!(self.out, "{}", ident.len());
 
         // Write a separating `_` if necessary (leading digit or `_`).
-        match ident.chars().next() {
-            Some('_' | '0'..='9') => {
-                self.push("_");
-            }
-            _ => {}
+        if let Some('_' | '0'..='9') = ident.chars().next() {
+            self.push("_");
         }
 
         self.push(ident);
@@ -507,6 +504,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
         match ct.ty.kind() {
             ty::Uint(_) => {}
+            ty::Bool => {}
             _ => {
                 bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
             }

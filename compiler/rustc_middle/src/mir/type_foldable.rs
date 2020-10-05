@@ -175,7 +175,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         use crate::mir::Rvalue::*;
         match *self {
             Use(ref op) => Use(op.fold_with(folder)),
-            Repeat(ref op, len) => Repeat(op.fold_with(folder), len),
+            Repeat(ref op, len) => Repeat(op.fold_with(folder), len.fold_with(folder)),
             ThreadLocalRef(did) => ThreadLocalRef(did.fold_with(folder)),
             Ref(region, bk, ref place) => {
                 Ref(region.fold_with(folder), bk, place.fold_with(folder))

@@ -4,11 +4,19 @@ use crate::usize;
 
 /// An iterator that links two iterators together, in a chain.
 ///
-/// This `struct` is created by the [`chain`] method on [`Iterator`]. See its
-/// documentation for more.
+/// This `struct` is created by [`Iterator::chain`]. See its documentation
+/// for more.
 ///
-/// [`chain`]: trait.Iterator.html#method.chain
-/// [`Iterator`]: trait.Iterator.html
+/// # Examples
+///
+/// ```
+/// use std::iter::Chain;
+/// use std::slice::Iter;
+///
+/// let a1 = [1, 2, 3];
+/// let a2 = [4, 5, 6];
+/// let iter: Chain<Iter<_>, Iter<_>> = a1.iter().chain(a2.iter());
+/// ```
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]

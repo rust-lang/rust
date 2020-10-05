@@ -24,6 +24,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use smallvec::SmallVec;
 
+use std::array;
 use std::iter;
 
 pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
@@ -276,7 +277,8 @@ fn predicates_reference_self(
                 | ty::PredicateAtom::ClosureKind(..)
                 | ty::PredicateAtom::Subtype(..)
                 | ty::PredicateAtom::ConstEvaluatable(..)
-                | ty::PredicateAtom::ConstEquate(..) => None,
+                | ty::PredicateAtom::ConstEquate(..)
+                | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
             }
         })
         .collect()
@@ -310,7 +312,8 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::TypeOutlives(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
-            | ty::PredicateAtom::ConstEquate(..) => false,
+            | ty::PredicateAtom::ConstEquate(..)
+            | ty::PredicateAtom::TypeWellFormedFromEnv(..) => false,
         }
     })
 }
@@ -650,15 +653,10 @@ fn receiver_is_dispatchable<'tcx>(
         let caller_bounds: Vec<Predicate<'tcx>> = param_env
             .caller_bounds()
             .iter()
-            .chain(iter::once(unsize_predicate))
-            .chain(iter::once(trait_predicate))
+            .chain(array::IntoIter::new([unsize_predicate, trait_predicate]))
             .collect();
 
-        ty::ParamEnv::new(
-            tcx.intern_predicates(&caller_bounds),
-            param_env.reveal(),
-            param_env.def_id,
-        )
+        ty::ParamEnv::new(tcx.intern_predicates(&caller_bounds), param_env.reveal())
     };
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>

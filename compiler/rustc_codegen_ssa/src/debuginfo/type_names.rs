@@ -5,6 +5,8 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, subst::SubstsRef, Ty, TyCtxt};
 
+use std::fmt::Write;
+
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
 // the work twice. The `qualified` parameter only affects the first level of the
@@ -37,7 +39,7 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
         ty::Str => output.push_str("str"),
-        ty::Never => output.push_str("!"),
+        ty::Never => output.push('!'),
         ty::Int(int_ty) => output.push_str(int_ty.name_str()),
         ty::Uint(uint_ty) => output.push_str(uint_ty.name_str()),
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
@@ -228,8 +230,7 @@ pub fn push_debuginfo_type_name<'tcx>(
         if qualified {
             output.push_str(&tcx.crate_name(def_id.krate).as_str());
             for path_element in tcx.def_path(def_id).data {
-                output.push_str("::");
-                output.push_str(&path_element.data.as_symbol().as_str());
+                write!(output, "::{}", path_element.data).unwrap();
             }
         } else {
             output.push_str(&tcx.item_name(def_id).as_str());

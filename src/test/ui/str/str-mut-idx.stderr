@@ -39,7 +39,7 @@ LL |     s.get_mut(1);
    |
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
-           see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+           for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
   --> $DIR/str-mut-idx.rs:11:25
@@ -49,7 +49,7 @@ LL |     s.get_unchecked_mut(1);
    |
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
-           see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+           for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
 error[E0277]: the type `str` cannot be indexed by `char`
   --> $DIR/str-mut-idx.rs:13:5

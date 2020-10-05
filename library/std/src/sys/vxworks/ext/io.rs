@@ -63,6 +63,25 @@ pub trait IntoRawFd {
     fn into_raw_fd(self) -> RawFd;
 }
 
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl AsRawFd for RawFd {
+    fn as_raw_fd(&self) -> RawFd {
+        *self
+    }
+}
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl IntoRawFd for RawFd {
+    fn into_raw_fd(self) -> RawFd {
+        self
+    }
+}
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl FromRawFd for RawFd {
+    unsafe fn from_raw_fd(fd: RawFd) -> RawFd {
+        fd
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for fs::File {
     fn as_raw_fd(&self) -> RawFd {

@@ -20,7 +20,7 @@ use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
-    Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
+    Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, Operand, Place, PlaceTy,
     ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
@@ -48,8 +48,41 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
         FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Pointer<M::PointerTag>>,
 }
 
+// The Phantomdata exists to prevent this type from being `Send`. If it were sent across a thread
+// boundary and dropped in the other thread, it would exit the span in the other thread.
+struct SpanGuard(tracing::Span, std::marker::PhantomData<*const u8>);
+
+impl SpanGuard {
+    /// By default a `SpanGuard` does nothing.
+    fn new() -> Self {
+        Self(tracing::Span::none(), std::marker::PhantomData)
+    }
+
+    /// If a span is entered, we exit the previous span (if any, normally none) and enter the
+    /// new span. This is mainly so we don't have to use `Option` for the `tracing_span` field of
+    /// `Frame` by creating a dummy span to being with and then entering it once the frame has
+    /// been pushed.
+    fn enter(&mut self, span: tracing::Span) {
+        // This executes the destructor on the previous instance of `SpanGuard`, ensuring that
+        // we never enter or exit more spans than vice versa. Unless you `mem::leak`, then we
+        // can't protect the tracing stack, but that'll just lead to weird logging, no actual
+        // problems.
+        *self = Self(span, std::marker::PhantomData);
+        self.0.with_subscriber(|(id, dispatch)| {
+            dispatch.enter(id);
+        });
+    }
+}
+
+impl Drop for SpanGuard {
+    fn drop(&mut self) {
+        self.0.with_subscriber(|(id, dispatch)| {
+            dispatch.exit(id);
+        });
+    }
+}
+
 /// A stack frame.
-#[derive(Clone)]
 pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
@@ -79,6 +112,11 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     pub locals: IndexVec<mir::Local, LocalState<'tcx, Tag>>,
+
+    /// The span of the `tracing` crate is stored here.
+    /// When the guard is dropped, the span is exited. This gives us
+    /// a full stack trace on all tracing statements.
+    tracing_span: SpanGuard,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -184,6 +222,7 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
             locals: self.locals,
             loc: self.loc,
             extra,
+            tracing_span: self.tracing_span,
         }
     }
 }
@@ -482,13 +521,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
     pub(super) fn resolve(
         &self,
-        def_id: DefId,
+        def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        trace!("resolve: {:?}, {:#?}", def_id, substs);
+        trace!("resolve: {:?}, {:#?}", def, substs);
         trace!("param_env: {:#?}", self.param_env);
         trace!("substs: {:#?}", substs);
-        match ty::Instance::resolve(*self.tcx, self.param_env, def_id, substs) {
+        match ty::Instance::resolve_opt_const_arg(*self.tcx, self.param_env, def, substs) {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
@@ -637,11 +676,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
-        if !self.stack().is_empty() {
-            info!("PAUSING({}) {}", self.frame_idx(), self.frame().instance);
-        }
-        ::log_settings::settings().indentation += 1;
-
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
@@ -652,6 +686,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // all methods actually know about the frame
             locals: IndexVec::new(),
             instance,
+            tracing_span: SpanGuard::new(),
             extra: (),
         };
         let frame = M::init_frame_extra(self, pre_frame)?;
@@ -696,7 +731,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
         self.frame_mut().loc = Ok(mir::Location::START);
-        info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
+
+        let span = info_span!("frame", "{}", instance);
+        self.frame_mut().tracing_span.enter(span);
 
         Ok(())
     }
@@ -747,10 +784,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// cause us to continue unwinding.
     pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
         info!(
-            "LEAVING({}) {} (unwinding = {})",
-            self.frame_idx(),
-            self.frame().instance,
-            unwinding
+            "popping stack frame ({})",
+            if unwinding { "during unwinding" } else { "returning from function" }
         );
 
         // Sanity check `unwinding`.
@@ -766,7 +801,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_ub_format!("unwinding past the topmost frame of the stack");
         }
 
-        ::log_settings::settings().indentation -= 1;
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
@@ -823,15 +857,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        if !self.stack().is_empty() {
-            info!(
-                "CONTINUING({}) {} (unwinding = {})",
-                self.frame_idx(),
-                self.frame().instance,
-                unwinding
-            );
-        }
-
         Ok(())
     }
 
@@ -875,32 +900,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub(super) fn const_eval(
-        &self,
-        gid: GlobalId<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
-        // and thus don't care about the parameter environment. While we could just use
-        // `self.param_env`, that would mean we invoke the query to evaluate the static
-        // with different parameter environments, thus causing the static to be evaluated
-        // multiple times.
-        let param_env = if self.tcx.is_static(gid.instance.def_id()) {
-            ty::ParamEnv::reveal_all()
-        } else {
-            self.param_env
-        };
-        let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.tcx.span))?;
-
-        // Even though `ecx.const_eval` is called from `const_to_op` we can never have a
-        // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
-        // return `ConstValue::Unevaluated`, which is the only way that `const_to_op` will call
-        // `ecx.const_eval`.
-        let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
-        self.const_to_op(&const_, None)
-    }
-
-    pub fn const_eval_raw(
+    pub fn eval_to_allocation(
         &self,
         gid: GlobalId<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
@@ -914,14 +914,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        // We use `const_eval_raw` here, and get an unvalidated result.  That is okay:
-        // Our result will later be validated anyway, and there seems no good reason
-        // to have to fail early here.  This is also more consistent with
-        // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
-        // FIXME: We can hit delay_span_bug if this is an invalid const, interning finds
-        // that problem, but we never run validation to show an error. Can we ensure
-        // this does not happen?
-        let val = self.tcx.const_eval_raw(param_env.and(gid))?;
+        let val = self.tcx.eval_to_allocation_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }
 
@@ -1027,7 +1020,16 @@ where
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
         // Exhaustive match on fields to make sure we forget no field.
-        let Frame { body, instance, return_to_block, return_place, locals, loc, extra } = self;
+        let Frame {
+            body,
+            instance,
+            return_to_block,
+            return_place,
+            locals,
+            loc,
+            extra,
+            tracing_span: _,
+        } = self;
         body.hash_stable(hcx, hasher);
         instance.hash_stable(hcx, hasher);
         return_to_block.hash_stable(hcx, hasher);

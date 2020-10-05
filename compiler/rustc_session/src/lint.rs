@@ -65,9 +65,15 @@ pub struct Lint {
     ///
     /// The name is written with underscores, e.g., "unused_imports".
     /// On the command line, underscores become dashes.
+    ///
+    /// See https://rustc-dev-guide.rust-lang.org/diagnostics.html#lint-naming
+    /// for naming guidelines.
     pub name: &'static str,
 
     /// Default level for the lint.
+    ///
+    /// See https://rustc-dev-guide.rust-lang.org/diagnostics.html#diagnostic-levels
+    /// for guidelines on choosing a default level.
     pub default_level: Level,
 
     /// Description of the lint or the issue it detects.
@@ -275,17 +281,60 @@ impl LintBuffer {
 }
 
 /// Declares a static item of type `&'static Lint`.
+///
+/// See https://rustc-dev-guide.rust-lang.org/diagnostics.html for documentation
+/// and guidelines on writing lints.
+///
+/// The macro call should start with a doc comment explaining the lint
+/// which will be embedded in the rustc user documentation book. It should
+/// be written in markdown and have a format that looks like this:
+///
+/// ```rust,ignore (doc-example)
+/// /// The `my_lint_name` lint detects [short explanation here].
+/// ///
+/// /// ### Example
+/// ///
+/// /// ```rust
+/// /// [insert a concise example that triggers the lint]
+/// /// ```
+/// ///
+/// /// {{produces}}
+/// ///
+/// /// ### Explanation
+/// ///
+/// /// This should be a detailed explanation of *why* the lint exists,
+/// /// and also include suggestions on how the user should fix the problem.
+/// /// Try to keep the text simple enough that a beginner can understand,
+/// /// and include links to other documentation for terminology that a
+/// /// beginner may not be familiar with. If this is "allow" by default,
+/// /// it should explain why (are there false positives or other issues?). If
+/// /// this is a future-incompatible lint, it should say so, with text that
+/// /// looks roughly like this:
+/// ///
+/// /// This is a [future-incompatible] lint to transition this to a hard
+/// /// error in the future. See [issue #xxxxx] for more details.
+/// ///
+/// /// [issue #xxxxx]: https://github.com/rust-lang/rust/issues/xxxxx
+/// ```
+///
+/// The `{{produces}}` tag will be automatically replaced with the output from
+/// the example by the build system. You can build and view the rustc book
+/// with `x.py doc --stage=1 src/doc/rustc --open`. If the lint example is too
+/// complex to run as a simple example (for example, it needs an extern
+/// crate), mark it with `ignore` and manually paste the expected output below
+/// the example.
 #[macro_export]
 macro_rules! declare_lint {
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
+    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
         $crate::declare_lint!(
-            $vis $NAME, $Level, $desc,
+            $(#[$attr])* $vis $NAME, $Level, $desc,
         );
     );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $(@future_incompatible = $fi:expr;)?
      $(@feature_gate = $gate:expr;)?
      $($v:ident),*) => (
+        $(#[$attr])*
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
@@ -298,9 +347,10 @@ macro_rules! declare_lint {
             ..$crate::lint::Lint::default_fields_for_macro()
         };
     );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $lint_edition: expr => $edition_level: ident
     ) => (
+        $(#[$attr])*
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,

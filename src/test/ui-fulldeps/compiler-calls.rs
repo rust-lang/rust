@@ -26,7 +26,13 @@ fn main() {
     let mut count = 1;
     let args = vec!["compiler-calls".to_string(), "foo.rs".to_string()];
     rustc_driver::catch_fatal_errors(|| {
-        rustc_driver::run_compiler(&args, &mut TestCalls { count: &mut count }, None, None).ok();
+        rustc_driver::run_compiler(
+            &args,
+            &mut TestCalls { count: &mut count },
+            None,
+            None,
+            None,
+        ).ok();
     }).ok();
     assert_eq!(count, 2);
 }

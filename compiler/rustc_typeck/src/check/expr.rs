@@ -14,8 +14,13 @@ use crate::check::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExp
 use crate::check::FnCtxt;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
+use crate::errors::{
+    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    YieldExprOutsideOfGenerator,
+};
 use crate::type_error_struct;
 
+use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use rustc_ast as ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
@@ -434,19 +439,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This is maybe too permissive, since it allows
             // `let u = &raw const Box::new((1,)).0`, which creates an
             // immediately dangling raw pointer.
-            self.typeck_results.borrow().adjustments().get(base.hir_id).map_or(false, |x| {
-                x.iter().any(|adj| if let Adjust::Deref(_) = adj.kind { true } else { false })
-            })
+            self.typeck_results
+                .borrow()
+                .adjustments()
+                .get(base.hir_id)
+                .map_or(false, |x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         });
         if !is_named {
-            struct_span_err!(
-                self.tcx.sess,
-                oprnd.span,
-                E0745,
-                "cannot take address of a temporary"
-            )
-            .span_label(oprnd.span, "temporary value")
-            .emit();
+            self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span })
         }
     }
 
@@ -665,13 +665,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         if self.ret_coercion.is_none() {
-            struct_span_err!(
-                self.tcx.sess,
-                expr.span,
-                E0572,
-                "return statement outside of function body",
-            )
-            .emit();
+            self.tcx.sess.emit_err(ReturnStmtOutsideOfFnBody { span: expr.span });
         } else if let Some(ref e) = expr_opt {
             if self.ret_coercion_span.borrow().is_none() {
                 *self.ret_coercion_span.borrow_mut() = Some(e.span);
@@ -740,6 +734,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_span: &Span,
     ) {
         if !lhs.is_syntactic_place_expr() {
+            // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
             let mut err = self.tcx.sess.struct_span_err_with_code(
                 *expr_span,
                 "invalid left-hand side of assignment",
@@ -1120,14 +1115,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Prohibit struct expressions when non-exhaustive flag is set.
         let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
         if !adt.did.is_local() && variant.is_field_list_non_exhaustive() {
-            struct_span_err!(
-                self.tcx.sess,
-                expr.span,
-                E0639,
-                "cannot create non-exhaustive {} using struct expression",
-                adt.variant_descr()
-            )
-            .emit();
+            self.tcx
+                .sess
+                .emit_err(StructExprNonExhaustive { span: expr.span, what: adt.variant_descr() });
         }
 
         let error_happened = self.check_expr_struct_fields(
@@ -1165,13 +1155,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .insert(expr.hir_id, fru_field_types);
                     }
                     _ => {
-                        struct_span_err!(
-                            self.tcx.sess,
-                            base_expr.span,
-                            E0436,
-                            "functional record update syntax requires a struct"
-                        )
-                        .emit();
+                        self.tcx
+                            .sess
+                            .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
                     }
                 }
             }
@@ -1234,18 +1220,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 error_happened = true;
                 if let Some(prev_span) = seen_fields.get(&ident) {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        field.ident.span,
-                        E0062,
-                        "field `{}` specified more than once",
-                        ident
-                    );
-
-                    err.span_label(field.ident.span, "used more than once");
-                    err.span_label(*prev_span, format!("first use of `{}`", ident));
-
-                    err.emit();
+                    tcx.sess.emit_err(FieldMultiplySpecifiedInInitializer {
+                        span: field.ident.span,
+                        prev_span: *prev_span,
+                        ident,
+                    });
                 } else {
                     self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name, span);
                 }
@@ -1264,42 +1243,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.span_err(span, "union expressions should have exactly one field");
             }
         } else if check_completeness && !error_happened && !remaining_fields.is_empty() {
-            let len = remaining_fields.len();
-
-            let mut displayable_field_names =
-                remaining_fields.keys().map(|ident| ident.as_str()).collect::<Vec<_>>();
-
-            displayable_field_names.sort();
-
-            let truncated_fields_error = if len <= 3 {
-                String::new()
-            } else {
-                format!(" and {} other field{}", (len - 3), if len - 3 == 1 { "" } else { "s" })
-            };
-
-            let remaining_fields_names = displayable_field_names
+            let no_accessible_remaining_fields = remaining_fields
                 .iter()
-                .take(3)
-                .map(|n| format!("`{}`", n))
-                .collect::<Vec<_>>()
-                .join(", ");
+                .find(|(_, (_, field))| {
+                    field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
+                })
+                .is_none();
 
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0063,
-                "missing field{} {}{} in initializer of `{}`",
-                pluralize!(remaining_fields.len()),
-                remaining_fields_names,
-                truncated_fields_error,
-                adt_ty
-            )
-            .span_label(
-                span,
-                format!("missing {}{}", remaining_fields_names, truncated_fields_error),
-            )
-            .emit();
+            if no_accessible_remaining_fields {
+                self.report_no_accessible_fields(adt_ty, span);
+            } else {
+                self.report_missing_field(adt_ty, span, remaining_fields);
+            }
         }
+
         error_happened
     }
 
@@ -1314,6 +1271,79 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(ref base) = *base_expr {
             self.check_expr(&base);
         }
+    }
+
+    /// Report an error for a struct field expression when there are fields which aren't provided.
+    ///
+    /// ```ignore (diagnostic)
+    /// error: missing field `you_can_use_this_field` in initializer of `foo::Foo`
+    ///  --> src/main.rs:8:5
+    ///   |
+    /// 8 |     foo::Foo {};
+    ///   |     ^^^^^^^^ missing `you_can_use_this_field`
+    ///
+    /// error: aborting due to previous error
+    /// ```
+    fn report_missing_field(
+        &self,
+        adt_ty: Ty<'tcx>,
+        span: Span,
+        remaining_fields: FxHashMap<Ident, (usize, &ty::FieldDef)>,
+    ) {
+        let tcx = self.tcx;
+        let len = remaining_fields.len();
+
+        let mut displayable_field_names =
+            remaining_fields.keys().map(|ident| ident.as_str()).collect::<Vec<_>>();
+
+        displayable_field_names.sort();
+
+        let truncated_fields_error = if len <= 3 {
+            String::new()
+        } else {
+            format!(" and {} other field{}", (len - 3), if len - 3 == 1 { "" } else { "s" })
+        };
+
+        let remaining_fields_names = displayable_field_names
+            .iter()
+            .take(3)
+            .map(|n| format!("`{}`", n))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        struct_span_err!(
+            tcx.sess,
+            span,
+            E0063,
+            "missing field{} {}{} in initializer of `{}`",
+            pluralize!(remaining_fields.len()),
+            remaining_fields_names,
+            truncated_fields_error,
+            adt_ty
+        )
+        .span_label(span, format!("missing {}{}", remaining_fields_names, truncated_fields_error))
+        .emit();
+    }
+
+    /// Report an error for a struct field expression when there are no visible fields.
+    ///
+    /// ```ignore (diagnostic)
+    /// error: cannot construct `Foo` with struct literal syntax due to inaccessible fields
+    ///  --> src/main.rs:8:5
+    ///   |
+    /// 8 |     foo::Foo {};
+    ///   |     ^^^^^^^^
+    ///
+    /// error: aborting due to previous error
+    /// ```
+    fn report_no_accessible_fields(&self, adt_ty: Ty<'tcx>, span: Span) {
+        self.tcx.sess.span_err(
+            span,
+            &format!(
+                "cannot construct `{}` with struct literal syntax due to inaccessible fields",
+                adt_ty,
+            ),
+        );
     }
 
     fn report_unknown_field(
@@ -1876,13 +1906,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.mk_unit()
             }
             _ => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    expr.span,
-                    E0627,
-                    "yield expression outside of generator literal"
-                )
-                .emit();
+                self.tcx.sess.emit_err(YieldExprOutsideOfGenerator { span: expr.span });
                 self.tcx.mk_unit()
             }
         }

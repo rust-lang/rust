@@ -1,6 +1,6 @@
 //! List of the accepted feature gates.
 
-use super::{Feature, State};
+use super::{to_nonzero, Feature, State};
 use rustc_span::symbol::sym;
 
 macro_rules! declare_features {
@@ -14,7 +14,7 @@ macro_rules! declare_features {
                     state: State::Accepted,
                     name: sym::$feature,
                     since: $ver,
-                    issue: $issue,
+                    issue: to_nonzero($issue),
                     edition: None,
                     description: concat!($($doc,)*),
                 }
@@ -268,6 +268,8 @@ declare_features! (
     /// Allows `#[track_caller]` to be used which provides
     /// accurate caller location reporting during panic (RFC 2091).
     (accepted, track_caller, "1.46.0", Some(47809), None),
+    /// Allows `#[doc(alias = "...")]`.
+    (accepted, doc_alias, "1.48.0", Some(50146), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

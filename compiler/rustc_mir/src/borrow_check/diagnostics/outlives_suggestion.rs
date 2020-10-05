@@ -115,9 +115,10 @@ impl OutlivesSuggestionBuilder {
             //    should just replace 'a with 'static.
             // 3) Suggest unifying 'a with 'b if we have both 'a: 'b and 'b: 'a
 
-            if outlived.iter().any(|(_, outlived_name)| {
-                if let RegionNameSource::Static = outlived_name.source { true } else { false }
-            }) {
+            if outlived
+                .iter()
+                .any(|(_, outlived_name)| matches!(outlived_name.source, RegionNameSource::Static))
+            {
                 suggested.push(SuggestedConstraint::Static(fr_name));
             } else {
                 // We want to isolate out all lifetimes that should be unified and print out

@@ -576,7 +576,20 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             new_val.map(ty::ConstKind::Value)
         }
 
-        // FIXME(const_generics): this is wrong, as it is a projection
+        (
+            ty::ConstKind::Unevaluated(a_def, a_substs, None),
+            ty::ConstKind::Unevaluated(b_def, b_substs, None),
+        ) if tcx.features().const_evaluatable_checked => {
+            if tcx.try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs))) {
+                Ok(a.val)
+            } else {
+                Err(TypeError::ConstMismatch(expected_found(relation, a, b)))
+            }
+        }
+
+        // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
+        // and is the better alternative to waiting until `const_evaluatable_checked` can
+        // be stabilized.
         (
             ty::ConstKind::Unevaluated(a_def, a_substs, a_promoted),
             ty::ConstKind::Unevaluated(b_def, b_substs, b_promoted),

@@ -14,12 +14,31 @@ rustc_index::newtype_index! {
     }
 }
 
+impl ExpressionOperandId {
+    /// An expression operand for a "zero counter", as described in the following references:
+    ///
+    /// * https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#counter
+    /// * https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#tag
+    /// * https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#counter-expressions
+    ///
+    /// This operand can be used to count two or more separate code regions with a single counter,
+    /// if they run sequentially with no branches, by injecting the `Counter` in a `BasicBlock` for
+    /// one of the code regions, and inserting `CounterExpression`s ("add ZERO to the counter") in
+    /// the coverage map for the other code regions.
+    pub const ZERO: Self = Self::from_u32(0);
+}
+
 rustc_index::newtype_index! {
     pub struct CounterValueReference {
         derive [HashStable]
         DEBUG_FORMAT = "CounterValueReference({})",
         MAX = 0xFFFF_FFFF,
     }
+}
+
+impl CounterValueReference {
+    // Counters start at 1 to reserve 0 for ExpressionOperandId::ZERO.
+    pub const START: Self = Self::from_u32(1);
 }
 
 rustc_index::newtype_index! {

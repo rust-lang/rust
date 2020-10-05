@@ -12,9 +12,9 @@ use crate::ty::{ParamEnv, Ty, TyCtxt};
 
 use super::{sign_extend, truncate, AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 
-/// Represents the result of a raw const operation, pre-validation.
-#[derive(Clone, HashStable)]
-pub struct RawConst<'tcx> {
+/// Represents the result of const evaluation via the `eval_to_allocation` query.
+#[derive(Clone, HashStable, TyEncodable, TyDecodable)]
+pub struct ConstAlloc<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,
@@ -577,6 +577,9 @@ pub enum ScalarMaybeUninit<Tag = ()> {
     Scalar(Scalar<Tag>),
     Uninit,
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(ScalarMaybeUninit, 24);
 
 impl<Tag> From<Scalar<Tag>> for ScalarMaybeUninit<Tag> {
     #[inline(always)]

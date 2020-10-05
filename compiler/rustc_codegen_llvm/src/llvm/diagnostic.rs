@@ -118,6 +118,7 @@ pub enum Diagnostic<'ll> {
     InlineAsm(InlineAsmDiagnostic<'ll>),
     PGO(&'ll DiagnosticInfo),
     Linker(&'ll DiagnosticInfo),
+    Unsupported(&'ll DiagnosticInfo),
 
     /// LLVM has other types that we do not wrap here.
     UnknownDiagnostic(&'ll DiagnosticInfo),
@@ -159,6 +160,7 @@ impl Diagnostic<'ll> {
 
             Dk::PGOProfile => PGO(di),
             Dk::Linker => Linker(di),
+            Dk::Unsupported => Unsupported(di),
 
             _ => UnknownDiagnostic(di),
         }

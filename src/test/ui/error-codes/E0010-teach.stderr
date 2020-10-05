@@ -6,17 +6,6 @@ LL | const CON : Box<i32> = box 0;
    |
    = note: The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/E0010-teach.rs:6:28
-   |
-LL | const CON : Box<i32> = box 0;
-   |                            ^
-   |
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: A function call isn't allowed in the const's initialization expression because the expression's value must be known at compile-time.
-   = note: Remember: you can't use a function call inside a const's initialization expression! However, you can use it anywhere else.
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0010, E0019.
-For more information about an error, try `rustc --explain E0010`.
+For more information about this error, try `rustc --explain E0010`.

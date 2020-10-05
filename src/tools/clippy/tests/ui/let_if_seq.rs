@@ -33,6 +33,7 @@ fn issue985_alt() -> i32 {
     x
 }
 
+#[allow(clippy::manual_strip)]
 fn issue975() -> String {
     let mut udn = "dummy".to_string();
     if udn.starts_with("uuid:") {

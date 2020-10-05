@@ -10,6 +10,7 @@ use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Binder, Const, Ty, TypeFoldable};
 use std::marker::PhantomData;
 
+use super::const_evaluatable;
 use super::project;
 use super::select::SelectionContext;
 use super::wf;
@@ -86,7 +87,7 @@ pub struct PendingPredicateObligation<'tcx> {
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PendingPredicateObligation<'_>, 64);
+static_assert_size!(PendingPredicateObligation<'_>, 56);
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
@@ -304,8 +305,34 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             return ProcessResult::Unchanged;
         }
 
-        // This part of the code is much colder.
+        self.progress_changed_obligations(pending_obligation)
+    }
 
+    fn process_backedge<'c, I>(
+        &mut self,
+        cycle: I,
+        _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
+    ) where
+        I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
+    {
+        if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
+            debug!("process_child_obligations: coinductive match");
+        } else {
+            let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
+            self.selcx.infcx().report_overflow_error_cycle(&cycle);
+        }
+    }
+}
+
+impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
+    // The code calling this method is extremely hot and only rarely
+    // actually uses this, so move this part of the code
+    // out of that loop.
+    #[inline(never)]
+    fn progress_changed_obligations(
+        &mut self,
+        pending_obligation: &mut PendingPredicateObligation<'tcx>,
+    ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         pending_obligation.stalled_on.truncate(0);
 
         let obligation = &mut pending_obligation.obligation;
@@ -353,6 +380,9 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     ProcessResult::Changed(mk_pending(vec![
                         obligation.with(pred.to_predicate(self.selcx.tcx())),
                     ]))
+                }
+                ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
             },
             &ty::PredicateKind::Atom(atom) => match atom {
@@ -458,20 +488,46 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
-                    match self.selcx.infcx().const_eval_resolve(
-                        obligation.param_env,
+                    match const_evaluatable::is_const_evaluatable(
+                        self.selcx.infcx(),
                         def_id,
                         substs,
-                        None,
-                        Some(obligation.cause.span),
+                        obligation.param_env,
+                        obligation.cause.span,
                     ) {
-                        Ok(_) => ProcessResult::Changed(vec![]),
-                        Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),
+                        Ok(()) => ProcessResult::Changed(vec![]),
+                        Err(ErrorHandled::TooGeneric) => {
+                            pending_obligation.stalled_on = substs
+                                .iter()
+                                .filter_map(|ty| TyOrConstInferVar::maybe_from_generic_arg(ty))
+                                .collect();
+                            ProcessResult::Unchanged
+                        }
+                        Err(e) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(e))),
                     }
                 }
 
                 ty::PredicateAtom::ConstEquate(c1, c2) => {
                     debug!("equating consts: c1={:?} c2={:?}", c1, c2);
+                    if self.selcx.tcx().features().const_evaluatable_checked {
+                        // FIXME: we probably should only try to unify abstract constants
+                        // if the constants depend on generic parameters.
+                        //
+                        // Let's just see where this breaks :shrug:
+                        if let (
+                            ty::ConstKind::Unevaluated(a_def, a_substs, None),
+                            ty::ConstKind::Unevaluated(b_def, b_substs, None),
+                        ) = (c1.val, c2.val)
+                        {
+                            if self
+                                .selcx
+                                .tcx()
+                                .try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs)))
+                            {
+                                return ProcessResult::Changed(vec![]);
+                            }
+                        }
+                    }
 
                     let stalled_on = &mut pending_obligation.stalled_on;
 
@@ -488,8 +544,10 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                                 Err(ErrorHandled::TooGeneric) => {
                                     stalled_on.append(
                                         &mut substs
-                                            .types()
-                                            .filter_map(|ty| TyOrConstInferVar::maybe_from_ty(ty))
+                                            .iter()
+                                            .filter_map(|arg| {
+                                                TyOrConstInferVar::maybe_from_generic_arg(arg)
+                                            })
                                             .collect(),
                                     );
                                     Err(ErrorHandled::TooGeneric)
@@ -535,27 +593,13 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         }
                     }
                 }
+                ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
             },
         }
     }
 
-    fn process_backedge<'c, I>(
-        &mut self,
-        cycle: I,
-        _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
-    ) where
-        I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
-    {
-        if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
-            debug!("process_child_obligations: coinductive match");
-        } else {
-            let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
-            self.selcx.infcx().report_overflow_error_cycle(&cycle);
-        }
-    }
-}
-
-impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     fn process_trait_obligation(
         &mut self,
         obligation: &PredicateObligation<'tcx>,

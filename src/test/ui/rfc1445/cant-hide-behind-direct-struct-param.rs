@@ -21,7 +21,6 @@ fn main() {
     match WRAP_DIRECT_PARAM {
         WRAP_DIRECT_PARAM => { panic!("WRAP_DIRECT_PARAM matched itself"); }
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         _ => { println!("WRAP_DIRECT_PARAM did not match itself"); }
     }
 }

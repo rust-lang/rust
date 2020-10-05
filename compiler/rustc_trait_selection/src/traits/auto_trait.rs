@@ -32,6 +32,7 @@ pub enum AutoTraitResult<A> {
     NegativeImpl,
 }
 
+#[allow(dead_code)]
 impl<A> AutoTraitResult<A> {
     fn is_auto(&self) -> bool {
         match *self {
@@ -96,7 +97,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             ));
 
             match result {
-                Ok(Some(ImplSource::ImplSourceUserDefined(_))) => {
+                Ok(Some(ImplSource::UserDefined(_))) => {
                     debug!(
                         "find_auto_trait_generics({:?}): \
                          manual impl found, bailing out",
@@ -315,9 +316,8 @@ impl AutoTraitFinder<'tcx> {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
-                    if let ImplSource::ImplSourceUserDefined(ImplSourceUserDefinedData {
-                        impl_def_id,
-                        ..
+                    if let ImplSource::UserDefined(ImplSourceUserDefinedData {
+                        impl_def_id, ..
                     }) = impl_source
                     {
                         // Blame 'tidy' for the weird bracket placement.
@@ -373,14 +373,12 @@ impl AutoTraitFinder<'tcx> {
                 computed_preds.clone().chain(user_computed_preds.iter().cloned()),
             )
             .map(|o| o.predicate);
-            new_env =
-                ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal(), None);
+            new_env = ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal());
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
             user_env.reveal(),
-            None,
         );
         debug!(
             "evaluate_nested_obligations(ty={:?}, trait_did={:?}): succeeded with '{:?}' \

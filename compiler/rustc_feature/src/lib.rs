@@ -46,15 +46,9 @@ pub struct Feature {
     pub state: State,
     pub name: Symbol,
     pub since: &'static str,
-    issue: Option<u32>, // FIXME: once #58732 is done make this an Option<NonZeroU32>
+    issue: Option<NonZeroU32>,
     pub edition: Option<Edition>,
     description: &'static str,
-}
-
-impl Feature {
-    fn issue(&self) -> Option<NonZeroU32> {
-        self.issue.and_then(NonZeroU32::new)
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -102,8 +96,8 @@ impl UnstableFeatures {
 fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
     if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
         // FIXME (#28244): enforce that active features have issue numbers
-        // assert!(info.issue().is_some())
-        info.issue()
+        // assert!(info.issue.is_some())
+        info.issue
     } else {
         // search in Accepted, Removed, or Stable Removed features
         let found = ACCEPTED_FEATURES
@@ -112,9 +106,18 @@ fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
             .chain(STABLE_REMOVED_FEATURES)
             .find(|t| t.name == feature);
         match found {
-            Some(found) => found.issue(),
+            Some(found) => found.issue,
             None => panic!("feature `{}` is not declared anywhere", feature),
         }
+    }
+}
+
+const fn to_nonzero(n: Option<u32>) -> Option<NonZeroU32> {
+    // Can be replaced with `n.and_then(NonZeroU32::new)` if that is ever usable
+    // in const context. Requires https://github.com/rust-lang/rfcs/pull/2632.
+    match n {
+        None => None,
+        Some(n) => NonZeroU32::new(n),
     }
 }
 
@@ -131,7 +134,7 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZeroU3
 }
 
 pub use accepted::ACCEPTED_FEATURES;
-pub use active::{Features, ACTIVE_FEATURES, INCOMPLETE_FEATURES};
+pub use active::{Features, ACTIVE_FEATURES, INCOMPATIBLE_FEATURES, INCOMPLETE_FEATURES};
 pub use builtin_attrs::{
     deprecated_attributes, find_gated_cfg, is_builtin_attr_name, AttributeGate, AttributeTemplate,
     AttributeType, BuiltinAttribute, GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,

@@ -879,7 +879,7 @@ pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
 }
 
 pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
-    if let VisibilityKind::Restricted { ref path, id } = vis.node {
+    if let VisibilityKind::Restricted { ref path, id } = vis.kind {
         visitor.visit_path(path, id);
     }
 }

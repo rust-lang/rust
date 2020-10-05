@@ -1,3 +1,4 @@
+use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -201,11 +202,8 @@ fn compare_predicate_entailment<'tcx>(
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_hir_id);
-    let param_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&hybrid_preds.predicates),
-        Reveal::UserFacing,
-        None,
-    );
+    let param_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         impl_m.def_id,
@@ -366,24 +364,18 @@ fn check_region_bounds_on_impl_item<'tcx>(
         let item_kind = assoc_item_kind_str(impl_m);
         let def_span = tcx.sess.source_map().guess_head_span(span);
         let span = tcx.hir().get_generics(impl_m.def_id).map(|g| g.span).unwrap_or(def_span);
-        let mut err = struct_span_err!(
-            tcx.sess,
-            span,
-            E0195,
-            "lifetime parameters or bounds on {} `{}` do not match the trait declaration",
-            item_kind,
-            impl_m.ident,
-        );
-        err.span_label(span, &format!("lifetimes do not match {} in trait", item_kind));
-        if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
+        let generics_span = if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
             let def_sp = tcx.sess.source_map().guess_head_span(sp);
-            let sp = tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp);
-            err.span_label(
-                sp,
-                &format!("lifetimes in impl do not match this {} in trait", item_kind),
-            );
-        }
-        err.emit();
+            Some(tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp))
+        } else {
+            None
+        };
+        tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
+            span,
+            item_kind,
+            ident: impl_m.ident,
+            generics_span,
+        });
         return Err(ErrorReported);
     }
 
@@ -1125,11 +1117,8 @@ fn compare_type_predicate_entailment<'tcx>(
     debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
 
     let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
-    let param_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&hybrid_preds.predicates),
-        Reveal::UserFacing,
-        None,
-    );
+    let param_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         impl_ty.def_id,
@@ -1232,7 +1221,7 @@ fn compare_projection_bounds<'tcx>(
             })
             .to_predicate(tcx),
         );
-        ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing, None)
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing)
     };
 
     tcx.infer_ctxt().enter(move |infcx| {

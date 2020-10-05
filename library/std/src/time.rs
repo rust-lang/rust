@@ -20,7 +20,7 @@ use crate::error::Error;
 use crate::fmt;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::sys::time;
-use crate::sys_common::mutex::Mutex;
+use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::FromInner;
 
 #[stable(feature = "time", since = "1.3.0")]
@@ -159,7 +159,7 @@ pub struct Instant(time::Instant);
 /// | CloudABI  | [clock_time_get (Realtime Clock)]                                    |
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime (Realtime Clock)]                                     |
-/// | DARWIN    | [gettimeofday]                                                       |
+/// | Darwin    | [gettimeofday]                                                       |
 /// | VXWorks   | [clock_gettime (Realtime Clock)]                                     |
 /// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
 /// | Windows   | [GetSystemTimePreciseAsFileTime] / [GetSystemTimeAsFileTime]         |
@@ -243,7 +243,7 @@ impl Instant {
             return Instant(os_now);
         }
 
-        static LOCK: Mutex = Mutex::new();
+        static LOCK: StaticMutex = StaticMutex::new();
         static mut LAST_NOW: time::Instant = time::Instant::zero();
         unsafe {
             let _lock = LOCK.lock();
@@ -460,12 +460,13 @@ impl SystemTime {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::time::SystemTime;
     ///
     /// let sys_time = SystemTime::now();
-    /// let difference = sys_time.duration_since(sys_time)
-    ///                          .expect("Clock may have gone backwards");
+    /// let new_sys_time = SystemTime::now();
+    /// let difference = new_sys_time.duration_since(sys_time)
+    ///     .expect("Clock may have gone backwards");
     /// println!("{:?}", difference);
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]

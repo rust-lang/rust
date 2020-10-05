@@ -270,7 +270,7 @@ impl Step for Rls {
             &[],
         );
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+        cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").args(builder.config.cmd.test_args());
 
         if try_run(builder, &mut cargo.into()) {
@@ -328,7 +328,7 @@ impl Step for Rustfmt {
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+        cargo.add_rustc_lib_path(builder, compiler);
 
         if try_run(builder, &mut cargo.into()) {
             builder.save_toolstate("rustfmt", ToolState::TestPass);
@@ -449,7 +449,7 @@ impl Step for Miri {
 
             cargo.arg("--").args(builder.config.cmd.test_args());
 
-            builder.add_rustc_lib_path(compiler, &mut cargo);
+            cargo.add_rustc_lib_path(builder, compiler);
 
             if !try_run(builder, &mut cargo.into()) {
                 return;
@@ -554,7 +554,7 @@ impl Step for Clippy {
 
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+        cargo.add_rustc_lib_path(builder, compiler);
 
         builder.run(&mut cargo.into());
     }
@@ -584,7 +584,7 @@ impl Step for RustdocTheme {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+        let compiler = run.builder.compiler(run.builder.top_stage, run.target);
 
         run.builder.ensure(RustdocTheme { compiler });
     }
@@ -600,8 +600,11 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.linker(self.compiler.host, true) {
-            cmd.env("RUSTC_TARGET_LINKER", linker);
+        if let Some(linker) = builder.linker(self.compiler.host) {
+            cmd.env("RUSTDOC_LINKER", linker);
+        }
+        if builder.is_fuse_ld_lld(self.compiler.host) {
+            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
         }
         try_run(builder, &mut cmd);
     }
@@ -633,7 +636,7 @@ impl Step for RustdocJSStd {
                 .arg("--crate-name")
                 .arg("std")
                 .arg("--resource-suffix")
-                .arg(crate::channel::CFG_RELEASE_NUM)
+                .arg(&builder.version)
                 .arg("--doc-folder")
                 .arg(builder.doc_out(self.target))
                 .arg("--test-folder")
@@ -648,7 +651,6 @@ impl Step for RustdocJSStd {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocJSNotStd {
-    pub host: TargetSelection,
     pub target: TargetSelection,
     pub compiler: Compiler,
 }
@@ -663,8 +665,8 @@ impl Step for RustdocJSNotStd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
-        run.builder.ensure(RustdocJSNotStd { host: run.host, target: run.target, compiler });
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(RustdocJSNotStd { target: run.target, compiler });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -685,7 +687,6 @@ impl Step for RustdocJSNotStd {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocUi {
-    pub host: TargetSelection,
     pub target: TargetSelection,
     pub compiler: Compiler,
 }
@@ -700,8 +701,8 @@ impl Step for RustdocUi {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
-        run.builder.ensure(RustdocUi { host: run.host, target: run.target, compiler });
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(RustdocUi { target: run.target, compiler });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -870,7 +871,7 @@ macro_rules! test_definitions {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
 
                 run.builder.ensure($name { compiler, target: run.target });
             }
@@ -1061,17 +1062,22 @@ impl Step for Compiletest {
         flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
-        // Don't use LLD here since we want to test that rustc finds and uses a linker by itself.
-        if let Some(linker) = builder.linker(target, false) {
+        if let Some(linker) = builder.linker(target) {
             cmd.arg("--linker").arg(linker);
         }
 
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
+        if builder.is_fuse_ld_lld(compiler.host) {
+            hostflags.push("-Clink-args=-fuse-ld=lld".to_string());
+        }
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
+        if builder.is_fuse_ld_lld(target) {
+            targetflags.push("-Clink-args=-fuse-ld=lld".to_string());
+        }
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
         cmd.arg("--docck-python").arg(builder.python());
@@ -1275,6 +1281,8 @@ impl Step for Compiletest {
             cmd.arg("--rustfix-coverage");
         }
 
+        cmd.env("BOOTSTRAP_CARGO", &builder.initial_cargo);
+
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
         builder.info(&format!(
@@ -1414,7 +1422,7 @@ macro_rules! test_book {
 
                 fn make_run(run: RunConfig<'_>) {
                     run.builder.ensure($name {
-                        compiler: run.builder.compiler(run.builder.top_stage, run.host),
+                        compiler: run.builder.compiler(run.builder.top_stage, run.target),
                     });
                 }
 
@@ -1461,7 +1469,7 @@ impl Step for ErrorIndex {
         // error_index_generator depends on librustdoc. Use the compiler that
         // is normally used to build rustdoc for other tests (like compiletest
         // tests in src/test/rustdoc) so that it shares the same artifacts.
-        let compiler = run.builder.compiler_for(run.builder.top_stage, run.host, run.host);
+        let compiler = run.builder.compiler_for(run.builder.top_stage, run.target, run.target);
         run.builder.ensure(ErrorIndex { compiler });
     }
 
@@ -1565,7 +1573,7 @@ impl Step for CrateLibrustc {
 
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
-        let compiler = builder.compiler(builder.top_stage, run.host);
+        let compiler = builder.compiler(builder.top_stage, run.build_triple());
 
         for krate in builder.in_tree_crates("rustc-main") {
             if krate.path.ends_with(&run.path) {
@@ -1612,7 +1620,7 @@ impl Step for CrateNotDefault {
 
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
-        let compiler = builder.compiler(builder.top_stage, run.host);
+        let compiler = builder.compiler(builder.top_stage, run.build_triple());
 
         let test_kind = builder.kind.into();
 
@@ -1660,7 +1668,7 @@ impl Step for Crate {
 
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
-        let compiler = builder.compiler(builder.top_stage, run.host);
+        let compiler = builder.compiler(builder.top_stage, run.build_triple());
 
         let make = |mode: Mode, krate: &CargoCrate| {
             let test_kind = builder.kind.into();
@@ -1800,7 +1808,7 @@ impl Step for CrateRustdoc {
 
         let test_kind = builder.kind.into();
 
-        builder.ensure(CrateRustdoc { host: run.host, test_kind });
+        builder.ensure(CrateRustdoc { host: run.target, test_kind });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -2016,6 +2024,8 @@ impl Step for Bootstrap {
             .current_dir(builder.src.join("src/bootstrap"))
             .env("RUSTFLAGS", "-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
+            .env("BOOTSTRAP_OUTPUT_DIRECTORY", &builder.config.out)
+            .env("BOOTSTRAP_INITIAL_CARGO", &builder.config.initial_cargo)
             .env("RUSTC_BOOTSTRAP", "1")
             .env("RUSTC", &builder.initial_rustc);
         if let Some(flags) = option_env!("RUSTFLAGS") {
@@ -2046,7 +2056,6 @@ impl Step for Bootstrap {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TierCheck {
     pub compiler: Compiler,
-    target: TargetSelection,
 }
 
 impl Step for TierCheck {
@@ -2059,18 +2068,19 @@ impl Step for TierCheck {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler_for(run.builder.top_stage, run.host, run.host);
-        run.builder.ensure(TierCheck { compiler, target: run.host });
+        let compiler =
+            run.builder.compiler_for(run.builder.top_stage, run.builder.build.build, run.target);
+        run.builder.ensure(TierCheck { compiler });
     }
 
     /// Tests the Platform Support page in the rustc book.
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(compile::Std { compiler: self.compiler, target: self.target });
+        builder.ensure(compile::Std { compiler: self.compiler, target: self.compiler.host });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             self.compiler,
-            Mode::ToolRustc,
-            self.target,
+            Mode::ToolStd,
+            self.compiler.host,
             "run",
             "src/tools/tier-check",
             SourceType::InTree,

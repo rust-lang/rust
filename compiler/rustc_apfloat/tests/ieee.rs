@@ -567,6 +567,17 @@ fn fma() {
 }
 
 #[test]
+fn issue_69532() {
+    let f = Double::from_bits(0x7FF0_0000_0000_0001u64 as u128);
+    let mut loses_info = false;
+    let sta = f.convert(&mut loses_info);
+    let r: Single = sta.value;
+    assert!(loses_info);
+    assert!(r.is_nan());
+    assert_eq!(sta.status, Status::INVALID_OP);
+}
+
+#[test]
 fn min_num() {
     let f1 = Double::from_f64(1.0);
     let f2 = Double::from_f64(2.0);
@@ -1492,27 +1503,32 @@ fn convert() {
     assert_eq!(4294967295.0, test.to_f64());
     assert!(!loses_info);
 
-    let test = Single::snan(None);
-    let x87_snan = X87DoubleExtended::snan(None);
-    let test: X87DoubleExtended = test.convert(&mut loses_info).value;
-    assert!(test.bitwise_eq(x87_snan));
-    assert!(!loses_info);
-
     let test = Single::qnan(None);
     let x87_qnan = X87DoubleExtended::qnan(None);
     let test: X87DoubleExtended = test.convert(&mut loses_info).value;
     assert!(test.bitwise_eq(x87_qnan));
     assert!(!loses_info);
 
-    let test = X87DoubleExtended::snan(None);
-    let test: X87DoubleExtended = test.convert(&mut loses_info).value;
-    assert!(test.bitwise_eq(x87_snan));
+    let test = Single::snan(None);
+    let sta = test.convert(&mut loses_info);
+    let test: X87DoubleExtended = sta.value;
+    assert!(test.is_nan());
+    assert!(!test.is_signaling());
     assert!(!loses_info);
+    assert_eq!(sta.status, Status::INVALID_OP);
 
     let test = X87DoubleExtended::qnan(None);
     let test: X87DoubleExtended = test.convert(&mut loses_info).value;
     assert!(test.bitwise_eq(x87_qnan));
     assert!(!loses_info);
+
+    let test = X87DoubleExtended::snan(None);
+    let sta = test.convert(&mut loses_info);
+    let test: X87DoubleExtended = sta.value;
+    assert!(test.is_nan());
+    assert!(!test.is_signaling());
+    assert!(!loses_info);
+    assert_eq!(sta.status, Status::INVALID_OP);
 }
 
 #[test]

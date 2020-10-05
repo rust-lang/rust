@@ -65,7 +65,7 @@ pub struct Guard {
 /// let mutex = Arc::new(Mutex::new(1));
 ///
 /// // poison the mutex
-/// let c_mutex = mutex.clone();
+/// let c_mutex = Arc::clone(&mutex);
 /// let _ = thread::spawn(move || {
 ///     let mut data = c_mutex.lock().unwrap();
 ///     *data = 2;
@@ -168,7 +168,7 @@ impl<T> PoisonError<T> {
     /// let mutex = Arc::new(Mutex::new(HashSet::new()));
     ///
     /// // poison the mutex
-    /// let c_mutex = mutex.clone();
+    /// let c_mutex = Arc::clone(&mutex);
     /// let _ = thread::spawn(move || {
     ///     let mut data = c_mutex.lock().unwrap();
     ///     data.insert(10);

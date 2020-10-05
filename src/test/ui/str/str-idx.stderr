@@ -6,7 +6,7 @@ LL |     let _: u8 = s[4];
    |
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
-           see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+           for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = note: required because of the requirements on the impl of `Index<{integer}>` for `str`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
@@ -17,7 +17,7 @@ LL |     let _ = s.get(4);
    |
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
-           see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+           for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
   --> $DIR/str-idx.rs:5:29
@@ -27,7 +27,7 @@ LL |     let _ = s.get_unchecked(4);
    |
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
-           see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+           for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
 error[E0277]: the type `str` cannot be indexed by `char`
   --> $DIR/str-idx.rs:6:17

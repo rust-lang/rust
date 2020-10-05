@@ -23,7 +23,7 @@ fn main() {
     match WRAP_DOUBLY_INDIRECT_INLINE {
         WRAP_DOUBLY_INDIRECT_INLINE => { panic!("WRAP_DOUBLY_INDIRECT_INLINE matched itself"); }
         //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| WARN will become a hard error in a future release
+        //~| WARN this was previously accepted
         _ => { println!("WRAP_DOUBLY_INDIRECT_INLINE correctly did not match itself"); }
     }
 }

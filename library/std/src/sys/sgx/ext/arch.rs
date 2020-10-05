@@ -31,13 +31,13 @@ pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> 
         let mut out = MaybeUninit::uninit();
         let error;
 
-        llvm_asm!(
-            "enclu"
-            : "={eax}"(error)
-            : "{eax}"(ENCLU_EGETKEY),
-              "{rbx}"(request),
-              "{rcx}"(out.as_mut_ptr())
-            : "flags"
+        asm!(
+            "enclu",
+            inlateout("eax") ENCLU_EGETKEY => error,
+            in("rbx") request,
+            in("rcx") out.as_mut_ptr(),
+            // NOTE(#76738): ATT syntax is used to support LLVM 8 and 9.
+            options(att_syntax, nostack),
         );
 
         match error {
@@ -60,13 +60,14 @@ pub fn ereport(
     unsafe {
         let mut report = MaybeUninit::uninit();
 
-        llvm_asm!(
-            "enclu"
-            : /* no output registers */
-            : "{eax}"(ENCLU_EREPORT),
-              "{rbx}"(targetinfo),
-              "{rcx}"(reportdata),
-              "{rdx}"(report.as_mut_ptr())
+        asm!(
+            "enclu",
+            in("eax") ENCLU_EREPORT,
+            in("rbx") targetinfo,
+            in("rcx") reportdata,
+            in("rdx") report.as_mut_ptr(),
+            // NOTE(#76738): ATT syntax is used to support LLVM 8 and 9.
+            options(att_syntax, preserves_flags, nostack),
         );
 
         report.assume_init()

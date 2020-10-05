@@ -1,4 +1,4 @@
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
@@ -37,8 +37,8 @@ pub struct MatchBranchSimplification;
 /// ```
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let param_env = tcx.param_env(src.def_id());
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let param_env = tcx.param_env(body.source.def_id());
         let bbs = body.basic_blocks_mut();
         'outer: for bb_idx in bbs.indices() {
             let (discr, val, switch_ty, first, second) = match bbs[bb_idx].terminator().kind {

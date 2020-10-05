@@ -11,7 +11,7 @@ LL |     F: Send + 'static,
    |
    = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
    = note: required because of the requirements on the impl of `Send` for `&std::sync::mpsc::Receiver<()>`
-   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:6:27: 9:6 recv:&std::sync::mpsc::Receiver<()>]`
+   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:6:27: 9:6]`
 
 error[E0277]: `Sender<()>` cannot be shared between threads safely
   --> $DIR/closure-move-sync.rs:18:5
@@ -26,7 +26,7 @@ LL |     F: Send + 'static,
    |
    = help: the trait `Sync` is not implemented for `Sender<()>`
    = note: required because of the requirements on the impl of `Send` for `&Sender<()>`
-   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:18:19: 18:42 tx:&Sender<()>]`
+   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:18:19: 18:42]`
 
 error: aborting due to 2 previous errors
 

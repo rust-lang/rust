@@ -260,6 +260,9 @@ impl fmt::Debug for ty::PredicateAtom<'tcx> {
                 write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
             }
             ty::PredicateAtom::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
+            ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
+                write!(f, "TypeWellFormedFromEnv({:?})", ty)
+            }
         }
     }
 }
@@ -536,6 +539,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateAtom<'a> {
             ty::PredicateAtom::ConstEquate(c1, c2) => {
                 tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::PredicateAtom::ConstEquate(c1, c2))
             }
+            ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
+                tcx.lift(&ty).map(ty::PredicateAtom::TypeWellFormedFromEnv)
+            }
         }
     }
 }
@@ -551,7 +557,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
     type Lifted = ty::ParamEnv<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.caller_bounds())
-            .map(|caller_bounds| ty::ParamEnv::new(caller_bounds, self.reveal(), self.def_id))
+            .map(|caller_bounds| ty::ParamEnv::new(caller_bounds, self.reveal()))
     }
 }
 
@@ -606,8 +612,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjust<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::OverloadedDeref<'a> {
     type Lifted = ty::adjustment::OverloadedDeref<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.region)
-            .map(|region| ty::adjustment::OverloadedDeref { region, mutbl: self.mutbl })
+        tcx.lift(&self.region).map(|region| ty::adjustment::OverloadedDeref {
+            region,
+            mutbl: self.mutbl,
+            span: self.span,
+        })
     }
 }
 
@@ -680,6 +689,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             Traits(x) => Traits(x),
             VariadicMismatch(x) => VariadicMismatch(x),
             CyclicTy(t) => return tcx.lift(&t).map(|t| CyclicTy(t)),
+            CyclicConst(ct) => return tcx.lift(&ct).map(|ct| CyclicConst(ct)),
             ProjectionMismatched(x) => ProjectionMismatched(x),
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),

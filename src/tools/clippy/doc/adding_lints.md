@@ -488,7 +488,7 @@ For `LateLintPass` lints:
 While most of Clippy's lint utils are documented, most of rustc's internals lack
 documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
-don't hesitate to ask on [Discord] or in the issue/PR.
+don't hesitate to ask on [Zulip] or in the issue/PR.
 
 [utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/mod.rs
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
@@ -500,4 +500,4 @@ don't hesitate to ask on [Discord] or in the issue/PR.
 [nightly_docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 [ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/index.html
-[Discord]: https://discord.gg/rust-lang
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy

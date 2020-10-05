@@ -15,14 +15,14 @@ pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
-use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
 use rustc_ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::{respan, Span, DUMMY_SP};
+use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use tracing::debug;
 
@@ -118,7 +118,7 @@ impl<'a> Drop for Parser<'a> {
 struct TokenCursor {
     frame: TokenCursorFrame,
     stack: Vec<TokenCursorFrame>,
-    cur_token: Option<TreeAndJoint>,
+    cur_token: Option<TreeAndSpacing>,
     collecting: Option<Collecting>,
 }
 
@@ -136,7 +136,7 @@ struct TokenCursorFrame {
 struct Collecting {
     /// Holds the current tokens captured during the most
     /// recent call to `collect_tokens`
-    buf: Vec<TreeAndJoint>,
+    buf: Vec<TreeAndSpacing>,
     /// The depth of the `TokenCursor` stack at the time
     /// collection was started. When we encounter a `TokenTree::Delimited`,
     /// we want to record the `TokenTree::Delimited` itself,
@@ -167,7 +167,7 @@ impl TokenCursor {
             let tree = if !self.frame.open_delim {
                 self.frame.open_delim = true;
                 TokenTree::open_tt(self.frame.span, self.frame.delim).into()
-            } else if let Some(tree) = self.frame.tree_cursor.next_with_joint() {
+            } else if let Some(tree) = self.frame.tree_cursor.next_with_spacing() {
                 tree
             } else if !self.frame.close_delim {
                 self.frame.close_delim = true;
@@ -694,9 +694,13 @@ impl<'a> Parser<'a> {
                                 Ok(t) => {
                                     // Parsed successfully, therefore most probably the code only
                                     // misses a separator.
+                                    let mut exp_span = self.sess.source_map().next_point(sp);
+                                    if self.sess.source_map().is_multiline(exp_span) {
+                                        exp_span = sp;
+                                    }
                                     expect_err
                                         .span_suggestion_short(
-                                            self.sess.source_map().next_point(sp),
+                                            exp_span,
                                             &format!("missing `{}`", token_str),
                                             token_str,
                                             Applicability::MaybeIncorrect,
@@ -1022,14 +1026,22 @@ impl<'a> Parser<'a> {
         if self.is_crate_vis() {
             self.bump(); // `crate`
             self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_token.span);
-            return Ok(respan(self.prev_token.span, VisibilityKind::Crate(CrateSugar::JustCrate)));
+            return Ok(Visibility {
+                span: self.prev_token.span,
+                kind: VisibilityKind::Crate(CrateSugar::JustCrate),
+                tokens: None,
+            });
         }
 
         if !self.eat_keyword(kw::Pub) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
             // keyword to grab a span from for inherited visibility; an empty span at the
             // beginning of the current token would seem to be the "Schelling span".
-            return Ok(respan(self.token.span.shrink_to_lo(), VisibilityKind::Inherited));
+            return Ok(Visibility {
+                span: self.token.span.shrink_to_lo(),
+                kind: VisibilityKind::Inherited,
+                tokens: None,
+            });
         }
         let lo = self.prev_token.span;
 
@@ -1046,7 +1058,11 @@ impl<'a> Parser<'a> {
                 self.bump(); // `crate`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Crate(CrateSugar::PubCrate);
-                return Ok(respan(lo.to(self.prev_token.span), vis));
+                return Ok(Visibility {
+                    span: lo.to(self.prev_token.span),
+                    kind: vis,
+                    tokens: None,
+                });
             } else if self.is_keyword_ahead(1, &[kw::In]) {
                 // Parse `pub(in path)`.
                 self.bump(); // `(`
@@ -1054,7 +1070,11 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(respan(lo.to(self.prev_token.span), vis));
+                return Ok(Visibility {
+                    span: lo.to(self.prev_token.span),
+                    kind: vis,
+                    tokens: None,
+                });
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren))
                 && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
             {
@@ -1063,7 +1083,11 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(respan(lo.to(self.prev_token.span), vis));
+                return Ok(Visibility {
+                    span: lo.to(self.prev_token.span),
+                    kind: vis,
+                    tokens: None,
+                });
             } else if let FollowedByType::No = fbt {
                 // Provide this diagnostic if a type cannot follow;
                 // in particular, if this is not a tuple struct.
@@ -1072,7 +1096,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(respan(lo, VisibilityKind::Public))
+        Ok(Visibility { span: lo, kind: VisibilityKind::Public, tokens: None })
     }
 
     /// Recovery for e.g. `pub(something) fn ...` or `struct X { pub(something) y: Z }`
@@ -1154,7 +1178,7 @@ impl<'a> Parser<'a> {
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, (R, TokenStream)> {
         // Record all tokens we parse when parsing this item.
-        let tokens: Vec<TreeAndJoint> = self.token_cursor.cur_token.clone().into_iter().collect();
+        let tokens: Vec<TreeAndSpacing> = self.token_cursor.cur_token.clone().into_iter().collect();
         debug!("collect_tokens: starting with {:?}", tokens);
 
         // We need special handling for the case where `collect_tokens` is called

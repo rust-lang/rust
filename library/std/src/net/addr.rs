@@ -623,19 +623,27 @@ impl fmt::Display for SocketAddrV6 {
         // Fast path: if there's no alignment stuff, write to the output
         // buffer directly
         if f.precision().is_none() && f.width().is_none() {
-            write!(f, "[{}]:{}", self.ip(), self.port())
+            match self.scope_id() {
+                0 => write!(f, "[{}]:{}", self.ip(), self.port()),
+                scope_id => write!(f, "[{}%{}]:{}", self.ip(), scope_id, self.port()),
+            }
         } else {
             const IPV6_SOCKET_BUF_LEN: usize = (4 * 8)  // The address
             + 7  // The colon separators
             + 2  // The brackets
+            + 1 + 10 // The scope id
             + 1 + 5; // The port
 
             let mut buf = [0; IPV6_SOCKET_BUF_LEN];
             let mut buf_slice = &mut buf[..];
 
+            match self.scope_id() {
+                0 => write!(buf_slice, "[{}]:{}", self.ip(), self.port()),
+                scope_id => write!(buf_slice, "[{}%{}]:{}", self.ip(), scope_id, self.port()),
+            }
             // Unwrap is fine because writing to a sufficiently-sized
             // buffer is infallible
-            write!(buf_slice, "[{}]:{}", self.ip(), self.port()).unwrap();
+            .unwrap();
             let len = IPV6_SOCKET_BUF_LEN - buf_slice.len();
 
             // This unsafe is OK because we know what is being written to the buffer
@@ -745,9 +753,9 @@ impl hash::Hash for SocketAddrV6 {
 ///    `(`[`Ipv4Addr`]`, `[`u16`]`)`, `(`[`Ipv6Addr`]`, `[`u16`]`)`:
 ///    [`to_socket_addrs`] constructs a [`SocketAddr`] trivially.
 ///
-///  * `(`[`&str`]`, `[`u16`]`)`: the string should be either a string representation
+///  * `(`[`&str`]`, `[`u16`]`)`: [`&str`] should be either a string representation
 ///    of an [`IpAddr`] address as expected by [`FromStr`] implementation or a host
-///    name.
+///    name. [`u16`] is the port number.
 ///
 ///  * [`&str`]: the string should be either a string representation of a
 ///    [`SocketAddr`] as expected by its [`FromStr`] implementation or a string like

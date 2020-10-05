@@ -1,0 +1,9 @@
+error[E0599]: no function or associated item named `from_mut` found for struct `AtomicU64` in the current scope
+  --> $DIR/atomic-from-mut-not-available.rs:5:36
+   |
+LL |     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
+   |                                    ^^^^^^^^ function or associated item not found in `AtomicU64`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

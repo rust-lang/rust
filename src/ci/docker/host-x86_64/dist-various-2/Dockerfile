@@ -110,4 +110,4 @@ ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
   --set target.wasm32-wasi.wasi-root=/wasm32-wasi \
   --musl-root-armv7=/musl-armv7
 
-ENV SCRIPT python3 ../x.py dist --target $TARGETS
+ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS

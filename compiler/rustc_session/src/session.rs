@@ -237,6 +237,14 @@ enum DiagnosticBuilderMethod {
                             // Add more variants as needed to support one-time diagnostics.
 }
 
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
+pub trait SessionDiagnostic<'a> {
+    /// Write out as a diagnostic out of `sess`.
+    #[must_use]
+    fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a>;
+}
+
 /// Diagnostic message ID, used by `Session.one_time_diagnostics` to avoid
 /// emitting the same message more than once.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -391,6 +399,9 @@ impl Session {
     }
     pub fn err(&self, msg: &str) {
         self.diagnostic().err(msg)
+    }
+    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) {
+        err.into_diagnostic(self).emit()
     }
     pub fn err_count(&self) -> usize {
         self.diagnostic().err_count()
@@ -1092,9 +1103,6 @@ impl Session {
         self.used_attrs.lock().is_marked(attr)
     }
 
-    /// Returns `true` if the attribute's path matches the argument. If it matches, then the
-    /// attribute is marked as used.
-
     /// Returns `true` if the attribute's path matches the argument. If it
     /// matches, then the attribute is marked as used.
     ///
@@ -1223,6 +1231,7 @@ pub fn build_session(
     diagnostics_output: DiagnosticOutput,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
+    target_override: Option<Target>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1242,7 +1251,7 @@ pub fn build_session(
         DiagnosticOutput::Raw(write) => Some(write),
     };
 
-    let target_cfg = config::build_target_config(&sopts, sopts.error_format);
+    let target_cfg = config::build_target_config(&sopts, target_override);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = Target::search(&host_triple).unwrap_or_else(|e| {
         early_error(sopts.error_format, &format!("Error loading host specification: {}", e))

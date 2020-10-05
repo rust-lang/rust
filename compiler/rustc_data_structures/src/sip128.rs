@@ -125,15 +125,28 @@ impl SipHasher128 {
 
     // A specialized write function for values with size <= 8.
     //
-    // The hashing of multi-byte integers depends on endianness. E.g.:
+    // The input must be zero-extended to 64-bits by the caller. This extension
+    // isn't hashed, but the implementation requires it for correctness.
+    //
+    // This function, given the same integer size and value, has the same effect
+    // on both little- and big-endian hardware. It operates on values without
+    // depending on their sequence in memory, so is independent of endianness.
+    //
+    // However, we want SipHasher128 to be platform-dependent, in order to be
+    // consistent with the platform-dependent SipHasher in libstd. In other
+    // words, we want:
+    //
     // - little-endian: `write_u32(0xDDCCBBAA)` == `write([0xAA, 0xBB, 0xCC, 0xDD])`
     // - big-endian:    `write_u32(0xDDCCBBAA)` == `write([0xDD, 0xCC, 0xBB, 0xAA])`
     //
-    // This function does the right thing for little-endian hardware. On
-    // big-endian hardware `x` must be byte-swapped first to give the right
-    // behaviour. After any byte-swapping, the input must be zero-extended to
-    // 64-bits. The caller is responsible for the byte-swapping and
-    // zero-extension.
+    // Therefore, in order to produce endian-dependent results, SipHasher128's
+    // `write_xxx` Hasher trait methods byte-swap `x` prior to zero-extending.
+    //
+    // If clients of SipHasher128 itself want platform-independent results, they
+    // *also* must byte-swap integer inputs before invoking the `write_xxx`
+    // methods on big-endian hardware (that is, two byte-swaps must occur--one
+    // in the client, and one in SipHasher128). Additionally, they must extend
+    // `usize` and `isize` types to 64 bits on 32-bit systems.
     #[inline]
     fn short_write<T>(&mut self, _x: T, x: u64) {
         let size = mem::size_of::<T>();

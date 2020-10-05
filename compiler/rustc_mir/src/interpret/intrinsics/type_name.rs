@@ -132,9 +132,8 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             return Ok(self);
         }
 
-        self.path.push_str("::");
+        write!(self.path, "::{}", disambiguated_data.data).unwrap();
 
-        self.path.push_str(&disambiguated_data.data.as_symbol().as_str());
         Ok(self)
     }
 

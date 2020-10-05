@@ -1,6 +1,6 @@
 //! List of the active feature gates.
 
-use super::{Feature, State};
+use super::{to_nonzero, Feature, State};
 
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
@@ -29,7 +29,7 @@ macro_rules! declare_features {
                     state: State::Active { set: set!($feature) },
                     name: sym::$feature,
                     since: $ver,
-                    issue: $issue,
+                    issue: to_nonzero($issue),
                     edition: $edition,
                     description: concat!($($doc,)*),
                 }
@@ -229,7 +229,6 @@ declare_features! (
     (active, powerpc_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
-    (active, mmx_target_feature, "1.27.0", Some(44839), None),
     (active, sse4a_target_feature, "1.27.0", Some(44839), None),
     (active, tbm_target_feature, "1.27.0", Some(44839), None),
     (active, wasm_target_feature, "1.30.0", Some(44839), None),
@@ -403,9 +402,6 @@ declare_features! (
 
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
-
-    /// Allows `#[doc(alias = "...")]`.
-    (active, doc_alias, "1.27.0", Some(50146), None),
 
     /// Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
@@ -585,6 +581,21 @@ declare_features! (
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
+    /// Allows non-trivial generic constants which have to be manually propageted upwards.
+    (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
+
+    /// Allows basic arithmetic on floating point types in a `const fn`.
+    (active, const_fn_floating_point_arithmetic, "1.48.0", Some(57241), None),
+
+    /// Allows using and casting function pointers in a `const fn`.
+    (active, const_fn_fn_ptr_basics, "1.48.0", Some(57563), None),
+
+    /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
+    (active, cmse_nonsecure_entry, "1.48.0", Some(75835), None),
+
+    /// Allows rustc to inject a default alloc_error_handler
+    (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -600,8 +611,14 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics,
     sym::let_chains,
     sym::raw_dylib,
+    sym::const_evaluatable_checked,
     sym::const_trait_impl,
     sym::const_trait_bound_opt_out,
     sym::lazy_normalization_consts,
     sym::specialization,
 ];
+
+/// Some features are not allowed to be used together at the same time, if
+/// the two are present, produce an error.
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] =
+    &[(sym::const_generics, sym::min_const_generics)];

@@ -56,6 +56,7 @@ pub enum TypeError<'tcx> {
     /// created a cycle (because it appears somewhere within that
     /// type).
     CyclicTy(Ty<'tcx>),
+    CyclicConst(&'tcx ty::Const<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
     ObjectUnsafeCoercion(DefId),
@@ -100,6 +101,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
+            CyclicConst(_) => write!(f, "encountered a self-referencing constant"),
             Mismatch => write!(f, "types differ"),
             UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn", values.expected, values.found)
@@ -195,9 +197,9 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(&self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
-            | Sorts(_) | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_)
-            | TargetFeatureCast(_) => false,
+            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_)
+            | FixedArraySize(_) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
+            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | TupleSize(_)
@@ -230,7 +232,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 let n = tcx.lift(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                     _ if t.is_simple_ty() => format!("array `{}`", self).into(),
-                    Some(n) => format!("array of {} element{} ", n, pluralize!(n)).into(),
+                    Some(n) => format!("array of {} element{}", n, pluralize!(n)).into(),
                     None => "array".into(),
                 }
             }
@@ -473,6 +475,18 @@ impl<T> Trait<T> for X {
                                  #traits-as-parameters",
                         );
                     }
+                    (ty::Param(p), ty::Closure(..) | ty::Generator(..)) => {
+                        let generics = self.generics_of(body_owner_def_id);
+                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        if !sp.contains(p_span) {
+                            db.span_label(p_span, "this type parameter");
+                        }
+                        db.help(&format!(
+                            "every closure has a distinct type and so could not always match the \
+                             caller-chosen type of parameter `{}`",
+                            p
+                        ));
+                    }
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
@@ -546,7 +560,7 @@ impl<T> Trait<T> for X {
     }
 
     fn suggest_constraint(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         msg: &str,
         body_owner_def_id: DefId,
@@ -554,14 +568,14 @@ impl<T> Trait<T> for X {
         ty: Ty<'tcx>,
     ) -> bool {
         let assoc = self.associated_item(proj_ty.item_def_id);
-        let trait_ref = proj_ty.trait_ref(*self);
+        let trait_ref = proj_ty.trait_ref(self);
         if let Some(item) = self.hir().get_if_local(body_owner_def_id) {
             if let Some(hir_generics) = item.generics() {
                 // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
                 // This will also work for `impl Trait`.
                 let def_id = if let ty::Param(param_ty) = proj_ty.self_ty().kind() {
                     let generics = self.generics_of(body_owner_def_id);
-                    generics.type_param(&param_ty, *self).def_id
+                    generics.type_param(param_ty, self).def_id
                 } else {
                     return false;
                 };
@@ -629,7 +643,7 @@ impl<T> Trait<T> for X {
     ///    and the `impl`, we provide a generic `help` to constrain the assoc type or call an assoc
     ///    fn that returns the type.
     fn expected_projection(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         proj_ty: &ty::ProjectionTy<'tcx>,
         values: &ExpectedFound<Ty<'tcx>>,
@@ -734,7 +748,7 @@ fn foo(&self) -> Self::T { String::new() }
     }
 
     fn point_at_methods_that_satisfy_associated_type(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         assoc_container_id: DefId,
         current_method_ident: Option<Symbol>,
@@ -789,7 +803,7 @@ fn foo(&self) -> Self::T { String::new() }
     }
 
     fn point_at_associated_type(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         body_owner_def_id: DefId,
         found: Ty<'tcx>,
@@ -832,14 +846,11 @@ fn foo(&self) -> Self::T { String::new() }
                 kind: hir::ItemKind::Impl { items, .. }, ..
             })) => {
                 for item in &items[..] {
-                    match item.kind {
-                        hir::AssocItemKind::Type => {
-                            if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
-                                db.span_label(item.span, "expected this associated type");
-                                return true;
-                            }
+                    if let hir::AssocItemKind::Type = item.kind {
+                        if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                            db.span_label(item.span, "expected this associated type");
+                            return true;
                         }
-                        _ => {}
                     }
                 }
             }
@@ -851,7 +862,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// Given a slice of `hir::GenericBound`s, if any of them corresponds to the `trait_ref`
     /// requirement, provide a strucuted suggestion to constrain it to a given type `ty`.
     fn constrain_generic_bound_associated_type_structured_suggestion(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
@@ -875,7 +886,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// Given a span corresponding to a bound, provide a structured suggestion to set an
     /// associated type to a given type `ty`.
     fn constrain_associated_type_structured_suggestion(
-        &self,
+        self,
         db: &mut DiagnosticBuilder<'_>,
         span: Span,
         assoc: &ty::AssocItem,

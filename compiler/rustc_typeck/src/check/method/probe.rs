@@ -4,6 +4,7 @@ use super::NoMatchData;
 use super::{CandidateSource, ImplSource, TraitSource};
 
 use crate::check::FnCtxt;
+use crate::errors::MethodCallOnUnknownType;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 
@@ -11,7 +12,6 @@ use rustc_ast as ast;
 use rustc_ast::util::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_infer::infer::canonical::OriginalQueryValues;
@@ -376,14 +376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
                 if self.tcx.sess.rust_2018() {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0699,
-                        "the type of this value must be known to call a method on a raw pointer on \
-                         it"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(MethodCallOnUnknownType { span });
                 } else {
                     self.tcx.struct_span_lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
@@ -453,9 +446,10 @@ fn method_autoderef_steps<'tcx>(
     tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {
         let ParamEnvAnd { param_env, value: self_ty } = goal;
 
-        let mut autoderef = Autoderef::new(infcx, param_env, hir::CRATE_HIR_ID, DUMMY_SP, self_ty)
-            .include_raw_pointers()
-            .silence_errors();
+        let mut autoderef =
+            Autoderef::new(infcx, param_env, hir::CRATE_HIR_ID, DUMMY_SP, self_ty, DUMMY_SP)
+                .include_raw_pointers()
+                .silence_errors();
         let mut reached_raw_pointer = false;
         let mut steps: Vec<_> = autoderef
             .by_ref()
@@ -821,7 +815,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     | ty::PredicateAtom::ClosureKind(..)
                     | ty::PredicateAtom::TypeOutlives(..)
                     | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..) => None,
+                    | ty::PredicateAtom::ConstEquate(..)
+                    | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
                 },
             );
 
@@ -1311,7 +1306,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .at(&ObligationCause::dummy(), self.param_env)
                     .sup(candidate.xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
-                    Ok(Some(traits::ImplSource::ImplSourceUserDefined(ref impl_data))) => {
+                    Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
                         ImplSource(impl_data.impl_def_id)

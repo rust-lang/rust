@@ -344,6 +344,13 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
             .expect("non-UTF8 diagnostic");
             diag_handler.warn(&msg);
         }
+        llvm::diagnostic::Unsupported(diagnostic_ref) => {
+            let msg = llvm::build_string(|s| {
+                llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
+            })
+            .expect("non-UTF8 diagnostic");
+            diag_handler.err(&msg);
+        }
         llvm::diagnostic::UnknownDiagnostic(..) => {}
     }
 }
@@ -615,6 +622,31 @@ unsafe fn add_sanitizer_passes(config: &ModuleConfig, passes: &mut Vec<&'static 
     if config.sanitizer.contains(SanitizerSet::THREAD) {
         passes.push(llvm::LLVMRustCreateThreadSanitizerPass());
     }
+}
+
+pub(crate) fn link(
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    diag_handler: &Handler,
+    mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
+) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
+    use super::lto::{Linker, ModuleBuffer};
+    // Sort the modules by name to ensure to ensure deterministic behavior.
+    modules.sort_by(|a, b| a.name.cmp(&b.name));
+    let (first, elements) =
+        modules.split_first().expect("Bug! modules must contain at least one module.");
+
+    let mut linker = Linker::new(first.module_llvm.llmod());
+    for module in elements {
+        let _timer =
+            cgcx.prof.generic_activity_with_arg("LLVM_link_module", format!("{:?}", module.name));
+        let buffer = ModuleBuffer::new(module.module_llvm.llmod());
+        linker.add(&buffer.data()).map_err(|()| {
+            let msg = format!("failed to serialize module {:?}", module.name);
+            llvm_err(&diag_handler, &msg)
+        })?;
+    }
+    drop(linker);
+    Ok(modules.remove(0))
 }
 
 pub(crate) unsafe fn codegen(

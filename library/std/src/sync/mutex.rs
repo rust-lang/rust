@@ -88,7 +88,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// use std::thread;
 ///
 /// let lock = Arc::new(Mutex::new(0_u32));
-/// let lock2 = lock.clone();
+/// let lock2 = Arc::clone(&lock);
 ///
 /// let _ = thread::spawn(move || -> () {
 ///     // This thread will acquire the mutex first, unwrapping the result of
@@ -166,12 +166,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mutex_type")]
 pub struct Mutex<T: ?Sized> {
-    // Note that this mutex is in a *box*, not inlined into the struct itself.
-    // Once a native mutex has been used once, its address can never change (it
-    // can't be moved). This mutex type can be safely moved at any time, so to
-    // ensure that the native mutex is used correctly we box the inner mutex to
-    // give it a constant address.
-    inner: Box<sys::Mutex>,
+    inner: sys::MovableMutex,
     poison: poison::Flag,
     data: UnsafeCell<T>,
 }
@@ -218,15 +213,11 @@ impl<T> Mutex<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
-        let mut m = Mutex {
-            inner: box sys::Mutex::new(),
+        Mutex {
+            inner: sys::MovableMutex::new(),
             poison: poison::Flag::new(),
             data: UnsafeCell::new(t),
-        };
-        unsafe {
-            m.inner.init();
         }
-        m
     }
 }
 
@@ -259,7 +250,7 @@ impl<T: ?Sized> Mutex<T> {
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
-    /// let c_mutex = mutex.clone();
+    /// let c_mutex = Arc::clone(&mutex);
     ///
     /// thread::spawn(move || {
     ///     *c_mutex.lock().unwrap() = 10;
@@ -295,7 +286,7 @@ impl<T: ?Sized> Mutex<T> {
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
-    /// let c_mutex = mutex.clone();
+    /// let c_mutex = Arc::clone(&mutex);
     ///
     /// thread::spawn(move || {
     ///     let mut lock = c_mutex.try_lock();
@@ -331,7 +322,7 @@ impl<T: ?Sized> Mutex<T> {
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
-    /// let c_mutex = mutex.clone();
+    /// let c_mutex = Arc::clone(&mutex);
     ///
     /// let _ = thread::spawn(move || {
     ///     let _lock = c_mutex.lock().unwrap();
@@ -378,7 +369,6 @@ impl<T: ?Sized> Mutex<T> {
                 (ptr::read(inner), ptr::read(poison), ptr::read(data))
             };
             mem::forget(self);
-            inner.destroy(); // Keep in sync with the `Drop` impl.
             drop(inner);
 
             poison::map_result(poison.borrow(), |_| data.into_inner())
@@ -406,22 +396,8 @@ impl<T: ?Sized> Mutex<T> {
     /// ```
     #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
-        // We know statically that there are no other references to `self`, so
-        // there's no need to lock the inner mutex.
-        let data = unsafe { &mut *self.data.get() };
+        let data = self.data.get_mut();
         poison::map_result(self.poison.borrow(), |_| data)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
-    fn drop(&mut self) {
-        // This is actually safe b/c we know that there is no further usage of
-        // this mutex (it's up to the user to arrange for a mutex to get
-        // dropped, that's not our job)
-        //
-        // IMPORTANT: This code must be kept in sync with `Mutex::into_inner`.
-        unsafe { self.inner.destroy() }
     }
 }
 
@@ -511,7 +487,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     }
 }
 
-pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
+pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::MovableMutex {
     &guard.lock.inner
 }
 

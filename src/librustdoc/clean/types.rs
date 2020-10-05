@@ -118,7 +118,7 @@ impl Item {
         self.attrs.collapsed_doc_value()
     }
 
-    pub fn links(&self) -> Vec<(String, String)> {
+    pub fn links(&self) -> Vec<RenderedLink> {
         self.attrs.links(&self.def_id.krate)
     }
 
@@ -370,32 +370,22 @@ impl<I: IntoIterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
 /// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
 /// kept separate because of issue #42760.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum DocFragment {
-    /// A doc fragment created from a `///` or `//!` doc comment.
-    SugaredDoc(usize, rustc_span::Span, String),
-    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
-    RawDoc(usize, rustc_span::Span, String),
-    /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
-    /// given filename and the file contents.
-    Include(usize, rustc_span::Span, String, String),
+pub struct DocFragment {
+    pub line: usize,
+    pub span: rustc_span::Span,
+    pub doc: String,
+    pub kind: DocFragmentKind,
 }
 
-impl DocFragment {
-    pub fn as_str(&self) -> &str {
-        match *self {
-            DocFragment::SugaredDoc(_, _, ref s) => &s[..],
-            DocFragment::RawDoc(_, _, ref s) => &s[..],
-            DocFragment::Include(_, _, _, ref s) => &s[..],
-        }
-    }
-
-    pub fn span(&self) -> rustc_span::Span {
-        match *self {
-            DocFragment::SugaredDoc(_, span, _)
-            | DocFragment::RawDoc(_, span, _)
-            | DocFragment::Include(_, span, _, _) => span,
-        }
-    }
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum DocFragmentKind {
+    /// A doc fragment created from a `///` or `//!` doc comment.
+    SugaredDoc,
+    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
+    RawDoc,
+    /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
+    /// given filename and the file contents.
+    Include { filename: String },
 }
 
 impl<'a> FromIterator<&'a DocFragment> for String {
@@ -407,12 +397,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
             if !acc.is_empty() {
                 acc.push('\n');
             }
-            match *frag {
-                DocFragment::SugaredDoc(_, _, ref docs)
-                | DocFragment::RawDoc(_, _, ref docs)
-                | DocFragment::Include(_, _, _, ref docs) => acc.push_str(docs),
-            }
-
+            acc.push_str(&frag.doc);
             acc
         })
     }
@@ -425,8 +410,36 @@ pub struct Attributes {
     pub cfg: Option<Arc<Cfg>>,
     pub span: Option<rustc_span::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
-    pub links: Vec<(String, Option<DefId>, Option<String>)>,
+    pub links: Vec<ItemLink>,
     pub inner_docs: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+/// A link that has not yet been rendered.
+///
+/// This link will be turned into a rendered link by [`Attributes::links`]
+pub struct ItemLink {
+    /// The original link written in the markdown
+    pub(crate) link: String,
+    /// The link text displayed in the HTML.
+    ///
+    /// This may not be the same as `link` if there was a disambiguator
+    /// in an intra-doc link (e.g. \[`fn@f`\])
+    pub(crate) link_text: String,
+    pub(crate) did: Option<DefId>,
+    /// The url fragment to append to the link
+    pub(crate) fragment: Option<String>,
+}
+
+pub struct RenderedLink {
+    /// The text the link was original written as.
+    ///
+    /// This could potentially include disambiguators and backticks.
+    pub(crate) original_text: String,
+    /// The text to display in the HTML
+    pub(crate) new_text: String,
+    /// The URL to put in the `href`
+    pub(crate) href: String,
 }
 
 impl Attributes {
@@ -519,15 +532,15 @@ impl Attributes {
             .filter_map(|attr| {
                 if let Some(value) = attr.doc_str() {
                     let value = beautify_doc_string(value);
-                    let mk_fragment: fn(_, _, _) -> _ = if attr.is_doc_comment() {
-                        DocFragment::SugaredDoc
+                    let kind = if attr.is_doc_comment() {
+                        DocFragmentKind::SugaredDoc
                     } else {
-                        DocFragment::RawDoc
+                        DocFragmentKind::RawDoc
                     };
 
                     let line = doc_line;
                     doc_line += value.lines().count();
-                    doc_strings.push(mk_fragment(line, attr.span, value));
+                    doc_strings.push(DocFragment { line, span: attr.span, doc: value, kind });
 
                     if sp.is_none() {
                         sp = Some(attr.span);
@@ -547,9 +560,12 @@ impl Attributes {
                             {
                                 let line = doc_line;
                                 doc_line += contents.lines().count();
-                                doc_strings.push(DocFragment::Include(
-                                    line, attr.span, filename, contents,
-                                ));
+                                doc_strings.push(DocFragment {
+                                    line,
+                                    span: attr.span,
+                                    doc: contents,
+                                    kind: DocFragmentKind::Include { filename },
+                                });
                             }
                         }
                     }
@@ -593,7 +609,7 @@ impl Attributes {
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     pub fn doc_value(&self) -> Option<&str> {
-        self.doc_strings.first().map(|s| s.as_str())
+        self.doc_strings.first().map(|s| s.doc.as_str())
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -605,21 +621,25 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
+    pub fn links(&self, krate: &CrateNum) -> Vec<RenderedLink> {
         use crate::html::format::href;
         use crate::html::render::CURRENT_DEPTH;
 
         self.links
             .iter()
-            .filter_map(|&(ref s, did, ref fragment)| {
-                match did {
+            .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
+                match *did {
                     Some(did) => {
                         if let Some((mut href, ..)) = href(did) {
                             if let Some(ref fragment) = *fragment {
                                 href.push_str("#");
                                 href.push_str(fragment);
                             }
-                            Some((s.clone(), href))
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href,
+                            })
                         } else {
                             None
                         }
@@ -639,16 +659,17 @@ impl Attributes {
                             };
                             // This is a primitive so the url is done "by hand".
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
-                            Some((
-                                s.clone(),
-                                format!(
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href: format!(
                                     "{}{}std/primitive.{}.html{}",
                                     url,
                                     if !url.ends_with('/') { "/" } else { "" },
                                     &fragment[..tail],
                                     &fragment[tail..]
                                 ),
-                            ))
+                            })
                         } else {
                             panic!("This isn't a primitive?!");
                         }
@@ -662,7 +683,7 @@ impl Attributes {
         self.other_attrs
             .lists(sym::doc)
             .filter(|a| a.has_name(sym::alias))
-            .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
+            .filter_map(|a| a.value_str().map(|s| s.to_string()))
             .filter(|v| !v.is_empty())
             .collect::<FxHashSet<_>>()
     }

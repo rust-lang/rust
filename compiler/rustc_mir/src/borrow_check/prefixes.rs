@@ -33,7 +33,6 @@ pub(super) struct Prefixes<'cx, 'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[allow(dead_code)]
 pub(super) enum PrefixSet {
     /// Doesn't stop until it returns the base case (a Local or
     /// Static prefix).

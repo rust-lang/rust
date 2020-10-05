@@ -1921,3 +1921,24 @@ fn different_str_pattern_forwarding_lifetimes() {
 
     foo::<&str>("x");
 }
+
+#[test]
+fn test_str_multiline() {
+    let a: String = "this \
+is a test"
+        .to_string();
+    let b: String = "this \
+              is \
+              another \
+              test"
+        .to_string();
+    assert_eq!(a, "this is a test".to_string());
+    assert_eq!(b, "this is another test".to_string());
+}
+
+#[test]
+fn test_str_escapes() {
+    let x = "\\\\\
+    ";
+    assert_eq!(x, r"\\"); // extraneous whitespace stripped
+}

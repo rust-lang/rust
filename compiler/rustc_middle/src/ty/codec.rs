@@ -357,6 +357,26 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [(ty::Predicate<'tcx>, 
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [mir::abstract_const::Node<'tcx>] {
+    fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
+        Ok(decoder.tcx().arena.alloc_from_iter(
+            (0..decoder.read_usize()?)
+                .map(|_| Decodable::decode(decoder))
+                .collect::<Result<Vec<_>, _>>()?,
+        ))
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [mir::abstract_const::NodeId] {
+    fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
+        Ok(decoder.tcx().arena.alloc_from_iter(
+            (0..decoder.read_usize()?)
+                .map(|_| Decodable::decode(decoder))
+                .collect::<Result<Vec<_>, _>>()?,
+        ))
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,

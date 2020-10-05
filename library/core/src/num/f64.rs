@@ -787,6 +787,35 @@ impl f64 {
         self.to_bits().to_ne_bytes()
     }
 
+    /// Return the memory representation of this floating point number as a byte array in
+    /// native byte order.
+    ///
+    /// [`to_ne_bytes`] should be preferred over this whenever possible.
+    ///
+    /// [`to_ne_bytes`]: #method.to_ne_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(num_as_ne_bytes)]
+    /// let num = 12.5f64;
+    /// let bytes = num.as_ne_bytes();
+    /// assert_eq!(
+    ///     bytes,
+    ///     if cfg!(target_endian = "big") {
+    ///         &[0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    ///     } else {
+    ///         &[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]
+    ///     }
+    /// );
+    /// ```
+    #[unstable(feature = "num_as_ne_bytes", issue = "76976")]
+    #[inline]
+    pub fn as_ne_bytes(&self) -> &[u8; 8] {
+        // SAFETY: `f64` is a plain old datatype so we can always transmute to it
+        unsafe { &*(self as *const Self as *const _) }
+    }
+
     /// Create a floating point value from its representation as a byte array in big endian.
     ///
     /// # Examples

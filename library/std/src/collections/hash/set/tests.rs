@@ -1,6 +1,9 @@
 use super::super::map::RandomState;
 use super::HashSet;
 
+use crate::panic::{catch_unwind, AssertUnwindSafe};
+use crate::sync::atomic::{AtomicU32, Ordering};
+
 #[test]
 fn test_zero_capacities() {
     type HS = HashSet<i32>;
@@ -412,4 +415,72 @@ fn test_retain() {
     assert!(set.contains(&2));
     assert!(set.contains(&4));
     assert!(set.contains(&6));
+}
+
+#[test]
+fn test_drain_filter() {
+    let mut x: HashSet<_> = [1].iter().copied().collect();
+    let mut y: HashSet<_> = [1].iter().copied().collect();
+
+    x.drain_filter(|_| true);
+    y.drain_filter(|_| false);
+    assert_eq!(x.len(), 0);
+    assert_eq!(y.len(), 1);
+}
+
+#[test]
+fn test_drain_filter_drop_panic_leak() {
+    static PREDS: AtomicU32 = AtomicU32::new(0);
+    static DROPS: AtomicU32 = AtomicU32::new(0);
+
+    #[derive(PartialEq, Eq, PartialOrd, Hash)]
+    struct D(i32);
+    impl Drop for D {
+        fn drop(&mut self) {
+            if DROPS.fetch_add(1, Ordering::SeqCst) == 1 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut set = (0..3).map(|i| D(i)).collect::<HashSet<_>>();
+
+    catch_unwind(move || {
+        drop(set.drain_filter(|_| {
+            PREDS.fetch_add(1, Ordering::SeqCst);
+            true
+        }))
+    })
+    .ok();
+
+    assert_eq!(PREDS.load(Ordering::SeqCst), 3);
+    assert_eq!(DROPS.load(Ordering::SeqCst), 3);
+}
+
+#[test]
+fn test_drain_filter_pred_panic_leak() {
+    static PREDS: AtomicU32 = AtomicU32::new(0);
+    static DROPS: AtomicU32 = AtomicU32::new(0);
+
+    #[derive(PartialEq, Eq, PartialOrd, Hash)]
+    struct D;
+    impl Drop for D {
+        fn drop(&mut self) {
+            DROPS.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let mut set: HashSet<_> = (0..3).map(|_| D).collect();
+
+    catch_unwind(AssertUnwindSafe(|| {
+        drop(set.drain_filter(|_| match PREDS.fetch_add(1, Ordering::SeqCst) {
+            0 => true,
+            _ => panic!(),
+        }))
+    }))
+    .ok();
+
+    assert_eq!(PREDS.load(Ordering::SeqCst), 1);
+    assert_eq!(DROPS.load(Ordering::SeqCst), 3);
+    assert_eq!(set.len(), 0);
 }

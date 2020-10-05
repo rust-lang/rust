@@ -1,15 +1,9 @@
-error[E0282]: type annotations needed
-  --> $DIR/impl-with-unconstrained-param.rs:14:23
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/impl-with-unconstrained-param.rs:11:6
    |
-LL |     fn f() -> Self::I {}
-   |                       ^^ cannot infer type for type parameter `T`
+LL | impl<T> X for () {
+   |      ^ unconstrained type parameter
 
-error: could not find defining uses
-  --> $DIR/impl-with-unconstrained-param.rs:12:14
-   |
-LL |     type I = impl Sized;
-   |              ^^^^^^^^^^
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0207`.

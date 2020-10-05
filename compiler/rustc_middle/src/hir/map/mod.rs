@@ -1002,11 +1002,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
                 let def_id = map.local_def_id(id);
                 tcx.def_path_str(def_id.to_def_id())
             } else if let Some(path) = map.def_path_from_hir_id(id) {
-                path.data
-                    .into_iter()
-                    .map(|elem| elem.data.to_string())
-                    .collect::<Vec<_>>()
-                    .join("::")
+                path.data.into_iter().map(|elem| elem.to_string()).collect::<Vec<_>>().join("::")
             } else {
                 String::from("<missing path>")
             }

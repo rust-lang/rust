@@ -125,6 +125,11 @@ where
     }
 
     #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        self.iter.advance_back_by(n)
+    }
+
+    #[inline]
     fn nth(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
         self.iter.nth_back(n)
     }
@@ -162,6 +167,11 @@ where
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
         self.iter.next()
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.iter.advance_by(n)
     }
 
     #[inline]
@@ -285,12 +295,12 @@ where
         self.it.count()
     }
 
-    unsafe fn get_unchecked(&mut self, idx: usize) -> T
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccess,
     {
         // SAFETY: the caller must uphold the contract for
-        // `Iterator::get_unchecked`.
+        // `Iterator::__iterator_get_unchecked`.
         *unsafe { try_get_unchecked(&mut self.it, idx) }
     }
 }
@@ -420,12 +430,12 @@ where
         self.it.map(T::clone).fold(init, f)
     }
 
-    unsafe fn get_unchecked(&mut self, idx: usize) -> T
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccess,
     {
         // SAFETY: the caller must uphold the contract for
-        // `Iterator::get_unchecked`.
+        // `Iterator::__iterator_get_unchecked`.
         unsafe { try_get_unchecked(&mut self.it, idx).clone() }
     }
 }
@@ -935,12 +945,12 @@ where
         self.iter.fold(init, map_fold(self.f, g))
     }
 
-    unsafe fn get_unchecked(&mut self, idx: usize) -> B
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> B
     where
         Self: TrustedRandomAccess,
     {
         // SAFETY: the caller must uphold the contract for
-        // `Iterator::get_unchecked`.
+        // `Iterator::__iterator_get_unchecked`.
         unsafe { (self.f)(try_get_unchecked(&mut self.iter, idx)) }
     }
 }
@@ -1019,7 +1029,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -1168,7 +1178,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -1273,7 +1283,7 @@ where
         ) -> impl FnMut((), T) -> ControlFlow<(), B> + '_ {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
-                None => ControlFlow::Continue(()),
+                None => ControlFlow::CONTINUE,
             }
         }
 
@@ -1312,7 +1322,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -1431,12 +1441,12 @@ where
         self.iter.fold(init, enumerate(self.count, fold))
     }
 
-    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
         Self: TrustedRandomAccess,
     {
         // SAFETY: the caller must uphold the contract for
-        // `Iterator::get_unchecked`.
+        // `Iterator::__iterator_get_unchecked`.
         let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
         (Add::add(self.count, idx), value)
     }
@@ -1550,7 +1560,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -1772,7 +1782,7 @@ impl<I: Iterator> Peekable<I> {
         self.peeked.get_or_insert_with(|| iter.next()).as_ref()
     }
 
-    /// Consume the next value of this iterator if a condition is true.
+    /// Consume and return the next value of this iterator if a condition is true.
     ///
     /// If `func` returns `true` for the next value of this iterator, consume and return it.
     /// Otherwise, return `None`.
@@ -1812,7 +1822,7 @@ impl<I: Iterator> Peekable<I> {
         }
     }
 
-    /// Consume the next item if it is equal to `expected`.
+    /// Consume and return the next item if it is equal to `expected`.
     ///
     /// # Example
     /// Consume a number if it's equal to 0.
@@ -1827,10 +1837,10 @@ impl<I: Iterator> Peekable<I> {
     /// assert_eq!(iter.next(), Some(1));
     /// ```
     #[unstable(feature = "peekable_next_if", issue = "72480")]
-    pub fn next_if_eq<R>(&mut self, expected: &R) -> Option<I::Item>
+    pub fn next_if_eq<T>(&mut self, expected: &T) -> Option<I::Item>
     where
-        R: ?Sized,
-        I::Item: PartialEq<R>,
+        T: ?Sized,
+        I::Item: PartialEq<T>,
     {
         self.next_if(|next| next == expected)
     }
@@ -1848,7 +1858,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -1967,7 +1977,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -2102,7 +2112,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -2200,7 +2210,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -2403,7 +2413,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -2530,7 +2540,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -2712,7 +2722,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
@@ -2879,7 +2889,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }

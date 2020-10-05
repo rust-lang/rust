@@ -702,7 +702,7 @@ pub struct ExpnData {
     /// The `DefId` of the macro being invoked,
     /// if this `ExpnData` corresponds to a macro invocation
     pub macro_def_id: Option<DefId>,
-    /// The crate that originally created this `ExpnData. During
+    /// The crate that originally created this `ExpnData`. During
     /// metadata serialization, we only encode `ExpnData`s that were
     /// created locally - when our serialized metadata is decoded,
     /// foreign `ExpnId`s will have their `ExpnData` looked up
@@ -759,7 +759,7 @@ impl ExpnData {
 
     #[inline]
     pub fn is_root(&self) -> bool {
-        if let ExpnKind::Root = self.kind { true } else { false }
+        matches!(self.kind, ExpnKind::Root)
     }
 }
 

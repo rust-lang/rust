@@ -7,26 +7,42 @@ use crate::io::prelude::*;
 
 use crate::cell::RefCell;
 use crate::fmt;
-use crate::io::lazy::Lazy;
 use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
-use crate::sync::{Arc, Mutex, MutexGuard, Once};
+use crate::lazy::SyncOnceCell;
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::{Mutex, MutexGuard};
 use crate::sys::stdio;
+use crate::sys_common;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
 
 thread_local! {
-    /// Stdout used by print! and println! macros
+    /// Used by the test crate to capture the output of the print! and println! macros.
     static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
 
 thread_local! {
-    /// Stderr used by eprint! and eprintln! macros, and panics
+    /// Used by the test crate to capture the output of the eprint! and eprintln! macros, and panics.
     static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
+
+/// Flag to indicate LOCAL_STDOUT and/or LOCAL_STDERR is used.
+///
+/// If both are None and were never set on any thread, this flag is set to
+/// false, and both LOCAL_STDOUT and LOCAL_STDOUT can be safely ignored on all
+/// threads, saving some time and memory registering an unused thread local.
+///
+/// Note about memory ordering: This contains information about whether two
+/// thread local variables might be in use. Although this is a global flag, the
+/// memory ordering between threads does not matter: we only want this flag to
+/// have a consistent order between set_print/set_panic and print_to *within
+/// the same thread*. Within the same thread, things always have a perfectly
+/// consistent order. So Ordering::Relaxed is fine.
+static LOCAL_STREAMS: AtomicBool = AtomicBool::new(false);
 
 /// A handle to a raw instance of the standard input stream of this process.
 ///
@@ -217,7 +233,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
-    inner: Arc<Mutex<BufReader<StdinRaw>>>,
+    inner: &'static Mutex<BufReader<StdinRaw>>,
 }
 
 /// A locked reference to the `Stdin` handle.
@@ -292,15 +308,11 @@ pub struct StdinLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: Lazy<Mutex<BufReader<StdinRaw>>> = Lazy::new();
-    return Stdin {
-        inner: unsafe { INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown") },
-    };
-
-    fn stdin_init() -> Arc<Mutex<BufReader<StdinRaw>>> {
-        // This must not reentrantly access `INSTANCE`
-        let stdin = stdin_raw();
-        Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin)))
+    static INSTANCE: SyncOnceCell<Mutex<BufReader<StdinRaw>>> = SyncOnceCell::new();
+    Stdin {
+        inner: INSTANCE.get_or_init(|| {
+            Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin_raw()))
+        }),
     }
 }
 
@@ -476,7 +488,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>,
 }
 
 /// A locked reference to the `Stdout` handle.
@@ -534,19 +546,27 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = Lazy::new();
-    return Stdout {
-        inner: unsafe { INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown") },
-    };
-
-    fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> {
-        // This must not reentrantly access `INSTANCE`
-        let stdout = stdout_raw();
-        unsafe {
-            let ret = Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))));
-            ret.init();
-            ret
-        }
+    static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> =
+        SyncOnceCell::new();
+    Stdout {
+        inner: INSTANCE.get_or_init(|| unsafe {
+            let _ = sys_common::at_exit(|| {
+                if let Some(instance) = INSTANCE.get() {
+                    // Flush the data and disable buffering during shutdown
+                    // by replacing the line writer by one with zero
+                    // buffering capacity.
+                    // We use try_lock() instead of lock(), because someone
+                    // might have leaked a StdoutLock, which would
+                    // otherwise cause a deadlock here.
+                    if let Some(lock) = instance.try_lock() {
+                        *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
+                    }
+                }
+            });
+            let r = ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())));
+            r.init();
+            r
+        }),
     }
 }
 
@@ -587,6 +607,32 @@ impl fmt::Debug for Stdout {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&*self).write(buf)
+    }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        (&*self).write_vectored(bufs)
+    }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        io::Write::is_write_vectored(&&*self)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        (&*self).flush()
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        (&*self).write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        (&*self).write_all_vectored(bufs)
+    }
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        (&*self).write_fmt(args)
+    }
+}
+
+#[stable(feature = "write_mt", since = "1.48.0")]
+impl Write for &Stdout {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
     }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
@@ -609,6 +655,7 @@ impl Write for Stdout {
         self.lock().write_fmt(args)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for StdoutLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -714,16 +761,15 @@ pub fn stderr() -> Stderr {
     //
     // This has the added benefit of allowing `stderr` to be usable during
     // process shutdown as well!
-    static INSTANCE: ReentrantMutex<RefCell<StderrRaw>> =
-        unsafe { ReentrantMutex::new(RefCell::new(stderr_raw())) };
+    static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<StderrRaw>>> = SyncOnceCell::new();
 
-    // When accessing stderr we need one-time initialization of the reentrant
-    // mutex. Afterwards we can just always use the now-filled-in `INSTANCE` value.
-    static INIT: Once = Once::new();
-    INIT.call_once(|| unsafe {
-        INSTANCE.init();
-    });
-    Stderr { inner: &INSTANCE }
+    Stderr {
+        inner: INSTANCE.get_or_init(|| unsafe {
+            let r = ReentrantMutex::new(RefCell::new(stderr_raw()));
+            r.init();
+            r
+        }),
+    }
 }
 
 impl Stderr {
@@ -763,6 +809,32 @@ impl fmt::Debug for Stderr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&*self).write(buf)
+    }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        (&*self).write_vectored(bufs)
+    }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        io::Write::is_write_vectored(&&*self)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        (&*self).flush()
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        (&*self).write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        (&*self).write_all_vectored(bufs)
+    }
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        (&*self).write_fmt(args)
+    }
+}
+
+#[stable(feature = "write_mt", since = "1.48.0")]
+impl Write for &Stderr {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
     }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
@@ -785,6 +857,7 @@ impl Write for Stderr {
         self.lock().write_fmt(args)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for StderrLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -832,10 +905,18 @@ impl fmt::Debug for StderrLock<'_> {
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
-    LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
-        let _ = s.flush();
-        Some(s)
-    })
+    if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
+        // LOCAL_STDERR is definitely None since LOCAL_STREAMS is false.
+        return None;
+    }
+    let s = LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(
+        |mut s| {
+            let _ = s.flush();
+            Some(s)
+        },
+    );
+    LOCAL_STREAMS.store(true, Ordering::Relaxed);
+    s
 }
 
 /// Resets the thread-local stdout handle to the specified writer
@@ -855,10 +936,18 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 #[doc(hidden)]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
-    LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
-        let _ = s.flush();
-        Some(s)
-    })
+    if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
+        // LOCAL_STDOUT is definitely None since LOCAL_STREAMS is false.
+        return None;
+    }
+    let s = LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(
+        |mut s| {
+            let _ = s.flush();
+            Some(s)
+        },
+    );
+    LOCAL_STREAMS.store(true, Ordering::Relaxed);
+    s
 }
 
 /// Write `args` to output stream `local_s` if possible, `global_s`
@@ -879,20 +968,26 @@ fn print_to<T>(
 ) where
     T: Write,
 {
-    let result = local_s
-        .try_with(|s| {
-            // Note that we completely remove a local sink to write to in case
-            // our printing recursively panics/prints, so the recursive
-            // panic/print goes to the global sink instead of our local sink.
-            let prev = s.borrow_mut().take();
-            if let Some(mut w) = prev {
-                let result = w.write_fmt(args);
-                *s.borrow_mut() = Some(w);
-                return result;
-            }
-            global_s().write_fmt(args)
+    let result = LOCAL_STREAMS
+        .load(Ordering::Relaxed)
+        .then(|| {
+            local_s
+                .try_with(|s| {
+                    // Note that we completely remove a local sink to write to in case
+                    // our printing recursively panics/prints, so the recursive
+                    // panic/print goes to the global sink instead of our local sink.
+                    let prev = s.borrow_mut().take();
+                    if let Some(mut w) = prev {
+                        let result = w.write_fmt(args);
+                        *s.borrow_mut() = Some(w);
+                        return result;
+                    }
+                    global_s().write_fmt(args)
+                })
+                .ok()
         })
-        .unwrap_or_else(|_| global_s().write_fmt(args));
+        .flatten()
+        .unwrap_or_else(|| global_s().write_fmt(args));
 
     if let Err(e) = result {
         panic!("failed printing to {}: {}", label, e);

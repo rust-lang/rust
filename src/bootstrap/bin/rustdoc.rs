@@ -11,7 +11,6 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
-    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
 
     use std::str::FromStr;
@@ -24,14 +23,8 @@ fn main() {
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir.clone()));
 
-    //FIXME(misdreavus): once stdsimd uses cfg(doc) instead of cfg(dox), remove the `--cfg dox`
-    //arguments here
     let mut cmd = Command::new(rustdoc);
     cmd.args(&args)
-        .arg("--cfg")
-        .arg(format!("stage{}", stage))
-        .arg("--cfg")
-        .arg("dox")
         .arg("--sysroot")
         .arg(&sysroot)
         .env(bootstrap::util::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
@@ -42,10 +35,13 @@ fn main() {
     if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
-    if let Some(linker) = env::var_os("RUSTC_TARGET_LINKER") {
+    if let Some(linker) = env::var_os("RUSTDOC_LINKER") {
         let mut arg = OsString::from("-Clinker=");
         arg.push(&linker);
         cmd.arg(arg);
+    }
+    if env::var_os("RUSTDOC_FUSE_LD_LLD").is_some() {
+        cmd.arg("-Clink-args=-fuse-ld=lld");
     }
 
     // Needed to be able to run all rustdoc tests.

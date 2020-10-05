@@ -19,7 +19,7 @@ mod tests;
 use core::array;
 use core::convert::Infallible;
 
-use crate::alloc::{AllocErr, LayoutErr};
+use crate::alloc::{AllocError, LayoutErr};
 use crate::any::TypeId;
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
@@ -387,13 +387,9 @@ impl Error for ! {}
     reason = "the precise API and guarantees it provides may be tweaked.",
     issue = "32838"
 )]
-impl Error for AllocErr {}
+impl Error for AllocError {}
 
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
+#[stable(feature = "alloc_layout", since = "1.28.0")]
 impl Error for LayoutErr {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

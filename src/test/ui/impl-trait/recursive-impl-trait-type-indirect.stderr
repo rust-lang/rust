@@ -54,7 +54,7 @@ LL |   fn closure_capture() -> impl Sized {
 LL | /     move || {
 LL | |         x;
 LL | |     }
-   | |_____- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:35:5: 37:6 x:impl Sized]`
+   | |_____- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:35:5: 37:6]`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:40:29
@@ -65,7 +65,7 @@ LL |   fn closure_ref_capture() -> impl Sized {
 LL | /     move || {
 LL | |         &x;
 LL | |     }
-   | |_____- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:43:5: 45:6 x:impl Sized]`
+   | |_____- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:43:5: 45:6]`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:48:21
@@ -95,7 +95,7 @@ LL | /     move || {
 LL | |         yield;
 LL | |         x;
 LL | |     }
-   | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:61:5: 64:6 x:impl Sized {()}]`
+   | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:61:5: 64:6 {()}]`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:67:35

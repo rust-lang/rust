@@ -427,7 +427,7 @@ pub trait MetadataExt {
     /// ```no_run
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
-    ///  use std::io;
+    /// use std::io;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -773,15 +773,6 @@ impl DirEntryExt for fs::DirEntry {
 /// Creates a new symbolic link on the filesystem.
 ///
 /// The `dst` path will be a symbolic link pointing to the `src` path.
-///
-/// # Note
-///
-/// On Windows, you must specify whether a symbolic link points to a file
-/// or directory.  Use `os::windows::fs::symlink_file` to create a
-/// symbolic link to a file, or `os::windows::fs::symlink_dir` to create a
-/// symbolic link to a directory.  Additionally, the process must have
-/// `SeCreateSymbolicLinkPrivilege` in order to be able to create a
-/// symbolic link.
 ///
 /// # Examples
 ///

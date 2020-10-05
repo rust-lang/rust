@@ -4,7 +4,7 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(const_cstr_unchecked)]
 #![feature(crate_visibility_modifier)]
@@ -12,7 +12,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(or_patterns)]
-#![feature(trusted_len)]
 #![recursion_limit = "256"]
 
 use back::write::{create_informational_target_machine, create_target_machine};
@@ -96,8 +95,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx>,
         mods: &mut ModuleLlvm,
         kind: AllocatorKind,
+        has_alloc_error_handler: bool,
     ) {
-        unsafe { allocator::codegen(tcx, mods, kind) }
+        unsafe { allocator::codegen(tcx, mods, kind, has_alloc_error_handler) }
     }
     fn compile_codegen_unit(
         &self,
@@ -129,6 +129,13 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         unsafe {
             llvm::LLVMRustPrintPassTimings();
         }
+    }
+    fn run_link(
+        cgcx: &CodegenContext<Self>,
+        diag_handler: &Handler,
+        modules: Vec<ModuleCodegen<Self::Module>>,
+    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        back::write::link(cgcx, diag_handler, modules)
     }
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,

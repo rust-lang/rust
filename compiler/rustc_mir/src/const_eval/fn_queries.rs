@@ -50,7 +50,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             None => {
                 if let Some(stab) = tcx.lookup_stability(def_id) {
                     if stab.level.is_stable() {
-                        tcx.sess.span_err(
+                        tcx.sess.delay_span_bug(
                             tcx.def_span(def_id),
                             "stable const functions must have either `rustc_const_stable` or \
                              `rustc_const_unstable` attribute",
@@ -151,17 +151,11 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         }
 }
 
-fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    is_const_fn(tcx, def_id)
-        && tcx.lookup_const_stability(def_id).map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)
-}
-
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         is_const_fn_raw,
         is_const_impl_raw: |tcx, def_id| is_const_impl_raw(tcx, def_id.expect_local()),
         is_promotable_const_fn,
-        const_fn_is_allowed_fn_ptr,
         ..*providers
     };
 }

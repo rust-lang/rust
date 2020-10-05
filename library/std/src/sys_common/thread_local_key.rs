@@ -53,7 +53,7 @@ mod tests;
 
 use crate::sync::atomic::{self, AtomicUsize, Ordering};
 use crate::sys::thread_local_key as imp;
-use crate::sys_common::mutex::Mutex;
+use crate::sys_common::mutex::StaticMutex;
 
 /// A type for TLS keys that are statically allocated.
 ///
@@ -117,6 +117,7 @@ pub struct Key {
 pub const INIT: StaticKey = StaticKey::new(None);
 
 impl StaticKey {
+    #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
     pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> StaticKey {
         StaticKey { key: atomic::AtomicUsize::new(0), dtor }
     }
@@ -156,7 +157,7 @@ impl StaticKey {
         if imp::requires_synchronized_create() {
             // We never call `INIT_LOCK.init()`, so it is UB to attempt to
             // acquire this mutex reentrantly!
-            static INIT_LOCK: Mutex = Mutex::new();
+            static INIT_LOCK: StaticMutex = StaticMutex::new();
             let _guard = INIT_LOCK.lock();
             let mut key = self.key.load(Ordering::SeqCst);
             if key == 0 {

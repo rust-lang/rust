@@ -21,9 +21,9 @@ pub use self::future::Future;
 #[unstable(feature = "into_future", issue = "67644")]
 pub use into_future::IntoFuture;
 
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub use pending::{pending, Pending};
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub use ready::{ready, Ready};
 
 #[unstable(feature = "future_poll_fn", issue = "72302")]
@@ -56,6 +56,7 @@ unsafe impl Sync for ResumeTy {}
 #[lang = "from_generator"]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
+#[rustc_const_unstable(feature = "gen_future", issue = "50547")]
 #[inline]
 pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
 where
@@ -71,7 +72,7 @@ where
     impl<T: Generator<ResumeTy, Yield = ()>> Future for GenFuture<T> {
         type Output = T::Return;
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            // Safety: Safe because we're !Unpin + !Drop, and this is just a field projection.
+            // SAFETY: Safe because we're !Unpin + !Drop, and this is just a field projection.
             let gen = unsafe { Pin::map_unchecked_mut(self, |s| &mut s.0) };
 
             // Resume the generator, turning the `&mut Context` into a `NonNull` raw pointer. The

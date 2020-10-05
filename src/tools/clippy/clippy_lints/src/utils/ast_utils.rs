@@ -191,7 +191,9 @@ pub fn eq_stmt(l: &Stmt, r: &Stmt) -> bool {
         (Item(l), Item(r)) => eq_item(l, r, eq_item_kind),
         (Expr(l), Expr(r)) | (Semi(l), Semi(r)) => eq_expr(l, r),
         (Empty, Empty) => true,
-        (MacCall(l), MacCall(r)) => l.style == r.style && eq_mac_call(&l.mac, &r.mac) && over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r)),
+        (MacCall(l), MacCall(r)) => {
+            l.style == r.style && eq_mac_call(&l.mac, &r.mac) && over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r))
+        },
         _ => false,
     }
 }
@@ -392,7 +394,7 @@ pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
 
 pub fn eq_vis(l: &Visibility, r: &Visibility) -> bool {
     use VisibilityKind::*;
-    match (&l.node, &r.node) {
+    match (&l.kind, &r.kind) {
         (Public, Public) | (Inherited, Inherited) | (Crate(_), Crate(_)) => true,
         (Restricted { path: l, .. }, Restricted { path: r, .. }) => eq_path(l, r),
         _ => false,

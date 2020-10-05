@@ -1,0 +1,27 @@
+error: generic parameters must not be used inside of non-trivial constant values
+  --> $DIR/issue-67945-2.rs:12:16
+   |
+LL |         let x: S = MaybeUninit::uninit();
+   |                ^ non-trivial anonymous constants must not depend on the parameter `S`
+   |
+   = note: type parameters are currently not permitted in anonymous constants
+
+error: generic parameters must not be used inside of non-trivial constant values
+  --> $DIR/issue-67945-2.rs:15:45
+   |
+LL |         let b = &*(&x as *const _ as *const S);
+   |                                             ^ non-trivial anonymous constants must not depend on the parameter `S`
+   |
+   = note: type parameters are currently not permitted in anonymous constants
+
+error[E0392]: parameter `S` is never used
+  --> $DIR/issue-67945-2.rs:9:12
+   |
+LL | struct Bug<S> {
+   |            ^ unused parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

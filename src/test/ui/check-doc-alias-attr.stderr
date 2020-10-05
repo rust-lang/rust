@@ -16,5 +16,37 @@ error: doc alias attribute expects a string: #[doc(alias = "0")]
 LL | #[doc(alias("bar"))]
    |       ^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: '\"' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:10:7
+   |
+LL | #[doc(alias = "\"")]
+   |       ^^^^^^^^^^^^
+
+error: '\n' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:11:7
+   |
+LL | #[doc(alias = "\n")]
+   |       ^^^^^^^^^^^^
+
+error: '\n' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:12:7
+   |
+LL |   #[doc(alias = "
+   |  _______^
+LL | | ")]
+   | |_^
+
+error: ' ' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:14:7
+   |
+LL | #[doc(alias = " ")]
+   |       ^^^^^^^^^^^
+
+error: '\t' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/check-doc-alias-attr.rs:15:7
+   |
+LL | #[doc(alias = "\t")]
+   |       ^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 

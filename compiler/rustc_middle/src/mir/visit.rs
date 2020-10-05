@@ -752,7 +752,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_coverage(&mut self,
-                              _kind: & $($mutability)? Coverage,
+                              _coverage: & $($mutability)? Coverage,
                               _location: Location) {
             }
 
@@ -1150,8 +1150,6 @@ pub enum NonUseContext {
     StorageDead,
     /// User type annotation assertions for NLL.
     AscribeUserTy,
-    /// Coverage code region and counter metadata.
-    Coverage,
     /// The data of an user variable, for debug info.
     VarDebugInfo,
 }

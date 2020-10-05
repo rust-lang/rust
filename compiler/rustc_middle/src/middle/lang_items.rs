@@ -17,7 +17,7 @@ use rustc_target::spec::PanicStrategy;
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.
     /// If not found, fatally aborts compilation.
-    pub fn require_lang_item(&self, lang_item: LangItem, span: Option<Span>) -> DefId {
+    pub fn require_lang_item(self, lang_item: LangItem, span: Option<Span>) -> DefId {
         self.lang_items().require(lang_item).unwrap_or_else(|msg| {
             if let Some(span) = span {
                 self.sess.span_fatal(span, &msg)
@@ -27,7 +27,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn fn_trait_kind_from_lang_item(&self, id: DefId) -> Option<ty::ClosureKind> {
+    pub fn fn_trait_kind_from_lang_item(self, id: DefId) -> Option<ty::ClosureKind> {
         let items = self.lang_items();
         match Some(id) {
             x if x == items.fn_trait() => Some(ty::ClosureKind::Fn),
@@ -37,7 +37,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn is_weak_lang_item(&self, item_def_id: DefId) -> bool {
+    pub fn is_weak_lang_item(self, item_def_id: DefId) -> bool {
         self.lang_items().is_weak_lang_item(item_def_id)
     }
 }

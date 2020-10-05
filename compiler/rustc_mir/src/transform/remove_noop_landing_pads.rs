@@ -1,4 +1,4 @@
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use crate::util::patch::MirPatch;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
@@ -20,7 +20,7 @@ pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) 
 }
 
 impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         remove_noop_landing_pads(tcx, body);
     }
 }
@@ -102,20 +102,21 @@ impl RemoveNoopLandingPads {
         let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
         for bb in postorder {
             debug!("  processing {:?}", bb);
+            if let Some(unwind) = body[bb].terminator_mut().unwind_mut() {
+                if let Some(unwind_bb) = *unwind {
+                    if nop_landing_pads.contains(unwind_bb) {
+                        debug!("    removing noop landing pad");
+                        landing_pads_removed += 1;
+                        *unwind = None;
+                    }
+                }
+            }
+
             for target in body[bb].terminator_mut().successors_mut() {
                 if *target != resume_block && nop_landing_pads.contains(*target) {
                     debug!("    folding noop jump to {:?} to resume block", target);
                     *target = resume_block;
                     jumps_folded += 1;
-                }
-            }
-
-            if let Some(unwind) = body[bb].terminator_mut().unwind_mut() {
-                if *unwind == Some(resume_block) {
-                    debug!("    removing noop landing pad");
-                    jumps_folded -= 1;
-                    landing_pads_removed += 1;
-                    *unwind = None;
                 }
             }
 

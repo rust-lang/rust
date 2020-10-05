@@ -230,6 +230,14 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                     return;
                 }
             }
+
+            if let ty::Opaque(def_id, _) = *trait_ref.self_ty().kind() {
+                self.tcx
+                    .sess
+                    .struct_span_err(sp, "cannot implement trait on type alias impl trait")
+                    .span_note(self.tcx.def_span(def_id), "type alias impl trait defined here")
+                    .emit();
+            }
         }
     }
 

@@ -10,7 +10,6 @@ use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
-use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
@@ -333,7 +332,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
-        vis: respan(sp, ast::VisibilityKind::Public),
+        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
         span: sp,
         tokens: None,
     });

@@ -1,6 +1,10 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
+use crate::errors::{
+    SimdShuffleMissingLength, UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
+    WrongNumberOfTypeArgumentsToInstrinsic,
+};
 use crate::require_same_types;
 
 use rustc_errors::struct_span_err;
@@ -41,17 +45,11 @@ fn equate_intrinsic_type<'tcx>(
             _ => bug!(),
         };
 
-        struct_span_err!(
-            tcx.sess,
+        tcx.sess.emit_err(WrongNumberOfTypeArgumentsToInstrinsic {
             span,
-            E0094,
-            "intrinsic has wrong number of type \
-                         parameters: found {}, expected {}",
-            i_n_tps,
-            n_tps
-        )
-        .span_label(span, format!("expected {} type parameter", n_tps))
-        .emit();
+            found: i_n_tps,
+            expected: n_tps,
+        });
         return;
     }
 
@@ -108,8 +106,8 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
     }
 }
 
-/// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
-/// and in libcore/intrinsics.rs
+/// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
+/// and in `library/core/src/intrinsics.rs`.
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
     let def_id = tcx.hir().local_def_id(it.hir_id).to_def_id();
@@ -146,15 +144,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | "umin" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], param(0)),
             "fence" | "singlethreadfence" => (0, Vec::new(), tcx.mk_unit()),
             op => {
-                struct_span_err!(
-                    tcx.sess,
-                    it.span,
-                    E0092,
-                    "unrecognized atomic operation function: `{}`",
-                    op
-                )
-                .span_label(it.span, "unrecognized atomic operation")
-                .emit();
+                tcx.sess.emit_err(UnrecognizedAtomicOperation { span: it.span, op });
                 return;
             }
         };
@@ -380,15 +370,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::nontemporal_store => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
 
             other => {
-                struct_span_err!(
-                    tcx.sess,
-                    it.span,
-                    E0093,
-                    "unrecognized intrinsic function: `{}`",
-                    other,
-                )
-                .span_label(it.span, "unrecognized intrinsic")
-                .emit();
+                tcx.sess.emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
                 return;
             }
         };
@@ -468,14 +450,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
                     (2, params, param(1))
                 }
                 Err(_) => {
-                    struct_span_err!(
-                        tcx.sess,
-                        it.span,
-                        E0439,
-                        "invalid `simd_shuffle`, needs length: `{}`",
-                        name
-                    )
-                    .emit();
+                    tcx.sess.emit_err(SimdShuffleMissingLength { span: it.span, name });
                     return;
                 }
             }

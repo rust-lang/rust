@@ -1,20 +1,16 @@
-error[E0391]: cycle detected when const-evaluating `FOO`
+error[E0391]: cycle detected when const-evaluating + checking `FOO`
   --> $DIR/recursive-static-definition.rs:1:1
    |
 LL | pub static FOO: u32 = FOO;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires const-evaluating `FOO`...
+note: ...which requires const-evaluating + checking `FOO`...
   --> $DIR/recursive-static-definition.rs:1:1
    |
 LL | pub static FOO: u32 = FOO;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires const-evaluating `FOO`, completing the cycle
-note: cycle used when const-evaluating + checking `FOO`
-  --> $DIR/recursive-static-definition.rs:1:1
-   |
-LL | pub static FOO: u32 = FOO;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires const-evaluating + checking `FOO`, completing the cycle
+   = note: cycle used when running analysis passes on this crate
 
 error: aborting due to previous error
 

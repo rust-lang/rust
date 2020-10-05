@@ -5,21 +5,21 @@
 #![cfg_attr(min, feature(min_const_generics))]
 
 trait SliceExt<T: Clone> {
-    fn array_windows<'a, const N: usize>(&'a self) -> ArrayWindows<'a, T, N>;
+    fn array_windows_example<'a, const N: usize>(&'a self) -> ArrayWindowsExample<'a, T, N>;
 }
 
 impl <T: Clone> SliceExt<T> for [T] {
-   fn array_windows<'a, const N: usize>(&'a self) -> ArrayWindows<'a, T, N> {
-       ArrayWindows{ idx: 0, slice: &self }
+   fn array_windows_example<'a, const N: usize>(&'a self) -> ArrayWindowsExample<'a, T, N> {
+       ArrayWindowsExample{ idx: 0, slice: &self }
    }
 }
 
-struct ArrayWindows<'a, T, const N: usize> {
+struct ArrayWindowsExample<'a, T, const N: usize> {
     slice: &'a [T],
     idx: usize,
 }
 
-impl <'a, T: Clone, const N: usize> Iterator for ArrayWindows<'a, T, N> {
+impl <'a, T: Clone, const N: usize> Iterator for ArrayWindowsExample<'a, T, N> {
     type Item = [T; N];
     fn next(&mut self) -> Option<Self::Item> {
         // Note: this is unsound for some `T` and not meant as an example
@@ -45,7 +45,7 @@ const FOUR: usize = 4;
 fn main() {
     let v: Vec<usize> = vec![0; 100];
 
-    for array in v.as_slice().array_windows::<FOUR>() {
+    for array in v.as_slice().array_windows_example::<FOUR>() {
         assert_eq!(array, [0, 0, 0, 0])
     }
 }

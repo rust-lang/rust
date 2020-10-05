@@ -87,11 +87,8 @@ where
 }
 
 /// Allows searches to terminate early with a value.
-#[derive(Clone, Copy, Debug)]
-pub enum ControlFlow<T> {
-    Break(T),
-    Continue,
-}
+// FIXME (#75744): remove the alias once the generics are in a better order and `C=()`.
+pub type ControlFlow<T> = std::ops::ControlFlow<(), T>;
 
 /// The status of a node in the depth-first search.
 ///
@@ -260,12 +257,12 @@ where
         _node: G::Node,
         _prior_status: Option<NodeStatus>,
     ) -> ControlFlow<Self::BreakVal> {
-        ControlFlow::Continue
+        ControlFlow::CONTINUE
     }
 
     /// Called after all nodes reachable from this one have been examined.
     fn node_settled(&mut self, _node: G::Node) -> ControlFlow<Self::BreakVal> {
-        ControlFlow::Continue
+        ControlFlow::CONTINUE
     }
 
     /// Behave as if no edges exist from `source` to `target`.
@@ -289,8 +286,8 @@ where
         prior_status: Option<NodeStatus>,
     ) -> ControlFlow<Self::BreakVal> {
         match prior_status {
-            Some(NodeStatus::Visited) => ControlFlow::Break(()),
-            _ => ControlFlow::Continue,
+            Some(NodeStatus::Visited) => ControlFlow::BREAK,
+            _ => ControlFlow::CONTINUE,
         }
     }
 }

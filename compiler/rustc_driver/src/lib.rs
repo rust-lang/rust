@@ -4,7 +4,7 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
@@ -141,6 +141,9 @@ pub fn run_compiler(
     callbacks: &mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     emitter: Option<Box<dyn Write + Send>>,
+    make_codegen_backend: Option<
+        Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
+    >,
 ) -> interface::Result<()> {
     let mut args = Vec::new();
     for arg in at_args {
@@ -162,6 +165,11 @@ pub fn run_compiler(
     let sopts = config::build_session_options(&matches);
     let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
 
+    // We wrap `make_codegen_backend` in another `Option` such that `dummy_config` can take
+    // ownership of it when necessary, while also allowing the non-dummy config to take ownership
+    // when `dummy_config` is not used.
+    let mut make_codegen_backend = Some(make_codegen_backend);
+
     let mut dummy_config = |sopts, cfg, diagnostic_output| {
         let mut config = interface::Config {
             opts: sopts,
@@ -177,6 +185,7 @@ pub fn run_compiler(
             lint_caps: Default::default(),
             register_lints: None,
             override_queries: None,
+            make_codegen_backend: make_codegen_backend.take().unwrap(),
             registry: diagnostics_registry(),
         };
         callbacks.config(&mut config);
@@ -253,6 +262,7 @@ pub fn run_compiler(
         lint_caps: Default::default(),
         register_lints: None,
         override_queries: None,
+        make_codegen_backend: make_codegen_backend.unwrap(),
         registry: diagnostics_registry(),
     };
 
@@ -1241,11 +1251,21 @@ pub fn init_env_logger(env: &str) {
         Ok(s) if s.is_empty() => return,
         Ok(_) => {}
     }
-    let builder = tracing_subscriber::FmtSubscriber::builder();
+    let filter = tracing_subscriber::EnvFilter::from_env(env);
+    let layer = tracing_tree::HierarchicalLayer::default()
+        .with_indent_lines(true)
+        .with_ansi(true)
+        .with_targets(true)
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_wraparound(10)
+        .with_verbose_exit(true)
+        .with_verbose_entry(true)
+        .with_indent_amount(2);
 
-    let builder = builder.with_env_filter(tracing_subscriber::EnvFilter::from_env(env));
-
-    builder.init()
+    use tracing_subscriber::layer::SubscriberExt;
+    let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
 pub fn main() -> ! {
@@ -1265,7 +1285,7 @@ pub fn main() -> ! {
                 })
             })
             .collect::<Vec<_>>();
-        run_compiler(&args, &mut callbacks, None, None)
+        run_compiler(&args, &mut callbacks, None, None, None)
     });
     // The extra `\t` is necessary to align this label with the others.
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());

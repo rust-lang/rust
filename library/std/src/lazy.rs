@@ -6,7 +6,8 @@ mod tests;
 use crate::{
     cell::{Cell, UnsafeCell},
     fmt,
-    mem::{self, MaybeUninit},
+    marker::PhantomData,
+    mem::MaybeUninit,
     ops::{Deref, Drop},
     panic::{RefUnwindSafe, UnwindSafe},
     sync::Once,
@@ -46,6 +47,26 @@ pub struct SyncOnceCell<T> {
     once: Once,
     // Whether or not the value is initialized is tracked by `state_and_queue`.
     value: UnsafeCell<MaybeUninit<T>>,
+    /// `PhantomData` to make sure dropck understands we're dropping T in our Drop impl.
+    ///
+    /// ```compile_fail,E0597
+    /// #![feature(once_cell)]
+    ///
+    /// use std::lazy::SyncOnceCell;
+    ///
+    /// struct A<'a>(&'a str);
+    ///
+    /// impl<'a> Drop for A<'a> {
+    ///     fn drop(&mut self) {}
+    /// }
+    ///
+    /// let cell = SyncOnceCell::new();
+    /// {
+    ///     let s = String::new();
+    ///     let _ = cell.set(A(&s));
+    /// }
+    /// ```
+    _marker: PhantomData<T>,
 }
 
 // Why do we need `T: Send`?
@@ -119,7 +140,11 @@ impl<T> SyncOnceCell<T> {
     /// Creates a new empty cell.
     #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new() -> SyncOnceCell<T> {
-        SyncOnceCell { once: Once::new(), value: UnsafeCell::new(MaybeUninit::uninit()) }
+        SyncOnceCell {
+            once: Once::new(),
+            value: UnsafeCell::new(MaybeUninit::uninit()),
+            _marker: PhantomData,
+        }
     }
 
     /// Gets the reference to the underlying value.
@@ -268,7 +293,7 @@ impl<T> SyncOnceCell<T> {
 
         debug_assert!(self.is_initialized());
 
-        // Safety: The inner value has been initialized
+        // SAFETY: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
     }
 
@@ -291,13 +316,7 @@ impl<T> SyncOnceCell<T> {
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn into_inner(mut self) -> Option<T> {
-        // Safety: Safe because we immediately free `self` without dropping
-        let inner = unsafe { self.take_inner() };
-
-        // Don't drop this `SyncOnceCell`. We just moved out one of the fields, but didn't set
-        // the state to uninitialized.
-        mem::forget(self);
-        inner
+        self.take()
     }
 
     /// Takes the value out of this `SyncOnceCell`, moving it back to an uninitialized state.
@@ -323,22 +342,12 @@ impl<T> SyncOnceCell<T> {
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn take(&mut self) -> Option<T> {
-        mem::take(self).into_inner()
-    }
-
-    /// Takes the wrapped value out of a `SyncOnceCell`.
-    /// Afterwards the cell is no longer initialized.
-    ///
-    /// Safety: The cell must now be free'd WITHOUT dropping. No other usages of the cell
-    /// are valid. Only used by `into_inner` and `drop`.
-    unsafe fn take_inner(&mut self) -> Option<T> {
-        // The mutable reference guarantees there are no other threads that can observe us
-        // taking out the wrapped value.
-        // Right after this function `self` is supposed to be freed, so it makes little sense
-        // to atomically set the state to uninitialized.
         if self.is_initialized() {
-            let value = mem::replace(&mut self.value, UnsafeCell::new(MaybeUninit::uninit()));
-            Some(value.into_inner().assume_init())
+            self.once = Once::new();
+            // SAFETY: `self.value` is initialized and contains a valid `T`.
+            // `self.once` is reset, so `is_initialized()` will be false again
+            // which prevents the value from being read twice.
+            unsafe { Some((&mut *self.value.get()).assume_init_read()) }
         } else {
             None
         }
@@ -391,9 +400,12 @@ impl<T> SyncOnceCell<T> {
 
 unsafe impl<#[may_dangle] T> Drop for SyncOnceCell<T> {
     fn drop(&mut self) {
-        // Safety: The cell is being dropped, so it can't be accessed again.
-        // We also don't touch the `T`, which validates our usage of #[may_dangle].
-        unsafe { self.take_inner() };
+        if self.is_initialized() {
+            // Safety: The cell is initialized and being dropped, so it can't
+            // be accessed again. We also don't touch the `T` other than
+            // dropping it, which validates our usage of #[may_dangle].
+            unsafe { (&mut *self.value.get()).assume_init_drop() };
+        }
     }
 }
 

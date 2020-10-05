@@ -6,11 +6,11 @@ LL | mod not_a_real_file;
    |
    = help: to create the module `not_a_real_file`, create file "$DIR/not_a_real_file.rs"
 
-error[E0433]: failed to resolve: use of undeclared type or module `mod_file_aux`
+error[E0433]: failed to resolve: use of undeclared crate or module `mod_file_aux`
   --> $DIR/mod_file_not_exist_windows.rs:7:16
    |
 LL |     assert_eq!(mod_file_aux::bar(), 10);
-   |                ^^^^^^^^^^^^ use of undeclared type or module `mod_file_aux`
+   |                ^^^^^^^^^^^^ use of undeclared crate or module `mod_file_aux`
 
 error: aborting due to 2 previous errors
 

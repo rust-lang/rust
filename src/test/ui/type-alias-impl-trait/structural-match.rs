@@ -13,9 +13,9 @@ const VALUE: Foo = value();
 fn test() {
     match todo!() {
         VALUE => (),
-        //~^ opaque types cannot be used in patterns
+        //~^ `impl Send` cannot be used in patterns
         _ => (),
     }
 }
 
-fn main() { }
+fn main() {}

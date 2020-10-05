@@ -1,4 +1,4 @@
-use super::{ConstEvalResult, ErrorHandled, GlobalId};
+use super::{ErrorHandled, EvalToConstValueResult, GlobalId};
 
 use crate::mir;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
@@ -10,7 +10,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
     /// that can't take any generic arguments like statics, const items or enum discriminants. If a
     /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
-    pub fn const_eval_poly(self, def_id: DefId) -> ConstEvalResult<'tcx> {
+    pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult<'tcx> {
         // In some situations def_id will have substitutions within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
         // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
@@ -38,7 +38,7 @@ impl<'tcx> TyCtxt<'tcx> {
         substs: SubstsRef<'tcx>,
         promoted: Option<mir::Promoted>,
         span: Option<Span>,
-    ) -> ConstEvalResult<'tcx> {
+    ) -> EvalToConstValueResult<'tcx> {
         match ty::Instance::resolve_opt_const_arg(self, param_env, def, substs) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted };
@@ -54,7 +54,7 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         instance: ty::Instance<'tcx>,
         span: Option<Span>,
-    ) -> ConstEvalResult<'tcx> {
+    ) -> EvalToConstValueResult<'tcx> {
         self.const_eval_global_id(param_env, GlobalId { instance, promoted: None }, span)
     }
 
@@ -64,14 +64,14 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cid: GlobalId<'tcx>,
         span: Option<Span>,
-    ) -> ConstEvalResult<'tcx> {
+    ) -> EvalToConstValueResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_regions(&param_env.and(cid));
         if let Some(span) = span {
-            self.at(span).const_eval_validated(inputs)
+            self.at(span).eval_to_const_value_raw(inputs)
         } else {
-            self.const_eval_validated(inputs)
+            self.eval_to_const_value_raw(inputs)
         }
     }
 
@@ -94,7 +94,7 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<&'tcx mir::Allocation, ErrorHandled> {
         trace!("eval_to_allocation: Need to compute {:?}", gid);
-        let raw_const = self.const_eval_raw(param_env.and(gid))?;
+        let raw_const = self.eval_to_allocation_raw(param_env.and(gid))?;
         Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
     }
 }
