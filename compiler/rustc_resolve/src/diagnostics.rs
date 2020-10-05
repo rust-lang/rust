@@ -469,7 +469,7 @@ impl<'a> Resolver<'a> {
             ResolutionError::ParamInNonTrivialAnonConst { name, is_type } => {
                 let mut err = self.session.struct_span_err(
                     span,
-                    "generic parameters must not be used inside of non trivial constant values",
+                    "generic parameters must not be used inside of non-trivial constant values",
                 );
                 err.span_label(
                     span,

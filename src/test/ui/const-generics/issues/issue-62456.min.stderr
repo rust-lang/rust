@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-62456.rs:7:20
    |
 LL |     let _ = [0u64; N + 1];

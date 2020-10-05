@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-68366.rs:12:37
    |
 LL | impl <const N: usize> Collatz<{Some(N)}> {}

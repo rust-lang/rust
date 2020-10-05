@@ -562,7 +562,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .args
                 .iter()
                 .filter_map(|arg| match arg {
-                    GenericArg::Type(_) => Some(arg.span()),
+                    GenericArg::Type(_) | GenericArg::Const(_) => Some(arg.span()),
                     _ => None,
                 })
                 .collect::<Vec<_>>();

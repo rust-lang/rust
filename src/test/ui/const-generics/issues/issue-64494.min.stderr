@@ -1,4 +1,4 @@
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-64494.rs:16:38
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
@@ -6,7 +6,7 @@ LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    |
    = note: type parameters are currently not permitted in anonymous constants
 
-error: generic parameters must not be used inside of non trivial constant values
+error: generic parameters must not be used inside of non-trivial constant values
   --> $DIR/issue-64494.rs:19:38
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
