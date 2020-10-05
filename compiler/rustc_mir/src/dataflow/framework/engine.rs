@@ -248,7 +248,7 @@ where
 
         let res = write_graphviz_results(tcx, &body, &results, pass_name);
         if let Err(e) = res {
-            warn!("Failed to write graphviz dataflow results: {}", e);
+            error!("Failed to write graphviz dataflow results: {}", e);
         }
 
         results
