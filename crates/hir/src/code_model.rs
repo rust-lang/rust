@@ -391,8 +391,9 @@ impl Module {
         self,
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
+        prefix_kind: PrefixKind,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path_prefixed(db, item.into(), self.into(), PrefixKind::Plain)
+        hir_def::find_path::find_path_prefixed(db, item.into(), self.into(), prefix_kind)
     }
 }
 

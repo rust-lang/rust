@@ -652,6 +652,21 @@
                     "default": "full",
                     "description": "The strategy to use when inserting new imports or merging imports."
                 },
+                "rust-analyzer.assist.importPrefix": {
+                    "type": "string",
+                    "enum": [
+                        "plain",
+                        "by_self",
+                        "by_crate"
+                    ],
+                    "enumDescriptions": [
+                        "Insert import paths relative to the current module, using up to one `super` prefix if the parent module contains the requested item.",
+                        "Prefix all import paths with `self` if they don't begin with `self`, `super`, `crate` or a crate name",
+                        "Force import paths to be absolute by always starting them with `crate` or the crate name they refer to."
+                    ],
+                    "default": "plain",
+                    "description": "The path structure for newly inserted paths to use."
+                },
                 "rust-analyzer.runnables.overrideCargo": {
                     "type": [
                         "null",

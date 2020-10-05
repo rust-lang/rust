@@ -191,12 +191,16 @@ impl AutoImportAssets {
                 _ => Some(candidate),
             })
             .filter_map(|candidate| match candidate {
-                Either::Left(module_def) => {
-                    self.module_with_name_to_import.find_use_path_prefixed(db, module_def)
-                }
-                Either::Right(macro_def) => {
-                    self.module_with_name_to_import.find_use_path_prefixed(db, macro_def)
-                }
+                Either::Left(module_def) => self.module_with_name_to_import.find_use_path_prefixed(
+                    db,
+                    module_def,
+                    ctx.config.insert_use.prefix_kind,
+                ),
+                Either::Right(macro_def) => self.module_with_name_to_import.find_use_path_prefixed(
+                    db,
+                    macro_def,
+                    ctx.config.insert_use.prefix_kind,
+                ),
             })
             .filter(|use_path| !use_path.segments.is_empty())
             .take(20)
