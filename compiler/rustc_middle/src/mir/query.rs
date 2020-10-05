@@ -438,7 +438,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn promoted_mir_of_opt_const_arg(
+    pub fn promoted_mir_opt_const_arg(
         self,
         def: ty::WithOptConstParam<DefId>,
     ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
@@ -450,7 +450,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn optimized_mir_of_opt_const_arg(
+    pub fn optimized_mir_opt_const_arg(
         self,
         def: ty::WithOptConstParam<DefId>,
     ) -> &'tcx Body<'tcx> {
@@ -462,7 +462,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mir_abstract_const_of_opt_const_arg(
+    pub fn mir_abstract_const_opt_const_arg(
         self,
         def: ty::WithOptConstParam<DefId>,
     ) -> Result<Option<&'tcx [abstract_const::Node<'tcx>]>, ErrorReported> {

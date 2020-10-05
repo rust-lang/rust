@@ -477,12 +477,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir_of_opt_const_arg(def)[promoted]);
+            return Ok(&self.tcx.promoted_mir_opt_const_arg(def)[promoted]);
         }
         match instance {
             ty::InstanceDef::Item(def) => {
                 if self.tcx.is_mir_available(def.did) {
-                    Ok(self.tcx.optimized_mir_of_opt_const_arg(def))
+                    Ok(self.tcx.optimized_mir_opt_const_arg(def))
                 } else {
                     throw_unsup!(NoMirFor(def.did))
                 }
