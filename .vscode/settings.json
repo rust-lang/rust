@@ -33,10 +33,10 @@
             ]
         },
         {
-            "roots": ["./analyze_profile.rs"],
+            "roots": ["./scripts/analyze_profile.rs"],
             "crates": [
                 {
-                    "root_module": "./analyze_profile.rs",
+                    "root_module": "./scripts/analyze_profile.rs",
                     "edition": "2018",
                     "deps": [{ "crate": 1, "name": "std" }],
                     "cfg": [],
