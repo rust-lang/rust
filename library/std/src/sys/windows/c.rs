@@ -1096,3 +1096,18 @@ compat_fn! {
         panic!("rwlocks not available")
     }
 }
+compat_fn! {
+    "api-ms-win-core-synch-l1-2-0":
+    pub fn WaitOnAddress(
+        Address: LPVOID,
+        CompareAddress: LPVOID,
+        AddressSize: SIZE_T,
+        dwMilliseconds: DWORD
+    ) -> BOOL {
+        panic!("WaitOnAddress not available")
+    }
+    pub fn WakeByAddressSingle(Address: LPVOID) -> () {
+        // If this api is unavailable, there cannot be anything waiting, because
+        // WaitOnAddress would've panicked. So it's fine to do nothing here.
+    }
+}
