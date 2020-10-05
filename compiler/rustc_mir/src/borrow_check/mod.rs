@@ -626,6 +626,8 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                     self.consume_operand(location, (input, span), flow_state);
                 }
             }
+
+            StatementKind::CopyNonOverlapping(..) => todo!(),
             StatementKind::Nop
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..)

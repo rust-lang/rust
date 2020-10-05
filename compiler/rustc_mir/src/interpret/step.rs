@@ -113,6 +113,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 M::retag(self, *kind, &dest)?;
             }
 
+            // Call CopyNonOverlapping
+            CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, size }) => {
+                let size = self.eval_operand(size, None)?;
+
+                let dst = {
+                    let dst = self.eval_operand(dst, None)?;
+                    dst.assert_mem_place(self)
+                };
+                let src = {
+                    let src = self.eval_operand(src, None)?;
+                    src.assert_mem_place(self)
+                };
+                // Not sure how to convert an MPlaceTy<'_, <M as Machine<'_, '_>>::PointerTag>
+                // to a pointer, or OpTy to a size
+                self.memory.copy(src, dst, size, /*nonoverlapping*/ true)?;
+            }
+
             // Statements we do not track.
             AscribeUserType(..) => {}
 

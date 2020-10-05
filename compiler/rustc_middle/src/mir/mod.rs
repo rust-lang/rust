@@ -1668,7 +1668,7 @@ impl Debug for Statement<'_> {
                 ref src,
                 ref dst,
                 ref size,
-            }) => write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?},bytes={:?})", src, dst, size),
+            }) => write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, size={:?})", src, dst, size),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -1682,8 +1682,8 @@ pub struct Coverage {
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct CopyNonOverlapping<'tcx> {
-    pub src: Place<'tcx>,
-    pub dst: Place<'tcx>,
+    pub src: Operand<'tcx>,
+    pub dst: Operand<'tcx>,
     pub size: Operand<'tcx>,
 }
 
