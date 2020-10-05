@@ -102,7 +102,7 @@ pub struct Error;
 /// library. The [`write!`] macro accepts an instance of [`io::Write`], and the
 /// [`io::Write`] trait is favored over implementing this trait.
 ///
-/// [`write!`]: ../../std/macro.write.html
+/// [`write!`]: crate::write!
 /// [`io::Write`]: ../../std/io/trait.Write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
@@ -1058,7 +1058,7 @@ pub trait UpperExp {
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
-/// [`write!`]: ../../std/macro.write.html
+/// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     let mut formatter = Formatter {
@@ -1886,7 +1886,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "{10, 11}");
     /// ```
     ///
-    /// [`format_args!`]: ../../std/macro.format_args.html
+    /// [`format_args!`]: crate::format_args
     ///
     /// In this more complex example, we use [`format_args!`] and `.debug_set()`
     /// to build a list of match arms:
