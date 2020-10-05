@@ -9,6 +9,7 @@ case $1 in
         echo "=> Installing new nightly"
         rustup toolchain install --profile minimal nightly-${TOOLCHAIN} # Sanity check to see if the nightly exists
         echo nightly-${TOOLCHAIN} > rust-toolchain
+        rustup component add rustfmt || true
 
         echo "=> Uninstalling all old nighlies"
         for nightly in $(rustup toolchain list | grep nightly | grep -v $TOOLCHAIN | grep -v nightly-x86_64); do
