@@ -161,7 +161,7 @@ impl TypeFoldable<'tcx> for hir::Constness {
 pub trait TypeFolder<'tcx>: Sized {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
-    fn fold_binder<T>(&mut self, t: Binder<T>) -> Binder<T>
+    fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -184,7 +184,10 @@ pub trait TypeFolder<'tcx>: Sized {
 pub trait TypeVisitor<'tcx>: Sized {
     type BreakTy = !;
 
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: &Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
         t.super_visit_with(self)
     }
 
@@ -322,7 +325,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             fn visit_binder<T: TypeFoldable<'tcx>>(
                 &mut self,
-                t: &Binder<T>,
+                t: &Binder<'tcx, T>,
             ) -> ControlFlow<Self::BreakTy> {
                 self.outer_index.shift_in(1);
                 let result = t.as_ref().skip_binder().visit_with(self);
@@ -400,7 +403,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: ty::Binder<T>) -> ty::Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -460,7 +466,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: ty::Binder<T>) -> ty::Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -538,7 +547,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// contain escaping bound types.
     pub fn replace_late_bound_regions<T, F>(
         self,
-        value: Binder<T>,
+        value: Binder<'tcx, T>,
         mut fld_r: F,
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
@@ -588,7 +597,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// types.
     pub fn replace_bound_vars<T, F, G, H>(
         self,
-        value: Binder<T>,
+        value: Binder<'tcx, T>,
         mut fld_r: F,
         fld_t: G,
         fld_c: H,
@@ -607,7 +616,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Replaces any late-bound regions bound in `value` with
     /// free variants attached to `all_outlive_scope`.
-    pub fn liberate_late_bound_regions<T>(self, all_outlive_scope: DefId, value: ty::Binder<T>) -> T
+    pub fn liberate_late_bound_regions<T>(
+        self,
+        all_outlive_scope: DefId,
+        value: ty::Binder<'tcx, T>,
+    ) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -626,7 +639,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// variables will also be equated.
     pub fn collect_constrained_late_bound_regions<T>(
         self,
-        value: &Binder<T>,
+        value: &Binder<'tcx, T>,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
         T: TypeFoldable<'tcx>,
@@ -637,7 +650,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns a set of all late-bound regions that appear in `value` anywhere.
     pub fn collect_referenced_late_bound_regions<T>(
         self,
-        value: &Binder<T>,
+        value: &Binder<'tcx, T>,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
         T: TypeFoldable<'tcx>,
@@ -647,7 +660,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     fn collect_late_bound_regions<T>(
         self,
-        value: &Binder<T>,
+        value: &Binder<'tcx, T>,
         just_constraint: bool,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
@@ -661,7 +674,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also
     /// method lookup and a few other places where precise region relationships are not required.
-    pub fn erase_late_bound_regions<T>(self, value: Binder<T>) -> T
+    pub fn erase_late_bound_regions<T>(self, value: Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -676,7 +689,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `FnSig`s or `TraitRef`s which are equivalent up to region naming will become
     /// structurally identical. For example, `for<'a, 'b> fn(&'a isize, &'b isize)` and
     /// `for<'a, 'b> fn(&'b isize, &'a isize)` will become identical after anonymization.
-    pub fn anonymize_late_bound_regions<T>(self, sig: Binder<T>) -> Binder<T>
+    pub fn anonymize_late_bound_regions<T>(self, sig: Binder<'tcx, T>) -> Binder<'tcx, T>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -719,7 +732,10 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: ty::Binder<T>) -> ty::Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -828,7 +844,10 @@ struct HasEscapingVarsVisitor {
 impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     type BreakTy = FoundEscapingVars;
 
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: &Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
         self.outer_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.outer_index.shift_out(1);
@@ -898,7 +917,10 @@ crate struct CountBoundVars {
 impl<'tcx> TypeVisitor<'tcx> for CountBoundVars {
     type BreakTy = ();
 
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: &Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
         self.outer_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.outer_index.shift_out(1);
@@ -1022,7 +1044,10 @@ impl LateBoundRegionsCollector {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: &Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
         self.current_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.current_index.shift_out(1);

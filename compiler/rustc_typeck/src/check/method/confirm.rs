@@ -550,7 +550,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         upcast_trait_refs.into_iter().next().unwrap()
     }
 
-    fn replace_bound_vars_with_fresh_vars<T>(&self, value: ty::Binder<T>) -> T
+    fn replace_bound_vars_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {

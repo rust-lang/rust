@@ -1753,7 +1753,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///    region got replaced with the same variable, which requires a bit more coordination
     ///    and/or tracking the substitution and
     ///    so forth.
-    fn erase_late_bound_regions<T>(&self, value: ty::Binder<T>) -> T
+    fn erase_late_bound_regions<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {

@@ -181,7 +181,7 @@ impl SymbolMangler<'tcx> {
 
     fn in_binder<T>(
         mut self,
-        value: &ty::Binder<T>,
+        value: &ty::Binder<'tcx, T>,
         print_value: impl FnOnce(Self, &T) -> Result<Self, !>,
     ) -> Result<Self, !>
     where
@@ -483,7 +483,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         for predicate in predicates {
             self = self.in_binder(&predicate, |mut cx, predicate| {

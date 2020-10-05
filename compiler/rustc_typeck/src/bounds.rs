@@ -26,7 +26,7 @@ pub struct Bounds<'tcx> {
     /// A list of region bounds on the (implicit) self type. So if you
     /// had `T: 'a + 'b` this might would be a list `['a, 'b]` (but
     /// the `T` is not explicitly included).
-    pub region_bounds: Vec<(ty::Binder<ty::Region<'tcx>>, Span)>,
+    pub region_bounds: Vec<(ty::Binder<'tcx, ty::Region<'tcx>>, Span)>,
 
     /// A list of trait bounds. So if you had `T: Debug` this would be
     /// `T: Debug`. Note that the self-type is explicit here.

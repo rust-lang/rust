@@ -589,7 +589,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         &self,
         indices: &UniversalRegionIndices<'tcx>,
         defining_ty: DefiningTy<'tcx>,
-    ) -> ty::Binder<&'tcx ty::List<Ty<'tcx>>> {
+    ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
         match defining_ty {
             DefiningTy::Closure(def_id, substs) => {
@@ -657,7 +657,7 @@ trait InferCtxtExt<'tcx> {
         &self,
         origin: NllRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
-        value: ty::Binder<T>,
+        value: ty::Binder<'tcx, T>,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
@@ -686,7 +686,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         &self,
         origin: NllRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
-        value: ty::Binder<T>,
+        value: ty::Binder<'tcx, T>,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where

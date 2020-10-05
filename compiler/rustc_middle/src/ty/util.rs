@@ -499,7 +499,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
-    ) -> Option<ty::Binder<Ty<'tcx>>> {
+    ) -> Option<ty::Binder<'tcx, Ty<'tcx>>> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
         let br = ty::BoundRegion { kind: ty::BrEnv };
         let env_region = ty::ReLateBound(ty::INNERMOST, br);

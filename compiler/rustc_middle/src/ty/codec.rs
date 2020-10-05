@@ -120,7 +120,7 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<ty::PredicateKind<'tcx>> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         encode_with_shorthand(e, &self.skip_binder(), TyEncoder::predicate_shorthands)
     }
@@ -226,8 +226,8 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<ty::PredicateKind<'tcx>> {
-    fn decode(decoder: &mut D) -> Result<ty::Binder<ty::PredicateKind<'tcx>>, D::Error> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+    fn decode(decoder: &mut D) -> Result<ty::Binder<'tcx, ty::PredicateKind<'tcx>>, D::Error> {
         // Handle shorthands first, if we have an usize > 0x80.
         Ok(ty::Binder::bind(if decoder.positioned_at_shorthand() {
             let pos = decoder.read_usize()?;
@@ -319,7 +319,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
-    for ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>
+    for ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
 {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
@@ -382,7 +382,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [mir::abstract_const::N
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+    &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
@@ -488,12 +488,12 @@ macro_rules! implement_ty_decoder {
 macro_rules! impl_binder_encode_decode {
     ($($t:ty),+ $(,)?) => {
         $(
-            impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<$t> {
+            impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<'tcx, $t> {
                 fn encode(&self, e: &mut E) -> Result<(), E::Error> {
                     self.as_ref().skip_binder().encode(e)
                 }
             }
-            impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<$t> {
+            impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<'tcx, $t> {
                 fn decode(decoder: &mut D) -> Result<Self, D::Error> {
                     Ok(ty::Binder::bind(Decodable::decode(decoder)?))
                 }

@@ -118,7 +118,7 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for ty::BoundVar {
     }
 }
 
-impl<'a, T> HashStable<StableHashingContext<'a>> for ty::Binder<T>
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ty::Binder<'tcx, T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {

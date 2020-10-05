@@ -38,7 +38,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// If you have a `Binder<T>`, you can do this to strip out the
+    /// If you have a `Binder<'tcx, T>`, you can do this to strip out the
     /// late-bound regions and then normalize the result, yielding up
     /// a `T` (with regions erased). This is appropriate when the
     /// binder is being instantiated at the call site.
@@ -49,7 +49,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn normalize_erasing_late_bound_regions<T>(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        value: ty::Binder<T>,
+        value: ty::Binder<'tcx, T>,
     ) -> T
     where
         T: TypeFoldable<'tcx>,

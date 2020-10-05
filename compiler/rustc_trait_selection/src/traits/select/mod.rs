@@ -204,7 +204,7 @@ struct EvaluatedCandidate<'tcx> {
 /// When does the builtin impl for `T: Trait` apply?
 enum BuiltinImplConditions<'tcx> {
     /// The impl is conditional on `T1, T2, ...: Trait`.
-    Where(ty::Binder<Vec<Ty<'tcx>>>),
+    Where(ty::Binder<'tcx, Vec<Ty<'tcx>>>),
     /// There is no built-in impl. There may be some other
     /// candidate (a where-clause or user-defined impl).
     None,
@@ -1673,7 +1673,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
-    fn constituent_types_for_ty(&self, t: ty::Binder<Ty<'tcx>>) -> ty::Binder<Vec<Ty<'tcx>>> {
+    fn constituent_types_for_ty(
+        &self,
+        t: ty::Binder<'tcx, Ty<'tcx>>,
+    ) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
         match *t.skip_binder().kind() {
             ty::Uint(_)
             | ty::Int(_)
@@ -1746,7 +1749,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         trait_def_id: DefId,
-        types: ty::Binder<Vec<Ty<'tcx>>>,
+        types: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
     ) -> Vec<PredicateObligation<'tcx>> {
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
@@ -1767,7 +1770,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .skip_binder() // binder moved -\
             .iter()
             .flat_map(|ty| {
-                let ty: ty::Binder<Ty<'tcx>> = types.rebind(ty); // <----/
+                let ty: ty::Binder<'tcx, Ty<'tcx>> = types.rebind(ty); // <----/
 
                 self.infcx.commit_unconditionally(|_| {
                     let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(ty);
