@@ -37,12 +37,6 @@ LL |     let fail21 = 4___16; //
    |                  ^^^^^^ help: did you mean to write: `4_i16`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:15:18
-   |
-LL |     let fail24 = 12.34_64;
-   |                  ^^^^^^^^ help: did you mean to write: `12.34_f64`
-
-error: mistyped literal suffix
   --> $DIR/mistyped_literal_suffix.rs:16:18
    |
 LL |     let fail25 = 1E2_32;
@@ -67,16 +61,10 @@ LL |     let fail28 = 241251235E723_64;
    |                  ^^^^^^^^^^^^^^^^ help: did you mean to write: `241_251_235E723_f64`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:21:18
-   |
-LL |     let fail29 = 42279.911_32;
-   |                  ^^^^^^^^^^^^ help: did you mean to write: `42_279.911_f32`
-
-error: mistyped literal suffix
   --> $DIR/mistyped_literal_suffix.rs:23:13
    |
 LL |     let _ = 1.12345E1_32;
    |             ^^^^^^^^^^^^ help: did you mean to write: `1.123_45E1_f32`
 
-error: aborting due to 13 previous errors
+error: aborting due to 11 previous errors
 
