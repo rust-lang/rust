@@ -618,7 +618,11 @@ pub(crate) fn handle_hover(
 ) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
-    let info = match snap.analysis.hover(position, snap.config.hover.links_in_hover)? {
+    let info = match snap.analysis.hover(
+        position,
+        snap.config.hover.links_in_hover,
+        snap.config.hover.markdown,
+    )? {
         None => return Ok(None),
         Some(info) => info,
     };

@@ -15,6 +15,7 @@ use test_utils::mark;
 use crate::{
     display::{macro_label, ShortLabel, ToNav, TryToNav},
     link_rewrite::{remove_links, rewrite_links},
+    markdown_remove::remove_markdown,
     markup::Markup,
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
@@ -27,6 +28,7 @@ pub struct HoverConfig {
     pub debug: bool,
     pub goto_type_def: bool,
     pub links_in_hover: bool,
+    pub markdown: bool,
 }
 
 impl Default for HoverConfig {
@@ -37,6 +39,7 @@ impl Default for HoverConfig {
             debug: true,
             goto_type_def: true,
             links_in_hover: true,
+            markdown: true,
         }
     }
 }
@@ -48,6 +51,7 @@ impl HoverConfig {
         debug: false,
         goto_type_def: false,
         links_in_hover: true,
+        markdown: true,
     };
 
     pub fn any(&self) -> bool {
@@ -91,6 +95,7 @@ pub(crate) fn hover(
     db: &RootDatabase,
     position: FilePosition,
     links_in_hover: bool,
+    markdown: bool,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
@@ -109,7 +114,9 @@ pub(crate) fn hover(
     };
     if let Some(definition) = definition {
         if let Some(markup) = hover_for_definition(db, definition) {
-            let markup = if links_in_hover {
+            let markup = if !markdown {
+                remove_markdown(&markup.as_str())
+            } else if links_in_hover {
                 rewrite_links(db, &markup.as_str(), &definition)
             } else {
                 remove_links(&markup.as_str())
@@ -147,7 +154,11 @@ pub(crate) fn hover(
         }
     };
 
-    res.markup = Markup::fenced_block(&ty.display(db));
+    res.markup = if markdown {
+        Markup::fenced_block(&ty.display(db))
+    } else {
+        ty.display(db).to_string().into()
+    };
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
@@ -383,12 +394,12 @@ mod tests {
 
     fn check_hover_no_result(ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
-        assert!(analysis.hover(position, true).unwrap().is_none());
+        assert!(analysis.hover(position, true, true).unwrap().is_none());
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, true).unwrap().unwrap();
+        let hover = analysis.hover(position, true, true).unwrap().unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -399,7 +410,18 @@ mod tests {
 
     fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, false).unwrap().unwrap();
+        let hover = analysis.hover(position, false, true).unwrap().unwrap();
+
+        let content = analysis.db.file_text(position.file_id);
+        let hovered_element = &content[hover.range];
+
+        let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
+        expect.assert_eq(&actual)
+    }
+
+    fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
+        let (analysis, position) = fixture::position(ra_fixture);
+        let hover = analysis.hover(position, true, false).unwrap().unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -410,7 +432,7 @@ mod tests {
 
     fn check_actions(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, true).unwrap().unwrap();
+        let hover = analysis.hover(position, true, true).unwrap().unwrap();
         expect.assert_debug_eq(&hover.info.actions)
     }
 
@@ -429,6 +451,23 @@ fn main() {
                 ```rust
                 u32
                 ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_remove_markdown_if_configured() {
+        check_hover_no_markdown(
+            r#"
+pub fn foo() -> u32 { 1 }
+
+fn main() {
+    let foo_test = foo()<|>;
+}
+"#,
+            expect![[r#"
+                *foo()*
+                u32
             "#]],
         );
     }
