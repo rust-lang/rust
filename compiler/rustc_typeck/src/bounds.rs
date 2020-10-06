@@ -71,12 +71,8 @@ impl<'tcx> Bounds<'tcx> {
                 self.region_bounds
                     .iter()
                     .map(|&(region_bound, span)| {
-                        // Account for the binder being introduced below; no need to shift `param_ty`
-                        // because, at present at least, it either only refers to early-bound regions,
-                        // or it's a generic associated type that deliberately has escaping bound vars.
-                        let region_bound = ty::fold::shift_region(tcx, region_bound, 1);
                         let outlives = ty::OutlivesPredicate(param_ty, region_bound);
-                        (ty::Binder::bind(outlives).to_predicate(tcx), span)
+                        (ty::Binder::dummy(outlives).to_predicate(tcx), span)
                     })
                     .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
                         let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);

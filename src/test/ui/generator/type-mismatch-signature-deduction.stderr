@@ -15,7 +15,6 @@ LL | fn foo() -> impl Generator<Return = i32> {
    |
    = note: expected enum `std::result::Result<{integer}, _>`
               found type `i32`
-   = note: the return type of a function must have a statically known size
 
 error: aborting due to 2 previous errors
 

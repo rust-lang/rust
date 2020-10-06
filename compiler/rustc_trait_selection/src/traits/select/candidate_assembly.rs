@@ -165,7 +165,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("winnowed to {} candidates for {:?}: {:?}", candidates.len(), stack, candidates);
 
-        let needs_infer = stack.obligation.predicate.needs_infer();
+        let needs_infer = stack.obligation.predicate.has_infer_types_or_consts();
 
         // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
@@ -327,8 +327,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
 
-        if result {
-            candidates.vec.push(ProjectionCandidate);
+        for predicate_index in result {
+            candidates.vec.push(ProjectionCandidate(predicate_index));
         }
     }
 

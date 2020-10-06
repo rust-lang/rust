@@ -6,7 +6,6 @@ LL | type Closure = impl FnOnce();
    |
    = note: expected opaque type `impl FnOnce<()>`
                 found unit type `()`
-   = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error
 

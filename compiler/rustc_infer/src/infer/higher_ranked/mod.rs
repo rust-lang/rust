@@ -2,7 +2,7 @@
 //! the end of the file for details.
 
 use super::combine::CombineFields;
-use super::{HigherRankedType, InferCtxt, PlaceholderMap};
+use super::{HigherRankedType, InferCtxt};
 
 use crate::infer::CombinedSnapshot;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
@@ -33,7 +33,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         self.infcx.commit_if_ok(|_| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
-            let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(&b);
+            let b_prime = self.infcx.replace_bound_vars_with_placeholders(&b);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
@@ -66,10 +66,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    pub fn replace_bound_vars_with_placeholders<T>(
-        &self,
-        binder: &ty::Binder<T>,
-    ) -> (T, PlaceholderMap<'tcx>)
+    pub fn replace_bound_vars_with_placeholders<T>(&self, binder: &ty::Binder<T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -122,7 +119,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             next_universe, binder, result, map,
         );
 
-        (result, map)
+        result
     }
 
     /// See `infer::region_constraints::RegionConstraintCollector::leak_check`.

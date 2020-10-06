@@ -15,7 +15,6 @@ LL |     fn foo_fail<T: Trait>() -> impl FooLike<Output=T::Assoc> {
    |
    = note:         expected type `()`
            found associated type `<T as impl_trait::Trait>::Assoc`
-   = note: the return type of a function must have a statically known size
 help: consider constraining the associated type `<T as impl_trait::Trait>::Assoc` to `()`
    |
 LL |     fn foo_fail<T: Trait<Assoc = ()>>() -> impl FooLike<Output=T::Assoc> {
@@ -35,7 +34,6 @@ LL |     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output=T::Assoc> {
    |
    = note:         expected type `()`
            found associated type `<T as lifetimes::Trait<'static>>::Assoc`
-   = note: the return type of a function must have a statically known size
 help: consider constraining the associated type `<T as lifetimes::Trait<'static>>::Assoc` to `()`
    |
 LL |     fn foo2_fail<'a, T: Trait<'a, Assoc = ()>>() -> impl FooLike<Output=T::Assoc> {

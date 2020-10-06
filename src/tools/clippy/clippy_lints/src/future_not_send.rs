@@ -3,6 +3,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{Opaque, PredicateAtom::Trait};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
@@ -62,9 +63,10 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
         }
         let ret_ty = utils::return_ty(cx, hir_id);
         if let Opaque(id, subst) = *ret_ty.kind() {
-            let preds = cx.tcx.predicates_of(id).instantiate(cx.tcx, subst);
+            let preds = cx.tcx.explicit_item_bounds(id);
             let mut is_future = false;
-            for p in preds.predicates {
+            for &(p, _span) in preds {
+                let p = p.subst(cx.tcx, subst);
                 if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
                     if Some(trait_ref.def_id()) == cx.tcx.lang_items().future_trait() {
                         is_future = true;
@@ -90,8 +92,13 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                         |db| {
                             cx.tcx.infer_ctxt().enter(|infcx| {
                                 for FulfillmentError { obligation, .. } in send_errors {
-                                    infcx.maybe_note_obligation_cause_for_async_await(db, &obligation);
-                                    if let Trait(trait_pred, _) = obligation.predicate.skip_binders() {
+                                    infcx.maybe_note_obligation_cause_for_async_await(
+                                        db,
+                                        &obligation,
+                                    );
+                                    if let Trait(trait_pred, _) =
+                                        obligation.predicate.skip_binders()
+                                    {
                                         db.note(&format!(
                                             "`{}` doesn't implement `{}`",
                                             trait_pred.self_ty(),

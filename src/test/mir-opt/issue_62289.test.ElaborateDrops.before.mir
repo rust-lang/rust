@@ -69,7 +69,7 @@ fn test() -> Option<Box<u32>> {
 
     bb5: {
         StorageDead(_9);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
-        _0 = <Option<Box<u32>> as Try>::from_error(move _8) -> [return: bb6, unwind: bb12]; // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
+        _0 = <Option<Box<u32>> as Try>::from_error(move _8) -> [return: bb6, unwind: bb12]; // scope 2 at $DIR/issue-62289.rs:9:15: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:15: 9:20
                                          // + literal: Const { ty: fn(<std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::Error) -> std::option::Option<std::boxed::Box<u32>> {<std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error}, val: Value(Scalar(<ZST>)) }

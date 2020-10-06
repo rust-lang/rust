@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `bool: Try` is not satisfied
-  --> $DIR/try-block-in-while.rs:6:15
+  --> $DIR/try-block-in-while.rs:6:17
    |
 LL |     while try { false } {}
-   |               ^^^^^^^^^ the trait `Try` is not implemented for `bool`
+   |                 ^^^^^ the trait `Try` is not implemented for `bool`
    |
    = note: required by `from_ok`
 

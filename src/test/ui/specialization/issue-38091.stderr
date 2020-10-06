@@ -8,10 +8,10 @@ LL | #![feature(specialization)]
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
 
 error[E0277]: the trait bound `(): Valid` is not satisfied
-  --> $DIR/issue-38091.rs:9:5
+  --> $DIR/issue-38091.rs:12:5
    |
 LL |     type Ty: Valid;
-   |     --------------- required by `Iterate::Ty`
+   |              ----- required by this bound in `Iterate::Ty`
 ...
 LL |     default type Ty = ();
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Valid` is not implemented for `()`

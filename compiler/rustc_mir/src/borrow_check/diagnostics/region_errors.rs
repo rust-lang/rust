@@ -6,6 +6,7 @@ use rustc_infer::infer::{
     error_reporting::unexpected_hidden_region_diagnostic, NLLRegionVariableOrigin,
 };
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
@@ -585,14 +586,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 //
                 // eg. check for `impl Trait + 'static` instead of `impl Trait`.
                 let has_static_predicate = {
-                    let predicates_of = self.infcx.tcx.predicates_of(did);
-                    let bounds = predicates_of.instantiate(self.infcx.tcx, substs);
+                    let bounds = self.infcx.tcx.explicit_item_bounds(did);
 
                     let mut found = false;
-                    for predicate in bounds.predicates {
+                    for (bound, _) in bounds {
                         if let ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(_, r)) =
-                            predicate.skip_binders()
+                            bound.skip_binders()
                         {
+                            let r = r.subst(self.infcx.tcx, substs);
                             if let ty::RegionKind::ReStatic = r {
                                 found = true;
                                 break;

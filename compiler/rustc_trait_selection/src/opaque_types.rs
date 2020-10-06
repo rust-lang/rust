@@ -10,7 +10,7 @@ use rustc_infer::infer::free_regions::FreeRegionRelations;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::nightly_options;
 use rustc_span::Span;
@@ -428,14 +428,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         // If there are required region bounds, we can use them.
         if opaque_defn.has_required_region_bounds {
-            let predicates_of = tcx.predicates_of(def_id);
-            debug!("constrain_opaque_type: predicates: {:#?}", predicates_of,);
-            let bounds = predicates_of.instantiate(tcx, opaque_defn.substs);
+            let bounds = tcx.explicit_item_bounds(def_id);
+            debug!("constrain_opaque_type: predicates: {:#?}", bounds);
+            let bounds: Vec<_> =
+                bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_defn.substs)).collect();
             debug!("constrain_opaque_type: bounds={:#?}", bounds);
             let opaque_type = tcx.mk_opaque(def_id, opaque_defn.substs);
 
             let required_region_bounds =
-                required_region_bounds(tcx, opaque_type, bounds.predicates.into_iter());
+                required_region_bounds(tcx, opaque_type, bounds.into_iter());
             debug_assert!(!required_region_bounds.is_empty());
 
             for required_region in required_region_bounds {
@@ -1112,9 +1113,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let ty_var = infcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
 
-        let predicates_of = tcx.predicates_of(def_id);
-        debug!("instantiate_opaque_types: predicates={:#?}", predicates_of,);
-        let bounds = predicates_of.instantiate(tcx, substs);
+        let item_bounds = tcx.explicit_item_bounds(def_id);
+        debug!("instantiate_opaque_types: bounds={:#?}", item_bounds);
+        let bounds: Vec<_> =
+            item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
 
         let param_env = tcx.param_env(def_id);
         let InferOk { value: bounds, obligations } =
@@ -1123,8 +1125,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         debug!("instantiate_opaque_types: bounds={:?}", bounds);
 
-        let required_region_bounds =
-            required_region_bounds(tcx, ty, bounds.predicates.iter().cloned());
+        let required_region_bounds = required_region_bounds(tcx, ty, bounds.iter().copied());
         debug!("instantiate_opaque_types: required_region_bounds={:?}", required_region_bounds);
 
         // Make sure that we are in fact defining the *entire* type
@@ -1153,7 +1154,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
 
-        for predicate in &bounds.predicates {
+        for predicate in &bounds {
             if let ty::PredicateAtom::Projection(projection) = predicate.skip_binders() {
                 if projection.ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
@@ -1162,14 +1163,14 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             }
         }
 
-        self.obligations.reserve(bounds.predicates.len());
-        for predicate in bounds.predicates {
+        self.obligations.reserve(bounds.len());
+        for predicate in bounds {
             // Change the predicate to refer to the type variable,
             // which will be the concrete type instead of the opaque type.
             // This also instantiates nested instances of `impl Trait`.
             let predicate = self.instantiate_opaque_types_in_map(&predicate);
 
-            let cause = traits::ObligationCause::new(span, self.body_id, traits::SizedReturnType);
+            let cause = traits::ObligationCause::new(span, self.body_id, traits::MiscObligation);
 
             // Require that the predicate holds for the concrete type.
             debug!("instantiate_opaque_types: predicate={:?}", predicate);

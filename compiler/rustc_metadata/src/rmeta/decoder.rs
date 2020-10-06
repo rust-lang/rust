@@ -937,7 +937,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .inferred_outlives
             .get(self, item_id)
-            .map(|predicates| predicates.decode((self, tcx)))
+            .map(|predicates| tcx.arena.alloc_from_iter(predicates.decode((self, tcx))))
             .unwrap_or_default()
     }
 
@@ -947,6 +947,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
         self.root.tables.super_predicates.get(self, item_id).unwrap().decode((self, tcx))
+    }
+
+    fn get_explicit_item_bounds(
+        &self,
+        item_id: DefIndex,
+        tcx: TyCtxt<'tcx>,
+    ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+        self.root
+            .tables
+            .explicit_item_bounds
+            .get(self, item_id)
+            .map(|bounds| tcx.arena.alloc_from_iter(bounds.decode((self, tcx))))
+            .unwrap_or_default()
     }
 
     fn get_generics(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {

@@ -26,22 +26,28 @@ LL |     let res: Result<i32, i32> = try { };
    |                                       ^ expected `i32`, found `()`
 
 error[E0277]: the trait bound `(): Try` is not satisfied
-  --> $DIR/try-block-bad-type.rs:17:23
+  --> $DIR/try-block-bad-type.rs:17:25
    |
 LL |     let res: () = try { };
-   |                       ^^^ the trait `Try` is not implemented for `()`
+   |                         ^ the trait `Try` is not implemented for `()`
    |
    = note: required by `from_ok`
+
+error[E0277]: the trait bound `(): Try` is not satisfied
+  --> $DIR/try-block-bad-type.rs:17:25
+   |
+LL |     let res: () = try { };
+   |                         ^ the trait `Try` is not implemented for `()`
 
 error[E0277]: the trait bound `i32: Try` is not satisfied
-  --> $DIR/try-block-bad-type.rs:19:24
+  --> $DIR/try-block-bad-type.rs:21:26
    |
 LL |     let res: i32 = try { 5 };
-   |                        ^^^^^ the trait `Try` is not implemented for `i32`
+   |                          ^ the trait `Try` is not implemented for `i32`
    |
    = note: required by `from_ok`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0271, E0277.
 For more information about an error, try `rustc --explain E0271`.

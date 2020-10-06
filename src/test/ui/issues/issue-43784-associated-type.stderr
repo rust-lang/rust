@@ -1,8 +1,11 @@
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/issue-43784-associated-type.rs:14:18
+  --> $DIR/issue-43784-associated-type.rs:14:5
    |
+LL |     type Assoc: Partial<Self>;
+   |                 ------------- required by this bound in `Complete::Assoc`
+...
 LL |     type Assoc = T;
-   |                  ^ the trait `Copy` is not implemented for `T`
+   |     ^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |

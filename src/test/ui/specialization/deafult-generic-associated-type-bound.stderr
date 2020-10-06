@@ -18,8 +18,8 @@ LL | #![feature(generic_associated_types)]
 error[E0277]: can't compare `T` with `T`
   --> $DIR/deafult-generic-associated-type-bound.rs:19:5
    |
-LL |     type U<'a>: PartialEq<&'a Self>;
-   |     -------------------------------- required by `X::U`
+LL |     type U<'a>: PartialEq<&'a Self> where Self: 'a;
+   |                 ------------------- required by this bound in `X::U`
 ...
 LL |     default type U<'a> = &'a T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `T == T`

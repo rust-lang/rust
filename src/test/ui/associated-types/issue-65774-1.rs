@@ -14,7 +14,6 @@ trait MPU {
 struct S;
 
 impl MPU for S { }
-//~^ ERROR the trait bound `T: MyDisplay` is not satisfied
 
 trait MyWrite {
     fn my_write(&self, _: &dyn MyDisplay) { }
@@ -43,6 +42,7 @@ impl ProcessType for Process {
         // FulfillmentError(Obligation(predicate=Binder(TraitPredicate(<T as MyDisplay>)),
         // depth=1),Unimplemented)
         let closure = |config: &mut <S as MPU>::MpuConfig| writer.my_write(&config);
+        //~^ ERROR the trait bound `T: MyDisplay` is not satisfied
         closure(valref);
     }
 }

@@ -19,8 +19,9 @@ struct Bar;
 impl Foo for Bar {
     type Assoc = usize;
     type Assoc2<T> = Vec<T>;
+    //~^ ERROR `T` doesn't implement `std::fmt::Display`
     type Assoc3<T> where T: Iterator = Vec<T>;
-    //~^ impl has stricter requirements than trait
+    //~^ ERROR impl has stricter requirements than trait
     type WithDefault<'a, T: Debug + 'a> = &'a dyn Iterator<Item=T>;
     type NoGenerics = ::std::cell::Cell<i32>;
 }

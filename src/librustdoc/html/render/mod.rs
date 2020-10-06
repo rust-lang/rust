@@ -1709,7 +1709,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
         clean::ConstantItem(ref c) => item_constant(buf, cx, item, c),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item, cache),
         clean::KeywordItem(_) => item_keyword(buf, cx, item),
-        clean::OpaqueTyItem(ref e, _) => item_opaque_ty(buf, cx, item, e, cache),
+        clean::OpaqueTyItem(ref e) => item_opaque_ty(buf, cx, item, e, cache),
         clean::TraitAliasItem(ref ta) => item_trait_alias(buf, cx, item, ta, cache),
         _ => {
             // We don't generate pages for any other type.

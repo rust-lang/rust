@@ -27,33 +27,18 @@ error[E0609]: no field `0` on type `impl Future`
    |
 LL |     let _: i32 = tuple().0;
    |                          ^
-   |
-help: consider awaiting before field access
-   |
-LL |     let _: i32 = tuple().await.0;
-   |                         ^^^^^^
 
 error[E0609]: no field `a` on type `impl Future`
   --> $DIR/issue-61076.rs:60:28
    |
 LL |     let _: i32 = struct_().a;
    |                            ^
-   |
-help: consider awaiting before field access
-   |
-LL |     let _: i32 = struct_().await.a;
-   |                           ^^^^^^
 
 error[E0599]: no method named `method` found for opaque type `impl Future` in the current scope
   --> $DIR/issue-61076.rs:62:15
    |
 LL |     struct_().method();
    |               ^^^^^^ method not found in `impl Future`
-   |
-help: consider awaiting before this method call
-   |
-LL |     struct_().await.method();
-   |               ^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-61076.rs:69:9
@@ -66,10 +51,6 @@ LL |         Tuple(_) => {}
    |
    = note: expected opaque type `impl Future`
                    found struct `Tuple`
-help: consider awaiting on the future
-   |
-LL |     match tuple().await {
-   |                  ^^^^^^
 
 error: aborting due to 6 previous errors
 

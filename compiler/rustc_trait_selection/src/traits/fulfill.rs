@@ -376,7 +376,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 | ty::PredicateAtom::Subtype(_)
                 | ty::PredicateAtom::ConstEvaluatable(..)
                 | ty::PredicateAtom::ConstEquate(..) => {
-                    let (pred, _) = infcx.replace_bound_vars_with_placeholders(binder);
+                    let pred = infcx.replace_bound_vars_with_placeholders(binder);
                     ProcessResult::Changed(mk_pending(vec![
                         obligation.with(pred.to_predicate(self.selcx.tcx())),
                     ]))
@@ -449,6 +449,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         self.selcx.infcx(),
                         obligation.param_env,
                         obligation.cause.body_id,
+                        obligation.recursion_depth + 1,
                         arg,
                         obligation.cause.span,
                     ) {
@@ -672,7 +673,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
             Ok(Ok(None)) => {
                 *stalled_on = trait_ref_infer_vars(
                     self.selcx,
-                    project_obligation.predicate.to_poly_trait_ref(self.selcx.tcx()),
+                    project_obligation.predicate.to_poly_trait_ref(tcx),
                 );
                 ProcessResult::Unchanged
             }

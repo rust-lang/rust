@@ -18,6 +18,24 @@ LL | type WrongGeneric<T> = impl 'static;
    = note:     expected type `i32`
            found opaque type `impl Sized`
 
-error: aborting due to 2 previous errors
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/generic_type_does_not_live_long_enough.rs:14:30
+   |
+LL | fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
+   |                              ^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
 
-For more information about this error, try `rustc --explain E0308`.
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/generic_type_does_not_live_long_enough.rs:9:24
+   |
+LL | type WrongGeneric<T> = impl 'static;
+   |                        ^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+   = note: ...so that the type `T` will meet its required lifetime bounds
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0310.
+For more information about an error, try `rustc --explain E0308`.

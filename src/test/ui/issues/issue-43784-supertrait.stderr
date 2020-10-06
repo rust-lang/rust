@@ -1,6 +1,9 @@
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/issue-43784-supertrait.rs:8:9
    |
+LL | pub trait Complete: Partial {
+   |                     ------- required by this bound in `Complete`
+...
 LL | impl<T> Complete for T {}
    |         ^^^^^^^^ the trait `Copy` is not implemented for `T`
    |

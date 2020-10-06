@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `(): AsRef<()>` is not satisfied
+  --> $DIR/cross-crate-bounds.rs:15:5
+   |
+LL |     type Bar = ();
+   |     ^^^^^^^^^^^^^^ the trait `AsRef<()>` is not implemented for `()`
+   | 
+  ::: $DIR/auxiliary/foo_defn.rs:6:15
+   |
+LL |     type Bar: AsRef<()>;
+   |               --------- required by this bound in `foo_defn::Foo::Bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

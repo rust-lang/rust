@@ -728,6 +728,87 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::FnSig<RustInterner<'tcx>>> for ty::Binder<t
     }
 }
 
+// We lower into an Option here since there are some predicates which Chalk
+// doesn't have a representation for yet (as an `InlineBound`). The `Option` will
+// eventually be removed.
+impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<RustInterner<'tcx>>>>
+    for ty::Predicate<'tcx>
+{
+    fn lower_into(
+        self,
+        interner: &RustInterner<'tcx>,
+    ) -> Option<chalk_solve::rust_ir::QuantifiedInlineBound<RustInterner<'tcx>>> {
+        match self.bound_atom(interner.tcx).skip_binder() {
+            ty::PredicateAtom::Trait(predicate, _) => {
+                let (predicate, binders, _named_regions) =
+                    collect_bound_vars(interner, interner.tcx, &ty::Binder::bind(predicate));
+
+                Some(chalk_ir::Binders::new(
+                    binders,
+                    chalk_solve::rust_ir::InlineBound::TraitBound(
+                        predicate.trait_ref.lower_into(interner),
+                    ),
+                ))
+            }
+            ty::PredicateAtom::Projection(predicate) => {
+                let (predicate, binders, _named_regions) =
+                    collect_bound_vars(interner, interner.tcx, &ty::Binder::bind(predicate));
+
+                Some(chalk_ir::Binders::new(
+                    binders,
+                    chalk_solve::rust_ir::InlineBound::AliasEqBound(predicate.lower_into(interner)),
+                ))
+            }
+            ty::PredicateAtom::TypeOutlives(_predicate) => None,
+            ty::PredicateAtom::WellFormed(_ty) => None,
+
+            ty::PredicateAtom::RegionOutlives(..)
+            | ty::PredicateAtom::ObjectSafe(..)
+            | ty::PredicateAtom::ClosureKind(..)
+            | ty::PredicateAtom::Subtype(..)
+            | ty::PredicateAtom::ConstEvaluatable(..)
+            | ty::PredicateAtom::ConstEquate(..)
+            | ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                bug!("unexpected predicate {}", &self)
+            }
+        }
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::TraitBound<RustInterner<'tcx>>>
+    for ty::TraitRef<'tcx>
+{
+    fn lower_into(
+        self,
+        interner: &RustInterner<'tcx>,
+    ) -> chalk_solve::rust_ir::TraitBound<RustInterner<'tcx>> {
+        chalk_solve::rust_ir::TraitBound {
+            trait_id: chalk_ir::TraitId(self.def_id),
+            args_no_self: self.substs[1..].iter().map(|arg| arg.lower_into(interner)).collect(),
+        }
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>>>
+    for ty::ProjectionPredicate<'tcx>
+{
+    fn lower_into(
+        self,
+        interner: &RustInterner<'tcx>,
+    ) -> chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>> {
+        let trait_ref = self.projection_ty.trait_ref(interner.tcx);
+        chalk_solve::rust_ir::AliasEqBound {
+            trait_bound: trait_ref.lower_into(interner),
+            associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.item_def_id),
+            parameters: self.projection_ty.substs[trait_ref.substs.len()..]
+                .iter()
+                .map(|arg| arg.lower_into(interner))
+                .collect(),
+            value: self.ty.lower_into(interner),
+        }
+    }
+}
+
 /// To collect bound vars, we have to do two passes. In the first pass, we
 /// collect all `BoundRegion`s and `ty::Bound`s. In the second pass, we then
 /// replace `BrNamed` into `BrAnon`. The two separate passes are important,

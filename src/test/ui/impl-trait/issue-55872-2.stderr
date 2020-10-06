@@ -3,8 +3,6 @@ error[E0277]: the trait bound `impl Future: Copy` is not satisfied
    |
 LL |     type E = impl std::marker::Copy;
    |              ^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `impl Future`
-   |
-   = note: the return type of a function must have a statically known size
 
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
   --> $DIR/issue-55872-2.rs:15:28
