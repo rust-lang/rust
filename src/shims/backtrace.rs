@@ -26,7 +26,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
-            data.push((frame.instance, frame.current_span().lo()));
+            let mut span = frame.current_span();
+            // Match the behavior of runtime backtrace spans
+            // by using a non-macro span in our backtrace. See `FunctionCx::debug_loc`.
+            if span.from_expansion() && !tcx.sess.opts.debugging_opts.debug_macros {
+                span = rustc_span::hygiene::walk_chain(span, frame.body.span.ctxt())
+            }
+            data.push((frame.instance, span.lo()));
         }
 
         let ptrs: Vec<_> = data.into_iter().map(|(instance, pos)| {
