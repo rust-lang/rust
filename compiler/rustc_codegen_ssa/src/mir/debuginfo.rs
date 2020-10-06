@@ -55,6 +55,7 @@ impl<D> DebugScope<D> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
+        bx.set_span(span);
         if let Some(scope) = scope {
             bx.set_source_location(scope, span);
         }
