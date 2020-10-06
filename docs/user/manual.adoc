@@ -397,6 +397,23 @@ It is possible to change the foreground/background color of inlay hints. Just ad
 }
 ----
 
+==== Semantic style customizations
+
+You can customize the look of different semantic elements in the source code. For example, mutable bindings are underlined by default and you can override this behavior by adding the following section to your `settings.json`:
+
+[source,jsonc]
+----
+{
+  "editor.semanticTokenColorCustomizations": {
+    "rules": {
+      "*.mutable": {
+        "fontStyle": "", // underline is the default
+      },
+    }
+  },
+}
+----
+
 ==== Special `when` clause context for keybindings.
 You may use `inRustProject` context to configure keybindings for rust projects only. For example:
 [source,json]
