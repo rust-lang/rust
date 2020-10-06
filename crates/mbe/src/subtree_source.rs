@@ -2,7 +2,7 @@
 
 use parser::{Token, TokenSource};
 use std::cell::{Cell, Ref, RefCell};
-use syntax::{lex_single_syntax_kind, SmolStr, SyntaxKind, SyntaxKind::*, T};
+use syntax::{tokenize, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use tt::buffer::{Cursor, TokenBuffer};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -155,10 +155,17 @@ fn convert_delim(d: Option<tt::DelimiterKind>, closing: bool) -> TtToken {
 }
 
 fn convert_literal(l: &tt::Literal) -> TtToken {
-    let kind = lex_single_syntax_kind(&l.text)
-        .map(|(kind, _error)| kind)
-        .filter(|kind| kind.is_literal())
-        .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &l));
+    let mut kinds = tokenize(&l.text).0.into_iter().map(|token| token.kind);
+
+    let kind = match kinds.next() {
+        Some(kind) if kind.is_literal() => Some(kind),
+        Some(SyntaxKind::MINUS) => match kinds.next() {
+            Some(kind) if kind.is_literal() => Some(kind),
+            _ => None,
+        },
+        _ => None,
+    }
+    .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &l));
 
     TtToken { kind, is_joint_to_next: false, text: l.text.clone() }
 }
