@@ -135,11 +135,11 @@ fn test_from_str() {
     );
     assert_eq!(
         "-129".parse::<NonZeroI8>().err().map(|e| e.kind().clone()),
-        Some(IntErrorKind::Underflow)
+        Some(IntErrorKind::NegOverflow)
     );
     assert_eq!(
         "257".parse::<NonZeroU8>().err().map(|e| e.kind().clone()),
-        Some(IntErrorKind::Overflow)
+        Some(IntErrorKind::PosOverflow)
     );
 }
 

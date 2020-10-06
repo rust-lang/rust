@@ -63,7 +63,7 @@ pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, No
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
 
-#[unstable(feature = "int_error_matching", issue = "22639")]
+#[stable(feature = "int_error_matching", since = "1.47.0")]
 pub use error::IntErrorKind;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
@@ -836,7 +836,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     };
 
     if digits.is_empty() {
-        return Err(PIE { kind: Empty });
+        return Err(PIE { kind: OnlySign });
     }
 
     let mut result = T::from_u32(0);
@@ -849,11 +849,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Overflow }),
+                None => return Err(PIE { kind: PosOverflow }),
             };
             result = match result.checked_add(x) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Overflow }),
+                None => return Err(PIE { kind: PosOverflow }),
             };
         }
     } else {
@@ -865,11 +865,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Underflow }),
+                None => return Err(PIE { kind: NegOverflow }),
             };
             result = match result.checked_sub(x) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Underflow }),
+                None => return Err(PIE { kind: NegOverflow }),
             };
         }
     }

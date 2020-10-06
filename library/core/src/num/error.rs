@@ -77,51 +77,47 @@ pub struct ParseIntError {
 /// # Example
 ///
 /// ```
-/// #![feature(int_error_matching)]
-///
 /// # fn main() {
 /// if let Err(e) = i32::from_str_radix("a12", 10) {
 ///     println!("Failed conversion to i32: {:?}", e.kind());
 /// }
 /// # }
 /// ```
-#[unstable(
-    feature = "int_error_matching",
-    reason = "it can be useful to match errors when making error messages \
-              for integer parsing",
-    issue = "22639"
-)]
+#[stable(feature = "int_error_matching", since = "1.47.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IntErrorKind {
     /// Value being parsed is empty.
     ///
     /// Among other causes, this variant will be constructed when parsing an empty string.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     Empty,
     /// Contains an invalid digit.
     ///
     /// Among other causes, this variant will be constructed when parsing a string that
     /// contains a letter.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     InvalidDigit,
     /// Integer is too large to store in target integer type.
-    Overflow,
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
+    PosOverflow,
     /// Integer is too small to store in target integer type.
-    Underflow,
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
+    NegOverflow,
     /// Value was Zero
     ///
     /// This variant will be emitted when the parsing string has a value of zero, which
     /// would be illegal for non-zero types.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     Zero,
+    /// The value contains nothing other than signs `+` or `-`.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
+    OnlySign,
 }
 
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
-    #[unstable(
-        feature = "int_error_matching",
-        reason = "it can be useful to match errors when making error messages \
-                  for integer parsing",
-        issue = "22639"
-    )]
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     pub fn kind(&self) -> &IntErrorKind {
         &self.kind
     }
@@ -136,9 +132,10 @@ impl ParseIntError {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
             IntErrorKind::InvalidDigit => "invalid digit found in string",
-            IntErrorKind::Overflow => "number too large to fit in target type",
-            IntErrorKind::Underflow => "number too small to fit in target type",
+            IntErrorKind::PosOverflow => "number too large to fit in target type",
+            IntErrorKind::NegOverflow => "number too small to fit in target type",
             IntErrorKind::Zero => "number would be zero for non-zero type",
+            IntErrorKind::OnlySign => "only signs without digits found in string",
         }
     }
 }
