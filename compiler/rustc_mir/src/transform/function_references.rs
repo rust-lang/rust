@@ -164,7 +164,7 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
         self.tcx.struct_span_lint_hir(FUNCTION_ITEM_REFERENCES, lint_root, span, |lint| {
             lint.build(&format!(
-                "cast `{}` with `as {}{}fn({}{}){}` to use it as a pointer",
+                "cast `{}` with `as {}{}fn({}{}){}` to obtain a function pointer",
                 ident,
                 unsafety,
                 abi,
