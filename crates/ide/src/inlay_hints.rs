@@ -1,4 +1,5 @@
-use hir::{known, Adt, AssocItem, Callable, HirDisplay, ModuleDef, Semantics, Type};
+use assists::utils::FamousDefs;
+use hir::{known, Adt, AssocItem, Callable, HirDisplay, Semantics, Type};
 use ide_db::RootDatabase;
 use stdx::to_lower_snake_case;
 use syntax::{
@@ -194,7 +195,7 @@ fn get_bind_pat_hints(
     }
 
     let db = sema.db;
-    if let Some(hint) = hint_iterator(db, config, &ty, pat.clone()) {
+    if let Some(hint) = hint_iterator(sema, config, &ty, pat.clone()) {
         acc.push(hint);
     } else {
         acc.push(InlayHint {
@@ -209,45 +210,44 @@ fn get_bind_pat_hints(
 
 /// Checks if the type is an Iterator from std::iter and replaces its hint with an `impl Iterator<Item = Ty>`.
 fn hint_iterator(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
     ty: &Type,
     pat: ast::IdentPat,
 ) -> Option<InlayHint> {
+    let db = sema.db;
     let strukt = ty.as_adt()?;
     let krate = strukt.krate(db)?;
-    let module = strukt.module(db);
     if krate.declaration_name(db).as_deref() != Some("core") {
         return None;
     }
-    let module = module
+    // assert this type comes from `core::iter`
+    strukt
+        .module(db)
         .path_to_root(db)
         .into_iter()
         .rev()
         .find(|module| module.name(db) == Some(known::iter))?;
-    let iter_trait = module.scope(db, None).into_iter().find_map(|(name, def)| match def {
-        hir::ScopeDef::ModuleDef(ModuleDef::Trait(r#trait)) if name == known::Iterator => {
-            Some(r#trait)
-        }
-        _ => None,
-    })?;
+    let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
     if ty.impls_trait(db, iter_trait, &[]) {
         let assoc_type_item = iter_trait.items(db).into_iter().find_map(|item| match item {
             AssocItem::TypeAlias(alias) if alias.name(db) == known::Item => Some(alias),
             _ => None,
         })?;
         if let Some(ty) = ty.normalize_trait_assoc_type(db, iter_trait, &[], assoc_type_item) {
+            const LABEL_START: &str = "impl Iterator<Item = ";
+            const LABEL_END: &str = ">";
+
+            let ty_display = ty.display_truncated(
+                db,
+                config
+                    .max_length
+                    .map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len())),
+            );
             return Some(InlayHint {
                 range: pat.syntax().text_range(),
                 kind: InlayKind::TypeHint,
-                label: format!(
-                    "impl Iterator<Item = {}>",
-                    ty.display_truncated(
-                        db,
-                        config.max_length.map(|len| len - 22 /*len of the template string above*/)
-                    )
-                )
-                .into(),
+                label: format!("{}{}{}", LABEL_START, ty_display, LABEL_END).into(),
             });
         }
     }
@@ -401,6 +401,7 @@ fn get_callable(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<Call
 
 #[cfg(test)]
 mod tests {
+    use assists::utils::FamousDefs;
     use expect_test::{expect, Expect};
     use test_utils::extract_annotations;
 
@@ -1124,14 +1125,25 @@ fn main() {
                 chaining_hints: true,
                 max_length: None,
             },
-            r#"
+            &format!(
+                "{}\n{}\n",
+                r#"
 //- /main.rs crate:main deps:std
 use std::{Option::{self, Some, None}, iter};
 
+struct MyIter;
+
+impl iter::Iterator for MyIter {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
 fn main() {
+    let _x = MyIter;
+      //^^ MyIter
     let _x = iter::repeat(0);
-      //^^ impl Iterator<Item = i32>
-    let _y = iter::Chain(iter::repeat(0), iter::repeat(0));
       //^^ impl Iterator<Item = i32>
     fn generic<T: Clone>(t: T) {
         let _x = iter::repeat(t);
@@ -1141,42 +1153,9 @@ fn main() {
 
 //- /std.rs crate:std deps:core
 use core::*;
-
-//- /core.rs crate:core
-pub enum Option<T> {
-    Some(T),
-    None
-}
-
-pub mod iter {
-    pub use self::traits::iterator::Iterator;
-    pub mod traits { pub mod iterator {
-        pub trait Iterator {
-            type Item;
-        }
-    } }
-
-    pub use self::sources::*;
-    pub mod sources {
-        use super::Iterator;
-        pub struct Repeat<T: Clone>(pub T);
-
-        pub fn repeat<T: Clone>(t: T) -> Repeat<T> {
-            Repeat(f)
-        }
-
-        impl<T: Clone> Iterator for Repeat<T> {
-            type Item = T;
-        }
-
-        pub struct Chain<A, B>(pub A, pub B);
-
-        impl<T, A, B> Iterator for Chain<A, B> where A: Iterator<Item = T>, B: Iterator<Item = T> {
-            type Item = T;
-        }
-    }
-}
 "#,
+                FamousDefs::FIXTURE
+            ),
         );
     }
 }
