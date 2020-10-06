@@ -253,7 +253,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                         `/<build_base>/rustfix_missing_coverage.txt`",
                 );
             }
-            "check" => {
+            "check" | "c" => {
                 opts.optflag("", "all-targets", "Check all targets");
             }
             "bench" => {
