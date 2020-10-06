@@ -77,6 +77,7 @@ pub use crate::{
     hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
+    prime_caches::PrimeCachesProgress,
     references::{
         Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, RenameError,
     },
@@ -223,8 +224,11 @@ impl Analysis {
         self.with_db(|db| status::status(&*db, file_id))
     }
 
-    pub fn prime_caches(&self, files: Vec<FileId>) -> Cancelable<()> {
-        self.with_db(|db| prime_caches::prime_caches(db, files))
+    pub fn prime_caches<F>(&self, cb: F) -> Cancelable<()>
+    where
+        F: Fn(PrimeCachesProgress) + Sync + std::panic::UnwindSafe,
+    {
+        self.with_db(move |db| prime_caches::prime_caches(db, &cb))
     }
 
     /// Gets the text of the source file.

@@ -23,6 +23,17 @@ impl<T> TaskPool<T> {
         })
     }
 
+    pub(crate) fn spawn_with_sender<F>(&mut self, task: F)
+    where
+        F: FnOnce(Sender<T>) + Send + 'static,
+        T: Send + 'static,
+    {
+        self.inner.execute({
+            let sender = self.sender.clone();
+            move || task(sender)
+        })
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.inner.queued_count()
     }
