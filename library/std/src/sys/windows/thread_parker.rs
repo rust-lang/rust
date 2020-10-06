@@ -158,8 +158,10 @@ impl Parker {
             // Need to wait for unpark() using NtWaitForKeyedEvent.
             let handle = keyed_event_handle();
 
-            // NtWaitForKeyedEvent uses a unit of 100ns, and uses negative values
-            // to indicate the monotonic clock.
+            // NtWaitForKeyedEvent uses a unit of 100ns, and uses negative
+            // values to indicate a relative time on the monotonic clock.
+            // This is documented here for the underlying KeWaitForSingleObject function:
+            // https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kewaitforsingleobject
             let mut timeout = match i64::try_from((timeout.as_nanos() + 99) / 100) {
                 Ok(t) => -t,
                 Err(_) => i64::MIN,
