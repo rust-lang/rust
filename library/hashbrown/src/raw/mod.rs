@@ -781,7 +781,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                 // - we know there is enough space in the table.
                 // - all elements are unique.
                 let index = new_table.find_insert_slot(hash);
-                new_table.set_ctrl(index, h2(hash));
+                new_table.set_ctrl_h2(index, hash);
                 new_table.bucket(index).copy_from_nonoverlapping(&item);
             }
 
@@ -814,7 +814,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
 
             let bucket = self.bucket(index);
             self.table.growth_left -= special_is_empty(old_ctrl) as usize;
-            self.table.set_ctrl(index, h2(hash));
+            self.table.set_ctrl_h2(index, hash);
             bucket.write(value);
             self.table.items += 1;
             bucket
@@ -871,7 +871,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             let old_ctrl = *self.table.ctrl(index);
             self.table.growth_left -= special_is_empty(old_ctrl) as usize;
 
-            self.table.set_ctrl(index, h2(hash));
+            self.table.set_ctrl_h2(index, hash);
             bucket.write(value);
             self.table.items += 1;
             bucket
@@ -1214,14 +1214,14 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             (pos.wrapping_sub(self.probe_seq(hash).pos) & self.bucket_mask) / Group::WIDTH
         };
         if likely(probe_index(i) == probe_index(new_i)) {
-            self.set_ctrl(i, h2(hash));
+            self.set_ctrl_h2(i, hash);
             return Slot::Skip;
         }
 
         // We are moving the current item to a new position. Write
         // our H2 to the control byte of the new position.
         let prev_ctrl = *self.ctrl(new_i);
-        self.set_ctrl(new_i, h2(hash));
+        self.set_ctrl_h2(new_i, hash);
         if prev_ctrl == EMPTY {
             self.set_ctrl(i, EMPTY);
             Slot::Empty(new_i)
@@ -1242,6 +1242,13 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             pos: h1(hash) & self.bucket_mask,
             stride: 0,
         }
+    }
+
+    /// Sets a control byte to the hash, and possibly also the replicated control byte at
+    /// the end of the array.
+    #[inline]
+    unsafe fn set_ctrl_h2(&self, index: usize, hash: u64) {
+        self.set_ctrl(index, h2(hash))
     }
 
     /// Sets a control byte, and possibly also the replicated control byte at
@@ -1577,7 +1584,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
                     // - we know there is enough space in the table.
                     // - all elements are unique.
                     let index = guard_self.table.find_insert_slot(hash);
-                    guard_self.table.set_ctrl(index, h2(hash));
+                    guard_self.table.set_ctrl_h2(index, hash);
                     guard_self.bucket(index).write(item);
                 }
             }
