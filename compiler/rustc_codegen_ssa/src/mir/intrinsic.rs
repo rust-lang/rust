@@ -437,7 +437,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match split[1] {
                     "cxchg" | "cxchgweak" => {
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let weak = split[1] == "cxchgweak";
                             let pair = bx.atomic_cmpxchg(
                                 args[0].immediate(),
@@ -464,7 +464,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     "load" => {
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let size = bx.layout_of(ty).size;
                             bx.atomic_load(args[0].immediate(), order, size)
                         } else {
@@ -474,7 +474,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     "store" => {
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let size = bx.layout_of(ty).size;
                             bx.atomic_store(args[1].immediate(), args[0].immediate(), order, size);
                             return;
