@@ -49,19 +49,26 @@ impl Parker {
             return;
         }
 
-        loop {
-            // Wait for something to happen.
-            if c::WaitOnAddress::is_available() {
+        if c::WaitOnAddress::is_available() {
+            loop {
+                // Wait for something to happen, assuming it's still set to PARKED.
                 c::WaitOnAddress(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, c::INFINITE);
-            } else {
-                c::NtWaitForKeyedEvent(keyed_event_handle(), self.ptr(), 0, ptr::null_mut());
+                // Change NOTIFIED=>EMPTY but leave PARKED alone.
+                if self.state.compare_and_swap(NOTIFIED, EMPTY, Acquire) == NOTIFIED {
+                    // Actually woken up by unpark().
+                    return;
+                } else {
+                    // Spurious wake up. We loop to try again.
+                }
             }
-            // Change NOTIFIED=>EMPTY and return in that case.
-            if self.state.compare_and_swap(NOTIFIED, EMPTY, Acquire) == NOTIFIED {
-                return;
-            } else {
-                // Spurious wake up. We loop to try again.
-            }
+        } else {
+            // Wait for unpark() to produce this event.
+            c::NtWaitForKeyedEvent(keyed_event_handle(), self.ptr(), 0, ptr::null_mut());
+            // Set the state back to EMPTY (from either PARKED or NOTIFIED).
+            // Note that we don't just write EMPTY, but use swap() to also
+            // include a acquire-ordered read to synchronize with unpark()'s
+            // release-ordered write.
+            self.state.swap(EMPTY, Acquire);
         }
     }
 
@@ -77,9 +84,12 @@ impl Parker {
         if c::WaitOnAddress::is_available() {
             // Wait for something to happen, assuming it's still set to PARKED.
             c::WaitOnAddress(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, dur2timeout(timeout));
-            // Change NOTIFIED=>EMPTY and return in that case.
+            // Set the state back to EMPTY (from either PARKED or NOTIFIED).
+            // Note that we don't just write EMPTY, but use swap() to also
+            // include a acquire-ordered read to synchronize with unpark()'s
+            // release-ordered write.
             if self.state.swap(EMPTY, Acquire) == NOTIFIED {
-                return;
+                // Actually woken up by unpark().
             } else {
                 // Timeout or spurious wake up.
                 // We return either way, because we can't easily tell if it was the
@@ -97,17 +107,17 @@ impl Parker {
             };
 
             // Wait for unpark() to produce this event.
-            if c::NtWaitForKeyedEvent(handle, self.ptr(), 0, &mut timeout) == c::STATUS_SUCCESS {
-                // Awoken by another thread.
-                self.state.swap(EMPTY, Acquire);
-            } else {
-                // Not awoken by another thread (spurious or timeout).
-                if self.state.swap(EMPTY, Acquire) == NOTIFIED {
-                    // If the state is NOTIFIED, we *just* missed an unpark(),
-                    // which is now waiting for us to wait for it.
-                    // Wait for it to consume the event and unblock it.
-                    c::NtWaitForKeyedEvent(handle, self.ptr(), 0, ptr::null_mut());
-                }
+            let unparked = c::NtWaitForKeyedEvent(handle, self.ptr(), 0, &mut timeout) == c::STATUS_SUCCESS;
+
+            // Set the state back to EMPTY (from either PARKED or NOTIFIED).
+            let prev_state = self.state.swap(EMPTY, Acquire);
+
+            if !unparked && prev_state == NOTIFIED {
+                // We were awoken by a timeout, not by unpark(), but the state
+                // was set to NOTIFIED, which means we *just* missed an
+                // unpark(), which is now blocked on us to wait for it.
+                // Wait for it to consume the event and unblock that thread.
+                c::NtWaitForKeyedEvent(handle, self.ptr(), 0, ptr::null_mut());
             }
         }
     }
