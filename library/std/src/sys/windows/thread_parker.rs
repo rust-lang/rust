@@ -66,7 +66,7 @@ impl Parker {
             c::NtWaitForKeyedEvent(keyed_event_handle(), self.ptr(), 0, ptr::null_mut());
             // Set the state back to EMPTY (from either PARKED or NOTIFIED).
             // Note that we don't just write EMPTY, but use swap() to also
-            // include a acquire-ordered read to synchronize with unpark()'s
+            // include an acquire-ordered read to synchronize with unpark()'s
             // release-ordered write.
             self.state.swap(EMPTY, Acquire);
         }
@@ -86,7 +86,7 @@ impl Parker {
             c::WaitOnAddress(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, dur2timeout(timeout));
             // Set the state back to EMPTY (from either PARKED or NOTIFIED).
             // Note that we don't just write EMPTY, but use swap() to also
-            // include a acquire-ordered read to synchronize with unpark()'s
+            // include an acquire-ordered read to synchronize with unpark()'s
             // release-ordered write.
             if self.state.swap(EMPTY, Acquire) == NOTIFIED {
                 // Actually woken up by unpark().
