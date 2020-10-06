@@ -597,7 +597,7 @@ declare_features! (
     (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
 
     /// Allows argument and return position `impl Trait` in a `const fn`.
-    (active, const_fn_impl_trait, "1.48.0", Some(77463), None),
+    (active, const_impl_trait, "1.48.0", Some(77463), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

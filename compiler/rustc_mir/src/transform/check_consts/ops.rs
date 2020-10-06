@@ -562,14 +562,14 @@ pub mod ty {
             if ccx.const_kind() != hir::ConstContext::ConstFn {
                 Status::Allowed
             } else {
-                Status::Unstable(sym::const_fn_impl_trait)
+                Status::Unstable(sym::const_impl_trait)
             }
         }
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
-                sym::const_fn_impl_trait,
+                sym::const_impl_trait,
                 span,
                 &format!("`impl Trait` is not allowed in {}s", ccx.const_kind()),
             )
