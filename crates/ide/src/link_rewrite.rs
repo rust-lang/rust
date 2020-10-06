@@ -107,7 +107,7 @@ fn rewrite_intra_doc_link(
     let krate = resolved.module(db)?.krate();
     let canonical_path = resolved.canonical_path(db)?;
     let new_target = get_doc_url(db, &krate)?
-        .join(&format!("{}/", krate.display_name(db)?))
+        .join(&format!("{}/", krate.declaration_name(db)?))
         .ok()?
         .join(&canonical_path.replace("::", "/"))
         .ok()?
@@ -127,7 +127,7 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
     let module = def.module(db)?;
     let krate = module.krate();
     let canonical_path = def.canonical_path(db)?;
-    let base = format!("{}/{}", krate.display_name(db)?, canonical_path.replace("::", "/"));
+    let base = format!("{}/{}", krate.declaration_name(db)?, canonical_path.replace("::", "/"));
 
     get_doc_url(db, &krate)
         .and_then(|url| url.join(&base).ok())
@@ -248,7 +248,7 @@ fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
             //
             // FIXME: clicking on the link should just open the file in the editor,
             // instead of falling back to external urls.
-            Some(format!("https://docs.rs/{}/*/", krate.display_name(db)?))
+            Some(format!("https://docs.rs/{}/*/", krate.declaration_name(db)?))
         })
         .and_then(|s| Url::parse(&s).ok())
 }

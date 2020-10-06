@@ -173,7 +173,7 @@ impl CrateDefMap {
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
         let _p = profile::span("crate_def_map_query").detail(|| {
             db.crate_graph()[krate]
-                .display_name
+                .declaration_name
                 .as_ref()
                 .map(ToString::to_string)
                 .unwrap_or_default()

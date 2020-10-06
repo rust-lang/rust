@@ -411,7 +411,7 @@ impl ProjectWorkspace {
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
-                                Some(cargo[pkg].name.clone()),
+                                Some(CrateName::normalize_dashes(&cargo[pkg].name)),
                                 cfg_options,
                                 env,
                                 proc_macro.clone(),
@@ -546,7 +546,8 @@ fn sysroot_to_crate_graph(
 
             let env = Env::default();
             let proc_macro = vec![];
-            let name = sysroot[krate].name.clone();
+            let name = CrateName::new(&sysroot[krate].name)
+                .expect("Sysroot crates' names do not contain dashes");
             let crate_id = crate_graph.add_crate_root(
                 file_id,
                 Edition::Edition2018,

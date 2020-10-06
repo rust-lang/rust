@@ -289,7 +289,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
 
 fn render_path(db: &RootDatabase, module: Module, item_name: Option<String>) -> String {
     let crate_name =
-        db.crate_graph()[module.krate().into()].display_name.as_ref().map(ToString::to_string);
+        db.crate_graph()[module.krate().into()].declaration_name.as_ref().map(ToString::to_string);
     let module_path = module
         .path_to_root(db)
         .into_iter()
@@ -3162,5 +3162,35 @@ fn main() { let s<|>t = test().get(); }
                 ]
             "#]],
         );
+    }
+
+    #[test]
+    fn hover_displays_normalized_crate_names() {
+        check(
+            r#"
+//- /lib.rs crate:name-with-dashes
+pub mod wrapper {
+    pub struct Thing { x: u32 }
+
+    impl Thing {
+        pub fn new() -> Thing { Thing { x: 0 } }
+    }
+}
+
+//- /main.rs crate:main deps:name-with-dashes
+fn main() { let foo_test = name_with_dashes::wrapper::Thing::new<|>(); }
+"#,
+            expect![[r#"
+            *new*
+
+            ```rust
+            name_with_dashes::wrapper::Thing
+            ```
+
+            ```rust
+            pub fn new() -> Thing
+            ```
+            "#]],
+        )
     }
 }

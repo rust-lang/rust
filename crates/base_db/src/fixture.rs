@@ -154,19 +154,19 @@ impl ChangeFixture {
             assert!(meta.path.starts_with(&source_root_prefix));
 
             if let Some(krate) = meta.krate {
+                let crate_name = CrateName::normalize_dashes(&krate);
                 let crate_id = crate_graph.add_crate_root(
                     file_id,
                     meta.edition,
-                    Some(krate.clone()),
+                    Some(crate_name.clone()),
                     meta.cfg,
                     meta.env,
                     Default::default(),
                 );
-                let crate_name = CrateName::new(&krate).unwrap();
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
                 for dep in meta.deps {
-                    let dep = CrateName::new(&dep).unwrap();
+                    let dep = CrateName::normalize_dashes(&dep);
                     crate_deps.push((crate_name.clone(), dep))
                 }
             } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
@@ -187,7 +187,7 @@ impl ChangeFixture {
             crate_graph.add_crate_root(
                 crate_root,
                 Edition::Edition2018,
-                Some("test".to_string()),
+                Some(CrateName::new("test").unwrap()),
                 default_cfg,
                 Env::default(),
                 Default::default(),
