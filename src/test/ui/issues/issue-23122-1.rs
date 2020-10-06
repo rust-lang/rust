@@ -1,3 +1,5 @@
+// ignore-compare-mode-chalk
+
 trait Next {
     type Next: Next;
 }

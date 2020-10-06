@@ -22,7 +22,6 @@ use rustc_ast::ast;
 
 pub struct RustIrDatabase<'tcx> {
     pub(crate) interner: RustInterner<'tcx>,
-    pub(crate) restatic_placeholder: ty::Region<'tcx>,
     pub(crate) reempty_placeholder: ty::Region<'tcx>,
 }
 
@@ -39,11 +38,8 @@ impl<'tcx> RustIrDatabase<'tcx> {
         bound_vars: SubstsRef<'tcx>,
     ) -> Vec<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
         let predicates = self.interner.tcx.predicates_of(def_id).predicates;
-        let mut regions_substitutor = lowering::RegionsSubstitutor::new(
-            self.interner.tcx,
-            self.restatic_placeholder,
-            self.reempty_placeholder,
-        );
+        let mut regions_substitutor =
+            lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
         predicates
             .iter()
             .map(|(wc, _)| wc.subst(self.interner.tcx, bound_vars))
@@ -274,11 +270,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let trait_ref = self.interner.tcx.impl_trait_ref(def_id).expect("not an impl");
         let trait_ref = trait_ref.subst(self.interner.tcx, bound_vars);
-        let mut regions_substitutor = lowering::RegionsSubstitutor::new(
-            self.interner.tcx,
-            self.restatic_placeholder,
-            self.reempty_placeholder,
-        );
+        let mut regions_substitutor =
+            lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
         let trait_ref = trait_ref.fold_with(&mut regions_substitutor);
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
@@ -316,11 +309,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
             let self_ty = trait_ref.self_ty();
             let self_ty = self_ty.subst(self.interner.tcx, bound_vars);
-            let mut regions_substitutor = lowering::RegionsSubstitutor::new(
-                self.interner.tcx,
-                self.restatic_placeholder,
-                self.reempty_placeholder,
-            );
+            let mut regions_substitutor =
+                lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
             let self_ty = self_ty.fold_with(&mut regions_substitutor);
             let lowered_ty = self_ty.lower_into(&self.interner);
 
@@ -589,6 +579,20 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> chalk_ir::Substitution<RustInterner<'tcx>> {
         let substitution = &substs.as_slice(&self.interner)[0..substs.len(&self.interner) - 3];
         chalk_ir::Substitution::from_iter(&self.interner, substitution)
+    }
+
+    fn generator_datum(
+        &self,
+        _generator_id: chalk_ir::GeneratorId<RustInterner<'tcx>>,
+    ) -> Arc<chalk_solve::rust_ir::GeneratorDatum<RustInterner<'tcx>>> {
+        unimplemented!()
+    }
+
+    fn generator_witness_datum(
+        &self,
+        _generator_id: chalk_ir::GeneratorId<RustInterner<'tcx>>,
+    ) -> Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<RustInterner<'tcx>>> {
+        unimplemented!()
     }
 }
 
