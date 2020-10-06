@@ -46,6 +46,12 @@ pub fn setup(src_path: &Path, include_name: &str) {
         _ => return,
     };
 
+    println!();
+
+    t!(install_git_hook_maybe(src_path));
+
+    println!();
+
     println!("To get started, try one of the following commands:");
     for cmd in suggestions {
         println!("- `x.py {}`", cmd);
@@ -85,4 +91,45 @@ d) Install Rust from source"
         };
     };
     Ok(template.to_owned())
+}
+
+// install a git hook to automatically run tidy --bless, if they want
+fn install_git_hook_maybe(src_path: &Path) -> io::Result<()> {
+    let mut input = String::new();
+    println!(
+        "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
+If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` on each commit
+to ensure your code is up to par. If you decide later that this behavior is undesirable,
+simply delete the `pre-commit` file from .git/hooks."
+    );
+
+    let should_install = loop {
+        print!("Would you like to install the git hook?: [y/N] ");
+        io::stdout().flush()?;
+        input.clear();
+        io::stdin().read_line(&mut input)?;
+        break match input.trim().to_lowercase().as_str() {
+            "y" | "yes" => true,
+            "n" | "no" | "" => false,
+            _ => {
+                println!("error: unrecognized option '{}'", input.trim());
+                println!("note: press Ctrl+C to exit");
+                continue;
+            }
+        };
+    };
+
+    Ok(if should_install {
+        let src = src_path.join("src").join("etc").join("pre-commit.sh");
+        let dst = src_path.join(".git").join("hooks").join("pre-commit");
+        match fs::hard_link(src, dst) {
+            Err(e) => println!(
+                "x.py encountered an error -- do you already have the git hook installed?\n{}",
+                e
+            ),
+            Ok(_) => println!("Linked `src/etc/pre-commit.sh` to `.git/hooks/pre-commit`"),
+        };
+    } else {
+        println!("Ok, skipping installation!");
+    })
 }
