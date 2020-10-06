@@ -3,6 +3,8 @@
 use pulldown_cmark::{Event, Parser};
 
 /// Removes all markdown, keeping the text and code blocks
+///
+/// Currently limited in styling, i.e. no ascii tables or lists
 pub fn remove_markdown(markdown: &str) -> String {
     let mut out = String::new();
     let parser = Parser::new(markdown);
