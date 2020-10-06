@@ -303,6 +303,16 @@ impl CheckAttrVisitor<'tcx> {
                                 .emit();
                             return false;
                         }
+                        if doc_alias.starts_with(' ') || doc_alias.ends_with(' ') {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    "`#[doc(alias = \"...\")]` cannot start or end with ' '",
+                                )
+                                .emit();
+                            return false;
+                        }
                         if let Some(err) = match target {
                             Target::Impl => Some("implementation block"),
                             Target::ForeignMod => Some("extern block"),

@@ -42,5 +42,17 @@ error: '\t' character isn't allowed in `#[doc(alias = "...")]`
 LL | #[doc(alias = "\t")]
    |       ^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: `#[doc(alias = "...")]` cannot start or end with ' '
+  --> $DIR/check-doc-alias-attr.rs:15:7
+   |
+LL | #[doc(alias = " hello")]
+   |       ^^^^^^^^^^^^^^^^
+
+error: `#[doc(alias = "...")]` cannot start or end with ' '
+  --> $DIR/check-doc-alias-attr.rs:16:7
+   |
+LL | #[doc(alias = "hello ")]
+   |       ^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
 
