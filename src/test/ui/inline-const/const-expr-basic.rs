@@ -1,5 +1,4 @@
-// check-pass
-// compile-flags: -Z parse-only
+// run-pass
 
 #![feature(inline_const)]
 fn foo() -> i32 {
@@ -7,4 +6,8 @@ fn foo() -> i32 {
         let x = 5 + 10;
         x / 3
     }
+}
+
+fn main() {
+    assert_eq!(5, foo());
 }
