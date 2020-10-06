@@ -830,14 +830,13 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     let src = src.as_bytes();
 
     let (is_positive, digits) = match src[0] {
+        b'+' | b'-' if src[1..].is_empty() => {
+            return Err(PIE { kind: InvalidDigit(src[0] as char) });
+        }
         b'+' => (true, &src[1..]),
         b'-' if is_signed_ty => (false, &src[1..]),
         _ => (true, src),
     };
-
-    if digits.is_empty() {
-        return Err(PIE { kind: OnlySign });
-    }
 
     let mut result = T::from_u32(0);
     if is_positive {

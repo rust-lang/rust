@@ -95,7 +95,10 @@ pub enum IntErrorKind {
     /// Contains an digit invalid in its context.
     ///
     /// Among other causes, this variant will be constructed when parsing a string that
-    /// contains a letter.
+    /// contains a non-asci char.
+    ///
+    /// This variant is also constructed when a `+` or `-` is misplaced within a sting
+    /// either on its own or in the middle of a number.
     #[stable(feature = "int_error_matching", since = "1.47.0")]
     InvalidDigit(#[stable(feature = "int_error_matching", since = "1.47.0")] char),
     /// Integer is too large to store in target integer type.
@@ -110,9 +113,6 @@ pub enum IntErrorKind {
     /// would be illegal for non-zero types.
     #[stable(feature = "int_error_matching", since = "1.47.0")]
     Zero,
-    /// The value contains nothing other than sign `+` or `-`.
-    #[stable(feature = "int_error_matching", since = "1.47.0")]
-    OnlySign,
 }
 
 impl ParseIntError {
@@ -135,7 +135,6 @@ impl ParseIntError {
             IntErrorKind::PosOverflow => "number too large to fit in target type",
             IntErrorKind::NegOverflow => "number too small to fit in target type",
             IntErrorKind::Zero => "number would be zero for non-zero type",
-            IntErrorKind::OnlySign => "only sign without digits found in string",
         }
     }
 }

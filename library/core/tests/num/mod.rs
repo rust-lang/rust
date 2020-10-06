@@ -122,12 +122,13 @@ fn test_invalid() {
     test_parse::<u8>("Съешь", Err(IntErrorKind::InvalidDigit('Ð')));
     test_parse::<u8>("123Hello", Err(IntErrorKind::InvalidDigit('H')));
     test_parse::<i8>("--", Err(IntErrorKind::InvalidDigit('-')));
+    test_parse::<i8>("-", Err(IntErrorKind::InvalidDigit('-')));
+    test_parse::<i8>("+", Err(IntErrorKind::InvalidDigit('+')));
+    test_parse::<u8>("-1", Err(IntErrorKind::InvalidDigit('-')));
 }
 
 #[test]
 fn test_empty() {
-    test_parse::<i8>("-", Err(IntErrorKind::OnlySign));
-    test_parse::<i8>("+", Err(IntErrorKind::OnlySign));
     test_parse::<u8>("", Err(IntErrorKind::Empty));
 }
 
