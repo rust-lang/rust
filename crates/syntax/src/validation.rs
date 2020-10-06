@@ -3,10 +3,11 @@
 mod block;
 
 use crate::{
-    ast, match_ast, AstNode, SyntaxError,
+    algo, ast, match_ast, AstNode, SyntaxError,
     SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST, FN, INT_NUMBER, STRING, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
 };
+use rowan::Direction;
 use rustc_lexer::unescape::{
     self, unescape_byte, unescape_byte_literal, unescape_char, unescape_literal, Mode,
 };
@@ -95,6 +96,9 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::Visibility(it) => validate_visibility(it, &mut errors),
                 ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
                 ast::PathSegment(it) => validate_path_keywords(it, &mut errors),
+                ast::RefType(it) => validate_trait_object_ref_ty(it, &mut errors),
+                ast::PtrType(it) => validate_trait_object_ptr_ty(it, &mut errors),
+                ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, &mut errors),
                 _ => (),
             }
         }
@@ -300,4 +304,43 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
 
         return true;
     }
+}
+
+fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxError>) {
+    if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
+        if let Some(err) = validate_trait_object_ty(ty) {
+            errors.push(err);
+        }
+    }
+}
+
+fn validate_trait_object_ptr_ty(ty: ast::PtrType, errors: &mut Vec<SyntaxError>) {
+    if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
+        if let Some(err) = validate_trait_object_ty(ty) {
+            errors.push(err);
+        }
+    }
+}
+
+fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<SyntaxError>) {
+    if let Some(ast::Type::DynTraitType(ty)) = ty.ret_type().and_then(|ty| ty.ty()) {
+        if let Some(err) = validate_trait_object_ty(ty) {
+            errors.push(err);
+        }
+    }
+}
+
+fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
+    let tbl = ty.type_bound_list()?;
+
+    if tbl.bounds().count() > 1 {
+        let dyn_token = ty.dyn_token()?;
+        let potential_parentheses =
+            algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
+        let kind = potential_parentheses.kind();
+        if !matches!(kind, T!['('] | T![<] | T![=]) {
+            return Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
+        }
+    }
+    None
 }
