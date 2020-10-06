@@ -3,7 +3,7 @@ use crate::collections::VecDeque;
 use crate::ffi::c_void;
 use crate::ops::{Deref, DerefMut, Drop};
 use crate::ptr;
-use crate::sync::atomic::{AtomicUsize, Ordering, spin_loop_hint};
+use crate::sync::atomic::{spin_loop_hint, AtomicUsize, Ordering};
 use crate::sys::hermit::abi;
 
 /// This type provides a lock based on busy waiting to realize mutual exclusion
@@ -50,10 +50,7 @@ impl<T> Spinlock<T> {
     #[inline]
     pub unsafe fn lock(&self) -> SpinlockGuard<'_, T> {
         self.obtain_lock();
-        SpinlockGuard {
-            dequeue: &self.dequeue,
-            data: &mut *self.data.get(),
-        }
+        SpinlockGuard { dequeue: &self.dequeue, data: &mut *self.data.get() }
     }
 }
 
@@ -147,10 +144,7 @@ struct MutexInner {
 
 impl MutexInner {
     pub const fn new() -> MutexInner {
-        MutexInner {
-            locked: false,
-            blocked_task: PriorityQueue::new(),
-        }
+        MutexInner { locked: false, blocked_task: PriorityQueue::new() }
     }
 }
 
@@ -163,9 +157,7 @@ unsafe impl Sync for Mutex {}
 
 impl Mutex {
     pub const fn new() -> Mutex {
-        Mutex {
-            inner: Spinlock::new(MutexInner::new()),
-        }
+        Mutex { inner: Spinlock::new(MutexInner::new()) }
     }
 
     #[inline]
@@ -211,8 +203,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn destroy(&self) {
-    }
+    pub unsafe fn destroy(&self) {}
 }
 
 pub struct ReentrantMutex {
