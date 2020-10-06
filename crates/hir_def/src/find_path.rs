@@ -222,6 +222,7 @@ fn find_path_inner(
                     best_path_len - 1,
                     prefixed,
                 )?;
+                mark::hit!(partially_imported);
                 path.segments.push(info.path.segments.last().unwrap().clone());
                 Some(path)
             })
@@ -515,6 +516,7 @@ mod tests {
 
     #[test]
     fn partially_imported() {
+        mark::check!(partially_imported);
         // Tests that short paths are used even for external items, when parts of the path are
         // already in scope.
         let code = r#"
