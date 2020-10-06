@@ -461,15 +461,7 @@ impl ExitStatus {
     }
 
     fn exited(&self) -> bool {
-        // On Linux-like OSes this function is safe, on others it is not. See
-        // libc issue: https://github.com/rust-lang/libc/issues/1888.
-        #[cfg_attr(
-            any(target_os = "linux", target_os = "android", target_os = "emscripten"),
-            allow(unused_unsafe)
-        )]
-        unsafe {
-            libc::WIFEXITED(self.0)
-        }
+        libc::WIFEXITED(self.0)
     }
 
     pub fn success(&self) -> bool {
@@ -477,23 +469,11 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        // On Linux-like OSes this function is safe, on others it is not. See
-        // libc issue: https://github.com/rust-lang/libc/issues/1888.
-        #[cfg_attr(
-            any(target_os = "linux", target_os = "android", target_os = "emscripten"),
-            allow(unused_unsafe)
-        )]
-        if self.exited() { Some(unsafe { libc::WEXITSTATUS(self.0) }) } else { None }
+        if self.exited() { Some(libc::WEXITSTATUS(self.0)) } else { None }
     }
 
     pub fn signal(&self) -> Option<i32> {
-        // On Linux-like OSes this function is safe, on others it is not. See
-        // libc issue: https://github.com/rust-lang/libc/issues/1888.
-        #[cfg_attr(
-            any(target_os = "linux", target_os = "android", target_os = "emscripten"),
-            allow(unused_unsafe)
-        )]
-        if !self.exited() { Some(unsafe { libc::WTERMSIG(self.0) }) } else { None }
+        if !self.exited() { Some(libc::WTERMSIG(self.0)) } else { None }
     }
 }
 
