@@ -334,13 +334,15 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         &self,
         _: chalk_ir::GeneratorId<Interner>,
     ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorDatum<Interner>> {
-        todo!()
+        // FIXME
+        unimplemented!()
     }
     fn generator_witness_datum(
         &self,
         _: chalk_ir::GeneratorId<Interner>,
     ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<Interner>> {
-        todo!()
+        // FIXME
+        unimplemented!()
     }
 }
 

@@ -399,7 +399,7 @@ impl ToChalk for TypeCtor {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
                 unreachable!()
             }
-            _ => todo!(),
+            _ => unimplemented!(), // FIXME
         }
     }
 }
