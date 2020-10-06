@@ -732,10 +732,11 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             let mut start = 0;
             'outer: while let Some(i) = guard.next_deleted(start) {
                 start = i + 1;
+                // Hash the current item
+                let item = guard.bucket(i);
+                let hash = hasher(item.as_ref());
+
                 'inner: loop {
-                    // Hash the current item
-                    let item = guard.bucket(i);
-                    let hash = hasher(item.as_ref());
                     match guard.search_new_slot(i, hash) {
                         Slot::Skip => continue 'outer,
                         Slot::Empty(new_i) => {
