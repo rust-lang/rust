@@ -270,6 +270,52 @@ macro_rules! define_vector {
     }
 }
 
+/// Implements inherent methods for a float vector `$name` containing multiple
+/// `$lanes` of float `$type`, which uses `$bits_ty` as its binary
+/// representation. Called from `define_float_vector!`.
+macro_rules! impl_float_vector {
+    { $name:path => [$type:ty; $lanes:literal]; bits $bits_ty:ty; } => {
+        impl $name {
+            /// Raw transmutation to an unsigned integer vector type with the
+            /// same size and number of lanes.
+            #[inline]
+            pub fn to_bits(self) -> $bits_ty {
+                unsafe { core::mem::transmute(self) }
+            }
+
+            /// Raw transmutation from an unsigned integer vector type with the
+            /// same size and number of lanes.
+            #[inline]
+            pub fn from_bits(bits: $bits_ty) -> Self {
+                unsafe { core::mem::transmute(bits) }
+            }
+
+            /// Produces a vector where every lane has the absolute value of the
+            /// equivalently-indexed lane in `self`.
+            #[inline]
+            pub fn abs(self) -> Self {
+                let no_sign = <$bits_ty>::splat(!0 >> 1);
+                let abs = unsafe { crate::intrinsics::simd_and(self.to_bits(), no_sign) };
+                Self::from_bits(abs)
+            }
+        }
+    };
+}
+
+/// Defines a float vector `$name` containing multiple `$lanes` of float
+/// `$type`, which uses `$bits_ty` as its binary representation.
+macro_rules! define_float_vector {
+    { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); bits $bits_ty:ty; } => {
+        define_vector! {
+            $(#[$attr])*
+            struct $name([$type; $lanes]);
+        }
+
+        impl_float_vector! { $name => [$type; $lanes]; bits $bits_ty; }
+    }
+}
+
+
 /// Defines an integer vector `$name` containing multiple `$lanes` of integer `$type`.
 macro_rules! define_integer_vector {
     { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); } => {

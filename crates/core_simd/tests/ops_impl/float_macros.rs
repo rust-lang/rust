@@ -21,6 +21,26 @@ macro_rules! float_tests {
 
             const A: [$scalar; 16] = [0.,   1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12., 13., 14., 15.];
             const B: [$scalar; 16] = [16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26., 27., 28., 29., 30., 31.];
+            const C: [$scalar; 16] = [
+                -0.0,
+                0.0,
+                -1.0,
+                1.0,
+                <$scalar>::MIN,
+                <$scalar>::MAX,
+                <$scalar>::INFINITY,
+                -<$scalar>::INFINITY,
+                <$scalar>::MIN_POSITIVE,
+                -<$scalar>::MIN_POSITIVE,
+                <$scalar>::EPSILON,
+                -<$scalar>::EPSILON,
+                0.0 / 0.0,
+                -0.0 / 0.0,
+                // Still not sure if wasm can have weird nans, or I'd check them
+                // too. Until then
+                1.0 / 3.0,
+                -1.0 / 4.0
+            ];
 
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
@@ -263,6 +283,30 @@ macro_rules! float_tests {
                 let v = from_slice(&A);
                 let expected = apply_unary_lanewise(v, core::ops::Neg::neg);
                 assert_biteq!(-v, expected);
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn abs_negative() {
+                let v = -from_slice(&A);
+                let expected = apply_unary_lanewise(v, <$scalar>::abs);
+                assert_biteq!(v.abs(), expected);
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn abs_positive() {
+                let v = from_slice(&B);
+                let expected = apply_unary_lanewise(v, <$scalar>::abs);
+                assert_biteq!(v.abs(), expected);
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn abs_odd_floats() {
+                let v = from_slice(&C);
+                let expected = apply_unary_lanewise(v, <$scalar>::abs);
+                assert_biteq!(v.abs(), expected);
             }
         }
     }
