@@ -2,10 +2,10 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use lazy_static::lazy_static;
 use rustc_ast::ast::{LitKind, MetaItemKind, NestedMetaItem};
 use rustc_span::source_map;
 use source_map::Span;
+use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::{env, fmt, fs, io};
@@ -54,9 +54,8 @@ impl From<io::Error> for Error {
     }
 }
 
-lazy_static! {
-    static ref ERRORS: Mutex<Vec<Error>> = Mutex::new(Vec::new());
-}
+/// Vec of errors that might be collected during config toml parsing
+static ERRORS: SyncLazy<Mutex<Vec<Error>>> = SyncLazy::new(|| Mutex::new(Vec::new()));
 
 macro_rules! define_Conf {
     ($(#[$doc:meta] ($config:ident, $config_str:literal: $Ty:ty, $default:expr),)+) => {
@@ -82,6 +81,7 @@ macro_rules! define_Conf {
                     use serde::Deserialize;
                     pub fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<$Ty, D::Error> {
                         use super::super::{ERRORS, Error};
+
                         Ok(
                             <$Ty>::deserialize(deserializer).unwrap_or_else(|e| {
                                 ERRORS
