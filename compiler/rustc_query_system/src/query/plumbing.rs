@@ -396,63 +396,29 @@ where
 }
 
 #[inline(always)]
-fn try_execute_query<CTX, C>(
+fn try_execute_query<CTX, K, V>(
     tcx: CTX,
-    state: &QueryState<CTX::DepKind, CTX::Query, C>,
-    span: Span,
-    key: C::Key,
-    lookup: QueryLookup<'_, CTX::DepKind, CTX::Query, C::Key, C::Sharded>,
-    caller: &QueryCaller<CTX::DepKind>,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
-) -> C::Stored
+    job_id: QueryJobId<CTX::DepKind>,
+    key: K,
+    query: &QueryVtable<CTX, K, V>,
+) -> (V, DepNodeIndex, bool)
 where
-    C: QueryCache,
-    C::Key: crate::dep_graph::DepNodeParams<CTX>,
+    K: Eq + Clone + Debug + crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
-    let job = JobOwner::<'_, CTX::DepKind, CTX::Query, C>::try_start(
-        tcx, state, span, &key, lookup, query,
-    );
-
-    if let QueryCaller::Force(dep_node) = caller {
-        // We may be concurrently trying both execute and force a query.
-        // Ensure that only one of them runs the query.
-
-        let job = match job {
-            TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::Cycle(result) => return result,
-            #[cfg(parallel_compiler)]
-            TryGetJob::JobCompleted((v, _)) => {
-                return v;
-            }
-        };
-        let (result, dep_node_index) = force_query_with_job(tcx, key, job.id, *dep_node, query);
-        return job.complete(result, dep_node_index);
-    };
-
-    let job = match job {
-        TryGetJob::NotYetStarted(job) => job,
-        TryGetJob::Cycle(result) => return result,
-        #[cfg(parallel_compiler)]
-        TryGetJob::JobCompleted((v, index)) => {
-            tcx.dep_graph().read_index(index);
-            return v;
-        }
-    };
-
     // Fast path for when incr. comp. is off. `to_dep_node` is
     // expensive for some `DepKind`s.
     if !tcx.dep_graph().is_fully_enabled() {
         let null_dep_node = DepNode::new_no_params(DepKind::NULL);
-        let (result, dep_node_index) = force_query_with_job(tcx, key, job.id, null_dep_node, query);
-        return job.complete(result, dep_node_index);
+        let (result, dep_node_index) = force_query_with_job(tcx, key, job_id, null_dep_node, query);
+        return (result, dep_node_index, false);
     }
 
     if query.anon {
         let prof_timer = tcx.profiler().query_provider();
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-            tcx.start_query(job.id, diagnostics, |tcx| {
+            tcx.start_query(job_id, diagnostics, |tcx| {
                 tcx.dep_graph().with_anon_task(query.dep_kind, || query.compute(tcx, key))
             })
         });
@@ -465,7 +431,7 @@ where
             tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
         }
 
-        return job.complete(result, dep_node_index);
+        return (result, dep_node_index, false);
     }
 
     let dep_node = query.to_dep_node(tcx, &key);
@@ -474,7 +440,7 @@ where
         // The diagnostics for this query will be
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        let loaded = tcx.start_query(job.id, None, |tcx| {
+        let loaded = tcx.start_query(job_id, None, |tcx| {
             let marked = tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node);
             marked.map(|(prev_dep_node_index, dep_node_index)| {
                 (
@@ -491,14 +457,12 @@ where
             })
         });
         if let Some((result, dep_node_index)) = loaded {
-            return job.complete(result, dep_node_index);
+            return (result, dep_node_index, false);
         }
     }
 
-    let (result, dep_node_index) = force_query_with_job(tcx, key, job.id, dep_node, query);
-    let result = job.complete(result, dep_node_index);
-    tcx.dep_graph().read_index(dep_node_index);
-    result
+    let (result, dep_node_index) = force_query_with_job(tcx, key, job_id, dep_node, query);
+    return (result, dep_node_index, true);
 }
 
 fn load_from_disk_and_cache_in_memory<CTX, K, V>(
@@ -730,7 +694,43 @@ where
                 }
             }
         },
-        |key, lookup| Some(try_execute_query(tcx, state, span, key, lookup, &caller, query)),
+        |key, lookup| {
+            let job = JobOwner::try_start(tcx, state, span, &key, lookup, query);
+
+            if let QueryCaller::Force(dep_node) = &caller {
+                // We may be concurrently trying both execute and force a query.
+                // Ensure that only one of them runs the query.
+
+                let job = match job {
+                    TryGetJob::NotYetStarted(job) => job,
+                    TryGetJob::Cycle(_) => return None,
+                    #[cfg(parallel_compiler)]
+                    TryGetJob::JobCompleted(_) => {
+                        return None;
+                    }
+                };
+                let (result, dep_node_index) =
+                    force_query_with_job(tcx, key, job.id, *dep_node, query);
+                return Some(job.complete(result, dep_node_index));
+            };
+
+            let job = match job {
+                TryGetJob::NotYetStarted(job) => job,
+                TryGetJob::Cycle(result) => return Some(result),
+                #[cfg(parallel_compiler)]
+                TryGetJob::JobCompleted((v, index)) => {
+                    tcx.dep_graph().read_index(index);
+                    return Some(v);
+                }
+            };
+
+            let (result, dep_node_index, read_index) = try_execute_query(tcx, job.id, key, query);
+            if read_index {
+                tcx.dep_graph().read_index(dep_node_index);
+            }
+            let result = job.complete(result, dep_node_index);
+            Some(result)
+        },
     )
 }
 
