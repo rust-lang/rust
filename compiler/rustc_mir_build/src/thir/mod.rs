@@ -232,6 +232,9 @@ crate enum ExprKind<'tcx> {
     Return {
         value: Option<ExprRef<'tcx>>,
     },
+    ConstBlock {
+        value: &'tcx Const<'tcx>,
+    },
     Repeat {
         value: ExprRef<'tcx>,
         count: &'tcx Const<'tcx>,

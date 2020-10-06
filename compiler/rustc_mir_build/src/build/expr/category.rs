@@ -68,7 +68,9 @@ impl Category {
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::LlvmInlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
-            ExprKind::Literal { .. } | ExprKind::StaticRef { .. } => Some(Category::Constant),
+            ExprKind::ConstBlock { .. } | ExprKind::Literal { .. } | ExprKind::StaticRef { .. } => {
+                Some(Category::Constant)
+            }
 
             ExprKind::Loop { .. }
             | ExprKind::Block { .. }

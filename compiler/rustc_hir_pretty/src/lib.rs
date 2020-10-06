@@ -1135,6 +1135,15 @@ impl<'a> State<'a> {
         self.end()
     }
 
+    fn print_expr_anon_const(&mut self, anon_const: &hir::AnonConst) {
+        self.ibox(INDENT_UNIT);
+        self.s.word_space("const");
+        self.s.word("{");
+        self.print_anon_const(anon_const);
+        self.s.word("}");
+        self.end()
+    }
+
     fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::AnonConst) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
@@ -1286,6 +1295,9 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Array(ref exprs) => {
                 self.print_expr_vec(exprs);
+            }
+            hir::ExprKind::ConstBlock(ref anon_const) => {
+                self.print_expr_anon_const(anon_const);
             }
             hir::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(&element, count);
