@@ -1,6 +1,6 @@
 use syntax::{
     ast::{self, AstNode},
-    SyntaxElement, TextRange, TextSize, T,
+    SyntaxElement, SyntaxKind, TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -117,7 +117,10 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
             }
             symbol_kind => {
                 let symbol_not_in_bracket = unpaired_brackets_in_contents.is_empty();
-                if symbol_not_in_bracket && symbol_kind.is_punct() {
+                if symbol_not_in_bracket
+                    && symbol_kind != SyntaxKind::COLON
+                    && symbol_kind.is_punct()
+                {
                     return true;
                 }
             }
@@ -159,6 +162,8 @@ fn foo(n: usize) {
 }
 ",
         );
+
+        check_assist(remove_dbg, "<|>dbg!(Foo::foo_test()).bar()", "Foo::foo_test().bar()");
     }
 
     #[test]
