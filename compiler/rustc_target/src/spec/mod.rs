@@ -664,7 +664,7 @@ pub struct Target {
     /// Target triple to pass to LLVM.
     pub llvm_target: String,
     /// String to use as the `target_endian` `cfg` variable.
-    pub target_endian: String,
+    pub target_endian: crate::abi::Endian,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
     /// Width of c_int type
@@ -1143,7 +1143,7 @@ impl Target {
 
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?,
-            target_endian: get_req_field("target-endian")?,
+            target_endian: get_req_field("target-endian")?.parse()?,
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,

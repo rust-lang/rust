@@ -4,11 +4,14 @@ pub use Primitive::*;
 use crate::spec::Target;
 
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::num::NonZeroUsize;
 use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
+use std::str::FromStr;
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::json::{Json, ToJson};
 use rustc_span::Span;
 
 pub mod call;
@@ -152,15 +155,12 @@ impl TargetDataLayout {
         }
 
         // Perform consistency checks against the Target information.
-        let endian_str = match dl.endian {
-            Endian::Little => "little",
-            Endian::Big => "big",
-        };
-        if endian_str != target.target_endian {
+        if dl.endian != target.target_endian {
             return Err(format!(
                 "inconsistent target specification: \"data-layout\" claims \
-                                architecture is {}-endian, while \"target-endian\" is `{}`",
-                endian_str, target.target_endian
+                architecture is {}-endian, while \"target-endian\" is `{}`",
+                dl.endian.name(),
+                target.target_endian.name()
             ));
         }
 
@@ -232,6 +232,47 @@ impl HasDataLayout for TargetDataLayout {
 pub enum Endian {
     Little,
     Big,
+}
+
+impl Endian {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Little => "little",
+            Self::Big => "big",
+        }
+    }
+
+    pub fn is_big(&self) -> bool {
+        Self::Big == *self
+    }
+
+    pub fn is_little(&self) -> bool {
+        Self::Little == *self
+    }
+}
+
+impl fmt::Debug for Endian {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+impl FromStr for Endian {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "little" => Ok(Self::Little),
+            "big" => Ok(Self::Big),
+            _ => Err(format!(r#"unknown endian: "{}""#, s)),
+        }
+    }
+}
+
+impl ToJson for Endian {
+    fn to_json(&self) -> Json {
+        Json::String(self.name().to_owned())
+    }
 }
 
 /// Size of a type in bytes.
