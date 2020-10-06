@@ -221,7 +221,16 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::RawPtr(m) => {
                 let t = self.parameters.as_single();
-                write!(f, "*{}{}", m.as_keyword_for_ptr(), t.display(f.db))?;
+                let ty_display = t.display(f.db);
+
+                write!(f, "*{}", m.as_keyword_for_ptr())?;
+                if matches!(t, Ty::Dyn(predicates) if predicates.len() > 1) {
+                    write!(f, "(")?;
+                    write!(f, "{}", ty_display)?;
+                    write!(f, ")")?;
+                } else {
+                    write!(f, "{}", ty_display)?;
+                }
             }
             TypeCtor::Ref(m) => {
                 let t = self.parameters.as_single();
@@ -230,7 +239,15 @@ impl HirDisplay for ApplicationTy {
                 } else {
                     t.display(f.db)
                 };
-                write!(f, "&{}{}", m.as_keyword_for_ref(), ty_display)?;
+
+                write!(f, "&{}", m.as_keyword_for_ref())?;
+                if matches!(t, Ty::Dyn(predicates) if predicates.len() > 1) {
+                    write!(f, "(")?;
+                    write!(f, "{}", ty_display)?;
+                    write!(f, ")")?;
+                } else {
+                    write!(f, "{}", ty_display)?;
+                }
             }
             TypeCtor::Never => write!(f, "!")?,
             TypeCtor::Tuple { .. } => {
@@ -636,14 +653,14 @@ impl HirDisplay for GenericPredicate {
 
 impl HirDisplay for Obligation {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        Ok(match self {
-            Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db))?,
+        match self {
+            Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db)),
             Obligation::Projection(proj) => write!(
                 f,
                 "Normalize({} => {})",
                 proj.projection_ty.display(f.db),
                 proj.ty.display(f.db)
-            )?,
-        })
+            ),
+        }
     }
 }
