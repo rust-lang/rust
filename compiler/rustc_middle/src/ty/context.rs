@@ -96,6 +96,7 @@ pub struct CtxtInterners<'tcx> {
     const_: InternedSet<'tcx, Const<'tcx>>,
     /// Const allocations.
     allocation: InternedSet<'tcx, Allocation>,
+    bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -114,6 +115,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             place_elems: Default::default(),
             const_: Default::default(),
             allocation: Default::default(),
+            bound_variable_kinds: Default::default(),
         }
     }
 
@@ -1624,6 +1626,7 @@ nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
 nop_list_lift! {projs; ProjectionKind => ProjectionKind}
+nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind}
 
 // This is the impl for `&'a InternalSubsts<'a>`.
 nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
@@ -2080,6 +2083,7 @@ slice_interners!(
     predicates: _intern_predicates(Predicate<'tcx>),
     projs: _intern_projs(ProjectionKind),
     place_elems: _intern_place_elems(PlaceElem<'tcx>),
+    bound_variable_kinds: _intern_bound_variable_kinds(ty::BoundVariableKind),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2516,6 +2520,13 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
     }
 
+    pub fn intern_bound_variable_kinds(
+        self,
+        ts: &[ty::BoundVariableKind],
+    ) -> &'tcx List<ty::BoundVariableKind> {
+        if ts.is_empty() { List::empty() } else { self._intern_bound_variable_kinds(ts) }
+    }
+
     pub fn mk_fn_sig<I>(
         self,
         inputs: I,
@@ -2574,6 +2585,15 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    }
+
+    pub fn mk_bound_variable_kinds<
+        I: InternAs<[ty::BoundVariableKind], &'tcx List<ty::BoundVariableKind>>,
+    >(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_bound_variable_kinds(xs))
     }
 
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.

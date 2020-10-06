@@ -486,7 +486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let found = self.resolve_vars_with_obligations(found);
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
             let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
-            let ty = self.tcx.erase_late_bound_regions(Binder::bind(ty));
+            let ty = self.tcx.erase_late_bound_regions(Binder::bind(ty, self.tcx));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             if self.can_coerce(found, ty) {
                 err.multipart_suggestion(

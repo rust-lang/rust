@@ -366,7 +366,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         (n_tps, inputs, output, unsafety)
     };
     let sig = tcx.mk_fn_sig(inputs.into_iter(), output, false, unsafety, Abi::RustIntrinsic);
-    let sig = ty::Binder::bind(sig);
+    let sig = ty::Binder::bind(sig, tcx);
     equate_intrinsic_type(tcx, it, n_tps, sig)
 }
 

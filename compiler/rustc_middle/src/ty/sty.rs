@@ -5,6 +5,7 @@
 use self::TyKind::*;
 
 use crate::infer::canonical::Canonical;
+use crate::ty::fold::BoundVarsCollector;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::InferTy::{self, *};
 use crate::ty::{
@@ -947,6 +948,14 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(HashStable)]
+pub enum BoundVariableKind {
+    Ty(BoundTyKind),
+    Region(BoundRegionKind),
+    Const,
+}
+
 /// Binder is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
 /// (which would be represented by the type `PolyTraitRef ==
@@ -957,7 +966,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct Binder<'tcx, T>(T, u32, std::marker::PhantomData<&'tcx ()>);
+pub struct Binder<'tcx, T>(T, &'tcx List<BoundVariableKind>);
 
 impl<'tcx, T> Binder<'tcx, T>
 where
@@ -969,48 +978,22 @@ where
     /// different binding level.
     pub fn dummy(value: T) -> Binder<'tcx, T> {
         debug_assert!(!value.has_escaping_bound_vars());
-        Binder(value, 0, std::marker::PhantomData)
+        Binder(value, ty::List::empty())
     }
 
     /// Wraps `value` in a binder, binding higher-ranked vars (if any).
-    pub fn bind(value: T) -> Binder<'tcx, T> {
-        use crate::ty::fold::CountBoundVars;
-        use rustc_data_structures::fx::FxHashSet;
-        let mut counter = CountBoundVars {
-            outer_index: ty::INNERMOST,
-            bound_tys: FxHashSet::default(),
-            bound_regions: FxHashSet::default(),
-            bound_consts: FxHashSet::default(),
-        };
-        value.visit_with(&mut counter);
-        let bound_tys = counter.bound_tys.len();
-        let bound_regions = if !counter.bound_regions.is_empty() {
-            let mut env = false;
-            let mut anons = FxHashSet::default();
-            let mut named = FxHashSet::default();
-            for br in counter.bound_regions {
-                match br.kind {
-                    ty::BrAnon(idx) => {
-                        anons.insert(idx);
-                    }
-                    ty::BrNamed(def_id, _) => {
-                        named.insert(def_id);
-                    }
-                    ty::BrEnv => env = true,
-                }
-            }
-            (if env { 1 } else { 0 }) + anons.len() + named.len()
-        } else {
-            0
-        };
-        let bound_consts = counter.bound_consts.len();
-
-        let bound_vars = bound_tys + bound_regions + bound_consts;
-        Binder(value, bound_vars as u32, std::marker::PhantomData)
+    pub fn bind(value: T, tcx: TyCtxt<'tcx>) -> Binder<'tcx, T> {
+        let mut collector = BoundVarsCollector::new();
+        value.visit_with(&mut collector);
+        Binder(value, collector.into_vars(tcx))
     }
 }
 
 impl<'tcx, T> Binder<'tcx, T> {
+    pub fn bind_with_vars(value: T, vars: &'tcx List<BoundVariableKind>) -> Binder<'tcx, T> {
+        Binder(value, vars)
+    }
+
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
     /// De Bruijn indices and the like. It is usually better to
@@ -1031,12 +1014,12 @@ impl<'tcx, T> Binder<'tcx, T> {
         self.0
     }
 
-    pub fn bound_vars(&self) -> u32 {
+    pub fn bound_vars(&self) -> &'tcx List<BoundVariableKind> {
         self.1
     }
 
     pub fn as_ref(&self) -> Binder<'tcx, &T> {
-        Binder(&self.0, self.1, std::marker::PhantomData)
+        Binder(&self.0, self.1)
     }
 
     pub fn map_bound_ref<F, U>(&self, f: F) -> Binder<'tcx, U>
@@ -1050,7 +1033,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         F: FnOnce(T) -> U,
     {
-        Binder(f(self.0), self.1, std::marker::PhantomData)
+        Binder(f(self.0), self.1)
     }
 
     /// Wraps a `value` in a binder, using the same bound variables as the
@@ -1063,7 +1046,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// because bound vars aren't allowed to change here, whereas they are
     /// in `bind`. This may be (debug) asserted in the future.
     pub fn rebind<U>(&self, value: U) -> Binder<'tcx, U> {
-        Binder(value, self.1, std::marker::PhantomData)
+        Binder(value, self.1)
     }
 
     /// Unwraps and returns the value within, but only if it contains
@@ -1094,7 +1077,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         F: FnOnce(T, U) -> R,
     {
-        Binder(f(self.0, u.0), self.1, std::marker::PhantomData)
+        Binder(f(self.0, u.0), self.1)
     }
 
     /// Splits the contents into two things that share the same binder
@@ -1108,14 +1091,14 @@ impl<'tcx, T> Binder<'tcx, T> {
         F: FnOnce(T) -> (U, V),
     {
         let (u, v) = f(self.0);
-        (Binder(u, self.1, std::marker::PhantomData), Binder(v, self.1, std::marker::PhantomData))
+        (Binder(u, self.1), Binder(v, self.1))
     }
 }
 
 impl<'tcx, T> Binder<'tcx, Option<T>> {
     pub fn transpose(self) -> Option<Binder<'tcx, T>> {
         let bound_vars = self.1;
-        self.0.map(|v| Binder(v, bound_vars, std::marker::PhantomData))
+        self.0.map(|v| Binder(v, bound_vars))
     }
 }
 

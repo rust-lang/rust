@@ -124,6 +124,7 @@ where
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.as_ref().skip_binder().hash_stable(hcx, hasher);
+        self.bound_vars().hash_stable(hcx, hasher);
     }
 }
 

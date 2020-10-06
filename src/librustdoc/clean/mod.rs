@@ -48,42 +48,42 @@ crate use self::types::Type::*;
 crate use self::types::Visibility::{Inherited, Public};
 crate use self::types::*;
 
-crate trait Clean<T> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> T;
+crate trait Clean<'tcx, T> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> T;
 }
 
-impl<T: Clean<U>, U> Clean<Vec<U>> for [T] {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Vec<U> {
+impl<'tcx, T: Clean<'tcx, U>, U> Clean<'tcx, Vec<U>> for [T] {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Vec<U> {
         self.iter().map(|x| x.clean(cx)).collect()
     }
 }
 
-impl<T: Clean<U>, U, V: Idx> Clean<IndexVec<V, U>> for IndexVec<V, T> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> IndexVec<V, U> {
+impl<'tcx, T: Clean<'tcx, U>, U, V: Idx> Clean<'tcx, IndexVec<V, U>> for IndexVec<V, T> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> IndexVec<V, U> {
         self.iter().map(|x| x.clean(cx)).collect()
     }
 }
 
-impl<T: Clean<U>, U> Clean<U> for &T {
-    fn clean(&self, cx: &mut DocContext<'_>) -> U {
+impl<'tcx, T: Clean<'tcx, U>, U> Clean<'tcx, U> for &T {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> U {
         (**self).clean(cx)
     }
 }
 
-impl<T: Clean<U>, U> Clean<U> for Rc<T> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> U {
+impl<'tcx, T: Clean<'tcx, U>, U> Clean<'tcx, U> for Rc<T> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> U {
         (**self).clean(cx)
     }
 }
 
-impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Option<U> {
+impl<'tcx, T: Clean<'tcx, U>, U> Clean<'tcx, Option<U>> for Option<T> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<U> {
         self.as_ref().map(|v| v.clean(cx))
     }
 }
 
-impl Clean<ExternalCrate> for CrateNum {
-    fn clean(&self, cx: &mut DocContext<'_>) -> ExternalCrate {
+impl<'tcx> Clean<'tcx, ExternalCrate> for CrateNum {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> ExternalCrate {
         let tcx = cx.tcx;
         let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
         let krate_span = tcx.def_span(root);
@@ -204,8 +204,8 @@ impl Clean<ExternalCrate> for CrateNum {
     }
 }
 
-impl Clean<Item> for doctree::Module<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for doctree::Module<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let mut items: Vec<Item> = vec![];
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
@@ -237,14 +237,14 @@ impl Clean<Item> for doctree::Module<'_> {
     }
 }
 
-impl Clean<Attributes> for [ast::Attribute] {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Attributes {
+impl<'tcx> Clean<'tcx, Attributes> for [ast::Attribute] {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Attributes {
         Attributes::from_ast(cx.sess().diagnostic(), self, None)
     }
 }
 
-impl Clean<GenericBound> for hir::GenericBound<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
+impl<'tcx> Clean<'tcx, GenericBound> for hir::GenericBound<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericBound {
         match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
             hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
@@ -270,8 +270,8 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     }
 }
 
-impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
+impl<'tcx> Clean<'tcx, Type> for (ty::TraitRef<'tcx>, &[TypeBinding]) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
         let (trait_ref, bounds) = *self;
         inline::record_extern_fqn(cx, trait_ref.def_id, TypeKind::Trait);
         let path = external_path(
@@ -289,8 +289,8 @@ impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
     }
 }
 
-impl<'tcx> Clean<GenericBound> for ty::TraitRef<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
+impl<'tcx> Clean<'tcx, GenericBound> for ty::TraitRef<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericBound {
         GenericBound::TraitBound(
             PolyTrait { trait_: (*self, &[][..]).clean(cx), generic_params: vec![] },
             hir::TraitBoundModifier::None,
@@ -298,8 +298,8 @@ impl<'tcx> Clean<GenericBound> for ty::TraitRef<'tcx> {
     }
 }
 
-impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
+impl<'tcx> Clean<'tcx, GenericBound> for (ty::PolyTraitRef<'tcx>, &[TypeBinding]) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericBound {
         let (poly_trait_ref, bounds) = *self;
         let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
 
@@ -326,14 +326,14 @@ impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
     }
 }
 
-impl<'tcx> Clean<GenericBound> for ty::PolyTraitRef<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
+impl<'tcx> Clean<'tcx, GenericBound> for ty::PolyTraitRef<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericBound {
         (*self, &[][..]).clean(cx)
     }
 }
 
-impl<'tcx> Clean<Option<Vec<GenericBound>>> for InternalSubsts<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Option<Vec<GenericBound>> {
+impl<'tcx> Clean<'tcx, Option<Vec<GenericBound>>> for InternalSubsts<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<Vec<GenericBound>> {
         let mut v = Vec::new();
         v.extend(self.regions().filter_map(|r| r.clean(cx)).map(GenericBound::Outlives));
         v.extend(self.types().map(|t| {
@@ -346,8 +346,8 @@ impl<'tcx> Clean<Option<Vec<GenericBound>>> for InternalSubsts<'tcx> {
     }
 }
 
-impl Clean<Lifetime> for hir::Lifetime {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Lifetime {
+impl<'tcx> Clean<'tcx, Lifetime> for hir::Lifetime {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Lifetime {
         let def = cx.tcx.named_region(self.hir_id);
         match def {
             Some(
@@ -365,8 +365,8 @@ impl Clean<Lifetime> for hir::Lifetime {
     }
 }
 
-impl Clean<Lifetime> for hir::GenericParam<'_> {
-    fn clean(&self, _: &mut DocContext<'_>) -> Lifetime {
+impl<'tcx> Clean<'tcx, Lifetime> for hir::GenericParam<'tcx> {
+    fn clean(&self, _: &mut DocContext<'tcx>) -> Lifetime {
         match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
                 if !self.bounds.is_empty() {
@@ -389,8 +389,8 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
     }
 }
 
-impl Clean<Constant> for hir::ConstArg {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
+impl<'tcx> Clean<'tcx, Constant> for hir::ConstArg {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Constant {
         Constant {
             type_: cx
                 .tcx
@@ -401,14 +401,14 @@ impl Clean<Constant> for hir::ConstArg {
     }
 }
 
-impl Clean<Lifetime> for ty::GenericParamDef {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> Lifetime {
+impl<'tcx> Clean<'tcx, Lifetime> for ty::GenericParamDef {
+    fn clean(&self, _cx: &mut DocContext<'tcx>) -> Lifetime {
         Lifetime(self.name)
     }
 }
 
-impl Clean<Option<Lifetime>> for ty::RegionKind {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> Option<Lifetime> {
+impl<'tcx> Clean<'tcx, Option<Lifetime>> for ty::RegionKind {
+    fn clean(&self, _cx: &mut DocContext<'tcx>) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
             ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name) }) => {
@@ -429,8 +429,8 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
     }
 }
 
-impl Clean<WherePredicate> for hir::WherePredicate<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> WherePredicate {
+impl<'tcx> Clean<'tcx, WherePredicate> for hir::WherePredicate<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> WherePredicate {
         match *self {
             hir::WherePredicate::BoundPredicate(ref wbp) => WherePredicate::BoundPredicate {
                 ty: wbp.bounded_ty.clean(cx),
@@ -449,8 +449,8 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
     }
 }
 
-impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
+impl<'a> Clean<'a, Option<WherePredicate>> for ty::Predicate<'a> {
+    fn clean(&self, cx: &mut DocContext<'a>) -> Option<WherePredicate> {
         let bound_predicate = self.kind();
         match bound_predicate.skip_binder() {
             ty::PredicateKind::Trait(pred, _) => Some(bound_predicate.rebind(pred).clean(cx)),
@@ -469,8 +469,8 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     }
 }
 
-impl<'a> Clean<WherePredicate> for ty::PolyTraitPredicate<'a> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> WherePredicate {
+impl<'tcx> Clean<'tcx, WherePredicate> for ty::PolyTraitPredicate<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> WherePredicate {
         let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
         WherePredicate::BoundPredicate {
             ty: poly_trait_ref.skip_binder().self_ty().clean(cx),
@@ -479,10 +479,10 @@ impl<'a> Clean<WherePredicate> for ty::PolyTraitPredicate<'a> {
     }
 }
 
-impl<'tcx> Clean<Option<WherePredicate>>
+impl<'tcx> Clean<'tcx, Option<WherePredicate>>
     for ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
 {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(a, b) = self;
 
         if let (ty::ReEmpty(_), ty::ReEmpty(_)) = (a, b) {
@@ -496,8 +496,10 @@ impl<'tcx> Clean<Option<WherePredicate>>
     }
 }
 
-impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
+impl<'tcx> Clean<'tcx, Option<WherePredicate>>
+    for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>
+{
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(ty, lt) = self;
 
         if let ty::ReEmpty(_) = lt {
@@ -511,15 +513,15 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> WherePredicate {
+impl<'tcx> Clean<'tcx, WherePredicate> for ty::ProjectionPredicate<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> WherePredicate {
         let ty::ProjectionPredicate { projection_ty, ty } = self;
         WherePredicate::EqPredicate { lhs: projection_ty.clean(cx), rhs: ty.clean(cx) }
     }
 }
 
-impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
+impl<'tcx> Clean<'tcx, Type> for ty::ProjectionTy<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
         let lifted = self.lift_to_tcx(cx.tcx).unwrap();
         let trait_ = match lifted.trait_ref(cx.tcx).clean(cx) {
             GenericBound::TraitBound(t, _) => t.trait_,
@@ -533,8 +535,8 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     }
 }
 
-impl Clean<GenericParamDef> for ty::GenericParamDef {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericParamDef {
+impl<'tcx> Clean<'tcx, GenericParamDef> for ty::GenericParamDef {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericParamDef {
         let (name, kind) = match self.kind {
             ty::GenericParamDefKind::Lifetime => (self.name, GenericParamDefKind::Lifetime),
             ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
@@ -563,8 +565,8 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
     }
 }
 
-impl Clean<GenericParamDef> for hir::GenericParam<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericParamDef {
+impl<'tcx> Clean<'tcx, GenericParamDef> for hir::GenericParam<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericParamDef {
         let (name, kind) = match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
                 let name = if !self.bounds.is_empty() {
@@ -606,8 +608,8 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
     }
 }
 
-impl Clean<Generics> for hir::Generics<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Generics {
+impl<'tcx> Clean<'tcx, Generics> for hir::Generics<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Generics {
         // Synthetic type-parameters are inserted after normal ones.
         // In order for normal parameters to be able to refer to synthetic ones,
         // scans them first.
@@ -686,8 +688,8 @@ impl Clean<Generics> for hir::Generics<'_> {
     }
 }
 
-impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Generics {
+impl<'a, 'tcx> Clean<'tcx, Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx>) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Generics {
         use self::WherePredicate as WP;
         use std::collections::BTreeMap;
 
@@ -851,13 +853,13 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
     }
 }
 
-fn clean_fn_or_proc_macro(
-    item: &hir::Item<'_>,
-    sig: &'a hir::FnSig<'a>,
-    generics: &'a hir::Generics<'a>,
+fn clean_fn_or_proc_macro<'a, 'tcx>(
+    item: &hir::Item<'tcx>,
+    sig: &'a hir::FnSig<'tcx>,
+    generics: &'a hir::Generics<'tcx>,
     body_id: hir::BodyId,
     name: &mut Symbol,
-    cx: &mut DocContext<'_>,
+    cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let macro_kind = attrs.iter().find_map(|a| {
@@ -911,16 +913,18 @@ fn clean_fn_or_proc_macro(
     }
 }
 
-impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Function {
+impl<'a, 'tcx> Clean<'tcx, Function>
+    for (&'a hir::FnSig<'tcx>, &'a hir::Generics<'tcx>, hir::BodyId)
+{
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Function {
         let (generics, decl) =
             enter_impl_trait(cx, |cx| (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
         Function { decl, generics, header: self.0.header }
     }
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Arguments {
+impl<'a, 'tcx> Clean<'tcx, Arguments> for (&'a [hir::Ty<'tcx>], &'a [Ident]) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Arguments {
         Arguments {
             values: self
                 .0
@@ -938,8 +942,8 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
     }
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Arguments {
+impl<'a, 'tcx> Clean<'tcx, Arguments> for (&'a [hir::Ty<'tcx>], hir::BodyId) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Arguments {
         let body = cx.tcx.hir().body(self.1);
 
         Arguments {
@@ -948,7 +952,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
                 .iter()
                 .enumerate()
                 .map(|(i, ty)| Argument {
-                    name: name_from_pat(&body.params[i].pat),
+                    name: Symbol::intern(&rustc_hir_pretty::param_to_string(&body.params[i])),
                     type_: ty.clean(cx),
                 })
                 .collect(),
@@ -956,13 +960,13 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
     }
 }
 
-impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl<'a>, A)
+impl<'a, 'tcx, A: Copy> Clean<'tcx, FnDecl> for (&'a hir::FnDecl<'tcx>, A)
 where
-    (&'a [hir::Ty<'a>], A): Clean<Arguments>,
+    (&'a [hir::Ty<'a>], A): Clean<'tcx, Arguments>,
 {
-    fn clean(&self, cx: &mut DocContext<'_>) -> FnDecl {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> FnDecl {
         FnDecl {
-            inputs: (self.0.inputs, self.1).clean(cx),
+            inputs: (&self.0.inputs[..], self.1).clean(cx),
             output: self.0.output.clean(cx),
             c_variadic: self.0.c_variadic,
             attrs: Attributes::default(),
@@ -970,8 +974,8 @@ where
     }
 }
 
-impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> FnDecl {
+impl<'tcx> Clean<'tcx, FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> FnDecl {
         let (did, sig) = *self;
         let mut names = if did.is_local() { &[] } else { cx.tcx.fn_arg_names(did) }.iter();
 
@@ -994,8 +998,8 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     }
 }
 
-impl Clean<FnRetTy> for hir::FnRetTy<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> FnRetTy {
+impl<'tcx> Clean<'tcx, FnRetTy> for hir::FnRetTy<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> FnRetTy {
         match *self {
             Self::Return(ref typ) => Return(typ.clean(cx)),
             Self::DefaultReturn(..) => DefaultReturn,
@@ -1003,7 +1007,7 @@ impl Clean<FnRetTy> for hir::FnRetTy<'_> {
     }
 }
 
-impl Clean<bool> for hir::IsAuto {
+impl Clean<'_, bool> for hir::IsAuto {
     fn clean(&self, _: &mut DocContext<'_>) -> bool {
         match *self {
             hir::IsAuto::Yes => true,
@@ -1012,15 +1016,15 @@ impl Clean<bool> for hir::IsAuto {
     }
 }
 
-impl Clean<Type> for hir::TraitRef<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
+impl<'tcx> Clean<'tcx, Type> for hir::TraitRef<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
         let path = self.path.clean(cx);
         resolve_type(cx, path, self.hir_ref_id)
     }
 }
 
-impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> PolyTrait {
+impl<'tcx> Clean<'tcx, PolyTrait> for hir::PolyTraitRef<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> PolyTrait {
         PolyTrait {
             trait_: self.trait_ref.clean(cx),
             generic_params: self.bound_generic_params.clean(cx),
@@ -1028,14 +1032,14 @@ impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
     }
 }
 
-impl Clean<TypeKind> for hir::def::DefKind {
-    fn clean(&self, _: &mut DocContext<'_>) -> TypeKind {
+impl<'tcx> Clean<'tcx, TypeKind> for hir::def::DefKind {
+    fn clean(&self, _: &mut DocContext<'tcx>) -> TypeKind {
         (*self).into()
     }
 }
 
-impl Clean<Item> for hir::TraitItem<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for hir::TraitItem<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let local_did = self.def_id.to_def_id();
         cx.with_param_env(local_did, |cx| {
             let inner = match self.kind {
@@ -1075,8 +1079,8 @@ impl Clean<Item> for hir::TraitItem<'_> {
     }
 }
 
-impl Clean<Item> for hir::ImplItem<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for hir::ImplItem<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let local_did = self.def_id.to_def_id();
         cx.with_param_env(local_did, |cx| {
             let inner = match self.kind {
@@ -1124,8 +1128,8 @@ impl Clean<Item> for hir::ImplItem<'_> {
     }
 }
 
-impl Clean<Item> for ty::AssocItem {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let tcx = cx.tcx;
         let kind = match self.kind {
             ty::AssocKind::Const => {
@@ -1276,7 +1280,7 @@ impl Clean<Item> for ty::AssocItem {
     }
 }
 
-fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
+fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
     use rustc_hir::GenericParamCount;
     let hir::Ty { hir_id, span, ref kind } = *hir_ty;
     let qpath = match kind {
@@ -1428,8 +1432,8 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
     }
 }
 
-impl Clean<Type> for hir::Ty<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
+impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
         use rustc_hir::*;
 
         match self.kind {
@@ -1531,8 +1535,8 @@ fn normalize(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     }
 }
 
-impl<'tcx> Clean<Type> for Ty<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
+impl<'tcx> Clean<'tcx, Type> for Ty<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
         debug!("cleaning type: {:?}", self);
         let ty = normalize(cx, self).unwrap_or(self);
         match *ty.kind() {
@@ -1739,8 +1743,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
+impl<'tcx> Clean<'tcx, Constant> for ty::Const<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Constant {
         // FIXME: instead of storing the stringified expression, store `self` directly instead.
         Constant {
             type_: self.ty.clean(cx),
@@ -1749,8 +1753,8 @@ impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     }
 }
 
-impl Clean<Item> for hir::FieldDef<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for hir::FieldDef<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let what_rustc_thinks = Item::from_hir_id_and_parts(
             self.hir_id,
             Some(self.ident.name),
@@ -1762,8 +1766,8 @@ impl Clean<Item> for hir::FieldDef<'_> {
     }
 }
 
-impl Clean<Item> for ty::FieldDef {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl Clean<'tcx, Item> for ty::FieldDef {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let what_rustc_thinks = Item::from_def_id_and_parts(
             self.did,
             Some(self.ident.name),
@@ -1775,8 +1779,8 @@ impl Clean<Item> for ty::FieldDef {
     }
 }
 
-impl Clean<Visibility> for hir::Visibility<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Visibility {
+impl<'tcx> Clean<'tcx, Visibility> for hir::Visibility<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Visibility {
         match self.node {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Inherited => Visibility::Inherited,
@@ -1793,8 +1797,8 @@ impl Clean<Visibility> for hir::Visibility<'_> {
     }
 }
 
-impl Clean<Visibility> for ty::Visibility {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> Visibility {
+impl<'tcx> Clean<'tcx, Visibility> for ty::Visibility {
+    fn clean(&self, _cx: &mut DocContext<'tcx>) -> Visibility {
         match *self {
             ty::Visibility::Public => Visibility::Public,
             // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
@@ -1808,8 +1812,8 @@ impl Clean<Visibility> for ty::Visibility {
     }
 }
 
-impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> VariantStruct {
+impl<'tcx> Clean<'tcx, VariantStruct> for rustc_hir::VariantData<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> VariantStruct {
         VariantStruct {
             struct_type: CtorKind::from_hir(self),
             fields: self.fields().iter().map(|x| x.clean(cx)).collect(),
@@ -1818,8 +1822,8 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     }
 }
 
-impl Clean<Item> for ty::VariantDef {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for ty::VariantDef {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let kind = match self.ctor_kind {
             CtorKind::Const => Variant::CLike,
             CtorKind::Fn => Variant::Tuple(
@@ -1849,8 +1853,8 @@ impl Clean<Item> for ty::VariantDef {
     }
 }
 
-impl Clean<Variant> for hir::VariantData<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Variant {
+impl<'tcx> Clean<'tcx, Variant> for hir::VariantData<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Variant {
         match self {
             hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
             hir::VariantData::Tuple(..) => {
@@ -1861,14 +1865,14 @@ impl Clean<Variant> for hir::VariantData<'_> {
     }
 }
 
-impl Clean<Span> for rustc_span::Span {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> Span {
+impl<'tcx> Clean<'tcx, Span> for rustc_span::Span {
+    fn clean(&self, _cx: &mut DocContext<'tcx>) -> Span {
         Span::from_rustc_span(*self)
     }
 }
 
-impl Clean<Path> for hir::Path<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Path {
+impl<'tcx> Clean<'tcx, Path> for hir::Path<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Path {
         Path {
             global: self.is_global(),
             res: self.res,
@@ -1877,8 +1881,8 @@ impl Clean<Path> for hir::Path<'_> {
     }
 }
 
-impl Clean<GenericArgs> for hir::GenericArgs<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericArgs {
+impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericArgs {
         if self.parenthesized {
             let output = self.bindings[0].ty().clean(cx);
             GenericArgs::Parenthesized {
@@ -1905,28 +1909,28 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
     }
 }
 
-impl Clean<PathSegment> for hir::PathSegment<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> PathSegment {
+impl<'tcx> Clean<'tcx, PathSegment> for hir::PathSegment<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> PathSegment {
         PathSegment { name: self.ident.name, args: self.args().clean(cx) }
     }
 }
 
-impl Clean<String> for Ident {
+impl<'tcx> Clean<'tcx, String> for Ident {
     #[inline]
-    fn clean(&self, cx: &mut DocContext<'_>) -> String {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> String {
         self.name.clean(cx)
     }
 }
 
-impl Clean<String> for Symbol {
+impl<'tcx> Clean<'tcx, String> for Symbol {
     #[inline]
-    fn clean(&self, _: &mut DocContext<'_>) -> String {
+    fn clean(&self, _: &mut DocContext<'tcx>) -> String {
         self.to_string()
     }
 }
 
-impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> BareFunctionDecl {
+impl<'tcx> Clean<'tcx, BareFunctionDecl> for hir::BareFnTy<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, |cx| {
             (self.generic_params.clean(cx), (&*self.decl, self.param_names).clean(cx))
         });
@@ -1934,8 +1938,8 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     }
 }
 
-impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Vec<Item> {
+impl<'tcx> Clean<'tcx, Vec<Item>> for (&hir::Item<'tcx>, Option<Symbol>) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Vec<Item> {
         use hir::ItemKind;
 
         let (item, renamed) = self;
@@ -2018,8 +2022,8 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
     }
 }
 
-impl Clean<Item> for hir::Variant<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for hir::Variant<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let kind = VariantItem(self.data.clean(cx));
         let what_rustc_thinks =
             Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx);
@@ -2028,9 +2032,9 @@ impl Clean<Item> for hir::Variant<'_> {
     }
 }
 
-impl Clean<bool> for ty::ImplPolarity {
+impl<'tcx> Clean<'tcx, bool> for ty::ImplPolarity {
     /// Returns whether the impl has negative polarity.
-    fn clean(&self, _: &mut DocContext<'_>) -> bool {
+    fn clean(&self, _: &mut DocContext<'tcx>) -> bool {
         match self {
             &ty::ImplPolarity::Positive |
             // FIXME: do we want to do something else here?
@@ -2040,7 +2044,11 @@ impl Clean<bool> for ty::ImplPolarity {
     }
 }
 
-fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>) -> Vec<Item> {
+fn clean_impl<'tcx>(
+    impl_: &hir::Impl<'tcx>,
+    hir_id: hir::HirId,
+    cx: &mut DocContext<'tcx>,
+) -> Vec<Item> {
     let tcx = cx.tcx;
     let mut ret = Vec::new();
     let trait_ = impl_.of_trait.clean(cx);
@@ -2085,11 +2093,11 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
     ret
 }
 
-fn clean_extern_crate(
-    krate: &hir::Item<'_>,
+fn clean_extern_crate<'tcx>(
+    krate: &hir::Item<'tcx>,
     name: Symbol,
     orig_name: Option<Symbol>,
-    cx: &mut DocContext<'_>,
+    cx: &mut DocContext<'tcx>,
 ) -> Vec<Item> {
     // this is the ID of the `extern crate` statement
     let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id).unwrap_or(LOCAL_CRATE);
@@ -2132,12 +2140,12 @@ fn clean_extern_crate(
     }]
 }
 
-fn clean_use_statement(
-    import: &hir::Item<'_>,
+fn clean_use_statement<'tcx>(
+    import: &hir::Item<'tcx>,
     name: Symbol,
-    path: &hir::Path<'_>,
+    path: &hir::Path<'tcx>,
     kind: hir::UseKind,
-    cx: &mut DocContext<'_>,
+    cx: &mut DocContext<'tcx>,
 ) -> Vec<Item> {
     // We need this comparison because some imports (for std types for example)
     // are "inserted" as well but directly by the compiler and they should not be
@@ -2227,8 +2235,8 @@ fn clean_use_statement(
     vec![Item::from_def_id_and_parts(import.def_id.to_def_id(), None, ImportItem(inner), cx)]
 }
 
-impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for (&hir::ForeignItem<'tcx>, Option<Symbol>) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let (item, renamed) = self;
         cx.with_param_env(item.def_id.to_def_id(), |cx| {
             let kind = match item.kind {
@@ -2264,8 +2272,8 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
     }
 }
 
-impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
+impl<'tcx> Clean<'tcx, Item> for (&hir::MacroDef<'tcx>, Option<Symbol>) {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let (item, renamed) = self;
         let name = renamed.unwrap_or(item.ident.name);
         let tts = item.ast.body.inner_tokens().trees().collect::<Vec<_>>();
@@ -2313,14 +2321,14 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
     }
 }
 
-impl Clean<TypeBinding> for hir::TypeBinding<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> TypeBinding {
+impl<'tcx> Clean<'tcx, TypeBinding> for hir::TypeBinding<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> TypeBinding {
         TypeBinding { name: self.ident.name, kind: self.kind.clean(cx) }
     }
 }
 
-impl Clean<TypeBindingKind> for hir::TypeBindingKind<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> TypeBindingKind {
+impl<'tcx> Clean<'tcx, TypeBindingKind> for hir::TypeBindingKind<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'tcx>) -> TypeBindingKind {
         match *self {
             hir::TypeBindingKind::Equality { ref ty } => {
                 TypeBindingKind::Equality { ty: ty.clean(cx) }

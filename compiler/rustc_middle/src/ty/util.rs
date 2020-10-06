@@ -510,7 +510,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::ClosureKind::FnMut => self.mk_mut_ref(self.mk_region(env_region), closure_ty),
             ty::ClosureKind::FnOnce => closure_ty,
         };
-        Some(ty::Binder::bind(env_ty))
+        Some(ty::Binder::bind(env_ty, self))
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.

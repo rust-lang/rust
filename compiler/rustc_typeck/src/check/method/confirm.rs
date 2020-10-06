@@ -119,7 +119,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
-            let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
+            let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig, self.tcx));
             self.add_obligations(method_ty, all_substs, method_predicates);
         }
 

@@ -314,12 +314,12 @@ pub struct GenericArgs<'hir> {
     pub parenthesized: bool,
 }
 
-impl GenericArgs<'_> {
+impl<'tcx> GenericArgs<'tcx> {
     pub const fn none() -> Self {
         Self { args: &[], bindings: &[], parenthesized: false }
     }
 
-    pub fn inputs(&self) -> &[Ty<'_>] {
+    pub fn inputs(&self) -> &[Ty<'tcx>] {
         if self.parenthesized {
             for arg in self.args {
                 match arg {

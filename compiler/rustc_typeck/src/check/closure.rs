@@ -571,13 +571,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
 
-        let result = ty::Binder::bind(self.tcx.mk_fn_sig(
-            supplied_arguments,
-            supplied_return,
-            decl.c_variadic,
-            hir::Unsafety::Normal,
-            Abi::RustCall,
-        ));
+        let result = ty::Binder::bind(
+            self.tcx.mk_fn_sig(
+                supplied_arguments,
+                supplied_return,
+                decl.c_variadic,
+                hir::Unsafety::Normal,
+                Abi::RustCall,
+            ),
+            self.tcx,
+        );
 
         debug!("supplied_sig_of_closure: result={:?}", result);
 

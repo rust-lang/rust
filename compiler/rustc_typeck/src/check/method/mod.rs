@@ -399,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.extend(traits::predicates_for_generics(cause.clone(), self.param_env, bounds));
 
         // Also add an obligation for the method type being well-formed.
-        let method_ty = tcx.mk_fn_ptr(ty::Binder::bind(fn_sig));
+        let method_ty = tcx.mk_fn_ptr(ty::Binder::bind(fn_sig, tcx));
         debug!(
             "lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
             method_ty, obligation
