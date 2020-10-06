@@ -86,7 +86,7 @@ macro_rules! bench_insert {
             b.iter(|| {
                 m.clear();
                 for i in ($keydist).take(SIZE) {
-                    m.insert(i, DropType(i));
+                    m.insert(i, (DropType(i), [i; 20]));
                 }
                 black_box(&mut m);
             });
@@ -112,7 +112,7 @@ macro_rules! bench_grow_insert {
             b.iter(|| {
                 let mut m = $maptype::default();
                 for i in ($keydist).take(SIZE) {
-                    m.insert(i, i);
+                    m.insert(i, DropType(i));
                 }
                 black_box(&mut m);
             })

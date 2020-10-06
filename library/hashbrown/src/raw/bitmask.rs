@@ -61,16 +61,6 @@ impl BitMask {
         }
     }
 
-    #[inline]
-    pub fn take_next_bit(&mut self) -> Option<usize> {
-        if let Some(index) = self.lowest_set_bit() {
-            *self = self.remove_lowest_bit();
-            Some(index)
-        } else {
-            None
-        }
-    }
-
     /// Returns the first set bit in the `BitMask`, if there is one. The
     /// bitmask must not be empty.
     #[inline]
