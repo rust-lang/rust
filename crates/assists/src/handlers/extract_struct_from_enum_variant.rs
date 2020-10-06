@@ -10,9 +10,10 @@ use syntax::{
 };
 
 use crate::{
-    assist_context::AssistBuilder, utils::insert_use, AssistContext, AssistId, AssistKind, Assists,
+    assist_context::AssistBuilder,
+    utils::{insert_use, mod_path_to_ast, ImportScope},
+    AssistContext, AssistId, AssistKind, Assists,
 };
-use insert_use::ImportScope;
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -111,7 +112,8 @@ fn insert_import(
         let scope = ImportScope::find_insert_use_container(path.syntax(), ctx)?;
         let syntax = scope.as_syntax_node();
 
-        let new_syntax = insert_use(&scope, mod_path.to_ast_path(), ctx.config.insert_use.merge);
+        let new_syntax =
+            insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use.merge);
         // FIXME: this will currently panic as multiple imports will have overlapping text ranges
         builder.replace(syntax.text_range(), new_syntax.to_string())
     }

@@ -13,7 +13,7 @@ use hir_expand::{
     hygiene::Hygiene,
     name::{AsName, Name},
 };
-use syntax::ast::{self, make};
+use syntax::ast::{self};
 
 use crate::{
     type_ref::{TypeBound, TypeRef},
@@ -99,26 +99,6 @@ impl ModPath {
             return None;
         }
         self.segments.first()
-    }
-
-    pub fn to_ast_path(&self) -> ast::Path {
-        let mut segments = Vec::new();
-        let mut is_abs = false;
-        match self.kind {
-            PathKind::Plain => {}
-            PathKind::Super(0) => segments.push(make::path_segment_self()),
-            PathKind::Super(n) => segments.extend((0..n).map(|_| make::path_segment_super())),
-            PathKind::Crate => segments.push(make::path_segment_crate()),
-            PathKind::Abs => is_abs = true,
-            PathKind::DollarCrate(_) => (),
-        }
-
-        segments.extend(
-            self.segments
-                .iter()
-                .map(|segment| make::path_segment(make::name_ref(&segment.to_string()))),
-        );
-        make::path_from_segments(segments, is_abs)
     }
 }
 

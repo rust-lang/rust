@@ -19,6 +19,27 @@ use crate::assist_config::SnippetCap;
 pub use insert_use::MergeBehaviour;
 pub(crate) use insert_use::{insert_use, ImportScope};
 
+pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
+    let mut segments = Vec::new();
+    let mut is_abs = false;
+    match path.kind {
+        hir::PathKind::Plain => {}
+        hir::PathKind::Super(0) => segments.push(make::path_segment_self()),
+        hir::PathKind::Super(n) => segments.extend((0..n).map(|_| make::path_segment_super())),
+        hir::PathKind::DollarCrate(_) | hir::PathKind::Crate => {
+            segments.push(make::path_segment_crate())
+        }
+        hir::PathKind::Abs => is_abs = true,
+    }
+
+    segments.extend(
+        path.segments
+            .iter()
+            .map(|segment| make::path_segment(make::name_ref(&segment.to_string()))),
+    );
+    make::path_from_segments(segments, is_abs)
+}
+
 pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block)
         .filter(|expr| !expr.syntax().text().contains_char('\n'))
