@@ -845,7 +845,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         for &c in digits {
             let x = match (c as char).to_digit(radix) {
                 Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
+                None => return Err(PIE { kind: InvalidDigit(c as char) }),
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
@@ -861,7 +861,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         for &c in digits {
             let x = match (c as char).to_digit(radix) {
                 Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
+                None => return Err(PIE { kind: InvalidDigit(c as char) }),
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
