@@ -259,18 +259,20 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
 #[cfg_attr(feature = "inline-more", inline)]
 #[cfg(not(feature = "nightly"))]
 fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
-    calculate_layout_(mem::align_of::<T>(), mem::size_of::<T>(), buckets)
+    calculate_layout_for(Layout::new::<T>(), buckets)
 }
 
 #[inline]
-#[cfg(not(feature = "nightly"))]
-fn calculate_layout_(align_of: usize, size_of: usize, buckets: usize) -> Option<(Layout, usize)> {
+fn calculate_layout_for(layout: Layout, buckets: usize) -> Option<(Layout, usize)> {
     debug_assert!(buckets.is_power_of_two());
 
     // Manual layout calculation since Layout methods are not yet stable.
-    let ctrl_align = usize::max(align_of, Group::WIDTH);
-    let ctrl_offset =
-        size_of.checked_mul(buckets)?.checked_add(ctrl_align - 1)? & !(ctrl_align - 1);
+    let ctrl_align = usize::max(layout.align(), Group::WIDTH);
+    let ctrl_offset = layout
+        .size()
+        .checked_mul(buckets)?
+        .checked_add(ctrl_align - 1)?
+        & !(ctrl_align - 1);
     let len = ctrl_offset.checked_add(buckets + Group::WIDTH)?;
 
     Some((
@@ -451,18 +453,12 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     ) -> Result<Self, TryReserveError> {
         debug_assert!(buckets.is_power_of_two());
 
-        // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-        let (layout, ctrl_offset) = match calculate_layout::<T>(buckets) {
-            Some(lco) => lco,
-            None => return Err(fallibility.capacity_overflow()),
-        };
         Ok(Self {
             table: RawTableInner::new_uninitialized(
                 alloc,
+                Layout::new::<T>(),
                 buckets,
                 fallibility,
-                layout,
-                ctrl_offset,
             )?,
             marker: PhantomData,
         })
@@ -476,7 +472,12 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         fallibility: Fallibility,
     ) -> Result<Self, TryReserveError> {
         Ok(Self {
-            table: RawTableInner::fallible_with_capacity::<T>(alloc, capacity, fallibility)?,
+            table: RawTableInner::fallible_with_capacity(
+                alloc,
+                Layout::new::<T>(),
+                capacity,
+                fallibility,
+            )?,
             marker: PhantomData,
         })
     }
@@ -501,12 +502,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Deallocates the table without dropping any entries.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn free_buckets(&mut self) {
-        // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
-        let (layout, ctrl_offset) = match calculate_layout::<T>(self.buckets()) {
-            Some(lco) => lco,
-            None => hint::unreachable_unchecked(),
-        };
-        self.table.free_buckets(layout, ctrl_offset)
+        self.table.free_buckets(Layout::new::<T>())
     }
 
     /// Returns pointer to one past last element of data table.
@@ -774,8 +770,9 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             debug_assert!(self.table.items <= capacity);
 
             // Allocate and initialize the new table.
-            let mut new_table = RawTableInner::fallible_with_capacity::<T>(
+            let mut new_table = RawTableInner::fallible_with_capacity(
                 self.table.alloc.clone(),
+                Layout::new::<T>(),
                 capacity,
                 fallibility,
             )?;
@@ -788,7 +785,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             //
             // This guard is also used to free the old table on success, see
             // the comment at the bottom of this function.
-            let mut new_table = new_table.resize_panic_guard(calculate_layout::<T>);
+            let mut new_table = new_table.resize_panic_guard(Layout::new::<T>());
 
             // Copy all elements to the new table.
             for item in self.iter() {
@@ -1094,17 +1091,23 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new_uninitialized(
         alloc: A,
+        t_layout: Layout,
         buckets: usize,
         fallibility: Fallibility,
-        layout: Layout,
-        ctrl_offset: usize,
     ) -> Result<Self, TryReserveError> {
         debug_assert!(buckets.is_power_of_two());
+
+        // Avoid `Option::ok_or_else` because it bloats LLVM IR.
+        let (layout, ctrl_offset) = match calculate_layout_for(t_layout, buckets) {
+            Some(lco) => lco,
+            None => return Err(fallibility.capacity_overflow()),
+        };
 
         let ptr: NonNull<u8> = match do_alloc(&alloc, layout) {
             Ok(block) => block.cast(),
             Err(_) => return Err(fallibility.alloc_err(layout)),
         };
+
         let ctrl = NonNull::new_unchecked(ptr.as_ptr().add(ctrl_offset));
         Ok(Self {
             ctrl,
@@ -1115,8 +1118,10 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         })
     }
 
-    fn fallible_with_capacity<T>(
+    #[inline]
+    fn fallible_with_capacity(
         alloc: A,
+        t_layout: Layout,
         capacity: usize,
         fallibility: Fallibility,
     ) -> Result<Self, TryReserveError> {
@@ -1124,33 +1129,15 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             Ok(Self::new_in(alloc))
         } else {
             unsafe {
-                // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-                let buckets = match capacity_to_buckets(capacity) {
-                    Some(buckets) => buckets,
-                    None => return Err(fallibility.capacity_overflow()),
-                };
-                // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-                let (layout, ctrl_offset) = match calculate_layout::<T>(buckets) {
-                    Some(lco) => lco,
-                    None => return Err(fallibility.capacity_overflow()),
-                };
-                Self::fallible_with_capacity_inner(alloc, buckets, fallibility, layout, ctrl_offset)
+                let buckets =
+                    capacity_to_buckets(capacity).ok_or_else(|| fallibility.capacity_overflow())?;
+
+                let result = Self::new_uninitialized(alloc, t_layout, buckets, fallibility)?;
+                result.ctrl(0).write_bytes(EMPTY, result.num_ctrl_bytes());
+
+                Ok(result)
             }
         }
-    }
-
-    #[inline]
-    unsafe fn fallible_with_capacity_inner(
-        alloc: A,
-        buckets: usize,
-        fallibility: Fallibility,
-        layout: Layout,
-        ctrl_offset: usize,
-    ) -> Result<Self, TryReserveError> {
-        let result = Self::new_uninitialized(alloc, buckets, fallibility, layout, ctrl_offset)?;
-        result.ctrl(0).write_bytes(EMPTY, result.num_ctrl_bytes());
-
-        Ok(result)
     }
 
     /// Searches for an empty or deleted bucket which is suitable for inserting
@@ -1352,21 +1339,22 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     #[inline]
     unsafe fn resize_panic_guard<'s>(
         &'s mut self,
-        layout: fn(usize) -> Option<(Layout, usize)>,
+        layout_t: Layout,
     ) -> crate::scopeguard::ScopeGuard<&mut Self, impl FnMut(&mut &'s mut Self) + 's> {
         guard(self, move |self_| {
             if !self_.is_empty_singleton() {
-                let (layout, ctrl_offset) = match layout(self_.buckets()) {
-                    Some(lco) => lco,
-                    None => hint::unreachable_unchecked(),
-                };
-                self_.free_buckets(layout, ctrl_offset);
+                self_.free_buckets(layout_t);
             }
         })
     }
 
     #[inline]
-    unsafe fn free_buckets(&mut self, layout: Layout, ctrl_offset: usize) {
+    unsafe fn free_buckets(&mut self, t_layout: Layout) {
+        // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
+        let (layout, ctrl_offset) = match calculate_layout_for(t_layout, self.buckets()) {
+            Some(lco) => lco,
+            None => hint::unreachable_unchecked(),
+        };
         self.alloc.deallocate(
             NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)),
             layout,
