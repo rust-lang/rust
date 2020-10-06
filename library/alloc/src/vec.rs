@@ -2386,7 +2386,26 @@ where
 impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
     fn spec_extend(&mut self, iterator: IntoIter<T>) {
         // Avoid reallocation if we can use iterator's storage instead. This requires 1 memcpy and 0-1 memmove
-        // while reallocation would require 1 alloc, 1-2 memcpy, 1-2 free
+        // while reallocation would require 1 alloc, 1-2 memcpy, 1-2 free.
+        //
+        // A) non-empty self, partially consumed iterator
+        //
+        //  self         iterator
+        // |AAAA |      |  BBB   |
+        // |AAAA |      |    BBB |    into_vec_with_uninit_prefix
+        // |     |      |AAAABBB |    prepend
+        // |AAAABBB |       --        *self = v
+        //
+        // B) empty self, partially consumed iterator
+        //
+        // |   |        |  BBBB  |
+        // |   |        |BBBB    |    into_vec_with_uninit_prefix
+        // |BBBB    |       --        *self = v
+        //
+        // C) empty self, pristine iterator
+        //
+        // |   |        |BBBB    |
+        // |BBBB    |       --        *self = v
         if mem::size_of::<T>() > 0
             && self.capacity() - self.len() < iterator.len()
             && iterator.cap - iterator.len() >= self.len()
