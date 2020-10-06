@@ -125,11 +125,6 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        self.iter.advance_back_by(n)
-    }
-
-    #[inline]
     fn nth(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
         self.iter.nth_back(n)
     }
@@ -167,11 +162,6 @@ where
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
         self.iter.next()
-    }
-
-    #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        self.iter.advance_by(n)
     }
 
     #[inline]
