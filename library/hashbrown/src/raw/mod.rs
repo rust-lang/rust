@@ -715,13 +715,11 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// If `hasher` panics then some the table's contents may be lost.
     fn rehash_in_place(&mut self, hasher: impl Fn(&T) -> u64) {
         unsafe {
-            self.table.prepare_rehash_in_place();
-
             // If the hash function panics then properly clean up any elements
             // that we haven't rehashed yet. We unfortunately can't preserve the
             // element since we lost their hash and have no way of recovering it
             // without risking another panic.
-            let mut guard = self.table.rehash_panic_guard(
+            let mut guard = self.table.prepare_rehash_in_place(
                 mem::needs_drop::<T>(),
                 |self_: &mut RawTableInner<A>, index| {
                     self_.bucket::<T>(index).drop();
@@ -1192,28 +1190,31 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
-    #[inline]
-    fn prepare_rehash_in_place(&mut self) {
-        unsafe {
-            // Bulk convert all full control bytes to DELETED, and all DELETED
-            // control bytes to EMPTY. This effectively frees up all buckets
-            // containing a DELETED entry.
-            for i in (0..self.buckets()).step_by(Group::WIDTH) {
-                let group = Group::load_aligned(self.ctrl(i));
-                let group = group.convert_special_to_empty_and_full_to_deleted();
-                group.store_aligned(self.ctrl(i));
-            }
-
-            // Fix up the trailing control bytes. See the comments in set_ctrl
-            // for the handling of tables smaller than the group width.
-            if self.buckets() < Group::WIDTH {
-                self.ctrl(0)
-                    .copy_to(self.ctrl(Group::WIDTH), self.buckets());
-            } else {
-                self.ctrl(0)
-                    .copy_to(self.ctrl(self.buckets()), Group::WIDTH);
-            }
+    #[allow(clippy::mut_mut)]
+    unsafe fn prepare_rehash_in_place<'s>(
+        &'s mut self,
+        needs_drop: bool,
+        drop: fn(&mut Self, usize),
+    ) -> crate::scopeguard::ScopeGuard<&mut Self, impl FnMut(&mut &'s mut Self) + 's> {
+        // Bulk convert all full control bytes to DELETED, and all DELETED
+        // control bytes to EMPTY. This effectively frees up all buckets
+        // containing a DELETED entry.
+        for i in (0..self.buckets()).step_by(Group::WIDTH) {
+            let group = Group::load_aligned(self.ctrl(i));
+            let group = group.convert_special_to_empty_and_full_to_deleted();
+            group.store_aligned(self.ctrl(i));
         }
+
+        // Fix up the trailing control bytes. See the comments in set_ctrl
+        // for the handling of tables smaller than the group width.
+        if self.buckets() < Group::WIDTH {
+            self.ctrl(0)
+                .copy_to(self.ctrl(Group::WIDTH), self.buckets());
+        } else {
+            self.ctrl(0)
+                .copy_to(self.ctrl(self.buckets()), Group::WIDTH);
+        }
+        self.rehash_panic_guard(needs_drop, drop)
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
