@@ -479,8 +479,7 @@ fn ipv6_properties() {
             let loopback: u16 = 1 << 1;
             let unique_local: u16 = 1 << 2;
             let global: u16 = 1 << 3;
-            let unicast_link_local: u16 = 1 << 4;
-            let unicast_link_local_strict: u16 = 1 << 5;
+            let unicast_link_local: u16 = 1 << 5;
             let unicast_site_local: u16 = 1 << 6;
             let unicast_global: u16 = 1 << 7;
             let documentation: u16 = 1 << 8;
@@ -581,8 +580,7 @@ fn ipv6_properties() {
     let loopback: u16 = 1 << 1;
     let unique_local: u16 = 1 << 2;
     let global: u16 = 1 << 3;
-    let unicast_link_local: u16 = 1 << 4;
-    let unicast_link_local_strict: u16 = 1 << 5;
+    let unicast_link_local: u16 = 1 << 5;
     let unicast_site_local: u16 = 1 << 6;
     let unicast_global: u16 = 1 << 7;
     let documentation: u16 = 1 << 8;
@@ -616,11 +614,7 @@ fn ipv6_properties() {
         unicast_link_local
     );
 
-    check!(
-        "fe80::",
-        &[0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        unicast_link_local | unicast_link_local_strict
-    );
+    check!("fe80::", &[0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_link_local);
 
     check!(
         "febf:ffff::",
@@ -645,7 +639,7 @@ fn ipv6_properties() {
             0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             0xff, 0xff
         ],
-        unicast_link_local | unicast_link_local_strict
+        unicast_link_local
     );
 
     check!(
@@ -891,9 +885,6 @@ fn ipv6_const() {
 
     const IS_UNIQUE_LOCAL: bool = IP_ADDRESS.is_unique_local();
     assert!(!IS_UNIQUE_LOCAL);
-
-    const IS_UNICAST_LINK_LOCAL_STRICT: bool = IP_ADDRESS.is_unicast_link_local_strict();
-    assert!(!IS_UNICAST_LINK_LOCAL_STRICT);
 
     const IS_UNICAST_LINK_LOCAL: bool = IP_ADDRESS.is_unicast_link_local();
     assert!(!IS_UNICAST_LINK_LOCAL);
