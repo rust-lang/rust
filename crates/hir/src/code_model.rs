@@ -30,8 +30,12 @@ use hir_expand::{
 use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
-    method_resolution, ApplicationTy, CallableDefId, Canonical, FnSig, GenericPredicate,
-    InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
+    method_resolution,
+    traits::Solution,
+    traits::SolutionVariables,
+    ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
+    InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, Ty,
+    TyDefId, TyKind, TypeCtor,
 };
 use rustc_hash::FxHashSet;
 use stdx::impl_from;
@@ -1360,6 +1364,35 @@ impl Type {
         };
 
         db.trait_solve(self.krate, goal).is_some()
+    }
+
+    pub fn normalize_trait_assoc_type(
+        &self,
+        db: &dyn HirDatabase,
+        r#trait: Trait,
+        args: &[Type],
+        alias: TypeAlias,
+    ) -> Option<Ty> {
+        let subst = Substs::build_for_def(db, r#trait.id)
+            .push(self.ty.value.clone())
+            .fill(args.iter().map(|t| t.ty.value.clone()))
+            .build();
+        let predicate = ProjectionPredicate {
+            projection_ty: ProjectionTy { associated_ty: alias.id, parameters: subst },
+            ty: Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0)),
+        };
+        let goal = Canonical {
+            value: InEnvironment::new(
+                self.ty.environment.clone(),
+                Obligation::Projection(predicate),
+            ),
+            kinds: Arc::new([TyKind::General]),
+        };
+
+        match db.trait_solve(self.krate, goal)? {
+            Solution::Unique(SolutionVariables(subst)) => subst.value.first().cloned(),
+            Solution::Ambig(_) => None,
+        }
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {

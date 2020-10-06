@@ -1,4 +1,4 @@
-use hir::{Adt, Callable, HirDisplay, Semantics, Type};
+use hir::{known, Adt, AssocItem, Callable, HirDisplay, ModuleDef, Semantics, Type};
 use ide_db::RootDatabase;
 use stdx::to_lower_snake_case;
 use syntax::{
@@ -193,12 +193,66 @@ fn get_bind_pat_hints(
         return None;
     }
 
-    acc.push(InlayHint {
-        range: pat.syntax().text_range(),
-        kind: InlayKind::TypeHint,
-        label: ty.display_truncated(sema.db, config.max_length).to_string().into(),
-    });
+    let db = sema.db;
+    if let Some(hint) = hint_iterator(db, config, &ty, pat.clone()) {
+        acc.push(hint);
+    } else {
+        acc.push(InlayHint {
+            range: pat.syntax().text_range(),
+            kind: InlayKind::TypeHint,
+            label: ty.display_truncated(db, config.max_length).to_string().into(),
+        });
+    }
+
     Some(())
+}
+
+/// Checks if the type is an Iterator from std::iter and replaces its hint with an `impl Iterator<Item = Ty>`.
+fn hint_iterator(
+    db: &RootDatabase,
+    config: &InlayHintsConfig,
+    ty: &Type,
+    pat: ast::IdentPat,
+) -> Option<InlayHint> {
+    let strukt = ty.as_adt()?;
+    let krate = strukt.krate(db)?;
+    let module = strukt.module(db);
+    if krate.declaration_name(db).as_deref() != Some("core") {
+        return None;
+    }
+    let module = module
+        .path_to_root(db)
+        .into_iter()
+        .rev()
+        .find(|module| module.name(db) == Some(known::iter))?;
+    let iter_trait = module.scope(db, None).into_iter().find_map(|(name, def)| match def {
+        hir::ScopeDef::ModuleDef(ModuleDef::Trait(r#trait)) if name == known::Iterator => {
+            Some(r#trait)
+        }
+        _ => None,
+    })?;
+    if ty.impls_trait(db, iter_trait, &[]) {
+        let assoc_type_item = iter_trait.items(db).into_iter().find_map(|item| match item {
+            AssocItem::TypeAlias(alias) if alias.name(db) == known::Item => Some(alias),
+            _ => None,
+        })?;
+        if let Some(ty) = ty.normalize_trait_assoc_type(db, iter_trait, &[], assoc_type_item) {
+            return Some(InlayHint {
+                range: pat.syntax().text_range(),
+                kind: InlayKind::TypeHint,
+                label: format!(
+                    "impl Iterator<Item = {}>",
+                    ty.display_truncated(
+                        db,
+                        config.max_length.map(|len| len - 22 /*len of the template string above*/)
+                    )
+                )
+                .into(),
+            });
+        }
+    }
+
+    None
 }
 
 fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &Type) -> bool {
@@ -1056,6 +1110,71 @@ fn main() {
       //^^ Vec<Box<*const (dyn Display + Sync)>>
     let _v = Vec::<Box<dyn Display + Sync>>::new();
       //^^ Vec<Box<dyn Display + Sync>>
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn shorten_iterator_hints() {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: true,
+                chaining_hints: true,
+                max_length: None,
+            },
+            r#"
+//- /main.rs crate:main deps:std
+use std::{Option::{self, Some, None}, iter};
+
+fn main() {
+    let _x = iter::repeat(0);
+      //^^ impl Iterator<Item = i32>
+    let _y = iter::Chain(iter::repeat(0), iter::repeat(0));
+      //^^ impl Iterator<Item = i32>
+    fn generic<T: Clone>(t: T) {
+        let _x = iter::repeat(t);
+          //^^ impl Iterator<Item = T>
+    }
+}
+
+//- /std.rs crate:std deps:core
+use core::*;
+
+//- /core.rs crate:core
+pub enum Option<T> {
+    Some(T),
+    None
+}
+
+pub mod iter {
+    pub use self::traits::iterator::Iterator;
+    pub mod traits { pub mod iterator {
+        pub trait Iterator {
+            type Item;
+        }
+    } }
+
+    pub use self::sources::*;
+    pub mod sources {
+        use super::Iterator;
+        pub struct Repeat<T: Clone>(pub T);
+
+        pub fn repeat<T: Clone>(t: T) -> Repeat<T> {
+            Repeat(f)
+        }
+
+        impl<T: Clone> Iterator for Repeat<T> {
+            type Item = T;
+        }
+
+        pub struct Chain<A, B>(pub A, pub B);
+
+        impl<T, A, B> Iterator for Chain<A, B> where A: Iterator<Item = T>, B: Iterator<Item = T> {
+            type Item = T;
+        }
+    }
 }
 "#,
         );
