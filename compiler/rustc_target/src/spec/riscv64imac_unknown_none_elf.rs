@@ -5,7 +5,7 @@ pub fn target() -> Target {
     Target {
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n64-S128".to_string(),
         llvm_target: "riscv64".to_string(),
-        target_endian: "little".to_string(),
+        target_endian: crate::abi::Endian::Little,
         pointer_width: 64,
         target_c_int_width: "32".to_string(),
         target_os: "none".to_string(),

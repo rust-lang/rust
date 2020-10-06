@@ -32,7 +32,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "wasm32-unknown-unknown".to_string(),
-        target_endian: "little".to_string(),
+        target_endian: crate::abi::Endian::Little,
         pointer_width: 32,
         target_c_int_width: "32".to_string(),
         target_os: "unknown".to_string(),

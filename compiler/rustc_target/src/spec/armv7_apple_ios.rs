@@ -5,7 +5,7 @@ pub fn target() -> Target {
     let base = opts(Arch::Armv7);
     Target {
         llvm_target: "armv7-apple-ios".to_string(),
-        target_endian: "little".to_string(),
+        target_endian: crate::abi::Endian::Little,
         pointer_width: 32,
         target_c_int_width: "32".to_string(),
         data_layout: "e-m:o-p:32:32-Fi8-f64:32:64-v64:32:64-v128:32:128-a:0:32-n32-S32".to_string(),

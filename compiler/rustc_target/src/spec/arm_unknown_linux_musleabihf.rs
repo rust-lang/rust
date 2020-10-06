@@ -12,7 +12,7 @@ pub fn target() -> Target {
         // uses it to determine the calling convention and float ABI, and it
         // doesn't support the "musleabihf" value.
         llvm_target: "arm-unknown-linux-gnueabihf".to_string(),
-        target_endian: "little".to_string(),
+        target_endian: crate::abi::Endian::Little,
         pointer_width: 32,
         target_c_int_width: "32".to_string(),
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),

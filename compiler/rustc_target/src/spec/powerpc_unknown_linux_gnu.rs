@@ -7,7 +7,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "powerpc-unknown-linux-gnu".to_string(),
-        target_endian: "big".to_string(),
+        target_endian: crate::abi::Endian::Big,
         pointer_width: 32,
         target_c_int_width: "32".to_string(),
         data_layout: "E-m:e-p:32:32-i64:64-n32".to_string(),

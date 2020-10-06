@@ -16,7 +16,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target,
-        target_endian: "little".to_string(),
+        target_endian: crate::abi::Endian::Little,
         pointer_width: 64,
         target_c_int_width: "32".to_string(),
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),

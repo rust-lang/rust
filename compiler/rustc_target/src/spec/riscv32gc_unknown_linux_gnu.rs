@@ -3,7 +3,7 @@ use crate::spec::{CodeModel, LinkerFlavor, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "riscv32-unknown-linux-gnu".to_string(),
-        target_endian: "little".to_string(),
+        target_endian: crate::abi::Endian::Little,
         pointer_width: 32,
         target_c_int_width: "32".to_string(),
         target_env: "gnu".to_string(),

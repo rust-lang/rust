@@ -13,7 +13,7 @@ pub fn target() -> Target {
 
         linker_flavor: LinkerFlavor::PtxLinker,
 
-        target_endian: "little".to_string(),
+        target_endian: crate::abi::Endian::Little,
         pointer_width: 64,
         target_c_int_width: "32".to_string(),
 
