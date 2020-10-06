@@ -168,8 +168,27 @@ fn search_is_some() {
                                    x < 0
                                }
                    ).is_some();
+    
+    let s1 = String::from("hello world");
+    let s2 = String::from("world");
+    // Check caller `find()` is a &`static str case
+    let _ = "hello world".find("world").is_some();
+    let _ = "hello world".find(&s2).is_some();
+    let _ = "hello world".find(&s2[2..]).is_some();
+    // Check caller of `find()` is a String case
+    let _ = s1.find("world").is_some();
+    let _ = s1.find(&s2).is_some();
+    let _ = s1.find(&s2[2..]).is_some();
+    //  Check caller of `find()` is a slice of String case
+    let _ = s1[2..].find("world").is_some();
+    let _ = s1[2..].find(&s2).is_some();
+    let _ = s1[2..].find(&s2[2..]).is_some();
 
-    // Check that we don't lint if the caller is not an `Iterator`.
+    // Check that we don't lint if `find()` is called with
+    // Pattern that is not a string
+    let _ = s1.find(|c: char| c == 'o' || c == 'l').is_some();
+
+    // Check that we don't lint if the caller is not an `Iterator` or string
     let foo = IteratorFalsePositives { foo: 0 };
     let _ = foo.find().is_some();
     let _ = foo.position().is_some();

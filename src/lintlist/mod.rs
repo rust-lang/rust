@@ -2121,7 +2121,7 @@ vec![
     Lint {
         name: "search_is_some",
         group: "complexity",
-        desc: "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`",
+        desc: "using an iterator or string search followed by `is_some()`, which is more succinctly expressed as a call to `any()` or `contains()`",
         deprecation: None,
         module: "methods",
     },
