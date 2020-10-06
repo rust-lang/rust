@@ -1980,12 +1980,13 @@ impl Rewrite for ast::Param {
                 has_multiple_attr_lines,
             )
         } else if is_named_param(self) {
+            let param_name = &self
+                .pat
+                .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
             let mut result = combine_strs_with_missing_comments(
                 context,
                 &param_attrs_result,
-                &self
-                    .pat
-                    .rewrite(context, Shape::legacy(shape.width, shape.indent))?,
+                param_name,
                 span,
                 shape,
                 !has_multiple_attr_lines,
@@ -1999,10 +2000,30 @@ impl Rewrite for ast::Param {
                 result.push_str(&after_comment);
                 let overhead = last_line_width(&result);
                 let max_width = shape.width.checked_sub(overhead)?;
-                let ty_str = self
+                if let Some(ty_str) = self
                     .ty
-                    .rewrite(context, Shape::legacy(max_width, shape.indent))?;
-                result.push_str(&ty_str);
+                    .rewrite(context, Shape::legacy(max_width, shape.indent))
+                {
+                    result.push_str(&ty_str);
+                } else {
+                    result = combine_strs_with_missing_comments(
+                        context,
+                        &(param_attrs_result + &shape.to_string_with_newline(context.config)),
+                        param_name,
+                        span,
+                        shape,
+                        !has_multiple_attr_lines,
+                    )?;
+                    result.push_str(&before_comment);
+                    result.push_str(colon_spaces(context.config));
+                    result.push_str(&after_comment);
+                    let overhead = last_line_width(&result);
+                    let max_width = shape.width.checked_sub(overhead)?;
+                    let ty_str = self
+                        .ty
+                        .rewrite(context, Shape::legacy(max_width, shape.indent))?;
+                    result.push_str(&ty_str);
+                }
             }
 
             Some(result)

@@ -10,7 +10,8 @@ use crate::rewrite::RewriteContext;
 use crate::shape::{Indent, Shape};
 use crate::string::{rewrite_string, StringFormat};
 use crate::utils::{
-    count_newlines, first_line_width, last_line_width, trim_left_preserve_layout, unicode_str_width,
+    count_newlines, first_line_width, last_line_width, trim_left_preserve_layout,
+    trimmed_last_line_width, unicode_str_width,
 };
 use crate::{ErrorKind, FormattingError};
 
@@ -171,11 +172,12 @@ pub(crate) fn combine_strs_with_missing_comments(
         String::with_capacity(prev_str.len() + next_str.len() + shape.indent.width() + 128);
     result.push_str(prev_str);
     let mut allow_one_line = !prev_str.contains('\n') && !next_str.contains('\n');
-    let first_sep = if prev_str.is_empty() || next_str.is_empty() {
-        ""
-    } else {
-        " "
-    };
+    let first_sep =
+        if prev_str.is_empty() || next_str.is_empty() || trimmed_last_line_width(prev_str) == 0 {
+            ""
+        } else {
+            " "
+        };
     let mut one_line_width =
         last_line_width(prev_str) + first_line_width(next_str) + first_sep.len();
 
