@@ -1287,8 +1287,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Opaque(ref def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
                 if let ty::PredicateAtom::Trait(trait_predicate, _) = predicate.skip_binders() {
-                    if must_use_attr(&cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some()
-                    {
+                    if must_use_attr(&cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some() {
                         return true;
                     }
                 }
