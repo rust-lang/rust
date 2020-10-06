@@ -767,25 +767,9 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         fallibility: Fallibility,
     ) -> Result<(), TryReserveError> {
         unsafe {
-            debug_assert!(self.table.items <= capacity);
-
-            // Allocate and initialize the new table.
-            let mut new_table = RawTableInner::fallible_with_capacity(
-                self.table.alloc.clone(),
-                Layout::new::<T>(),
-                capacity,
-                fallibility,
-            )?;
-            new_table.growth_left -= self.table.items;
-            new_table.items = self.table.items;
-
-            // The hash function may panic, in which case we simply free the new
-            // table without dropping any elements that may have been copied into
-            // it.
-            //
-            // This guard is also used to free the old table on success, see
-            // the comment at the bottom of this function.
-            let mut new_table = new_table.resize_panic_guard(Layout::new::<T>());
+            let mut new_table =
+                self.table
+                    .prepare_resize(Layout::new::<T>(), capacity, fallibility)?;
 
             // Copy all elements to the new table.
             for item in self.iter() {
@@ -1337,15 +1321,35 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
     #[allow(clippy::mut_mut)]
     #[inline]
-    unsafe fn resize_panic_guard<'s>(
-        &'s mut self,
+    unsafe fn prepare_resize(
+        &self,
         layout_t: Layout,
-    ) -> crate::scopeguard::ScopeGuard<&mut Self, impl FnMut(&mut &'s mut Self) + 's> {
-        guard(self, move |self_| {
+        capacity: usize,
+        fallibility: Fallibility,
+    ) -> Result<crate::scopeguard::ScopeGuard<Self, impl FnMut(&mut Self)>, TryReserveError> {
+        debug_assert!(self.items <= capacity);
+
+        // Allocate and initialize the new table.
+        let mut new_table = RawTableInner::fallible_with_capacity(
+            self.alloc.clone(),
+            layout_t,
+            capacity,
+            fallibility,
+        )?;
+        new_table.growth_left -= self.items;
+        new_table.items = self.items;
+
+        // The hash function may panic, in which case we simply free the new
+        // table without dropping any elements that may have been copied into
+        // it.
+        //
+        // This guard is also used to free the old table on success, see
+        // the comment at the bottom of this function.
+        Ok(guard(new_table, move |self_| {
             if !self_.is_empty_singleton() {
                 self_.free_buckets(layout_t);
             }
-        })
+        }))
     }
 
     #[inline]
