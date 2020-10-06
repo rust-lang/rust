@@ -4,6 +4,8 @@
 //! module, and we use to statically check that we only produce snippet
 //! assists if we are allowed to.
 
+use hir::PrefixKind;
+
 use crate::{utils::MergeBehaviour, AssistKind};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -37,10 +39,11 @@ impl Default for AssistConfig {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InsertUseConfig {
     pub merge: Option<MergeBehaviour>,
+    pub prefix_kind: PrefixKind,
 }
 
 impl Default for InsertUseConfig {
     fn default() -> Self {
-        InsertUseConfig { merge: Some(MergeBehaviour::Full) }
+        InsertUseConfig { merge: Some(MergeBehaviour::Full), prefix_kind: PrefixKind::Plain }
     }
 }

@@ -10,6 +10,7 @@
 use std::{ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
+use hir::PrefixKind;
 use ide::{
     AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig,
     MergeBehaviour,
@@ -289,6 +290,11 @@ impl Config {
             MergeBehaviourDef::Full => Some(MergeBehaviour::Full),
             MergeBehaviourDef::Last => Some(MergeBehaviour::Last),
         };
+        self.assist.insert_use.prefix_kind = match data.assist_importPrefix {
+            ImportPrefixDef::Plain => PrefixKind::Plain,
+            ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
+            ImportPrefixDef::BySelf => PrefixKind::BySelf,
+        };
 
         self.call_info_full = data.callInfo_full;
 
@@ -403,11 +409,19 @@ enum ManifestOrProjectJson {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 enum MergeBehaviourDef {
     None,
     Full,
     Last,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ImportPrefixDef {
+    Plain,
+    BySelf,
+    ByCrate,
 }
 
 macro_rules! config_data {
@@ -434,6 +448,7 @@ macro_rules! config_data {
 config_data! {
     struct ConfigData {
         assist_importMergeBehaviour: MergeBehaviourDef = MergeBehaviourDef::None,
+        assist_importPrefix: ImportPrefixDef           = ImportPrefixDef::Plain,
 
         callInfo_full: bool = true,
 

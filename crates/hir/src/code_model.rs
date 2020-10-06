@@ -4,6 +4,7 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition, FileId};
 use either::Either;
+use hir_def::find_path::PrefixKind;
 use hir_def::{
     adt::ReprKind,
     adt::StructKind,
@@ -390,8 +391,9 @@ impl Module {
         self,
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
+        prefix_kind: PrefixKind,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path_prefixed(db, item.into(), self.into())
+        hir_def::find_path::find_path_prefixed(db, item.into(), self.into(), prefix_kind)
     }
 }
 

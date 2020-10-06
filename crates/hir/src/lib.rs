@@ -48,6 +48,7 @@ pub use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
+    find_path::PrefixKind,
     item_scope::ItemInNs,
     nameres::ModuleSource,
     path::ModPath,
