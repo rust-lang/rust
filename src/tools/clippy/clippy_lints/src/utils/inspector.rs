@@ -338,6 +338,11 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, base, indent + 1);
             }
         },
+        hir::ExprKind::ConstBlock(ref anon_const) => {
+            println!("{}ConstBlock", ind);
+            println!("{}anon_const:", ind);
+            print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
+        },
         hir::ExprKind::Repeat(ref val, ref anon_const) => {
             println!("{}Repeat", ind);
             println!("{}value:", ind);

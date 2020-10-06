@@ -506,6 +506,11 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("    if {}.len() == {};", fields_pat, fields.len());
                 println!("    // unimplemented: field checks");
             },
+            ExprKind::ConstBlock(_) => {
+                let value_pat = self.next("value");
+                println!("Const({})", value_pat);
+                self.current = value_pat;
+            },
             // FIXME: compute length (needs type info)
             ExprKind::Repeat(ref value, _) => {
                 let value_pat = self.next("value");
