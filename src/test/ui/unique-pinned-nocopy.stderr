@@ -1,24 +1,27 @@
 error[E0599]: no method named `clone` found for struct `Box<R>` in the current scope
   --> $DIR/unique-pinned-nocopy.rs:12:16
    |
-LL | struct R {
-   | -------- doesn't satisfy `R: Clone`
+LL |   struct R {
+   |   -------- doesn't satisfy `R: Clone`
 ...
-LL |     let _j = i.clone();
-   |                ^^^^^ method not found in `Box<R>`
-   | 
-  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   |
-LL | pub struct Box<T: ?Sized>(Unique<T>);
-   | ------------------------------------- doesn't satisfy `Box<R>: Clone`
+LL |       let _j = i.clone();
+   |                  ^^^^^ method not found in `Box<R>`
    | 
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
-LL |     fn clone(&self) -> Self;
-   |        -----
-   |        |
-   |        the method is available for `Arc<Box<R>>` here
-   |        the method is available for `Rc<Box<R>>` here
+LL |       fn clone(&self) -> Self;
+   |          -----
+   |          |
+   |          the method is available for `Arc<Box<R>>` here
+   |          the method is available for `Rc<Box<R>>` here
+   | 
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+LL | / pub struct Box<
+LL | |     T: ?Sized,
+LL | |     #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global,
+LL | | >(Unique<T>, A);
+   | |________________- doesn't satisfy `Box<R>: Clone`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `R: Clone`
