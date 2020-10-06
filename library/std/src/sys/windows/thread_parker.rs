@@ -1,3 +1,62 @@
+// Thread parker implementation for Windows.
+//
+// This uses WaitOnAddress and WakeByAddressSingle if available (Windows 8+).
+// This modern API is exactly the same as the futex syscalls the Linux thread
+// parker uses. When These APIs are available, the implementation of this
+// thread parker matches the Linux thread parker exactly.
+//
+// However, when the modern API is not available, this implementation falls
+// back to NT Keyed Events, which are similar, but have some important
+// differences. These are available since Windows XP.
+//
+// WaitOnAddress first checks the state of the thread parker to make sure it no
+// WakeByAddressSingle calls can be missed between updating the parker state
+// and calling the function.
+//
+// NtWaitForKeyedEvent does not have this option, and unconditionally blocks
+// without checking the parker state first. Instead, NtReleaseKeyedEvent
+// (unlike WakeByAddressSingle) *blocks* until it woke up a thread waiting for
+// it by NtWaitForKeyedEvent. This way, we can be sure no events are missed,
+// but we need to be careful not to block unpark() if park_timeout() was woken
+// up by a timeout instead of unpark().
+//
+// Unlike WaitOnAddress, NtWaitForKeyedEvent/NtReleaseKeyedEvent operate on a
+// HANDLE (created with NtCreateKeyedEvent). This means that we can be sure
+// a succesfully awoken park() was awoken by unpark() and not a
+// NtReleaseKeyedEvent call from some other code, as these events are not only
+// matched by the key (address of the parker (state)), but also by this HANDLE.
+// We lazily allocate this handle the first time it is needed.
+//
+// The fast path (calling park() after unpark() was already called) and the
+// possible states are the same for both implementations. This is used here to
+// make sure the fast path does not even check which API to use, but can return
+// right away, independent of the used API. Only the slow paths (which will
+// actually block/wake a thread) check which API is available and have
+// different implementations.
+//
+// Unfortunately, NT Keyed Events are an undocumented Windows API. However:
+// - This API is relatively simple with obvious behaviour, and there are
+//   several (unofficial) articles documenting the details. [1]
+// - `parking_lot` has been using this API for years (on Windows versions
+//   before Windows 8). [2] Many big projects extensively use parking_lot,
+//   such as servo and the Rust compiler itself.
+// - It is the underlying API used by Windows SRW locks and Windows critical
+//   sections. [3] [4]
+// - The source code of the implementations of Wine, ReactOs, and Windows XP
+//   are available and match the expected behaviour.
+// - The main risk with an undocumented API is that it might change in the
+//   future. But since we only use it for older versions of Windows, that's not
+//   a problem.
+// - Even if these functions do not block or wake as we expect (which is
+//   unlikely, see all previous points), this implementation would still be
+//   memory safe. The NT Keyed Events API is only used to sleep/block in the
+//   right place.
+//
+// [1]: http://www.locklessinc.com/articles/keyed_events/
+// [2]: https://github.com/Amanieu/parking_lot/commit/43abbc964e
+// [3]: https://docs.microsoft.com/en-us/archive/msdn-magazine/2012/november/windows-with-c-the-evolution-of-synchronization-in-windows-and-c
+// [4]: Windows Internals, Part 1, ISBN 9780735671300
+
 use crate::convert::TryFrom;
 use crate::ptr;
 use crate::sync::atomic::{
@@ -34,7 +93,7 @@ const NOTIFIED: i8 = 1;
 //
 // This is done with a release-acquire synchronization, by using
 // Ordering::Release when writing NOTIFIED (the 'token') in unpark(), and using
-// Ordering::Acquire when checking for this state in park().
+// Ordering::Acquire when reading this state in park() after waking up.
 impl Parker {
     pub fn new() -> Self {
         Self { state: AtomicI8::new(EMPTY) }
