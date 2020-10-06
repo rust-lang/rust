@@ -558,12 +558,8 @@ pub mod ty {
     #[derive(Debug)]
     pub struct ImplTrait;
     impl NonConstOp for ImplTrait {
-        fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-            if ccx.const_kind() != hir::ConstContext::ConstFn {
-                Status::Allowed
-            } else {
-                Status::Unstable(sym::const_impl_trait)
-            }
+        fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+            Status::Unstable(sym::const_impl_trait)
         }
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
