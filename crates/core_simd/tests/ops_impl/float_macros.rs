@@ -19,6 +19,11 @@ macro_rules! float_tests {
                 value
             }
 
+            fn slice_chunks(slice: &[$scalar]) -> impl Iterator<Item = core_simd::$vector> + '_ {
+                let lanes = core::mem::size_of::<core_simd::$vector>() / core::mem::size_of::<$scalar>();
+                slice.chunks_exact(lanes).map(from_slice)
+            }
+
             const A: [$scalar; 16] = [0.,   1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12., 13., 14., 15.];
             const B: [$scalar; 16] = [16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26., 27., 28., 29., 30., 31.];
             const C: [$scalar; 16] = [
@@ -303,9 +308,10 @@ macro_rules! float_tests {
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn abs_odd_floats() {
-                let v = from_slice(&C);
-                let expected = apply_unary_lanewise(v, <$scalar>::abs);
-                assert_biteq!(v.abs(), expected);
+                for v in slice_chunks(&C) {
+                    let expected = apply_unary_lanewise(v, <$scalar>::abs);
+                    assert_biteq!(v.abs(), expected);
+                }
             }
         }
     }

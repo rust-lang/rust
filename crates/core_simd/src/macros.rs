@@ -295,8 +295,7 @@ macro_rules! impl_float_vector {
             #[inline]
             pub fn abs(self) -> Self {
                 let no_sign = <$bits_ty>::splat(!0 >> 1);
-                let abs = unsafe { crate::intrinsics::simd_and(self.to_bits(), no_sign) };
-                Self::from_bits(abs)
+                Self::from_bits(self.to_bits() & no_sign)
             }
         }
     };
