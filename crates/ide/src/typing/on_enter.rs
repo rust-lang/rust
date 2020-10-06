@@ -51,12 +51,12 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
         return None;
     }
 
-    let mut remove_last_space = false;
+    let mut remove_trailing_whitespace = false;
     // Continuing single-line non-doc comments (like this one :) ) is annoying
     if prefix == "//" && comment_range.end() == position.offset {
         if comment.text().ends_with(' ') {
             mark::hit!(continues_end_of_line_comment_with_space);
-            remove_last_space = true;
+            remove_trailing_whitespace = true;
         } else if !followed_by_comment(&comment) {
             return None;
         }
@@ -64,8 +64,10 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
 
     let indent = node_indent(&file, comment.syntax())?;
     let inserted = format!("\n{}{} $0", indent, prefix);
-    let delete = if remove_last_space {
-        TextRange::new(position.offset - TextSize::of(' '), position.offset)
+    let delete = if remove_trailing_whitespace {
+        let trimmed_len = comment.text().trim_end().len() as u32;
+        let trailing_whitespace_len = comment.text().len() as u32 - trimmed_len;
+        TextRange::new(position.offset - TextSize::from(trailing_whitespace_len), position.offset)
     } else {
         TextRange::empty(position.offset)
     };
@@ -251,6 +253,25 @@ fn main() {
     let x = 1 + 1;
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn trims_all_trailing_whitespace() {
+        do_check(
+            "
+fn main() {
+    // Fix me  \t\t   <|>
+    let x = 1 + 1;
+}
+",
+            "
+fn main() {
+    // Fix me
+    // $0
+    let x = 1 + 1;
+}
+",
         );
     }
 }
