@@ -85,10 +85,7 @@ pub struct Adjustment<'tcx> {
 
 impl Adjustment<'tcx> {
     pub fn is_region_borrow(&self) -> bool {
-        match self.kind {
-            Adjust::Borrow(AutoBorrow::Ref(..)) => true,
-            _ => false,
-        }
+        matches!(self.kind, Adjust::Borrow(AutoBorrow::Ref(..)))
     }
 }
 

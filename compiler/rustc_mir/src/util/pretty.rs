@@ -671,7 +671,8 @@ pub fn write_allocations<'tcx>(
 /// Dumps the size and metadata and content of an allocation to the given writer.
 /// The expectation is that the caller first prints other relevant metadata, so the exact
 /// format of this function is (*without* leading or trailing newline):
-/// ```
+///
+/// ```text
 /// size: {}, align: {}) {
 ///     <bytes>
 /// }

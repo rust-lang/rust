@@ -246,6 +246,14 @@ impl<T> MaybeUninit<T> {
     /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let v: MaybeUninit<Vec<u8>> = MaybeUninit::new(vec![42]);
+    /// ```
+    ///
     /// [`assume_init`]: MaybeUninit::assume_init
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
@@ -259,9 +267,15 @@ impl<T> MaybeUninit<T> {
     /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     ///
-    /// See the [type-level documentation][type] for some examples.
+    /// See the [type-level documentation][MaybeUninit] for some examples.
     ///
-    /// [type]: union.MaybeUninit.html
+    /// # Example
+    ///
+    /// ```
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let v: MaybeUninit<String> = MaybeUninit::uninit();
+    /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
     #[inline(always)]

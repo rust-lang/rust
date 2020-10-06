@@ -574,7 +574,7 @@ impl Config {
             include_path.push("src");
             include_path.push("bootstrap");
             include_path.push("defaults");
-            include_path.push(format!("config.toml.{}", include));
+            include_path.push(format!("config.{}.toml", include));
             let included_toml = get_toml(&include_path);
             toml.merge(included_toml);
         }

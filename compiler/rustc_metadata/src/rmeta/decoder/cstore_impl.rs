@@ -238,6 +238,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
+    expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
 }
 
 pub fn provide(providers: &mut Providers) {

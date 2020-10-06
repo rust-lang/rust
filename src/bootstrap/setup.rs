@@ -20,7 +20,7 @@ pub fn setup(src_path: &Path, include_name: &str) {
             file.display()
         );
         println!(
-            "note: this will use the configuration in {}/src/bootstrap/defaults/config.toml.{}",
+            "note: this will use the configuration in {}/src/bootstrap/defaults/config.{}.toml",
             src_path.display(),
             include_name
         );
@@ -36,7 +36,7 @@ pub fn setup(src_path: &Path, include_name: &str) {
     t!(fs::write(path, settings));
 
     let include_path =
-        format!("{}/src/bootstrap/defaults/config.toml.{}", src_path.display(), include_name);
+        format!("{}/src/bootstrap/defaults/config.{}.toml", src_path.display(), include_name);
     println!("`x.py` will now use the configuration at {}", include_path);
 
     let suggestions = match include_name {

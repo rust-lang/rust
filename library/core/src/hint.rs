@@ -98,8 +98,6 @@ pub fn spin_loop() {
 /// An identity function that *__hints__* to the compiler to be maximally pessimistic about what
 /// `black_box` could do.
 ///
-/// [`std::convert::identity`]: https://doc.rust-lang.org/core/convert/fn.identity.html
-///
 /// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `black_box` can
 /// use `dummy` in any possible valid way that Rust code is allowed to without introducing undefined
 /// behavior in the calling code. This property makes `black_box` useful for writing code in which
@@ -108,6 +106,8 @@ pub fn spin_loop() {
 /// Note however, that `black_box` is only (and can only be) provided on a "best-effort" basis. The
 /// extent to which it can block optimisations may vary depending upon the platform and code-gen
 /// backend used. Programs cannot rely on `black_box` for *correctness* in any way.
+///
+/// [`std::convert::identity`]: crate::convert::identity
 #[cfg_attr(not(miri), inline)]
 #[cfg_attr(miri, inline(never))]
 #[unstable(feature = "test", issue = "50297")]
