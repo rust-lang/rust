@@ -51,7 +51,7 @@ pub use hir_def::{
     find_path::PrefixKind,
     item_scope::ItemInNs,
     nameres::ModuleSource,
-    path::ModPath,
+    path::{ModPath, PathKind},
     type_ref::{Mutability, TypeRef},
 };
 pub use hir_expand::{
@@ -63,7 +63,4 @@ pub use hir_ty::display::HirDisplay;
 // These are negative re-exports: pub using these names is forbidden, they
 // should remain private to hir internals.
 #[allow(unused)]
-use {
-    hir_def::path::{Path, PathKind},
-    hir_expand::hygiene::Hygiene,
-};
+use {hir_def::path::Path, hir_expand::hygiene::Hygiene};

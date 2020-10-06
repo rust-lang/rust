@@ -7,7 +7,7 @@ use syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
 use test_utils::mark;
 
 use crate::{
-    utils::{render_snippet, Cursor, FamousDefs},
+    utils::{mod_path_to_ast, render_snippet, Cursor, FamousDefs},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -192,7 +192,7 @@ fn resolve_tuple_of_enum_def(
 }
 
 fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> Option<ast::Pat> {
-    let path = crate::ast_transform::path_to_ast(module.find_use_path(db, ModuleDef::from(var))?);
+    let path = mod_path_to_ast(&module.find_use_path(db, ModuleDef::from(var))?);
 
     // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
     let pat: ast::Pat = match var.source(db).value.kind() {

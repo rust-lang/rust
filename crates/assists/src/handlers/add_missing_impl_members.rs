@@ -820,4 +820,29 @@ impl Tr for () {
 }"#,
         )
     }
+
+    #[test]
+    fn weird_path() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Test {
+    fn foo(&self, x: crate)
+}
+impl Test for () {
+    <|>
+}
+"#,
+            r#"
+trait Test {
+    fn foo(&self, x: crate)
+}
+impl Test for () {
+    fn foo(&self, x: crate) {
+        ${0:todo!()}
+    }
+}
+"#,
+        )
+    }
 }

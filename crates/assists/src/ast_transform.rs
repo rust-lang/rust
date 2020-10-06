@@ -1,12 +1,13 @@
 //! `AstTransformer`s are functions that replace nodes in an AST and can be easily combined.
-use rustc_hash::FxHashMap;
-
 use hir::{HirDisplay, PathResolution, SemanticsScope};
+use rustc_hash::FxHashMap;
 use syntax::{
     algo::SyntaxRewriter,
     ast::{self, AstNode},
     SyntaxNode,
 };
+
+use crate::utils::mod_path_to_ast;
 
 pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
     SyntaxRewriter::from_fn(|element| match element {
@@ -189,7 +190,7 @@ impl<'a> AstTransform<'a> for QualifyPaths<'a> {
         match resolution {
             PathResolution::Def(def) => {
                 let found_path = from.find_use_path(self.source_scope.db.upcast(), def)?;
-                let mut path = path_to_ast(found_path);
+                let mut path = mod_path_to_ast(&found_path);
 
                 let type_args = p
                     .segment()
@@ -209,14 +210,4 @@ impl<'a> AstTransform<'a> for QualifyPaths<'a> {
             PathResolution::AssocItem(_) => None,
         }
     }
-}
-
-pub(crate) fn path_to_ast(path: hir::ModPath) -> ast::Path {
-    let parse = ast::SourceFile::parse(&path.to_string());
-    parse
-        .tree()
-        .syntax()
-        .descendants()
-        .find_map(ast::Path::cast)
-        .unwrap_or_else(|| panic!("failed to parse path {:?}, `{}`", path, path))
 }
