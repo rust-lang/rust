@@ -2388,24 +2388,28 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
         // Avoid reallocation if we can use iterator's storage instead. This requires 1 memcpy and 0-1 memmove
         // while reallocation would require 1 alloc, 1-2 memcpy, 1-2 free.
         //
-        // A) non-empty self, partially consumed iterator
+        // ## non-empty self, partially consumed iterator
         //
-        //  self         iterator
-        // |AAAA |      |  BBB   |
-        // |AAAA |      |    BBB |    into_vec_with_uninit_prefix
-        // |     |      |AAAABBB |    prepend
-        // |AAAABBB |       --        *self = v
+        //  == step ==          == memory ==              == self ==        == iter / v ==
+        //              0123456789abcdef0123456789abcdef
+        //              0---------------1---------------
         //
-        // B) empty self, partially consumed iterator
+        //  [initial]   AAAA_-----__BBB___--------------  Vec(0x00, 4, 5)   IntoIter(0x0a, 0x0c, 0x0f, 8)
+        //  into_vec    AAAA_-----____BBB_--------------  Vec(0x00, 4, 5)   Vec(0x0a, 7, 8)
+        //  prepend     _____-----AAAABBB_--------------  Vec(0x00, 0, 5)   Vec(0x0a, 7, 8)
+        //  *self = v   ----------AAAABBB_--------------  Vec(0x0a, 7, 8)
         //
-        // |   |        |  BBBB  |
-        // |   |        |BBBB    |    into_vec_with_uninit_prefix
-        // |BBBB    |       --        *self = v
+        //  ## empty self, partially consumed iterator
         //
-        // C) empty self, pristine iterator
+        //  [initial]   ____------__BBBB__--------------  Vec(0x00, 0, 4)   IntoIter(0x0a, 0x0c, 0x10, 8)
+        //  into_vec    ____------BBBB____--------------  Vec(0x00, 0, 4)   Vec(0x0a, 4, 8)
+        //  *self = v   ----------BBBB____--------------  Vec(0x0a, 4, 8)
         //
-        // |   |        |BBBB    |
-        // |BBBB    |       --        *self = v
+        //  ## empty self, pristine iterator
+        //
+        //  [initial]   ----------BBBB____--------------  Vec(0x00, 0, 0)   IntoIter(0x0a, 0x0a, 0x0e, 8)
+        //  *self = v   ----------BBBB____--------------  Vec(0x0a, 4, 8)
+        //
         if mem::size_of::<T>() > 0
             && self.capacity() - self.len() < iterator.len()
             && iterator.cap - iterator.len() >= self.len()
