@@ -14,6 +14,7 @@ use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_with, FromIterator, FusedIterator};
+use core::marker::PhantomData;
 use core::mem::{self, replace, ManuallyDrop};
 use core::ops::{Index, IndexMut, Range, RangeBounds, Try};
 use core::ptr::{self, NonNull};
@@ -982,7 +983,14 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        IterMut { tail: self.tail, head: self.head, ring: unsafe { self.buffer_as_mut_slice() } }
+        // SAFETY: The internal `IterMut` safety invariant is established because the
+        // `ring` we create is a dereferencable slice for lifetime '_.
+        IterMut {
+            tail: self.tail,
+            head: self.head,
+            ring: ptr::slice_from_raw_parts_mut(self.ptr(), self.cap()),
+            phantom: PhantomData,
+        }
     }
 
     /// Returns a pair of slices which contain, in order, the contents of the
@@ -1170,11 +1178,14 @@ impl<T> VecDeque<T> {
         R: RangeBounds<usize>,
     {
         let (tail, head) = self.range_tail_head(range);
+
+        // SAFETY: The internal `IterMut` safety invariant is established because the
+        // `ring` we create is a dereferencable slice for lifetime '_.
         IterMut {
             tail,
             head,
-            // The shared reference we have in &mut self is maintained in the '_ of IterMut.
-            ring: unsafe { self.buffer_as_mut_slice() },
+            ring: ptr::slice_from_raw_parts_mut(self.ptr(), self.cap()),
+            phantom: PhantomData,
         }
     }
 
@@ -2493,6 +2504,25 @@ impl<T> RingSlices for &mut [T] {
     }
 }
 
+impl<T> RingSlices for *mut [T] {
+    fn slice(self, from: usize, to: usize) -> Self {
+        assert!(from <= to && to < self.len());
+        // Not using `get_unchecked_mut` to keep this a safe operation.
+        let len = to - from;
+        ptr::slice_from_raw_parts_mut(self.as_mut_ptr().wrapping_add(from), len)
+    }
+
+    fn split_at(self, mid: usize) -> (Self, Self) {
+        let len = self.len();
+        let ptr = self.as_mut_ptr();
+        assert!(mid <= len);
+        (
+            ptr::slice_from_raw_parts_mut(ptr, mid),
+            ptr::slice_from_raw_parts_mut(ptr.wrapping_add(mid), len - mid),
+        )
+    }
+}
+
 /// Calculate the number of elements left to be read in the buffer
 #[inline]
 fn count(tail: usize, head: usize, size: usize) -> usize {
@@ -2662,15 +2692,27 @@ impl<T> FusedIterator for Iter<'_, T> {}
 /// [`iter_mut`]: VecDeque::iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
-    ring: &'a mut [T],
+    // Internal safety invariant: the entire slice is dereferencable.
+    ring: *mut [T],
     tail: usize,
     head: usize,
+    phantom: PhantomData<&'a mut [T]>,
 }
+
+// SAFETY: we do nothing thread-local and there is no interior mutability,
+// so the usual structural `Send`/`Sync` apply.
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Send> Send for IterMut<'_, T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = RingSlices::ring_slices(&*self.ring, self.head, self.tail);
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
+        // The `IterMut` invariant also ensures everything is dereferencable.
+        let (front, back) = unsafe { (&*front, &*back) };
         f.debug_tuple("IterMut").field(&front).field(&back).finish()
     }
 }
@@ -2689,7 +2731,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
         unsafe {
             let elem = self.ring.get_unchecked_mut(tail);
-            Some(&mut *(elem as *mut _))
+            Some(&mut *elem)
         }
     }
 
@@ -2704,6 +2746,9 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         F: FnMut(Acc, Self::Item) -> Acc,
     {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
+        // The `IterMut` invariant also ensures everything is dereferencable.
+        let (front, back) = unsafe { (&mut *front, &mut *back) };
         accum = front.iter_mut().fold(accum, &mut f);
         back.iter_mut().fold(accum, &mut f)
     }
@@ -2735,7 +2780,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 
         unsafe {
             let elem = self.ring.get_unchecked_mut(self.head);
-            Some(&mut *(elem as *mut _))
+            Some(&mut *elem)
         }
     }
 
@@ -2744,6 +2789,9 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
         F: FnMut(Acc, Self::Item) -> Acc,
     {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
+        // The `IterMut` invariant also ensures everything is dereferencable.
+        let (front, back) = unsafe { (&mut *front, &mut *back) };
         accum = back.iter_mut().rfold(accum, &mut f);
         front.iter_mut().rfold(accum, &mut f)
     }
