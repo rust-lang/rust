@@ -1,135 +1,135 @@
 error: `x` is shadowed by itself in `&mut x`
-  --> $DIR/shadow.rs:26:5
+  --> $DIR/shadow.rs:27:5
    |
 LL |     let x = &mut x;
    |     ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::shadow-same` implied by `-D warnings`
 note: previous binding is here
-  --> $DIR/shadow.rs:25:13
+  --> $DIR/shadow.rs:26:13
    |
 LL |     let mut x = 1;
    |             ^
 
 error: `x` is shadowed by itself in `{ x }`
-  --> $DIR/shadow.rs:27:5
-   |
-LL |     let x = { x };
-   |     ^^^^^^^^^^^^^^
-   |
-note: previous binding is here
-  --> $DIR/shadow.rs:26:9
-   |
-LL |     let x = &mut x;
-   |         ^
-
-error: `x` is shadowed by itself in `(&*x)`
   --> $DIR/shadow.rs:28:5
    |
-LL |     let x = (&*x);
+LL |     let x = { x };
    |     ^^^^^^^^^^^^^^
    |
 note: previous binding is here
   --> $DIR/shadow.rs:27:9
    |
+LL |     let x = &mut x;
+   |         ^
+
+error: `x` is shadowed by itself in `(&*x)`
+  --> $DIR/shadow.rs:29:5
+   |
+LL |     let x = (&*x);
+   |     ^^^^^^^^^^^^^^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:28:9
+   |
 LL |     let x = { x };
    |         ^
 
 error: `x` is shadowed by `{ *x + 1 }` which reuses the original value
-  --> $DIR/shadow.rs:29:9
+  --> $DIR/shadow.rs:30:9
    |
 LL |     let x = { *x + 1 };
    |         ^
    |
    = note: `-D clippy::shadow-reuse` implied by `-D warnings`
 note: initialization happens here
-  --> $DIR/shadow.rs:29:13
+  --> $DIR/shadow.rs:30:13
    |
 LL |     let x = { *x + 1 };
    |             ^^^^^^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:28:9
+  --> $DIR/shadow.rs:29:9
    |
 LL |     let x = (&*x);
    |         ^
 
 error: `x` is shadowed by `id(x)` which reuses the original value
-  --> $DIR/shadow.rs:30:9
-   |
-LL |     let x = id(x);
-   |         ^
-   |
-note: initialization happens here
-  --> $DIR/shadow.rs:30:13
-   |
-LL |     let x = id(x);
-   |             ^^^^^
-note: previous binding is here
-  --> $DIR/shadow.rs:29:9
-   |
-LL |     let x = { *x + 1 };
-   |         ^
-
-error: `x` is shadowed by `(1, x)` which reuses the original value
   --> $DIR/shadow.rs:31:9
    |
-LL |     let x = (1, x);
+LL |     let x = id(x);
    |         ^
    |
 note: initialization happens here
   --> $DIR/shadow.rs:31:13
    |
-LL |     let x = (1, x);
-   |             ^^^^^^
+LL |     let x = id(x);
+   |             ^^^^^
 note: previous binding is here
   --> $DIR/shadow.rs:30:9
    |
-LL |     let x = id(x);
+LL |     let x = { *x + 1 };
    |         ^
 
-error: `x` is shadowed by `first(x)` which reuses the original value
+error: `x` is shadowed by `(1, x)` which reuses the original value
   --> $DIR/shadow.rs:32:9
    |
-LL |     let x = first(x);
+LL |     let x = (1, x);
    |         ^
    |
 note: initialization happens here
   --> $DIR/shadow.rs:32:13
    |
+LL |     let x = (1, x);
+   |             ^^^^^^
+note: previous binding is here
+  --> $DIR/shadow.rs:31:9
+   |
+LL |     let x = id(x);
+   |         ^
+
+error: `x` is shadowed by `first(x)` which reuses the original value
+  --> $DIR/shadow.rs:33:9
+   |
+LL |     let x = first(x);
+   |         ^
+   |
+note: initialization happens here
+  --> $DIR/shadow.rs:33:13
+   |
 LL |     let x = first(x);
    |             ^^^^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:31:9
+  --> $DIR/shadow.rs:32:9
    |
 LL |     let x = (1, x);
    |         ^
 
 error: `x` is being shadowed
-  --> $DIR/shadow.rs:34:9
+  --> $DIR/shadow.rs:35:9
    |
 LL |     let x = y;
    |         ^
    |
    = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
 note: initialization happens here
-  --> $DIR/shadow.rs:34:13
+  --> $DIR/shadow.rs:35:13
    |
 LL |     let x = y;
    |             ^
 note: previous binding is here
-  --> $DIR/shadow.rs:32:9
+  --> $DIR/shadow.rs:33:9
    |
 LL |     let x = first(x);
    |         ^
 
 error: `x` shadows a previous declaration
-  --> $DIR/shadow.rs:36:5
+  --> $DIR/shadow.rs:37:5
    |
 LL |     let x;
    |     ^^^^^^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:34:9
+  --> $DIR/shadow.rs:35:9
    |
 LL |     let x = y;
    |         ^

@@ -1076,6 +1076,13 @@ vec![
         module: "len_zero",
     },
     Lint {
+        name: "less_concise_than_option_unwrap_or",
+        group: "pedantic",
+        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or`",
+        deprecation: None,
+        module: "less_concise_than",
+    },
+    Lint {
         name: "let_and_return",
         group: "style",
         desc: "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block",

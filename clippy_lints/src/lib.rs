@@ -224,6 +224,7 @@ mod large_const_arrays;
 mod large_enum_variant;
 mod large_stack_arrays;
 mod len_zero;
+mod less_concise_than;
 mod let_if_seq;
 mod let_underscore;
 mod lifetimes;
@@ -609,6 +610,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &large_stack_arrays::LARGE_STACK_ARRAYS,
         &len_zero::LEN_WITHOUT_IS_EMPTY,
         &len_zero::LEN_ZERO,
+        &less_concise_than::LESS_CONCISE_THAN_OPTION_UNWRAP_OR,
         &let_if_seq::USELESS_LET_IF_SEQ,
         &let_underscore::LET_UNDERSCORE_LOCK,
         &let_underscore::LET_UNDERSCORE_MUST_USE,
@@ -1126,6 +1128,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box repeat_once::RepeatOnce);
     store.register_late_pass(|| box unwrap_in_result::UnwrapInResult);
     store.register_late_pass(|| box self_assignment::SelfAssignment);
+    store.register_late_pass(|| box less_concise_than::LessConciseThan);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
     store.register_late_pass(|| box manual_strip::ManualStrip);
@@ -1210,6 +1213,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(&items_after_statements::ITEMS_AFTER_STATEMENTS),
         LintId::of(&large_stack_arrays::LARGE_STACK_ARRAYS),
+        LintId::of(&less_concise_than::LESS_CONCISE_THAN_OPTION_UNWRAP_OR),
         LintId::of(&literal_representation::LARGE_DIGIT_GROUPS),
         LintId::of(&literal_representation::UNREADABLE_LITERAL),
         LintId::of(&loops::EXPLICIT_INTO_ITER_LOOP),

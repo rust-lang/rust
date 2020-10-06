@@ -1781,6 +1781,7 @@ Released 2018-09-13
 [`large_stack_arrays`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_arrays
 [`len_without_is_empty`]: https://rust-lang.github.io/rust-clippy/master/index.html#len_without_is_empty
 [`len_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#len_zero
+[`less_concise_than_option_unwrap_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#less_concise_than_option_unwrap_or
 [`let_and_return`]: https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return
 [`let_underscore_lock`]: https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_lock
 [`let_underscore_must_use`]: https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
