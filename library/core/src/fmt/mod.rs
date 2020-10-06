@@ -920,9 +920,11 @@ pub trait UpperHex {
 /// assert_eq!(&l_ptr[..2], "0x");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "pointer_trait"]
 pub trait Pointer {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "pointer_trait_fmt"]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
 

@@ -267,7 +267,7 @@ fn mir_const<'tcx>(
             // MIR-level lints.
             &check_packed_ref::CheckPackedRef,
             &check_const_item_mutation::CheckConstItemMutation,
-            &function_references::FunctionReferences,
+            &function_references::FunctionItemReferences,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck,
