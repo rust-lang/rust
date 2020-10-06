@@ -2204,7 +2204,7 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         }
 
         let mut vec = Vec::new();
-        iterator.move_to(&mut vec);
+        iterator.move_into(&mut vec);
         vec
     }
 }
@@ -2401,7 +2401,7 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
             };
             return;
         }
-        iterator.move_to(self);
+        iterator.move_into(self);
     }
 }
 
@@ -2959,7 +2959,7 @@ impl<T> IntoIter<T> {
     }
 
     /// Move remaining elements to the end of `dest`.
-    fn move_to(mut self, dest: &mut Vec<T>) {
+    fn move_into(mut self, dest: &mut Vec<T>) {
         unsafe {
             dest.append_elements(self.as_slice() as _);
         }
