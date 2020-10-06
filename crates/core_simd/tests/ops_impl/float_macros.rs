@@ -29,17 +29,16 @@ macro_rules! float_tests {
                 <$scalar>::MIN,
                 <$scalar>::MAX,
                 <$scalar>::INFINITY,
-                -<$scalar>::INFINITY,
+                <$scalar>::NEG_INFINITY,
                 <$scalar>::MIN_POSITIVE,
                 -<$scalar>::MIN_POSITIVE,
                 <$scalar>::EPSILON,
                 -<$scalar>::EPSILON,
-                0.0 / 0.0,
-                -0.0 / 0.0,
-                // Still not sure if wasm can have weird nans, or I'd check them
-                // too. Until then
-                1.0 / 3.0,
-                -1.0 / 4.0
+                <$scalar>::NAN,
+                -<$scalar>::NAN,
+                // TODO: Would be nice to check sNaN...
+                100.0 / 3.0,
+                -100.0 / 3.0,
             ];
 
             #[test]
