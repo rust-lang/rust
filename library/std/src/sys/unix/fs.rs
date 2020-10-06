@@ -1195,7 +1195,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let max_len = u64::MAX;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
-    return match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
+    match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
         CopyResult::Ended(result) => result,
         CopyResult::Fallback(written) => {
             // fallback is only > 0 on EOVERFLOW, which shouldn't happen
@@ -1203,7 +1203,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             assert_eq!(0, written);
             io::copy::generic_copy(&mut reader, &mut writer)
         }
-    };
+    }
 }
 
 /// linux-specific implementation that will attempt to use copy_file_range for copy offloading
@@ -1330,19 +1330,7 @@ pub(crate) fn sendfile_splice(
                 cvt(unsafe { libc::sendfile(writer, reader, ptr::null_mut(), chunk_size) })
             }
             SpliceMode::Splice => cvt(unsafe {
-                libc::splice(
-                    reader,
-                    ptr::null_mut(),
-                    writer,
-                    ptr::null_mut(),
-                    // default pipe size is 64KiB. try to only fill/drain half of that capacity
-                    // so that the next loop iteration won't be put to sleep.
-                    // If reader and writer operate at the same pace they will experience fewer blocking waits.
-                    // This is only needed for splice since sendfile stays in kernel space when it has to block.
-                    //crate::cmp::min(32*1024, chunk_size),
-                    chunk_size,
-                    0,
-                )
+                libc::splice(reader, ptr::null_mut(), writer, ptr::null_mut(), chunk_size, 0)
             }),
         };
 
