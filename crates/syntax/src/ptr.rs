@@ -12,6 +12,8 @@ use crate::{AstNode, SyntaxKind, SyntaxNode, TextRange};
 /// specific node across reparses of the same file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxNodePtr {
+    // Don't expose this field further. At some point, we might want to replace
+    // range with node id.
     pub(crate) range: TextRange,
     kind: SyntaxKind,
 }
