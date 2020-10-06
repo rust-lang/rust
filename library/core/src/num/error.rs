@@ -110,7 +110,7 @@ pub enum IntErrorKind {
     /// would be illegal for non-zero types.
     #[stable(feature = "int_error_matching", since = "1.47.0")]
     Zero,
-    /// The value contains nothing other than signs `+` or `-`.
+    /// The value contains nothing other than sign `+` or `-`.
     #[stable(feature = "int_error_matching", since = "1.47.0")]
     OnlySign,
 }
@@ -135,7 +135,7 @@ impl ParseIntError {
             IntErrorKind::PosOverflow => "number too large to fit in target type",
             IntErrorKind::NegOverflow => "number too small to fit in target type",
             IntErrorKind::Zero => "number would be zero for non-zero type",
-            IntErrorKind::OnlySign => "only signs without digits found in string",
+            IntErrorKind::OnlySign => "only sign without digits found in string",
         }
     }
 }
