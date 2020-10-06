@@ -2,6 +2,7 @@
 #![feature(c_variadic)]
 #![warn(function_item_references)]
 use std::fmt::Pointer;
+use std::fmt::Formatter;
 
 fn nop() { }
 fn foo() -> u32 { 42 }
@@ -20,6 +21,25 @@ fn parameterized_call_fn<F: Fn(u32) -> u32>(f: &F, x: u32) { f(x); }
 fn print_ptr<F: Pointer>(f: F) { println!("{:p}", f); }
 fn bound_by_ptr_trait<F: Pointer>(_f: F) { }
 fn bound_by_ptr_trait_tuple<F: Pointer, G: Pointer>(_t: (F, G)) { }
+fn implicit_ptr_trait<F>(f: &F) { println!("{:p}", f); }
+
+//case found in tinyvec that triggered a compiler error in an earlier version of the lint checker
+trait HasItem {
+  type Item;
+  fn assoc_item(&self) -> Self::Item;
+}
+fn _format_assoc_item<T: HasItem>(data: T, f: &mut Formatter) -> std::fmt::Result
+    where T::Item: Pointer {
+    //when the arg type bound by `Pointer` is an associated type, we shouldn't attempt to normalize
+    Pointer::fmt(&data.assoc_item(), f)
+}
+
+//simple test to make sure that calls to `Pointer::fmt` aren't double counted
+fn _call_pointer_fmt(f: &mut Formatter) -> std::fmt::Result {
+    let zst_ref = &foo;
+    Pointer::fmt(&zst_ref, f)
+    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+}
 
 fn main() {
     //`let` bindings with function references shouldn't lint
@@ -126,6 +146,7 @@ fn main() {
     bound_by_ptr_trait_tuple((&foo, &bar));
     //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
     //~^^ WARNING cast `bar` with `as fn(_) -> _` to obtain a function pointer
+    implicit_ptr_trait(&bar); // ignore
 
     //correct ways to pass function pointers as arguments bound by std::fmt::Pointer
     print_ptr(bar as fn(u32) -> u32);
