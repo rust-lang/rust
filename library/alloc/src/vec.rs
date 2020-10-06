@@ -2412,12 +2412,13 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
         {
             // Safety: we just checked that IntoIter has sufficient capacity to prepend our elements.
             // Prepending will then fill the uninitialized prefix.
-            *self = unsafe {
+            let v = unsafe {
                 let mut v = iterator.into_vec_with_uninit_prefix(self.len() as isize);
                 ptr::copy_nonoverlapping(self.as_ptr(), v.as_mut_ptr(), self.len);
                 self.set_len(0);
                 v
             };
+            *self = v;
             return;
         }
         iterator.move_into(self);
