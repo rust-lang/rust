@@ -17,9 +17,9 @@ ena = "0.14.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 scoped-tls = "1"
-chalk-solve = { version = "0.30.0" }
-chalk-ir = { version = "0.30.0" }
-chalk-recursive = { version = "0.30.0" }
+chalk-solve = { git = "https://github.com/rust-lang/chalk.git", rev="ebe62c2bc46899a0a92eabb456b38ad2d40abbd0" }
+chalk-ir = { git = "https://github.com/rust-lang/chalk.git", rev="ebe62c2bc46899a0a92eabb456b38ad2d40abbd0" }
+chalk-recursive = { git = "https://github.com/rust-lang/chalk.git", rev="ebe62c2bc46899a0a92eabb456b38ad2d40abbd0" }
 
 stdx = { path = "../stdx", version = "0.0.0" }
 hir_def = { path = "../hir_def", version = "0.0.0" }
