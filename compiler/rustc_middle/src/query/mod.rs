@@ -191,6 +191,11 @@ rustc_queries! {
             eval_always
             desc { |tcx| "parent module of `{}`", tcx.def_path_str(key.to_def_id()) }
         }
+
+        /// Internal helper query. Use `tcx.expansion_that_defined` instead
+        query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
+            desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
+        }
     }
 
     Codegen {

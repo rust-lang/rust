@@ -294,6 +294,7 @@ define_tables! {
     variances: Table<DefIndex, Lazy<[ty::Variance]>>,
     generics: Table<DefIndex, Lazy<ty::Generics>>,
     explicit_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
+    expn_that_defined: Table<DefIndex, Lazy<ExpnId>>,
     // FIXME(eddyb) this would ideally be `Lazy<[...]>` but `ty::Predicate`
     // doesn't handle shorthands in its own (de)serialization impls,
     // as it's an `enum` for which we want to derive (de)serialization,
