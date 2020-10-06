@@ -559,6 +559,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_name(path.ident.name);
                 self.hash_exprs(args);
             },
+            ExprKind::ConstBlock(ref l_id) => {
+                self.hash_body(l_id.body);
+            },
             ExprKind::Repeat(ref e, ref l_id) => {
                 self.hash_expr(e);
                 self.hash_body(l_id.body);
