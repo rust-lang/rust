@@ -168,7 +168,8 @@ impl Parker {
             };
 
             // Wait for unpark() to produce this event.
-            let unparked = c::NtWaitForKeyedEvent(handle, self.ptr(), 0, &mut timeout) == c::STATUS_SUCCESS;
+            let unparked =
+                c::NtWaitForKeyedEvent(handle, self.ptr(), 0, &mut timeout) == c::STATUS_SUCCESS;
 
             // Set the state back to EMPTY (from either PARKED or NOTIFIED).
             let prev_state = self.state.swap(EMPTY, Acquire);
