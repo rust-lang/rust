@@ -16,7 +16,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -138,6 +138,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn llbb(&self) -> &'ll BasicBlock {
         unsafe { llvm::LLVMGetInsertBlock(self.llbuilder) }
     }
+
+    fn set_span(&self, _span: Span) {}
 
     fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
         unsafe {

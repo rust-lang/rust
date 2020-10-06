@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `<GetNext<T> as Next>::Next == _`
-  --> $DIR/issue-23122-1.rs:8:5
+  --> $DIR/issue-23122-1.rs:10:5
    |
 LL |     type Next = <GetNext<T> as Next>::Next;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

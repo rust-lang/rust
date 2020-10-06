@@ -290,10 +290,12 @@ pub fn build_ty(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type> {
     }
 }
 
+/// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.
 pub fn build_impls(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>) -> Vec<clean::Item> {
     let tcx = cx.tcx;
     let mut impls = Vec::new();
 
+    // for each implementation of an item represented by `did`, build the clean::Item for that impl
     for &did in tcx.inherent_impls(did).iter() {
         build_impl(cx, did, attrs, &mut impls);
     }
@@ -320,6 +322,7 @@ fn merge_attrs(
     merged_attrs.clean(cx)
 }
 
+/// Builds a specific implementation of a type. The `did` could be a type method or trait method.
 pub fn build_impl(
     cx: &DocContext<'_>,
     did: DefId,

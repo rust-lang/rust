@@ -427,13 +427,20 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                         chalk_ir::FloatTy::F64 => ty::Float(ast::FloatTy::F64),
                     },
                 },
-                chalk_ir::TypeName::Array => unimplemented!(),
+                chalk_ir::TypeName::Array => {
+                    let substs = application_ty.substitution.as_slice(interner);
+                    let ty = substs[0].assert_ty_ref(interner).lower_into(interner);
+                    let c = substs[1].assert_const_ref(interner).lower_into(interner);
+                    ty::Array(ty, interner.tcx.mk_const(c))
+                }
                 chalk_ir::TypeName::FnDef(id) => {
                     ty::FnDef(id.0, application_ty.substitution.lower_into(interner))
                 }
                 chalk_ir::TypeName::Closure(closure) => {
                     ty::Closure(closure.0, application_ty.substitution.lower_into(interner))
                 }
+                chalk_ir::TypeName::Generator(_) => unimplemented!(),
+                chalk_ir::TypeName::GeneratorWitness(_) => unimplemented!(),
                 chalk_ir::TypeName::Never => ty::Never,
                 chalk_ir::TypeName::Tuple(_size) => {
                     ty::Tuple(application_ty.substitution.lower_into(interner))
@@ -483,7 +490,15 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 universe: ty::UniverseIndex::from_usize(placeholder.ui.counter),
                 name: ty::BoundVar::from_usize(placeholder.idx),
             }),
-            TyData::Alias(_alias_ty) => unimplemented!(),
+            chalk_ir::TyData::Alias(alias_ty) => match alias_ty {
+                chalk_ir::AliasTy::Projection(projection) => ty::Projection(ty::ProjectionTy {
+                    item_def_id: projection.associated_ty_id.0,
+                    substs: projection.substitution.lower_into(interner),
+                }),
+                chalk_ir::AliasTy::Opaque(opaque) => {
+                    ty::Opaque(opaque.opaque_ty_id.0, opaque.substitution.lower_into(interner))
+                }
+            },
             TyData::Function(_quantified_ty) => unimplemented!(),
             TyData::BoundVar(_bound) => ty::Bound(
                 ty::DebruijnIndex::from_usize(_bound.debruijn.depth() as usize),
@@ -519,8 +534,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
                 ty::BrEnv => unimplemented!(),
             },
             ReFree(_) => unimplemented!(),
-            // FIXME(chalk): need to handle ReStatic
-            ReStatic => unimplemented!(),
+            ReStatic => chalk_ir::LifetimeData::Static.intern(interner),
             ReVar(_) => unimplemented!(),
             RePlaceholder(placeholder_region) => {
                 chalk_ir::LifetimeData::Placeholder(chalk_ir::PlaceholderIndex {
@@ -550,6 +564,7 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                     name: ty::BoundRegion::BrAnon(p.idx as u32),
                 })
             }
+            chalk_ir::LifetimeData::Static => ty::RegionKind::ReStatic,
             chalk_ir::LifetimeData::Phantom(_, _) => unimplemented!(),
         };
         interner.tcx.mk_region(kind)
@@ -701,7 +716,16 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                     }),
                 )
             }
-            ty::ExistentialPredicate::Projection(_predicate) => unimplemented!(),
+            ty::ExistentialPredicate::Projection(predicate) => chalk_ir::Binders::new(
+                chalk_ir::VariableKinds::empty(interner),
+                chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
+                    alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                        associated_ty_id: chalk_ir::AssocTypeId(predicate.item_def_id),
+                        substitution: predicate.substs.lower_into(interner),
+                    }),
+                    ty: predicate.ty.lower_into(interner),
+                }),
+            ),
             ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
                 chalk_ir::VariableKinds::empty(interner),
                 chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
@@ -1116,17 +1140,12 @@ impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
 /// Used to substitute specific `Regions`s with placeholders.
 crate struct RegionsSubstitutor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    restatic_placeholder: ty::Region<'tcx>,
     reempty_placeholder: ty::Region<'tcx>,
 }
 
 impl<'tcx> RegionsSubstitutor<'tcx> {
-    crate fn new(
-        tcx: TyCtxt<'tcx>,
-        restatic_placeholder: ty::Region<'tcx>,
-        reempty_placeholder: ty::Region<'tcx>,
-    ) -> Self {
-        RegionsSubstitutor { tcx, restatic_placeholder, reempty_placeholder }
+    crate fn new(tcx: TyCtxt<'tcx>, reempty_placeholder: ty::Region<'tcx>) -> Self {
+        RegionsSubstitutor { tcx, reempty_placeholder }
     }
 }
 
@@ -1137,7 +1156,6 @@ impl<'tcx> TypeFolder<'tcx> for RegionsSubstitutor<'tcx> {
 
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
         match r {
-            ty::ReStatic => self.restatic_placeholder,
             ty::ReEmpty(ui) => {
                 assert_eq!(ui.as_usize(), 0);
                 self.reempty_placeholder

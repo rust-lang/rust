@@ -12,6 +12,7 @@ use getopts::Options;
 
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
+use crate::setup::Profile;
 use crate::{Build, DocTests};
 
 /// Deserialized version of all flags for this compile.
@@ -94,7 +95,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Setup {
-        path: String,
+        profile: Profile,
     },
 }
 
@@ -253,7 +254,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                         `/<build_base>/rustfix_missing_coverage.txt`",
                 );
             }
-            "check" => {
+            "check" | "c" => {
                 opts.optflag("", "all-targets", "Check all targets");
             }
             "bench" => {
@@ -533,18 +534,26 @@ Arguments:
                 Subcommand::Run { paths }
             }
             "setup" => {
-                let path = if paths.len() > 1 {
+                let profile = if paths.len() > 1 {
                     println!("\nat most one profile can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
                 } else if let Some(path) = paths.pop() {
-                    t!(path.into_os_string().into_string().map_err(|path| format!(
-                        "{} is not a valid UTF8 string",
-                        path.to_string_lossy()
-                    )))
+                    let profile_string = t!(path.into_os_string().into_string().map_err(
+                        |path| format!("{} is not a valid UTF8 string", path.to_string_lossy())
+                    ));
+
+                    profile_string.parse().unwrap_or_else(|err| {
+                        eprintln!("error: {}", err);
+                        eprintln!("help: the available profiles are:");
+                        for choice in Profile::all() {
+                            eprintln!("- {}", choice);
+                        }
+                        std::process::exit(1);
+                    })
                 } else {
                     t!(crate::setup::interactive_path())
                 };
-                Subcommand::Setup { path }
+                Subcommand::Setup { profile }
             }
             _ => {
                 usage(1, &opts, verbose, &subcommand_help);
