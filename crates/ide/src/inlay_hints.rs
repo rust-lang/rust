@@ -1026,4 +1026,38 @@ mod collections {
 "#,
         );
     }
+
+    #[test]
+    fn multi_dyn_trait_bounds() {
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                parameter_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
+            r#"
+//- /main.rs crate:main
+pub struct Vec<T> {}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self { Vec {} }
+}
+
+pub struct Box<T> {}
+
+trait Display {}
+trait Sync {}
+
+fn main() {
+    let _v = Vec::<Box<&(dyn Display + Sync)>>::new();
+      //^^ Vec<Box<&(dyn Display + Sync)>>
+    let _v = Vec::<Box<*const (dyn Display + Sync)>>::new();
+      //^^ Vec<Box<*const (dyn Display + Sync)>>
+    let _v = Vec::<Box<dyn Display + Sync>>::new();
+      //^^ Vec<Box<dyn Display + Sync>>
+}
+"#,
+        );
+    }
 }
