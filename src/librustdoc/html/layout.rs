@@ -62,7 +62,7 @@ pub fn render<T: Print, S: Print>(
     #crate-search{{background-image:url(\"{static_root_path}down-arrow{suffix}.svg\");}}\
     </style>\
 </head>\
-<body class=\"rustdoc {css_class}\">\
+<body id=\"rustdoc\" class=\"{css_class}\">\
     <!--[if lte IE 8]>\
     <div class=\"warning\">\
         This old browser is unsupported and will most likely display funky \

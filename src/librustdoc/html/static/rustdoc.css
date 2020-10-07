@@ -330,7 +330,7 @@ nav.sub {
 	padding-left: 0;
 }
 
-.rustdoc:not(.source) .example-wrap {
+#rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
 	position: relative;
@@ -349,12 +349,12 @@ nav.sub {
 	text-align: right;
 }
 
-.rustdoc:not(.source) .example-wrap > pre.rust {
+#rustdoc:not(.source) .example-wrap > pre.rust {
 	width: 100%;
 	overflow-x: auto;
 }
 
-.rustdoc:not(.source) .example-wrap > pre {
+#rustdoc:not(.source) .example-wrap > pre {
 	margin: 0;
 }
 
@@ -1320,7 +1320,7 @@ h4 > .notable-traits {
 		padding-top: 0px;
 	}
 
-	.rustdoc > .sidebar {
+	#rustdoc > .sidebar {
 		height: 45px;
 		min-height: 40px;
 		margin: 0;
@@ -1373,7 +1373,7 @@ h4 > .notable-traits {
 		height: 45px;
 	}
 
-	.rustdoc.source > .sidebar > .sidebar-menu {
+	#rustdoc.source > .sidebar > .sidebar-menu {
 		display: none;
 	}
 

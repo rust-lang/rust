@@ -1223,6 +1223,7 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("theme-choices".to_owned(), 1);
     map.insert("settings-menu".to_owned(), 1);
     map.insert("main".to_owned(), 1);
+    map.insert("rustdoc".to_owned(), 1);
     map.insert("search".to_owned(), 1);
     map.insert("crate-search".to_owned(), 1);
     map.insert("render-detail".to_owned(), 1);
