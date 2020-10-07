@@ -4,7 +4,6 @@ use crate::dataflow::impls::MaybeStorageLive;
 use crate::dataflow::{Analysis, ResultsCursor};
 use crate::util::storage::AlwaysLiveLocals;
 
-use super::MirPass;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, Rvalue,
@@ -13,38 +12,32 @@ use rustc_middle::mir::{
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 
+pub fn validate_body(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: &str) {
+    validate_body_during_phase(tcx, body, body.phase, when);
+}
+
+pub fn validate_body_during_phase(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    phase: MirPhase,
+    when: &str,
+) {
+    let def_id = body.source.def_id();
+    let param_env = tcx.param_env(def_id);
+
+    let always_live_locals = AlwaysLiveLocals::new(body);
+    let storage_liveness = MaybeStorageLive::new(always_live_locals)
+        .into_engine(tcx, body)
+        .iterate_to_fixpoint()
+        .into_results_cursor(body);
+
+    TypeChecker { when, body, tcx, param_env, mir_phase: phase, storage_liveness }.visit_body(body);
+}
+
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
     Unwind,
     Normal,
-}
-
-pub struct Validator {
-    /// Describes at which point in the pipeline this validation is happening.
-    pub when: String,
-    /// The phase for which we are upholding the dialect. If the given phase forbids a specific
-    /// element, this validator will now emit errors if that specific element is encountered.
-    /// Note that phases that change the dialect cause all *following* phases to check the
-    /// invariants of the new dialect. A phase that changes dialects never checks the new invariants
-    /// itself.
-    pub mir_phase: MirPhase,
-}
-
-impl<'tcx> MirPass<'tcx> for Validator {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let def_id = body.source.def_id();
-        let param_env = tcx.param_env(def_id);
-        let mir_phase = self.mir_phase;
-
-        let always_live_locals = AlwaysLiveLocals::new(body);
-        let storage_liveness = MaybeStorageLive::new(always_live_locals)
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
-
-        TypeChecker { when: &self.when, body, tcx, param_env, mir_phase, storage_liveness }
-            .visit_body(body);
-    }
 }
 
 /// Returns whether the two types are equal up to lifetimes.
