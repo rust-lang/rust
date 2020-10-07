@@ -183,7 +183,6 @@ struct InnerReadDir {
     root: PathBuf,
 }
 
-#[derive(Clone)]
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
     end_of_stream: bool,
@@ -196,7 +195,7 @@ unsafe impl Sync for Dir {}
 
 pub struct DirEntry {
     entry: dirent64,
-    dir: ReadDir,
+    dir: Arc<InnerReadDir>,
     // We need to store an owned copy of the entry name
     // on Solaris and Fuchsia because a) it uses a zero-length
     // array to store the name, b) its lifetime between readdir
@@ -443,7 +442,7 @@ impl Iterator for ReadDir {
                     name: slice::from_raw_parts(name as *const u8, namelen as usize)
                         .to_owned()
                         .into_boxed_slice(),
-                    dir: self.clone(),
+                    dir: Arc::clone(&self.inner),
                 };
                 if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
                     return Some(Ok(ret));
@@ -464,7 +463,7 @@ impl Iterator for ReadDir {
         }
 
         unsafe {
-            let mut ret = DirEntry { entry: mem::zeroed(), dir: self.clone() };
+            let mut ret = DirEntry { entry: mem::zeroed(), dir: Arc::clone(&self.inner) };
             let mut entry_ptr = ptr::null_mut();
             loop {
                 if readdir64_r(self.inner.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
@@ -497,7 +496,7 @@ impl Drop for Dir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.dir.inner.root.join(OsStr::from_bytes(self.name_bytes()))
+        self.dir.root.join(OsStr::from_bytes(self.name_bytes()))
     }
 
     pub fn file_name(&self) -> OsString {
@@ -506,7 +505,7 @@ impl DirEntry {
 
     #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        let fd = cvt(unsafe { dirfd(self.dir.inner.dirp.0) })?;
+        let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
         let name = self.entry.d_name.as_ptr();
 
         cfg_has_statx! {

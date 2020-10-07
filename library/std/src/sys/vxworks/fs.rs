@@ -27,7 +27,6 @@ struct InnerReadDir {
     root: PathBuf,
 }
 
-#[derive(Clone)]
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
     end_of_stream: bool,
@@ -40,7 +39,7 @@ unsafe impl Sync for Dir {}
 
 pub struct DirEntry {
     entry: dirent,
-    dir: ReadDir,
+    dir: Arc<InnerReadDir>,
 }
 
 #[derive(Clone, Debug)]
@@ -170,7 +169,7 @@ impl Iterator for ReadDir {
         }
 
         unsafe {
-            let mut ret = DirEntry { entry: mem::zeroed(), dir: self.clone() };
+            let mut ret = DirEntry { entry: mem::zeroed(), dir: Arc::clone(&self.inner) };
             let mut entry_ptr = ptr::null_mut();
             loop {
                 if readdir64_r(self.inner.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
@@ -204,7 +203,7 @@ impl Drop for Dir {
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
         use crate::sys::vxworks::ext::ffi::OsStrExt;
-        self.dir.inner.root.join(OsStr::from_bytes(self.name_bytes()))
+        self.dir.root.join(OsStr::from_bytes(self.name_bytes()))
     }
 
     pub fn file_name(&self) -> OsString {
