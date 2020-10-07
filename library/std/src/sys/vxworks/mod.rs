@@ -35,6 +35,7 @@ pub mod stdio;
 #[path = "../unix/thread.rs"]
 pub mod thread;
 pub mod thread_local_dtor;
+#[path = "../unix/thread_local_key.rs"]
 pub mod thread_local_key;
 #[path = "../unix/time.rs"]
 pub mod time;
