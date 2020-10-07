@@ -297,6 +297,7 @@ impl FileAttr {
 
 #[cfg(not(target_os = "netbsd"))]
 impl FileAttr {
+    #[cfg(not(target_os = "vxworks"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_mtime as libc::time_t,
@@ -304,10 +305,27 @@ impl FileAttr {
         }))
     }
 
+    #[cfg(target_os = "vxworks")]
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_mtime as libc::time_t,
+            tv_nsec: 0,
+        }))
+    }
+
+    #[cfg(not(target_os = "vxworks"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_atime as libc::time_t,
             tv_nsec: self.stat.st_atime_nsec as _,
+        }))
+    }
+
+    #[cfg(target_os = "vxworks")]
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_atime as libc::time_t,
+            tv_nsec: 0,
         }))
     }
 
@@ -535,12 +553,22 @@ impl DirEntry {
         lstat(&self.path())
     }
 
-    #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "haiku"))]
+    #[cfg(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "haiku",
+        target_os = "vxworks"
+    ))]
     pub fn file_type(&self) -> io::Result<FileType> {
         lstat(&self.path()).map(|m| m.file_type())
     }
 
-    #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "haiku")))]
+    #[cfg(not(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "haiku",
+        target_os = "vxworks"
+    )))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
             libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
@@ -565,7 +593,8 @@ impl DirEntry {
         target_os = "haiku",
         target_os = "l4re",
         target_os = "fuchsia",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "vxworks"
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -603,7 +632,8 @@ impl DirEntry {
         target_os = "linux",
         target_os = "emscripten",
         target_os = "l4re",
-        target_os = "haiku"
+        target_os = "haiku",
+        target_os = "vxworks"
     ))]
     fn name_bytes(&self) -> &[u8] {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes() }
@@ -901,13 +931,25 @@ impl fmt::Debug for File {
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(target_os = "vxworks")]
+        fn get_path(fd: c_int) -> Option<PathBuf> {
+            let mut buf = vec![0; libc::PATH_MAX as usize];
+            let n = unsafe { libc::ioctl(fd, libc::FIOGETNAME, buf.as_ptr()) };
+            if n == -1 {
+                return None;
+            }
+            let l = buf.iter().position(|&c| c == 0).unwrap();
+            buf.truncate(l as usize);
+            Some(PathBuf::from(OsString::from_vec(buf)))
+        }
+
+        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "vxworks")))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {
             // FIXME(#24570): implement this for other Unix platforms
             None
         }
 
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "vxworks"))]
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
             if mode == -1 {
@@ -921,7 +963,7 @@ impl fmt::Debug for File {
             }
         }
 
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "vxworks")))]
         fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
             // FIXME(#24570): implement this for other Unix platforms
             None

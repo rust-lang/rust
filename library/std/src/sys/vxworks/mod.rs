@@ -22,8 +22,11 @@ pub mod condvar;
 pub mod env;
 #[path = "../unix/ext/mod.rs"]
 pub mod ext;
+#[path = "../unix/fd.rs"]
 pub mod fd;
+#[path = "../unix/fs.rs"]
 pub mod fs;
+#[path = "../unix/io.rs"]
 pub mod io;
 #[path = "../unix/memchr.rs"]
 pub mod memchr;
