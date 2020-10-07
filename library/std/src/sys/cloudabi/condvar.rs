@@ -124,7 +124,7 @@ impl Condvar {
         let mut nevents: mem::MaybeUninit<usize> = mem::MaybeUninit::uninit();
         let ret = abi::poll(
             subscriptions.as_ptr(),
-            mem::MaybeUninit::first_ptr_mut(&mut events),
+            mem::MaybeUninit::slice_as_mut_ptr(&mut events),
             2,
             nevents.as_mut_ptr(),
         );
