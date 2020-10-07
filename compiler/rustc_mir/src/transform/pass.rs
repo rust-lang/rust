@@ -72,9 +72,12 @@ impl PassManager<'mir, 'tcx> {
         ret
     }
 
-    fn is_pass_enabled(&self, level: OptLevel) -> bool {
+    fn is_pass_enabled<P>(&self, pass: &P) -> bool
+    where
+        P: MirPass<'tcx>,
+    {
         let opts = &self.tcx.sess.opts.debugging_opts;
-        let level_required = match level {
+        let level_required = match P::LEVEL {
             OptLevel::Cleanup => return !self.skip_cleanup,
             OptLevel::Unsound if !opts.unsound_mir_opts => return false,
 
@@ -82,7 +85,12 @@ impl PassManager<'mir, 'tcx> {
             OptLevel::N(n) => n,
         };
 
-        opts.mir_opt_level >= level_required as usize
+        // Optimization passes that are not always run can be disabled
+        if level_required != 0 && is_skipped(&pass.name(), &opts.mir_opt_skip_pass) {
+            return false;
+        }
+
+        opts.mir_opt_level >= level_required.into()
     }
 
     pub fn validate(&self, when: &str) {
@@ -144,4 +152,11 @@ macro_rules! run_passes {
         let ref mut manager: PassManager<'_, '_> = $manager;
         $( manager.run_pass(&$pass); )*
     }}
+}
+
+fn is_skipped(pass_name: &str, skipped_passes: &[String]) -> bool {
+    skipped_passes
+        .into_iter()
+        .filter(|skipped| !skipped.is_empty())
+        .any(|skipped| pass_name.starts_with(skipped))
 }

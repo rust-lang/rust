@@ -959,6 +959,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
+    mir_opt_skip_pass: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
+        "MIR optimization passes that will not run (default: [])"),
     mir_opt_level: usize = (1, parse_uint, [TRACKED],
         "MIR optimization level (0-3; default: 1)"),
     mutable_noalias: bool = (false, parse_bool, [TRACKED],
