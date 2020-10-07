@@ -1,9 +1,9 @@
 //! Lexer analyzes raw input string and produces lexemes (tokens).
 //! It is just a bridge to `rustc_lexer`.
 
-use rustc_lexer::{LiteralKind as LK, RawStrError};
-
 use std::convert::TryInto;
+
+use rustc_lexer::{LiteralKind as LK, RawStrError};
 
 use crate::{
     SyntaxError,
@@ -61,17 +61,18 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
     (tokens, errors)
 }
 
-/// Returns `SyntaxKind` and `Option<SyntaxError>` of the first token
-/// encountered at the beginning of the string.
+/// Returns `SyntaxKind` and `Option<SyntaxError>` if `text` parses as a single token.
 ///
 /// Returns `None` if the string contains zero *or two or more* tokens.
 /// The token is malformed if the returned error is not `None`.
 ///
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxError>)> {
-    lex_first_token(text)
-        .filter(|(token, _)| token.len == TextSize::of(text))
-        .map(|(token, error)| (token.kind, error))
+    let (first_token, err) = lex_first_token(text)?;
+    if first_token.len != TextSize::of(text) {
+        return None;
+    }
+    Some((first_token.kind, err))
 }
 
 /// The same as `lex_single_syntax_kind()` but returns only `SyntaxKind` and
@@ -79,9 +80,11 @@ pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxEr
 ///
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
-    lex_first_token(text)
-        .filter(|(token, error)| !error.is_some() && token.len == TextSize::of(text))
-        .map(|(token, _error)| token.kind)
+    let (single_token, err) = lex_single_syntax_kind(text)?;
+    if err.is_some() {
+        return None;
+    }
+    Some(single_token)
 }
 
 /// Returns `SyntaxKind` and `Option<SyntaxError>` of the first token
