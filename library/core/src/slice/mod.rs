@@ -11,6 +11,7 @@
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::marker::Copy;
 use crate::mem;
+use crate::num::NonZeroUsize;
 use crate::ops::{FnMut, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
@@ -751,7 +752,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        assert_ne!(size, 0);
+        let size = NonZeroUsize::new(size).expect("size is zero");
         Windows::new(self, size)
     }
 
