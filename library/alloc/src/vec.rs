@@ -2388,27 +2388,41 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
         // Avoid reallocation if we can use iterator's storage instead. This requires 1 memcpy and 0-1 memmove
         // while reallocation would require 1 alloc, 1-2 memcpy, 1-2 free.
         //
+        // # illustration of some extend scenarios (not exhaustive)
+        //
+        //   == step ==              == memory ==              == self ==         == iter / v ==
+        //                   0123456789abcdef0123456789abcdef
+        //                   0---------------1---------------
+        //
         // ## non-empty self, partially consumed iterator
         //
-        //  == step ==          == memory ==              == self ==        == iter / v ==
-        //              0123456789abcdef0123456789abcdef
-        //              0---------------1---------------
+        //    [initial]      AAAA_-----__BBB___--------------  Vec(0x00, 4, 5)    IntoIter(0x0a, 0x0c, 0x0f, 8)
+        // ³  into_vec       AAAA_-----____BBB_--------------  Vec(0x00, 4, 5)    Vec(0x0a, 7, 8)
+        // ²  prepend        _____-----AAAABBB_--------------  Vec(0x00, 0, 5)    Vec(0x0a, 7, 8)
+        // ⁴  *self = v      ----------AAAABBB_--------------  Vec(0x0a, 7, 8)
         //
-        //  [initial]   AAAA_-----__BBB___--------------  Vec(0x00, 4, 5)   IntoIter(0x0a, 0x0c, 0x0f, 8)
-        //  into_vec    AAAA_-----____BBB_--------------  Vec(0x00, 4, 5)   Vec(0x0a, 7, 8)
-        //  prepend     _____-----AAAABBB_--------------  Vec(0x00, 0, 5)   Vec(0x0a, 7, 8)
-        //  *self = v   ----------AAAABBB_--------------  Vec(0x0a, 7, 8)
+        // ## empty self, partially consumed iterator
         //
-        //  ## empty self, partially consumed iterator
+        //    [initial]      ____------__BBBB__--------------  Vec(0x00, 0, 4)    IntoIter(0x0a, 0x0c, 0x10, 8)
+        // ³  into_vec       ____------BBBB____--------------  Vec(0x00, 0, 4)    Vec(0x0a, 4, 8)
+        // ⁴  *self = v      ----------BBBB____--------------  Vec(0x0a, 4, 8)
         //
-        //  [initial]   ____------__BBBB__--------------  Vec(0x00, 0, 4)   IntoIter(0x0a, 0x0c, 0x10, 8)
-        //  into_vec    ____------BBBB____--------------  Vec(0x00, 0, 4)   Vec(0x0a, 4, 8)
-        //  *self = v   ----------BBBB____--------------  Vec(0x0a, 4, 8)
+        // ## empty self, pristine iterator
         //
-        //  ## empty self, pristine iterator
+        //    [initial]      ----------BBBB____--------------  Vec(0x00, 0, 0)    IntoIter(0x0a, 0x0a, 0x0e, 8)
+        //    *self = v      ----------BBBB____--------------  Vec(0x0a, 4, 8)
         //
-        //  [initial]   ----------BBBB____--------------  Vec(0x00, 0, 0)   IntoIter(0x0a, 0x0a, 0x0e, 8)
-        //  *self = v   ----------BBBB____--------------  Vec(0x0a, 4, 8)
+        // ## insufficient capacity
+        //
+        //    [initial]      AAAAA-----BBBBBB__--------------  Vec(0x00, 5,  5)   IntoIter(0x0a, 0x0a, 0x0f, 8)
+        // ¹² reserve(6)     ----------BBBBBB__--AAAAA______-  Vec(0x14, 5,  11)  IntoIter(0x0a, 0x0a, 0x0f, 8)
+        // ²  ptr:copy_n     ----------________--AAAAABBBBBB-  Vec(0x14, 11, 11)  IntoIter(0x0a, 0x0f, 0x0f, 8)
+        // ⁴  drop           --------------------AAAAABBBBBB-  Vec(0x14, 11, 11)
+        //
+        //  ¹ malloc
+        //  ² memcpy
+        //  ³ memmove
+        //  ⁴ free
         //
         if mem::size_of::<T>() > 0
             && self.capacity() - self.len() < iterator.len()
