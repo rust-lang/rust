@@ -15,6 +15,7 @@ pub mod weak;
 pub mod alloc;
 #[path = "../unix/args.rs"]
 pub mod args;
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
 #[path = "../unix/condvar.rs"]
 pub mod condvar;
