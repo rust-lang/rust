@@ -25,8 +25,9 @@ pub(crate) enum Progress {
 }
 
 impl Progress {
-    pub(crate) fn percentage(done: usize, total: usize) -> f64 {
-        (done as f64 / total.max(1) as f64) * 100.0
+    pub(crate) fn fraction(done: usize, total: usize) -> f64 {
+        assert!(done <= total);
+        done as f64 / total.max(1) as f64
     }
 }
 
@@ -43,11 +44,15 @@ impl GlobalState {
         title: &str,
         state: Progress,
         message: Option<String>,
-        percentage: Option<f64>,
+        fraction: Option<f64>,
     ) {
         if !self.config.client_caps.work_done_progress {
             return;
         }
+        let percentage = fraction.map(|f| {
+            assert!(0.0 <= f && f <= 1.0);
+            f * 100.0
+        });
         let token = lsp_types::ProgressToken::String(format!("rustAnalyzer/{}", title));
         let work_done_progress = match state {
             Progress::Begin => {

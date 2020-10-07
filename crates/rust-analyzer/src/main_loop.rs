@@ -230,7 +230,7 @@ impl GlobalState {
                                     "roots scanned",
                                     state,
                                     Some(format!("{}/{}", n_done, n_total)),
-                                    Some(Progress::percentage(n_done, n_total)),
+                                    Some(Progress::fraction(n_done, n_total)),
                                 )
                             }
                         }
