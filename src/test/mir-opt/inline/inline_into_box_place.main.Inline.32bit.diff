@@ -53,10 +53,10 @@
 -     }
 - 
 -     bb4 (cleanup): {
--         _3 = alloc::alloc::box_free::<Vec<u32>>(move (_2.0: std::ptr::Unique<std::vec::Vec<u32>>)) -> bb3; // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
+-         _3 = alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>(move (_2.0: std::ptr::Unique<std::vec::Vec<u32>>), move (_2.1: std::alloc::Global)) -> bb3; // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-into-box-place.rs:8:42: 8:43
--                                          // + literal: Const { ty: unsafe fn(std::ptr::Unique<std::vec::Vec<u32>>) {alloc::alloc::box_free::<std::vec::Vec<u32>>}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: unsafe fn(std::ptr::Unique<std::vec::Vec<u32>>, std::alloc::Global) {alloc::alloc::box_free::<std::vec::Vec<u32>, std::alloc::Global>}, val: Value(Scalar(<ZST>)) }
       }
   }
   
