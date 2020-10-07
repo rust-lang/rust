@@ -359,6 +359,7 @@ symbols! {
         const_fn_union,
         const_generics,
         const_if_match,
+        const_impl_trait,
         const_in_array_repeat_expressions,
         const_indexing,
         const_let,

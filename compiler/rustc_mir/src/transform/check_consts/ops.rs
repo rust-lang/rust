@@ -558,12 +558,17 @@ pub mod ty {
     #[derive(Debug)]
     pub struct ImplTrait;
     impl NonConstOp for ImplTrait {
-        fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-            mcf_status_in_item(ccx)
+        fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+            Status::Unstable(sym::const_impl_trait)
         }
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-            mcf_build_error(ccx, span, "`impl Trait` in const fn is unstable")
+            feature_err(
+                &ccx.tcx.sess.parse_sess,
+                sym::const_impl_trait,
+                span,
+                &format!("`impl Trait` is not allowed in {}s", ccx.const_kind()),
+            )
         }
     }
 
