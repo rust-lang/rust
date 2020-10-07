@@ -73,6 +73,30 @@ the same, with some steps skipped:
  2. Make, stage, and commit your additional changes just like before.
  3. Push those changes to your fork: `git push`.
 
+### Quick note about submodules
+
+When updating your local repository with `git pull`, you may notice that sometimes
+Git says you have modified some files that you have never edited. For example,
+running `git status` gives you something like (note the `new commits` mention):
+
+```
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/tools/cargo (new commits)
+	modified:   src/tools/rls (new commits)
+	modified:   src/tools/rustfmt (new commits)
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+
+These changes are not changes to files: they are changes to submodules
+(more on this later). To get rid of those, run `git submodule update` (or run any
+`x.py` command which will automatically update the submodules).
+
 ## Conflicts
 
 When you edit your code locally, you are making changes to the version of
@@ -190,3 +214,54 @@ There are a number of reasons for this decision and like all others, it is a
 tradeoff. The main advantage is the generally linear commit history. This
 greatly simplifies bisecting and makes the history and commit log much easier
 to follow and understand.
+
+## Git submodules
+
+**NOTE**: submodules are a nice thing to know about, but it *isn't* an absolute
+prerequisite to contribute to `rustc`. If you are using Git for the first time,
+you might want to get used to the main concepts of Git before reading this section.
+
+The `rust-lang/rust` repository uses [Git submodules] as a way to use other
+Rust projects from within the `rust` repo. Examples include Rust's fork of
+`llvm-project` and many devtools such as `cargo`, `rust-analyzer` and `rustfmt`.
+
+Those projects are developped and maintained in an separate Git (and GitHub)
+repository, and they have their own Git history/commits, issue tracker and PRs.
+Submodules allow us to create some sort of embedded sub-repository inside the
+`rust` repository and use them like they were directories in the `rust` repository.
+
+Take `miri` for example. `miri` is maintained in the [`rust-lang/miri`] repository,
+but it is used in `rust-lang/rust` by the compiler for const evaluation. We bring it
+in `rust` as a submodule, in the `src/tools/miri` folder.
+
+The contents of submodules are ignored by Git: submodules are in some sense isolated
+from the rest of the repository. However, if you try to `cd src/tools/miri` and then
+run `git status`:
+
+```
+HEAD detached at 3fafb835
+nothing to commit, working tree clean
+```
+
+As far as git is concerned, you are no longer in the `rust` repo, but in the `miri` repo.
+You will notice that we are in "detatched HEAD" state, i.e. not on a branch but on a
+particular commit.
+
+This is because, like any dependency, we want to be able to control which version to use.
+Submodules allow us to do just that: every submodule is "pinned" to a certain
+commit, which doesn't change unless modified manually. If you use `git checkout <commit>`
+in the `miri` directory and go back to the `rust` directory, you can stage this
+change like any 
+This is usually done by
+the maintainers of the project, and looks like [this][miri-update].
+
+Git submodules take some time to get used to, so don't worry if it isn't perfectly
+clear yet. You will rarely have to use them directly and, again, you don't need
+to know everything about submodules to contribute to Rust. Just know that they
+exist and that they correspond to some sort of embedded subrepository dependency
+that Git can nicely and fairly conveniently handle for us.
+
+[Git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
+[`rust-toolstate`]: https://rust-lang-nursery.github.io/rust-toolstate/
+[`rust-lang/miri`]: https://github.com/rust-lang/miri
+[miri-update]: https://github.com/rust-lang/rust/pull/77500/files
