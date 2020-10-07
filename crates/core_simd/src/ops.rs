@@ -212,7 +212,18 @@ macro_rules! impl_op {
             impl core::ops::Neg for $type {
                 type Output = Self;
                 fn neg(self) -> Self::Output {
-                    <$type>::splat(-<$scalar>::default()) - self
+                    <$type>::splat(0) - self
+                }
+            }
+        }
+    };
+
+    { impl Neg for $type:ty, $scalar:ty, @float } => {
+        impl_ref_ops! {
+            impl core::ops::Neg for $type {
+                type Output = Self;
+                fn neg(self) -> Self::Output {
+                    Self::from_bits(<$type>::splat(-0.0).to_bits() ^ self.to_bits())
                 }
             }
         }
@@ -310,7 +321,7 @@ macro_rules! impl_float_ops {
                 impl_op! { impl Mul for $vector, $scalar }
                 impl_op! { impl Div for $vector, $scalar }
                 impl_op! { impl Rem for $vector, $scalar }
-                impl_op! { impl Neg for $vector, $scalar }
+                impl_op! { impl Neg for $vector, $scalar, @float }
                 impl_op! { impl Index for $vector, $scalar }
             )*
         )*
