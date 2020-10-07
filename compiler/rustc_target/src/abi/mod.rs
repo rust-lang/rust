@@ -271,7 +271,7 @@ impl FromStr for Endian {
 
 impl ToJson for Endian {
     fn to_json(&self) -> Json {
-        Json::String(self.as_str().to_owned())
+        self.as_str().to_json()
     }
 }
 
