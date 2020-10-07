@@ -242,7 +242,7 @@ declare_clippy_lint! {
     /// fn foo(interned: Rc<str>) { ... }
     /// ```
     pub RC_BUFFER,
-    perf,
+    restriction,
     "shared ownership of a buffer type"
 }
 

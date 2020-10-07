@@ -1888,7 +1888,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "rc_buffer",
-        group: "perf",
+        group: "restriction",
         desc: "shared ownership of a buffer type",
         deprecation: None,
         module: "types",
