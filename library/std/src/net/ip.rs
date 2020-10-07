@@ -1401,7 +1401,6 @@ impl Ipv6Addr {
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
     /// assert!(!ip.is_unicast_link_local());
-    /// assert!(ip.is_unicast_link_local());
     ///
     /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
     /// assert!(!ip.is_unicast_link_local());
