@@ -548,9 +548,10 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                 bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
             }
         };
-        self = ct.ty.print(self)?;
 
         if let Some(bits) = val {
+            // We only print the type if the const can be evaluated.
+            self = ct.ty.print(self)?;
             let _ = write!(self.out, "{}{:x}_", if neg { "n" } else { "" }, bits);
         } else {
             // NOTE(eddyb) despite having the path, we need to
