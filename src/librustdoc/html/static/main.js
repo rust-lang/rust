@@ -355,12 +355,12 @@ function defocusSearchBar() {
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
                 removeClass(help, "hidden");
-                addClass(document.body, "blur");
+                addClass(document.getElementById("rustdoc"), "blur");
             }
         } else if (hasClass(help, "hidden") === false) {
             ev.preventDefault();
             addClass(help, "hidden");
-            removeClass(document.body, "blur");
+            removeClass(document.getElementById("rustdoc"), "blur");
         }
     }
 
