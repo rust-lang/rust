@@ -34,8 +34,11 @@ pub mod memchr;
 pub mod mutex;
 #[path = "../unix/net.rs"]
 pub mod net;
+#[path = "../unix/os.rs"]
 pub mod os;
+#[path = "../unix/path.rs"]
 pub mod path;
+#[path = "../unix/pipe.rs"]
 pub mod pipe;
 pub mod process;
 pub mod rand;
