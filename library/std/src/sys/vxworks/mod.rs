@@ -18,6 +18,7 @@ pub mod cmath;
 #[path = "../unix/condvar.rs"]
 pub mod condvar;
 pub mod env;
+#[path = "../unix/ext/mod.rs"]
 pub mod ext;
 pub mod fd;
 pub mod fs;
