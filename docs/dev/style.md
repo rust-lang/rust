@@ -113,6 +113,13 @@ Avoid preconditions that span across function boundaries:
 
 ```rust
 // Good
+fn main() {
+    let s: &str = ...;
+    if let Some(contents) = string_literal_contents(s) {
+
+    }
+}
+
 fn string_literal_contents(s: &str) -> Option<&str> {
     if s.starts_with('"') && s.ends_with('"') {
         Some(&s[1..s.len() - 1])
@@ -121,23 +128,16 @@ fn string_literal_contents(s: &str) -> Option<&str> {
     }
 }
 
-fn foo() {
-    let s: &str = ...;
-    if let Some(contents) = string_literal_contents(s) {
-
-    }
-}
-
 // Not as good
-fn is_string_literal(s: &str) -> bool {
-    s.starts_with('"') && s.ends_with('"')
-}
-
-fn foo() {
+fn main() {
     let s: &str = ...;
     if is_string_literal(s) {
         let contents = &s[1..s.len() - 1];
     }
+}
+
+fn is_string_literal(s: &str) -> bool {
+    s.starts_with('"') && s.ends_with('"')
 }
 ```
 
