@@ -2,7 +2,7 @@
 
 use parser::{Token, TokenSource};
 use std::cell::{Cell, Ref, RefCell};
-use syntax::{lex_single_syntax_kind, SmolStr, SyntaxKind, SyntaxKind::*, T};
+use syntax::{tokenize, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use tt::buffer::{Cursor, TokenBuffer};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -155,10 +155,17 @@ fn convert_delim(d: Option<tt::DelimiterKind>, closing: bool) -> TtToken {
 }
 
 fn convert_literal(l: &tt::Literal) -> TtToken {
-    let kind = lex_single_syntax_kind(&l.text)
-        .map(|(kind, _error)| kind)
-        .filter(|kind| kind.is_literal())
-        .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &l));
+    let mut kinds = tokenize(&l.text).0.into_iter().map(|token| token.kind);
+
+    let kind = match kinds.next() {
+        Some(kind) if kind.is_literal() => Some(kind),
+        Some(SyntaxKind::MINUS) => match kinds.next() {
+            Some(kind) if kind.is_literal() => Some(kind),
+            _ => None,
+        },
+        _ => None,
+    }
+    .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &l));
 
     TtToken { kind, is_joint_to_next: false, text: l.text.clone() }
 }
@@ -193,5 +200,26 @@ fn convert_leaf(leaf: &tt::Leaf) -> TtToken {
         tt::Leaf::Literal(l) => convert_literal(l),
         tt::Leaf::Ident(ident) => convert_ident(ident),
         tt::Leaf::Punct(punct) => convert_punct(*punct),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{convert_literal, TtToken};
+    use syntax::{SmolStr, SyntaxKind};
+
+    #[test]
+    fn test_negative_literal() {
+        assert_eq!(
+            convert_literal(&tt::Literal {
+                id: tt::TokenId::unspecified(),
+                text: SmolStr::new("-42.0")
+            }),
+            TtToken {
+                kind: SyntaxKind::FLOAT_NUMBER,
+                is_joint_to_next: false,
+                text: SmolStr::new("-42.0")
+            }
+        );
     }
 }
