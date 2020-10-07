@@ -401,7 +401,7 @@ fn foo() -> Option<Bar> {
 Use `<`/`<=`, avoid `>`/`>=`.
 Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line)
 
-```rs
+```rust
 // Good
 assert!(lo <= x && x <= hi);
 
