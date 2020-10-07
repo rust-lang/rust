@@ -126,11 +126,12 @@ fn get_chaining_hints(
                 }
             }
         }
-        let label = ty.display_truncated(sema.db, config.max_length).to_string();
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
             kind: InlayKind::ChainingHint,
-            label: label.into(),
+            label: hint_iterator(sema, config, &ty).unwrap_or_else(|| {
+                ty.display_truncated(sema.db, config.max_length).to_string().into()
+            }),
         });
     }
     Some(())
@@ -193,17 +194,12 @@ fn get_bind_pat_hints(
     if should_not_display_type_hint(sema, &pat, &ty) {
         return None;
     }
-
-    let db = sema.db;
-    if let Some(hint) = hint_iterator(sema, config, &ty, pat.clone()) {
-        acc.push(hint);
-    } else {
-        acc.push(InlayHint {
-            range: pat.syntax().text_range(),
-            kind: InlayKind::TypeHint,
-            label: ty.display_truncated(db, config.max_length).to_string().into(),
-        });
-    }
+    acc.push(InlayHint {
+        range: pat.syntax().text_range(),
+        kind: InlayKind::TypeHint,
+        label: hint_iterator(sema, config, &ty)
+            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
+    });
 
     Some(())
 }
@@ -213,8 +209,7 @@ fn hint_iterator(
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
     ty: &Type,
-    pat: ast::IdentPat,
-) -> Option<InlayHint> {
+) -> Option<SmolStr> {
     let db = sema.db;
     let strukt = ty.as_adt()?;
     let krate = strukt.krate(db)?;
@@ -244,11 +239,7 @@ fn hint_iterator(
                     .max_length
                     .map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len())),
             );
-            return Some(InlayHint {
-                range: pat.syntax().text_range(),
-                kind: InlayKind::TypeHint,
-                label: format!("{}{}{}", LABEL_START, ty_display, LABEL_END).into(),
-            });
+            return Some(format!("{}{}{}", LABEL_START, ty_display, LABEL_END).into());
         }
     }
 
@@ -412,7 +403,8 @@ mod tests {
     }
 
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
-        let ra_fixture = format!("{}\n{}", ra_fixture, FamousDefs::FIXTURE);
+        let ra_fixture =
+            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
         let (analysis, file_id) = fixture::file(&ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
@@ -422,7 +414,9 @@ mod tests {
     }
 
     fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
+        let ra_fixture =
+            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
+        let (analysis, file_id) = fixture::file(&ra_fixture);
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
         expect.assert_debug_eq(&inlay_hints)
     }
@@ -854,12 +848,12 @@ fn main() {
             expect![[r#"
                 [
                     InlayHint {
-                        range: 147..172,
+                        range: 148..173,
                         kind: ChainingHint,
                         label: "B",
                     },
                     InlayHint {
-                        range: 147..154,
+                        range: 148..155,
                         kind: ChainingHint,
                         label: "A",
                     },
@@ -920,12 +914,12 @@ fn main() {
             expect![[r#"
                 [
                     InlayHint {
-                        range: 143..190,
+                        range: 144..191,
                         kind: ChainingHint,
                         label: "C",
                     },
                     InlayHint {
-                        range: 143..179,
+                        range: 144..180,
                         kind: ChainingHint,
                         label: "B",
                     },
@@ -965,12 +959,12 @@ fn main() {
             expect![[r#"
                 [
                     InlayHint {
-                        range: 246..283,
+                        range: 247..284,
                         kind: ChainingHint,
                         label: "B<X<i32, bool>>",
                     },
                     InlayHint {
-                        range: 246..265,
+                        range: 247..266,
                         kind: ChainingHint,
                         label: "A<X<i32, bool>>",
                     },
@@ -991,7 +985,6 @@ fn main() {
         );
         check(
             r#"
-//- /main.rs crate:main deps:core
 pub struct Vec<T> {}
 
 impl<T> Vec<T> {
@@ -1031,7 +1024,6 @@ mod collections {
     fn complete_for_hint() {
         check(
             r#"
-//- /main.rs crate:main deps:core
 pub struct Vec<T> {}
 
 impl<T> Vec<T> {
@@ -1078,7 +1070,6 @@ mod collections {
                 max_length: None,
             },
             r#"
-//- /main.rs crate:main
 pub struct Vec<T> {}
 
 impl<T> Vec<T> {
@@ -1108,12 +1099,11 @@ fn main() {
             InlayHintsConfig {
                 parameter_hints: false,
                 type_hints: true,
-                chaining_hints: true,
+                chaining_hints: false,
                 max_length: None,
             },
             r#"
-//- /main.rs crate:main deps:std
-use std::iter;
+use core::iter;
 
 struct MyIter;
 
@@ -1132,12 +1122,67 @@ fn main() {
     fn generic<T: Clone>(t: T) {
         let _x = iter::repeat(t);
           //^^ impl Iterator<Item = T>
+        let _chained = iter::repeat(t).take(10);
+          //^^^^^^^^ impl Iterator<Item = T>
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn shorten_iterator_chaining_hints() {
+        check_expect(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
+            r#"
+use core::iter;
+
+struct MyIter;
+
+impl Iterator for MyIter {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> {
+        None
     }
 }
 
-//- /std.rs crate:std deps:core
-use core::*;
+fn main() {
+    let _x = MyIter.by_ref()
+        .take(5)
+        .by_ref()
+        .take(5)
+        .by_ref();
+}
 "#,
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 175..242,
+                        kind: ChainingHint,
+                        label: "impl Iterator<Item = ()>",
+                    },
+                    InlayHint {
+                        range: 175..225,
+                        kind: ChainingHint,
+                        label: "&mut Take<&mut MyIter>",
+                    },
+                    InlayHint {
+                        range: 175..207,
+                        kind: ChainingHint,
+                        label: "impl Iterator<Item = ()>",
+                    },
+                    InlayHint {
+                        range: 175..190,
+                        kind: ChainingHint,
+                        label: "&mut MyIter",
+                    },
+                ]
+            "#]],
         );
     }
 }

@@ -281,21 +281,34 @@ impl FamousDefs<'_, '_> {
     pub const FIXTURE: &'static str = r#"//- /libcore.rs crate:core
 pub mod convert {
     pub trait From<T> {
-        fn from(T) -> Self;
+        fn from(t: T) -> Self;
     }
 }
 
 pub mod iter {
     pub use self::traits::{collect::IntoIterator, iterator::Iterator};
     mod traits {
-        mod iterator {
+        pub(crate) mod iterator {
             use crate::option::Option;
             pub trait Iterator {
                 type Item;
                 fn next(&mut self) -> Option<Self::Item>;
+                fn by_ref(&mut self) -> &mut Self {
+                    self
+                }
+                fn take(self, n: usize) -> crate::iter::Take<Self> {
+                    crate::iter::Take { inner: self }
+                }
+            }
+
+            impl<I: Iterator> Iterator for &mut I {
+                type Item = I::Item;
+                fn next(&mut self) -> Option<I::Item> {
+                    (**self).next()
+                }
             }
         }
-        mod collect {            
+        pub(crate) mod collect {            
             pub trait IntoIterator {
                 type Item;
             }
@@ -303,21 +316,35 @@ pub mod iter {
     }
 
     pub use self::sources::*;
-    mod sources {
+    pub(crate) mod sources {
         use super::Iterator;
+        use crate::option::Option::{self, *};
         pub struct Repeat<A> {
             element: A,
         }
 
-        pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
+        pub fn repeat<T>(elt: T) -> Repeat<T> {
             Repeat { element: elt }
         }
 
-        impl<A: Clone> Iterator for Repeat<A> {
+        impl<A> Iterator for Repeat<A> {
             type Item = A;
 
             fn next(&mut self) -> Option<A> {
-                Some(self.element.clone())
+                None
+            }
+        }
+    }
+
+    pub use self::adapters::*;
+    pub(crate) mod adapters {
+        use super::Iterator;
+        use crate::option::Option::{self, *};
+        pub struct Take<I> { pub(crate) inner: I }
+        impl<I> Iterator for Take<I> where I: Iterator {
+            type Item = <I as Iterator>::Item;
+            fn next(&mut self) -> Option<<I as Iterator>::Item> {
+                None
             }
         }
     }
