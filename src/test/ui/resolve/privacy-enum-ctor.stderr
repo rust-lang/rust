@@ -2,31 +2,17 @@ error[E0423]: expected value, found enum `n::Z`
   --> $DIR/privacy-enum-ctor.rs:23:9
    |
 LL |         n::Z;
-   |         ^^^^
+   |         ^^^^ help: try using one of the enum's variants: `m::Z::Unit`
    |
-help: try using one of the enum's variants
-   |
-LL |         m::Z::Fn;
-   |         ^^^^^^^^
-LL |         m::Z::Struct;
-   |         ^^^^^^^^^^^^
-LL |         m::Z::Unit;
-   |         ^^^^^^^^^^
+   = help: you might have meant to use one of the enum's other variants that have fields
 
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
 LL |         Z;
-   |         ^
+   |         ^ help: try using one of the enum's variants: `m::Z::Unit`
    |
-help: try using one of the enum's variants
-   |
-LL |         m::Z::Fn;
-   |         ^^^^^^^^
-LL |         m::Z::Struct;
-   |         ^^^^^^^^^^^^
-LL |         m::Z::Unit;
-   |         ^^^^^^^^^^
+   = help: you might have meant to use one of the enum's other variants that have fields
 
 error[E0423]: expected value, found struct variant `Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:29:20
@@ -48,12 +34,9 @@ LL |     fn f() {
 LL |     let _: E = m::E;
    |                ^^^^
    |
+   = help: you might have meant to use one of the enum's other variants that have fields
 help: try using one of the enum's variants
    |
-LL |     let _: E = E::Fn;
-   |                ^^^^^
-LL |     let _: E = E::Struct;
-   |                ^^^^^^^^^
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
 help: a function with a similar name exists
@@ -84,12 +67,9 @@ error[E0423]: expected value, found enum `E`
 LL |     let _: E = E;
    |                ^
    |
+   = help: you might have meant to use one of the enum's other variants that have fields
 help: try using one of the enum's variants
    |
-LL |     let _: E = E::Fn;
-   |                ^^^^^
-LL |     let _: E = E::Struct;
-   |                ^^^^^^^^^
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
 help: consider importing one of these items instead
@@ -132,16 +112,9 @@ error[E0423]: expected value, found enum `m::n::Z`
   --> $DIR/privacy-enum-ctor.rs:57:16
    |
 LL |     let _: Z = m::n::Z;
-   |                ^^^^^^^
+   |                ^^^^^^^ help: try using one of the enum's variants: `m::Z::Unit`
    |
-help: try using one of the enum's variants
-   |
-LL |     let _: Z = m::Z::Fn;
-   |                ^^^^^^^^
-LL |     let _: Z = m::Z::Struct;
-   |                ^^^^^^^^^^^^
-LL |     let _: Z = m::Z::Unit;
-   |                ^^^^^^^^^^
+   = help: you might have meant to use one of the enum's other variants that have fields
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12

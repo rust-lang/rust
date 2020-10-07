@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, DefKind};
+use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::config::nightly_options;
@@ -726,24 +726,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     // We already suggested changing `:` into `::` during parsing.
                     return false;
                 }
-                if let Some(variants) = self.collect_enum_variants(def_id) {
-                    if !variants.is_empty() {
-                        let msg = if variants.len() == 1 {
-                            "try using the enum's variant"
-                        } else {
-                            "try using one of the enum's variants"
-                        };
 
-                        err.span_suggestions(
-                            span,
-                            msg,
-                            variants.iter().map(path_names_to_string),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                } else {
-                    err.note("you might have meant to use one of the enum's variants");
-                }
+                self.suggest_using_enum_variant(err, source, def_id, span);
             }
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
                 if let Some((ctor_def, ctor_vis, fields)) =
@@ -1126,18 +1110,137 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         result
     }
 
-    fn collect_enum_variants(&mut self, def_id: DefId) -> Option<Vec<Path>> {
+    fn collect_enum_ctors(&mut self, def_id: DefId) -> Option<Vec<(Path, DefId, CtorKind)>> {
         self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
             let mut variants = Vec::new();
             enum_module.for_each_child(self.r, |_, ident, _, name_binding| {
-                if let Res::Def(DefKind::Variant, _) = name_binding.res() {
+                if let Res::Def(DefKind::Ctor(CtorOf::Variant, kind), def_id) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
                     segms.push(ast::PathSegment::from_ident(ident));
-                    variants.push(Path { span: name_binding.span, segments: segms, tokens: None });
+                    let path = Path { span: name_binding.span, segments: segms, tokens: None };
+                    variants.push((path, def_id, kind));
                 }
             });
             variants
         })
+    }
+
+    /// Adds a suggestion for using an enum's variant when an enum is used instead.
+    fn suggest_using_enum_variant(
+        &mut self,
+        err: &mut DiagnosticBuilder<'a>,
+        source: PathSource<'_>,
+        def_id: DefId,
+        span: Span,
+    ) {
+        let variants = match self.collect_enum_ctors(def_id) {
+            Some(variants) => variants,
+            None => {
+                err.note("you might have meant to use one of the enum's variants");
+                return;
+            }
+        };
+
+        let suggest_only_tuple_variants =
+            matches!(source, PathSource::TupleStruct(..)) || source.is_call();
+        let mut suggestable_variants = if suggest_only_tuple_variants {
+            // Suggest only tuple variants regardless of whether they have fields and do not
+            // suggest path with added parenthesis.
+            variants
+                .iter()
+                .filter(|(.., kind)| *kind == CtorKind::Fn)
+                .map(|(variant, ..)| path_names_to_string(variant))
+                .collect::<Vec<_>>()
+        } else {
+            variants
+                .iter()
+                .filter(|(_, def_id, kind)| {
+                    // Suggest only variants that have no fields (these can definitely
+                    // be constructed).
+                    let has_fields =
+                        self.r.field_names.get(&def_id).map(|f| f.is_empty()).unwrap_or(false);
+                    match kind {
+                        CtorKind::Const => true,
+                        CtorKind::Fn | CtorKind::Fictive if has_fields => true,
+                        _ => false,
+                    }
+                })
+                .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
+                .map(|(variant_str, kind)| {
+                    // Add constructor syntax where appropriate.
+                    match kind {
+                        CtorKind::Const => variant_str,
+                        CtorKind::Fn => format!("({}())", variant_str),
+                        CtorKind::Fictive => format!("({} {{}})", variant_str),
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let non_suggestable_variant_count = variants.len() - suggestable_variants.len();
+
+        if !suggestable_variants.is_empty() {
+            let msg = if non_suggestable_variant_count == 0 && suggestable_variants.len() == 1 {
+                "try using the enum's variant"
+            } else {
+                "try using one of the enum's variants"
+            };
+
+            err.span_suggestions(
+                span,
+                msg,
+                suggestable_variants.drain(..),
+                Applicability::MaybeIncorrect,
+            );
+        }
+
+        if suggest_only_tuple_variants {
+            let source_msg = if source.is_call() {
+                "to construct"
+            } else if matches!(source, PathSource::TupleStruct(..)) {
+                "to match against"
+            } else {
+                unreachable!()
+            };
+
+            // If the enum has no tuple variants..
+            if non_suggestable_variant_count == variants.len() {
+                err.help(&format!("the enum has no tuple variants {}", source_msg));
+            }
+
+            // If there are also non-tuple variants..
+            if non_suggestable_variant_count == 1 {
+                err.help(&format!(
+                    "you might have meant {} the enum's non-tuple variant",
+                    source_msg
+                ));
+            } else if non_suggestable_variant_count >= 1 {
+                err.help(&format!(
+                    "you might have meant {} one of the enum's non-tuple variants",
+                    source_msg
+                ));
+            }
+        } else {
+            let made_suggestion = non_suggestable_variant_count != variants.len();
+            if made_suggestion {
+                if non_suggestable_variant_count == 1 {
+                    err.help(
+                        "you might have meant to use the enum's other variant that has fields",
+                    );
+                } else if non_suggestable_variant_count >= 1 {
+                    err.help(
+                        "you might have meant to use one of the enum's other variants that \
+                         have fields",
+                    );
+                }
+            } else {
+                if non_suggestable_variant_count == 1 {
+                    err.help("you might have meant to use the enum's variant");
+                } else if non_suggestable_variant_count >= 1 {
+                    err.help("you might have meant to use one of the enum's variants");
+                }
+            }
+        }
     }
 
     crate fn report_missing_type_error(
