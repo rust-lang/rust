@@ -28,8 +28,9 @@ impl StaticMutex {
     /// Calls raw_lock() and then returns an RAII guard to guarantee the mutex
     /// will be unlocked.
     ///
-    /// It is undefined behaviour to call this function while locked, or if the
-    /// mutex has been moved since the last time this was called.
+    /// It is undefined behaviour to call this function while locked by the
+    /// same thread, or if the mutex has been moved since the last time this
+    /// was called.
     #[inline]
     pub unsafe fn lock(&self) -> StaticMutexGuard<'_> {
         self.0.lock();
