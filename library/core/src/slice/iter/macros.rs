@@ -185,8 +185,7 @@ macro_rules! iterator {
                 }
             }
 
-            #[inline]
-            fn advance_by(&mut self, n: usize) -> Result<(), usize>{
+            fn advance_by(&mut self, n: usize) -> Result<(), usize> {
                 let advance = cmp::min(n, len!(self));
                 // SAFETY: By construction, `advance` does not exceed `self.len()`.
                 unsafe { self.post_inc_start(advance as isize) };
