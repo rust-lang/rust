@@ -1,5 +1,5 @@
 // run-rustfix
-#![warn(clippy::single_char_push_str)]
+#![warn(clippy::single_char_add_str)]
 
 macro_rules! get_string {
     () => {
@@ -8,6 +8,23 @@ macro_rules! get_string {
 }
 
 fn main() {
+    // `push_str` tests
+
+    let mut string = String::new();
+    string.push('R');
+    string.push('\'');
+
+    string.push('u');
+    string.push_str("st");
+    string.push_str("");
+    string.push('\x52');
+    string.push('\u{0052}');
+    string.push('a');
+
+    get_string!().push('ö');
+
+    // `insert_str` tests
+
     let mut string = String::new();
     string.insert(0, 'R');
     string.insert(1, '\'');

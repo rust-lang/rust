@@ -1290,8 +1290,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns when using `push_str` with a single-character string literal
-    /// where `push` with a `char` would work fine.
+    /// **What it does:** Warns when using `push_str`/`insert_str` with a single-character string literal
+    /// where `push`/`insert` with a `char` would work fine.
     ///
     /// **Why is this bad?** It's less clear that we are pushing a single character.
     ///
@@ -1300,16 +1300,18 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let mut string = String::new();
+    /// string.insert_str(0, "R");
     /// string.push_str("R");
     /// ```
     /// Could be written as
     /// ```rust
     /// let mut string = String::new();
+    /// string.insert(0, 'R');
     /// string.push('R');
     /// ```
-    pub SINGLE_CHAR_PUSH_STR,
+    pub SINGLE_CHAR_ADD_STR,
     style,
-    "`push_str()` used with a single-character string literal as parameter"
+    "`push_str()` or `insert_str()` used with a single-character string literal as parameter"
 }
 
 declare_clippy_lint! {
@@ -1390,7 +1392,7 @@ declare_lint_pass!(Methods => [
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
     SINGLE_CHAR_PATTERN,
-    SINGLE_CHAR_PUSH_STR,
+    SINGLE_CHAR_ADD_STR,
     SEARCH_IS_SOME,
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
@@ -3248,7 +3250,7 @@ fn lint_single_char_push_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args
         let sugg = format!("{}.push({})", base_string_snippet, extension_string);
         span_lint_and_sugg(
             cx,
-            SINGLE_CHAR_PUSH_STR,
+            SINGLE_CHAR_ADD_STR,
             expr.span,
             "calling `push_str()` using a single-character string literal",
             "consider using `push` with a character literal",
@@ -3268,7 +3270,7 @@ fn lint_single_char_insert_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ar
         let sugg = format!("{}.insert({}, {})", base_string_snippet, pos_arg, extension_string);
         span_lint_and_sugg(
             cx,
-            SINGLE_CHAR_PUSH_STR,
+            SINGLE_CHAR_ADD_STR,
             expr.span,
             "calling `insert_str()` using a single-character string literal",
             "consider using `insert` with a character literal",
