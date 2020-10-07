@@ -5099,9 +5099,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.15"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f0e00789804e99b20f12bc7003ca416309d28a6f495d6af58d1e2c2842461b5"
+checksum = "f50de3927f93d202783f4513cda820ab47ef17f624b03c096e86ef00c67e6b5f"
 dependencies = [
  "lazy_static",
 ]
@@ -5129,9 +5129,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.11"
+version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abd165311cc4d7a555ad11cc77a37756df836182db0d81aac908c8184c584f40"
+checksum = "4ef0a5e15477aa303afbfac3a44cba9b6430fdaad52423b1e6c0dbbe28c3eedd"
 dependencies = [
  "ansi_term 0.12.1",
  "chrono",
@@ -5144,6 +5144,7 @@ dependencies = [
  "sharded-slab",
  "smallvec 1.4.2",
  "thread_local",
+ "tracing",
  "tracing-core",
  "tracing-log",
  "tracing-serde",
