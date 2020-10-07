@@ -1,4 +1,5 @@
 #![feature(test)] // compiletest_rs requires this attribute
+#![feature(once_cell)]
 
 use compiletest_rs as compiletest;
 use compiletest_rs::common::Mode as TestMode;
