@@ -23,6 +23,7 @@ pub mod ext;
 pub mod fd;
 pub mod fs;
 pub mod io;
+#[path = "../unix/memchr.rs"]
 pub mod memchr;
 #[path = "../unix/mutex.rs"]
 pub mod mutex;
