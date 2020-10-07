@@ -8,27 +8,15 @@ use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
 use crate::sync::atomic::{self, Ordering};
-use crate::sys::mutex::Mutex;
+use crate::sys_common::mutex::StaticMutex;
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
 
-pub fn lock() -> impl Drop {
-    struct Guard;
-    static LOCK: Mutex = Mutex::new();
-
-    impl Drop for Guard {
-        fn drop(&mut self) {
-            unsafe {
-                LOCK.unlock();
-            }
-        }
-    }
-
-    unsafe {
-        LOCK.lock();
-        Guard
-    }
+// SAFETY: Don't attempt to lock this reentrantly.
+pub unsafe fn lock() -> impl Drop {
+    static LOCK: StaticMutex = StaticMutex::new();
+    LOCK.lock()
 }
 
 /// Prints the current backtrace.
