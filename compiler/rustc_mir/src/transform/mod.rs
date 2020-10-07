@@ -11,8 +11,13 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
-use std::borrow::Cow;
 
+#[macro_use]
+mod pass;
+
+pub use self::pass::{MirPass, OptLevel, PassManager};
+
+// Passes
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
 pub mod add_retag;
@@ -134,82 +139,6 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
     set
 }
 
-/// Generates a default name for the pass based on the name of the
-/// type `T`.
-pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
-    let name = ::std::any::type_name::<T>();
-    if let Some(tail) = name.rfind(':') { Cow::from(&name[tail + 1..]) } else { Cow::from(name) }
-}
-
-/// A streamlined trait that you can implement to create a pass; the
-/// pass will be named after the type, and it will consist of a main
-/// loop that goes over each available MIR and applies `run_pass`.
-pub trait MirPass<'tcx> {
-    fn name(&self) -> Cow<'_, str> {
-        default_name::<Self>()
-    }
-
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
-}
-
-pub fn run_passes(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    mir_phase: MirPhase,
-    passes: &[&[&dyn MirPass<'tcx>]],
-) {
-    let phase_index = mir_phase.phase_index();
-    let validate = tcx.sess.opts.debugging_opts.validate_mir;
-
-    if body.phase >= mir_phase {
-        return;
-    }
-
-    if validate {
-        validate::Validator { when: format!("input to phase {:?}", mir_phase), mir_phase }
-            .run_pass(tcx, body);
-    }
-
-    let mut index = 0;
-    let mut run_pass = |pass: &dyn MirPass<'tcx>| {
-        let run_hooks = |body: &_, index, is_after| {
-            dump_mir::on_mir_pass(
-                tcx,
-                &format_args!("{:03}-{:03}", phase_index, index),
-                &pass.name(),
-                body,
-                is_after,
-            );
-        };
-        run_hooks(body, index, false);
-        pass.run_pass(tcx, body);
-        run_hooks(body, index, true);
-
-        if validate {
-            validate::Validator {
-                when: format!("after {} in phase {:?}", pass.name(), mir_phase),
-                mir_phase,
-            }
-            .run_pass(tcx, body);
-        }
-
-        index += 1;
-    };
-
-    for pass_group in passes {
-        for pass in *pass_group {
-            run_pass(*pass);
-        }
-    }
-
-    body.phase = mir_phase;
-
-    if mir_phase == MirPhase::Optimization {
-        validate::Validator { when: format!("end of phase {:?}", mir_phase), mir_phase }
-            .run_pass(tcx, body);
-    }
-}
-
 fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> ConstQualifs {
     let const_kind = tcx.hir().body_const_context(def.did);
 
@@ -259,19 +188,15 @@ fn mir_const<'tcx>(
 
     util::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
 
-    run_passes(
-        tcx,
-        &mut body,
-        MirPhase::Const,
-        &[&[
-            // MIR-level lints.
-            &check_packed_ref::CheckPackedRef,
-            &check_const_item_mutation::CheckConstItemMutation,
-            // What we need to do constant evaluation.
-            &simplify::SimplifyCfg::new("initial"),
-            &rustc_peek::SanityCheck,
-        ]],
-    );
+    run_passes!(PassManager::new(tcx, &mut body, MirPhase::Const) => [
+        // MIR-level lints.
+        check_packed_ref::CheckPackedRef,
+        check_const_item_mutation::CheckConstItemMutation,
+        // What we need to do constant evaluation.
+        simplify::SimplifyCfg::new("initial"),
+        rustc_peek::SanityCheck,
+    ]);
+
     tcx.alloc_steal_mir(body)
 }
 
@@ -301,20 +226,19 @@ fn mir_promoted(
     }
     body.required_consts = required_consts;
 
+    let mut promotion_passes = PassManager::new(tcx, &mut body, MirPhase::ConstPromotion);
+
     let promote_pass = promote_consts::PromoteTemps::default();
-    let promote: &[&dyn MirPass<'tcx>] = &[
-        // What we need to run borrowck etc.
-        &promote_pass,
-        &simplify::SimplifyCfg::new("promote-consts"),
-    ];
+    run_passes!(promotion_passes => [
+        promote_pass,
+        simplify::SimplifyCfg::new("promote-consts"),
+    ]);
 
-    let opt_coverage: &[&dyn MirPass<'tcx>] = if tcx.sess.opts.debugging_opts.instrument_coverage {
-        &[&instrument_coverage::InstrumentCoverage]
-    } else {
-        &[]
-    };
+    if tcx.sess.opts.debugging_opts.instrument_coverage {
+        run_passes!(promotion_passes => [instrument_coverage::InstrumentCoverage]);
+    }
 
-    run_passes(tcx, &mut body, MirPhase::ConstPromotion, &[promote, opt_coverage]);
+    drop(promotion_passes);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
@@ -348,30 +272,28 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
 fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     debug!("post_borrowck_cleanup({:?})", body.source.def_id());
 
-    let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
+    run_passes!(PassManager::new(tcx, body, MirPhase::DropLowering) => [
         // Remove all things only needed by analysis
-        &no_landing_pads::NoLandingPads::new(tcx),
-        &simplify_branches::SimplifyBranches::new("initial"),
-        &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &cleanup_post_borrowck::CleanupNonCodegenStatements,
-        &simplify::SimplifyCfg::new("early-opt"),
+        no_landing_pads::NoLandingPads::new(tcx),
+        simplify_branches::SimplifyBranches::new("initial"),
+        remove_noop_landing_pads::RemoveNoopLandingPads,
+        cleanup_post_borrowck::CleanupNonCodegenStatements,
+        simplify::SimplifyCfg::new("early-opt"),
         // These next passes must be executed together
-        &add_call_guards::CriticalCallEdges,
-        &elaborate_drops::ElaborateDrops,
-        &no_landing_pads::NoLandingPads::new(tcx),
+        add_call_guards::CriticalCallEdges,
+        elaborate_drops::ElaborateDrops,
+        no_landing_pads::NoLandingPads::new(tcx),
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
-        &add_moves_for_packed_drops::AddMovesForPackedDrops,
+        add_moves_for_packed_drops::AddMovesForPackedDrops,
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
-        &add_retag::AddRetag,
-        &simplify::SimplifyCfg::new("elaborate-drops"),
+        add_retag::AddRetag,
+        simplify::SimplifyCfg::new("elaborate-drops"),
         // `Deaggregator` is conceptually part of MIR building, some backends rely on it happening
         // and it can help optimizations.
-        &deaggregator::Deaggregator,
-    ];
-
-    run_passes(tcx, body, MirPhase::DropLowering, &[post_borrowck_cleanup]);
+        deaggregator::Deaggregator,
+    ]);
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -380,80 +302,54 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // Lowering generator control-flow and variables has to happen before we do anything else
     // to them. We run some optimizations before that, because they may be harder to do on the state
     // machine than on MIR with async primitives.
-    let optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[
-        &unreachable_prop::UnreachablePropagation,
-        &uninhabited_enum_branching::UninhabitedEnumBranching,
-        &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
-        &inline::Inline,
-        &generator::StateTransform,
-    ];
+    run_passes!(PassManager::new(tcx, body, MirPhase::GeneratorLowering) => [
+        unreachable_prop::UnreachablePropagation,
+        uninhabited_enum_branching::UninhabitedEnumBranching,
+        simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
+        inline::Inline,
+        generator::StateTransform,
+    ]);
 
-    // Even if we don't do optimizations, we still have to lower generators for codegen.
-    let no_optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[&generator::StateTransform];
+    let mut optimizations = PassManager::new(tcx, body, MirPhase::Optimization);
 
-    // The main optimizations that we do on MIR.
-    let optimizations: &[&dyn MirPass<'tcx>] = &[
-        &remove_unneeded_drops::RemoveUnneededDrops,
-        &match_branches::MatchBranchSimplification,
-        // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
-        &multiple_return_terminators::MultipleReturnTerminators,
-        &instcombine::InstCombine,
-        &const_prop::ConstProp,
-        &simplify_branches::SimplifyBranches::new("after-const-prop"),
-        &early_otherwise_branch::EarlyOtherwiseBranch,
-        &simplify_comparison_integral::SimplifyComparisonIntegral,
-        &simplify_try::SimplifyArmIdentity,
-        &simplify_try::SimplifyBranchSame,
-        &dest_prop::DestinationPropagation,
-        &copy_prop::CopyPropagation,
-        &simplify_branches::SimplifyBranches::new("after-copy-prop"),
-        &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &simplify::SimplifyCfg::new("final"),
-        &nrvo::RenameReturnPlace,
-        &simplify::SimplifyLocals,
-        &multiple_return_terminators::MultipleReturnTerminators,
-    ];
-
-    // Optimizations to run even if mir optimizations have been disabled.
-    let no_optimizations: &[&dyn MirPass<'tcx>] = &[
-        // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
-        &const_prop::ConstProp,
-    ];
+    // FIXME(ecstaticmorse): We shouldn't branch on `mir_opt_level` here, but instead rely on the
+    // `LEVEL` of each `MirPass` to determine whether it runs. However, this would run some
+    // "cleanup" passes as well as `RemoveNoopLandingPads` when we didn't before.
+    if mir_opt_level > 0 {
+        run_passes!(optimizations => [
+            remove_unneeded_drops::RemoveUnneededDrops,
+            match_branches::MatchBranchSimplification,
+            // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
+            multiple_return_terminators::MultipleReturnTerminators,
+            instcombine::InstCombine,
+            const_prop::ConstProp,
+            simplify_branches::SimplifyBranches::new("after-const-prop"),
+            early_otherwise_branch::EarlyOtherwiseBranch,
+            simplify_comparison_integral::SimplifyComparisonIntegral,
+            simplify_try::SimplifyArmIdentity,
+            simplify_try::SimplifyBranchSame,
+            dest_prop::DestinationPropagation,
+            copy_prop::CopyPropagation,
+            simplify_branches::SimplifyBranches::new("after-copy-prop"),
+            remove_noop_landing_pads::RemoveNoopLandingPads,
+            simplify::SimplifyCfg::new("final"),
+            nrvo::RenameReturnPlace,
+            simplify::SimplifyLocals,
+            multiple_return_terminators::MultipleReturnTerminators,
+        ]);
+    } else {
+        run_passes!(optimizations => [
+            // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
+            const_prop::ConstProp,
+        ]);
+    }
 
     // Some cleanup necessary at least for LLVM and potentially other codegen backends.
-    let pre_codegen_cleanup: &[&dyn MirPass<'tcx>] = &[
-        &add_call_guards::CriticalCallEdges,
+    run_passes!(optimizations => [
+        add_call_guards::CriticalCallEdges,
         // Dump the end result for testing and debugging purposes.
-        &dump_mir::Marker("PreCodegen"),
-    ];
-
-    // End of pass declarations, now actually run the passes.
-    // Generator Lowering
-    #[rustfmt::skip]
-    run_passes(
-        tcx,
-        body,
-        MirPhase::GeneratorLowering,
-        &[
-            if mir_opt_level > 0 {
-                optimizations_with_generators
-            } else {
-                no_optimizations_with_generators
-            }
-        ],
-    );
-
-    // Main optimization passes
-    #[rustfmt::skip]
-    run_passes(
-        tcx,
-        body,
-        MirPhase::Optimization,
-        &[
-            if mir_opt_level > 0 { optimizations } else { no_optimizations },
-            pre_codegen_cleanup,
-        ],
-    );
+        dump_mir::Marker("PreCodegen"),
+    ]);
 }
 
 fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {

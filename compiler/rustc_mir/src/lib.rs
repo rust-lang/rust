@@ -34,13 +34,15 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
+#[macro_use]
+pub mod transform;
+
 mod borrow_check;
 pub mod const_eval;
 pub mod dataflow;
 pub mod interpret;
 pub mod monomorphize;
 mod shim;
-pub mod transform;
 pub mod util;
 
 use rustc_middle::ty::query::Providers;

@@ -17,7 +17,7 @@ use std::iter;
 
 use crate::transform::{
     add_call_guards, add_moves_for_packed_drops, no_landing_pads, remove_noop_landing_pads,
-    run_passes, simplify,
+    simplify, PassManager,
 };
 use crate::util::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 use crate::util::expand_aggregate;
@@ -75,18 +75,15 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
-    run_passes(
-        tcx,
-        &mut result,
-        MirPhase::Const,
-        &[&[
-            &add_moves_for_packed_drops::AddMovesForPackedDrops,
-            &no_landing_pads::NoLandingPads::new(tcx),
-            &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &simplify::SimplifyCfg::new("make_shim"),
-            &add_call_guards::CriticalCallEdges,
-        ]],
-    );
+    if result.phase < MirPhase::Const {
+        run_passes!(PassManager::new(tcx, &mut result, MirPhase::Const) => [
+            add_moves_for_packed_drops::AddMovesForPackedDrops,
+            no_landing_pads::NoLandingPads::new(tcx),
+            remove_noop_landing_pads::RemoveNoopLandingPads,
+            simplify::SimplifyCfg::new("make_shim"),
+            add_call_guards::CriticalCallEdges,
+        ]);
+    }
 
     debug!("make_shim({:?}) = {:?}", instance, result);
 
