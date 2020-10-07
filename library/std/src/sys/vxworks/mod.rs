@@ -13,6 +13,7 @@ pub mod weak;
 
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
+#[path = "../unix/args.rs"]
 pub mod args;
 pub mod cmath;
 #[path = "../unix/condvar.rs"]
