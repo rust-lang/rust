@@ -30,6 +30,7 @@ pub mod rand;
 pub mod rwlock;
 #[path = "../unix/stack_overflow.rs"]
 pub mod stack_overflow;
+#[path = "../unix/stdio.rs"]
 pub mod stdio;
 #[path = "../unix/thread.rs"]
 pub mod thread;
