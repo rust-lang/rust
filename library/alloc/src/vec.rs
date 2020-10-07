@@ -2591,6 +2591,8 @@ __impl_slice_eq1! { [] Vec<A>, &[B], #[stable(feature = "rust1", since = "1.0.0"
 __impl_slice_eq1! { [] Vec<A>, &mut [B], #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { [] &[A], Vec<B>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
 __impl_slice_eq1! { [] &mut [A], Vec<B>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
+__impl_slice_eq1! { [] Vec<A>, [B], #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
+__impl_slice_eq1! { [] [A], Vec<B>, #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
 __impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B> where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &[B] where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &mut [B] where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
