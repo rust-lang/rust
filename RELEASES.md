@@ -84,8 +84,6 @@ Compatibility Notes
   `Delimiter::None`.
 - [Moved support for the CloudABI target to tier 3.][75568]
 - [`linux-gnu` targets now require minimum kernel 2.6.32 and glibc 2.11.][74163]
-- [We have reports of some proc macros encountering as yet undiagnosed problems in linked C++
-  code, but the root cause is as yet undiagnosed.][76980]
 
 Internal Only
 --------
