@@ -31,6 +31,7 @@ pub mod rwlock;
 #[path = "../unix/stack_overflow.rs"]
 pub mod stack_overflow;
 pub mod stdio;
+#[path = "../unix/thread.rs"]
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
