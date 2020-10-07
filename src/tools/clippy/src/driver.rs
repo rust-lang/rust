@@ -357,7 +357,7 @@ pub fn main() {
                 args.extend(vec!["--sysroot".into(), sys_root]);
             };
 
-            return rustc_driver::run_compiler(&args, &mut DefaultCallbacks, None, None, None);
+            return rustc_driver::RunCompiler::new(&args, &mut DefaultCallbacks).run();
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
@@ -420,6 +420,6 @@ pub fn main() {
         let mut default = DefaultCallbacks;
         let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
             if clippy_enabled { &mut clippy } else { &mut default };
-        rustc_driver::run_compiler(&args, callbacks, None, None, None)
+        rustc_driver::RunCompiler::new(&args, callbacks).run()
     }))
 }
