@@ -8,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// **What it does:** Use `std::ptr::eq` when applicable
     ///
-    /// **Why is this bad?**`ptr::eq` can be used to compare `&T` references
+    /// **Why is this bad?** `ptr::eq` can be used to compare `&T` references
     /// (which coerce to `*const T` implicitly) by their address rather than
     /// comparing the values they point to.
     ///
