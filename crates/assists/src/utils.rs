@@ -286,14 +286,21 @@ pub mod convert {
 }
 
 pub mod iter {
-    pub use self::traits::iterator::Iterator;
-    mod traits { mod iterator {
-        use crate::option::Option;
-        pub trait Iterator {
-            type Item;
-            fn next(&mut self) -> Option<Self::Item>;
+    pub use self::traits::{collect::IntoIterator, iterator::Iterator};
+    mod traits {
+        mod iterator {
+            use crate::option::Option;
+            pub trait Iterator {
+                type Item;
+                fn next(&mut self) -> Option<Self::Item>;
+            }
         }
-    } }
+        mod collect {            
+            pub trait IntoIterator {
+                type Item;
+            }
+        }
+    }
 
     pub use self::sources::*;
     mod sources {
@@ -321,7 +328,7 @@ pub mod option {
 }
 
 pub mod prelude {
-    pub use crate::{convert::From, iter::Iterator, option::Option::{self, *}};
+    pub use crate::{convert::From, iter::{IntoIterator, Iterator}, option::Option::{self, *}};
 }
 #[prelude_import]
 pub use prelude::*;

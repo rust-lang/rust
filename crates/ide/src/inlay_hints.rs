@@ -412,7 +412,8 @@ mod tests {
     }
 
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
+        let ra_fixture = format!("{}\n{}", ra_fixture, FamousDefs::FIXTURE);
+        let (analysis, file_id) = fixture::file(&ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
         let actual =
@@ -1011,13 +1012,6 @@ fn main() {
     println!("Unit expr");
 }
 
-//- /core.rs crate:core
-#[prelude_import] use iter::*;
-mod iter {
-    trait IntoIterator {
-        type Item;
-    }
-}
 //- /alloc.rs crate:alloc deps:core
 mod collections {
     struct Vec<T> {}
@@ -1057,14 +1051,6 @@ fn main() {
       //^ &str
       let z = i;
         //^ &str
-    }
-}
-
-//- /core.rs crate:core
-#[prelude_import] use iter::*;
-mod iter {
-    trait IntoIterator {
-        type Item;
     }
 }
 //- /alloc.rs crate:alloc deps:core
@@ -1125,15 +1111,13 @@ fn main() {
                 chaining_hints: true,
                 max_length: None,
             },
-            &format!(
-                "{}\n{}\n",
-                r#"
+            r#"
 //- /main.rs crate:main deps:std
-use std::{Option::{self, Some, None}, iter};
+use std::iter;
 
 struct MyIter;
 
-impl iter::Iterator for MyIter {
+impl Iterator for MyIter {
     type Item = ();
     fn next(&mut self) -> Option<Self::Item> {
         None
@@ -1154,8 +1138,6 @@ fn main() {
 //- /std.rs crate:std deps:core
 use core::*;
 "#,
-                FamousDefs::FIXTURE
-            ),
         );
     }
 }
