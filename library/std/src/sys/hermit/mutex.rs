@@ -13,8 +13,7 @@ use crate::sys::hermit::abi;
 /// This structure behaves a lot like a common mutex. There are some differences:
 ///
 /// - By using busy waiting, it can be used outside the runtime.
-/// - It is a so called ticket lock (https://en.wikipedia.org/wiki/Ticket_lock)
-///   and completly fair.
+/// - It is a so called ticket lock and is completly fair.
 #[cfg_attr(target_arch = "x86_64", repr(align(128)))]
 #[cfg_attr(not(target_arch = "x86_64"), repr(align(64)))]
 struct Spinlock<T: ?Sized> {
@@ -98,7 +97,7 @@ impl PriorityQueue {
         }
     }
 
-    /// Add a task handle by its priority to the queue
+    /// Add a task id by its priority to the queue
     pub fn push(&mut self, prio: abi::Priority, id: abi::Tid) {
         let i: usize = prio.into().into();
         self.prio_bitmap |= (1 << i) as u64;
