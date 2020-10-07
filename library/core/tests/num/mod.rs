@@ -66,6 +66,7 @@ where
     assert_eq!(ten.rem(two), ten % two);
 }
 
+/// Helper function for asserting number parsing returns a specific error
 fn test_parse<T>(num_str: &str, expected: Result<T, IntErrorKind>)
 where
     T: FromStr<Err = ParseIntError>,
