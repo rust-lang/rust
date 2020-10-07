@@ -7,6 +7,7 @@ pub use self::rand::hashmap_random_keys;
 pub use crate::os::vxworks as platform;
 pub use libc::strlen;
 
+#[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
 pub mod cmath;
