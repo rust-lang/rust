@@ -174,9 +174,14 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_nth_back", since = "1.37.0")]
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.advance_back_by(n).ok()?;
-        self.next_back()
+    fn nth_back(&mut self, mut n: usize) -> Option<Self::Item> {
+        for x in self.rev() {
+            if n == 0 {
+                return Some(x);
+            }
+            n -= 1;
+        }
+        None
     }
 
     /// This is the reverse version of [`Iterator::try_fold()`]: it takes

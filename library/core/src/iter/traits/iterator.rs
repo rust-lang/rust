@@ -363,9 +363,14 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.advance_by(n).ok()?;
-        self.next()
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
+        while let Some(x) = self.next() {
+            if n == 0 {
+                return Some(x);
+            }
+            n -= 1;
+        }
+        None
     }
 
     /// Creates an iterator starting at the same point, but stepping by
