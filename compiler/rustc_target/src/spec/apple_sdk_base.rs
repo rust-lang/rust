@@ -34,6 +34,7 @@ fn link_env_remove(arch: Arch) -> Vec<String> {
 pub fn opts(arch: Arch) -> TargetOptions {
     TargetOptions {
         cpu: target_cpu(arch),
+        dynamic_linking: false,
         executables: true,
         link_env_remove: link_env_remove(arch),
         has_elf_tls: false,
