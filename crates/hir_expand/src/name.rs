@@ -164,6 +164,7 @@ pub mod known {
         result,
         boxed,
         // Components of known path (type name)
+        Iterator,
         IntoIterator,
         Item,
         Try,

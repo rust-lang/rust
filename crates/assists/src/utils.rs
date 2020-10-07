@@ -3,7 +3,7 @@ pub(crate) mod insert_use;
 
 use std::{iter, ops};
 
-use hir::{Adt, Crate, Enum, ScopeDef, Semantics, Trait, Type};
+use hir::{Adt, Crate, Enum, Module, ScopeDef, Semantics, Trait, Type};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -274,15 +274,79 @@ impl TryEnum {
 /// somewhat similar to the known paths infra inside hir, but it different; We
 /// want to make sure that IDE specific paths don't become interesting inside
 /// the compiler itself as well.
-pub(crate) struct FamousDefs<'a, 'b>(pub(crate) &'a Semantics<'b, RootDatabase>, pub(crate) Crate);
+pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Crate);
 
 #[allow(non_snake_case)]
 impl FamousDefs<'_, '_> {
-    #[cfg(test)]
-    pub(crate) const FIXTURE: &'static str = r#"//- /libcore.rs crate:core
+    pub const FIXTURE: &'static str = r#"//- /libcore.rs crate:core
 pub mod convert {
     pub trait From<T> {
-        fn from(T) -> Self;
+        fn from(t: T) -> Self;
+    }
+}
+
+pub mod iter {
+    pub use self::traits::{collect::IntoIterator, iterator::Iterator};
+    mod traits {
+        pub(crate) mod iterator {
+            use crate::option::Option;
+            pub trait Iterator {
+                type Item;
+                fn next(&mut self) -> Option<Self::Item>;
+                fn by_ref(&mut self) -> &mut Self {
+                    self
+                }
+                fn take(self, n: usize) -> crate::iter::Take<Self> {
+                    crate::iter::Take { inner: self }
+                }
+            }
+
+            impl<I: Iterator> Iterator for &mut I {
+                type Item = I::Item;
+                fn next(&mut self) -> Option<I::Item> {
+                    (**self).next()
+                }
+            }
+        }
+        pub(crate) mod collect {
+            pub trait IntoIterator {
+                type Item;
+            }
+        }
+    }
+
+    pub use self::sources::*;
+    pub(crate) mod sources {
+        use super::Iterator;
+        use crate::option::Option::{self, *};
+        pub struct Repeat<A> {
+            element: A,
+        }
+
+        pub fn repeat<T>(elt: T) -> Repeat<T> {
+            Repeat { element: elt }
+        }
+
+        impl<A> Iterator for Repeat<A> {
+            type Item = A;
+
+            fn next(&mut self) -> Option<A> {
+                None
+            }
+        }
+    }
+
+    pub use self::adapters::*;
+    pub(crate) mod adapters {
+        use super::Iterator;
+        use crate::option::Option::{self, *};
+        pub struct Take<I> { pub(crate) inner: I }
+        impl<I> Iterator for Take<I> where I: Iterator {
+            type Item = <I as Iterator>::Item;
+            fn next(&mut self) -> Option<<I as Iterator>::Item> {
+                None
+            }
+        }
     }
 }
 
@@ -291,7 +355,7 @@ pub mod option {
 }
 
 pub mod prelude {
-    pub use crate::{convert::From, option::Option::{self, *}};
+    pub use crate::{convert::From, iter::{IntoIterator, Iterator}, option::Option::{self, *}};
 }
 #[prelude_import]
 pub use prelude::*;
@@ -303,6 +367,14 @@ pub use prelude::*;
 
     pub(crate) fn core_option_Option(&self) -> Option<Enum> {
         self.find_enum("core:option:Option")
+    }
+
+    pub fn core_iter_Iterator(&self) -> Option<Trait> {
+        self.find_trait("core:iter:traits:iterator:Iterator")
+    }
+
+    pub fn core_iter(&self) -> Option<Module> {
+        self.find_module("core:iter")
     }
 
     fn find_trait(&self, path: &str) -> Option<Trait> {
@@ -319,23 +391,33 @@ pub use prelude::*;
         }
     }
 
+    fn find_module(&self, path: &str) -> Option<Module> {
+        match self.find_def(path)? {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(it)) => Some(it),
+            _ => None,
+        }
+    }
+
     fn find_def(&self, path: &str) -> Option<ScopeDef> {
         let db = self.0.db;
         let mut path = path.split(':');
         let trait_ = path.next_back()?;
         let std_crate = path.next()?;
-        let std_crate = self
+        let std_crate = if self
             .1
-            .dependencies(db)
-            .into_iter()
-            .find(|dep| &dep.name.to_string() == std_crate)?
-            .krate;
-
+            .declaration_name(db)
+            .map(|name| name.to_string() == std_crate)
+            .unwrap_or(false)
+        {
+            self.1
+        } else {
+            self.1.dependencies(db).into_iter().find(|dep| dep.name.to_string() == std_crate)?.krate
+        };
         let mut module = std_crate.root_module(db);
         for segment in path {
             module = module.children(db).find_map(|child| {
                 let name = child.name(db)?;
-                if &name.to_string() == segment {
+                if name.to_string() == segment {
                     Some(child)
                 } else {
                     None
@@ -343,7 +425,7 @@ pub use prelude::*;
             })?;
         }
         let def =
-            module.scope(db, None).into_iter().find(|(name, _def)| &name.to_string() == trait_)?.1;
+            module.scope(db, None).into_iter().find(|(name, _def)| name.to_string() == trait_)?.1;
         Some(def)
     }
 }
