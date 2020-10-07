@@ -12,13 +12,7 @@ use std::borrow::Cow;
 pub struct UnreachablePropagation;
 
 impl MirPass<'_> for UnreachablePropagation {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 3 {
-            // Enable only under -Zmir-opt-level=3 as in some cases (check the deeply-nested-opt
-            // perf benchmark) LLVM may spend quite a lot of time optimizing the generated code.
-            return;
-        }
-
+    fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut unreachable_blocks = FxHashSet::default();
         let mut replacements = FxHashMap::default();
 
