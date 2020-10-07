@@ -1,6 +1,7 @@
 //! A pass that eliminates branches on uninhabited enum variants.
 
 use crate::transform::MirPass;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, TerminatorKind,
 };
@@ -52,9 +53,13 @@ fn variant_discriminants<'tcx>(
     layout: &TyAndLayout<'tcx>,
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
-) -> Vec<u128> {
+) -> FxHashSet<u128> {
     match &layout.variants {
-        Variants::Single { index } => vec![index.as_u32() as u128],
+        Variants::Single { index } => {
+            let mut res = FxHashSet::default();
+            res.insert(index.as_u32() as u128);
+            res
+        }
         Variants::Multiple { variants, .. } => variants
             .iter_enumerated()
             .filter_map(|(idx, layout)| {
