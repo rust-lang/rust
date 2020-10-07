@@ -28,7 +28,11 @@ impl Condvar {
 
     pub unsafe fn notify_one(&self) {
         if self.condvar.load(Ordering::Relaxed) != abi::CONDVAR_HAS_NO_WAITERS.0 {
-            let ret = abi::condvar_signal(&self.condvar as *const AtomicU32 as *mut abi::condvar, abi::scope::PRIVATE, 1);
+            let ret = abi::condvar_signal(
+                &self.condvar as *const AtomicU32 as *mut abi::condvar,
+                abi::scope::PRIVATE,
+                1,
+            );
             assert_eq!(ret, abi::errno::SUCCESS, "Failed to signal on condition variable");
         }
     }
