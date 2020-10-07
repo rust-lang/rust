@@ -17,6 +17,7 @@ pub mod fd;
 pub mod fs;
 pub mod io;
 pub mod memchr;
+#[path = "../unix/mutex.rs"]
 pub mod mutex;
 pub mod net;
 pub mod os;
