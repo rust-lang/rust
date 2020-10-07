@@ -28,9 +28,8 @@ struct InteriorVisitor<'a, 'tcx> {
     /// such borrows can span across this yield point.
     /// As such, we need to track these borrows and record them despite of the fact
     /// that they may succeed the said yield point in the post-order.
-    nested_scope_of_guards: SmallVec<[SmallVec<[HirId; 4]>; 4]>,
-    current_scope_of_guards: HirIdSet,
-    arm_has_guard: bool,
+    guard_bindings: SmallVec<[SmallVec<[HirId; 4]>; 1]>,
+    guard_bindings_set: HirIdSet,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -147,9 +146,8 @@ pub fn resolve_interior<'a, 'tcx>(
         expr_count: 0,
         kind,
         prev_unresolved_span: None,
-        nested_scope_of_guards: <_>::default(),
-        current_scope_of_guards: <_>::default(),
-        arm_has_guard: false,
+        guard_bindings: <_>::default(),
+        guard_bindings_set: <_>::default(),
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -228,25 +226,34 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx Arm<'tcx>) {
         if arm.guard.is_some() {
-            self.nested_scope_of_guards.push(<_>::default());
-            self.arm_has_guard = true;
+            self.guard_bindings.push(<_>::default());
         }
         self.visit_pat(&arm.pat);
         if let Some(ref g) = arm.guard {
+            self.guard_bindings.push(<_>::default());
+            ArmPatCollector {
+                guard_bindings_set: &mut self.guard_bindings_set,
+                guard_bindings: self
+                    .guard_bindings
+                    .last_mut()
+                    .expect("should have pushed at least one earlier"),
+            }
+            .visit_pat(&arm.pat);
+
             match g {
                 Guard::If(ref e) => {
                     self.visit_expr(e);
                 }
             }
+
             let mut scope_var_ids =
-                self.nested_scope_of_guards.pop().expect("should have pushed at least one earlier");
+                self.guard_bindings.pop().expect("should have pushed at least one earlier");
             for var_id in scope_var_ids.drain(..) {
                 assert!(
-                    self.current_scope_of_guards.remove(&var_id),
+                    self.guard_bindings_set.remove(&var_id),
                     "variable should be placed in scope earlier"
                 );
             }
-            self.arm_has_guard = false;
         }
         self.visit_expr(&arm.body);
     }
@@ -256,14 +263,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         self.expr_count += 1;
 
-        if let PatKind::Binding(_, id, ..) = pat.kind {
+        if let PatKind::Binding(..) = pat.kind {
             let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
             let ty = self.fcx.typeck_results.borrow().pat_ty(pat);
             self.record(ty, Some(scope), None, pat.span, false);
-            if self.arm_has_guard {
-                self.nested_scope_of_guards.as_mut_slice().last_mut().unwrap().push(id);
-                self.current_scope_of_guards.insert(id);
-            }
         }
     }
 
@@ -299,8 +302,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 intravisit::walk_expr(self, expr);
                 let res = self.fcx.typeck_results.borrow().qpath_res(qpath, expr.hir_id);
                 match res {
-                    Res::Local(id) if self.current_scope_of_guards.contains(&id) => {
-                        debug!("a borrow in guard from pattern local is detected");
+                    Res::Local(id) if self.guard_bindings_set.contains(&id) => {
                         guard_borrowing_from_pattern = true;
                     }
                     _ => {}
@@ -347,6 +349,27 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             self.record(ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
         } else {
             self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
+        }
+    }
+}
+
+struct ArmPatCollector<'a> {
+    guard_bindings_set: &'a mut HirIdSet,
+    guard_bindings: &'a mut SmallVec<[HirId; 4]>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for ArmPatCollector<'a> {
+    type Map = intravisit::ErasedMap<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
+        intravisit::walk_pat(self, pat);
+        if let PatKind::Binding(_, id, ..) = pat.kind {
+            self.guard_bindings.push(id);
+            self.guard_bindings_set.insert(id);
         }
     }
 }
