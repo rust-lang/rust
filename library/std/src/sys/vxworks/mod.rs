@@ -7,6 +7,10 @@ pub use self::rand::hashmap_random_keys;
 pub use crate::os::vxworks as platform;
 pub use libc::strlen;
 
+#[macro_use]
+#[path = "../unix/weak.rs"]
+pub mod weak;
+
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
