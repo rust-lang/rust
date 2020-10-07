@@ -144,6 +144,20 @@ fn foo() {
 In the "Not as good" version, the precondition that `1` is a valid char boundary is checked in `is_string_literal` and used in `foo`.
 In the "Good" version, the precondition check and usage are checked in the same block, and then encoded in the types.
 
+When checking a boolean precondition, prefer `if !invariant` to `if negated_invariant`:
+
+```rust
+// Good
+if !(idx < len) {
+    return None;
+}
+
+// Not as good
+if idx >= len {
+    return None;
+}
+```
+
 ## Getters & Setters
 
 If a field can have any value without breaking invariants, make the field public.
@@ -380,6 +394,19 @@ fn foo() -> Option<Bar> {
         None
     }
 }
+```
+
+## Comparisons
+
+Use `<`/`<=`, avoid `>`/`>=`.
+Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line)
+
+```rs
+// Good
+assert!(lo <= x && x <= hi);
+
+// Not as good
+assert!(x >= lo && x <= hi>);
 ```
 
 ## Documentation
