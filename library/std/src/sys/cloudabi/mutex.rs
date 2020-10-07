@@ -17,7 +17,7 @@ pub struct Mutex(RWLock);
 
 pub type MovableMutex = Mutex;
 
-pub unsafe fn raw(m: &Mutex) -> *mut AtomicU32 {
+pub unsafe fn raw(m: &Mutex) -> &AtomicU32 {
     rwlock::raw(&m.0)
 }
 

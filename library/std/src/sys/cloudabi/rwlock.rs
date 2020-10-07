@@ -15,8 +15,8 @@ pub struct RWLock {
     lock: AtomicU32,
 }
 
-pub unsafe fn raw(r: &RWLock) -> *mut AtomicU32 {
-    &r.lock as *const AtomicU32 as *mut AtomicU32
+pub unsafe fn raw(r: &RWLock) -> &AtomicU32 {
+    &r.lock
 }
 
 unsafe impl Send for RWLock {}
