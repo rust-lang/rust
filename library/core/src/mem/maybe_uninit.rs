@@ -851,4 +851,24 @@ impl<T> MaybeUninit<T> {
     pub fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
         this as *mut [MaybeUninit<T>] as *mut T
     }
+
+    /// Assume this `MaybeUninit` is initialized, takes the value from it and subjects it to the
+    /// normal drop handling rules, and leaves an uninitialized value in its place.
+    ///
+    /// # Safety
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
+    /// state. Calling this when the content is not yet fully initialized causes immediate undefined
+    /// behavior. The [type-level documentation][inv] contains more information about
+    /// this initialization invariant.
+    ///
+    /// [inv]: #initialization-invariant
+    #[unstable(feature = "maybe_uninit_take", issue = "none")]
+    pub unsafe fn assume_init_take(&mut self) -> T {
+        // SAFETY: the caller must guarantee that `self` is initialized.
+        // This also means that `self` must be a `value` variant.
+        unsafe {
+            intrinsics::assert_inhabited::<T>();
+            crate::mem::replace(self, Self::uninit()).assume_init()
+        }
+    }
 }
