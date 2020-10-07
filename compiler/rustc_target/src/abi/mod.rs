@@ -159,8 +159,8 @@ impl TargetDataLayout {
             return Err(format!(
                 "inconsistent target specification: \"data-layout\" claims \
                 architecture is {}-endian, while \"target-endian\" is `{}`",
-                dl.endian.name(),
-                target.target_endian.name()
+                dl.endian.as_str(),
+                target.target_endian.as_str()
             ));
         }
 
@@ -235,7 +235,7 @@ pub enum Endian {
 }
 
 impl Endian {
-    pub fn name(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             Self::Little => "little",
             Self::Big => "big",
@@ -253,7 +253,7 @@ impl Endian {
 
 impl fmt::Debug for Endian {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.name())
+        f.write_str(self.as_str())
     }
 }
 
@@ -271,7 +271,7 @@ impl FromStr for Endian {
 
 impl ToJson for Endian {
     fn to_json(&self) -> Json {
-        Json::String(self.name().to_owned())
+        Json::String(self.as_str().to_owned())
     }
 }
 
