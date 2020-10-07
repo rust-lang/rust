@@ -28,6 +28,7 @@ pub mod process;
 pub mod rand;
 #[path = "../unix/rwlock.rs"]
 pub mod rwlock;
+#[path = "../unix/stack_overflow.rs"]
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
