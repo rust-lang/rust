@@ -79,7 +79,6 @@ pub use index::check_range;
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
-    #[cfg(not(bootstrap))] // Unused in bootstrap
     /// The maximum, inclusive, length such that the slice is no larger than `isize::MAX` bytes.
     /// This constant is used in `len` below.
     const MAX_LEN_BOUND: usize = {
@@ -108,15 +107,12 @@ impl<T> [T] {
         // Only `std` can make this guarantee.
         let raw_len = unsafe { crate::ptr::Repr { rust: self }.raw.len };
 
-        #[cfg(not(bootstrap))] // FIXME: executing assume in const eval not supported in bootstrap
         // SAFETY: this assume asserts that `raw_len * size_of::<T>() <= isize::MAX`. All
         // references must point to one allocation with size at most isize::MAX. Note that we the
         // multiplication could appear to overflow until we have assumed the bound. This overflow
         // would make additional values appear 'valid' and then `n > 1` the range of permissible
         // length would no longer be the full or even a single range.
-        unsafe {
-            crate::intrinsics::assume(raw_len <= Self::MAX_LEN_BOUND)
-        };
+        unsafe { crate::intrinsics::assume(raw_len <= Self::MAX_LEN_BOUND) };
 
         raw_len
     }
