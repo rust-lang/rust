@@ -10,6 +10,7 @@ pub use libc::strlen;
 pub mod alloc;
 pub mod args;
 pub mod cmath;
+#[path = "../unix/condvar.rs"]
 pub mod condvar;
 pub mod env;
 pub mod ext;
