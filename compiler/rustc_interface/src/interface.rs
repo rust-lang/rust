@@ -56,6 +56,9 @@ impl Compiler {
     pub fn output_file(&self) -> &Option<PathBuf> {
         &self.output_file
     }
+    pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
+        &self.register_lints
+    }
     pub fn build_output_filenames(
         &self,
         sess: &Session,
