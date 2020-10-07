@@ -308,7 +308,7 @@ pub mod iter {
                 }
             }
         }
-        pub(crate) mod collect {            
+        pub(crate) mod collect {
             pub trait IntoIterator {
                 type Item;
             }

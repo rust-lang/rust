@@ -211,7 +211,9 @@ fn hint_iterator(
     ty: &Type,
 ) -> Option<SmolStr> {
     let db = sema.db;
-    let strukt = ty.as_adt()?;
+    let strukt = std::iter::successors(Some(ty.clone()), |ty| ty.remove_ref())
+        .last()
+        .and_then(|strukt| strukt.as_adt())?;
     let krate = strukt.krate(db)?;
     if krate.declaration_name(db).as_deref() != Some("core") {
         return None;
@@ -1169,7 +1171,7 @@ fn main() {
                     InlayHint {
                         range: 175..225,
                         kind: ChainingHint,
-                        label: "&mut Take<&mut MyIter>",
+                        label: "impl Iterator<Item = ()>",
                     },
                     InlayHint {
                         range: 175..207,
