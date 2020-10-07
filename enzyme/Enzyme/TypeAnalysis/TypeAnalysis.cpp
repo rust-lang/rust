@@ -1321,6 +1321,19 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::ctpop:
   case Intrinsic::ctlz:
   case Intrinsic::cttz:
+  case Intrinsic::nvvm_read_ptx_sreg_tid_x:
+  case Intrinsic::nvvm_read_ptx_sreg_tid_y:
+  case Intrinsic::nvvm_read_ptx_sreg_tid_z:
+  case Intrinsic::nvvm_read_ptx_sreg_ntid_x:
+  case Intrinsic::nvvm_read_ptx_sreg_ntid_y:
+  case Intrinsic::nvvm_read_ptx_sreg_ntid_z:
+  case Intrinsic::nvvm_read_ptx_sreg_ctaid_x:
+  case Intrinsic::nvvm_read_ptx_sreg_ctaid_y:
+  case Intrinsic::nvvm_read_ptx_sreg_ctaid_z:
+  case Intrinsic::nvvm_read_ptx_sreg_nctaid_x:
+  case Intrinsic::nvvm_read_ptx_sreg_nctaid_y:
+  case Intrinsic::nvvm_read_ptx_sreg_nctaid_z:
+  case Intrinsic::nvvm_read_ptx_sreg_warpsize:
     // No direction check as always valid
     updateAnalysis(
         &I, TypeTree(BaseType::Integer).Only(-1), &I);

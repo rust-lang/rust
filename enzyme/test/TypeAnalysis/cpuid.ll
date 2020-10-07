@@ -14,8 +14,6 @@ entry:
   ret void
 }
 
-; TODO the results could be canonicalized
-
 ; CHECK: caller - {} |{}:{} 
 ; CHECK-NEXT: i32* %l1: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer}
 ; CHECK-NEXT: entry
