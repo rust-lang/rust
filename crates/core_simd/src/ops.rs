@@ -223,6 +223,8 @@ macro_rules! impl_op {
             impl core::ops::Neg for $type {
                 type Output = Self;
                 fn neg(self) -> Self::Output {
+                    // FIXME: Replace this with fneg intrinsic once available.
+                    // https://github.com/rust-lang/stdsimd/issues/32
                     Self::from_bits(<$type>::splat(-0.0).to_bits() ^ self.to_bits())
                 }
             }
