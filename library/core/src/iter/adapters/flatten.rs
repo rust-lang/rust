@@ -1,8 +1,8 @@
-use crate::fmt;
-use crate::ops::Try;
-
-use super::super::{DoubleEndedIterator, Fuse, FusedIterator, Iterator};
-use super::Map;
+use crate::{
+    fmt,
+    iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map},
+    ops::Try,
+};
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.

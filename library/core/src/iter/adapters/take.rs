@@ -1,8 +1,8 @@
 use crate::{
-    cmp, iter::FusedIterator, iter::InPlaceIterable, iter::TrustedLen, ops::ControlFlow, ops::Try,
+    cmp,
+    iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen},
+    ops::{ControlFlow, Try},
 };
-
-use super::SourceIter;
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 ///

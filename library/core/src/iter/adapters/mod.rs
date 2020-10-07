@@ -26,23 +26,9 @@ mod take_while;
 mod zip;
 
 pub use self::{
-    chain::Chain,
-    cycle::Cycle,
-    enumerate::Enumerate,
-    filter::Filter,
-    filter_map::FilterMap,
-    flatten::FlatMap,
-    fuse::Fuse,
-    inspect::Inspect,
-    map::Map,
-    peekable::Peekable,
-    rev::Rev,
-    scan::Scan,
-    skip::Skip,
-    skip_while::SkipWhile,
-    take::Take,
-    take_while::TakeWhile,
-    zip::Zip,
+    chain::Chain, cycle::Cycle, enumerate::Enumerate, filter::Filter, filter_map::FilterMap,
+    flatten::FlatMap, fuse::Fuse, inspect::Inspect, map::Map, peekable::Peekable, rev::Rev,
+    scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
 };
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]

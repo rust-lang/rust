@@ -1,4 +1,8 @@
-use crate::{fmt, iter::{FusedIterator, TrustedLen}, marker};
+use crate::{
+    fmt,
+    iter::{FusedIterator, TrustedLen},
+    marker,
+};
 
 /// Creates an iterator that yields nothing.
 ///
