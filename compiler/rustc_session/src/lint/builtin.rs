@@ -1882,6 +1882,16 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `invalid_html_tags` lint detects invalid HTML tags. This is a
+    /// `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_html_tags
+    pub INVALID_HTML_TAGS,
+    Allow,
+    "detects invalid HTML tags in doc comments"
+}
+
+declare_lint! {
     /// The `where_clauses_object_safety` lint detects for [object safety] of
     /// [where clauses].
     ///
@@ -2699,6 +2709,7 @@ declare_lint_pass! {
         INVALID_CODEBLOCK_ATTRIBUTES,
         MISSING_CRATE_LEVEL_DOCS,
         MISSING_DOC_CODE_EXAMPLES,
+        INVALID_HTML_TAGS,
         PRIVATE_DOC_TESTS,
         WHERE_CLAUSES_OBJECT_SAFETY,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,

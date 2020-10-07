@@ -45,6 +45,9 @@ pub use self::check_code_block_syntax::CHECK_CODE_BLOCK_SYNTAX;
 mod calculate_doc_coverage;
 pub use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 
+mod html_tags;
+pub use self::html_tags::CHECK_INVALID_HTML_TAGS;
+
 /// A single pass over the cleaned documentation.
 ///
 /// Runs in the compiler context, so it has access to types and traits and the like.
@@ -87,6 +90,7 @@ pub const PASSES: &[Pass] = &[
     CHECK_CODE_BLOCK_SYNTAX,
     COLLECT_TRAIT_IMPLS,
     CALCULATE_DOC_COVERAGE,
+    CHECK_INVALID_HTML_TAGS,
 ];
 
 /// The list of passes run by default.
@@ -100,6 +104,7 @@ pub const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
     ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
     ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
+    ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
     ConditionalPass::always(PROPAGATE_DOC_CFG),
 ];
 

@@ -250,3 +250,38 @@ warning: unknown attribute `should-panic`. Did you mean `should_panic`?
 
 In the example above, the correct form is `should_panic`. This helps detect
 typo mistakes for some common attributes.
+
+## invalid_html_tags
+
+This lint is **allowed by default** and is **nightly-only**. It detects unclosed
+or invalid HTML tags. For example:
+
+```rust
+#![warn(invalid_html_tags)]
+
+/// <h1>
+/// </script>
+pub fn foo() {}
+```
+
+Which will give:
+
+```text
+warning: unopened HTML tag `script`
+ --> foo.rs:1:1
+  |
+1 | / /// <h1>
+2 | | /// </script>
+  | |_____________^
+  |
+  = note: `#[warn(invalid_html_tags)]` on by default
+
+warning: unclosed HTML tag `h1`
+ --> foo.rs:1:1
+  |
+1 | / /// <h1>
+2 | | /// </script>
+  | |_____________^
+
+warning: 2 warnings emitted
+```
