@@ -3,7 +3,7 @@ pub(crate) mod insert_use;
 
 use std::{iter, ops};
 
-use hir::{Adt, Crate, Enum, ScopeDef, Semantics, Trait, Type};
+use hir::{Adt, Crate, Enum, Module, ScopeDef, Semantics, Trait, Type};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -373,6 +373,10 @@ pub use prelude::*;
         self.find_trait("core:iter:traits:iterator:Iterator")
     }
 
+    pub fn core_iter(&self) -> Option<Module> {
+        self.find_module("core:iter")
+    }
+
     fn find_trait(&self, path: &str) -> Option<Trait> {
         match self.find_def(path)? {
             hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),
@@ -383,6 +387,13 @@ pub use prelude::*;
     fn find_enum(&self, path: &str) -> Option<Enum> {
         match self.find_def(path)? {
             hir::ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(it))) => Some(it),
+            _ => None,
+        }
+    }
+
+    fn find_module(&self, path: &str) -> Option<Module> {
+        match self.find_def(path)? {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(it)) => Some(it),
             _ => None,
         }
     }

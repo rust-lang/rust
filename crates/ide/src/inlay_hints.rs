@@ -1,5 +1,5 @@
 use assists::utils::FamousDefs;
-use hir::{known, Adt, AssocItem, Callable, HirDisplay, Semantics, Type};
+use hir::{known, HirDisplay, Semantics};
 use ide_db::RootDatabase;
 use stdx::to_lower_snake_case;
 use syntax::{
@@ -120,7 +120,7 @@ fn get_chaining_hints(
             return None;
         }
         if matches!(expr, ast::Expr::PathExpr(_)) {
-            if let Some(Adt::Struct(st)) = ty.as_adt() {
+            if let Some(hir::Adt::Struct(st)) = ty.as_adt() {
                 if st.fields(sema.db).is_empty() {
                     return None;
                 }
@@ -208,7 +208,7 @@ fn get_bind_pat_hints(
 fn hint_iterator(
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
-    ty: &Type,
+    ty: &hir::Type,
 ) -> Option<SmolStr> {
     let db = sema.db;
     let strukt = std::iter::successors(Some(ty.clone()), |ty| ty.remove_ref())
@@ -218,17 +218,13 @@ fn hint_iterator(
     if krate.declaration_name(db).as_deref() != Some("core") {
         return None;
     }
-    // assert this type comes from `core::iter`
-    strukt
-        .module(db)
-        .path_to_root(db)
-        .into_iter()
-        .rev()
-        .find(|module| module.name(db) == Some(known::iter))?;
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
+    let iter_mod = FamousDefs(sema, krate).core_iter()?;
+    // assert this type comes from `core::iter`
+    iter_mod.visibility_of(db, &iter_trait.into()).filter(|&vis| vis == hir::Visibility::Public)?;
     if ty.impls_trait(db, iter_trait, &[]) {
         let assoc_type_item = iter_trait.items(db).into_iter().find_map(|item| match item {
-            AssocItem::TypeAlias(alias) if alias.name(db) == known::Item => Some(alias),
+            hir::AssocItem::TypeAlias(alias) if alias.name(db) == known::Item => Some(alias),
             _ => None,
         })?;
         if let Some(ty) = ty.normalize_trait_assoc_type(db, iter_trait, &[], assoc_type_item) {
@@ -248,8 +244,8 @@ fn hint_iterator(
     None
 }
 
-fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &Type) -> bool {
-    if let Some(Adt::Enum(enum_data)) = pat_ty.as_adt() {
+fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir::Type) -> bool {
+    if let Some(hir::Adt::Enum(enum_data)) = pat_ty.as_adt() {
         let pat_text = bind_pat.to_string();
         enum_data
             .variants(db)
@@ -264,7 +260,7 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &Typ
 fn should_not_display_type_hint(
     sema: &Semantics<RootDatabase>,
     bind_pat: &ast::IdentPat,
-    pat_ty: &Type,
+    pat_ty: &hir::Type,
 ) -> bool {
     let db = sema.db;
 
@@ -272,7 +268,7 @@ fn should_not_display_type_hint(
         return true;
     }
 
-    if let Some(Adt::Struct(s)) = pat_ty.as_adt() {
+    if let Some(hir::Adt::Struct(s)) = pat_ty.as_adt() {
         if s.fields(db).is_empty() && s.name(db).to_string() == bind_pat.to_string() {
             return true;
         }
@@ -316,7 +312,7 @@ fn should_not_display_type_hint(
 
 fn should_show_param_name_hint(
     sema: &Semantics<RootDatabase>,
-    callable: &Callable,
+    callable: &hir::Callable,
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
@@ -363,7 +359,7 @@ fn is_enum_name_similar_to_param_name(
     param_name: &str,
 ) -> bool {
     match sema.type_of_expr(argument).and_then(|t| t.as_adt()) {
-        Some(Adt::Enum(e)) => to_lower_snake_case(&e.name(sema.db).to_string()) == param_name,
+        Some(hir::Adt::Enum(e)) => to_lower_snake_case(&e.name(sema.db).to_string()) == param_name,
         _ => false,
     }
 }
@@ -384,7 +380,7 @@ fn is_obvious_param(param_name: &str) -> bool {
     param_name.len() == 1 || is_obvious_param_name
 }
 
-fn get_callable(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<Callable> {
+fn get_callable(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<hir::Callable> {
     match expr {
         ast::Expr::CallExpr(expr) => sema.type_of_expr(&expr.expr()?)?.as_callable(sema.db),
         ast::Expr::MethodCallExpr(expr) => sema.resolve_method_call_as_callable(expr),
