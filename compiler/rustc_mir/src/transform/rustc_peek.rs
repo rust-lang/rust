@@ -5,7 +5,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -22,6 +22,8 @@ use crate::dataflow::{Analysis, JoinSemiLattice, Results, ResultsCursor};
 pub struct SanityCheck;
 
 impl<'tcx> MirPass<'tcx> for SanityCheck {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         use crate::dataflow::has_rustc_mir_with;
         let def_id = body.source.def_id();

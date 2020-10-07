@@ -4,7 +4,7 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -58,6 +58,8 @@ fn may_be_reference(ty: Ty<'tcx>) -> bool {
 }
 
 impl<'tcx> MirPass<'tcx> for AddRetag {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;

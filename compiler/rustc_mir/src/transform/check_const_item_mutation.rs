@@ -6,11 +6,14 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
 use rustc_span::def_id::DefId;
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 
+// FIXME: This does not mutate the MIR, and should not be MIR pass.
 pub struct CheckConstItemMutation;
 
 impl<'tcx> MirPass<'tcx> for CheckConstItemMutation {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut checker = ConstMutationChecker { body, tcx, target_local: None };
         checker.visit_body(&body);

@@ -32,7 +32,7 @@ use crate::interpret::{
     InterpCx, LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand,
     PlaceTy, Pointer, ScalarMaybeUninit, StackPopCleanup,
 };
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
 /// Needed for #66397, because otherwise we eval into large places and that can cause OOM or just
@@ -60,6 +60,9 @@ macro_rules! throw_machine_stop_str {
 pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
+    // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if body.source.promoted.is_some() {

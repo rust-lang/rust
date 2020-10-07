@@ -1,4 +1,4 @@
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -31,6 +31,8 @@ pub use self::AddCallGuards::*;
  */
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         self.add_call_guards(body);
     }

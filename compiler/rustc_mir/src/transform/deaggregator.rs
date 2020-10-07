@@ -1,4 +1,4 @@
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use crate::util::expand_aggregate;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -6,6 +6,8 @@ use rustc_middle::ty::TyCtxt;
 pub struct Deaggregator;
 
 impl<'tcx> MirPass<'tcx> for Deaggregator {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let local_decls = &*local_decls;

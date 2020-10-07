@@ -5,7 +5,7 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use crate::util as mir_util;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
@@ -14,6 +14,8 @@ use rustc_session::config::{OutputFilenames, OutputType};
 pub struct Marker(pub &'static str);
 
 impl<'tcx> MirPass<'tcx> for Marker {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(self.0)
     }

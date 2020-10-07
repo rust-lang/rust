@@ -32,7 +32,7 @@ use std::{cmp, iter, mem};
 
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstCx};
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 
 /// A `MirPass` for promotion.
 ///
@@ -47,6 +47,8 @@ pub struct PromoteTemps<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //

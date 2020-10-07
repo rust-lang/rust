@@ -4,7 +4,7 @@ use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor}
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use rustc_middle::ty::TyCtxt;
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 
 /// This pass looks for MIR that always copies the same local into the return place and eliminates
 /// the copy by renaming all uses of that local to `_0`.
@@ -31,6 +31,8 @@ use crate::transform::MirPass;
 pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
+    const LEVEL: OptLevel = OptLevel::DEFAULT;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return;

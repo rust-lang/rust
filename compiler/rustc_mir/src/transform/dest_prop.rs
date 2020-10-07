@@ -99,7 +99,7 @@
 use crate::dataflow::impls::{MaybeInitializedLocals, MaybeLiveLocals};
 use crate::dataflow::Analysis;
 use crate::{
-    transform::MirPass,
+    transform::{MirPass, OptLevel},
     util::{dump_mir, PassWhere},
 };
 use itertools::Itertools;
@@ -126,13 +126,11 @@ const MAX_BLOCKS: usize = 250;
 pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // Only run at mir-opt-level=2 or higher for now (we don't fix up debuginfo and remove
-        // storage statements at the moment).
-        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
-            return;
-        }
+    // Only run at mir-opt-level=2 or higher for now (we don't fix up debuginfo and remove
+    // storage statements at the moment).
+    const LEVEL: OptLevel = OptLevel::N(2);
 
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
 
         let candidates = find_candidates(tcx, body);

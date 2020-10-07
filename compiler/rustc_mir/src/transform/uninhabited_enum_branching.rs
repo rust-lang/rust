@@ -1,6 +1,6 @@
 //! A pass that eliminates branches on uninhabited enum variants.
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, TerminatorKind,
@@ -71,6 +71,8 @@ fn variant_discriminants<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
+    const LEVEL: OptLevel = OptLevel::DEFAULT;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if body.source.promoted.is_some() {
             return;

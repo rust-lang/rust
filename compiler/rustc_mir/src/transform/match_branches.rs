@@ -1,4 +1,4 @@
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
@@ -37,6 +37,8 @@ pub struct MatchBranchSimplification;
 /// ```
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
+    const LEVEL: OptLevel = OptLevel::DEFAULT;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
         let bbs = body.basic_blocks_mut();

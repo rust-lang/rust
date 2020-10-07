@@ -27,7 +27,7 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -55,6 +55,8 @@ pub fn simplify_cfg(body: &mut Body<'_>) {
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
+    const LEVEL: OptLevel = OptLevel::Cleanup;
+
     fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.label)
     }
@@ -318,6 +320,8 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
 pub struct SimplifyLocals;
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
+    const LEVEL: OptLevel = OptLevel::N(1);
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("running SimplifyLocals on {:?}", body.source);
 

@@ -1,4 +1,4 @@
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use crate::util::pretty;
 use crate::util::spanview::{self, SpanViewable};
 
@@ -88,6 +88,8 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo
 }
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
         // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
         // See: https://github.com/rust-lang/rust/pull/73011#discussion_r438317601

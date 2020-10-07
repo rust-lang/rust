@@ -1,4 +1,5 @@
-use crate::{transform::MirPass, util::patch::MirPatch};
+use crate::transform::{MirPass, OptLevel};
+use crate::util::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use std::{borrow::Cow, fmt::Debug};
@@ -25,10 +26,9 @@ use super::simplify::simplify_cfg;
 pub struct EarlyOtherwiseBranch;
 
 impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
+    const LEVEL: OptLevel = OptLevel::N(2);
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
-            return;
-        }
         trace!("running EarlyOtherwiseBranch on {:?}", body.source);
         // we are only interested in this bb if the terminator is a switchInt
         let bbs_with_switch =

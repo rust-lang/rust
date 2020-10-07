@@ -1,7 +1,7 @@
 //! This pass removes the unwind branch of all the terminators when the no-landing-pads option is
 //! specified.
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -18,6 +18,8 @@ impl<'tcx> NoLandingPads<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for NoLandingPads<'tcx> {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         no_landing_pads(tcx, body)
     }

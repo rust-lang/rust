@@ -5,7 +5,7 @@ use crate::dataflow::on_lookup_result_bits;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use crate::dataflow::{Analysis, ResultsCursor};
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use crate::util::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
 use crate::util::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
 use crate::util::patch::MirPatch;
@@ -20,6 +20,8 @@ use std::fmt;
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
 

@@ -55,7 +55,7 @@ use crate::dataflow::impls::{
 use crate::dataflow::{self, Analysis};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use crate::util::dump_mir;
 use crate::util::expand_aggregate;
 use crate::util::storage;
@@ -1235,6 +1235,9 @@ fn create_cases<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
+    // Even if we don't do optimizations, we still have to lower generators for codegen.
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty

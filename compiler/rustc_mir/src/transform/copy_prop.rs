@@ -19,7 +19,7 @@
 //! (non-mutating) use of `SRC`. These restrictions are conservative and may be relaxed in the
 //! future.
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use crate::util::def_use::DefUseAnalysis;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{
@@ -30,15 +30,11 @@ use rustc_middle::ty::TyCtxt;
 pub struct CopyPropagation;
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let opts = &tcx.sess.opts.debugging_opts;
-        // We only run when the MIR optimization level is > 1.
-        // This avoids a slow pass, and messing up debug info.
-        // FIXME(76740): This optimization is buggy and can cause unsoundness.
-        if opts.mir_opt_level <= 1 || !opts.unsound_mir_opts {
-            return;
-        }
+    // This pass is slow and doesn't handle debug info. It shouldn't run by default.
+    // FIXME(76740): This optimization is buggy and can cause unsoundness.
+    const LEVEL: OptLevel = OptLevel::Unsound;
 
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut def_use_analysis = DefUseAnalysis::new(body);
         loop {
             def_use_analysis.analyze(body);

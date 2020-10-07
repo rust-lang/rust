@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyC
 use rustc_target::spec::abi::Abi;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use std::collections::VecDeque;
 use std::iter;
 
@@ -37,21 +37,21 @@ struct CallSite<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
+    const LEVEL: OptLevel = OptLevel::N(2);
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            if tcx.sess.opts.debugging_opts.instrument_coverage {
-                // The current implementation of source code coverage injects code region counters
-                // into the MIR, and assumes a 1-to-1 correspondence between MIR and source-code-
-                // based function.
-                debug!("function inlining is disabled when compiling with `instrument_coverage`");
-            } else {
-                Inliner {
-                    tcx,
-                    param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
-                    codegen_fn_attrs: tcx.codegen_fn_attrs(body.source.def_id()),
-                }
-                .run_pass(body);
+        if tcx.sess.opts.debugging_opts.instrument_coverage {
+            // The current implementation of source code coverage injects code region counters
+            // into the MIR, and assumes a 1-to-1 correspondence between MIR and source-code-
+            // based function.
+            debug!("function inlining is disabled when compiling with `instrument_coverage`");
+        } else {
+            Inliner {
+                tcx,
+                param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
+                codegen_fn_attrs: tcx.codegen_fn_attrs(body.source.def_id()),
             }
+            .run_pass(body);
         }
     }
 }

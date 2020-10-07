@@ -1,7 +1,7 @@
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use crate::util;
 use crate::util::patch::MirPatch;
 
@@ -39,6 +39,8 @@ use crate::util::patch::MirPatch;
 pub struct AddMovesForPackedDrops;
 
 impl<'tcx> MirPass<'tcx> for AddMovesForPackedDrops {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", body.source, body.span);
         add_moves_for_packed_drops(tcx, body);

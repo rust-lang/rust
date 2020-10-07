@@ -1,4 +1,4 @@
-use super::MirPass;
+use super::{MirPass, OptLevel};
 use rustc_middle::{
     mir::{
         interpret::Scalar, BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement,
@@ -24,6 +24,8 @@ use rustc_middle::{
 pub struct SimplifyComparisonIntegral;
 
 impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
+    const LEVEL: OptLevel = OptLevel::N(2);
+
     fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running SimplifyComparisonIntegral on {:?}", body.source);
 

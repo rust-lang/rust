@@ -1,6 +1,6 @@
 //! A pass that simplifies branches when their condition is known.
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
@@ -17,6 +17,8 @@ impl SimplifyBranches {
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyBranches {
+    const LEVEL: OptLevel = OptLevel::Cleanup;
+
     fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.label)
     }

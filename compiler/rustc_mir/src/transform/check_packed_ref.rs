@@ -3,12 +3,15 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::UNALIGNED_REFERENCES;
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use crate::util;
 
+// FIXME: This does not mutate the MIR, and should not be `MirPass`.
 pub struct CheckPackedRef;
 
 impl<'tcx> MirPass<'tcx> for CheckPackedRef {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
         let source_info = SourceInfo::outermost(body.span);

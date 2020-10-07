@@ -1,6 +1,6 @@
 //! This pass replaces a drop of a type that does not need dropping, with a goto
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
@@ -10,6 +10,8 @@ use super::simplify::simplify_cfg;
 pub struct RemoveUnneededDrops;
 
 impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
+    const LEVEL: OptLevel = OptLevel::DEFAULT;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running RemoveUnneededDrops on {:?}", body.source);
         let mut opt_finder = RemoveUnneededDropsOptimizationFinder {

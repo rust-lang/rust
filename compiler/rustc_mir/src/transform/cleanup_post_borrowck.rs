@@ -18,7 +18,7 @@
 //! [`ForMatchGuard`]: rustc_middle::mir::FakeReadCause::ForMatchGuard
 //! [`Nop`]: rustc_middle::mir::StatementKind::Nop
 
-use crate::transform::MirPass;
+use crate::transform::{MirPass, OptLevel};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{Body, BorrowKind, Location, Rvalue};
 use rustc_middle::mir::{Statement, StatementKind};
@@ -31,6 +31,8 @@ pub struct DeleteNonCodegenStatements<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
+    const LEVEL: OptLevel = OptLevel::ALWAYS;
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut delete = DeleteNonCodegenStatements { tcx };
         delete.visit_body(body);
