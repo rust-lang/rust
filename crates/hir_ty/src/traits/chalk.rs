@@ -330,6 +330,20 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn fn_def_name(&self, fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
         format!("fn_{}", fn_def_id.0)
     }
+    fn generator_datum(
+        &self,
+        _: chalk_ir::GeneratorId<Interner>,
+    ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorDatum<Interner>> {
+        // FIXME
+        unimplemented!()
+    }
+    fn generator_witness_datum(
+        &self,
+        _: chalk_ir::GeneratorId<Interner>,
+    ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<Interner>> {
+        // FIXME
+        unimplemented!()
+    }
 }
 
 pub(crate) fn program_clauses_for_chalk_env_query(
