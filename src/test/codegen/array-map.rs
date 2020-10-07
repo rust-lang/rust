@@ -1,18 +1,25 @@
-// compile-flags: -O
-
+// compile-flags: -C opt-level=3 -Zmir-opt-level=3
 #![crate_type = "lib"]
 #![feature(array_map)]
 
-// CHECK-LABEL: @array_inc
-// CHECK-NOT: alloca
+const SIZE: usize = 4;
+
+// CHECK-LABEL: @array_cast_to_float
 #[no_mangle]
-pub fn array_inc(x: [u8; 1000]) -> [u8; 1000] {
-  x.map(|v| v + 1)
+pub fn array_cast_to_float(x: [u32; SIZE]) -> [f32; SIZE] {
+  // CHECK: cast
+  // CHECK: @llvm.memcpy
+  // CHECK: ret
+  // CHECK-EMPTY
+  x.map(|v| v as f32)
 }
 
-// CHECK-LABEL: @array_inc_cast
-// CHECK: alloca
+// CHECK-LABEL: @array_cast_to_u64
 #[no_mangle]
-pub fn array_inc_cast(x: [u8; 1000]) -> [u16; 1000] {
-  x.map(|v| v as u16 + 1)
+pub fn array_cast_to_u64(x: [u32; SIZE]) -> [u64; SIZE] {
+  // CHECK: cast
+  // CHECK: @llvm.memcpy
+  // CHECK: ret
+  // CHECK-EMPTY
+  x.map(|v| v as u64)
 }

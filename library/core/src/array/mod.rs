@@ -425,103 +425,62 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(y, [6, 9, 3, 3]);
     /// ```
     #[unstable(feature = "array_map", issue = "75243")]
-    pub fn map<F, U>(self, mut f: F) -> [U; N]
+    pub fn map<F, U>(self, f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
     {
-        use crate::mem::{align_of, forget, size_of, transmute_copy, ManuallyDrop, MaybeUninit};
+        use crate::mem::{forget, ManuallyDrop, MaybeUninit};
+        use crate::ptr;
 
-        if align_of::<T>() == align_of::<U>() && size_of::<T>() == size_of::<U>() {
-            // this branch allows reuse of the original array as a backing store
-            // kind of. As written with no compiler optimizations, transmute copy will
-            // still require 2 copies of the original array, but when it can be converted to
-            // transmute, this will require 0 copies.
-            union Translated<T, U> {
-                src: MaybeUninit<T>,
-                dst: ManuallyDrop<U>,
-            };
-            struct Guard<T, U, const N: usize> {
-                data: *mut [Translated<T, U>; N],
-                initialized: usize,
-            }
-            impl<T, U, const N: usize> Drop for Guard<T, U, N> {
-                fn drop(&mut self) {
-                    debug_assert!(self.initialized < N);
-                    let initialized_part =
-                        crate::ptr::slice_from_raw_parts_mut(self.data as *mut U, self.initialized);
-                    // SAFETY:
-                    // since we read from the element at initialized then panicked,
-                    // we have to skip over it to not double drop.
-                    let todo_ptr = unsafe { self.data.add(self.initialized + 1) as *mut T };
-                    let todo_part =
-                        crate::ptr::slice_from_raw_parts_mut(todo_ptr, N - self.initialized - 1);
-                    // SAFETY:
-                    // Have to remove both the initialized and not yet reached items.
-                    unsafe {
-                        crate::ptr::drop_in_place(initialized_part);
-                        crate::ptr::drop_in_place(todo_part);
-                    }
-                }
-            }
-            // SAFETY:
-            // Since we know that T & U have the same size and alignment we can safely transmute
-            // between them here
-            let mut src_dst = unsafe { transmute_copy::<_, [Translated<T, U>; N]>(&self) };
-
-            let mut guard: Guard<T, U, N> = Guard { data: &mut src_dst, initialized: 0 };
-            // Need to forget self now because the guard is responsible for dropping the items
-            forget(self);
-            for i in 0..N {
-                // SAFETY:
-                // All items prior to `i` are the `dst` variant.
-                // In order to convert `i` from src to dst, we take it from `MaybeUninit`,
-                // leaving uninitialized in its place, and set the destination as
-                // ManuallyDrop::new(..), and implicitly know that it will be a `dst` variant
-                // from where
+        union MaybeUninitArray<T, const N: usize> {
+            none: (),
+            partial: ManuallyDrop<[MaybeUninit<T>; N]>,
+            complete: ManuallyDrop<[T; N]>,
+        }
+        struct MapGuard<'a, T, const N: usize> {
+            arr: &'a mut MaybeUninitArray<T, N>,
+            len: usize,
+        }
+        impl<'a, T, const N: usize> MapGuard<'a, T, N> {
+            fn push(&mut self, value: T) {
+                // SAFETY: Since we know the input size is N, and the output is N,
+                // this will never exceed the capacity, and MaybeUninit is always in the
+                // structure of an array.
                 unsafe {
-                    let v = f(src_dst[i].src.assume_init_read());
-                    src_dst[i].dst = ManuallyDrop::new(v);
+                    self.arr.partial[self.len].write(value);
+                    self.len += 1;
                 }
-                guard.initialized += 1;
+            }
+        }
+        impl<'a, T, const N: usize> Drop for MapGuard<'a, T, N> {
+            fn drop(&mut self) {
+                //debug_assert!(self.len <= N);
+                // SAFETY: already pushed `len` elements, but need to drop them now that
+                // `f` panicked.
+                unsafe {
+                    let p: *mut MaybeUninit<T> = self.arr.partial.as_mut_ptr();
+                    let slice: *mut [T] = ptr::slice_from_raw_parts_mut(p.cast(), self.len);
+                    ptr::drop_in_place(slice);
+                }
+            }
+        }
+
+        fn map_guard_fn<T, const N: usize>(
+            buffer: &mut MaybeUninitArray<T, N>,
+            iter: impl Iterator<Item = T>,
+        ) {
+            let mut guard = MapGuard { arr: buffer, len: 0 };
+            for v in iter {
+                guard.push(v);
             }
             forget(guard);
-            // SAFETY:
-            // At this point all the items have been initialized and are in `dst` discriminant.
-            // We can switch them over to being of type `U`.
-            return unsafe { transmute_copy::<_, [U; N]>(&src_dst) };
         }
 
-        struct Guard<T, const N: usize> {
-            dst: *mut T,
-            initialized: usize,
-        }
-
-        impl<T, const N: usize> Drop for Guard<T, N> {
-            fn drop(&mut self) {
-                debug_assert!(self.initialized <= N);
-
-                let initialized_part =
-                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.initialized);
-                // SAFETY: this raw slice will contain only initialized objects
-                // that's why, it is allowed to drop it.
-                unsafe {
-                    crate::ptr::drop_in_place(initialized_part);
-                }
-            }
-        }
-        let mut dst = MaybeUninit::uninit_array::<N>();
-        let mut guard: Guard<U, N> =
-            Guard { dst: MaybeUninit::slice_as_mut_ptr(&mut dst), initialized: 0 };
-        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
-            dst.write(f(src));
-            guard.initialized += 1;
-        }
-        // FIXME: Convert to crate::mem::transmute once it works with generics.
-        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
-        forget(guard);
-        // SAFETY: At this point we've properly initialized the whole array
-        // and we just need to cast it to the correct type.
-        unsafe { transmute_copy::<_, [U; N]>(&dst) }
+        let mut buffer = MaybeUninitArray::<U, N> { none: () };
+        map_guard_fn(&mut buffer, IntoIter::new(self).map(f));
+        // SAFETY: all elements have successfully initialized, don't run guard's drop code
+        // and take completed buffer out of MaybeUninitArray.
+        unsafe { ManuallyDrop::into_inner(buffer.complete) }
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
