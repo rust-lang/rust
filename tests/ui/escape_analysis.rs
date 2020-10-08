@@ -179,3 +179,6 @@ mod issue_3739 {
 ///
 /// This shouldn't warn for `boxed_local` as it is intended to called from non-Rust code.
 pub extern "C" fn do_not_warn_me(_c_pointer: Box<String>) -> () {}
+
+#[rustfmt::skip] // Forces rustfmt to not add ABI
+pub extern fn do_not_warn_me_no_abi(_c_pointer: Box<String>) -> () {}
