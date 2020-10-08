@@ -17,6 +17,7 @@ pub fn opts() -> TargetOptions {
     args.insert(LinkerFlavor::Gcc, vec![]);
 
     TargetOptions {
+        target_os: "l4re".to_string(),
         executables: true,
         has_elf_tls: false,
         panic_strategy: PanicStrategy::Abort,

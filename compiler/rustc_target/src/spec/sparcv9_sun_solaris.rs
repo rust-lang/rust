@@ -17,7 +17,6 @@ pub fn target() -> Target {
         // differentiation from the sparc64, we could, but that would probably
         // just be confusing.
         arch: "sparc64".to_string(),
-        target_os: "solaris".to_string(),
         target_env: String::new(),
         target_vendor: "sun".to_string(),
         linker_flavor: LinkerFlavor::Gcc,

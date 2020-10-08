@@ -37,6 +37,7 @@ pub fn opts() -> TargetOptions {
         .extend(pre_link_args_msvc);
 
     TargetOptions {
+        target_os: "uefi".to_string(),
         disable_redzone: true,
         exe_suffix: ".efi".to_string(),
         allows_weak_linkage: false,

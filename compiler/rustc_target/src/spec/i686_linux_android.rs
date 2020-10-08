@@ -20,7 +20,6 @@ pub fn target() -> Target {
             f64:32:64-f80:32-n8:16:32-S128"
             .to_string(),
         arch: "x86".to_string(),
-        target_os: "android".to_string(),
         target_env: String::new(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,

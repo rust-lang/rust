@@ -11,7 +11,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-i64:64-n32".to_string(),
         arch: "powerpc".to_string(),
-        target_os: "vxworks".to_string(),
         target_env: "gnu".to_string(),
         target_vendor: "wrs".to_string(),
         linker_flavor: LinkerFlavor::Gcc,

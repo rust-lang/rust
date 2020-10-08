@@ -23,7 +23,6 @@ pub fn target() -> Target {
     Target {
         llvm_target: "armv7a-none-eabihf".to_string(),
         pointer_width: 32,
-        target_os: "none".to_string(),
         target_env: String::new(),
         target_vendor: String::new(),
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),

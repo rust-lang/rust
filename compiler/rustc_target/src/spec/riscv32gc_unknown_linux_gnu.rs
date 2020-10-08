@@ -7,7 +7,6 @@ pub fn target() -> Target {
         target_env: "gnu".to_string(),
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".to_string(),
         arch: "riscv32".to_string(),
-        target_os: "linux".to_string(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {

@@ -667,8 +667,6 @@ pub struct Target {
     pub llvm_target: String,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
-    /// OS name to use for conditional compilation.
-    pub target_os: String,
     /// Environment name to use for conditional compilation.
     pub target_env: String,
     /// Vendor name to use for conditional compilation.
@@ -708,6 +706,8 @@ pub struct TargetOptions {
     pub target_endian: String,
     /// Width of c_int type. Defaults to "32".
     pub target_c_int_width: String,
+    /// OS name to use for conditional compilation. Defaults to "none".
+    pub target_os: String,
 
     /// Linker to invoke
     pub linker: Option<String>,
@@ -989,6 +989,7 @@ impl Default for TargetOptions {
             is_builtin: false,
             target_endian: "little".to_string(),
             target_c_int_width: "32".to_string(),
+            target_os: "none".to_string(),
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
@@ -1164,7 +1165,6 @@ impl Target {
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
-            target_os: get_req_field("os")?,
             target_env: get_opt_field("env", ""),
             target_vendor: get_opt_field("vendor", "unknown"),
             linker_flavor: LinkerFlavor::from_str(&*get_req_field("linker-flavor")?)
@@ -1175,6 +1175,12 @@ impl Target {
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(s) = obj.find(&name).and_then(Json::as_string) {
+                    base.options.$key_name = s.to_string();
+                }
+            } );
+            ($key_name:ident = $json_name:expr) => ( {
+                let name = $json_name;
                 if let Some(s) = obj.find(&name).and_then(Json::as_string) {
                     base.options.$key_name = s.to_string();
                 }
@@ -1407,6 +1413,7 @@ impl Target {
         key!(is_builtin, bool);
         key!(target_endian);
         key!(target_c_int_width);
+        key!(target_os = "os");
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
         key!(pre_link_objects, link_objects);
@@ -1636,7 +1643,6 @@ impl ToJson for Target {
         target_val!(llvm_target);
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(arch);
-        target_val!(target_os, "os");
         target_val!(target_env, "env");
         target_val!(target_vendor, "vendor");
         target_val!(data_layout);
@@ -1644,6 +1650,7 @@ impl ToJson for Target {
 
         target_option_val!(target_endian);
         target_option_val!(target_c_int_width);
+        target_option_val!(target_os, "os");
         target_option_val!(is_builtin);
         target_option_val!(linker);
         target_option_val!(lld_flavor);

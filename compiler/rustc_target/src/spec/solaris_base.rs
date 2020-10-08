@@ -2,6 +2,7 @@ use crate::spec::TargetOptions;
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
+        target_os: "solaris".to_string(),
         dynamic_linking: true,
         executables: true,
         has_rpath: true,

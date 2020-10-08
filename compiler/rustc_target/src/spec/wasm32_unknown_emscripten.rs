@@ -17,6 +17,7 @@ pub fn target() -> Target {
     );
 
     let opts = TargetOptions {
+        target_os: "emscripten".to_string(),
         // emcc emits two files - a .js file to instantiate the wasm and supply platform
         // functionality, and a .wasm file.
         exe_suffix: ".js".to_string(),
@@ -31,7 +32,6 @@ pub fn target() -> Target {
     Target {
         llvm_target: "wasm32-unknown-emscripten".to_string(),
         pointer_width: 32,
-        target_os: "emscripten".to_string(),
         target_env: String::new(),
         target_vendor: "unknown".to_string(),
         data_layout: "e-m:e-p:32:32-i64:64-n32:64-S128".to_string(),

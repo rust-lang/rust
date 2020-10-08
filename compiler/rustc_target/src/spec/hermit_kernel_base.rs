@@ -9,6 +9,7 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
+        target_os: "hermit".to_string(),
         disable_redzone: true,
         linker: Some("rust-lld".to_owned()),
         executables: true,

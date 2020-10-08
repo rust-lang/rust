@@ -17,6 +17,7 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
+        target_os: "vxworks".to_string(),
         linker: Some("wr-c++".to_string()),
         exe_suffix: ".vxe".to_string(),
         dynamic_linking: true,

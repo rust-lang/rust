@@ -2,7 +2,7 @@ use super::apple_sdk_base::{opts, Arch};
 use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts(Arch::I386);
+    let base = opts("ios", Arch::I386);
     Target {
         llvm_target: "i386-apple-ios".to_string(),
         pointer_width: 32,
@@ -10,7 +10,6 @@ pub fn target() -> Target {
             f64:32:64-f80:128-n8:16:32-S128"
             .to_string(),
         arch: "x86".to_string(),
-        target_os: "ios".to_string(),
         target_env: String::new(),
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,

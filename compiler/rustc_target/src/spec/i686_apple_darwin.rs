@@ -1,7 +1,7 @@
 use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::apple_base::opts();
+    let mut base = super::apple_base::opts("macos");
     base.cpu = "yonah".to_string();
     base.max_atomic_width = Some(64);
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m32".to_string()]);
@@ -22,7 +22,6 @@ pub fn target() -> Target {
             f64:32:64-f80:128-n8:16:32-S128"
             .to_string(),
         arch: "x86".to_string(),
-        target_os: "macos".to_string(),
         target_env: String::new(),
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
