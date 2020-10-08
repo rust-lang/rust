@@ -40,6 +40,8 @@ pub enum Constant {
     Tuple(Vec<Constant>),
     /// A raw pointer.
     RawPtr(u128),
+    /// A reference
+    Ref(Box<Constant>),
     /// A literal with syntax error.
     Err(Symbol),
 }
@@ -66,6 +68,7 @@ impl PartialEq for Constant {
             (&Self::Bool(l), &Self::Bool(r)) => l == r,
             (&Self::Vec(ref l), &Self::Vec(ref r)) | (&Self::Tuple(ref l), &Self::Tuple(ref r)) => l == r,
             (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
+            (&Self::Ref(ref lb), &Self::Ref(ref rb)) => *lb == *rb,
             // TODO: are there inter-type equalities?
             _ => false,
         }
@@ -110,6 +113,9 @@ impl Hash for Constant {
             Self::RawPtr(u) => {
                 u.hash(state);
             },
+            Self::Ref(ref r) => {
+                r.hash(state);
+            },
             Self::Err(ref s) => {
                 s.hash(state);
             },
@@ -144,6 +150,7 @@ impl Constant {
                     x => x,
                 }
             },
+            (&Self::Ref(ref lb), &Self::Ref(ref rb)) => Self::partial_cmp(tcx, cmp_type, lb, rb),
             // TODO: are there any useful inter-type orderings?
             _ => None,
         }
@@ -239,7 +246,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
                 UnOp::UnNot => self.constant_not(&o, self.typeck_results.expr_ty(e)),
                 UnOp::UnNeg => self.constant_negate(&o, self.typeck_results.expr_ty(e)),
-                UnOp::UnDeref => Some(o),
+                UnOp::UnDeref => Some(if let Constant::Ref(r) = o { *r } else { o }),
             }),
             ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
             ExprKind::Call(ref callee, ref args) => {
@@ -269,6 +276,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 }
             },
             ExprKind::Index(ref arr, ref index) => self.index(arr, index),
+            ExprKind::AddrOf(_, _, ref inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
             // TODO: add other expressions.
             _ => None,
         }
