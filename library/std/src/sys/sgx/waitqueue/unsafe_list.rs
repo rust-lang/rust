@@ -30,31 +30,34 @@ impl<T> UnsafeList<T> {
         unsafe { UnsafeList { head_tail: NonNull::new_unchecked(1 as _), head_tail_entry: None } }
     }
 
+    /// # Safety
     unsafe fn init(&mut self) {
         if self.head_tail_entry.is_none() {
             self.head_tail_entry = Some(UnsafeListEntry::dummy());
-            self.head_tail = NonNull::new_unchecked(self.head_tail_entry.as_mut().unwrap());
-            self.head_tail.as_mut().next = self.head_tail;
-            self.head_tail.as_mut().prev = self.head_tail;
+            // SAFETY: `head_tail_entry` must be non-null, which it is because we assign it above.
+            self.head_tail =
+                unsafe { NonNull::new_unchecked(self.head_tail_entry.as_mut().unwrap()) };
+            // SAFETY: `self.head_tail` must meet all requirements for a mutable reference.
+            unsafe { self.head_tail.as_mut() }.next = self.head_tail;
+            unsafe { self.head_tail.as_mut() }.prev = self.head_tail;
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        unsafe {
-            if self.head_tail_entry.is_some() {
-                let first = self.head_tail.as_ref().next;
-                if first == self.head_tail {
-                    // ,-------> /---------\ next ---,
-                    // |         |head_tail|         |
-                    // `--- prev \---------/ <-------`
-                    rtassert!(self.head_tail.as_ref().prev == first);
-                    true
-                } else {
-                    false
-                }
-            } else {
+        if self.head_tail_entry.is_some() {
+            let first = unsafe { self.head_tail.as_ref() }.next;
+            if first == self.head_tail {
+                // ,-------> /---------\ next ---,
+                // |         |head_tail|         |
+                // `--- prev \---------/ <-------`
+                // SAFETY: `self.head_tail` must meet all requirements for a reference.
+                unsafe { rtassert!(self.head_tail.as_ref().prev == first) };
                 true
+            } else {
+                false
             }
+        } else {
+            true
         }
     }
 
@@ -67,7 +70,7 @@ impl<T> UnsafeList<T> {
     /// care must be taken in the caller of `push` to ensure unwinding does
     /// not destroy the stack frame containing the entry.
     pub unsafe fn push<'a>(&mut self, entry: &'a mut UnsafeListEntry<T>) -> &'a T {
-        self.init();
+        unsafe { self.init() };
 
         // BEFORE:
         //     /---------\ next ---> /---------\
@@ -78,13 +81,15 @@ impl<T> UnsafeList<T> {
         //     /---------\ next ---> /-----\ next ---> /---------\
         // ... |prev_tail|           |entry|           |head_tail| ...
         //     \---------/ <--- prev \-----/ <--- prev \---------/
-        let mut entry = NonNull::new_unchecked(entry);
-        let mut prev_tail = mem::replace(&mut self.head_tail.as_mut().prev, entry);
-        entry.as_mut().prev = prev_tail;
-        entry.as_mut().next = self.head_tail;
-        prev_tail.as_mut().next = entry;
+        let mut entry = unsafe { NonNull::new_unchecked(entry) };
+        let mut prev_tail = mem::replace(&mut unsafe { self.head_tail.as_mut() }.prev, entry);
+        // SAFETY: `entry` must meet all requirements for a mutable reference.
+        unsafe { entry.as_mut() }.prev = prev_tail;
+        unsafe { entry.as_mut() }.next = self.head_tail;
+        // SAFETY: `prev_tail` must meet all requirements for a mutable reference.
+        unsafe { prev_tail.as_mut() }.next = entry;
         // unwrap ok: always `Some` on non-dummy entries
-        (*entry.as_ptr()).value.as_ref().unwrap()
+        unsafe { (*entry.as_ptr()).value.as_ref() }.unwrap()
     }
 
     /// Pops an entry from the front of the list.
@@ -94,7 +99,7 @@ impl<T> UnsafeList<T> {
     /// The caller must make sure to synchronize ending the borrow of the
     /// return value and deallocation of the containing entry.
     pub unsafe fn pop<'a>(&mut self) -> Option<&'a T> {
-        self.init();
+        unsafe { self.init() };
 
         if self.is_empty() {
             None
@@ -108,14 +113,14 @@ impl<T> UnsafeList<T> {
             //     /---------\ next ---> /------\
             // ... |head_tail|           |second| ...
             //     \---------/ <--- prev \------/
-            let mut first = self.head_tail.as_mut().next;
-            let mut second = first.as_mut().next;
-            self.head_tail.as_mut().next = second;
-            second.as_mut().prev = self.head_tail;
-            first.as_mut().next = NonNull::dangling();
-            first.as_mut().prev = NonNull::dangling();
+            let mut first = unsafe { self.head_tail.as_mut() }.next;
+            let mut second = unsafe { first.as_mut() }.next;
+            unsafe { self.head_tail.as_mut() }.next = second;
+            unsafe { second.as_mut() }.prev = self.head_tail;
+            unsafe { first.as_mut() }.next = NonNull::dangling();
+            unsafe { first.as_mut() }.prev = NonNull::dangling();
             // unwrap ok: always `Some` on non-dummy entries
-            Some((*first.as_ptr()).value.as_ref().unwrap())
+            Some(unsafe { (*first.as_ptr()).value.as_ref() }.unwrap())
         }
     }
 
@@ -138,8 +143,9 @@ impl<T> UnsafeList<T> {
         //     \----/ <--- prev \----/
         let mut prev = entry.prev;
         let mut next = entry.next;
-        prev.as_mut().next = next;
-        next.as_mut().prev = prev;
+        // SAFETY: `prev` and `next` must meet all requirements for a mutable reference.entry
+        unsafe { prev.as_mut() }.next = next;
+        unsafe { next.as_mut() }.prev = prev;
         entry.next = NonNull::dangling();
         entry.prev = NonNull::dangling();
     }

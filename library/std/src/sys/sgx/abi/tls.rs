@@ -87,18 +87,21 @@ impl Tls {
     }
 
     pub unsafe fn activate(&self) -> ActiveTls<'_> {
-        set_tls_ptr(self as *const Tls as _);
+        // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
+        unsafe { set_tls_ptr(self as *const Tls as _) };
         ActiveTls { tls: self }
     }
 
     #[allow(unused)]
     pub unsafe fn activate_persistent(self: Box<Self>) {
-        set_tls_ptr((&*self) as *const Tls as _);
+        // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
+        unsafe { set_tls_ptr((&*self) as *const Tls as _) };
         mem::forget(self);
     }
 
     unsafe fn current<'a>() -> &'a Tls {
-        &*(get_tls_ptr() as *const Tls)
+        // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
+        unsafe { &*(get_tls_ptr() as *const Tls) }
     }
 
     pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {

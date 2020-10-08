@@ -1,8 +1,10 @@
 use super::*;
 use crate::cell::Cell;
 
+/// # Safety
+/// List must be valid.
 unsafe fn assert_empty<T>(list: &mut UnsafeList<T>) {
-    assert!(list.pop().is_none(), "assertion failed: list is not empty");
+    assert!(unsafe { list.pop() }.is_none(), "assertion failed: list is not empty");
 }
 
 #[test]
