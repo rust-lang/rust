@@ -1,7 +1,9 @@
-use crate::cell::UnsafeCell;
+#![deny(unsafe_op_in_unsafe_fn)]
+
+use crate::cell::Cell;
 
 pub struct Mutex {
-    locked: UnsafeCell<bool>,
+    locked: Cell<bool>,
 }
 
 pub type MovableMutex = Mutex;
@@ -12,7 +14,7 @@ unsafe impl Sync for Mutex {} // no threads on this platform
 impl Mutex {
     #[rustc_const_stable(feature = "const_sys_mutex_new", since = "1.0.0")]
     pub const fn new() -> Mutex {
-        Mutex { locked: UnsafeCell::new(false) }
+        Mutex { locked: Cell::new(false) }
     }
 
     #[inline]
@@ -20,25 +22,17 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn lock(&self) {
-        let locked = self.locked.get();
-        assert!(!*locked, "cannot recursively acquire mutex");
-        *locked = true;
+        assert_eq!(self.locked.replace(true), false, "cannot recursively acquire mutex");
     }
 
     #[inline]
     pub unsafe fn unlock(&self) {
-        *self.locked.get() = false;
+        self.locked.set(false);
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        let locked = self.locked.get();
-        if *locked {
-            false
-        } else {
-            *locked = true;
-            true
-        }
+        self.locked.replace(true) == false
     }
 
     #[inline]
