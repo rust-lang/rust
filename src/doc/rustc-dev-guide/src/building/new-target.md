@@ -28,7 +28,7 @@ If you have a local LLVM checkout that is already built, you *may* be
 able to configure Rust to treat your build as the [system
 LLVM][sysllvm] to avoid redundant builds.
 
-[sysllvm]: ./suggested.md#building-with-system-llvm
+[sysllvm]: ./suggested.md#skipping-llvm-build
 
 ## Creating a target specification
 
