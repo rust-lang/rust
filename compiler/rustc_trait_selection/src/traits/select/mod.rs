@@ -518,12 +518,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             result
                         }
                         Ok(Ok(None)) => Ok(EvaluatedToAmbig),
-                        // EvaluatedToRecur might also be acceptable here, but use
-                        // Unknown for now because it means that we won't dismiss a
-                        // selection candidate solely because it has a projection
-                        // cycle. This is closest to the previous behavior of
-                        // immediately erroring.
-                        Ok(Err(project::InProgress)) => Ok(EvaluatedToUnknown),
+                        Ok(Err(project::InProgress)) => Ok(EvaluatedToRecur),
                         Err(_) => Ok(EvaluatedToErr),
                     }
                 }
@@ -1382,9 +1377,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             (ProjectionCandidate(i), ProjectionCandidate(j)) => {
-                // Arbitrarily pick the first candidate for backwards
+                // Arbitrarily pick the lower numbered candidate for backwards
                 // compatibility reasons. Don't let this affect inference.
-                i > j && !needs_infer
+                i < j && !needs_infer
             }
             (ObjectCandidate, ObjectCandidate) => bug!("Duplicate object candidate"),
             (ObjectCandidate, ProjectionCandidate(_))

@@ -69,7 +69,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ProjectionCandidate(idx) => {
-                let obligations = self.confirm_projection_candidate(obligation, idx);
+                let obligations = self.confirm_projection_candidate(obligation, idx)?;
                 Ok(ImplSource::Param(obligations))
             }
 
@@ -120,7 +120,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         idx: usize,
-    ) -> Vec<PredicateObligation<'tcx>> {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         self.infcx.commit_unconditionally(|_| {
             let tcx = self.tcx();
 
@@ -148,19 +148,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 &mut obligations,
             );
 
-            obligations.extend(
+            obligations.extend(self.infcx.commit_if_ok(|_| {
                 self.infcx
                     .at(&obligation.cause, obligation.param_env)
                     .sup(placeholder_trait_predicate.trait_ref.to_poly_trait_ref(), candidate)
                     .map(|InferOk { obligations, .. }| obligations)
-                    .unwrap_or_else(|_| {
-                        bug!(
-                            "Projection bound `{:?}` was applicable to `{:?}` but now is not",
-                            candidate,
-                            obligation
-                        );
-                    }),
-            );
+                    .map_err(|_| Unimplemented)
+            })?);
 
             if let ty::Projection(..) = placeholder_self_ty.kind() {
                 for predicate in tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates {
@@ -181,7 +175,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            obligations
+            Ok(obligations)
         })
     }
 
