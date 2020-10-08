@@ -1,8 +1,6 @@
-use crate::{
-    fmt,
-    iter::{adapters::SourceIter, FusedIterator, InPlaceIterable},
-    ops::Try,
-};
+use crate::fmt;
+use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::ops::Try;
 
 /// An iterator that filters the elements of `iter` with `predicate`.
 ///

@@ -1,11 +1,7 @@
-use crate::{
-    intrinsics,
-    iter::{
-        adapters::{zip::try_get_unchecked, InPlaceIterable, SourceIter},
-        DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedRandomAccess,
-    },
-    ops::Try,
-};
+use crate::intrinsics;
+use crate::iter::adapters::{zip::try_get_unchecked, InPlaceIterable, SourceIter};
+use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedRandomAccess};
+use crate::ops::Try;
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.

@@ -1,7 +1,5 @@
-use crate::{
-    iter::{InPlaceIterable, Iterator},
-    ops::{ControlFlow, Try},
-};
+use crate::iter::{InPlaceIterable, Iterator};
+use crate::ops::{ControlFlow, Try};
 
 mod chain;
 mod cloned;

@@ -1,9 +1,6 @@
-use crate::{
-    fmt,
-    iter::{adapters::SourceIter, FusedIterator, InPlaceIterable},
-    ops::ControlFlow,
-    ops::Try,
-};
+use crate::fmt;
+use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator that uses `f` to both filter and map elements from `iter`.
 ///

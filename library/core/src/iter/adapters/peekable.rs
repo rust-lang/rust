@@ -1,7 +1,5 @@
-use crate::{
-    iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen},
-    ops::Try,
-};
+use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
+use crate::ops::Try;
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.

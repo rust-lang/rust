@@ -1,11 +1,7 @@
-use crate::{
-    fmt,
-    iter::{
-        adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess},
-        FusedIterator, InPlaceIterable, TrustedLen,
-    },
-    ops::Try,
-};
+use crate::fmt;
+use crate::iter::adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess};
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
+use crate::ops::Try;
 
 /// An iterator that maps the values of `iter` with `f`.
 ///

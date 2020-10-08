@@ -1,10 +1,6 @@
-use crate::{
-    iter::{
-        adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess},
-        FusedIterator, InPlaceIterable, TrustedLen,
-    },
-    ops::{Add, AddAssign, Try},
-};
+use crate::iter::adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess};
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
+use crate::ops::{Add, AddAssign, Try};
 
 /// An iterator that yields the current count and the element during iteration.
 ///

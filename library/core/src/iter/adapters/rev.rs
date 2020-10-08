@@ -1,7 +1,5 @@
-use crate::{
-    iter::{FusedIterator, TrustedLen},
-    ops::Try,
-};
+use crate::iter::{FusedIterator, TrustedLen};
+use crate::ops::Try;
 
 /// A double-ended iterator with the direction inverted.
 ///

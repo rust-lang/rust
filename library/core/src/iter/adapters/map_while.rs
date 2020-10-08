@@ -1,8 +1,6 @@
-use crate::{
-    fmt,
-    iter::{adapters::SourceIter, InPlaceIterable},
-    ops::{ControlFlow, Try},
-};
+use crate::fmt;
+use crate::iter::{adapters::SourceIter, InPlaceIterable};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only accepts elements while `predicate` returns `Some(_)`.
 ///

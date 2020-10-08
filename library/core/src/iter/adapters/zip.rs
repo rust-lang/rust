@@ -1,11 +1,7 @@
-use crate::{
-    cmp,
-    fmt::{self, Debug},
-    iter::{
-        DoubleEndedIterator, ExactSizeIterator, FusedIterator, InPlaceIterable, Iterator,
-        SourceIter, TrustedLen,
-    },
-};
+use crate::cmp;
+use crate::fmt::{self, Debug};
+use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
+use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///

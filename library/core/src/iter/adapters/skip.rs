@@ -1,7 +1,5 @@
-use crate::{
-    iter::{adapters::SourceIter, FusedIterator, InPlaceIterable},
-    ops::{ControlFlow, Try},
-};
+use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator that skips over `n` elements of `iter`.
 ///

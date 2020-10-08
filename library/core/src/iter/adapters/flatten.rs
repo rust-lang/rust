@@ -1,8 +1,6 @@
-use crate::{
-    fmt,
-    iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map},
-    ops::Try,
-};
+use crate::fmt;
+use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map};
+use crate::ops::Try;
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.

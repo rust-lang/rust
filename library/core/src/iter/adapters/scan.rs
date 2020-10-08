@@ -1,8 +1,6 @@
-use crate::{
-    fmt,
-    iter::{adapters::SourceIter, InPlaceIterable},
-    ops::{ControlFlow, Try},
-};
+use crate::fmt;
+use crate::iter::{adapters::SourceIter, InPlaceIterable};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator to maintain state while iterating another iterator.
 ///
