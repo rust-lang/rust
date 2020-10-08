@@ -1,7 +1,9 @@
-use crate::cell::UnsafeCell;
+#![deny(unsafe_op_in_unsafe_fn)]
+
+use crate::cell::Cell;
 
 pub struct RWLock {
-    mode: UnsafeCell<isize>,
+    mode: Cell<isize>,
 }
 
 unsafe impl Send for RWLock {}
@@ -9,14 +11,14 @@ unsafe impl Sync for RWLock {} // no threads on this platform
 
 impl RWLock {
     pub const fn new() -> RWLock {
-        RWLock { mode: UnsafeCell::new(0) }
+        RWLock { mode: Cell::new(0) }
     }
 
     #[inline]
     pub unsafe fn read(&self) {
-        let mode = self.mode.get();
-        if *mode >= 0 {
-            *mode += 1;
+        let m = self.mode.get();
+        if m >= 0 {
+            self.mode.set(m + 1);
         } else {
             rtabort!("rwlock locked for writing");
         }
@@ -24,9 +26,9 @@ impl RWLock {
 
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
-        let mode = self.mode.get();
-        if *mode >= 0 {
-            *mode += 1;
+        let m = self.mode.get();
+        if m >= 0 {
+            self.mode.set(m + 1);
             true
         } else {
             false
@@ -35,19 +37,15 @@ impl RWLock {
 
     #[inline]
     pub unsafe fn write(&self) {
-        let mode = self.mode.get();
-        if *mode == 0 {
-            *mode = -1;
-        } else {
+        if self.mode.replace(-1) != 0 {
             rtabort!("rwlock locked for reading")
         }
     }
 
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        let mode = self.mode.get();
-        if *mode == 0 {
-            *mode = -1;
+        if self.mode.get() == 0 {
+            self.mode.set(-1);
             true
         } else {
             false
@@ -56,12 +54,12 @@ impl RWLock {
 
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        *self.mode.get() -= 1;
+        self.mode.set(self.mode.get() - 1);
     }
 
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        *self.mode.get() += 1;
+        self.mode.set(0);
     }
 
     #[inline]
