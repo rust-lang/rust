@@ -150,7 +150,7 @@ For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggest
 
 You may also want to set up [system LLVM][sysllvm] to avoid building LLVM from source.
 
-[sysllvm]: ./building/suggested.html#building-with-system-llvm
+[sysllvm]: ./building/suggested.html#skipping-llvm-build
 
 ### `./x.py` Intro
 
