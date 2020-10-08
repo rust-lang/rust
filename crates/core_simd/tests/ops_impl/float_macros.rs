@@ -291,6 +291,15 @@ macro_rules! float_tests {
 
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn neg_odd_floats() {
+                for v in slice_chunks(&C) {
+                    let expected = apply_unary_lanewise(v, core::ops::Neg::neg);
+                    assert_biteq!(-v, expected);
+                }
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn abs_negative() {
                 let v = -from_slice(&A);
                 let expected = apply_unary_lanewise(v, <$scalar>::abs);
