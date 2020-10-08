@@ -257,8 +257,7 @@ mod tests {
 
         assert_eq_text!(&after, &actual);
         assert!(
-            fix.fix_trigger_range.start() <= file_position.offset
-                && fix.fix_trigger_range.end() >= file_position.offset,
+            fix.fix_trigger_range.contains_inclusive(file_position.offset),
             "diagnostic fix range {:?} does not touch cursor position {:?}",
             fix.fix_trigger_range,
             file_position.offset
@@ -288,8 +287,7 @@ mod tests {
 
         assert_eq_text!(&after, &actual);
         assert!(
-            fix.fix_trigger_range.start() <= file_position.offset
-                && fix.fix_trigger_range.end() >= file_position.offset,
+            fix.fix_trigger_range.contains_inclusive(file_position.offset),
             "diagnostic fix range {:?} does not touch cursor position {:?}",
             fix.fix_trigger_range,
             file_position.offset

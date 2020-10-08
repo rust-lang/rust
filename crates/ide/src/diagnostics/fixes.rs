@@ -111,7 +111,8 @@ impl DiagnosticWithFix for IncorrectCase {
         let offset = name_node.syntax().text_range().start();
         let file_position = FilePosition { file_id, offset };
 
-        let rename_changes = rename_with_semantics(sema, file_position, &self.suggested_text)?;
+        let rename_changes =
+            rename_with_semantics(sema, file_position, &self.suggested_text).ok()?;
 
         let label = format!("Rename to {}", self.suggested_text);
         Some(Fix::new(&label, rename_changes.info, rename_changes.range))
