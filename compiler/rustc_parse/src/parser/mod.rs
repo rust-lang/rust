@@ -10,6 +10,7 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedBrace;
+pub use diagnostics::AttemptLocalParseRecovery;
 use diagnostics::Error;
 pub use path::PathStyle;
 
