@@ -9,7 +9,7 @@ pub trait CoverageInfoMethods: BackendTypes {
 pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
     fn create_pgo_func_name_var(&self, instance: Instance<'tcx>) -> Self::Value;
 
-    fn add_counter_region(
+    fn add_coverage_counter(
         &mut self,
         instance: Instance<'tcx>,
         function_source_hash: u64,
@@ -17,15 +17,15 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
         region: CodeRegion,
     );
 
-    fn add_counter_expression_region(
+    fn add_coverage_counter_expression(
         &mut self,
         instance: Instance<'tcx>,
         id: InjectedExpressionIndex,
         lhs: ExpressionOperandId,
         op: Op,
         rhs: ExpressionOperandId,
-        region: CodeRegion,
+        region: Option<CodeRegion>,
     );
 
-    fn add_unreachable_region(&mut self, instance: Instance<'tcx>, region: CodeRegion);
+    fn add_coverage_unreachable(&mut self, instance: Instance<'tcx>, region: CodeRegion);
 }

@@ -9,11 +9,11 @@ use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 
 #[derive(Clone, Debug)]
-pub struct ExpressionRegion {
+pub struct Expression {
     lhs: ExpressionOperandId,
     op: Op,
     rhs: ExpressionOperandId,
-    region: CodeRegion,
+    region: Option<CodeRegion>,
 }
 
 /// Collects all of the coverage regions associated with (a) injected counters, (b) counter
@@ -31,7 +31,7 @@ pub struct ExpressionRegion {
 pub struct FunctionCoverage {
     source_hash: u64,
     counters: IndexVec<CounterValueReference, Option<CodeRegion>>,
-    expressions: IndexVec<InjectedExpressionIndex, Option<ExpressionRegion>>,
+    expressions: IndexVec<InjectedExpressionIndex, Option<Expression>>,
     unreachable_regions: Vec<CodeRegion>,
 }
 
@@ -78,11 +78,11 @@ impl FunctionCoverage {
         lhs: ExpressionOperandId,
         op: Op,
         rhs: ExpressionOperandId,
-        region: CodeRegion,
+        region: Option<CodeRegion>,
     ) {
         let expression_index = self.expression_index(u32::from(expression_id));
         self.expressions[expression_index]
-            .replace(ExpressionRegion { lhs, op, rhs, region })
+            .replace(Expression { lhs, op, rhs, region })
             .expect_none("add_counter_expression called with duplicate `id_descending_from_max`");
     }
 
@@ -135,9 +135,9 @@ impl FunctionCoverage {
         // will be set, and after that, `new_indexes` will only be accessed using those same
         // indexes.
 
-        // Note that an `ExpressionRegion`s at any given index can include other expressions as
+        // Note that an `Expression`s at any given index can include other expressions as
         // operands, but expression operands can only come from the subset of expressions having
-        // `expression_index`s lower than the referencing `ExpressionRegion`. Therefore, it is
+        // `expression_index`s lower than the referencing `Expression`. Therefore, it is
         // reasonable to look up the new index of an expression operand while the `new_indexes`
         // vector is only complete up to the current `ExpressionIndex`.
         let id_to_counter =
@@ -162,15 +162,15 @@ impl FunctionCoverage {
                 }
             };
 
-        for (original_index, expression_region) in
+        for (original_index, expression) in
             self.expressions.iter_enumerated().filter_map(|(original_index, entry)| {
                 // Option::map() will return None to filter out missing expressions. This may happen
                 // if, for example, a MIR-instrumented expression is removed during an optimization.
-                entry.as_ref().map(|region| (original_index, region))
+                entry.as_ref().map(|expression| (original_index, expression))
             })
         {
-            let region = &expression_region.region;
-            let ExpressionRegion { lhs, op, rhs, .. } = *expression_region;
+            let optional_region = &expression.region;
+            let Expression { lhs, op, rhs, .. } = *expression;
 
             if let Some(Some((lhs_counter, rhs_counter))) =
                 id_to_counter(&new_indexes, lhs).map(|lhs_counter| {
@@ -190,12 +190,14 @@ impl FunctionCoverage {
                     rhs_counter,
                 );
                 debug!(
-                    "Adding expression {:?} = {:?} at {:?}",
-                    mapped_expression_index, expression, region
+                    "Adding expression {:?} = {:?}, region: {:?}",
+                    mapped_expression_index, expression, optional_region
                 );
                 counter_expressions.push(expression);
                 new_indexes[original_index] = mapped_expression_index;
-                expression_regions.push((Counter::expression(mapped_expression_index), region));
+                if let Some(region) = optional_region {
+                    expression_regions.push((Counter::expression(mapped_expression_index), region));
+                }
             }
         }
         (counter_expressions, expression_regions.into_iter())

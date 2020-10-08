@@ -4,7 +4,7 @@ use crate::util::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::graph::dominators::{self, Dominators};
-use rustc_data_structures::graph::{self, GraphSuccessors};
+use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::bit_set::BitSet;
@@ -90,11 +90,7 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo
 }
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
-    fn run_pass(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        mir_body: &mut mir::Body<'tcx>,
-    ) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
         let mir_source = mir_body.source;
 
         // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
@@ -112,7 +108,11 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 
         // Only instrument functions, methods, and closures (not constants since they are evaluated
         // at compile time by Miri).
-        // FIXME(#73156): Handle source code coverage in const eval
+        // FIXME(#73156): Handle source code coverage in const eval, but note, if and when const
+        // expressions get coverage spans, we will probably have to "carve out" space for const
+        // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
+        // be tricky if const expressions have no corresponding statements in the enclosing MIR.
+        // Closures are carved out by their initial `Assign` statement.)
         if !is_fn_like {
             trace!("InstrumentCoverage skipped for {:?} (not an FnLikeNode)", mir_source.def_id());
             return;
@@ -127,18 +127,17 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
     }
 }
 
-/// A BasicCoverageBlockData (BCB) represents the maximal-length sequence of CFG (MIR) BasicBlocks
-/// without conditional branches.
+/// A BasicCoverageBlockData (BCB) represents the maximal-length sequence of MIR BasicBlocks without
+/// conditional branches, and form a new, simplified, coverage-specific Control Flow Graph, without
+/// altering the original MIR CFG.
 ///
-/// The BCB allows coverage analysis to be performed on a simplified projection of the underlying
-/// MIR CFG, without altering the original CFG. Note that running the MIR `SimplifyCfg` transform,
-/// is not sufficient, and therefore not necessary, since the BCB-based CFG projection is a more
-/// aggressive simplification. For example:
+/// Note that running the MIR `SimplifyCfg` transform is not sufficient (and therefore not
+/// necessary). The BCB-based CFG is a more aggressive simplification. For example:
 ///
-///   * The BCB CFG projection ignores (trims) branches not relevant to coverage, such as unwind-
-///     related code that is injected by the Rust compiler but has no physical source code to
-///     count. This also means a BasicBlock with a `Call` terminator can be merged into its
-///     primary successor target block, in the same BCB.
+///   * The BCB CFG ignores (trims) branches not relevant to coverage, such as unwind-related code,
+///     that is injected by the Rust compiler but has no physical source code to count. This also
+///     means a BasicBlock with a `Call` terminator can be merged into its primary successor target
+///     block, in the same BCB.
 ///   * Some BasicBlock terminators support Rust-specific concerns--like borrow-checking--that are
 ///     not relevant to coverage analysis. `FalseUnwind`, for example, can be treated the same as
 ///     a `Goto`, and merged with its successor into the same BCB.
@@ -148,37 +147,56 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 /// disjoint `CoverageSpan`s in a BCB can also be counted by `CounterExpression` (by adding `ZERO`
 /// to the BCB's primary counter or expression).
 ///
-/// Dominator/dominated relationships (which are fundamental to the coverage analysis algorithm)
-/// between two BCBs can be computed using the `mir::Body` `dominators()` with any `BasicBlock`
-/// member of each BCB. (For consistency, BCB's use the first `BasicBlock`, also referred to as the
-/// `bcb` `leader_bb`.)
-///
-/// The BCB CFG projection is critical to simplifying the coverage analysis by ensuring graph
-/// path-based queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch
-/// (control flow) significance.
+/// The BCB CFG is critical to simplifying the coverage analysis by ensuring graph path-based
+/// queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch (control flow)
+/// significance.
 #[derive(Debug, Clone)]
 struct BasicCoverageBlockData {
     basic_blocks: Vec<BasicBlock>,
+    counter_kind: Option<CoverageKind>,
 }
 
 impl BasicCoverageBlockData {
     pub fn from(basic_blocks: Vec<BasicBlock>) -> Self {
         assert!(basic_blocks.len() > 0);
-        Self {
-            basic_blocks,
-        }
+        Self { basic_blocks, counter_kind: None }
     }
 
+    #[inline(always)]
+    pub fn basic_blocks(&self) -> std::slice::Iter<'_, BasicBlock> {
+        self.basic_blocks.iter()
+    }
+
+    #[inline(always)]
     pub fn leader_bb(&self) -> BasicBlock {
         self.basic_blocks[0]
     }
 
+    #[inline(always)]
     pub fn last_bb(&self) -> BasicBlock {
         *self.basic_blocks.last().unwrap()
     }
 
-    pub fn basic_blocks(&self) -> std::slice::Iter<'_, BasicBlock> {
-        self.basic_blocks.iter()
+    #[inline(always)]
+    pub fn terminator<'a, 'tcx>(&self, mir_body: &'a mir::Body<'tcx>) -> &'a TerminatorKind<'tcx> {
+        &mir_body[self.last_bb()].terminator().kind
+    }
+
+    #[inline(always)]
+    pub fn set_counter(&mut self, counter_kind: CoverageKind) {
+        self.counter_kind
+            .replace(counter_kind)
+            .expect_none("attempt to set a BasicCoverageBlock coverage counter more than once");
+    }
+
+    #[inline(always)]
+    pub fn counter(&self) -> Option<&CoverageKind> {
+        self.counter_kind.as_ref()
+    }
+
+    #[inline(always)]
+    pub fn take_counter(&mut self) -> Option<CoverageKind> {
+        self.counter_kind.take()
     }
 
     pub fn id(&self) -> String {
@@ -203,94 +221,112 @@ rustc_index::newtype_index! {
 struct BasicCoverageBlocks {
     bcbs: IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
     bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
+    successors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     predecessors: IndexVec<BasicCoverageBlock, BcbPredecessors>,
-    successors: IndexVec<BasicCoverageBlock,Vec<BasicCoverageBlock>>,
 }
 
 impl BasicCoverageBlocks {
     pub fn from_mir(mir_body: &mir::Body<'tcx>) -> Self {
-        let len = mir_body.basic_blocks().len();
+        let (bcbs, bb_to_bcb) = Self::compute_basic_coverage_blocks(mir_body);
+
+        // Pre-transform MIR `BasicBlock` successors and predecessors into the BasicCoverageBlock
+        // equivalents. Note that since the BasicCoverageBlock graph has been fully simplified, the
+        // each predecessor of a BCB leader_bb should be in a unique BCB, and each successor of a
+        // BCB last_bb should bin in its own unique BCB. Therefore, collecting the BCBs using
+        // `bb_to_bcb` should work without requiring a deduplication step.
+
+        let successors = IndexVec::from_fn_n(
+            |bcb| {
+                let bcb_data = &bcbs[bcb];
+                let bcb_successors = bcb_data
+                    .terminator(mir_body)
+                    .successors()
+                    .filter_map(|&successor_bb| bb_to_bcb[successor_bb])
+                    .collect::<Vec<_>>();
+                debug_assert!({
+                    let mut sorted = bcb_successors.clone();
+                    sorted.sort_unstable();
+                    let initial_len = sorted.len();
+                    sorted.dedup();
+                    sorted.len() == initial_len
+                });
+                bcb_successors
+            },
+            bcbs.len(),
+        );
+
+        let predecessors = IndexVec::from_fn_n(
+            |bcb| {
+                let bcb_data = &bcbs[bcb];
+                let bcb_predecessors = mir_body.predecessors()[bcb_data.leader_bb()]
+                    .iter()
+                    .filter_map(|&predecessor_bb| bb_to_bcb[predecessor_bb])
+                    .collect::<BcbPredecessors>();
+                debug_assert!({
+                    let mut sorted = bcb_predecessors.clone();
+                    sorted.sort_unstable();
+                    let initial_len = sorted.len();
+                    sorted.dedup();
+                    sorted.len() == initial_len
+                });
+                bcb_predecessors
+            },
+            bcbs.len(),
+        );
+
+        Self { bcbs, bb_to_bcb, successors, predecessors }
+    }
+
+    fn compute_basic_coverage_blocks(
+        mir_body: &mir::Body<'tcx>,
+    ) -> (
+        IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
+        IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
+    ) {
+        let len = mir_body.num_nodes();
         let mut bcbs = IndexVec::with_capacity(len);
         let mut bb_to_bcb = IndexVec::from_elem_n(None, len);
-        // Traverse the CFG but ignore anything following an `unwind`
-        let cfg_without_unwind = ShortCircuitPreorder::new(mir_body, |term_kind| {
+
+        // Walk the MIR CFG using a Preorder traversal, which starts from `START_BLOCK` and follows
+        // each block terminator's `successors()`. Coverage spans must map to actual source code,
+        // so compiler generated blocks and paths can be ignored. To that end, the CFG traversal
+        // intentionally omits unwind paths.
+        let mir_cfg_without_unwind = ShortCircuitPreorder::new(mir_body, |term_kind| {
             let mut successors = term_kind.successors();
             match &term_kind {
                 // SwitchInt successors are never unwind, and all of them should be traversed.
-
-                // NOTE: TerminatorKind::FalseEdge targets from SwitchInt don't appear to be
-                // helpful in identifying unreachable code. I did test the theory, but the following
-                // changes were not beneficial. (I assumed that replacing some constants with
-                // non-deterministic variables might effect which blocks were targeted by a
-                // `FalseEdge` `imaginary_target`. It did not.)
-                //
-                // Also note that, if there is a way to identify BasicBlocks that are part of the
-                // MIR CFG, but not actually reachable, here are some other things to consider:
-                //
-                // Injecting unreachable code regions will probably require computing the set
-                // difference between the basic blocks found without filtering out unreachable
-                // blocks, and the basic blocks found with the filter; then computing the
-                // `CoverageSpans` without the filter; and then injecting `Counter`s or
-                // `CounterExpression`s for blocks that are not unreachable, or injecting
-                // `Unreachable` code regions otherwise. This seems straightforward, but not
-                // trivial.
-                //
-                // Alternatively, we might instead want to leave the unreachable blocks in
-                // (bypass the filter here), and inject the counters. This will result in counter
-                // values of zero (0) for unreachable code (and, notably, the code will be displayed
-                // with a red background by `llvm-cov show`).
-                //
-                // TerminatorKind::SwitchInt { .. } => {
-                //     let some_imaginary_target = successors.clone().find_map(|&successor| {
-                //         let term = mir_body.basic_blocks()[successor].terminator();
-                //         if let TerminatorKind::FalseEdge { imaginary_target, .. } = term.kind {
-                //             if mir_body.predecessors()[imaginary_target].len() == 1 {
-                //                 return Some(imaginary_target);
-                //             }
-                //         }
-                //         None
-                //     });
-                //     if let Some(imaginary_target) = some_imaginary_target {
-                //         box successors.filter(move |&&successor| successor != imaginary_target)
-                //     } else {
-                //         box successors
-                //     }
-                // }
-                //
-                // Note this also required changing the closure signature for the
-                // `ShortCurcuitPreorder` to:
-                //
-                // F: Fn(&'tcx TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = &BasicBlock> + 'a>,
                 TerminatorKind::SwitchInt { .. } => successors,
-
-                // For all other kinds, return only the first successor, if any, and ignore unwinds
+                // For all other kinds, return only the first successor, if any, and ignore unwinds.
+                // NOTE: `chain(&[])` is required to coerce the `option::iter` (from
+                // `next().into_iter()`) into the `mir::Successors` aliased type.
                 _ => successors.next().into_iter().chain(&[]),
             }
         });
 
-        // Walk the CFG using a Preorder traversal, which starts from `START_BLOCK` and follows
-        // each block terminator's `successors()`. Coverage spans must map to actual source code,
-        // so compiler generated blocks and paths can be ignored. To that end the CFG traversal
-        // intentionally omits unwind paths.
         let mut basic_blocks = Vec::new();
-        for (bb, data) in cfg_without_unwind {
+        for (bb, data) in mir_cfg_without_unwind {
             if let Some(last) = basic_blocks.last() {
                 let predecessors = &mir_body.predecessors()[bb];
                 if predecessors.len() > 1 || !predecessors.contains(last) {
                     // The `bb` has more than one _incoming_ edge, and should start its own
-                    // `BasicCoverageBlockData`. (Note, the `basic_blocks` vector does not yet include
-                    // `bb`; it contains a sequence of one or more sequential basic_blocks with no
-                    // intermediate branches in or out. Save these as a new `BasicCoverageBlockData`
-                    // before starting the new one.)
-                    Self::add_basic_coverage_block(&mut bcbs, &mut bb_to_bcb, basic_blocks.split_off(0));
-                    debug!(
-                        "  because {}",
-                        if predecessors.len() > 1 {
-                            "predecessors.len() > 1".to_owned()
-                        } else {
-                            format!("bb {} is not in precessors: {:?}", bb.index(), predecessors)
-                        }
+                    // `BasicCoverageBlockData`. (Note, the `basic_blocks` vector does not yet
+                    // include `bb`; it contains a sequence of one or more sequential basic_blocks
+                    // with no intermediate branches in or out. Save these as a new
+                    // `BasicCoverageBlockData` before starting the new one.)
+                    Self::add_basic_coverage_block(
+                        &mut bcbs,
+                        &mut bb_to_bcb,
+                        basic_blocks.split_off(0),
                     );
+                    // TODO(richkadel): uncomment debug!
+                    // debug!(
+                    //     "  because {}",
+                    //     if predecessors.len() > 1 {
+                    //         "predecessors.len() > 1".to_owned()
+                    //     } else {
+                    //         format!("bb {} is not in precessors: {:?}", bb.index(), predecessors)
+                    //     }
+                    // );
                 }
             }
             basic_blocks.push(bb);
@@ -299,21 +335,46 @@ impl BasicCoverageBlocks {
 
             match term.kind {
                 TerminatorKind::Return { .. }
+// TODO(richkadel): Do we handle Abort like Return? The program doesn't continue
+// normally. It's like a failed assert (I assume).
                 | TerminatorKind::Abort
+// TODO(richkadel): I think Assert should be handled like falseUnwind.
+// It's just a goto if we assume it does not fail the assert, and if it
+// does fail, the unwind caused by failure is hidden code not covered
+// in coverage???
+//
+// BUT if we take it out, then we can't count code up until the assert.
+//
+// (That may be OK, not sure. Maybe not.).
+//
+// How am I handling the try "?" on functions that return Result?
+
+// TODO(richkadel): comment out?
                 | TerminatorKind::Assert { .. }
+
+// TODO(richkadel): And I don't know what do do with Yield
                 | TerminatorKind::Yield { .. }
+                // FIXME(richkadel): Add coverage test for TerminatorKind::Yield and/or `yield`
+                // keyword (see "generators" unstable feature).
+                // FIXME(richkadel): Add tests with async and threading.
+
                 | TerminatorKind::SwitchInt { .. } => {
                     // The `bb` has more than one _outgoing_ edge, or exits the function. Save the
                     // current sequence of `basic_blocks` gathered to this point, as a new
                     // `BasicCoverageBlockData`.
-                    Self::add_basic_coverage_block(&mut bcbs, &mut bb_to_bcb, basic_blocks.split_off(0));
-                    debug!("  because term.kind = {:?}", term.kind);
+                    Self::add_basic_coverage_block(
+                        &mut bcbs,
+                        &mut bb_to_bcb,
+                        basic_blocks.split_off(0),
+                    );
+                    // TODO(richkadel): uncomment debug!
+                    // debug!("  because term.kind = {:?}", term.kind);
                     // Note that this condition is based on `TerminatorKind`, even though it
                     // theoretically boils down to `successors().len() != 1`; that is, either zero
                     // (e.g., `Return`, `Abort`) or multiple successors (e.g., `SwitchInt`), but
-                    // since the Coverage graph (the BCB CFG projection) ignores things like unwind
-                    // branches (which exist in the `Terminator`s `successors()` list) checking the
-                    // number of successors won't work.
+                    // since the BCB CFG ignores things like unwind branches (which exist in the
+                    // `Terminator`s `successors()` list) checking the number of successors won't
+                    // work.
                 }
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::Resume
@@ -331,74 +392,60 @@ impl BasicCoverageBlocks {
         if !basic_blocks.is_empty() {
             // process any remaining basic_blocks into a final `BasicCoverageBlockData`
             Self::add_basic_coverage_block(&mut bcbs, &mut bb_to_bcb, basic_blocks.split_off(0));
-            debug!("  because the end of the CFG was reached while traversing");
+            // TODO(richkadel): uncomment debug!
+            // debug!("  because the end of the MIR CFG was reached while traversing");
         }
 
-        let basic_blocks = &mir_body.basic_blocks();
-        let bb_predecessors = &mir_body.predecessors();
-
-        // Pre-transform MIR `BasicBlock` successors and predecessors into the BasicCoverageBlock
-        // equivalents. Note that since the BasicCoverageBlock graph has been fully simplified, the
-        // each predecessor of a BCB leader_bb should be in a unique BCB, and each successor of a
-        // BCB last_bb should bin in its own unique BCB. Therefore, collecting the BCBs using
-        // `bb_to_bcb` should work without requiring a deduplication step.
-
-        let successors = IndexVec::from_fn_n(|bcb| {
-            let bcb_data = &bcbs[bcb];
-            let bb_data = &basic_blocks[bcb_data.last_bb()];
-            let bcb_successors = bb_data.terminator().successors().filter_map(|&successor_bb| bb_to_bcb[successor_bb]).collect::<Vec<_>>();
-            debug_assert!({
-                let mut sorted = bcb_successors.clone();
-                sorted.sort_unstable();
-                let initial_len = sorted.len();
-                sorted.dedup();
-                sorted.len() == initial_len
-            });
-            bcb_successors
-        }, bcbs.len());
-
-        let predecessors = IndexVec::from_fn_n(|bcb| {
-            let bcb_data = &bcbs[bcb];
-            let bcb_predecessors = bb_predecessors[bcb_data.leader_bb()].iter().filter_map(|&predecessor_bb| bb_to_bcb[predecessor_bb]).collect::<BcbPredecessors>();
-            debug_assert!({
-                let mut sorted = bcb_predecessors.clone();
-                sorted.sort_unstable();
-                let initial_len = sorted.len();
-                sorted.dedup();
-                sorted.len() == initial_len
-            });
-            bcb_predecessors
-        }, bcbs.len());
-
-        Self {
-            bcbs,
-            bb_to_bcb,
-            predecessors,
-            successors,
-        }
+        (bcbs, bb_to_bcb)
     }
 
-    pub fn iter_enumerated(&self) -> impl Iterator<Item = (BasicCoverageBlock, &BasicCoverageBlockData)> {
-        self.bcbs.iter_enumerated()
-    }
-
-    fn bcb_from_bb(&self, bb: BasicBlock) -> BasicCoverageBlock {
-        self.bb_to_bcb[bb].expect("bb is not in any bcb (pre-filtered, such as unwind paths perhaps?)")
-    }
-
-    fn add_basic_coverage_block(bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>, bb_to_bcb: &mut IndexVec<BasicBlock, Option<BasicCoverageBlock>>, basic_blocks: Vec<BasicBlock>) {
+    fn add_basic_coverage_block(
+        bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
+        bb_to_bcb: &mut IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
+        basic_blocks: Vec<BasicBlock>,
+    ) {
         let bcb = BasicCoverageBlock::from_usize(bcbs.len());
         for &bb in basic_blocks.iter() {
             bb_to_bcb[bb] = Some(bcb);
         }
         let bcb_data = BasicCoverageBlockData::from(basic_blocks);
-        debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
+        // TODO(richkadel): uncomment debug!
+        // debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
         bcbs.push(bcb_data);
     }
 
-    #[inline]
+    #[inline(always)]
+    pub fn iter_enumerated(
+        &self,
+    ) -> impl Iterator<Item = (BasicCoverageBlock, &BasicCoverageBlockData)> {
+        self.bcbs.iter_enumerated()
+    }
+
+    #[inline(always)]
+    pub fn bcb_from_bb(&self, bb: BasicBlock) -> BasicCoverageBlock {
+        self.bb_to_bcb[bb]
+            .expect("bb is not in any bcb (pre-filtered, such as unwind paths perhaps?)")
+    }
+
+    #[inline(always)]
     pub fn compute_bcb_dominators(&self) -> Dominators<BasicCoverageBlock> {
         dominators::dominators(self)
+    }
+}
+
+impl Index<BasicCoverageBlock> for BasicCoverageBlocks {
+    type Output = BasicCoverageBlockData;
+
+    #[inline]
+    fn index(&self, index: BasicCoverageBlock) -> &BasicCoverageBlockData {
+        &self.bcbs[index]
+    }
+}
+
+impl IndexMut<BasicCoverageBlock> for BasicCoverageBlocks {
+    #[inline]
+    fn index_mut(&mut self, index: BasicCoverageBlock) -> &mut BasicCoverageBlockData {
+        &mut self.bcbs[index]
     }
 }
 
@@ -420,11 +467,7 @@ impl graph::WithStartNode for BasicCoverageBlocks {
     }
 }
 
-// `BasicBlock` `Predecessors` uses a `SmallVec` of length 4 because, "Typically 95%+ of basic
-// blocks have 4 or fewer predecessors." BasicCoverageBlocks should have the same or less.
-type BcbPredecessors = SmallVec<[BasicCoverageBlock; 4]>;
-
-pub type BcbSuccessors<'a> = std::slice::Iter<'a, BasicCoverageBlock>;
+type BcbSuccessors<'a> = std::slice::Iter<'a, BasicCoverageBlock>;
 
 impl graph::WithSuccessors for BasicCoverageBlocks {
     #[inline]
@@ -438,6 +481,10 @@ impl<'a> graph::GraphSuccessors<'a> for BasicCoverageBlocks {
     type Iter = std::iter::Cloned<BcbSuccessors<'a>>;
 }
 
+// `BasicBlock` `Predecessors` uses a `SmallVec` of length 4 because, "Typically 95%+ of basic
+// blocks have 4 or fewer predecessors." BasicCoverageBlocks should have the same or less.
+type BcbPredecessors = SmallVec<[BasicCoverageBlock; 4]>;
+
 impl graph::GraphPredecessors<'graph> for BasicCoverageBlocks {
     type Item = BasicCoverageBlock;
     type Iter = smallvec::IntoIter<[BasicCoverageBlock; 4]>;
@@ -450,60 +497,6 @@ impl graph::WithPredecessors for BasicCoverageBlocks {
     }
 }
 
-impl Index<BasicCoverageBlock> for BasicCoverageBlocks {
-    type Output = BasicCoverageBlockData;
-
-    #[inline]
-    fn index(&self, index: BasicCoverageBlock) -> &BasicCoverageBlockData {
-        &self.bcbs[index]
-    }
-}
-
-impl IndexMut<BasicCoverageBlock> for BasicCoverageBlocks {
-    #[inline]
-    fn index_mut(&mut self, index: BasicCoverageBlock) -> &mut BasicCoverageBlockData {
-        &mut self.bcbs[index]
-    }
-}
-
-
-
-        // TODO(richkadel): For any node, N, and one of its successors, H (so N -> H), if (_also_)
-        // N is_dominated_by H, then N -> H is a backedge. That is, we've identified that N -> H is
-        // at least _one_ of possibly multiple arcs that loop back to the start of the loop with
-        // "header" H, and this also means we've identified a loop, that has "header" H.
-        //
-        // H dominates everything inside the loop.
-        //
-        // So a SwitchInt target in a BasicBlock that is_dominated_by H and has a branch target to a
-        // BasicBlock that is:
-        //   * not H, and   ... (what if the SwitchInt branch target _is_ H? `continue`? is this a
-        //     candidate for a middle or optional priority for getting a Counter?)
-        //   * not is_dominated_by H
-        // is a branch that jumps outside the loop, and should get an actual Counter, most likely
-        //
-        // Or perhaps conversely, a SwitchInt dominated by H with a branch that has a target that
-        // ALSO is dominated by H should get a CounterExpression.
-        //
-        //
-        // So I need to identify all of the "H"'s, by identifying all of the backedges.
-        //
-        // If I have multiple H's (multiple loops), how do I decide which loop to compare a branch
-        // target (by dominator) to?
-        //
-        // Can I assume the traversal order is helpful here? I.e., the "last" encountered loop
-        // header is the (only?) one to compare to? (Probably not only... I don't see how that would
-        // work for nested loops.)
-        //
-        // What about multiple loops in sequence?
-        //
-        //
-        // What about nexted loops and jumping out of one or more of them at a time?
-
-
-
-
-
 #[derive(Debug, Copy, Clone)]
 enum CoverageStatement {
     Statement(BasicBlock, Span, usize),
@@ -514,7 +507,7 @@ impl CoverageStatement {
     pub fn format(&self, tcx: TyCtxt<'tcx>, mir_body: &'a mir::Body<'tcx>) -> String {
         match *self {
             Self::Statement(bb, span, stmt_index) => {
-                let stmt = &mir_body.basic_blocks()[bb].statements[stmt_index];
+                let stmt = &mir_body[bb].statements[stmt_index];
                 format!(
                     "{}: @{}[{}]: {:?}",
                     spanview::source_range_no_file(tcx, &span),
@@ -524,7 +517,7 @@ impl CoverageStatement {
                 )
             }
             Self::Terminator(bb, span) => {
-                let term = mir_body.basic_blocks()[bb].terminator();
+                let term = mir_body[bb].terminator();
                 format!(
                     "{}: @{}.{}: {:?}",
                     spanview::source_range_no_file(tcx, &span),
@@ -632,6 +625,7 @@ impl CoverageSpan {
         }
     }
 
+    #[inline]
     pub fn is_dominated_by(
         &self,
         other: &CoverageSpan,
@@ -641,13 +635,30 @@ impl CoverageSpan {
         bcb_dominators.is_dominated_by(self.bcb, other.bcb)
     }
 
+    #[inline]
     pub fn is_mergeable(&self, other: &Self) -> bool {
         self.is_in_same_bcb(other) && !(self.is_closure || other.is_closure)
     }
 
+    #[inline]
     pub fn is_in_same_bcb(&self, other: &Self) -> bool {
         self.bcb == other.bcb
     }
+}
+
+/// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
+/// BasicCoverageBlocks outside all loops. This supports traversing the BCB CFG in a way that
+/// ensures a loop is completely traversed before processing Blocks after the end of the loop.
+#[derive(Debug)]
+struct TraversalContext {
+    /// the start (backedge target) of a loop. If `None`, the context is all
+    /// BasicCoverageBlocks in the MIR that are _not_ within any loop.
+    loop_header: Option<BasicCoverageBlock>,
+
+    /// worklist, to be traversed, of BasicCoverageBlocks in the loop headed by
+    /// `loop_header`, such that the loop is the inner inner-most loop containing these
+    /// BasicCoverageBlocks
+    worklist: Vec<BasicCoverageBlock>,
 }
 
 struct Instrumentor<'a, 'tcx> {
@@ -663,11 +674,7 @@ struct Instrumentor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
-    fn new(
-        pass_name: &'a str,
-        tcx: TyCtxt<'tcx>,
-        mir_body: &'a mut mir::Body<'tcx>,
-    ) -> Self {
+    fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
         let hir_body = hir_body(tcx, mir_body.source.def_id());
         let basic_coverage_blocks = BasicCoverageBlocks::from_mir(mir_body);
         let bcb_dominators = basic_coverage_blocks.compute_bcb_dominators();
@@ -732,36 +739,31 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             None
         };
 
+        self.make_counters();
+
         // Inject a counter for each `CoverageSpan`. There can be multiple `CoverageSpan`s for a
         // given BCB, but only one actual counter needs to be incremented per BCB. `bb_counters`
         // maps each `bcb` to its `Counter`, when injected. Subsequent `CoverageSpan`s
         // for a BCB that already has a `Counter` will inject a `CounterExpression` instead, and
         // compute its value by adding `ZERO` to the BCB `Counter` value.
-        let mut bb_counters = IndexVec::from_elem_n(None, self.mir_body.basic_blocks().len());
+        let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for CoverageSpan { span, bcb, .. } in coverage_spans {
-            let bb = self.basic_coverage_blocks[bcb].leader_bb();
-            if let Some(&counter_operand) = bb_counters[bb].as_ref() {
-                let expression =
-                    self.make_expression(counter_operand, Op::Add, ExpressionOperandId::ZERO);
-                debug!(
-                    "Injecting counter expression {:?} at: {:?}:\n{}\n==========",
-                    expression,
-                    span,
-                    source_map.span_to_snippet(span).expect("Error getting source for span"),
-                );
-                self.inject_statement(file_name, &source_file, expression, span, bb);
+            let counter_kind = if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
+                self.make_expression(counter_operand, Op::Add, ExpressionOperandId::ZERO)
+            } else if let Some(counter_kind) = self.bcb_data_mut(bcb).take_counter() {
+                bcb_counters[bcb] = Some(counter_kind.as_operand_id());
+                counter_kind
             } else {
-                let counter = self.make_counter();
-                debug!(
-                    "Injecting counter {:?} at: {:?}:\n{}\n==========",
-                    counter,
-                    span,
-                    source_map.span_to_snippet(span).expect("Error getting source for span"),
-                );
-                let counter_operand = counter.as_operand_id();
-                bb_counters[bb] = Some(counter_operand);
-                self.inject_statement(file_name, &source_file, counter, span, bb);
-            }
+                bug!("Every BasicCoverageBlock should have a Counter or CounterExpression");
+            };
+            // TODO(richkadel): uncomment debug!
+            // debug!(
+            //     "Injecting {:?} at: {:?}:\n{}\n==========",
+            //     counter_kind,
+            //     span,
+            //     source_map.span_to_snippet(span).expect("Error getting source for span"),
+            // );
+            self.inject_statement(file_name, &source_file, counter_kind, span, bcb);
         }
 
         if let Some(span_viewables) = span_viewables {
@@ -775,6 +777,298 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 .expect("Unexpected IO error dumping coverage spans as HTML");
         }
     }
+
+    /// Traverse the BCB CFG and add either a `Counter` or `CounterExpression` to ever BCB, to be
+    /// injected with `CoverageSpan`s. `CounterExpressions` have no runtime overhead, so if a viable
+    /// expression (adding or subtracting two other counters or expressions) can compute the same
+    /// result as an embedded counter, a `CounterExpression` should be used.
+    ///
+    /// If two `BasicCoverageBlocks` branch from another `BasicCoverageBlock`, one of the branches
+    /// can be counted by `CounterExpression` by subtracting the other branch from the branching
+    /// block. Otherwise, the `BasicCoverageBlock` executed the least should have the `Counter`.
+    /// One way to predict which branch executes the least is by considering loops. A loop is exited
+    /// at a branch, so the branch that jumps to a `BasicCoverageBlock` outside the loop is almost
+    /// always executed less than the branch that does not exit the loop.
+    fn make_counters(&mut self) {
+        debug!(
+            "make_counters(): adding a counter or expression to each BasicCoverageBlock.\n    ... First identify any loops by their backedges:"
+        );
+        let mut loop_headers = BitSet::new_empty(self.basic_coverage_blocks.num_nodes());
+
+        // Identify backedges
+        for (bcb, _) in self.basic_coverage_blocks.iter_enumerated() {
+            for &successor in &self.basic_coverage_blocks.successors[bcb] {
+                if self.bcb_is_dominated_by(bcb, successor) {
+                    debug!("Found BCB backedge: {:?} -> loop_header: {:?}", bcb, successor);
+                    loop_headers.insert(successor);
+                }
+            }
+        }
+
+        let start_bcb = self.basic_coverage_blocks.start_node();
+
+        // `context_stack` starts with a `TraversalContext` for the main function context (beginning
+        // with the `start` BasicCoverageBlock of the function). New worklists are pushed to the top
+        // of the stack as loops are entered, and popped off of the stack when a loop's worklist is
+        // exhausted.
+        let mut context_stack = Vec::new();
+        context_stack.push(TraversalContext { loop_header: None, worklist: vec![start_bcb] });
+        let mut visited = BitSet::new_empty(self.basic_coverage_blocks.num_nodes());
+
+        while let Some(bcb) = {
+            // Strip contexts with empty worklists from the top of the stack
+            while context_stack
+                .last()
+                .map_or(false, |context| context.worklist.is_empty())
+            {
+                context_stack.pop();
+            }
+            context_stack.last_mut().map_or(None, |context| context.worklist.pop())
+        }
+        {
+            if !visited.insert(bcb) {
+                debug!("Already visited: {:?}", bcb);
+                continue;
+            }
+            debug!("Visiting {:?}", bcb);
+            if loop_headers.contains(bcb) {
+                debug!("{:?} is a loop header! Start a new TraversalContext...", bcb);
+                context_stack
+                    .push(TraversalContext { loop_header: Some(bcb), worklist: Vec::new() });
+            }
+
+            debug!(
+                "{:?} has {} successors:",
+                bcb,
+                self.basic_coverage_blocks.successors[bcb].len()
+            );
+            for &successor in &self.basic_coverage_blocks.successors[bcb] {
+                for context in context_stack.iter_mut().rev() {
+                    if let Some(loop_header) = context.loop_header {
+                        if self.bcb_is_dominated_by(successor, loop_header) {
+                            debug!(
+                                "Adding successor {:?} to worklist of loop headed by {:?}",
+                                successor, loop_header
+                            );
+                            context.worklist.push(successor);
+                            break;
+                        }
+                    } else {
+                        debug!("Adding successor {:?} to non-loop worklist", successor);
+                        context.worklist.push(successor);
+                    }
+                }
+            }
+
+            let bcb_counter_operand = if let Some(counter) = self.bcb_data(bcb).counter() {
+                debug!("{:?} already has a counter: {:?}", bcb, counter);
+                counter.as_operand_id()
+            } else {
+                let counter = self.make_counter();
+                debug!("{:?} needs a counter: {:?}", bcb, counter);
+                let operand = counter.as_operand_id();
+                self.bcb_data_mut(bcb).set_counter(counter);
+                operand
+            };
+
+            let targets = match &self.bcb_data(bcb).terminator(self.mir_body) {
+                TerminatorKind::SwitchInt { targets, .. } => targets.clone(),
+                _ => vec![],
+            };
+            if targets.len() > 0 {
+                debug!(
+                    "{:?}'s terminator is a SwitchInt with targets: {:?}",
+                    bcb,
+                    targets.iter().map(|bb| self.bcb_from_bb(*bb)).collect::<Vec<_>>()
+                );
+                let switch_int_counter_operand = bcb_counter_operand;
+
+                // Only one target can have an expression, but if `found_loop_exit`, any
+                // `in_loop_target` can get the `CounterExpression`.
+                let mut some_in_loop_target = None;
+                for context in context_stack.iter().rev() {
+                    if let Some(loop_header) = context.loop_header {
+                        let mut found_loop_exit = false;
+                        for &bb in &targets {
+                            let target_bcb = self.bcb_from_bb(bb);
+// TODO(richkadel): But IF...
+                            if self.bcb_is_dominated_by(target_bcb, loop_header) {
+//                  the target or any non-branching BCB successor down the line
+//                  exits or is a TerminatorKind::Return, or something similar,
+//                  then this should be "found_loop_exit" instead of some_in_loop_target
+
+
+// WHAT IF instead of checking target_bcb is dominated by loop header, 
+// we check something like, if backedge start (for all backedges leading to loop header?)
+// is dominated by target_bcb?
+// AND CAN THERE BE MORE THAN ONE BACKEDGE?  I THINK MAYBE... like "continue loop_label;"
+
+// Will that work better?
+// YES I THINK SO... IT SAYS, "target_bcb" leads out of the loop or it doesn't.
+
+                                some_in_loop_target = Some(target_bcb);
+                            } else {
+                                found_loop_exit = true;
+                            }
+                            if some_in_loop_target.is_some() && found_loop_exit {
+                                break;
+                            }
+                        }
+                        debug!(
+                            "found_loop_exit={}, some_in_loop_target={:?}",
+                            found_loop_exit, some_in_loop_target
+                        );
+                        if !(found_loop_exit && some_in_loop_target.is_none()) {
+                            break;
+                        }
+                        // else all branches exited this loop context, so run the same checks with
+                        // the outer loop(s)
+                    }
+                }
+
+                // If some preferred target for a CounterExpression was not determined, pick any
+                // target.
+                let expression_target = if let Some(in_loop_target) = some_in_loop_target {
+                    debug!("Adding expression to in_loop_target={:?}", some_in_loop_target);
+                    in_loop_target
+                } else {
+                    let bb_without_counter = *targets
+                        .iter()
+                        .find(|&&bb| {
+                            let target_bcb = self.bcb_from_bb(bb);
+                            self.bcb_data_mut(target_bcb).counter().is_none()
+                        })
+                        .expect("At least one target should need a counter");
+                    debug!(
+                        "No preferred expression target, so adding expression to the first target without an existing counter={:?}",
+                        self.bcb_from_bb(bb_without_counter)
+                    );
+                    self.bcb_from_bb(bb_without_counter)
+                };
+
+                // Assign a Counter or CounterExpression to each target BasicCoverageBlock,
+                // computing intermediate CounterExpression as needed.
+                let mut some_prev_counter_operand = None;
+                for bb in targets {
+                    let target_bcb = self.bcb_from_bb(bb);
+                    if target_bcb != expression_target {
+                        // TODO(richkadel): this let if let else block is repeated above. Refactor into function.
+                        let target_counter_operand =
+                            if let Some(counter) = self.bcb_data(target_bcb).counter() {
+                                debug!("{:?} already has a counter: {:?}", target_bcb, counter);
+                                counter.as_operand_id()
+                            } else {
+                                let counter = self.make_counter();
+                                debug!("{:?} gets a counter: {:?}", target_bcb, counter);
+                                let operand = counter.as_operand_id();
+                                self.bcb_data_mut(target_bcb).set_counter(counter);
+                                operand
+                            };
+                        if let Some(prev_counter_operand) =
+                            some_prev_counter_operand.replace(target_counter_operand)
+                        {
+                            let expression = self.make_expression(
+                                prev_counter_operand,
+                                Op::Add,
+                                target_counter_operand,
+                            );
+                            debug!("new non-code expression: {:?}", expression);
+                            let expression_operand = expression.as_operand_id();
+                            self.inject_non_code_expression(expression);
+                            some_prev_counter_operand.replace(expression_operand);
+                        }
+                    }
+                }
+                let expression = self.make_expression(
+                    switch_int_counter_operand,
+                    Op::Subtract,
+                    some_prev_counter_operand.expect("prev_counter should have a value"),
+                );
+                debug!("{:?} gets an expression: {:?}", expression_target, expression);
+                self.bcb_data_mut(expression_target).set_counter(expression);
+            }
+        }
+
+        debug_assert_eq!(visited.count(), visited.domain_size());
+    }
+
+    #[inline]
+    fn bcb_from_bb(&self, bb: BasicBlock) -> BasicCoverageBlock {
+        self.basic_coverage_blocks.bcb_from_bb(bb)
+    }
+
+    #[inline]
+    fn bcb_data(&self, bcb: BasicCoverageBlock) -> &BasicCoverageBlockData {
+        &self.basic_coverage_blocks[bcb]
+    }
+
+    #[inline]
+    fn bcb_data_mut(&mut self, bcb: BasicCoverageBlock) -> &mut BasicCoverageBlockData {
+        &mut self.basic_coverage_blocks[bcb]
+    }
+
+    #[inline]
+    fn bcb_is_dominated_by(&self, node: BasicCoverageBlock, dom: BasicCoverageBlock) -> bool {
+        self.bcb_dominators.is_dominated_by(node, dom)
+    }
+
+    // loop through backedges
+
+    // select inner loops before their outer loops, so the first matched loop for a given target_bcb
+    // is it's inner-most loop
+
+    // CASE #1:
+    // if a target_bcb is_dominated_by a loop bcb (target of backedge), and if any other target_bcb is NOT dominated by the loop bcb,
+    // add expression to the first target_bcb that dominated by the loop bcb, and counters to all others. Compute expressions from
+    // counter pairs as needed, to provide a single sum that can be subtracted from the SwitchInt block's counter.
+
+    // CASE #2:
+    // if all target_bcb are dominated_by the loop bcb, no branch ends the loop (directly), so pick any branch to have the expression,
+
+    // CASE #3:
+    // if NONE of the target_bcb are dominated_by the loop bcb, check if there's an outer loop (from stack of active loops?)
+    // and re-do this check again to see if one of them jumps out of the outer loop while other(s) don't, and assign the expression
+    // to one of the target_bcb that is dominated_by that outer loop. (Continue this if none are dominated by the outer loop either.)
+
+    // TODO(richkadel): In the last case above, also see the next TODO below. If all targets exit the loop then can we pass that info
+    // to the predecessor (if only one??) so if the predecessor is a target of another SwitchInt, we know that the predecessor exits
+    // the loop, and should have the counter, if the predecessor is in CASE #2 (none of the other targets of the predecessor's
+    // SwitchInt exited the loop?)
+
+    // TODO(richkadel): What about a target that is another SwitchInt where both branches exit the loop?
+    // Can I detect that somehow?
+
+    // TODO(richkadel): For any node, N, and one of its successors, H (so N -> H), if (_also_)
+    // N is_dominated_by H, then N -> H is a backedge. That is, we've identified that N -> H is
+    // at least _one_ of possibly multiple arcs that loop back to the start of the loop with
+    // "header" H, and this also means we've identified a loop, that has "header" H.
+    //
+    // H dominates everything inside the loop.
+    //
+    // So a SwitchInt target in a BasicBlock that is_dominated_by H and has a branch target to a
+    // BasicBlock that is:
+    //   * not H, and   ... (what if the SwitchInt branch target _is_ H? `continue`? is this a
+    //     candidate for a middle or optional priority for getting a Counter?)
+    //   * not is_dominated_by H
+    // is a branch that jumps outside the loop, and should get an actual Counter, most likely
+    //
+    // Or perhaps conversely, a SwitchInt dominated by H with a branch that has a target that
+    // ALSO is dominated by H should get a CounterExpression.
+    //
+    //
+    // So I need to identify all of the "H"'s, by identifying all of the backedges.
+    //
+    // If I have multiple H's (multiple loops), how do I decide which loop to compare a branch
+    // target (by dominator) to?
+    //
+    // Can I assume the traversal order is helpful here? I.e., the "last" encountered loop
+    // header is the (only?) one to compare to? (Probably not only... I don't see how that would
+    // work for nested loops.)
+    //
+    // What about multiple loops in sequence?
+    //
+    //
+    // What about nexted loops and jumping out of one or more of them at a time?
 
     fn make_counter(&mut self) -> CoverageKind {
         CoverageKind::Counter {
@@ -796,18 +1090,36 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         &mut self,
         file_name: Symbol,
         source_file: &Lrc<SourceFile>,
-        coverage_kind: CoverageKind,
+        counter_kind: CoverageKind,
         span: Span,
-        block: BasicBlock,
+        bcb: BasicCoverageBlock,
     ) {
-        let code_region = make_code_region(file_name, source_file, span);
-        debug!("  injecting statement {:?} covering {:?}", coverage_kind, code_region);
+        let code_region = Some(make_code_region(file_name, source_file, span));
+        // TODO(richkadel): uncomment debug!
+        // debug!("  injecting statement {:?} covering {:?}", counter_kind, code_region);
 
-        let data = &mut self.mir_body[block];
+        let inject_in_bb = self.bcb_data(bcb).leader_bb();
+        let data = &mut self.mir_body[inject_in_bb];
         let source_info = data.terminator().source_info;
         let statement = Statement {
             source_info,
-            kind: StatementKind::Coverage(box Coverage { kind: coverage_kind, code_region }),
+            kind: StatementKind::Coverage(box Coverage { kind: counter_kind, code_region }),
+        };
+        data.statements.push(statement);
+    }
+
+    // Non-code expressions are injected into the coverage map, without generating executable code.
+    fn inject_non_code_expression(&mut self, expression: CoverageKind) {
+        debug_assert!(if let CoverageKind::Expression { .. } = expression { true } else { false });
+        // TODO(richkadel): uncomment debug!
+        // debug!("  injecting non-code expression {:?}", expression);
+
+        let inject_in_bb = mir::START_BLOCK;
+        let data = &mut self.mir_body[inject_in_bb];
+        let source_info = data.terminator().source_info;
+        let statement = Statement {
+            source_info,
+            kind: StatementKind::Coverage(box Coverage { kind: expression, code_region: None }),
         };
         data.statements.push(statement);
     }
@@ -818,7 +1130,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mut span_viewables = Vec::new();
         for coverage_span in coverage_spans {
             let CoverageSpan { span, bcb, coverage_statements, .. } = coverage_span;
-            let bcb_data = &self.basic_coverage_blocks[*bcb];
+            let bcb_data = self.bcb_data(*bcb);
             let id = bcb_data.id();
             let leader_bb = bcb_data.leader_bb();
             let mut sorted_coverage_statements = coverage_statements.clone();
@@ -842,17 +1154,21 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     // Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of
-    // the `BasicBlock`(s) in the given `BasicCoverageBlockData`. One `CoverageSpan` is generated for
-    // each `Statement` and `Terminator`. (Note that subsequent stages of coverage analysis will
+    // the `BasicBlock`(s) in the given `BasicCoverageBlockData`. One `CoverageSpan` is generated
+    // for each `Statement` and `Terminator`. (Note that subsequent stages of coverage analysis will
     // merge some `CoverageSpan`s, at which point a `CoverageSpan` may represent multiple
     // `Statement`s and/or `Terminator`s.)
-    fn extract_spans(&self, bcb: BasicCoverageBlock, bcb_data: &'a BasicCoverageBlockData) -> Vec<CoverageSpan> {
+    fn extract_spans(
+        &self,
+        bcb: BasicCoverageBlock,
+        bcb_data: &'a BasicCoverageBlockData,
+    ) -> Vec<CoverageSpan> {
         let body_span = self.body_span();
-        let mir_basic_blocks = self.mir_body.basic_blocks();
-        bcb_data.basic_blocks()
+        bcb_data
+            .basic_blocks()
             .map(|bbref| {
                 let bb = *bbref;
-                let data = &mir_basic_blocks[bb];
+                let data = &self.mir_body[bb];
                 data.statements
                     .iter()
                     .enumerate()
@@ -892,8 +1208,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     /// Note the resulting vector of `CoverageSpan`s does may not be fully sorted (and does not need
     /// to be).
     fn coverage_spans(&self) -> Vec<CoverageSpan> {
-        let mut initial_spans =
-            Vec::<CoverageSpan>::with_capacity(self.mir_body.basic_blocks().len() * 2);
+        let mut initial_spans = Vec::<CoverageSpan>::with_capacity(self.mir_body.num_nodes() * 2);
         for (bcb, bcb_data) in self.basic_coverage_blocks.iter_enumerated() {
             for coverage_span in self.extract_spans(bcb, bcb_data) {
                 initial_spans.push(coverage_span);
@@ -974,26 +1289,29 @@ impl<'a> CoverageSpanRefinery<'a> {
     fn to_refined_spans(mut self) -> Vec<CoverageSpan> {
         while self.next_coverage_span() {
             if self.curr().is_mergeable(self.prev()) {
-                debug!("  same bcb (and neither is a closure), merge with prev={:?}", self.prev());
+                // TODO(richkadel): uncomment debug!
+                // debug!("  same bcb (and neither is a closure), merge with prev={:?}", self.prev());
                 let prev = self.take_prev();
                 self.curr_mut().merge_from(prev);
             // Note that curr.span may now differ from curr_original_span
             } else if self.prev_ends_before_curr() {
-                debug!(
-                    "  different bcbs and disjoint spans, so keep curr for next iter, and add \
-                    prev={:?}",
-                    self.prev()
-                );
+                // TODO(richkadel): uncomment debug!
+                // debug!(
+                //     "  different bcbs and disjoint spans, so keep curr for next iter, and add \
+                //     prev={:?}",
+                //     self.prev()
+                // );
                 let prev = self.take_prev();
                 self.add_refined_span(prev);
             } else if self.prev().is_closure {
                 // drop any equal or overlapping span (`curr`) and keep `prev` to test again in the
                 // next iter
-                debug!(
-                    "  curr overlaps a closure (prev). Drop curr and keep prev for next iter. \
-                    prev={:?}",
-                    self.prev()
-                );
+                // TODO(richkadel): uncomment debug!
+                // debug!(
+                //     "  curr overlaps a closure (prev). Drop curr and keep prev for next iter. \
+                //     prev={:?}",
+                //     self.prev()
+                // );
                 self.discard_curr();
             } else if self.curr().is_closure {
                 self.carve_out_span_for_closure();
@@ -1003,10 +1321,12 @@ impl<'a> CoverageSpanRefinery<'a> {
                 self.cutoff_prev_at_overlapping_curr();
             }
         }
-        debug!("    AT END, adding last prev={:?}", self.prev());
+        // TODO(richkadel): uncomment debug!
+        // debug!("    AT END, adding last prev={:?}", self.prev());
         let pending_dups = self.pending_dups.split_off(0);
         for dup in pending_dups.into_iter() {
-            debug!("    ...adding at least one pending dup={:?}", dup);
+            // TODO(richkadel): uncomment debug!
+            // debug!("    ...adding at least one pending dup={:?}", dup);
             self.add_refined_span(dup);
         }
         let prev = self.take_prev();
@@ -1071,14 +1391,16 @@ impl<'a> CoverageSpanRefinery<'a> {
     fn check_pending_dups(&mut self) {
         if let Some(dup) = self.pending_dups.last() {
             if dup.span != self.prev().span {
-                debug!(
-                    "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
-                    previous iteration, or prev started a new disjoint span"
-                );
+                // TODO(richkadel): uncomment debug!
+                // debug!(
+                //     "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
+                //     previous iteration, or prev started a new disjoint span"
+                // );
                 if dup.span.hi() <= self.curr().span.lo() {
                     let pending_dups = self.pending_dups.split_off(0);
                     for dup in pending_dups.into_iter() {
-                        debug!("    ...adding at least one pending={:?}", dup);
+                        // TODO(richkadel): uncomment debug!
+                        // debug!("    ...adding at least one pending={:?}", dup);
                         self.add_refined_span(dup);
                     }
                 } else {
@@ -1095,13 +1417,15 @@ impl<'a> CoverageSpanRefinery<'a> {
             self.prev_original_span = self.curr_original_span;
         }
         while let Some(curr) = self.sorted_spans_iter.next() {
-            debug!("FOR curr={:?}", curr);
+            // TODO(richkadel): uncomment debug!
+            // debug!("FOR curr={:?}", curr);
             if self.prev_starts_after_next(&curr) {
-                debug!(
-                    "  prev.span starts after curr.span, so curr will be dropped (skipping past \
-                    closure?); prev={:?}",
-                    self.prev()
-                );
+                // TODO(richkadel): uncomment debug!
+                // debug!(
+                //     "  prev.span starts after curr.span, so curr will be dropped (skipping past \
+                //     closure?); prev={:?}",
+                //     self.prev()
+                // );
             } else {
                 // Save a copy of the original span for `curr` in case the `CoverageSpan` is changed
                 // by `self.curr_mut().merge_from(prev)`.
@@ -1148,11 +1472,13 @@ impl<'a> CoverageSpanRefinery<'a> {
         if has_pre_closure_span {
             let mut pre_closure = self.prev().clone();
             pre_closure.span = pre_closure.span.with_hi(left_cutoff);
-            debug!("  prev overlaps a closure. Adding span for pre_closure={:?}", pre_closure);
+            // TODO(richkadel): uncomment debug!
+            // debug!("  prev overlaps a closure. Adding span for pre_closure={:?}", pre_closure);
             if !pending_dups.is_empty() {
                 for mut dup in pending_dups.iter().cloned() {
                     dup.span = dup.span.with_hi(left_cutoff);
-                    debug!("    ...and at least one pre_closure dup={:?}", dup);
+                    // TODO(richkadel): uncomment debug!
+                    // debug!("    ...and at least one pre_closure dup={:?}", dup);
                     self.add_refined_span(dup);
                 }
             }
@@ -1193,21 +1519,23 @@ impl<'a> CoverageSpanRefinery<'a> {
             //
             // The dominator's (`prev`) execution count may be higher than the dominated
             // block's execution count, so drop `curr`.
-            debug!(
-                "  different bcbs but SAME spans, and prev dominates curr. Drop curr and \
-                keep prev for next iter. prev={:?}",
-                self.prev()
-            );
+            // TODO(richkadel): uncomment debug!
+            // debug!(
+            //     "  different bcbs but SAME spans, and prev dominates curr. Drop curr and \
+            //     keep prev for next iter. prev={:?}",
+            //     self.prev()
+            // );
             self.discard_curr();
         } else {
             // Save `prev` in `pending_dups`. (`curr` will become `prev` in the next iteration.)
             // If the `curr` CoverageSpan is later discarded, `pending_dups` can be discarded as
             // well; but if `curr` is added to refined_spans, the `pending_dups` will also be added.
-            debug!(
-                "  different bcbs but SAME spans, and neither dominates, so keep curr for \
-                next iter, and, pending upcoming spans (unless overlapping) add prev={:?}",
-                self.prev()
-            );
+            // TODO(richkadel): uncomment debug!
+            // debug!(
+            //     "  different bcbs but SAME spans, and neither dominates, so keep curr for \
+            //     next iter, and, pending upcoming spans (unless overlapping) add prev={:?}",
+            //     self.prev()
+            // );
             let prev = self.take_prev();
             self.pending_dups.push(prev);
         }
@@ -1221,18 +1549,21 @@ impl<'a> CoverageSpanRefinery<'a> {
     /// avoids injecting multiple counters for overlapping spans, and the potential for
     /// double-counting.
     fn cutoff_prev_at_overlapping_curr(&mut self) {
-        debug!(
-            "  different bcbs, overlapping spans, so ignore/drop pending and only add prev \
-            if it has statements that end before curr={:?}",
-            self.prev()
-        );
+        // TODO(richkadel): uncomment debug!
+        // debug!(
+        //     "  different bcbs, overlapping spans, so ignore/drop pending and only add prev \
+        //     if it has statements that end before curr={:?}",
+        //     self.prev()
+        // );
         if self.pending_dups.is_empty() {
             let curr_span = self.curr().span;
             self.prev_mut().cutoff_statements_at(curr_span.lo());
             if self.prev().coverage_statements.is_empty() {
-                debug!("  ... no non-overlapping statements to add");
+                // TODO(richkadel): uncomment debug!
+                // debug!("  ... no non-overlapping statements to add");
             } else {
-                debug!("  ... adding modified prev={:?}", self.prev());
+                // TODO(richkadel): uncomment debug!
+                // debug!("  ... adding modified prev={:?}", self.prev());
                 let prev = self.take_prev();
                 self.add_refined_span(prev);
             }
@@ -1297,7 +1628,7 @@ fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -
         // an `if condition { block }` has a span that includes the executed block, if true,
         // but for coverage, the code region executed, up to *and* through the SwitchInt,
         // actually stops before the if's block.)
-        TerminatorKind::Unreachable // Unreachable blocks are not connected to the CFG
+        TerminatorKind::Unreachable // Unreachable blocks are not connected to the MIR CFG
         | TerminatorKind::Assert { .. }
         | TerminatorKind::Drop { .. }
         | TerminatorKind::DropAndReplace { .. }
@@ -1428,3 +1759,50 @@ impl<'a: 'tcx, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>>
         (size, Some(size))
     }
 }
+
+// NOTE: Regarding past efforts and revelations when trying to identify `Unreachable` coverage spans
+// from the MIR:
+//
+// TerminatorKind::FalseEdge targets from SwitchInt don't appear to be helpful in identifying
+// unreachable code. I did test the theory, but the following changes were not beneficial. (I
+// assumed that replacing some constants with non-deterministic variables might effect which blocks
+// were targeted by a `FalseEdge` `imaginary_target`. It did not.)
+//
+// Also note that, if there is a way to identify BasicBlocks that are part of the MIR CFG, but not
+// actually reachable, here are some other things to consider:
+//
+// Injecting unreachable code regions will probably require computing the set difference between the
+// basic blocks found without filtering out unreachable blocks, and the basic blocks found with a
+// filter (similar to or as an extension of the `filter_unwind_paths` filter); then computing the
+// `CoverageSpans` without the filter; and then injecting `Counter`s or `CounterExpression`s for
+// blocks that are not unreachable, or injecting `Unreachable` code regions otherwise. This seems
+// straightforward, but not trivial.
+//
+// Alternatively, we might instead want to leave the unreachable blocks in (bypass the filter here),
+// and inject the counters. This will result in counter values of zero (0) for unreachable code
+// (and, notably, the code will be displayed with a red background by `llvm-cov show`).
+//
+// ```rust
+//     TerminatorKind::SwitchInt { .. } => {
+//         let some_imaginary_target = successors.clone().find_map(|&successor| {
+//             let term = mir_body[successor].terminator();
+//             if let TerminatorKind::FalseEdge { imaginary_target, .. } = term.kind {
+//                 if mir_body.predecessors()[imaginary_target].len() == 1 {
+//                     return Some(imaginary_target);
+//                 }
+//             }
+//             None
+//         });
+//         if let Some(imaginary_target) = some_imaginary_target {
+//             box successors.filter(move |&&successor| successor != imaginary_target)
+//         } else {
+//             box successors
+//         }
+//     }
+// ```
+//
+// Note this also required changing the closure signature for the `ShortCurcuitPreorder` to:
+//
+// ```rust
+//     F: Fn(&'tcx TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = &BasicBlock> + 'a>,
+// ```

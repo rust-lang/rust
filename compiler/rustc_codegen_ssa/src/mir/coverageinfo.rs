@@ -10,7 +10,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let Coverage { kind, code_region } = coverage;
         match kind {
             CoverageKind::Counter { function_source_hash, id } => {
-                bx.add_counter_region(self.instance, function_source_hash, id, code_region);
+                bx.add_coverage_counter(
+                    self.instance,
+                    function_source_hash,
+                    id,
+                    code_region.expect("counters always have code regions"),
+                );
 
                 let coverageinfo = bx.tcx().coverageinfo(self.instance.def_id());
 
@@ -25,10 +30,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.instrprof_increment(fn_name, hash, num_counters, id);
             }
             CoverageKind::Expression { id, lhs, op, rhs } => {
-                bx.add_counter_expression_region(self.instance, id, lhs, op, rhs, code_region);
+                bx.add_coverage_counter_expression(self.instance, id, lhs, op, rhs, code_region);
             }
             CoverageKind::Unreachable => {
-                bx.add_unreachable_region(self.instance, code_region);
+                bx.add_coverage_unreachable(
+                    self.instance,
+                    code_region.expect("unreachable regions always have code regions"),
+                );
             }
         }
     }

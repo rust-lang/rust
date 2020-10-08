@@ -1626,7 +1626,7 @@ impl Debug for Statement<'_> {
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct Coverage {
     pub kind: CoverageKind,
-    pub code_region: CodeRegion,
+    pub code_region: Option<CodeRegion>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
