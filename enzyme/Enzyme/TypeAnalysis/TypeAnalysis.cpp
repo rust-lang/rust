@@ -1316,6 +1316,8 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
   }
 }
 
+#include "llvm/IR/IntrinsicsNVPTX.h"
+
 void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   switch (I.getIntrinsicID()) {
   case Intrinsic::ctpop:

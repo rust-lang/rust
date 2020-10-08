@@ -91,7 +91,7 @@ static cl::opt<bool>
     EnzymePreopt("enzyme-preopt", cl::init(true), cl::Hidden,
                   cl::desc("Run enzyme preprocessing optimizations"));
 
-static cl::opt<bool>
+llvm::cl::opt<bool>
     EnzymePostopt("enzmye-postopt", cl::init(false), cl::Hidden,
                   cl::desc("Run enzymepostprocessing optimizations"));
 
@@ -335,9 +335,10 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #if LLVM_VERSION_MAJOR > 10
         AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
-
+        #if LLVM_VERSION_MAJOR <= 7
         GVN().run(*NewF, AM);
         SROA().run(*NewF, AM);
+        #endif
       }
     }
 
@@ -692,18 +693,15 @@ void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
 
   // TODO function attributes
   // PostOrderFunctionAttrsPass().run(*F, AM);
+  #if LLVM_VERSION_MAJOR <= 7
   GVN().run(*F, AM);
   SROA().run(*F, AM);
   EarlyCSEPass(/*memoryssa*/ true).run(*F, AM);
-#if LLVM_VERSION_MAJOR > 6
-  InstSimplifyPass().run(*F, AM);
-#endif
-  CorrelatedValuePropagationPass().run(*F, AM);
+  #endif
 
   DCEPass().run(*F, AM);
-  DSEPass().run(*F, AM);
 
-  createFunctionToLoopPassAdaptor(LoopDeletionPass()).run(*F, AM);
+  //createFunctionToLoopPassAdaptor(LoopDeletionPass()).run(*F, AM);
 
   #if LLVM_VERSION_MAJOR >= 12
   SimplifyCFGOptions scfgo = SimplifyCFGOptions();
@@ -714,6 +712,6 @@ void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
       /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
 
   #endif
-  SimplifyCFGPass(scfgo).run(*F, AM);
+  //SimplifyCFGPass(scfgo).run(*F, AM);
   // LCSSAPass().run(*NewF, AM);
 }

@@ -128,6 +128,32 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
       } else {
         ty = whatType(PTy);
       }
+    } else if (isa<LoadInst>(res) &&
+               isa<ConstantExpr>(cast<LoadInst>(res)->getOperand(0)) &&
+               cast<ConstantExpr>(cast<LoadInst>(res)->getOperand(0))->isCast() &&
+               isa<GlobalVariable>(cast<ConstantExpr>(cast<LoadInst>(res)->getOperand(0))->getOperand(0))) {
+      auto gv = cast<GlobalVariable>(cast<ConstantExpr>(cast<LoadInst>(res)->getOperand(0))->getOperand(0));
+      auto MS = gv->getName();
+      if (MS == "enzyme_dup") {
+        ty = DIFFE_TYPE::DUP_ARG;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_dupnoneed") {
+        ty = DIFFE_TYPE::DUP_NONEED;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_out") {
+        llvm::errs() << "saw metadata for diffe_out\n";
+        ty = DIFFE_TYPE::OUT_DIFF;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_const") {
+        ty = DIFFE_TYPE::CONSTANT;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else {
+        ty = whatType(PTy);
+      }
     } else
       ty = whatType(PTy);
 
@@ -377,3 +403,19 @@ ModulePass *createEnzymePass() { return new Enzyme(); }
 extern "C" void AddEnzymePass(LLVMPassManagerRef PM) {
   unwrap(PM)->add(createEnzymePass());
 }
+
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
+
+extern cl::opt<bool>
+    EnzymePostopt;
+
+// This function is of type PassManagerBuilder::ExtensionFn
+static void loadPass(const PassManagerBuilder &Builder, legacy::PassManagerBase &PM) {
+  EnzymePostopt = true;
+  PM.add(new Enzyme());
+}
+
+// These constructors add our pass to a list of global extensions.
+static RegisterStandardPasses clangtoolLoader_Ox(PassManagerBuilder::EP_VectorizerStart, loadPass);
+static RegisterStandardPasses clangtoolLoader_O0(PassManagerBuilder::EP_EnabledOnOptLevel0, loadPass);
