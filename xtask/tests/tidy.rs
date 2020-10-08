@@ -123,6 +123,7 @@ ISC
 MIT
 MIT / Apache-2.0
 MIT OR Apache-2.0
+MIT OR Zlib OR Apache-2.0
 MIT/Apache-2.0
 Unlicense OR MIT
 Unlicense/MIT
