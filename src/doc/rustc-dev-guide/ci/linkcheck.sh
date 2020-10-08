@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# https://docs.travis-ci.com/user/environment-variables/#default-environment-variables
 if [ "$TRAVIS_EVENT_TYPE" = "cron" ] ; then # running in cron job
   FLAGS=""
 
