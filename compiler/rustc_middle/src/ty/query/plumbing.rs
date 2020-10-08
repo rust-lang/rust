@@ -130,12 +130,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // Be careful reyling on global state here: this code is called from
         // a panic hook, which means that the global `Handler` may be in a weird
         // state if it was responsible for triggering the panic.
+        let mut i = 0;
         ty::tls::with_context_opt(|icx| {
             if let Some(icx) = icx {
                 let query_map = icx.tcx.queries.try_collect_active_jobs();
 
                 let mut current_query = icx.query;
-                let mut i = 0;
 
                 while let Some(query) = current_query {
                     if Some(i) == num_frames {
@@ -166,10 +166,10 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         });
 
-        if num_frames != None {
-            eprintln!("we're just showing a limited slice of the query stack");
-        } else {
+        if num_frames == None || num_frames >= Some(i) {
             eprintln!("end of query stack");
+        } else {
+            eprintln!("we're just showing a limited slice of the query stack");
         }
     }
 }
