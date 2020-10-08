@@ -25,7 +25,6 @@ pub fn target() -> Target {
         llvm_target: "aarch64-unknown-none".to_string(),
         target_endian: "little".to_string(),
         pointer_width: 64,
-        target_c_int_width: "32".to_string(),
         target_os: "none".to_string(),
         target_env: String::new(),
         target_vendor: String::new(),

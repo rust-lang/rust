@@ -14,8 +14,8 @@ pub fn target(target_cpu: String) -> Target {
         target_os: "unknown".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
-        target_c_int_width: 16.to_string(),
         options: TargetOptions {
+            target_c_int_width: "16".to_string(),
             cpu: target_cpu.clone(),
             exe_suffix: ".elf".to_string(),
 

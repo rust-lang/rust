@@ -32,7 +32,6 @@ pub fn target() -> Target {
         llvm_target: "wasm32-unknown-emscripten".to_string(),
         target_endian: "little".to_string(),
         pointer_width: 32,
-        target_c_int_width: "32".to_string(),
         target_os: "emscripten".to_string(),
         target_env: String::new(),
         target_vendor: "unknown".to_string(),

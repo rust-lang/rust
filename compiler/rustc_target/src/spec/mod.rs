@@ -38,6 +38,7 @@ use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
@@ -668,8 +669,6 @@ pub struct Target {
     pub target_endian: String,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
-    /// Width of c_int type
-    pub target_c_int_width: String,
     /// OS name to use for conditional compilation.
     pub target_os: String,
     /// Environment name to use for conditional compilation.
@@ -706,6 +705,9 @@ impl HasTargetSpec for Target {
 pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
+
+    /// Width of c_int type
+    pub target_c_int_width: String,
 
     /// Linker to invoke
     pub linker: Option<String>,
@@ -985,6 +987,7 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
+            target_c_int_width: "32".to_string(),
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
@@ -1075,6 +1078,17 @@ impl Default for TargetOptions {
     }
 }
 
+/// `TargetOptions` being a separate type is basically an implementation detail of `Target` that is
+/// used for providing defaults. Perhaps there's a way to merge `TargetOptions` into `Target` so
+/// this `Deref` implementation is no longer necessary.
+impl Deref for Target {
+    type Target = TargetOptions;
+
+    fn deref(&self) -> &Self::Target {
+        &self.options
+    }
+}
+
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
@@ -1148,7 +1162,6 @@ impl Target {
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
-            target_c_int_width: get_req_field("target-c-int-width")?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
             target_os: get_req_field("os")?,
@@ -1392,6 +1405,7 @@ impl Target {
         }
 
         key!(is_builtin, bool);
+        key!(target_c_int_width);
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
         key!(pre_link_objects, link_objects);
@@ -1621,7 +1635,6 @@ impl ToJson for Target {
         target_val!(llvm_target);
         target_val!(target_endian);
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
-        target_val!(target_c_int_width);
         target_val!(arch);
         target_val!(target_os, "os");
         target_val!(target_env, "env");
@@ -1629,6 +1642,7 @@ impl ToJson for Target {
         target_val!(data_layout);
         target_val!(linker_flavor);
 
+        target_option_val!(target_c_int_width);
         target_option_val!(is_builtin);
         target_option_val!(linker);
         target_option_val!(lld_flavor);
