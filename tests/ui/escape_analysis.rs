@@ -177,5 +177,5 @@ mod issue_3739 {
 
 /// Issue #5542
 ///
-/// This shouldn't warn for `boxed_local` as it is a function to be used in C.
+/// This shouldn't warn for `boxed_local` as it is intended to called from non-Rust code.
 pub extern "C" fn do_not_warn_me(_c_pointer: Box<String>) -> () {}
