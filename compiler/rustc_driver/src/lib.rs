@@ -155,7 +155,7 @@ pub fn run_compiler(
             ),
         }
     }
-    let diagnostic_output = emitter.map(DiagnosticOutput::Raw).unwrap_or(DiagnosticOutput::Default);
+    let diagnostic_output = emitter.map_or(DiagnosticOutput::Default, DiagnosticOutput::Raw);
     let matches = match handle_options(&args) {
         Some(matches) => matches,
         None => return Ok(()),
