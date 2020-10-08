@@ -150,6 +150,8 @@ define_Conf! {
     (literal_representation_threshold, "literal_representation_threshold": u64, 16384),
     /// Lint: TRIVIALLY_COPY_PASS_BY_REF. The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
     (trivial_copy_size_limit, "trivial_copy_size_limit": Option<u64>, None),
+    /// Lint: LARGE_TYPE_PASS_BY_MOVE. The minimum size (in bytes) to consider a type for passing by reference instead of by value.
+    (pass_by_value_size_limit, "pass_by_value_size_limit": u64, 256),
     /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
     (too_many_lines_threshold, "too_many_lines_threshold": u64, 100),
     /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS. The maximum allowed size for arrays on the stack

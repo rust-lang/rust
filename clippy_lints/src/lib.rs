@@ -278,6 +278,7 @@ mod overflow_check_conditional;
 mod panic_in_result_fn;
 mod panic_unimplemented;
 mod partialeq_ne_impl;
+mod pass_by_ref_or_value;
 mod path_buf_push_overwrite;
 mod pattern_type_mismatch;
 mod precedence;
@@ -311,7 +312,6 @@ mod to_string_in_display;
 mod trait_bounds;
 mod transmute;
 mod transmuting_null;
-mod trivially_copy_pass_by_ref;
 mod try_err;
 mod types;
 mod unicode;
@@ -776,6 +776,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &panic_unimplemented::UNIMPLEMENTED,
         &panic_unimplemented::UNREACHABLE,
         &partialeq_ne_impl::PARTIALEQ_NE_IMPL,
+        &pass_by_ref_or_value::LARGE_TYPES_PASSED_BY_VALUE,
+        &pass_by_ref_or_value::TRIVIALLY_COPY_PASS_BY_REF,
         &path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE,
         &pattern_type_mismatch::PATTERN_TYPE_MISMATCH,
         &precedence::PRECEDENCE,
@@ -835,7 +837,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &transmute::USELESS_TRANSMUTE,
         &transmute::WRONG_TRANSMUTE,
         &transmuting_null::TRANSMUTING_NULL,
-        &trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
         &try_err::TRY_ERR,
         &types::ABSURD_EXTREME_COMPARISONS,
         &types::BORROWED_BOX,
@@ -1009,11 +1010,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box large_enum_variant::LargeEnumVariant::new(enum_variant_size_threshold));
     store.register_late_pass(|| box explicit_write::ExplicitWrite);
     store.register_late_pass(|| box needless_pass_by_value::NeedlessPassByValue);
-    let trivially_copy_pass_by_ref = trivially_copy_pass_by_ref::TriviallyCopyPassByRef::new(
+    let pass_by_ref_or_value = pass_by_ref_or_value::PassByRefOrValue::new(
         conf.trivial_copy_size_limit,
+        conf.pass_by_value_size_limit,
         &sess.target,
     );
-    store.register_late_pass(move || box trivially_copy_pass_by_ref);
+    store.register_late_pass(move || box pass_by_ref_or_value);
     store.register_late_pass(|| box try_err::TryErr);
     store.register_late_pass(|| box use_self::UseSelf);
     store.register_late_pass(|| box bytecount::ByteCount);
@@ -1237,13 +1239,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&needless_pass_by_value::NEEDLESS_PASS_BY_VALUE),
         LintId::of(&non_expressive_names::SIMILAR_NAMES),
         LintId::of(&option_if_let_else::OPTION_IF_LET_ELSE),
+        LintId::of(&pass_by_ref_or_value::LARGE_TYPES_PASSED_BY_VALUE),
+        LintId::of(&pass_by_ref_or_value::TRIVIALLY_COPY_PASS_BY_REF),
         LintId::of(&ranges::RANGE_MINUS_ONE),
         LintId::of(&ranges::RANGE_PLUS_ONE),
         LintId::of(&shadow::SHADOW_UNRELATED),
         LintId::of(&strings::STRING_ADD_ASSIGN),
         LintId::of(&trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
         LintId::of(&trait_bounds::TYPE_REPETITION_IN_BOUNDS),
-        LintId::of(&trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF),
         LintId::of(&types::CAST_LOSSLESS),
         LintId::of(&types::CAST_POSSIBLE_TRUNCATION),
         LintId::of(&types::CAST_POSSIBLE_WRAP),
