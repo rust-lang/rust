@@ -2,7 +2,6 @@
 
 use std::borrow::BorrowMut;
 use std::ffi::OsString;
-use std::fs;
 use std::path::PathBuf;
 
 use rustc_ast as ast;
@@ -12,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, traversal, BasicBlock};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 
 use super::fmt::DebugWithContext;
@@ -21,7 +20,7 @@ use super::{
     visit_results, Analysis, Direction, GenKill, GenKillAnalysis, GenKillSet, JoinSemiLattice,
     ResultsCursor, ResultsVisitor,
 };
-use crate::util::pretty::dump_enabled;
+use crate::util::pretty::{create_dump_file, dump_enabled};
 
 /// A dataflow analysis that has converged to fixpoint.
 pub struct Results<'tcx, A>
@@ -249,7 +248,7 @@ where
 
         let res = write_graphviz_results(tcx, &body, &results, pass_name);
         if let Err(e) = res {
-            warn!("Failed to write graphviz dataflow results: {}", e);
+            error!("Failed to write graphviz dataflow results: {}", e);
         }
 
         results
@@ -270,6 +269,9 @@ where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
+    use std::fs;
+    use std::io::{self, Write};
+
     let def_id = body.source.def_id();
     let attrs = match RustcMirAttrs::parse(tcx, def_id) {
         Ok(attrs) => attrs,
@@ -278,27 +280,29 @@ where
         Err(()) => return Ok(()),
     };
 
-    let path = match attrs.output_path(A::NAME) {
-        Some(path) => path,
+    let mut file = match attrs.output_path(A::NAME) {
+        Some(path) => {
+            debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            io::BufWriter::new(fs::File::create(&path)?)
+        }
 
         None if tcx.sess.opts.debugging_opts.dump_mir_dataflow
             && dump_enabled(tcx, A::NAME, def_id) =>
         {
-            // FIXME: Use some variant of `pretty::dump_path` for this
-            let mut path = PathBuf::from(&tcx.sess.opts.debugging_opts.dump_mir_dir);
-
-            let crate_name = tcx.crate_name(def_id.krate);
-            let item_name = ty::print::with_forced_impl_filename_line(|| {
-                tcx.def_path(def_id).to_filename_friendly_no_crate()
-            });
-
-            let pass_name = pass_name.map(|s| format!(".{}", s)).unwrap_or_default();
-
-            path.push(format!("{}.{}.{}{}.dot", crate_name, item_name, A::NAME, pass_name));
-            path
+            create_dump_file(
+                tcx,
+                ".dot",
+                None,
+                A::NAME,
+                &pass_name.unwrap_or("-----"),
+                body.source,
+            )?
         }
 
-        None => return Ok(()),
+        _ => return Ok(()),
     };
 
     let style = match attrs.formatter {
@@ -306,7 +310,6 @@ where
         _ => graphviz::OutputStyle::AfterOnly,
     };
 
-    debug!("printing dataflow results for {:?} to {}", def_id, path.display());
     let mut buf = Vec::new();
 
     let graphviz = graphviz::Formatter::new(body, results, style);
@@ -317,10 +320,7 @@ where
     }
     dot::render_opts(&graphviz, &mut buf, &render_opts)?;
 
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, buf)?;
+    file.write_all(&buf)?;
 
     Ok(())
 }
