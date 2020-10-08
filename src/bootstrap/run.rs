@@ -1,5 +1,7 @@
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::dist::distdir;
 use crate::tool::Tool;
+use build_helper::output;
 use std::process::Command;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -40,4 +42,44 @@ fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
         builder.run(cmd);
     }
     true
+}
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct BuildManifest;
+
+impl Step for BuildManifest {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/build-manifest")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BuildManifest);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        // This gets called by `promote-release`
+        // (https://github.com/rust-lang/promote-release).
+        let mut cmd = builder.tool_cmd(Tool::BuildManifest);
+        let sign = builder.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
+            panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
+        });
+        let addr = builder.config.dist_upload_addr.as_ref().unwrap_or_else(|| {
+            panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
+        });
+
+        let today = output(Command::new("date").arg("+%Y-%m-%d"));
+
+        cmd.arg(sign);
+        cmd.arg(distdir(builder));
+        cmd.arg(today.trim());
+        cmd.arg(addr);
+        cmd.arg(&builder.config.channel);
+        cmd.arg(&builder.src);
+
+        builder.create_dir(&distdir(builder));
+        builder.run(&mut cmd);
+    }
 }

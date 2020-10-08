@@ -46,7 +46,7 @@ pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
     }
 }
 
-fn distdir(builder: &Builder<'_>) -> PathBuf {
+pub(crate) fn distdir(builder: &Builder<'_>) -> PathBuf {
     builder.out.join("dist")
 }
 
@@ -2371,6 +2371,7 @@ impl Step for HashSign {
         cmd.arg(addr);
         cmd.arg(&builder.config.channel);
         cmd.arg(&builder.src);
+        cmd.env("BUILD_MANIFEST_LEGACY", "1");
 
         builder.create_dir(&distdir(builder));
 
