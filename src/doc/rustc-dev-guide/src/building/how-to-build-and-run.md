@@ -37,28 +37,15 @@ settings (and possibly others, such as `llvm.ccache`):
 assertions = true
 
 [rust]
-# Indicates that the build should be configured for debugging Rust. A
-# `debug`-enabled compiler and standard library will be somewhat
-# slower (due to e.g. checking of debug assertions) but should remain
-# usable.
+# Whether or not to leave debug! and trace! calls in the rust binary.
+# Overrides the `debug-assertions` option, if defined.
 #
-# Note: If this value is set to `true`, it will affect a number of
-#       configuration options below as well, if they have been left
-#       unconfigured in this file.
+# Defaults to rust.debug-assertions value
 #
-# Note: changes to the `debug` setting do *not* affect `optimize`
-#       above. In theory, a "maximally debuggable" environment would
-#       set `optimize` to `false` above to assist the introspection
-#       facilities of debuggers like lldb and gdb. To recreate such an
-#       environment, explicitly set `optimize` to `false` and `debug`
-#       to `true`. In practice, everyone leaves `optimize` set to
-#       `true`, because an unoptimized rustc with debugging
-#       enabled becomes *unusably slow* (e.g. rust-lang/rust#24840
-#       reported a 25x slowdown) and bootstrapping the supposed
-#       "maximally debuggable" environment (notably std) takes
-#       hours to build.
-#
-debug = true
+# If you see a message from `tracing` saying
+# `max_level_info` is enabled and means logging won't be shown,
+# set this value to `true`.
+debug-logging = true
 
 # Whether to always use incremental compilation when building rustc
 incremental = true
