@@ -57,7 +57,7 @@ impl RWLock {
 
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        self.mode.set(0);
+        assert_eq!(self.mode.replace(0), -1);
     }
 
     #[inline]
