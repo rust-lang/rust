@@ -2496,7 +2496,7 @@ declare_lint! {
 declare_lint! {
     //TODO: Add explanation.
     pub FALL_BACK_TO_NEVER_TYPE,
-    Deny,
+    Allow, // FIXME -- this is allow by default until core builds
     "Unresolved variable might fall back to never_type `!`"
 }
 
