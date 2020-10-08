@@ -636,7 +636,7 @@ where
         if let (Some(a), Some(b)) = (a.no_bound_vars(), b.no_bound_vars()) {
             // Fast path for the common case.
             self.relate(a, b)?;
-            return Ok(ty::Binder::bind(a));
+            return Ok(ty::Binder::dummy(a));
         }
 
         if self.ambient_covariance() {
@@ -1004,6 +1004,6 @@ where
         self.first_free_index.shift_in(1);
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         self.first_free_index.shift_out(1);
-        Ok(ty::Binder::bind(result))
+        Ok(a.map_bound(|_| result))
     }
 }

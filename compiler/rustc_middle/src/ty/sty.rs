@@ -702,15 +702,19 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => {
-                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
-            }
+            ExistentialPredicate::Trait(tr) => self
+                .map_bound_ref(|_| tr)
+                .with_self_ty(tcx, self_ty)
+                .without_const()
+                .to_predicate(tcx),
             ExistentialPredicate::Projection(p) => {
-                Binder(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
+                self.map_bound_ref(|_| p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
-                let trait_ref =
-                    Binder(ty::TraitRef { def_id: did, substs: tcx.mk_substs_trait(self_ty, &[]) });
+                let trait_ref = self.map_bound_ref(|_| ty::TraitRef {
+                    def_id: did,
+                    substs: tcx.mk_substs_trait(self_ty, &[]),
+                });
                 trait_ref.without_const().to_predicate(tcx)
             }
         }
@@ -775,7 +779,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
 impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     pub fn principal(&self) -> Option<ty::Binder<ExistentialTraitRef<'tcx>>> {
-        self.skip_binder().principal().map(Binder::bind)
+        self.map_bound_ref(|b| b.principal()).transpose()
     }
 
     pub fn principal_def_id(&self) -> Option<DefId> {
@@ -858,8 +862,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
-        // Note that we preserve binding levels
-        Binder(ty::TraitPredicate { trait_ref: self.skip_binder() })
+        self.map_bound(|trait_ref| ty::TraitPredicate { trait_ref })
     }
 }
 

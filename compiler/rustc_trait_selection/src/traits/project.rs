@@ -623,7 +623,8 @@ fn prune_cache_value_obligations<'a, 'tcx>(
         .obligations
         .iter()
         .filter(|obligation| {
-            match obligation.predicate.skip_binders() {
+            let bound_predicate = obligation.predicate.bound_atom(infcx.tcx);
+            match bound_predicate.skip_binder() {
                 // We found a `T: Foo<X = U>` predicate, let's check
                 // if `U` references any unresolved type
                 // variables. In principle, we only care if this
@@ -633,9 +634,9 @@ fn prune_cache_value_obligations<'a, 'tcx>(
                 // indirect obligations (e.g., we project to `?0`,
                 // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
                 // ?0>`).
-                ty::PredicateAtom::Projection(data) => {
-                    infcx.unresolved_type_vars(&ty::Binder::bind(data.ty)).is_some()
-                }
+                ty::PredicateAtom::Projection(data) => infcx
+                    .unresolved_type_vars(&bound_predicate.map_bound_ref(|_| data.ty))
+                    .is_some(),
 
                 // We are only interested in `T: Foo<X = U>` predicates, whre
                 // `U` references one of `unresolved_type_vars`. =)
@@ -907,8 +908,9 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!(?predicate);
+        let bound_predicate = predicate.bound_atom(infcx.tcx);
         if let ty::PredicateAtom::Projection(data) = predicate.skip_binders() {
-            let data = ty::Binder::bind(data);
+            let data = bound_predicate.map_bound_ref(|_| data);
             let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
 
             let is_match = same_def_id

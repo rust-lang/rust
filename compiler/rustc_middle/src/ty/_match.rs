@@ -118,6 +118,7 @@ impl TypeRelation<'tcx> for Match<'tcx> {
     where
         T: Relate<'tcx>,
     {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
+        let result = self.relate(a.skip_binder(), b.skip_binder())?;
+        Ok(a.map_bound(|_| result))
     }
 }
