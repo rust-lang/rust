@@ -1,5 +1,4 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
-#![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::io::{self, ErrorKind, Read};
 use crate::mem;

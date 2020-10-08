@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::CStr;
 use crate::io;
