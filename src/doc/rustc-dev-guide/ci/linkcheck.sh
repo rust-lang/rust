@@ -10,7 +10,7 @@ if [ "$TRAVIS_EVENT_TYPE" = "cron" ] ; then # running in cron job
   echo "Doing full link check."
 elif [ "$CI" = "true" ] ; then # running in PR CI build
   if [ -z "$TRAVIS_COMMIT_RANGE" ]; then
-    echo "error: unexpected state: COMMIT_RANGE must be non-empty in CI"
+    echo "error: unexpected state: TRAVIS_COMMIT_RANGE must be non-empty in CI"
     exit 1
   fi
 
