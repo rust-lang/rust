@@ -3,7 +3,7 @@
 `@rustbot` (also known as `triagebot`) is a utility robot that is mostly used to
 allow any contributor to achieve certain tasks that would normally require GitHub
 membership to the `rust-lang` organization. Its most interesting features for
-contributors to `rustc` are isssue claiming and relabeling.
+contributors to `rustc` are issue claiming and relabeling.
 
 ## Issue claiming
 
@@ -24,7 +24,7 @@ If you want to unassign from an issue, `@rustbot` has a different command:
 
 ## Issue relabeling
 
-Changing labels for an issue or PR is also normally reserved to members of the
+Changing labels for an issue or PR is also normally reserved for members of the
 organization. However, `@rustbot` allows you to relabel an issue yourself, only
 with a few restrictions. This is mostly useful in two cases:
 
