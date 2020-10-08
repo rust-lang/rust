@@ -1610,6 +1610,35 @@ public:
         II);
   }
 
+  void visitOMPCall(llvm::CallInst& call) {
+
+    IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
+    BuilderZ.setFastMathFlags(getFast());
+
+    Function* task = dyn_cast<Function>(call.getArgOperand(2));
+    if (task == nullptr && isa<ConstantExpr>(call.getArgOperand(2))) {
+      task = dyn_cast<Function>(cast<ConstantExpr>(call.getArgOperand(2))->getOperand(0));
+    }
+    if (task == nullptr) {
+      llvm::errs() << "could not derive underlying task from omp call: " << call << "\n";
+      llvm_unreachable("could not derive underlying task from omp call");
+    }
+    if (task->empty()) {
+      llvm::errs() << "could not derive underlying task contents from omp call: " << call << "\n";
+      llvm_unreachable("could not derive underlying task contents from omp call");
+    }
+
+    llvm::errs()  << "openmp calls not handled yet\n";
+    llvm_unreachable("openmp calls not handled yet");
+    if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
+
+    }
+
+    if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
+      
+    }
+  }
+
   // Return
   void visitCallInst(llvm::CallInst &call) {
 
@@ -1656,7 +1685,10 @@ public:
     // Handle lgamma, safe to recompute so no store/change to forward
     if (called) {
       auto n = called->getName();
-
+      if (called->getName() == "__kmpc_fork_call") {
+        visitOMPCall(call);
+        return;
+      }
       if (called &&
           (called->getName() == "asin" || called->getName() == "asinf" ||
            called->getName() == "asinl")) {
@@ -1996,7 +2028,7 @@ public:
           subdata = &CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted, gutils->TLI,
               TR.analysis, gutils->AA, /*return is used*/ subretused,
-              nextTypeInfo, uncacheable_args, false);
+              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd);
           if (Mode == DerivativeMode::Forward) {
             assert(augmentedReturn);
             auto subaugmentations =
@@ -2283,7 +2315,7 @@ public:
           TR.analysis, gutils->AA, /*returnValue*/ retUsed,
           /*subdretptr*/ subdretptr, /*topLevel*/ subtopLevel,
           tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
-          subdata); //, LI, DT);
+          subdata, gutils->AtomicAdd); //, LI, DT);
     } else {
 
       assert(!subtopLevel);

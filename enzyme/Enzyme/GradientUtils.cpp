@@ -1212,17 +1212,19 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         (fn->getReturnType()->isIntegerTy() && cast<IntegerType>(fn->getReturnType())->getBitWidth() < 16))
       retType = DIFFE_TYPE::CONSTANT;
 
+    // TODO re atomic add consider forcing it to be atomic always as fallback if used
+    // in a parallel context
     auto &augdata = CreateAugmentedPrimal(
         fn, retType, /*constant_args*/ types, TLI, TA, AA,
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
-        type_args, uncacheable_args, /*forceAnonymousTape*/ true);
+        type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd);
     auto newf = CreatePrimalAndGradient(
         fn, retType, /*constant_args*/ types, TLI, TA, AA,
         /*returnValue*/ false, /*dretPtr*/ false, /*topLevel*/ false,
         /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
         uncacheable_args,
-        /*map*/ &augdata); // llvm::Optional<std::map<std::pair<llvm::Instruction*,
+        /*map*/ &augdata, AtomicAdd); // llvm::Optional<std::map<std::pair<llvm::Instruction*,
                            // std::string>, unsigned int> >({}));
     auto cdata = ConstantStruct::get(
         StructType::get(newf->getContext(),

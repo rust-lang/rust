@@ -1010,7 +1010,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
                       AAResults &global_AA, bool returnUsed,
                       const FnTypeInfo &oldTypeInfo_,
                       const std::map<Argument *, bool> _uncacheable_args,
-                      bool forceAnonymousTape) {
+                      bool forceAnonymousTape, bool AtomicAdd, bool PostOpt) {
   if (returnUsed)
     assert(!todiff->getReturnType()->isEmptyTy() &&
            !todiff->getReturnType()->isVoidTy());
@@ -1147,6 +1147,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   GradientUtils *gutils = GradientUtils::CreateFromClone(
       todiff, TLI, TA, AA, retType, constant_args, /*returnUsed*/ returnUsed,
       returnMapping);
+  gutils->AtomicAdd = AtomicAdd;
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
 
@@ -1674,6 +1675,9 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       cast<CallInst>(user)->setCalledFunction(NewF);
     }
   }
+  if (PostOpt)
+    optimizeIntermediate(gutils, /*topLevel*/false, NewF);
+
   cachedfunctions.find(tup)->second.fn = NewF;
   if (recursive)
     cachedfunctions.find(tup)->second.tapeType = tapeType;
@@ -1906,7 +1910,7 @@ Function *CreatePrimalAndGradient(
     TypeAnalysis &TA, AAResults &global_AA, bool returnUsed, bool dretPtr,
     bool topLevel, llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args,
-    const AugmentedReturn *augmenteddata) {
+    const AugmentedReturn *augmenteddata, bool AtomicAdd, bool PostOpt) {
 
   FnTypeInfo oldTypeInfo = oldTypeInfo_;
   for (auto &pair : oldTypeInfo.KnownValues) {
@@ -2070,6 +2074,7 @@ Function *CreatePrimalAndGradient(
                   : (dretPtr ? ReturnType::ArgsWithReturn
                              : ReturnType::Args),
       additionalArg);
+  gutils->AtomicAdd = AtomicAdd;
   insert_or_assign2<CacheKey, Function*>(cachedfunctions, tup, gutils->newFunc);
 
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
@@ -2447,7 +2452,8 @@ Function *CreatePrimalAndGradient(
     report_fatal_error("function failed verification (4)");
   }
 
-  optimizeIntermediate(gutils, topLevel, gutils->newFunc);
+  if (PostOpt)
+    optimizeIntermediate(gutils, topLevel, gutils->newFunc);
 
   auto nf = gutils->newFunc;
   delete gutils;

@@ -57,7 +57,11 @@ using namespace llvm;
 #endif
 #define DEBUG_TYPE "lower-enzyme-intrinsic"
 
-void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
+llvm::cl::opt<bool>
+    EnzymePostOpt("enzmye-postopt", cl::init(false), cl::Hidden,
+                  cl::desc("Run enzymepostprocessing optimizations"));
+
+void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool PostOpt) {
 
   Value *fn = CI->getArgOperand(0);
 
@@ -82,12 +86,16 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
   unsigned truei = 0;
   IRBuilder<> Builder(CI);
 
+  bool AtomicAdd = llvm::Triple(CI->getParent()->getParent()->getParent()->getTargetTriple()).getArch() == Triple::nvptx ||
+                    llvm::Triple(CI->getParent()->getParent()->getParent()->getTargetTriple()).getArch() == Triple::nvptx64;
+
   for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
     Value *res = CI->getArgOperand(i);
 
     assert(truei < FT->getNumParams());
     auto PTy = FT->getParamType(truei);
     DIFFE_TYPE ty = DIFFE_TYPE::CONSTANT;
+
 
     if (auto av = dyn_cast<MetadataAsValue>(res)) {
       auto MS = cast<MDString>(av->getMetadata())->getString();
@@ -264,7 +272,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
       cast<Function>(fn), retType, constants, TLI, TA, AA,
       /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ true,
       /*addedType*/ nullptr, type_args, volatile_args,
-      /*index mapping*/ nullptr);
+      /*index mapping*/ nullptr, AtomicAdd, PostOpt);
                                   
 
   if (differentialReturn)
@@ -289,7 +297,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {
 }
 
 static bool
-lowerEnzymeCalls(Function &F, TargetLibraryInfo &TLI, AAResults &AA) {
+lowerEnzymeCalls(Function &F, TargetLibraryInfo &TLI, AAResults &AA, bool PostOpt) {
 
   bool Changed = false;
 
@@ -316,7 +324,7 @@ reset:
       if (Fn && (Fn->getName() == "__enzyme_autodiff" ||
                  Fn->getName().startswith("__enzyme_autodiff") ||
                  Fn->getName().contains("__enzyme_autodiff"))) {
-        HandleAutoDiff(CI, TLI, AA);
+        HandleAutoDiff(CI, TLI, AA, PostOpt);
         Changed = true;
         goto reset;
       }
@@ -330,8 +338,10 @@ namespace {
 
 class Enzyme : public ModulePass {
 public:
+  bool PostOpt;
   static char ID;
-  Enzyme() : ModulePass(ID) {
+  Enzyme(bool PostOpt=false) : ModulePass(ID), PostOpt(PostOpt) {
+    PostOpt |= EnzymePostOpt;
     // initializeLowerAutodiffIntrinsicPass(*PassRegistry::getPassRegistry());
   }
 
@@ -381,7 +391,7 @@ public:
 
       // auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
       // auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-      changed |= lowerEnzymeCalls(F, TLI, AA);
+      changed |= lowerEnzymeCalls(F, TLI, AA, PostOpt);
     }
     return changed;
   }
@@ -393,29 +403,4 @@ char Enzyme::ID = 0;
 
 static RegisterPass<Enzyme> X("enzyme", "Enzyme Pass");
 
-ModulePass *createEnzymePass() { return new Enzyme(); }
-
-#include <llvm-c/Core.h>
-#include <llvm-c/Types.h>
-
-#include "llvm/IR/LegacyPassManager.h"
-
-extern "C" void AddEnzymePass(LLVMPassManagerRef PM) {
-  unwrap(PM)->add(createEnzymePass());
-}
-
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
-
-
-extern cl::opt<bool>
-    EnzymePostopt;
-
-// This function is of type PassManagerBuilder::ExtensionFn
-static void loadPass(const PassManagerBuilder &Builder, legacy::PassManagerBase &PM) {
-  EnzymePostopt = true;
-  PM.add(new Enzyme());
-}
-
-// These constructors add our pass to a list of global extensions.
-static RegisterStandardPasses clangtoolLoader_Ox(PassManagerBuilder::EP_VectorizerStart, loadPass);
-static RegisterStandardPasses clangtoolLoader_O0(PassManagerBuilder::EP_EnabledOnOptLevel0, loadPass);
+ModulePass *createEnzymePass(bool PostOpt) { return new Enzyme(PostOpt); }

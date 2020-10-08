@@ -91,12 +91,6 @@ static cl::opt<bool>
     EnzymePreopt("enzyme-preopt", cl::init(true), cl::Hidden,
                   cl::desc("Run enzyme preprocessing optimizations"));
 
-llvm::cl::opt<bool>
-    EnzymePostopt("enzmye-postopt", cl::init(false), cl::Hidden,
-                  cl::desc("Run enzymepostprocessing optimizations"));
-
-
-
 static cl::opt<bool>
     EnzymeInline("enzyme-inline", cl::init(false), cl::Hidden,
                    cl::desc("Force inlining of autodiff"));
@@ -662,9 +656,6 @@ Function *CloneFunctionWithReturns(
 }
 
 void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
-  if (!EnzymePostopt)
-    return;
-
   {
     DominatorTree DT(*F);
     AssumptionCache AC(*F);

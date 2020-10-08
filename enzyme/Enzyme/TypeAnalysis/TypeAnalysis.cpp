@@ -155,8 +155,8 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
         return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
       }
 
-      // Constants explicitly marked as negative are considered integral
-      if (ci->isNegative()) {
+      // Constants explicitly marked as negative that aren't -1 are considered integral
+      if (ci->isNegative() && ci->getSExtValue() < -1) {
         return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
       }
 
@@ -1283,6 +1283,16 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
           }
         }
       }
+    } else if (I.getOpcode() == BinaryOperator::Add || I.getOpcode() == BinaryOperator::Sub) {
+      for (int i = 0; i < 2; ++i) {
+        if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
+          if (CI->isNegative()) {
+            // If add/sub with a negative number, the result is equal to the type of the
+            // other operand (and we don't need to assume this was an "anything")
+            Result = getAnalysis(I.getOperand(1-i)).Data0();
+          }
+        }
+      }
     }
     if (direction & DOWN)
     updateAnalysis(&I, Result.Only(-1), &I);
@@ -1316,13 +1326,12 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
   }
 }
 
-#include "llvm/IR/IntrinsicsNVPTX.h"
-
 void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   switch (I.getIntrinsicID()) {
   case Intrinsic::ctpop:
   case Intrinsic::ctlz:
   case Intrinsic::cttz:
+  #if PTX
   case Intrinsic::nvvm_read_ptx_sreg_tid_x:
   case Intrinsic::nvvm_read_ptx_sreg_tid_y:
   case Intrinsic::nvvm_read_ptx_sreg_tid_z:
@@ -1336,6 +1345,7 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::nvvm_read_ptx_sreg_nctaid_y:
   case Intrinsic::nvvm_read_ptx_sreg_nctaid_z:
   case Intrinsic::nvvm_read_ptx_sreg_warpsize:
+  #endif
     // No direction check as always valid
     updateAnalysis(
         &I, TypeTree(BaseType::Integer).Only(-1), &I);

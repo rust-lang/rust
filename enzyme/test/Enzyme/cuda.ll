@@ -65,11 +65,9 @@ attributes #3 = { nounwind }
 !13 = !{!"omnipotent char", !14, i64 0}
 !14 = !{!"Simple C++ TBAA"}
 
-; TODO, note that while this is actually legal since we read/write the same index -- we want to generally perform an atomic add
-
-; CHECK: define internal void @diffe_Z4axpyfPfS_(double %x, double* nocapture readonly %y, double* nocapture %"y'", double* nocapture %z, double* nocapture %"z'")
+; CHECK: define internal void @diffe_Z4axpyfPfS_(double %x, double* nocapture readonly %y, double* nocapture %"y'", double* nocapture %z, double* nocapture %"z'") {
 ; CHECK-NEXT: invert:
-; CHECK-NEXT:   %tix = tail call i32 @llvm.nvvm.read.ptx.sreg.tid.x() #2, !range !10
+; CHECK-NEXT:   %tix = tail call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
 ; CHECK-NEXT:   %zext = zext i32 %tix to i64
 ; CHECK-NEXT:   %"g0'ipg" = getelementptr inbounds double, double* %"y'", i64 %zext
 ; CHECK-NEXT:   %g0 = getelementptr inbounds double, double* %y, i64 %zext
@@ -81,8 +79,6 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %0 = load double, double* %"gep'ipg", align 4
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"gep'ipg", align 4
 ; CHECK-NEXT:   %m0diffeld = fmul fast double %0, %x
-; CHECK-NEXT:   %1 = load double, double* %"g0'ipg", align 4
-; CHECK-NEXT:   %2 = fadd fast double %1, %m0diffeld
-; CHECK-NEXT:   store double %2, double* %"g0'ipg", align 4
+; CHECK-NEXT:   %1 = call fast double @llvm.nvvm.atomic.add.gen.f.sys.f64.p0f64(double* %"g0'ipg", double %m0diffeld)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

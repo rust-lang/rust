@@ -127,7 +127,7 @@ CreateAugmentedPrimal(llvm::Function *todiff, DIFFE_TYPE retType,
                       llvm::AAResults &global_AA, bool returnUsed,
                       const FnTypeInfo &typeInfo,
                       const std::map<llvm::Argument *, bool> _uncacheable_args,
-                      bool forceAnonymousTape);
+                      bool forceAnonymousTape, bool AtomicAdd, bool PostOpt=false);
 
 llvm::Function *CreatePrimalAndGradient(
     llvm::Function *todiff, DIFFE_TYPE retType,
@@ -136,7 +136,7 @@ llvm::Function *CreatePrimalAndGradient(
     bool dretUsed, bool topLevel, llvm::Type *additionalArg,
     const FnTypeInfo &typeInfo,
     const std::map<llvm::Argument *, bool> _uncacheable_args,
-    const AugmentedReturn *augmented);
+    const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt=false);
 
 extern llvm::cl::opt<bool> looseTypeAnalysis;
 

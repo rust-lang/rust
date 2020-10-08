@@ -183,11 +183,13 @@ public:
                 CT == BaseType::Pointer) {
 
             } else {
-              if (pair.second != CT) {
-                llvm::errs() << "inserting into : " << str() << " with "
-                             << to_string(Seq) << " of " << CT.str() << "\n";
+              if (CT == BaseType::Anything && pair.second != BaseType::Anything) {
+                if (pair.second != CT) {
+                  llvm::errs() << "inserting into : " << str() << " with "
+                              << to_string(Seq) << " of " << CT.str() << "\n";
+                }
+                assert(pair.second == CT);
               }
-              assert(pair.second == CT);
             }
             toremove.insert(pair.first);
           }

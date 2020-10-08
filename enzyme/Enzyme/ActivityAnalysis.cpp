@@ -118,7 +118,7 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   // of arguments
   if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI) ||
       Name == "__cxa_guard_acquire" || Name == "__cxa_guard_release" ||
-      Name == "__cxa_guard_abort")
+      Name == "__cxa_guard_abort" || Name == "printf" || Name == "puts")
     return true;
 
   /// Use of the value as a non-src/dst in memset/memcpy/memmove is an inactive use
@@ -1130,7 +1130,17 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* va
 
   bool seenuse = false;
 
+  std::deque<User*> todo;
   for (const auto a : val->users()) {
+    todo.push_back(a);
+  }
+  std::set<Value*> done = { val };
+
+  while (todo.size()) {
+    User* a = todo.front();
+    todo.pop_front();
+    if (done.count(a)) continue;
+    done.insert(a);
 
     if (printconst)
       llvm::errs() << "      considering use of " << *val << " - " << *a
@@ -1189,22 +1199,26 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* va
       }
     }
 
-    // is constant instruction is insufficient since while the instr itself
-    // may not propagate gradients the return of the instruction may be used
-    // for additional gradient propagation (via a returned pointer)
-    bool Constant = isConstantInstruction(TR, cast<Instruction>(a)) && isConstantValue(TR, a);
-
-    if (!Constant) {
-      if (printconst)
-        llvm::errs() << "Value nonconstant inst (uses):" << *val << " user "
-                      << *a << "\n";
-      seenuse = true;
-      break;
-    } else {
-      if (printconst)
-        llvm::errs() << "Value found constant inst use:" << *val << " user "
-                      << *a << "\n";
+    // If this doesn't write to memory this can only be an active use
+    // if its return is used in an active way, therefore add this to
+    // the list of users to analyze
+    if (auto I = dyn_cast<Instruction>(a)) {
+      if (!I->mayWriteToMemory()) {
+        if (TR.intType(I, /*errIfNotFound*/ false).isIntegral()) {
+          continue;
+        }
+        for(auto u : I->users()) {
+          todo.push_back(u);
+        }
+        continue;
+      }
     }
+
+    if (printconst)
+      llvm::errs() << "Value nonconstant inst (uses):" << *val << " user "
+                    << *a << "\n";
+    seenuse = true;
+    break;
   }
 
   if (printconst)

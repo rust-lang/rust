@@ -37,10 +37,12 @@
 #include "SCEV/ScalarEvolutionExpander.h"
 #include "Utils.h"
 
+#include "llvm/ADT/Triple.h"
 #include "llvm/ADT/SmallVector.h"
 
 #include "llvm/IR/Dominators.h"
 
+#include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -55,6 +57,7 @@
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Support/Casting.h"
 
+
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
 #include "llvm/Support/ErrorHandling.h"
@@ -65,6 +68,8 @@
 #include "LibraryFuncs.h"
 
 using namespace llvm;
+
+
 
 enum class DerivativeMode { Forward, Reverse, Both };
 
@@ -83,6 +88,7 @@ static inline std::string to_string(DerivativeMode mode) {
 enum class AugmentedStruct;
 class GradientUtils : public CacheUtility {
 public:
+  bool AtomicAdd;
   DerivativeMode mode;
   llvm::Function *oldFunc;
   ValueToValueMapTy invertedPointers;
@@ -1159,6 +1165,54 @@ assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
 
 assert(ptr->getType()->isPointerTy());
 assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
+
+//const SCEV *S = SE.getSCEV(PN);
+//if (SE.getCouldNotCompute() == S)
+//  continue;
+
+// atomics
+if (AtomicAdd) {
+  if (dif->getType()->isIntOrIntVectorTy()) {
+    
+    ptr = BuilderM.CreateBitCast(ptr, PointerType::get(IntToFloatTy(dif->getType()), cast<PointerType>(ptr->getType())->getAddressSpace()));
+    dif = BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType()));
+  }
+  if (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() == Triple::nvptx ||
+      llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() == Triple::nvptx64) {
+  #if PTX
+  if (dif->getType()->isFloatTy()) {
+    //auto atomicAdd = 
+    cast<CallInst>(
+        BuilderM.CreateCall(Intrinsic::getDeclaration(newFunc->getParent(),
+                                                Intrinsic::nvvm_atomic_add_gen_f_sys, {dif->getType(), ptr->getType()}),
+                      {ptr, dif}));
+  } else if (dif->getType()->isDoubleTy()) {
+    //auto atomicAdd = 
+    cast<CallInst>(
+    BuilderM.CreateCall(Intrinsic::getDeclaration(newFunc->getParent(),
+                                            Intrinsic::nvvm_atomic_add_gen_f_sys, {dif->getType(), ptr->getType()}),
+                  {ptr, dif}));
+  } else
+  #endif
+  {
+    llvm::errs() << "unhandled atomic add: " << *ptr << " " << *dif << "\n";
+    llvm_unreachable("unhandled atomic add");
+  }
+  } else {
+    #if LLVM_VERSION_MAJOR >= 9
+    AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
+    AtomicRMWInst* rmw = BuilderM.CreateAtomicRMW (op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+    #if LLVM_VERSION_MAJOR >= 11
+    if (align)
+      rmw->setAlignment(align.getValue());
+    #endif
+    #else 
+    llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " " << *dif << "\n";
+    llvm_unreachable("unhandled atomic fadd");
+    #endif
+  }
+  return;
+}
 
 Value *res;
 LoadInst *old = BuilderM.CreateLoad(ptr);
