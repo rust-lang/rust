@@ -25,6 +25,7 @@ static KINDS: &[(&str, &str)] = &[
     ("fmt", "format!"),
     ("panic", "panic!"),
     ("println", "println!"),
+    ("eprintln", "eprintln!"),
     ("logd", "log::debug!"),
     ("logt", "log::trace!"),
     ("logi", "log::info!"),
@@ -259,6 +260,7 @@ mod tests {
     fn test_into_suggestion() {
         let test_vector = &[
             ("println!", "{}", r#"println!("{}", $1)"#),
+            ("eprintln!", "{}", r#"eprintln!("{}", $1)"#),
             (
                 "log::info!",
                 "{} {expr} {} {2 + 2}",
