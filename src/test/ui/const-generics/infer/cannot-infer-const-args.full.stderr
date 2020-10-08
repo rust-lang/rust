@@ -3,6 +3,11 @@ error[E0282]: type annotations needed
    |
 LL |     foo();
    |     ^^^ cannot infer the value of const parameter `X` declared on the function `foo`
+   |
+help: consider specifying the const argument
+   |
+LL |     foo::<X>();
+   |     ^^^^^^^^
 
 error: aborting due to previous error
 

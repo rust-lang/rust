@@ -2,7 +2,12 @@ error[E0282]: type annotations needed
   --> $DIR/uninferred-consts.rs:14:9
    |
 LL |     Foo.foo();
-   |         ^^^ cannot infer the value of const parameter `N` declared on the associated function `foo`
+   |         ^^^ cannot infer the value of const parameter `A` declared on the associated function `foo`
+   |
+help: consider specifying the const argument
+   |
+LL |     Foo.foo::<A>();
+   |         ^^^^^^^^
 
 error: aborting due to previous error
 
