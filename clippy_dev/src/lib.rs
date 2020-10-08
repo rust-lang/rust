@@ -13,6 +13,7 @@ use walkdir::WalkDir;
 pub mod fmt;
 pub mod new_lint;
 pub mod ra_setup;
+pub mod serve;
 pub mod stderr_length_check;
 pub mod update_lints;
 
