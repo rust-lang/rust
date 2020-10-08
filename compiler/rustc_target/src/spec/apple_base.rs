@@ -18,6 +18,7 @@ pub fn opts(os: &str) -> TargetOptions {
 
     TargetOptions {
         target_os: os.to_string(),
+        target_vendor: "apple".to_string(),
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,

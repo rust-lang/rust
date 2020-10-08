@@ -19,7 +19,6 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
         arch: arch.to_string(),
-        target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "\u{1}mcount".to_string(), ..base },
     }

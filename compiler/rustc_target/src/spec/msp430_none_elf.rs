@@ -6,11 +6,11 @@ pub fn target() -> Target {
         pointer_width: 16,
         data_layout: "e-m:e-p:16:16-i32:16-i64:16-f32:16-f64:16-a:8-n8:16-S16".to_string(),
         arch: "msp430".to_string(),
-        target_vendor: String::new(),
         linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
             target_c_int_width: "16".to_string(),
+            target_vendor: String::new(),
             executables: true,
 
             // The LLVM backend currently can't generate object files. To

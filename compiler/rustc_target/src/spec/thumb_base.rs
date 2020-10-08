@@ -32,6 +32,7 @@ use crate::spec::{PanicStrategy, RelocModel, TargetOptions};
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
+        target_vendor: String::new(),
         executables: true,
         // In most cases, LLD is good enough
         linker: Some("rust-lld".to_string()),

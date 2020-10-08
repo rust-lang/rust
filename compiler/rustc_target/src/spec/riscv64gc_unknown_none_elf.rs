@@ -6,7 +6,6 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n64-S128".to_string(),
         llvm_target: "riscv64".to_string(),
         pointer_width: 64,
-        target_vendor: "unknown".to_string(),
         arch: "riscv64".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 

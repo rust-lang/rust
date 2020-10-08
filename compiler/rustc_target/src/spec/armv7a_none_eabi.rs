@@ -21,6 +21,7 @@ use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOp
 
 pub fn target() -> Target {
     let opts = TargetOptions {
+        target_vendor: String::new(),
         linker: Some("rust-lld".to_owned()),
         features: "+v7,+thumb2,+soft-float,-neon,+strict-align".to_string(),
         executables: true,
@@ -35,7 +36,6 @@ pub fn target() -> Target {
     Target {
         llvm_target: "armv7a-none-eabi".to_string(),
         pointer_width: 32,
-        target_vendor: String::new(),
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),

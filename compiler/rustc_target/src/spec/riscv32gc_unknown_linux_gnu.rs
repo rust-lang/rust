@@ -6,7 +6,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".to_string(),
         arch: "riscv32".to_string(),
-        target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             unsupported_abis: super::riscv_base::unsupported_abis(),

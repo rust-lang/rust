@@ -11,7 +11,6 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "e-m:e-i64:64-n32:64".to_string(),
         arch: "powerpc64".to_string(),
-        target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "_mcount".to_string(), ..base },
     }
