@@ -339,6 +339,10 @@ impl Command {
             }
         }
 
+        fn cvt_nz(error: libc::c_int) -> io::Result<()> {
+            if error == 0 { Ok(()) } else { Err(io::Error::from_raw_os_error(error)) }
+        }
+
         unsafe {
             let mut file_actions = PosixSpawnFileActions(MaybeUninit::uninit());
             let mut attrs = PosixSpawnattr(MaybeUninit::uninit());
@@ -347,51 +351,51 @@ impl Command {
             libc::posix_spawn_file_actions_init(file_actions.0.as_mut_ptr());
 
             if let Some(fd) = stdio.stdin.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(
+                cvt_nz(libc::posix_spawn_file_actions_adddup2(
                     file_actions.0.as_mut_ptr(),
                     fd,
                     libc::STDIN_FILENO,
                 ))?;
             }
             if let Some(fd) = stdio.stdout.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(
+                cvt_nz(libc::posix_spawn_file_actions_adddup2(
                     file_actions.0.as_mut_ptr(),
                     fd,
                     libc::STDOUT_FILENO,
                 ))?;
             }
             if let Some(fd) = stdio.stderr.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(
+                cvt_nz(libc::posix_spawn_file_actions_adddup2(
                     file_actions.0.as_mut_ptr(),
                     fd,
                     libc::STDERR_FILENO,
                 ))?;
             }
             if let Some((f, cwd)) = addchdir {
-                cvt(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
+                cvt_nz(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
             }
 
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), set.as_ptr()))?;
+            cvt_nz(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), set.as_ptr()))?;
             cvt(sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
-            cvt(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), set.as_ptr()))?;
+            cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), set.as_ptr()))?;
 
             let flags = libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
-            cvt(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
+            cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
             let _env_lock = sys::os::env_lock();
             let envp = envp.map(|c| c.as_ptr()).unwrap_or_else(|| *sys::os::environ() as *const _);
-            let ret = libc::posix_spawnp(
+            cvt_nz(libc::posix_spawnp(
                 &mut p.pid,
                 self.get_program_cstr().as_ptr(),
                 file_actions.0.as_ptr(),
                 attrs.0.as_ptr(),
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
-            );
-            if ret == 0 { Ok(Some(p)) } else { Err(io::Error::from_raw_os_error(ret)) }
+            ))?;
+            Ok(Some(p))
         }
     }
 }
