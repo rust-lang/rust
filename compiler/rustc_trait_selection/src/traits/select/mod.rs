@@ -1630,6 +1630,74 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    fn default_conditions(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> BuiltinImplConditions<'tcx> {
+        // NOTE: binder moved to (*)
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
+
+        use self::BuiltinImplConditions::{Ambiguous, None, Where};
+
+        match self_ty.kind() {
+            // Built-in implementations of `Default` for function definition and closure types
+            // with no upvars.
+            ty::FnDef(..) => Where(ty::Binder::dummy(Vec::new())),
+            ty::Closure(_, substs) => {
+                let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
+                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
+                    // Not yet resolved.
+                    Ambiguous
+                } else if substs.as_closure().upvar_tys().next().is_none() {
+                    Where(ty::Binder::dummy(Vec::new()))
+                } else {
+                    None
+                }
+            }
+
+            ty::Infer(ty::IntVar(_))
+            | ty::Infer(ty::FloatVar(_))
+            | ty::FnPtr(_)
+            | ty::Error(_)
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Bool
+            | ty::Float(_)
+            | ty::Char
+            | ty::RawPtr(..)
+            | ty::Never
+            | ty::Ref(_, _, _)
+            | ty::Dynamic(..)
+            | ty::Str
+            | ty::Slice(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Foreign(..)
+            | ty::Array(_, _)
+            | ty::Tuple(_)
+            | ty::Adt(..)
+            | ty::Projection(..)
+            | ty::Param(..)
+            | ty::Opaque(..) => {
+                // Fallback to whatever user-defined impls exist in this case.
+                None
+            }
+
+            ty::Infer(ty::TyVar(_)) => {
+                // Unbound type variable. Might or might not have
+                // applicable impls and so forth, depending on what
+                // those type variables wind up being bound to.
+                Ambiguous
+            }
+
+            ty::Placeholder(..)
+            | ty::Bound(..)
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
+            }
+        }
+    }
+
     /// For default impls, we need to break apart a type into its
     /// "constituent types" -- meaning, the types that it contains.
     ///

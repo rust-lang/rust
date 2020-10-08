@@ -3,7 +3,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeFoldable};
-use rustc_span::{sym, DUMMY_SP};
+use rustc_span::symbol::{kw, sym};
+use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
@@ -267,6 +268,19 @@ fn resolve_associated_item<'tcx>(
                     let substs = tcx.erase_regions(&rcvr_substs);
                     Some(ty::Instance::new(def_id, substs))
                 }
+            } else if Some(trait_ref.def_id) == tcx.lang_items().default_trait() {
+                let name = tcx.item_name(def_id);
+                assert_eq!(name, kw::Default);
+
+                let self_ty = trait_ref.self_ty();
+                match self_ty.kind() {
+                    ty::FnDef(..) | ty::Closure(..) => {}
+                    _ => return Ok(None),
+                }
+                Some(Instance {
+                    def: ty::InstanceDef::DefaultShim(def_id, self_ty),
+                    substs: rcvr_substs,
+                })
             } else {
                 None
             }

@@ -281,6 +281,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // types have builtin support for `Clone`.
                 let clone_conditions = self.copy_clone_conditions(obligation);
                 self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates)?;
+            } else if lang_items.default_trait() == Some(def_id) {
+                // Function definition and closure types have built-in implementations of the
+                // `Default` trait.
+                let default_conditions = self.default_conditions(obligation);
+                self.assemble_builtin_bound_candidates(default_conditions, &mut candidates)?;
             }
 
             self.assemble_generator_candidates(obligation, &mut candidates)?;

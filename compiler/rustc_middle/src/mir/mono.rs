@@ -344,7 +344,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
                             | InstanceDef::DropGlue(..)
-                            | InstanceDef::CloneShim(..) => None,
+                            | InstanceDef::CloneShim(..)
+                            | InstanceDef::DefaultShim(..) => None,
                         }
                     }
                     MonoItem::Static(def_id) => {

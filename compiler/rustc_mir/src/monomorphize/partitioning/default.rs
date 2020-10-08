@@ -278,7 +278,8 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceDef::Intrinsic(..)
                 | ty::InstanceDef::DropGlue(..)
                 | ty::InstanceDef::Virtual(..)
-                | ty::InstanceDef::CloneShim(..) => return None,
+                | ty::InstanceDef::CloneShim(..)
+                | ty::InstanceDef::DefaultShim(..) => return None,
             };
 
             // If this is a method, we want to put it into the same module as
@@ -428,7 +429,8 @@ fn mono_item_visibility(
         | InstanceDef::Intrinsic(..)
         | InstanceDef::ClosureOnceShim { .. }
         | InstanceDef::DropGlue(..)
-        | InstanceDef::CloneShim(..) => return Visibility::Hidden,
+        | InstanceDef::CloneShim(..)
+        | InstanceDef::DefaultShim(..) => return Visibility::Hidden,
     };
 
     // The `start_fn` lang item is actually a monomorphized instance of a

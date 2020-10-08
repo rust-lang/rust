@@ -157,7 +157,7 @@ where
 }
 
 language_item_table! {
-//  Variant name,            Name,                    Method name,             Target;
+//  Variant name,            Name,                     Method name,                Target;
     Bool,                    sym::bool,                bool_impl,                  Target::Impl;
     Char,                    sym::char,                char_impl,                  Target::Impl;
     Str,                     sym::str,                 str_impl,                   Target::Impl;
@@ -196,6 +196,7 @@ language_item_table! {
     StructuralTeq,           sym::structural_teq,      structural_teq_trait,       Target::Trait;
     Copy,                    sym::copy,                copy_trait,                 Target::Trait;
     Clone,                   sym::clone,               clone_trait,                Target::Trait;
+    Default,                 kw::Default,              default_trait,              Target::Trait;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait;
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait;
     // The associated item of `trait DiscriminantKind`.

@@ -707,6 +707,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
             ty::InstanceDef::CloneShim(def_id, ty) => {
                 Some(ty::InstanceDef::CloneShim(def_id, tcx.lift(ty)?))
             }
+            ty::InstanceDef::DefaultShim(def_id, ty) => {
+                Some(ty::InstanceDef::DefaultShim(def_id, tcx.lift(ty)?))
+            }
         }
     }
 }
@@ -888,6 +891,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
                 }
                 DropGlue(did, ty) => DropGlue(did.fold_with(folder), ty.fold_with(folder)),
                 CloneShim(did, ty) => CloneShim(did.fold_with(folder), ty.fold_with(folder)),
+                DefaultShim(did, ty) => DefaultShim(did.fold_with(folder), ty.fold_with(folder)),
             },
         }
     }
@@ -900,7 +904,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
             VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
                 did.visit_with(visitor)
             }
-            FnPtrShim(did, ty) | CloneShim(did, ty) => {
+            FnPtrShim(did, ty) | CloneShim(did, ty) | DefaultShim(did, ty) => {
                 did.visit_with(visitor)?;
                 ty.visit_with(visitor)
             }

@@ -782,7 +782,8 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceDef::ClosureOnceShim { .. }
         | ty::InstanceDef::Item(..)
         | ty::InstanceDef::FnPtrShim(..)
-        | ty::InstanceDef::CloneShim(..) => {
+        | ty::InstanceDef::CloneShim(..)
+        | ty::InstanceDef::DefaultShim(..) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }
@@ -802,7 +803,8 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
         | ty::InstanceDef::FnPtrShim(..)
         | ty::InstanceDef::DropGlue(..)
         | ty::InstanceDef::Intrinsic(_)
-        | ty::InstanceDef::CloneShim(..) => return true,
+        | ty::InstanceDef::CloneShim(..)
+        | ty::InstanceDef::DefaultShim(..) => return true,
     };
 
     if tcx.is_foreign_item(def_id) {

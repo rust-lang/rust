@@ -66,6 +66,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         }
         ty::InstanceDef::DropGlue(def_id, ty) => build_drop_shim(tcx, def_id, ty),
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
+        ty::InstanceDef::DefaultShim(def_id, ty) => build_default_shim(tcx, def_id, ty),
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }
@@ -637,6 +638,43 @@ impl CloneShimBuilder<'tcx> {
 
         self.block(vec![], TerminatorKind::Return, false);
     }
+}
+
+/// Builds a `Default::default` shim for `self_ty`. Here, `def_id` is `Default::default`.
+fn build_default_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
+    debug!("build_default_shim(def_id={:?})", def_id);
+
+    let span = tcx.def_span(def_id);
+    let source_info = SourceInfo::outermost(span);
+
+    let substs = tcx.mk_substs_trait(self_ty, &[]);
+    let sig = tcx.fn_sig(def_id).subst(tcx, substs);
+    let sig = tcx.erase_late_bound_regions(&sig);
+    let erased_ty = sig.inputs_and_output[0];
+    let local_decls = local_decls_for_sig(&sig, span);
+
+    let (fn_def_id, fn_substs) = match erased_ty.kind() {
+        ty::FnDef(fn_def_id, fn_substs) | ty::Closure(fn_def_id, fn_substs) => {
+            (*fn_def_id, *fn_substs)
+        }
+        _ => bug!("unexpected type for Debug shim {:?}", erased_ty),
+    };
+
+    let body = BasicBlockData {
+        statements: vec![Statement {
+            source_info,
+            kind: StatementKind::Assign(box (
+                Place::return_place(),
+                Rvalue::Use(Operand::function_handle(tcx, fn_def_id, fn_substs, span)),
+            )),
+        }],
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        is_cleanup: false,
+    };
+
+    let source = MirSource::from_instance(ty::InstanceDef::DefaultShim(def_id, erased_ty));
+
+    new_body(source, IndexVec::from_elem_n(body, 1), local_decls, 0, span)
 }
 
 /// Builds a "call" shim for `instance`. The shim calls the function specified by `call_kind`,
