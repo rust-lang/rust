@@ -171,16 +171,17 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
         // 1. Diagnostic for function name.
         if let Some(replacement) = fn_name_replacement {
-            let ast_ptr = if let Some(name) = fn_src.value.name() {
-                name
-            } else {
-                // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
-                log::error!(
-                    "Replacement ({:?}) was generated for a function without a name: {:?}",
-                    replacement,
-                    fn_src
-                );
-                return;
+            let ast_ptr = match fn_src.value.name() {
+                Some(name) => name,
+                None => {
+                    // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
+                    log::error!(
+                        "Replacement ({:?}) was generated for a function without a name: {:?}",
+                        replacement,
+                        fn_src
+                    );
+                    return;
+                }
             };
 
             let diagnostic = IncorrectCase {
@@ -359,16 +360,17 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let struct_src = struct_loc.source(db.upcast());
 
         if let Some(replacement) = struct_name_replacement {
-            let ast_ptr = if let Some(name) = struct_src.value.name() {
-                name
-            } else {
-                // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
-                log::error!(
-                    "Replacement ({:?}) was generated for a structure without a name: {:?}",
-                    replacement,
-                    struct_src
-                );
-                return;
+            let ast_ptr = match struct_src.value.name() {
+                Some(name) => name,
+                None => {
+                    // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
+                    log::error!(
+                        "Replacement ({:?}) was generated for a structure without a name: {:?}",
+                        replacement,
+                        struct_src
+                    );
+                    return;
+                }
             };
 
             let diagnostic = IncorrectCase {
@@ -486,16 +488,17 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let enum_src = enum_loc.source(db.upcast());
 
         if let Some(replacement) = enum_name_replacement {
-            let ast_ptr = if let Some(name) = enum_src.value.name() {
-                name
-            } else {
-                // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
-                log::error!(
-                    "Replacement ({:?}) was generated for a enum without a name: {:?}",
-                    replacement,
-                    enum_src
-                );
-                return;
+            let ast_ptr = match enum_src.value.name() {
+                Some(name) => name,
+                None => {
+                    // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
+                    log::error!(
+                        "Replacement ({:?}) was generated for a enum without a name: {:?}",
+                        replacement,
+                        enum_src
+                    );
+                    return;
+                }
             };
 
             let diagnostic = IncorrectCase {
