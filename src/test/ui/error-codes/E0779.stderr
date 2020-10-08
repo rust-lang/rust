@@ -1,4 +1,4 @@
-error[E0779]: Invalid instruction set specified
+error[E0779]: invalid instruction set specified
   --> $DIR/E0779.rs:3:1
    |
 LL | #[instruction_set(arm::magic)]
