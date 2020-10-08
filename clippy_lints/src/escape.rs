@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         hir_id: HirId,
     ) {
         if let Some(header) = fn_kind.header() {
-            if header.abi == Abi::Cdecl {
+            if header.abi == Abi::C {
                 return;
             }
         }

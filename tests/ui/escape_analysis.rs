@@ -174,3 +174,8 @@ mod issue_3739 {
         };
     }
 }
+
+/// Issue #5542
+///
+/// This shouldn't warn for `boxed_local` as it is a function implemented in C.
+pub extern "C" fn do_now_warn_me(_c_pointer: Box<String>) -> () {}
