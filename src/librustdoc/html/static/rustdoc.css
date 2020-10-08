@@ -394,13 +394,6 @@ nav.sub {
 	display: inline;
 }
 
-.docblock-short.nowrap {
-	display: block;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-}
-
 .docblock-short p {
 	overflow: hidden;
 	text-overflow: ellipsis;
