@@ -9,6 +9,11 @@ if [ "$TRAVIS_EVENT_TYPE" = "cron" ] ; then # running in cron job
 
   echo "Doing full link check."
 elif [ "$CI" = "true" ] ; then # running in PR CI build
+  if [ -n "$TRAVIS_COMMIT_RANGE" ]; then
+    echo "error: unexpected state: COMMIT_RANGE must be non-empty in CI"
+    exit 1
+  fi
+
   CHANGED_FILES=$(git diff --name-only $TRAVIS_COMMIT_RANGE | tr '\n' ' ')
   FLAGS="-f $CHANGED_FILES"
 
