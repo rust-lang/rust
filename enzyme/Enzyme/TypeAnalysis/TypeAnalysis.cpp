@@ -1235,8 +1235,11 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         for (auto andval :
              fntypeinfo.knownIntegralValues(I.getOperand(i), DT, intseen)) {
           if (andval <= 16 && andval >= 0) {
-
             Result = TypeTree(BaseType::Integer);
+          } else if (andval < 0 && andval >= -64) {
+            // If a small negative number, this just masks off the lower bits
+            // in this case we can say that this is the same as the other operand
+            Result = getAnalysis(I.getOperand(1-i)).Data0();
           }
         }
       }
