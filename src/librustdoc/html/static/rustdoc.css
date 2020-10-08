@@ -390,6 +390,9 @@ nav.sub {
 	cursor: pointer;
 }
 
+.docblock-short {
+	overflow-wrap: anywhere;
+}
 .docblock-short p {
 	display: inline;
 }
