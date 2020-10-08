@@ -336,6 +336,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         optimize, AssumedUsed, template!(List: "size|speed"), optimize_attribute,
         experimental!(optimize),
     ),
+    // RFC 2867
+    gated!(instruction_set, AssumedUsed, template!(List: "set"), isa_attribute, experimental!(instruction_set)),
 
     gated!(ffi_returns_twice, AssumedUsed, template!(Word), experimental!(ffi_returns_twice)),
     gated!(ffi_pure, AssumedUsed, template!(Word), experimental!(ffi_pure)),

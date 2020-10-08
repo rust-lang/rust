@@ -21,8 +21,8 @@ use crate::constrained_generic_params as cgp;
 use crate::errors;
 use crate::middle::resolve_lifetime as rl;
 use rustc_ast as ast;
-use rustc_ast::MetaItemKind;
-use rustc_attr::{list_contains_name, InlineAttr, OptimizeAttr};
+use rustc_ast::{MetaItemKind, NestedMetaItem};
+use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability};
@@ -2647,6 +2647,75 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     }
                 }
             }
+        } else if tcx.sess.check_name(attr, sym::instruction_set) {
+            codegen_fn_attrs.instruction_set = match attr.meta().map(|i| i.kind) {
+                Some(MetaItemKind::List(ref items)) => match items.as_slice() {
+                    [NestedMetaItem::MetaItem(set)] => {
+                        let segments =
+                            set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
+                        match segments.as_slice() {
+                            [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
+                                if !tcx.sess.target.target.options.has_thumb_interworking {
+                                    struct_span_err!(
+                                        tcx.sess.diagnostic(),
+                                        attr.span,
+                                        E0779,
+                                        "target does not support `#[instruction_set]`"
+                                    )
+                                    .emit();
+                                    None
+                                } else if segments[1] == sym::a32 {
+                                    Some(InstructionSetAttr::ArmA32)
+                                } else if segments[1] == sym::t32 {
+                                    Some(InstructionSetAttr::ArmT32)
+                                } else {
+                                    unreachable!()
+                                }
+                            }
+                            _ => {
+                                struct_span_err!(
+                                    tcx.sess.diagnostic(),
+                                    attr.span,
+                                    E0779,
+                                    "invalid instruction set specified",
+                                )
+                                .emit();
+                                None
+                            }
+                        }
+                    }
+                    [] => {
+                        struct_span_err!(
+                            tcx.sess.diagnostic(),
+                            attr.span,
+                            E0778,
+                            "`#[instruction_set]` requires an argument"
+                        )
+                        .emit();
+                        None
+                    }
+                    _ => {
+                        struct_span_err!(
+                            tcx.sess.diagnostic(),
+                            attr.span,
+                            E0779,
+                            "cannot specify more than one instruction set"
+                        )
+                        .emit();
+                        None
+                    }
+                },
+                _ => {
+                    struct_span_err!(
+                        tcx.sess.diagnostic(),
+                        attr.span,
+                        E0778,
+                        "must specify an instruction set"
+                    )
+                    .emit();
+                    None
+                }
+            };
         }
     }
 

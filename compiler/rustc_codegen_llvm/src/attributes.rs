@@ -18,7 +18,7 @@ use crate::attributes;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Attribute};
 use crate::llvm_util;
-pub use rustc_attr::{InlineAttr, OptimizeAttr};
+pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 
 use crate::context::CodegenCx;
 use crate::value::Value;
@@ -309,6 +309,10 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         .chain(codegen_fn_attrs.target_features.iter().map(|f| {
             let feature = &f.as_str();
             format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
+        }))
+        .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
+            InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
+            InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
         .collect::<Vec<String>>()
         .join(",");

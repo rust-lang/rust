@@ -76,6 +76,12 @@ pub enum InlineAttr {
 }
 
 #[derive(Clone, Encodable, Decodable)]
+pub enum InstructionSetAttr {
+    ArmA32,
+    ArmT32,
+}
+
+#[derive(Clone, Encodable, Decodable)]
 pub enum OptimizeAttr {
     None,
     Speed,
