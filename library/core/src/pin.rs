@@ -781,6 +781,19 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     }
 }
 
+impl<T: ?Sized> Pin<&'static T> {
+    /// Get a pinned reference from a static reference.
+    ///
+    /// This is safe, because the `'static` lifetime guarantees the data will
+    /// never be moved.
+    #[unstable(feature = "pin_static_ref", issue = "none")]
+    pub fn new_static(r: &'static T) -> Pin<&'static T> {
+        // SAFETY: The 'static lifetime guarantees the data will not be
+        // moved/invalidated until it gets dropped (which is never).
+        unsafe { Pin::new_unchecked(r) }
+    }
+}
+
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P: Deref> Deref for Pin<P> {
     type Target = P::Target;
