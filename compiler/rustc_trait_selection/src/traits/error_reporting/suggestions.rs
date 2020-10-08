@@ -1922,7 +1922,29 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                err.note(&format!("required because it appears within the type `{}`", ty));
+                // If the obligation for a tuple is set directly by a Generator or Closure,
+                // then the tuple must be the one containing capture types.
+                let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
+                    false
+                } else {
+                    if let ObligationCauseCode::BuiltinDerivedObligation(ref data) =
+                        *data.parent_code
+                    {
+                        let parent_trait_ref =
+                            self.resolve_vars_if_possible(&data.parent_trait_ref);
+                        let ty = parent_trait_ref.skip_binder().self_ty();
+                        matches!(ty.kind(), ty::Generator(..))
+                            || matches!(ty.kind(), ty::Closure(..))
+                    } else {
+                        false
+                    }
+                };
+
+                // Don't print the tuple of capture types
+                if !is_upvar_tys_infer_tuple {
+                    err.note(&format!("required because it appears within the type `{}`", ty));
+                }
+
                 obligated_types.push(ty);
 
                 let parent_predicate = parent_trait_ref.without_const().to_predicate(tcx);

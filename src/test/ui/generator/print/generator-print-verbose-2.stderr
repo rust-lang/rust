@@ -9,7 +9,6 @@ LL |     assert_send(|| {
    |
    = help: the trait `Sync` is not implemented for `Cell<i32>`
    = note: required because of the requirements on the impl of `Send` for `&'_#3r Cell<i32>`
-   = note: required because it appears within the type `(&'_#3r Cell<i32>,)`
    = note: required because it appears within the type `[main::{closure#1} upvar_tys=(&'_#3r Cell<i32>) _#17t]`
 
 error: generator cannot be shared between threads safely
