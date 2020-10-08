@@ -10,7 +10,7 @@
 //! - static items (e.g. `static FOO: u8 = 10;`)
 //! - match arm bindings (e.g. `foo @ Some(_)`)
 
-mod str_helpers;
+mod case_conv;
 
 use hir_def::{
     adt::VariantData,
@@ -29,7 +29,7 @@ use syntax::{
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{decl_check::str_helpers::*, CaseType, IncorrectCase},
+    diagnostics::{decl_check::case_conv::*, CaseType, IncorrectCase},
 };
 
 pub(super) struct DeclValidator<'a, 'b: 'a> {

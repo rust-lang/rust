@@ -136,8 +136,7 @@ pub fn to_upper_snake_case(ident: &str) -> Option<String> {
     }
 
     // Normalize the string from whatever form it's in currently, and then just make it uppercase.
-    let upper_snake_case =
-        stdx::to_lower_snake_case(ident).chars().map(|c| c.to_ascii_uppercase()).collect();
+    let upper_snake_case = stdx::to_upper_snake_case(ident);
 
     if upper_snake_case == ident {
         // While we didn't detect the correct case at the beginning, there
