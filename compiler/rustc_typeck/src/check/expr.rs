@@ -214,7 +214,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Combine the diverging and has_error flags.
         self.diverges.set(self.diverges.get() | old_diverges);
         self.has_errors.set(self.has_errors.get() | old_has_errors);
-        self.dead_nodes.borrow_mut().insert(expr.hir_id);
+        if self.diverges.get().is_always() {
+            self.dead_nodes.borrow_mut().insert(expr.hir_id);
+        }
 
         debug!("type of {} is...", self.tcx.hir().node_to_string(expr.hir_id));
         debug!("... {:?}, expected is {:?}", ty, expected);
