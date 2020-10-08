@@ -813,7 +813,7 @@ pub struct BlockTailInfo {
 /// argument, or the return place.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct LocalDecl<'tcx> {
-    /// Whether this is a mutable minding (i.e., `let x` or `let mut x`).
+    /// Whether this is a mutable binding (i.e., `let x` or `let mut x`).
     ///
     /// Temporaries and the return place are always mutable.
     pub mutability: Mutability,
