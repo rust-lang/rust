@@ -235,11 +235,11 @@ mod inner {
         static INITIALIZED: AtomicBool = AtomicBool::new(false);
         static INFO_BITS: AtomicU64 = AtomicU64::new(0);
 
-        // If a previous thread has filled in this global INITIALIZED, use that.
+        // If a previous thread has initialized `INFO_BITS`, use that.
         if INITIALIZED.load(Ordering::Acquire) {
-            // The Acquire/Release pair used for INITIALIZED ensures that this
-            // load can see the corresponding `INFO_BITS` store, despite them
-            // both being Relaxed.
+            // Note: `Relaxed` is correct here and below -- the `Acquire` /
+            // `Release` pair used for `INITIALIZED` ensures this load can see
+            // the corresponding store below.
             return info_from_bits(INFO_BITS.load(Ordering::Relaxed));
         }
 
@@ -253,7 +253,7 @@ mod inner {
             mach_timebase_info(&mut info);
         }
 
-        // Note: This is racy, but the race is against other threads trying to
+        // This is racy, but the race should be against other threads trying to
         // write the same value.
         INFO_BITS.store(info_to_bits(info), Ordering::Relaxed);
 
