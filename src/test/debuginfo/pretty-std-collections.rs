@@ -34,20 +34,26 @@
 // gdb-check:$6 = BTreeMap(size=15) = {[0] = pretty_std_collections::MyLeafNode (0), [...]}
 // (abbreviated because it's boring but we need enough elements to include internal nodes)
 
-// gdb-command: print zst_btree_map
-// gdb-check:$7 = BTreeMap(size=1)
+// gdb-command: print zst_key_btree_map
+// gdb-check:$7 = BTreeMap(size=1) = {[()] = 1}
+
+// gdb-command: print zst_val_btree_map
+// gdb-check:$8 = BTreeMap(size=1) = {[1] = ()}
+
+// gdb-command: print zst_key_val_btree_map
+// gdb-check:$9 = BTreeMap(size=1) = {[()] = ()}
 
 // gdb-command: print vec_deque
-// gdb-check:$8 = VecDeque(size=3) = {5, 3, 7}
+// gdb-check:$10 = VecDeque(size=3) = {5, 3, 7}
 
 // gdb-command: print vec_deque2
-// gdb-check:$9 = VecDeque(size=7) = {2, 3, 4, 5, 6, 7, 8}
+// gdb-check:$11 = VecDeque(size=7) = {2, 3, 4, 5, 6, 7, 8}
 
 // gdb-command: print hash_map
-// gdb-check:$10 = HashMap(size=4) = {[1] = 10, [2] = 20, [3] = 30, [4] = 40}
+// gdb-check:$12 = HashMap(size=4) = {[1] = 10, [2] = 20, [3] = 30, [4] = 40}
 
 // gdb-command: print hash_set
-// gdb-check:$11 = HashSet(size=4) = {1, 2, 3, 4}
+// gdb-check:$13 = HashSet(size=4) = {1, 2, 3, 4}
 
 // === LLDB TESTS ==================================================================================
 
@@ -114,8 +120,14 @@ fn main() {
         nasty_btree_map.insert(i, MyLeafNode(i));
     }
 
-    let mut zst_btree_map: BTreeMap<(), ()> = BTreeMap::new();
-    zst_btree_map.insert((), ());
+    let mut zst_key_btree_map: BTreeMap<(), i32> = BTreeMap::new();
+    zst_key_btree_map.insert((), 1);
+
+    let mut zst_val_btree_map: BTreeMap<i32, ()> = BTreeMap::new();
+    zst_val_btree_map.insert(1, ());
+
+    let mut zst_key_val_btree_map: BTreeMap<(), ()> = BTreeMap::new();
+    zst_key_val_btree_map.insert((), ());
 
     // VecDeque
     let mut vec_deque = VecDeque::new();

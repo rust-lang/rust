@@ -229,8 +229,8 @@ def children_of_node(boxed_node, height):
                 yield child
         if i < length:
             # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
-            key = keys[i]["value"]["value"] if keys.type.sizeof > 0 else None
-            val = vals[i]["value"]["value"] if vals.type.sizeof > 0 else None
+            key = keys[i]["value"]["value"] if keys.type.sizeof > 0 else "()"
+            val = vals[i]["value"]["value"] if vals.type.sizeof > 0 else "()"
             yield key, val
 
 
@@ -242,11 +242,8 @@ def children_of_map(map):
             root = root.cast(gdb.lookup_type(root.type.name[21:-1]))
         boxed_root_node = root["node"]
         height = root["height"]
-        for i, (key, val) in enumerate(children_of_node(boxed_root_node, height)):
-            if key is not None:
-                yield "key{}".format(i), key
-            if val is not None:
-                yield "val{}".format(i), val
+        for child in children_of_node(boxed_root_node, height):
+            yield child
 
 
 class StdBTreeSetProvider:
@@ -258,8 +255,8 @@ class StdBTreeSetProvider:
 
     def children(self):
         inner_map = self.valobj["map"]
-        for child in children_of_map(inner_map):
-            yield child
+        for i, (child, _) in enumerate(children_of_map(inner_map)):
+            yield "[{}]".format(i), child
 
     @staticmethod
     def display_hint():
@@ -274,8 +271,9 @@ class StdBTreeMapProvider:
         return "BTreeMap(size={})".format(self.valobj["length"])
 
     def children(self):
-        for child in children_of_map(self.valobj):
-            yield child
+        for i, (key, val) in enumerate(children_of_map(self.valobj)):
+            yield "key{}".format(i), key
+            yield "val{}".format(i), val
 
     @staticmethod
     def display_hint():
