@@ -104,8 +104,11 @@ impl DiagnosticWithFix for MissingOkInTailExpr {
 
 impl DiagnosticWithFix for IncorrectCase {
     fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+        let root = sema.db.parse_or_expand(self.file)?;
+        let name_node = self.ident.to_node(&root);
+
         let file_id = self.file.original_file(sema.db);
-        let offset = self.ident.text_range().start();
+        let offset = name_node.syntax().text_range().start();
         let file_position = FilePosition { file_id, offset };
 
         let rename_changes = rename_with_semantics(sema, file_position, &self.suggested_text)?;

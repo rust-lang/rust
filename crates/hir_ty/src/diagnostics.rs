@@ -267,7 +267,7 @@ impl fmt::Display for CaseType {
 #[derive(Debug)]
 pub struct IncorrectCase {
     pub file: HirFileId,
-    pub ident: SyntaxNodePtr,
+    pub ident: AstPtr<ast::Name>,
     pub expected_case: CaseType,
     pub ident_type: String,
     pub ident_text: String,
@@ -290,7 +290,7 @@ impl Diagnostic for IncorrectCase {
     }
 
     fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.ident.clone())
+        InFile::new(self.file, self.ident.clone().into())
     }
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {

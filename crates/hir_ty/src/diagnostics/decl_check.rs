@@ -213,12 +213,21 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         for param_to_rename in fn_param_replacements {
             // We assume that parameters in replacement are in the same order as in the
             // actual params list, but just some of them (ones that named correctly) are skipped.
-            let ast_ptr = loop {
+            let ast_ptr: ast::Name = loop {
                 match fn_params_iter.next() {
                     Some(element)
                         if pat_equals_to_name(element.pat(), &param_to_rename.current_name) =>
                     {
-                        break element.pat().unwrap()
+                        if let ast::Pat::IdentPat(pat) = element.pat().unwrap() {
+                            break pat.name().unwrap();
+                        } else {
+                            // This is critical. If we consider this parameter the expected one,
+                            // it **must** have a name.
+                            panic!(
+                                "Pattern {:?} equals to expected replacement {:?}, but has no name",
+                                element, param_to_rename
+                            );
+                        }
                     }
                     Some(_) => {}
                     None => {
