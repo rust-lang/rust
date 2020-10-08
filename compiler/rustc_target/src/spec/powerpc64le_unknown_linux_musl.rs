@@ -8,7 +8,6 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "powerpc64le-unknown-linux-musl".to_string(),
-        target_endian: "little".to_string(),
         pointer_width: 64,
         data_layout: "e-m:e-i64:64-n32:64".to_string(),
         arch: "powerpc64".to_string(),

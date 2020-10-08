@@ -665,8 +665,6 @@ supported_targets! {
 pub struct Target {
     /// Target triple to pass to LLVM.
     pub llvm_target: String,
-    /// String to use as the `target_endian` `cfg` variable.
-    pub target_endian: String,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
     /// OS name to use for conditional compilation.
@@ -706,7 +704,9 @@ pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
 
-    /// Width of c_int type
+    /// String to use as the `target_endian` `cfg` variable. Defaults to "little".
+    pub target_endian: String,
+    /// Width of c_int type. Defaults to "32".
     pub target_c_int_width: String,
 
     /// Linker to invoke
@@ -987,6 +987,7 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
+            target_endian: "little".to_string(),
             target_c_int_width: "32".to_string(),
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
@@ -1158,7 +1159,6 @@ impl Target {
 
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?,
-            target_endian: get_req_field("target-endian")?,
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
@@ -1405,6 +1405,7 @@ impl Target {
         }
 
         key!(is_builtin, bool);
+        key!(target_endian);
         key!(target_c_int_width);
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
@@ -1633,7 +1634,6 @@ impl ToJson for Target {
         }
 
         target_val!(llvm_target);
-        target_val!(target_endian);
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(arch);
         target_val!(target_os, "os");
@@ -1642,6 +1642,7 @@ impl ToJson for Target {
         target_val!(data_layout);
         target_val!(linker_flavor);
 
+        target_option_val!(target_endian);
         target_option_val!(target_c_int_width);
         target_option_val!(is_builtin);
         target_option_val!(linker);

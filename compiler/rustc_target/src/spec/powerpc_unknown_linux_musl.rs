@@ -7,7 +7,6 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "powerpc-unknown-linux-musl".to_string(),
-        target_endian: "big".to_string(),
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-i64:64-n32".to_string(),
         arch: "powerpc".to_string(),
@@ -15,6 +14,10 @@ pub fn target() -> Target {
         target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-        options: TargetOptions { target_mcount: "_mcount".to_string(), ..base },
+        options: TargetOptions {
+            target_endian: "big".to_string(),
+            target_mcount: "_mcount".to_string(),
+            ..base
+        },
     }
 }

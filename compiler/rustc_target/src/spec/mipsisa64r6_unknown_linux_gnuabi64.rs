@@ -3,7 +3,6 @@ use crate::spec::{LinkerFlavor, Target, TargetOptions};
 pub fn target() -> Target {
     Target {
         llvm_target: "mipsisa64r6-unknown-linux-gnuabi64".to_string(),
-        target_endian: "big".to_string(),
         pointer_width: 64,
         data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".to_string(),
         arch: "mips64".to_string(),
@@ -12,6 +11,7 @@ pub fn target() -> Target {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
+            target_endian: "big".to_string(),
             // NOTE(mips64r6) matches C toolchain
             cpu: "mips64r6".to_string(),
             features: "+mips64r6".to_string(),

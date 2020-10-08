@@ -5,7 +5,6 @@ pub fn target() -> Target {
     let base = opts(Arch::X86_64_macabi);
     Target {
         llvm_target: "x86_64-apple-ios13.0-macabi".to_string(),
-        target_endian: "little".to_string(),
         pointer_width: 64,
         data_layout: "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
             .to_string(),

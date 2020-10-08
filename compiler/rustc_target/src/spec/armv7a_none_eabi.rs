@@ -34,7 +34,6 @@ pub fn target() -> Target {
     };
     Target {
         llvm_target: "armv7a-none-eabi".to_string(),
-        target_endian: "little".to_string(),
         pointer_width: 32,
         target_os: "none".to_string(),
         target_env: String::new(),
