@@ -35,7 +35,7 @@ use hir_ty::{
     traits::SolutionVariables,
     ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
     InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, Ty,
-    TyDefId, TyKind, TypeCtor, TyLoweringContext, TypeCtor,
+    TyDefId, TyKind, TypeCtor, TyLoweringContext,
 };
 use rustc_hash::FxHashSet;
 use stdx::impl_from;

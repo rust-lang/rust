@@ -7,11 +7,9 @@ use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
 use pulldown_cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
 use url::Url;
 
-use ide_db::{defs::Definition, RootDatabase};
-
 use hir::{
     db::{DefDatabase, HirDatabase},
-    Adt, AsName, AssocItem, Crate, Field, HasAttrs, ItemInNs, MethodOwner, ModuleDef, AssocItemContainer, AsAssocItem
+    Adt, AsName, AssocItem, Crate, Field, HasAttrs, ItemInNs, ModuleDef, AssocItemContainer, AsAssocItem
 };
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
@@ -95,12 +93,6 @@ pub fn remove_links(markdown: &str) -> String {
     out
 }
 
-pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T) -> Option<String> {
-    let module_def = definition.clone().try_into_module_def()?;
-
-    get_doc_link_impl(db, &module_def)
-}
-
 // FIXME:
 // BUG: For Option::Some
 // Returns https://doc.rust-lang.org/nightly/core/prelude/v1/enum.Option.html#variant.Some
@@ -129,8 +121,8 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
     let module = definition.module(db)?;
     let krate = module.krate();
     let import_map = db.import_map(krate.into());
-    let base = once(krate.display_name(db)?)
-        .chain(import_map.path_of(ns)?.segments.iter().map(|name| format!("{}", name)))
+    let base = once(krate.declaration_name(db)?.to_string())
+        .chain(import_map.path_of(ns)?.segments.iter().map(|name| name.to_string()))
         .join("/");
 
     let filename = get_symbol_filename(db, &target_def);
@@ -433,10 +425,10 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::fixture;
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let (analysis, position) = analysis_and_position(ra_fixture);
+        let (analysis, position) = fixture::position(ra_fixture);
         let url = analysis.external_docs(position).unwrap().expect("could not find url for symbol");
 
         expect.assert_eq(&url)
