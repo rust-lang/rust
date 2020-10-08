@@ -29,3 +29,11 @@ pub fn this_is_func() {}
 pub struct DemoStruct {
     something: usize,
 }
+
+#[allow(missing_docs)]
+pub mod bar {
+    #[warn(missing_docs)]
+    pub struct Bar { //~ WARN
+        pub f: u32, //~ WARN
+    }
+}
