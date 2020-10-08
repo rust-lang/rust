@@ -382,6 +382,10 @@ changelog-seen = 1
 # Overrides the `debug-assertions` option, if defined.
 #
 # Defaults to rust.debug-assertions value
+#
+# If you see a message from `tracing` saying
+# `max_level_info` is enabled and means logging won't be shown,
+# set this value to `true`.
 #debug-logging = debug-assertions
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
