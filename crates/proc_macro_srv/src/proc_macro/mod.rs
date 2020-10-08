@@ -924,3 +924,25 @@ impl fmt::Debug for Literal {
         self.0.fmt(f)
     }
 }
+
+pub mod tracked_env {
+    use std::env::{self, VarError};
+    use std::ffi::OsStr;
+
+    /// Retrieve an environment variable and add it to build dependency info.
+    /// Build system executing the compiler will know that the variable was accessed during
+    /// compilation, and will be able to rerun the build when the value of that variable changes.
+    /// Besides the dependency tracking this function should be equivalent to `env::var` from the
+    /// standard library, except that the argument must be UTF-8.
+    pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
+        use std::ops::Deref;
+
+        let key: &str = key.as_ref();
+        let value = env::var(key);
+        super::bridge::client::FreeFunctions::track_env_var(
+            key,
+            value.as_ref().map(|t| t.deref()).ok(),
+        );
+        value
+    }
+}

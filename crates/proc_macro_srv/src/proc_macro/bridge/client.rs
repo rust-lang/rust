@@ -160,6 +160,7 @@ macro_rules! define_handles {
 }
 define_handles! {
     'owned:
+    FreeFunctions,
     TokenStream,
     TokenStreamBuilder,
     TokenStreamIter,

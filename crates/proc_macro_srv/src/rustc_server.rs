@@ -242,6 +242,8 @@ impl TokenStreamBuilder {
     }
 }
 
+pub struct FreeFunctions;
+
 #[derive(Clone)]
 pub struct TokenStreamIter {
     trees: IntoIter<TokenTree>,
@@ -254,6 +256,7 @@ pub struct Rustc {
 }
 
 impl server::Types for Rustc {
+    type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
     type TokenStreamBuilder = TokenStreamBuilder;
     type TokenStreamIter = TokenStreamIter;
@@ -265,6 +268,13 @@ impl server::Types for Rustc {
     type Diagnostic = Diagnostic;
     type Span = Span;
     type MultiSpan = Vec<Span>;
+}
+
+impl server::FreeFunctions for Rustc {
+    fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {
+        // FIXME: track env var accesses
+        // https://github.com/rust-lang/rust/pull/71858
+    }
 }
 
 impl server::TokenStream for Rustc {
