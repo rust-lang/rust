@@ -1,0 +1,16 @@
+error: identical args used in this `assert_eq!` macro call
+  --> $DIR/eq_op_early.rs:8:16
+   |
+LL |     assert_eq!(a, a);
+   |                ^^^^
+   |
+   = note: `-D clippy::eq-op` implied by `-D warnings`
+
+error: identical args used in this `assert_eq!` macro call
+  --> $DIR/eq_op_early.rs:9:16
+   |
+LL |     assert_eq!(a + 1, a + 1);
+   |                ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

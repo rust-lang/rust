@@ -348,6 +348,7 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
     store.register_pre_expansion_pass(|| box write::Write::default());
     store.register_pre_expansion_pass(|| box attrs::EarlyAttributes);
     store.register_pre_expansion_pass(|| box dbg_macro::DbgMacro);
+    store.register_pre_expansion_pass(|| box eq_op::EqOp);
 }
 
 #[doc(hidden)]
@@ -910,6 +911,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let vec_box_size_threshold = conf.vec_box_size_threshold;
     store.register_late_pass(move || box types::Types::new(vec_box_size_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
+    store.register_early_pass(|| box eq_op::EqOp);
     store.register_late_pass(|| box eq_op::EqOp);
     store.register_late_pass(|| box enum_clike::UnportableVariant);
     store.register_late_pass(|| box float_literal::FloatLiteral);

@@ -1,9 +1,13 @@
+use crate::utils::ast_utils::eq_expr;
 use crate::utils::{
     eq_expr_value, implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then,
 };
+use if_chain::if_chain;
+use rustc_ast::{ast, token};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, BorrowKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_parse::parser;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -22,6 +26,12 @@ declare_clippy_lint! {
     /// ```rust
     /// # let x = 1;
     /// if x + 1 == x + 1 {}
+    /// ```
+    /// or
+    /// ```rust
+    /// # let a = 3;
+    /// # let b = 4;
+    /// assert_eq!(a, a);
     /// ```
     pub EQ_OP,
     correctness,
@@ -51,6 +61,31 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
+
+impl EarlyLintPass for EqOp {
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
+        if_chain! {
+            if mac.path == sym!(assert_eq);
+            let tokens = mac.args.inner_tokens();
+            let mut parser = parser::Parser::new(&cx.sess.parse_sess, tokens, false, None);
+            if let Ok(left) = parser.parse_expr();
+            if parser.eat(&token::Comma);
+            if let Ok(right) = parser.parse_expr();
+            let left_expr = left.into_inner();
+            let right_expr = right.into_inner();
+            if eq_expr(&left_expr, &right_expr);
+
+            then {
+                span_lint(
+                    cx,
+                    EQ_OP,
+                    left_expr.span.to(right_expr.span),
+                    "identical args used in this `assert_eq!` macro call",
+                );
+            }
+        }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]

@@ -3,6 +3,7 @@
 
 #![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_quote)]
+#![allow(clippy::eq_op)]
 
 extern crate proc_macro;
 
