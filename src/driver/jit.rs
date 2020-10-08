@@ -9,7 +9,7 @@ use rustc_codegen_ssa::CrateInfo;
 use crate::prelude::*;
 
 pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
-    use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
+    use cranelift_simplejit::{SimpleJITModule, SimpleJITBuilder};
 
     #[cfg(unix)]
     unsafe {
@@ -36,7 +36,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         cranelift_module::default_libcall_names(),
     );
     jit_builder.symbols(imported_symbols);
-    let mut jit_module: Module<SimpleJITBackend> = Module::new(jit_builder);
+    let mut jit_module = SimpleJITModule::new(jit_builder);
     assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
 
     let sig = Signature {
@@ -79,13 +79,13 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context, true);
     crate::allocator::codegen(tcx, &mut jit_module, &mut unwind_context);
 
-    jit_module.finalize_definitions();
+    let jit_product = jit_module.finish();
 
-    let _unwind_register_guard = unsafe { unwind_context.register_jit(&mut jit_module) };
+    let _unwind_register_guard = unsafe { unwind_context.register_jit(&jit_product) };
 
     tcx.sess.abort_if_errors();
 
-    let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
+    let finalized_main: *const u8 = jit_product.lookup_func(main_func_id);
 
     println!("Rustc codegen cranelift will JIT run the executable, because --jit was passed");
 
@@ -105,7 +105,6 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let ret = f(args.len() as c_int, argv.as_ptr());
 
-    jit_module.finish();
     std::process::exit(ret);
 }
 

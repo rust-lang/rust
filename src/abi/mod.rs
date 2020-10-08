@@ -238,7 +238,7 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
 /// Instance must be monomorphized
 pub(crate) fn import_function<'tcx>(
     tcx: TyCtxt<'tcx>,
-    module: &mut Module<impl Backend>,
+    module: &mut impl Module,
     inst: Instance<'tcx>,
 ) -> FuncId {
     let (name, sig) = get_function_name_and_sig(tcx, module.isa().triple(), inst, true);
@@ -247,7 +247,7 @@ pub(crate) fn import_function<'tcx>(
         .unwrap()
 }
 
-impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
+impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let func_id = import_function(self.tcx, &mut self.cx.module, inst);
@@ -329,7 +329,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
 
 /// Make a [`CPlace`] capable of holding value of the specified type.
 fn make_local_place<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     local: Local,
     layout: TyAndLayout<'tcx>,
     is_ssa: bool,
@@ -351,7 +351,7 @@ fn make_local_place<'tcx>(
 }
 
 pub(crate) fn codegen_fn_prelude<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     start_block: Block,
 ) {
     let ssa_analyzed = crate::analyze::analyze(fx);
@@ -488,7 +488,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
 }
 
 pub(crate) fn codegen_terminator_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     span: Span,
     current_block: Block,
     func: &Operand<'tcx>,
@@ -701,7 +701,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 }
 
 pub(crate) fn codegen_drop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     span: Span,
     drop_place: CPlace<'tcx>,
 ) {

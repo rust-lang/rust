@@ -3,7 +3,7 @@
 use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
-fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> TyAndLayout<'tcx> {
+fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Module>) -> TyAndLayout<'tcx> {
     fx.layout_of(fx.monomorphize(&fx.mir.local_decls[RETURN_PLACE].ty))
 }
 
@@ -22,7 +22,7 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(
 /// Return a place where the return value of the current function can be written to. If necessary
 /// this adds an extra parameter pointing to where the return value needs to be stored.
 pub(super) fn codegen_return_param<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     start_block: Block,
 ) -> CPlace<'tcx> {
@@ -66,11 +66,11 @@ pub(super) fn codegen_return_param<'tcx>(
 
 /// Invokes the closure with if necessary a value representing the return pointer. When the closure
 /// returns the call return value(s) if any are written to the correct place.
-pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
-    fx: &mut FunctionCx<'_, 'tcx, B>,
+pub(super) fn codegen_with_call_return_arg<'tcx, M: Module, T>(
+    fx: &mut FunctionCx<'_, 'tcx, M>,
     fn_sig: FnSig<'tcx>,
     ret_place: Option<CPlace<'tcx>>,
-    f: impl FnOnce(&mut FunctionCx<'_, 'tcx, B>, Option<Value>) -> (Inst, T),
+    f: impl FnOnce(&mut FunctionCx<'_, 'tcx, M>, Option<Value>) -> (Inst, T),
 ) -> (Inst, T) {
     let ret_layout = fx.layout_of(fn_sig.output());
 
@@ -110,7 +110,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
 }
 
 /// Codegen a return instruction with the right return value(s) if any.
-pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Module>) {
     match get_pass_mode(fx.tcx, return_layout(fx)) {
         PassMode::NoPass | PassMode::ByRef { size: Some(_) } => {
             fx.bcx.ins().return_(&[]);

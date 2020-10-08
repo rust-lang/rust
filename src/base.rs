@@ -5,8 +5,8 @@ use rustc_middle::ty::adjustment::PointerCast;
 
 use crate::prelude::*;
 
-pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
-    cx: &mut crate::CodegenCx<'tcx, B>,
+pub(crate) fn trans_fn<'tcx>(
+    cx: &mut crate::CodegenCx<'tcx, impl Module>,
     instance: Instance<'tcx>,
     linkage: Linkage,
 ) {
@@ -183,7 +183,7 @@ pub(crate) fn verify_func(
     });
 }
 
-fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
     crate::constant::check_constants(fx);
 
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
@@ -417,7 +417,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 }
 
 fn trans_stmt<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     #[allow(unused_variables)] cur_block: Block,
     stmt: &Statement<'tcx>,
 ) {
@@ -543,7 +543,7 @@ fn trans_stmt<'tcx>(
                     let to_ty = fx.monomorphize(to_ty);
 
                     fn is_fat_ptr<'tcx>(
-                        fx: &FunctionCx<'_, 'tcx, impl Backend>,
+                        fx: &FunctionCx<'_, 'tcx, impl Module>,
                         ty: Ty<'tcx>,
                     ) -> bool {
                         ty.builtin_deref(true)
@@ -873,7 +873,7 @@ fn trans_stmt<'tcx>(
 }
 
 fn codegen_array_len<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     place: CPlace<'tcx>,
 ) -> Value {
     match *place.layout().ty.kind() {
@@ -893,7 +893,7 @@ fn codegen_array_len<'tcx>(
 }
 
 pub(crate) fn trans_place<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     place: Place<'tcx>,
 ) -> CPlace<'tcx> {
     let mut cplace = fx.get_local_place(place.local);
@@ -965,7 +965,7 @@ pub(crate) fn trans_place<'tcx>(
 }
 
 pub(crate) fn trans_operand<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     operand: &Operand<'tcx>,
 ) -> CValue<'tcx> {
     match operand {
@@ -978,7 +978,7 @@ pub(crate) fn trans_operand<'tcx>(
 }
 
 pub(crate) fn codegen_panic<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     msg_str: &str,
     span: Span,
 ) {
@@ -995,7 +995,7 @@ pub(crate) fn codegen_panic<'tcx>(
 }
 
 pub(crate) fn codegen_panic_inner<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     lang_item: rustc_hir::LangItem,
     args: &[Value],
     span: Span,

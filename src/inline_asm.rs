@@ -9,7 +9,7 @@ use rustc_middle::mir::InlineAsmOperand;
 use rustc_target::asm::*;
 
 pub(crate) fn codegen_inline_asm<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     _span: Span,
     template: &[InlineAsmTemplatePiece],
     operands: &[InlineAsmOperand<'tcx>],
@@ -203,7 +203,7 @@ fn generate_asm_wrapper(
 }
 
 fn call_inline_asm<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     asm_name: &str,
     slot_size: Size,
     inputs: Vec<(InlineAsmReg, Size, Value)>,

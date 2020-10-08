@@ -9,7 +9,7 @@ use rustc_span::symbol::sym;
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
     tcx: TyCtxt<'_>,
-    module: &mut Module<impl Backend + 'static>,
+    module: &mut impl Module,
     unwind_context: &mut UnwindContext<'_>,
 ) -> bool {
     let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
@@ -27,7 +27,7 @@ pub(crate) fn codegen(
 }
 
 fn codegen_inner(
-    module: &mut Module<impl Backend + 'static>,
+    module: &mut impl Module,
     unwind_context: &mut UnwindContext<'_>,
     kind: AllocatorKind,
 ) {

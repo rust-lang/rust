@@ -12,11 +12,13 @@ use rustc_middle::mir::mono::CodegenUnit;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{DebugInfo, OutputType};
 
+use cranelift_object::{ObjectModule, ObjectProduct};
+
 use crate::prelude::*;
 
-use crate::backend::{AddConstructor, Emit, WriteDebugInfo};
+use crate::backend::AddConstructor;
 
-fn new_module(tcx: TyCtxt<'_>, name: String) -> Module<crate::backend::Backend> {
+fn new_module(tcx: TyCtxt<'_>, name: String) -> ObjectModule {
     let module = crate::backend::make_module(tcx.sess, name);
     assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
     module
@@ -30,19 +32,15 @@ impl<HCX> HashStable<HCX> for ModuleCodegenResult {
     }
 }
 
-fn emit_module<B: Backend>(
+fn emit_module(
     tcx: TyCtxt<'_>,
     name: String,
     kind: ModuleKind,
-    mut module: Module<B>,
+    module: ObjectModule,
     debug: Option<DebugContext<'_>>,
     unwind_context: UnwindContext<'_>,
-    map_product: impl FnOnce(B::Product) -> B::Product,
-) -> ModuleCodegenResult
-where
-    B::Product: AddConstructor + Emit + WriteDebugInfo,
-{
-    module.finalize_definitions();
+    map_product: impl FnOnce(ObjectProduct) -> ObjectProduct,
+) -> ModuleCodegenResult {
     let mut product = module.finish();
 
     if let Some(mut debug) = debug {
@@ -56,7 +54,7 @@ where
     let tmp_file = tcx
         .output_filenames(LOCAL_CRATE)
         .temp_path(OutputType::Object, Some(&name));
-    let obj = product.emit();
+    let obj = product.object.write().unwrap();
     if let Err(err) = std::fs::write(&tmp_file, obj) {
         tcx.sess
             .fatal(&format!("error writing object file: {}", err));

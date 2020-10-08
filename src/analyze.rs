@@ -11,7 +11,7 @@ pub(crate) enum SsaKind {
     Ssa,
 }
 
-pub(crate) fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, SsaKind> {
+pub(crate) fn analyze(fx: &FunctionCx<'_, '_, impl Module>) -> IndexVec<Local, SsaKind> {
     let mut flag_map = fx
         .mir
         .local_decls

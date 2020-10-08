@@ -13,7 +13,7 @@ use crate::prelude::*;
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
 pub(crate) fn unsized_info<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
     old_info: Option<Value>,
@@ -45,7 +45,7 @@ pub(crate) fn unsized_info<'tcx>(
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
 fn unsize_thin_ptr<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     src: Value,
     src_layout: TyAndLayout<'tcx>,
     dst_layout: TyAndLayout<'tcx>,
@@ -89,7 +89,7 @@ fn unsize_thin_ptr<'tcx>(
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub(crate) fn coerce_unsized_into<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     src: CValue<'tcx>,
     dst: CPlace<'tcx>,
 ) {
@@ -142,7 +142,7 @@ pub(crate) fn coerce_unsized_into<'tcx>(
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs
 
 pub(crate) fn size_and_align_of_dst<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     layout: TyAndLayout<'tcx>,
     info: Value,
 ) -> (Value, Value) {

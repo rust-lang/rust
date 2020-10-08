@@ -108,9 +108,7 @@ mod prelude {
     pub(crate) use cranelift_codegen::isa::{self, CallConv};
     pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
-    pub(crate) use cranelift_module::{
-        self, Backend, DataContext, DataId, FuncId, Linkage, Module,
-    };
+    pub(crate) use cranelift_module::{self, DataContext, DataId, FuncId, Linkage, Module};
 
     pub(crate) use crate::abi::*;
     pub(crate) use crate::base::{trans_operand, trans_place};
@@ -131,9 +129,9 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-struct CodegenCx<'tcx, B: Backend + 'static> {
+struct CodegenCx<'tcx, M: Module> {
     tcx: TyCtxt<'tcx>,
-    module: Module<B>,
+    module: M,
     global_asm: String,
     constants_cx: ConstantCx,
     cached_context: Context,
@@ -142,8 +140,8 @@ struct CodegenCx<'tcx, B: Backend + 'static> {
     unwind_context: UnwindContext<'tcx>,
 }
 
-impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
-    fn new(tcx: TyCtxt<'tcx>, module: Module<B>, debug_info: bool) -> Self {
+impl<'tcx, M: Module> CodegenCx<'tcx, M> {
+    fn new(tcx: TyCtxt<'tcx>, module: M, debug_info: bool) -> Self {
         let unwind_context = UnwindContext::new(tcx, module.isa());
         let debug_context = if debug_info {
             Some(DebugContext::new(tcx, module.isa()))
@@ -162,14 +160,7 @@ impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
         }
     }
 
-    fn finalize(
-        mut self,
-    ) -> (
-        Module<B>,
-        String,
-        Option<DebugContext<'tcx>>,
-        UnwindContext<'tcx>,
-    ) {
+    fn finalize(mut self) -> (M, String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
         self.constants_cx.finalize(self.tcx, &mut self.module);
         (
             self.module,
@@ -352,8 +343,6 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(CraneliftCodegenBackend {
-        config: BackendConfig {
-            use_jit: false,
-        }
+        config: BackendConfig { use_jit: false },
     })
 }

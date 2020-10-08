@@ -204,12 +204,12 @@ pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx
     }
 }
 
-fn simd_for_each_lane<'tcx, B: Backend>(
-    fx: &mut FunctionCx<'_, 'tcx, B>,
+fn simd_for_each_lane<'tcx, M: Module>(
+    fx: &mut FunctionCx<'_, 'tcx, M>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
     f: impl Fn(
-        &mut FunctionCx<'_, 'tcx, B>,
+        &mut FunctionCx<'_, 'tcx, M>,
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
         Value,
@@ -231,13 +231,13 @@ fn simd_for_each_lane<'tcx, B: Backend>(
     }
 }
 
-fn simd_pair_for_each_lane<'tcx, B: Backend>(
-    fx: &mut FunctionCx<'_, 'tcx, B>,
+fn simd_pair_for_each_lane<'tcx, M: Module>(
+    fx: &mut FunctionCx<'_, 'tcx, M>,
     x: CValue<'tcx>,
     y: CValue<'tcx>,
     ret: CPlace<'tcx>,
     f: impl Fn(
-        &mut FunctionCx<'_, 'tcx, B>,
+        &mut FunctionCx<'_, 'tcx, M>,
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
         Value,
@@ -263,7 +263,7 @@ fn simd_pair_for_each_lane<'tcx, B: Backend>(
 }
 
 fn bool_to_zero_or_max_uint<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     layout: TyAndLayout<'tcx>,
     val: Value,
 ) -> CValue<'tcx> {
@@ -395,7 +395,7 @@ macro simd_flt_binop($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
 }
 
 pub(crate) fn codegen_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,

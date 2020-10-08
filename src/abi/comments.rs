@@ -10,14 +10,14 @@ use cranelift_codegen::entity::EntityRef;
 use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
-pub(super) fn add_args_header_comment(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+pub(super) fn add_args_header_comment(fx: &mut FunctionCx<'_, '_, impl Module>) {
     fx.add_global_comment(format!(
         "kind  loc.idx   param    pass mode                            ty"
     ));
 }
 
 pub(super) fn add_arg_comment<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     kind: &str,
     local: Option<mir::Local>,
     local_field: Option<usize>,
@@ -54,7 +54,7 @@ pub(super) fn add_arg_comment<'tcx>(
     ));
 }
 
-pub(super) fn add_locals_header_comment(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+pub(super) fn add_locals_header_comment(fx: &mut FunctionCx<'_, '_, impl Module>) {
     fx.add_global_comment(String::new());
     fx.add_global_comment(format!(
         "kind  local ty                              size align (abi,pref)"
@@ -62,7 +62,7 @@ pub(super) fn add_locals_header_comment(fx: &mut FunctionCx<'_, '_, impl Backend
 }
 
 pub(super) fn add_local_place_comments<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     place: CPlace<'tcx>,
     local: Local,
 ) {
