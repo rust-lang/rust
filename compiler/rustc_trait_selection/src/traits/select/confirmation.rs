@@ -73,6 +73,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(ImplSource::Param(obligations))
             }
 
+            ObjectCandidate(idx) => {
+                let data = self.confirm_object_candidate(obligation, idx)?;
+                Ok(ImplSource::Object(data))
+            }
+
             ClosureCandidate => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
                 Ok(ImplSource::Closure(vtable_closure))
@@ -95,11 +100,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TraitAliasCandidate(alias_def_id) => {
                 let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
                 Ok(ImplSource::TraitAlias(data))
-            }
-
-            ObjectCandidate => {
-                let data = self.confirm_object_candidate(obligation);
-                Ok(ImplSource::Object(data))
             }
 
             BuiltinObjectCandidate => {
@@ -365,9 +365,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_object_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> ImplSourceObjectData<'tcx, PredicateObligation<'tcx>> {
-        debug!(?obligation, "confirm_object_candidate");
+        index: usize,
+    ) -> Result<ImplSourceObjectData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
+        debug!(?obligation, ?index, "confirm_object_candidate");
 
         let trait_predicate =
             self.infcx.replace_bound_vars_with_placeholders(&obligation.predicate);
@@ -393,43 +394,39 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             })
             .with_self_ty(self.tcx(), self_ty);
 
-        let mut upcast_trait_ref = None;
         let mut nested = vec![];
-        let vtable_base;
 
-        {
-            // We want to find the first supertrait in the list of
-            // supertraits that we can unify with, and do that
-            // unification. We know that there is exactly one in the list
-            // where we can unify, because otherwise select would have
-            // reported an ambiguity. (When we do find a match, also
-            // record it for later.)
-            let nonmatching = util::supertraits(tcx, ty::Binder::dummy(object_trait_ref))
-                .take_while(|&t| {
-                    match self.infcx.commit_if_ok(|_| {
-                        self.infcx
-                            .at(&obligation.cause, obligation.param_env)
-                            .sup(obligation_trait_ref, t)
-                            .map(|InferOk { obligations, .. }| obligations)
-                            .map_err(|_| ())
-                    }) {
-                        Ok(obligations) => {
-                            upcast_trait_ref = Some(t);
-                            nested.extend(obligations);
-                            false
-                        }
-                        Err(_) => true,
-                    }
-                });
+        let mut supertraits = util::supertraits(tcx, ty::Binder::dummy(object_trait_ref));
 
-            // Additionally, for each of the non-matching predicates that
-            // we pass over, we sum up the set of number of vtable
-            // entries, so that we can compute the offset for the selected
-            // trait.
-            vtable_base = nonmatching.map(|t| super::util::count_own_vtable_entries(tcx, t)).sum();
-        }
+        // For each of the non-matching predicates that
+        // we pass over, we sum up the set of number of vtable
+        // entries, so that we can compute the offset for the selected
+        // trait.
+        let vtable_base = supertraits
+            .by_ref()
+            .take(index)
+            .map(|t| super::util::count_own_vtable_entries(tcx, t))
+            .sum();
 
-        let upcast_trait_ref = upcast_trait_ref.unwrap();
+        let unnormalized_upcast_trait_ref =
+            supertraits.next().expect("supertraits iterator no longer has as many elements");
+
+        let upcast_trait_ref = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            &unnormalized_upcast_trait_ref,
+            &mut nested,
+        );
+
+        nested.extend(self.infcx.commit_if_ok(|_| {
+            self.infcx
+                .at(&obligation.cause, obligation.param_env)
+                .sup(obligation_trait_ref, upcast_trait_ref)
+                .map(|InferOk { obligations, .. }| obligations)
+                .map_err(|_| Unimplemented)
+        })?);
 
         // Check supertraits hold. This is so that their associated type bounds
         // will be checked in the code below.
@@ -495,7 +492,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         debug!(?nested, "object nested obligations");
-        ImplSourceObjectData { upcast_trait_ref, vtable_base, nested }
+        Ok(ImplSourceObjectData { upcast_trait_ref, vtable_base, nested })
     }
 
     fn confirm_fn_pointer_candidate(
