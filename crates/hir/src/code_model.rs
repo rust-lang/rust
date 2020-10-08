@@ -35,7 +35,7 @@ use hir_ty::{
     traits::SolutionVariables,
     ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
     InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, Ty,
-    TyDefId, TyKind, TypeCtor, TyLoweringContext,
+    TyDefId, TyKind, TypeCtor,
 };
 use rustc_hash::FxHashSet;
 use stdx::impl_from;
@@ -185,15 +185,6 @@ impl_from!(
     BuiltinType
     for ModuleDef
 );
-
-impl From<MethodOwner> for ModuleDef {
-    fn from(mowner: MethodOwner) -> Self {
-        match mowner {
-            MethodOwner::Trait(t) => t.into(),
-            MethodOwner::Adt(t) => t.into(),
-        }
-    }
-}
 
 impl From<VariantDef> for ModuleDef {
     fn from(var: VariantDef) -> Self {
@@ -778,35 +769,7 @@ impl Function {
     pub fn has_body(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).has_body
     }
-
-    /// If this function is a method, the trait or type where it is declared.
-    pub fn method_owner(self, db: &dyn HirDatabase) -> Option<MethodOwner> {
-        match self.as_assoc_item(db).map(|assoc| assoc.container(db)) {
-            Some(AssocItemContainer::Trait(t)) => Some(t.into()),
-            Some(AssocItemContainer::ImplDef(imp)) => {
-                let resolver = ModuleId::from(imp.module(db)).resolver(db.upcast());
-                let ctx = TyLoweringContext::new(db, &resolver);
-                let adt = Ty::from_hir(
-                    &ctx,
-                    &imp.target_trait(db).unwrap_or_else(|| imp.target_type(db)),
-                )
-                .as_adt()
-                .map(|t| t.0)
-                .unwrap();
-                Some(Adt::from(adt).into())
-            }
-            None => None,
-        }
-    }
 }
-
-#[derive(Debug)]
-pub enum MethodOwner {
-    Trait(Trait),
-    Adt(Adt),
-}
-
-impl_from!(Trait, Adt for MethodOwner);
 
 // Note: logically, this belongs to `hir_ty`, but we are not using it there yet.
 pub enum Access {

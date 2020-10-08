@@ -14,8 +14,8 @@ use test_utils::mark;
 
 use crate::{
     display::{macro_label, ShortLabel, ToNav, TryToNav},
-    markdown_remove::remove_markdown,
     doc_links::{remove_links, rewrite_links},
+    markdown_remove::remove_markdown,
     markup::Markup,
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,

@@ -3,13 +3,14 @@
 use std::iter::once;
 
 use itertools::Itertools;
-use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
 use pulldown_cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
+use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
 use url::Url;
 
 use hir::{
     db::{DefDatabase, HirDatabase},
-    Adt, AsName, AssocItem, Crate, Field, HasAttrs, ItemInNs, ModuleDef, AssocItemContainer, AsAssocItem
+    Adt, AsAssocItem, AsName, AssocItem, AssocItemContainer, Crate, Field, HasAttrs, ItemInNs,
+    ModuleDef,
 };
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
@@ -97,18 +98,23 @@ pub fn remove_links(markdown: &str) -> String {
 // BUG: For Option::Some
 // Returns https://doc.rust-lang.org/nightly/core/prelude/v1/enum.Option.html#variant.Some
 // Instead of https://doc.rust-lang.org/nightly/core/option/enum.Option.html
-// This could be worked around by turning the `EnumVariant` into `Enum` before attempting resolution,
-// but it's really just working around the problem. Ideally we need to implement a slightly different
-// version of import map which follows the same process as rustdoc. Otherwise there'll always be some
-// edge cases where we select the wrong import path.
+//
+// This should cease to be a problem if RFC2988 (Stable Rustdoc URLs) is implemented
+// https://github.com/rust-lang/rfcs/pull/2988
 fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
     // Get the outermost definition for the moduledef. This is used to resolve the public path to the type,
     // then we can join the method, field, etc onto it if required.
     let target_def: ModuleDef = match definition {
         Definition::ModuleDef(moddef) => match moddef {
-            ModuleDef::Function(f) => {
-                f.method_owner(db).map(|mowner| mowner.into()).unwrap_or_else(|| f.clone().into())
-            }
+            ModuleDef::Function(f) => f
+                .as_assoc_item(db)
+                .and_then(|assoc| match assoc.container(db) {
+                    AssocItemContainer::Trait(t) => Some(t.into()),
+                    AssocItemContainer::ImplDef(impld) => {
+                        impld.target_ty(db).as_adt().map(|adt| adt.into())
+                    }
+                })
+                .unwrap_or_else(|| f.clone().into()),
             moddef => moddef,
         },
         Definition::Field(f) => f.parent_def(db).into(),
@@ -211,7 +217,10 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
 }
 
 /// Retrieve a link to documentation for the given symbol.
-pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Option<DocumentationLink> {
+pub(crate) fn external_docs(
+    db: &RootDatabase,
+    position: &FilePosition,
+) -> Option<DocumentationLink> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best(file.token_at_offset(position.offset))?;
@@ -392,8 +401,10 @@ fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) 
         FieldOrAssocItem::Field(field) => format!("#structfield.{}", field.name(db)),
         FieldOrAssocItem::AssocItem(assoc) => match assoc {
             AssocItem::Function(function) => {
-                let is_trait_method =
-                    matches!(function.as_assoc_item(db).map(|assoc| assoc.container(db)), Some(AssocItemContainer::Trait(..)));
+                let is_trait_method = matches!(
+                    function.as_assoc_item(db).map(|assoc| assoc.container(db)),
+                    Some(AssocItemContainer::Trait(..))
+                );
                 // This distinction may get more complicated when specialisation is available.
                 // Rustdoc makes this decision based on whether a method 'has defaultness'.
                 // Currently this is only the case for provided trait methods.
