@@ -11,7 +11,7 @@ use ide_db::{defs::Definition, RootDatabase};
 
 use hir::{
     db::{DefDatabase, HirDatabase},
-    Adt, AsName, AssocItem, Crate, Field, HasAttrs, ItemInNs, MethodOwner, ModuleDef,
+    Adt, AsName, AssocItem, Crate, Field, HasAttrs, ItemInNs, MethodOwner, ModuleDef, AssocItemContainer, AsAssocItem
 };
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
@@ -219,7 +219,7 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
 }
 
 /// Retrieve a link to documentation for the given symbol.
-pub fn external_docs(db: &RootDatabase, position: &FilePosition) -> Option<DocumentationLink> {
+pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Option<DocumentationLink> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best(file.token_at_offset(position.offset))?;
@@ -401,7 +401,7 @@ fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) 
         FieldOrAssocItem::AssocItem(assoc) => match assoc {
             AssocItem::Function(function) => {
                 let is_trait_method =
-                    matches!(function.method_owner(db), Some(MethodOwner::Trait(..)));
+                    matches!(function.as_assoc_item(db).map(|assoc| assoc.container(db)), Some(AssocItemContainer::Trait(..)));
                 // This distinction may get more complicated when specialisation is available.
                 // Rustdoc makes this decision based on whether a method 'has defaultness'.
                 // Currently this is only the case for provided trait methods.
