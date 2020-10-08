@@ -10,6 +10,7 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         target_os: "hermit".to_string(),
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         executables: true,
         has_elf_tls: true,

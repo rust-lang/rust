@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions};
 
 // This target is for musl Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)
@@ -16,7 +16,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
 
         // Most of these settings are copied from the thumbv7neon_unknown_linux_gnueabihf
         // target.

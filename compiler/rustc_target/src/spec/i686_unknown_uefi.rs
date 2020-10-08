@@ -5,7 +5,7 @@
 // The cdecl ABI is used. It differs from the stdcall or fastcall ABI.
 // "i686-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target};
+use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::uefi_msvc_base::opts();
@@ -83,7 +83,6 @@ pub fn target() -> Target {
             i64:64-f80:32-n8:16:32-a:0:32-S32"
             .to_string(),
         arch: "x86".to_string(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Link),
 
         options: base,
     }

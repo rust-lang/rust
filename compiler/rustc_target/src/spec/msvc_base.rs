@@ -18,6 +18,7 @@ pub fn opts() -> TargetOptions {
     pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Link), pre_link_args_msvc);
 
     TargetOptions {
+        linker_flavor: LinkerFlavor::Msvc,
         executables: true,
         is_like_windows: true,
         is_like_msvc: true,

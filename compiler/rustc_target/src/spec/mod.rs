@@ -673,9 +673,6 @@ pub struct Target {
     pub arch: String,
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
-    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
-    /// on the command line.
-    pub linker_flavor: LinkerFlavor,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -709,6 +706,9 @@ pub struct TargetOptions {
     pub target_env: String,
     /// Vendor name to use for conditional compilation. Defaults to "unknown".
     pub target_vendor: String,
+    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
+    /// on the command line. Defaults to `LinkerFlavor::Gcc`.
+    pub linker_flavor: LinkerFlavor,
 
     /// Linker to invoke
     pub linker: Option<String>,
@@ -993,6 +993,7 @@ impl Default for TargetOptions {
             target_os: "none".to_string(),
             target_env: String::new(),
             target_vendor: "unknown".to_string(),
+            linker_flavor: LinkerFlavor::Gcc,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
@@ -1161,8 +1162,6 @@ impl Target {
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
-            linker_flavor: LinkerFlavor::from_str(&*get_req_field("linker-flavor")?)
-                .ok_or_else(|| format!("linker flavor must be {}", LinkerFlavor::one_of()))?,
             options: Default::default(),
         };
 
@@ -1314,11 +1313,13 @@ impl Target {
             } );
             ($key_name:ident, LinkerFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).and_then(|o| o.as_string().map(|s| {
-                    LinkerFlavor::from_str(&s).ok_or_else(|| {
-                        Err(format!("'{}' is not a valid value for linker-flavor. \
-                                     Use 'em', 'gcc', 'ld' or 'msvc.", s))
-                    })
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match LinkerFlavor::from_str(s) {
+                        Some(linker_flavor) => base.options.$key_name = linker_flavor,
+                        _ => return Some(Err(format!("'{}' is not a valid value for linker-flavor. \
+                                                      Use {}", s, LinkerFlavor::one_of()))),
+                    }
+                    Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
             ($key_name:ident, crt_objects_fallback) => ( {
@@ -1410,6 +1411,7 @@ impl Target {
         key!(target_os = "os");
         key!(target_env = "env");
         key!(target_vendor = "vendor");
+        key!(linker_flavor, LinkerFlavor)?;
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
         key!(pre_link_objects, link_objects);
@@ -1640,7 +1642,6 @@ impl ToJson for Target {
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(arch);
         target_val!(data_layout);
-        target_val!(linker_flavor);
 
         target_option_val!(is_builtin);
         target_option_val!(target_endian);
@@ -1648,6 +1649,7 @@ impl ToJson for Target {
         target_option_val!(target_os, "os");
         target_option_val!(target_env, "env");
         target_option_val!(target_vendor, "vendor");
+        target_option_val!(linker_flavor);
         target_option_val!(linker);
         target_option_val!(lld_flavor);
         target_option_val!(pre_link_objects);

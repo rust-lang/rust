@@ -58,6 +58,7 @@ pub fn target() -> Target {
         target_os: "unknown".into(),
         target_env: "sgx".into(),
         target_vendor: "fortanix".into(),
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         dynamic_linking: false,
         executables: true,
         linker_is_gnu: true,
@@ -83,7 +84,6 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
             .into(),
         arch: "x86_64".into(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: opts,
     }
 }

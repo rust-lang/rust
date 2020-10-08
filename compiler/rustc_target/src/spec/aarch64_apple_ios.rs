@@ -1,5 +1,5 @@
 use super::apple_sdk_base::{opts, Arch};
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     let base = opts("ios", Arch::Arm64);
@@ -8,7 +8,6 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
         arch: "aarch64".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a7".to_string(),
             eliminate_frame_pointer: false,

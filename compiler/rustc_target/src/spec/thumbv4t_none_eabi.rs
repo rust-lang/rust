@@ -25,8 +25,8 @@ pub fn target() -> Target {
          * All other elements are default
          */
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
-        linker_flavor: LinkerFlavor::Ld,
         options: TargetOptions {
+            linker_flavor: LinkerFlavor::Ld,
             linker: Some("arm-none-eabi-ld".to_string()),
             linker_is_gnu: true,
 

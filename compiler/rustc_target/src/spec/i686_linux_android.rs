@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::Target;
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.
@@ -20,7 +20,6 @@ pub fn target() -> Target {
             f64:32:64-f80:32-n8:16:32-S128"
             .to_string(),
         arch: "x86".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     }
 }

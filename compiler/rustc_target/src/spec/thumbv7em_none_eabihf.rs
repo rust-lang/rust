@@ -8,7 +8,7 @@
 //
 // To opt into double precision hardware support, use the `-C target-feature=+fp64` flag.
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -16,7 +16,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
             // `+vfp4` is the lowest common denominator between the Cortex-M4 (vfp4-16) and the

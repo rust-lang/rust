@@ -12,7 +12,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-i64:64-f128:64-n32-S64".to_string(),
         arch: "sparc".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     }
 }

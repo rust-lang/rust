@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::linux_base::opts();
@@ -11,7 +11,6 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "E-m:e-i64:64-n32:64-S128".to_string(),
         arch: "sparc64".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     }
 }

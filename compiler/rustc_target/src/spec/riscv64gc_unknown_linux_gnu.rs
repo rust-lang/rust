@@ -1,4 +1,4 @@
-use crate::spec::{CodeModel, LinkerFlavor, Target, TargetOptions};
+use crate::spec::{CodeModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -6,7 +6,6 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n64-S128".to_string(),
         arch: "riscv64".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             unsupported_abis: super::riscv_base::unsupported_abis(),
             code_model: Some(CodeModel::Medium),

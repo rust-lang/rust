@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, Target};
+use crate::spec::{LinkArgs, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
@@ -28,7 +28,6 @@ pub fn target() -> Target {
         )
         .to_string(),
         arch: "hexagon".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     }
 }

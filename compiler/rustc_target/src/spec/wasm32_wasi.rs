@@ -80,6 +80,7 @@ pub fn target() -> Target {
 
     options.target_os = "wasi".to_string();
     options.target_vendor = String::new();
+    options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
     options
         .pre_link_args
         .entry(LinkerFlavor::Gcc)
@@ -111,7 +112,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-i64:64-n32:64-S128".to_string(),
         arch: "wasm32".to_string(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Wasm),
         options,
     }
 }

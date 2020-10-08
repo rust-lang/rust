@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::l4re_base::opts();
@@ -11,7 +11,6 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
             .to_string(),
         arch: "x86_64".to_string(),
-        linker_flavor: LinkerFlavor::Ld,
         options: base,
     }
 }

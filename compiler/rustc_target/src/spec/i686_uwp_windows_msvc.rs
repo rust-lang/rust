@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::windows_uwp_msvc_base::opts();
@@ -13,7 +13,6 @@ pub fn target() -> Target {
             i64:64-f80:32-n8:16:32-a:0:32-S32"
             .to_string(),
         arch: "x86".to_string(),
-        linker_flavor: LinkerFlavor::Msvc,
         options: base,
     }
 }

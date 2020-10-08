@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -6,7 +6,6 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".to_string(),
         arch: "mips64".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             // NOTE(mips64r6) matches C toolchain
             cpu: "mips64r6".to_string(),

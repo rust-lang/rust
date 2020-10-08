@@ -7,9 +7,9 @@ pub fn target() -> Target {
         llvm_target: "riscv32".to_string(),
         pointer_width: 32,
         arch: "riscv32".to_string(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
+            linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             linker: Some("rust-lld".to_string()),
             cpu: "generic-rv32".to_string(),
             max_atomic_width: Some(32),

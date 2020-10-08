@@ -38,6 +38,7 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         target_os: "uefi".to_string(),
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Link),
         disable_redzone: true,
         exe_suffix: ".efi".to_string(),
         allows_weak_linkage: false,

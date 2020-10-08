@@ -14,7 +14,6 @@ pub fn target() -> Target {
             f64:32:64-f80:32-n8:16:32-S128"
             .to_string(),
         arch: "x86".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "__mcount".to_string(), ..base },
     }
 }
