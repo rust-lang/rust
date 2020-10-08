@@ -10,7 +10,6 @@ pub fn target(target_cpu: String) -> Target {
         llvm_target: "avr-unknown-unknown".to_string(),
         pointer_width: 16,
         linker_flavor: LinkerFlavor::Gcc,
-        target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
         options: TargetOptions {
             target_c_int_width: "16".to_string(),

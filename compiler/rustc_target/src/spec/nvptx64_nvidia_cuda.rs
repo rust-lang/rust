@@ -8,7 +8,6 @@ pub fn target() -> Target {
         llvm_target: "nvptx64-nvidia-cuda".to_string(),
 
         target_vendor: "nvidia".to_string(),
-        target_env: String::new(),
 
         linker_flavor: LinkerFlavor::PtxLinker,
 

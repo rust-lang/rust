@@ -8,7 +8,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-Fi8-f64:32:64-v64:32:64-v128:32:128-a:0:32-n32-S32".to_string(),
         arch: "arm".to_string(),
-        target_env: String::new(),
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {

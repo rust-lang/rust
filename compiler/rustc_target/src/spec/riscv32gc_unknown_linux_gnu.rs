@@ -4,7 +4,6 @@ pub fn target() -> Target {
     Target {
         llvm_target: "riscv32-unknown-linux-gnu".to_string(),
         pointer_width: 32,
-        target_env: "gnu".to_string(),
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".to_string(),
         arch: "riscv32".to_string(),
         target_vendor: "unknown".to_string(),

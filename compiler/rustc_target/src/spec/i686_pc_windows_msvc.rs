@@ -27,7 +27,6 @@ pub fn target() -> Target {
             i64:64-f80:32-n8:16:32-a:0:32-S32"
             .to_string(),
         arch: "x86".to_string(),
-        target_env: "msvc".to_string(),
         target_vendor: "pc".to_string(),
         linker_flavor: LinkerFlavor::Msvc,
         options: base,

@@ -65,6 +65,7 @@ mod l4re_base;
 mod linux_base;
 mod linux_kernel_base;
 mod linux_musl_base;
+mod linux_uclibc_base;
 mod msvc_base;
 mod netbsd_base;
 mod openbsd_base;
@@ -667,8 +668,6 @@ pub struct Target {
     pub llvm_target: String,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
-    /// Environment name to use for conditional compilation.
-    pub target_env: String,
     /// Vendor name to use for conditional compilation.
     pub target_vendor: String,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
@@ -708,6 +707,8 @@ pub struct TargetOptions {
     pub target_c_int_width: String,
     /// OS name to use for conditional compilation. Defaults to "none".
     pub target_os: String,
+    /// Environment name to use for conditional compilation. Defaults to "".
+    pub target_env: String,
 
     /// Linker to invoke
     pub linker: Option<String>,
@@ -990,6 +991,7 @@ impl Default for TargetOptions {
             target_endian: "little".to_string(),
             target_c_int_width: "32".to_string(),
             target_os: "none".to_string(),
+            target_env: String::new(),
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
@@ -1165,7 +1167,6 @@ impl Target {
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
-            target_env: get_opt_field("env", ""),
             target_vendor: get_opt_field("vendor", "unknown"),
             linker_flavor: LinkerFlavor::from_str(&*get_req_field("linker-flavor")?)
                 .ok_or_else(|| format!("linker flavor must be {}", LinkerFlavor::one_of()))?,
@@ -1414,6 +1415,7 @@ impl Target {
         key!(target_endian);
         key!(target_c_int_width);
         key!(target_os = "os");
+        key!(target_env = "env");
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
         key!(pre_link_objects, link_objects);
@@ -1643,15 +1645,15 @@ impl ToJson for Target {
         target_val!(llvm_target);
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(arch);
-        target_val!(target_env, "env");
         target_val!(target_vendor, "vendor");
         target_val!(data_layout);
         target_val!(linker_flavor);
 
+        target_option_val!(is_builtin);
         target_option_val!(target_endian);
         target_option_val!(target_c_int_width);
         target_option_val!(target_os, "os");
-        target_option_val!(is_builtin);
+        target_option_val!(target_env, "env");
         target_option_val!(linker);
         target_option_val!(lld_flavor);
         target_option_val!(pre_link_objects);

@@ -63,6 +63,7 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         target_os: "windows".to_string(),
+        target_env: "gnu".to_string(),
         // FIXME(#13846) this should be enabled for windows
         function_sections: false,
         linker: Some("gcc".to_string()),

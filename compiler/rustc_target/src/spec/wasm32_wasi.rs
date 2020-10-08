@@ -108,7 +108,6 @@ pub fn target() -> Target {
     Target {
         llvm_target: "wasm32-wasi".to_string(),
         pointer_width: 32,
-        target_env: String::new(),
         target_vendor: String::new(),
         data_layout: "e-m:e-p:32:32-i64:64-n32:64-S128".to_string(),
         arch: "wasm32".to_string(),

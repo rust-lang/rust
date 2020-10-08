@@ -5,6 +5,7 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         target_os: "windows".to_string(),
+        target_env: "msvc".to_string(),
         dynamic_linking: true,
         dll_prefix: String::new(),
         dll_suffix: ".dll".to_string(),

@@ -28,7 +28,6 @@ pub fn target() -> Target {
         )
         .to_string(),
         arch: "hexagon".to_string(),
-        target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
