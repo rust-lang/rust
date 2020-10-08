@@ -319,9 +319,9 @@ impl Command {
 
         let mut p = Process { pid: 0, status: None };
 
-        struct PosixSpawnFileActions(MaybeUninit<libc::posix_spawn_file_actions_t>);
+        struct PosixSpawnFileActions<'a>(&'a mut MaybeUninit<libc::posix_spawn_file_actions_t>);
 
-        impl Drop for PosixSpawnFileActions {
+        impl Drop for PosixSpawnFileActions<'_> {
             fn drop(&mut self) {
                 unsafe {
                     libc::posix_spawn_file_actions_destroy(self.0.as_mut_ptr());
@@ -329,9 +329,9 @@ impl Command {
             }
         }
 
-        struct PosixSpawnattr(MaybeUninit<libc::posix_spawnattr_t>);
+        struct PosixSpawnattr<'a>(&'a mut MaybeUninit<libc::posix_spawnattr_t>);
 
-        impl Drop for PosixSpawnattr {
+        impl Drop for PosixSpawnattr<'_> {
             fn drop(&mut self) {
                 unsafe {
                     libc::posix_spawnattr_destroy(self.0.as_mut_ptr());
@@ -344,11 +344,13 @@ impl Command {
         }
 
         unsafe {
-            let mut file_actions = PosixSpawnFileActions(MaybeUninit::uninit());
-            let mut attrs = PosixSpawnattr(MaybeUninit::uninit());
+            let mut attrs = MaybeUninit::uninit();
+            cvt_nz(libc::posix_spawnattr_init(attrs.as_mut_ptr()))?;
+            let attrs = PosixSpawnattr(&mut attrs);
 
-            libc::posix_spawnattr_init(attrs.0.as_mut_ptr());
-            libc::posix_spawn_file_actions_init(file_actions.0.as_mut_ptr());
+            let mut file_actions = MaybeUninit::uninit();
+            cvt_nz(libc::posix_spawn_file_actions_init(file_actions.as_mut_ptr()))?;
+            let file_actions = PosixSpawnFileActions(&mut file_actions);
 
             if let Some(fd) = stdio.stdin.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
