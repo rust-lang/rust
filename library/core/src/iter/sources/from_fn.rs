@@ -15,6 +15,7 @@ use crate::fmt;
 /// how the iterator is used, this may require specifying the [`move`] keyword on the closure.
 ///
 /// [`move`]: ../../std/keyword.move.html
+/// [`FusedIterator`]: crate::iter::FusedIterator
 ///
 /// # Examples
 ///

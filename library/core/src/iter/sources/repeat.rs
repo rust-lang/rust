@@ -11,6 +11,8 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// or if you do not want to keep the repeated element in memory, you can
 /// instead use the [`repeat_with()`] function.
 ///
+/// [`repeat_with()`]: crate::iter::repeat_with
+///
 /// # Examples
 ///
 /// Basic usage:

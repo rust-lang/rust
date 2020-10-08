@@ -11,6 +11,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// Unlike [`once()`], this function will lazily generate the value on request.
 ///
 /// [`chain()`]: Iterator::chain
+/// [`once()`]: crate::iter::once
 ///
 /// # Examples
 ///

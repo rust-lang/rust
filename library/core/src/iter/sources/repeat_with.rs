@@ -16,6 +16,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// If you need `repeat_with()` to return a [`DoubleEndedIterator`],
 /// please open a GitHub issue explaining your use case.
 ///
+/// [`repeat()`]: crate::iter::repeat
 /// [`DoubleEndedIterator`]: crate::iter::DoubleEndedIterator
 ///
 /// # Examples
