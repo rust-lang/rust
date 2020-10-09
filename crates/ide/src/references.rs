@@ -406,6 +406,23 @@ enum Foo {
     }
 
     #[test]
+    fn test_find_all_refs_enum_var_field() {
+        check(
+            r#"
+enum Foo {
+    A,
+    B { field<|>: u8 },
+    C,
+}
+"#,
+            expect![[r#"
+                field RECORD_FIELD FileId(0) 26..35 26..31 Other
+
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_find_all_refs_two_modules() {
         check(
             r#"
