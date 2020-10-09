@@ -84,9 +84,9 @@ RUN riscv64-linux-gnu-gcc addentropy.c -o rootfs/addentropy -static
 # download and build the riscv bootloader
 RUN git clone https://github.com/riscv/riscv-pk
 WORKDIR /tmp/riscv-pk
-# nothing special about this revision: it is just master at the time of writing
-# v1.0.0 doesn't build
-RUN git checkout 5d9ed238e1cabfbca3c47f50d32894ce94bfc304
+# This revision fixes a fault in recent QEMU from 64-bit accesses to the PLIC
+# commits later than this one should work too
+RUN git checkout 7d8b7c0dab72108e3ea7bb7744d3f6cc907c7ef4
 RUN mkdir build && cd build && \
     ../configure --with-payload=/tmp/vmlinux --host=riscv64-linux-gnu && \
     make -j$(nproc) && \
