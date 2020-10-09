@@ -12,8 +12,9 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 
+use crate::defs::NameClass;
 use crate::{
-    defs::{classify_name_ref, Definition, NameRefClass},
+    defs::{classify_name, classify_name_ref, Definition, NameRefClass},
     RootDatabase,
 };
 
@@ -226,9 +227,9 @@ impl<'a> FindUsages<'a> {
 
         let search_scope = {
             let base = self.def.search_scope(sema.db);
-            match self.scope {
+            match &self.scope {
                 None => base,
-                Some(scope) => base.intersection(&scope),
+                Some(scope) => base.intersection(scope),
             }
         };
 
@@ -251,52 +252,81 @@ impl<'a> FindUsages<'a> {
                     continue;
                 }
 
-                let name_ref: ast::NameRef =
-                    match sema.find_node_at_offset_with_descend(&tree, offset) {
-                        Some(it) => it,
-                        None => continue,
-                    };
-
-                match classify_name_ref(&sema, &name_ref) {
-                    Some(NameRefClass::Definition(def)) if &def == self.def => {
-                        let kind = if is_record_lit_name_ref(&name_ref)
-                            || is_call_expr_name_ref(&name_ref)
-                        {
-                            ReferenceKind::StructLiteral
-                        } else {
-                            ReferenceKind::Other
-                        };
-
-                        let reference = Reference {
-                            file_range: sema.original_range(name_ref.syntax()),
-                            kind,
-                            access: reference_access(&def, &name_ref),
-                        };
-                        if sink(reference) {
+                match sema.find_node_at_offset_with_descend(&tree, offset) {
+                    Some(name_ref) => {
+                        if self.found_name_ref(&name_ref, sink) {
                             return;
                         }
                     }
-                    Some(NameRefClass::FieldShorthand { local, field }) => {
-                        let reference = match self.def {
-                            Definition::Field(_) if &field == self.def => Reference {
-                                file_range: self.sema.original_range(name_ref.syntax()),
-                                kind: ReferenceKind::FieldShorthandForField,
-                                access: reference_access(&field, &name_ref),
-                            },
-                            Definition::Local(l) if &local == l => Reference {
-                                file_range: self.sema.original_range(name_ref.syntax()),
-                                kind: ReferenceKind::FieldShorthandForLocal,
-                                access: reference_access(&Definition::Local(local), &name_ref),
-                            },
-                            _ => continue, // not a usage
-                        };
-                        if sink(reference) {
-                            return;
+                    None => match sema.find_node_at_offset_with_descend(&tree, offset) {
+                        Some(name) => {
+                            if self.found_name(&name, sink) {
+                                return;
+                            }
                         }
-                    }
-                    _ => {} // not a usage
+                        None => {}
+                    },
                 }
             }
+        }
+    }
+
+    fn found_name_ref(
+        &self,
+        name_ref: &ast::NameRef,
+        sink: &mut dyn FnMut(Reference) -> bool,
+    ) -> bool {
+        match classify_name_ref(self.sema, &name_ref) {
+            Some(NameRefClass::Definition(def)) if &def == self.def => {
+                let kind = if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref)
+                {
+                    ReferenceKind::StructLiteral
+                } else {
+                    ReferenceKind::Other
+                };
+
+                let reference = Reference {
+                    file_range: self.sema.original_range(name_ref.syntax()),
+                    kind,
+                    access: reference_access(&def, &name_ref),
+                };
+                sink(reference)
+            }
+            Some(NameRefClass::FieldShorthand { local, field }) => {
+                let reference = match self.def {
+                    Definition::Field(_) if &field == self.def => Reference {
+                        file_range: self.sema.original_range(name_ref.syntax()),
+                        kind: ReferenceKind::FieldShorthandForField,
+                        access: reference_access(&field, &name_ref),
+                    },
+                    Definition::Local(l) if &local == l => Reference {
+                        file_range: self.sema.original_range(name_ref.syntax()),
+                        kind: ReferenceKind::FieldShorthandForLocal,
+                        access: reference_access(&Definition::Local(local), &name_ref),
+                    },
+                    _ => return false, // not a usage
+                };
+                sink(reference)
+            }
+            _ => false, // not a usage
+        }
+    }
+
+    fn found_name(&self, name: &ast::Name, sink: &mut dyn FnMut(Reference) -> bool) -> bool {
+        match classify_name(self.sema, name) {
+            Some(NameClass::FieldShorthand { local: _, field }) => {
+                let reference = match self.def {
+                    Definition::Field(_) if &field == self.def => Reference {
+                        file_range: self.sema.original_range(name.syntax()),
+                        kind: ReferenceKind::FieldShorthandForField,
+                        // FIXME: mutable patterns should have `Write` access
+                        access: Some(ReferenceAccess::Read),
+                    },
+                    _ => return false, // not a usage
+                };
+                sink(reference)
+            }
+            _ => false, // not a usage
         }
     }
 }
