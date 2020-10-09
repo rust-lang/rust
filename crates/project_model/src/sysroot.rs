@@ -91,7 +91,7 @@ impl Sysroot {
 
         if sysroot.by_name("core").is_none() {
             let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
-                " (`RUST_SRC_PATH` might be set incorrectly)"
+                " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
             } else {
                 ""
             };
