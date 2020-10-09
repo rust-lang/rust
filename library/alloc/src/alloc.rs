@@ -26,8 +26,6 @@ extern "Rust" {
     fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
     #[rustc_allocator_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
-    #[rustc_allocator_nounwind]
-    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
 /// The global memory allocator.
@@ -321,6 +319,16 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
         let layout = Layout::from_size_align_unchecked(size, align);
         Global.dealloc(ptr.cast().into(), layout)
     }
+}
+
+// # Allocation error handler
+
+extern "Rust" {
+    // This is the magic symbol to call the global alloc error handler.  rustc generates
+    // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
+    // default implementations below (`__rdl_oom`) otherwise.
+    #[rustc_allocator_nounwind]
+    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
 /// Abort on memory allocation error or failure.
