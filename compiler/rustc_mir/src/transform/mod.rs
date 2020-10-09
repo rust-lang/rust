@@ -413,6 +413,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &nrvo::RenameReturnPlace,
         &simplify::SimplifyLocals,
         &multiple_return_terminators::MultipleReturnTerminators,
+        &match_identity::MatchIdentitySimplification,
     ];
 
     // Optimizations to run even if mir optimizations have been disabled.
