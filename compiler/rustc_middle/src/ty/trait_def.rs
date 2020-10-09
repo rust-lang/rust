@@ -167,6 +167,41 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Applies function to every impl that could possibly match the self type `self_ty` and returns
+    /// the first non-none value.
+    pub fn find_map_relevant_impl<T, F: Fn(DefId) -> Option<T>>(
+        self,
+        def_id: DefId,
+        self_ty: Ty<'tcx>,
+        f: F,
+    ) -> Option<T> {
+        let impls = self.trait_impls_of(def_id);
+
+        for &impl_def_id in impls.blanket_impls.iter() {
+            if let result @ Some(_) = f(impl_def_id) {
+                return result;
+            }
+        }
+
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
+            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
+                for &impl_def_id in impls {
+                    if let result @ Some(_) = f(impl_def_id) {
+                        return result;
+                    }
+                }
+            }
+        } else {
+            for &impl_def_id in impls.non_blanket_impls.values().flatten() {
+                if let result @ Some(_) = f(impl_def_id) {
+                    return result;
+                }
+            }
+        }
+
+        None
+    }
+
     /// Returns an iterator containing all impls
     pub fn all_impls(self, def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
         let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(def_id);
