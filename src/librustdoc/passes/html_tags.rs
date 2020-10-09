@@ -4,11 +4,11 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::opts;
 use core::ops::Range;
-use std::iter::Peekable;
-use std::str::CharIndices;
 use pulldown_cmark::{Event, Parser};
 use rustc_feature::UnstableFeatures;
 use rustc_session::lint;
+use std::iter::Peekable;
+use std::str::CharIndices;
 
 pub const CHECK_INVALID_HTML_TAGS: Pass = Pass {
     name: "check-invalid-html-tags",
@@ -104,8 +104,7 @@ fn extract_html_tag(
             tag_name.push(c);
         } else {
             if !tag_name.is_empty() {
-                let mut r =
-                    Range { start: range.start + start_pos, end: range.start + pos };
+                let mut r = Range { start: range.start + start_pos, end: range.start + pos };
                 if c == '>' {
                     // In case we have a tag without attribute, we can consider the span to
                     // refer to it fully.
@@ -143,6 +142,27 @@ fn extract_html_tag(
     }
 }
 
+fn extract_html_comment(
+    text: &str,
+    range: &Range<usize>,
+    start_pos: usize,
+    iter: &mut Peekable<CharIndices<'_>>,
+    f: &impl Fn(&str, &Range<usize>),
+) {
+    // We first skip the "!--" part.
+    let mut iter = iter.skip(3);
+    while let Some((pos, c)) = iter.next() {
+        if c == '-' && text[pos..].starts_with("-->") {
+            // All good, we can leave!
+            return;
+        }
+    }
+    f(
+        "Unclosed HTML comment",
+        &Range { start: range.start + start_pos, end: range.start + start_pos + 3 },
+    );
+}
+
 fn extract_tags(
     tags: &mut Vec<(String, Range<usize>)>,
     text: &str,
@@ -153,7 +173,11 @@ fn extract_tags(
 
     while let Some((start_pos, c)) = iter.next() {
         if c == '<' {
-            extract_html_tag(tags, text, &range, start_pos, &mut iter, f);
+            if text[start_pos..].starts_with("<!--") {
+                extract_html_comment(text, &range, start_pos, &mut iter, f);
+            } else {
+                extract_html_tag(tags, text, &range, start_pos, &mut iter, f);
+            }
         }
     }
 }

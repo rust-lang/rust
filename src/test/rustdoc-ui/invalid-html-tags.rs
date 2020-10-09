@@ -73,3 +73,13 @@ pub fn e() {}
 /// <div></div
 //~^ ERROR unclosed HTML tag `div`
 pub fn f() {}
+
+/// <!---->
+/// <!-- -->
+/// <!-- <div> -->
+/// <!-- <!-- -->
+pub fn g() {}
+
+/// <!--
+//~^ ERROR Unclosed HTML comment
+pub fn h() {}
