@@ -1,4 +1,4 @@
-use anyhow::{Context, Error};
+use anyhow::Error;
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::fs::File;
@@ -93,17 +93,10 @@ pub(crate) struct Versions {
 }
 
 impl Versions {
-    pub(crate) fn new(
-        channel: &str,
-        dist_path: &Path,
-        monorepo_root: &Path,
-    ) -> Result<Self, Error> {
+    pub(crate) fn new(channel: &str, rustc_version: &str, dist_path: &Path) -> Result<Self, Error> {
         Ok(Self {
             channel: channel.into(),
-            rustc_version: std::fs::read_to_string(monorepo_root.join("src").join("version"))
-                .context("failed to read the rustc version from src/version")?
-                .trim()
-                .to_string(),
+            rustc_version: rustc_version.into(),
             dist_path: dist_path.into(),
             versions: HashMap::new(),
         })

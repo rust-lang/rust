@@ -77,7 +77,7 @@ impl Step for BuildManifest {
         cmd.arg(today.trim());
         cmd.arg(addr);
         cmd.arg(&builder.config.channel);
-        cmd.arg(&builder.src);
+        cmd.arg(&builder.version);
 
         builder.create_dir(&distdir(builder));
         builder.run(&mut cmd);
