@@ -599,6 +599,9 @@ declare_features! (
     /// Allows argument and return position `impl Trait` in a `const fn`.
     (active, const_impl_trait, "1.48.0", Some(77463), None),
 
+    /// Allows `#[instruction_set(_)]` attribute
+    (active, isa_attribute, "1.48.0", Some(74727), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

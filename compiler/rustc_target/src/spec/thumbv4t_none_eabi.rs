@@ -55,6 +55,7 @@ pub fn target() -> TargetResult {
 
             // don't have atomic compare-and-swap
             atomic_cas: false,
+            has_thumb_interworking: true,
 
             ..super::thumb_base::opts()
         },
