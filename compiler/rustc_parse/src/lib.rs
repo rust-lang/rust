@@ -114,16 +114,6 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
     source_file_to_parser(sess, file_to_source_file(sess, path, sp))
 }
 
-/// Creates a new parser, returning buffered diagnostics if the file doesn't exist,
-/// or from lexing the initial token stream.
-pub fn maybe_new_parser_from_file<'a>(
-    sess: &'a ParseSess,
-    path: &Path,
-) -> Result<Parser<'a>, Vec<Diagnostic>> {
-    let file = try_file_to_source_file(sess, path, None).map_err(|db| vec![db])?;
-    maybe_source_file_to_parser(sess, file)
-}
-
 /// Given a `source_file` and config, returns a parser.
 fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic, maybe_source_file_to_parser(sess, source_file))
@@ -144,12 +134,6 @@ fn maybe_source_file_to_parser(
     }
 
     Ok(parser)
-}
-
-// Must preserve old name for now, because `quote!` from the *existing*
-// compiler expands into it.
-pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser<'_> {
-    stream_to_parser(sess, tts.into_iter().collect(), crate::MACRO_ARGUMENTS)
 }
 
 // Base abstractions

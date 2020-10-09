@@ -44,9 +44,6 @@ pub trait PpAnn {
     fn nested(&self, _state: &mut State<'_>, _nested: Nested) {}
     fn pre(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
-    fn try_fetch_item(&self, _: hir::HirId) -> Option<&hir::Item<'_>> {
-        None
-    }
 }
 
 pub struct NoAnn;
@@ -54,9 +51,6 @@ impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
 impl PpAnn for hir::Crate<'_> {
-    fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item<'_>> {
-        Some(self.item(item))
-    }
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
             Nested::Item(id) => state.print_item(self.item(id.id)),

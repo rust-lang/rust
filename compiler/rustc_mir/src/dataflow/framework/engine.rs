@@ -62,15 +62,6 @@ where
         let blocks = mir::traversal::reachable(body);
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
     }
-
-    pub fn visit_in_rpo_with(
-        &self,
-        body: &'mir mir::Body<'tcx>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = A::Domain>,
-    ) {
-        let blocks = mir::traversal::reverse_postorder(body);
-        visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
-    }
 }
 
 /// A solver for dataflow problems.

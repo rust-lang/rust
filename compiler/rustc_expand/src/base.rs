@@ -148,17 +148,6 @@ impl Annotatable {
         }
     }
 
-    pub fn map_item_or<F, G>(self, mut f: F, mut or: G) -> Annotatable
-    where
-        F: FnMut(P<ast::Item>) -> P<ast::Item>,
-        G: FnMut(Annotatable) -> Annotatable,
-    {
-        match self {
-            Annotatable::Item(i) => Annotatable::Item(f(i)),
-            _ => or(self),
-        }
-    }
-
     pub fn expect_trait_item(self) -> P<ast::AssocItem> {
         match self {
             Annotatable::TraitItem(i) => i,
@@ -1051,9 +1040,6 @@ impl<'a> ExtCtxt<'a> {
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
-    }
-    pub fn name_of(&self, st: &str) -> Symbol {
-        Symbol::intern(st)
     }
 
     pub fn check_unused_macros(&mut self) {

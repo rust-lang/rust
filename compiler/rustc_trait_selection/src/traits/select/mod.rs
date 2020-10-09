@@ -290,10 +290,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'tcx> {
-        self.infcx
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     // Selection
     //

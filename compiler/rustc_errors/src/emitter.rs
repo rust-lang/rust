@@ -510,8 +510,6 @@ impl Emitter for SilentEmitter {
     fn emit_diagnostic(&mut self, _: &Diagnostic) {}
 }
 
-/// Maximum number of lines we will print for each error; arbitrary.
-pub const MAX_HIGHLIGHT_LINES: usize = 6;
 /// Maximum number of lines we will print for a multiline suggestion; arbitrary.
 ///
 /// This should be replaced with a more involved mechanism to output multiline suggestions that
