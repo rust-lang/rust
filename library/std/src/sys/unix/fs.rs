@@ -949,18 +949,16 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             Err(Error::last_os_error())
         } else {
             let inner = InnerReadDir { dirp: Dir(ptr), root };
-            cfg_if::cfg_if! {
-                if #[cfg(not(any(
+            Ok(ReadDir {
+                inner: Arc::new(inner),
+                #[cfg(not(any(
                     target_os = "solaris",
                     target_os = "illumos",
                     target_os = "fuchsia",
                     target_os = "redox",
-                )))] {
-                    Ok(ReadDir { inner: Arc::new(inner), end_of_stream: false })
-                } else {
-                    Ok(ReadDir { inner: Arc::new(inner) })
-                }
-            }
+                )))]
+                end_of_stream: false,
+            })
         }
     }
 }
