@@ -1186,16 +1186,6 @@ impl PlaceContext {
         )
     }
 
-    /// Returns `true` if this place context represents a storage live marker.
-    pub fn is_storage_live_marker(&self) -> bool {
-        matches!(self, PlaceContext::NonUse(NonUseContext::StorageLive))
-    }
-
-    /// Returns `true` if this place context represents a storage dead marker.
-    pub fn is_storage_dead_marker(&self) -> bool {
-        matches!(self, PlaceContext::NonUse(NonUseContext::StorageDead))
-    }
-
     /// Returns `true` if this place context represents a use that potentially changes the value.
     pub fn is_mutating_use(&self) -> bool {
         matches!(self, PlaceContext::MutatingUse(..))

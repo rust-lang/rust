@@ -601,29 +601,6 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
         Ok(ty)
     }
 
-    fn cached_predicate_for_shorthand<F>(
-        &mut self,
-        shorthand: usize,
-        or_insert_with: F,
-    ) -> Result<ty::Predicate<'tcx>, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<ty::Predicate<'tcx>, Self::Error>,
-    {
-        let tcx = self.tcx();
-
-        let cache_key =
-            ty::CReaderCacheKey { cnum: CrateNum::ReservedForIncrCompCache, pos: shorthand };
-
-        if let Some(&pred) = tcx.pred_rcache.borrow().get(&cache_key) {
-            return Ok(pred);
-        }
-
-        let pred = or_insert_with(self)?;
-        // This may overwrite the entry, but it should overwrite with the same value.
-        tcx.pred_rcache.borrow_mut().insert_same(cache_key, pred);
-        Ok(pred)
-    }
-
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
