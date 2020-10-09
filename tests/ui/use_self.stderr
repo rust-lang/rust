@@ -1,16 +1,16 @@
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:14:21
-   |
-LL |         fn new() -> Foo {
-   |                     ^^^ help: use the applicable keyword: `Self`
-   |
-   = note: `-D clippy::use-self` implied by `-D warnings`
-
-error: unnecessary structure name repetition
   --> $DIR/use_self.rs:15:13
    |
 LL |             Foo {}
    |             ^^^ help: use the applicable keyword: `Self`
+   |
+   = note: `-D clippy::use-self` implied by `-D warnings`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:14:21
+   |
+LL |         fn new() -> Foo {
+   |                     ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
   --> $DIR/use_self.rs:17:22
@@ -19,36 +19,19 @@ LL |         fn test() -> Foo {
    |                      ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:23:25
-   |
-LL |         fn default() -> Foo {
-   |                         ^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:94:24
+  --> $DIR/use_self.rs:96:24
    |
 LL |         fn bad(foos: &[Foo]) -> impl Iterator<Item = &Foo> {
    |                        ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:109:13
+  --> $DIR/use_self.rs:111:13
    |
 LL |             TS(0)
    |             ^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:117:25
-   |
-LL |             fn new() -> Foo {
-   |                         ^^^ help: use the applicable keyword: `Self`
-...
-LL |         use_self_expand!(); // Should lint in local macros
-   |         ------------------- in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:118:17
+  --> $DIR/use_self.rs:120:17
    |
 LL |                 Foo {}
    |                 ^^^ help: use the applicable keyword: `Self`
@@ -59,82 +42,93 @@ LL |         use_self_expand!(); // Should lint in local macros
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:141:29
+  --> $DIR/use_self.rs:119:25
    |
-LL |                 fn bar() -> Bar {
-   |                             ^^^ help: use the applicable keyword: `Self`
+LL |             fn new() -> Foo {
+   |                         ^^^ help: use the applicable keyword: `Self`
+...
+LL |         use_self_expand!(); // Should lint in local macros
+   |         ------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:142:21
+  --> $DIR/use_self.rs:144:21
    |
 LL |                     Bar { foo: Foo {} }
    |                     ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:153:21
+  --> $DIR/use_self.rs:143:29
    |
-LL |         fn baz() -> Foo {
-   |                     ^^^ help: use the applicable keyword: `Self`
+LL |                 fn bar() -> Bar {
+   |                             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:154:13
+  --> $DIR/use_self.rs:156:13
    |
 LL |             Foo {}
    |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:171:21
+  --> $DIR/use_self.rs:155:21
+   |
+LL |         fn baz() -> Foo {
+   |                     ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:173:21
    |
 LL |             let _ = Enum::B(42);
    |                     ^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:172:21
+  --> $DIR/use_self.rs:174:21
    |
 LL |             let _ = Enum::C { field: true };
    |                     ^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:173:21
+  --> $DIR/use_self.rs:175:21
    |
 LL |             let _ = Enum::A;
    |                     ^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:218:13
+  --> $DIR/use_self.rs:222:13
    |
 LL |             nested::A {};
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:254:13
+  --> $DIR/use_self.rs:258:13
    |
 LL |             S {}
    |             ^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:282:29
-   |
-LL |         fn foo(value: T) -> Foo<T> {
-   |                             ^^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:283:13
+  --> $DIR/use_self.rs:287:13
    |
 LL |             Foo { value }
    |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:320:21
+  --> $DIR/use_self.rs:286:29
+   |
+LL |         fn foo(value: T) -> Foo<T> {
+   |                             ^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:324:21
    |
 LL |         type From = T::From;
    |                     ^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:321:19
+  --> $DIR/use_self.rs:325:19
    |
 LL |         type To = T::To;
    |                   ^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 21 previous errors
+error: aborting due to 20 previous errors
 

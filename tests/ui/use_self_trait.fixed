@@ -18,21 +18,21 @@ trait SelfTrait {
 struct Bad;
 
 impl SelfTrait for Bad {
-    fn refs(p1: &Self) -> &Self {
+    fn refs(p1: &Bad) -> &Bad {
         p1
     }
 
-    fn ref_refs<'a>(p1: &'a &'a Self) -> &'a &'a Self {
+    fn ref_refs<'a>(p1: &'a &'a Bad) -> &'a &'a Bad {
         p1
     }
 
-    fn mut_refs(p1: &mut Self) -> &mut Self {
+    fn mut_refs(p1: &mut Bad) -> &mut Bad {
         p1
     }
 
-    fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {}
+    fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
 
-    fn vals(_: Self) -> Self {
+    fn vals(_: Bad) -> Bad {
         Bad::default()
     }
 }
@@ -40,7 +40,7 @@ impl SelfTrait for Bad {
 impl Mul for Bad {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self {
+    fn mul(self, rhs: Bad) -> Bad {
         rhs
     }
 }

@@ -57,7 +57,7 @@ declare_lint_pass!(UseSelf => [USE_SELF]);
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
-fn span_lint<'tcx>(cx: &LateContext<'tcx>, span: Span) {
+fn span_lint(cx: &LateContext<'_>, span: Span) {
     span_lint_and_sugg(
         cx,
         USE_SELF,
@@ -99,12 +99,12 @@ fn span_lint_on_qpath_resolved<'tcx>(cx: &LateContext<'tcx>, qpath: &'tcx QPath<
     }
 }
 
-struct ImplVisitor<'a, 'tcx> {
+struct BodyVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     self_ty: Ty<'tcx>,
 }
 
-impl<'a, 'tcx> ImplVisitor<'a, 'tcx> {
+impl<'a, 'tcx> BodyVisitor<'a, 'tcx> {
     fn check_trait_method_impl_decl(
         &mut self,
         impl_item: &ImplItem<'tcx>,
@@ -151,44 +151,11 @@ impl<'a, 'tcx> ImplVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ImplVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for BodyVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
-    }
-
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
-        if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind {
-            match path.res {
-                def::Res::SelfTy(..) => {},
-                _ => {
-                    match self.cx.tcx.hir().find(self.cx.tcx.hir().get_parent_node(hir_ty.hir_id)) {
-                        Some(Node::Expr(Expr {
-                            kind: ExprKind::Path(QPath::TypeRelative(_, _segment)),
-                            ..
-                        })) => {
-                            // The following block correctly identifies applicable lint locations
-                            // but `hir_ty_to_ty` calls cause odd ICEs.
-                            //
-                            // if hir_ty_to_ty(self.cx.tcx, hir_ty) == self.self_ty {
-                            //     // FIXME: this span manipulation should not be necessary
-                            //     // @flip1995 found an ast lowering issue in
-                            //     // https://github.com/rust-lang/rust/blob/master/src/librustc_ast_lowering/path.rs#L142-L162
-                            //     span_lint_until_last_segment(self.cx, hir_ty.span, segment);
-                            // }
-                        },
-                        _ => {
-                            if hir_ty_to_ty(self.cx.tcx, hir_ty) == self.self_ty {
-                                span_lint(self.cx, hir_ty.span)
-                            }
-                        },
-                    }
-                },
-            }
-        }
-
-        walk_ty(self, hir_ty);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
@@ -247,6 +214,52 @@ impl<'a, 'tcx> Visitor<'tcx> for ImplVisitor<'a, 'tcx> {
     }
 }
 
+struct FnSigVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    self_ty: Ty<'tcx>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for FnSigVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
+        if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind {
+            match path.res {
+                def::Res::SelfTy(..) => {},
+                _ => {
+                    match self.cx.tcx.hir().find(self.cx.tcx.hir().get_parent_node(hir_ty.hir_id)) {
+                        Some(Node::Expr(Expr {
+                            kind: ExprKind::Path(QPath::TypeRelative(_, segment)),
+                            ..
+                        })) => {
+                            // The following block correctly identifies applicable lint locations
+                            // but `hir_ty_to_ty` calls cause odd ICEs.
+                            //
+                            if hir_ty_to_ty(self.cx.tcx, hir_ty) == self.self_ty {
+                                // fixme: this span manipulation should not be necessary
+                                // @flip1995 found an ast lowering issue in
+                                // https://github.com/rust-lang/rust/blob/master/src/librustc_ast_lowering/path.rs#l142-l162
+                                span_lint_until_last_segment(self.cx, hir_ty.span, segment);
+                            }
+                        },
+                        _ => {
+                            if hir_ty_to_ty(self.cx.tcx, hir_ty) == self.self_ty {
+                                span_lint(self.cx, hir_ty.span)
+                            }
+                        },
+                    }
+                },
+            }
+        }
+
+        walk_ty(self, hir_ty);
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if in_external_macro(cx.sess(), impl_item.span) {
@@ -270,7 +283,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 // TODO: don't short-circuit upon lifetime parameters
                 if should_check {
                     let self_ty = hir_ty_to_ty(cx.tcx, hir_self_ty);
-                    let visitor = &mut ImplVisitor { cx, self_ty };
+                    let body_visitor = &mut BodyVisitor { cx, self_ty };
+                    let fn_sig_visitor = &mut FnSigVisitor { cx, self_ty };
 
                     let tcx = cx.tcx;
                     let impl_def_id = tcx.hir().local_def_id(imp.hir_id);
@@ -279,11 +293,12 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                         if let Some(impl_trait_ref) = impl_trait_ref;
                         if let ImplItemKind::Fn(FnSig { decl: impl_decl, .. }, impl_body_id) = &impl_item.kind;
                         then {
-                            visitor.check_trait_method_impl_decl(impl_item, impl_decl, impl_trait_ref);
+                            body_visitor.check_trait_method_impl_decl(impl_item, impl_decl, impl_trait_ref);
                             let body = tcx.hir().body(*impl_body_id);
-                            visitor.visit_body(body);
+                            body_visitor.visit_body(body);
                         } else {
-                            walk_impl_item(visitor, impl_item)
+                            walk_impl_item(body_visitor, impl_item);
+                            walk_impl_item(fn_sig_visitor, impl_item);
                         }
                     }
                 }

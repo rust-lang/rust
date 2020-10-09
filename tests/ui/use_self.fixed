@@ -15,12 +15,14 @@ mod use_self {
             Self {}
         }
         fn test() -> Self {
+            // FIXME: applicable here
             Foo::new()
         }
     }
 
     impl Default for Foo {
-        fn default() -> Self {
+        // FIXME: applicable here
+        fn default() -> Foo {
             // FIXME: applicable here
             Foo::new()
         }
@@ -213,7 +215,9 @@ mod rustfix {
         fn fun_1() {}
 
         fn fun_2() {
+            // FIXME: applicable here
             nested::A::fun_1();
+            // FIXME: applicable here
             nested::A::A;
 
             Self {};
