@@ -189,6 +189,10 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.type_alias_to_def(container.with_value(it))?;
                         def.into()
                     },
+                    ast::Variant(it) => {
+                        let def = self.enum_variant_to_def(container.with_value(it))?;
+                        VariantId::from(def).into()
+                    },
                     _ => continue,
                 }
             };
