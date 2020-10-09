@@ -14,7 +14,7 @@ use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 use crate::{
     body::{CfgExpander, LowerCtx},
     db::DefDatabase,
-    item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem},
+    item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem, RawVisibilityId},
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
@@ -91,7 +91,7 @@ impl StructData {
         let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
 
         let strukt = &item_tree[loc.id.value];
-        let variant_data = lower_fields(&item_tree, &cfg_options, &strukt.fields);
+        let variant_data = lower_fields(&item_tree, &cfg_options, &strukt.fields, None);
         Arc::new(StructData {
             name: strukt.name.clone(),
             variant_data: Arc::new(variant_data),
@@ -105,7 +105,7 @@ impl StructData {
         let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
 
         let union = &item_tree[loc.id.value];
-        let variant_data = lower_fields(&item_tree, &cfg_options, &union.fields);
+        let variant_data = lower_fields(&item_tree, &cfg_options, &union.fields, None);
 
         Arc::new(StructData {
             name: union.name.clone(),
@@ -126,7 +126,8 @@ impl EnumData {
         for var_id in enum_.variants.clone() {
             if item_tree.attrs(var_id.into()).is_cfg_enabled(&cfg_options) {
                 let var = &item_tree[var_id];
-                let var_data = lower_fields(&item_tree, &cfg_options, &var.fields);
+                let var_data =
+                    lower_fields(&item_tree, &cfg_options, &var.fields, Some(enum_.visibility));
 
                 variants.alloc(EnumVariantData {
                     name: var.name.clone(),
@@ -296,13 +297,18 @@ fn lower_struct(
     }
 }
 
-fn lower_fields(item_tree: &ItemTree, cfg_options: &CfgOptions, fields: &Fields) -> VariantData {
+fn lower_fields(
+    item_tree: &ItemTree,
+    cfg_options: &CfgOptions,
+    fields: &Fields,
+    override_visibility: Option<RawVisibilityId>,
+) -> VariantData {
     match fields {
         Fields::Record(flds) => {
             let mut arena = Arena::new();
             for field_id in flds.clone() {
                 if item_tree.attrs(field_id.into()).is_cfg_enabled(cfg_options) {
-                    arena.alloc(lower_field(item_tree, &item_tree[field_id]));
+                    arena.alloc(lower_field(item_tree, &item_tree[field_id], override_visibility));
                 }
             }
             VariantData::Record(arena)
@@ -311,7 +317,7 @@ fn lower_fields(item_tree: &ItemTree, cfg_options: &CfgOptions, fields: &Fields)
             let mut arena = Arena::new();
             for field_id in flds.clone() {
                 if item_tree.attrs(field_id.into()).is_cfg_enabled(cfg_options) {
-                    arena.alloc(lower_field(item_tree, &item_tree[field_id]));
+                    arena.alloc(lower_field(item_tree, &item_tree[field_id], override_visibility));
                 }
             }
             VariantData::Tuple(arena)
@@ -320,10 +326,14 @@ fn lower_fields(item_tree: &ItemTree, cfg_options: &CfgOptions, fields: &Fields)
     }
 }
 
-fn lower_field(item_tree: &ItemTree, field: &Field) -> FieldData {
+fn lower_field(
+    item_tree: &ItemTree,
+    field: &Field,
+    override_visibility: Option<RawVisibilityId>,
+) -> FieldData {
     FieldData {
         name: field.name.clone(),
         type_ref: field.type_ref.clone(),
-        visibility: item_tree[field.visibility].clone(),
+        visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
     }
 }

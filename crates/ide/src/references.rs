@@ -732,6 +732,30 @@ fn f(e: En) {
         );
     }
 
+    #[test]
+    fn test_find_all_refs_enum_var_privacy() {
+        check(
+            r#"
+mod m {
+    pub enum En {
+        Variant {
+            field<|>: u8,
+        }
+    }
+}
+
+fn f() -> m::En {
+    m::En::Variant { field: 0 }
+}
+"#,
+            expect![[r#"
+                field RECORD_FIELD FileId(0) 56..65 56..61 Other
+
+                FileId(0) 125..130 Other Read
+            "#]],
+        );
+    }
+
     fn check(ra_fixture: &str, expect: Expect) {
         check_with_scope(ra_fixture, None, expect)
     }

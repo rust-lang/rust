@@ -324,14 +324,14 @@ pub struct Foo { pub bar: () }
 
     #[test]
     fn fix_visibility_of_enum_variant_field() {
-        check_assist(
+        // Enum variants, as well as their fields, always get the enum's visibility. In fact, rustc
+        // rejects any visibility specifiers on them, so this assist should never fire on them.
+        check_assist_not_applicable(
             fix_visibility,
             r"mod foo { pub enum Foo { Bar { bar: () } } }
               fn main() { foo::Foo::Bar { <|>bar: () }; } ",
-            r"mod foo { pub enum Foo { Bar { $0pub(crate) bar: () } } }
-              fn main() { foo::Foo::Bar { bar: () }; } ",
         );
-        check_assist(
+        check_assist_not_applicable(
             fix_visibility,
             r"
 //- /lib.rs
@@ -339,8 +339,6 @@ mod foo;
 fn main() { foo::Foo::Bar { <|>bar: () }; }
 //- /foo.rs
 pub enum Foo { Bar { bar: () } }
-",
-            r"pub enum Foo { Bar { $0pub(crate) bar: () } }
 ",
         );
         check_assist_not_applicable(
