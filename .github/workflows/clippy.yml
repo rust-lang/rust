@@ -63,7 +63,7 @@ jobs:
     - name: Set LD_LIBRARY_PATH (Linux)
       run: |
         SYSROOT=$(rustc --print sysroot)
-        echo "::set-env name=LD_LIBRARY_PATH::${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}"
+        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
 
     - name: Build
       run: cargo build --features deny-warnings

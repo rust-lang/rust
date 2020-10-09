@@ -112,7 +112,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         SYSROOT=$(rustc --print sysroot)
-        echo "::set-env name=LD_LIBRARY_PATH::${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}"
+        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
     - name: Link rustc dylib (MacOS)
       if: runner.os == 'macOS'
       run: |
@@ -122,9 +122,9 @@ jobs:
     - name: Set PATH (Windows)
       if: runner.os == 'Windows'
       run: |
-        $sysroot = rustc --print sysroot
-        $env:PATH += ';' + $sysroot + '\bin'
-        echo "::set-env name=PATH::$env:PATH"
+        SYSROOT=$(rustc --print sysroot)
+        echo "$SYSROOT/bin" >> $GITHUB_PATH
+      shell: bash
 
     - name: Build
       run: cargo build --features deny-warnings
