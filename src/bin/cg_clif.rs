@@ -81,9 +81,7 @@ fn main() {
             None,
             Some(Box::new(move |_| {
                 Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
-                    config: rustc_codegen_cranelift::BackendConfig {
-                        use_jit,
-                    }
+                    config: rustc_codegen_cranelift::BackendConfig { use_jit },
                 })
             })),
         )

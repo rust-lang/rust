@@ -9,7 +9,7 @@ use rustc_codegen_ssa::CrateInfo;
 use crate::prelude::*;
 
 pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
-    use cranelift_simplejit::{SimpleJITModule, SimpleJITBuilder};
+    use cranelift_simplejit::{SimpleJITBuilder, SimpleJITModule};
 
     #[cfg(unix)]
     unsafe {
