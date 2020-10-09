@@ -1,5 +1,3 @@
-// run-pass
-
 #![allow(clippy::comparison_chain)]
 #![deny(clippy::if_same_then_else)]
 

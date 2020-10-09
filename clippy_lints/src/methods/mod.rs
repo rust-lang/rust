@@ -400,8 +400,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.map(_).flatten(_)`,
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as a
-    /// single method call using `_.flat_map(_)`
+    /// **Why is this bad?** Readability, this can be written more concisely as
+    /// `_.flat_map(_)`
     ///
     /// **Known problems:**
     ///
@@ -424,8 +424,8 @@ declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.filter(_).map(_)`,
     /// `_.filter(_).flat_map(_)`, `_.filter_map(_).flat_map(_)` and similar.
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as a
-    /// single method call.
+    /// **Why is this bad?** Readability, this can be written more concisely as
+    /// `_.filter_map(_)`.
     ///
     /// **Known problems:** Often requires a condition + Option/Iterator creation
     /// inside the closure.
@@ -452,8 +452,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.filter_map(_).next()`.
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as a
-    /// single method call.
+    /// **Why is this bad?** Readability, this can be written more concisely as
+    /// `_.find_map(_)`.
     ///
     /// **Known problems:** None
     ///
@@ -496,8 +496,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.find(_).map(_)`.
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as a
-    /// single method call.
+    /// **Why is this bad?** Readability, this can be written more concisely as
+    /// `_.find_map(_)`.
     ///
     /// **Known problems:** Often requires a condition + Option/Iterator creation
     /// inside the closure.
@@ -1276,8 +1276,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.as_ref().map(Deref::deref)` or it's aliases (such as String::as_str).
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as a
-    /// single method call.
+    /// **Why is this bad?** Readability, this can be written more concisely as
+    /// `_.as_deref()`.
     ///
     /// **Known problems:** None.
     ///
@@ -1668,9 +1668,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let ty::Opaque(def_id, _) = *ret_ty.kind() {
                 // one of the associated types must be Self
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
-                    if let ty::PredicateAtom::Projection(projection_predicate) =
-                        predicate.skip_binders()
-                    {
+                    if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
                         // walk the associated type and check for Self
                         if contains_ty(projection_predicate.ty, self_ty) {
                             return;

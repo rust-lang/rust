@@ -110,7 +110,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "borrow_interior_mutable_const",
-        group: "correctness",
+        group: "style",
         desc: "referencing `const` with interior mutability",
         deprecation: None,
         module: "non_copy_const",
@@ -334,7 +334,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "declare_interior_mutable_const",
-        group: "correctness",
+        group: "style",
         desc: "declaring `const` with interior mutability",
         deprecation: None,
         module: "non_copy_const",
@@ -380,6 +380,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "deriving `Ord` but implementing `PartialOrd` explicitly",
         deprecation: None,
         module: "derive",
+    },
+    Lint {
+        name: "disallowed_method",
+        group: "nursery",
+        desc: "use of a disallowed method call",
+        deprecation: None,
+        module: "disallowed_method",
     },
     Lint {
         name: "diverging_sub_expression",
@@ -886,6 +893,20 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "attrs",
     },
     Lint {
+        name: "inline_asm_x86_att_syntax",
+        group: "restriction",
+        desc: "prefer Intel x86 assembly syntax",
+        deprecation: None,
+        module: "asm_syntax",
+    },
+    Lint {
+        name: "inline_asm_x86_intel_syntax",
+        group: "restriction",
+        desc: "prefer AT&T x86 assembly syntax",
+        deprecation: None,
+        module: "asm_syntax",
+    },
+    Lint {
         name: "inline_fn_without_body",
         group: "correctness",
         desc: "use of `#[inline]` on trait methods without bodies",
@@ -940,6 +961,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "a comparison involving an upcast which is always true or false",
         deprecation: None,
         module: "types",
+    },
+    Lint {
+        name: "invisible_characters",
+        group: "correctness",
+        desc: "using an invisible character in a string literal, which is confusing",
+        deprecation: None,
+        module: "unicode",
     },
     Lint {
         name: "items_after_statements",
@@ -1860,7 +1888,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "rc_buffer",
-        group: "perf",
+        group: "restriction",
         desc: "shared ownership of a buffer type",
         deprecation: None,
         module: "types",
@@ -2133,7 +2161,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "string_lit_as_bytes",
-        group: "style",
+        group: "nursery",
         desc: "calling `as_bytes` on a string literal instead of using a byte string literal",
         deprecation: None,
         module: "strings",
@@ -2781,13 +2809,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "using `0 as *{const, mut} T`",
         deprecation: None,
         module: "misc",
-    },
-    Lint {
-        name: "zero_width_space",
-        group: "correctness",
-        desc: "using a zero-width space in a string literal, which is confusing",
-        deprecation: None,
-        module: "unicode",
     },
     Lint {
         name: "zst_offset",
