@@ -686,6 +686,52 @@ fn g() { f(); }
         );
     }
 
+    #[test]
+    fn test_find_all_refs_struct_pat() {
+        check(
+            r#"
+struct S {
+    field<|>: u8,
+}
+
+fn f(s: S) {
+    match s {
+        S { field } => {}
+    }
+}
+"#,
+            expect![[r#"
+                field RECORD_FIELD FileId(0) 15..24 15..20 Other
+
+                FileId(0) 68..73 FieldShorthandForField Read
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_find_all_refs_enum_var_pat() {
+        check(
+            r#"
+enum En {
+    Variant {
+        field<|>: u8,
+    }
+}
+
+fn f(e: En) {
+    match e {
+        En::Variant { field } => {}
+    }
+}
+"#,
+            expect![[r#"
+                field RECORD_FIELD FileId(0) 32..41 32..37 Other
+
+                FileId(0) 102..107 FieldShorthandForField Read
+            "#]],
+        );
+    }
+
     fn check(ra_fixture: &str, expect: Expect) {
         check_with_scope(ra_fixture, None, expect)
     }
