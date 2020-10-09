@@ -13,12 +13,12 @@ fn unnecessary_sort_by() {
     // Forward examples
     vec.sort();
     vec.sort_unstable();
-    vec.sort_by_key(|&a| (a + 5).abs());
-    vec.sort_unstable_by_key(|&a| id(-a));
+    vec.sort_by_key(|a| (a + 5).abs());
+    vec.sort_unstable_by_key(|a| id(-a));
     // Reverse examples
-    vec.sort_by_key(|&b| Reverse(b));
-    vec.sort_by_key(|&b| Reverse((b + 5).abs()));
-    vec.sort_unstable_by_key(|&b| Reverse(id(-b)));
+    vec.sort_by(|a, b| b.cmp(a)); // not linted to avoid suggesting `Reverse(b)` which would borrow
+    vec.sort_by_key(|b| Reverse((b + 5).abs()));
+    vec.sort_unstable_by_key(|b| Reverse(id(-b)));
     // Negative examples (shouldn't be changed)
     let c = &7;
     vec.sort_by(|a, b| (b - a).cmp(&(a - b)));
@@ -26,10 +26,11 @@ fn unnecessary_sort_by() {
     vec.sort_by(|_, b| b.cmp(c));
     vec.sort_unstable_by(|a, _| a.cmp(c));
 
-    // Ignore vectors of references
+    // Vectors of references are fine as long as the resulting key does not borrow
     let mut vec: Vec<&&&isize> = vec![&&&3, &&&6, &&&1, &&&2, &&&5];
-    vec.sort_by(|a, b| (***a).abs().cmp(&(***b).abs()));
-    vec.sort_unstable_by(|a, b| (***a).abs().cmp(&(***b).abs()));
+    vec.sort_by_key(|a| (***a).abs());
+    vec.sort_unstable_by_key(|a| (***a).abs());
+    // `Reverse(b)` would borrow in the following cases, don't lint
     vec.sort_by(|a, b| b.cmp(a));
     vec.sort_unstable_by(|a, b| b.cmp(a));
 }
@@ -68,10 +69,9 @@ mod issue_5754 {
     }
 }
 
-// `Vec::sort_by_key` closure parameter is `F: FnMut(&T) -> K`
-// The suggestion is destructuring T and we know T is not a reference, so test that non-Copy T are
-// not linted.
+// The closure parameter is not dereferenced anymore, so non-Copy types can be linted
 mod issue_6001 {
+    use super::*;
     struct Test(String);
 
     impl Test {
@@ -85,11 +85,11 @@ mod issue_6001 {
         let mut args: Vec<Test> = vec![];
 
         // Forward
-        args.sort_by(|a, b| a.name().cmp(&b.name()));
-        args.sort_unstable_by(|a, b| a.name().cmp(&b.name()));
+        args.sort_by_key(|a| a.name());
+        args.sort_unstable_by_key(|a| a.name());
         // Reverse
-        args.sort_by(|a, b| b.name().cmp(&a.name()));
-        args.sort_unstable_by(|a, b| b.name().cmp(&a.name()));
+        args.sort_by_key(|b| Reverse(b.name()));
+        args.sort_unstable_by_key(|b| Reverse(b.name()));
     }
 }
 

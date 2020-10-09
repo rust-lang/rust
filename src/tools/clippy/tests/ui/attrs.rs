@@ -1,8 +1,5 @@
 #![warn(clippy::inline_always, clippy::deprecated_semver)]
 #![allow(clippy::assertions_on_constants)]
-// Test that the whole restriction group is not enabled
-#![warn(clippy::restriction)]
-#![deny(clippy::restriction)]
 #![allow(clippy::missing_docs_in_private_items, clippy::panic, clippy::unreachable)]
 
 #[inline(always)]

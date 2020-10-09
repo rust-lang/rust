@@ -1,5 +1,5 @@
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:6:18
+  --> $DIR/mistyped_literal_suffix.rs:11:18
    |
 LL |     let fail14 = 2_32;
    |                  ^^^^ help: did you mean to write: `2_i32`
@@ -7,76 +7,64 @@ LL |     let fail14 = 2_32;
    = note: `#[deny(clippy::mistyped_literal_suffixes)]` on by default
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:7:18
+  --> $DIR/mistyped_literal_suffix.rs:12:18
    |
 LL |     let fail15 = 4_64;
    |                  ^^^^ help: did you mean to write: `4_i64`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:8:18
+  --> $DIR/mistyped_literal_suffix.rs:13:18
    |
 LL |     let fail16 = 7_8; //
    |                  ^^^ help: did you mean to write: `7_i8`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:9:18
+  --> $DIR/mistyped_literal_suffix.rs:14:18
    |
 LL |     let fail17 = 23_16; //
    |                  ^^^^^ help: did you mean to write: `23_i16`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:12:18
+  --> $DIR/mistyped_literal_suffix.rs:17:18
    |
 LL |     let fail20 = 2__8; //
    |                  ^^^^ help: did you mean to write: `2_i8`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:13:18
+  --> $DIR/mistyped_literal_suffix.rs:18:18
    |
 LL |     let fail21 = 4___16; //
    |                  ^^^^^^ help: did you mean to write: `4_i16`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:15:18
-   |
-LL |     let fail24 = 12.34_64;
-   |                  ^^^^^^^^ help: did you mean to write: `12.34_f64`
-
-error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:16:18
+  --> $DIR/mistyped_literal_suffix.rs:21:18
    |
 LL |     let fail25 = 1E2_32;
    |                  ^^^^^^ help: did you mean to write: `1E2_f32`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:17:18
+  --> $DIR/mistyped_literal_suffix.rs:22:18
    |
 LL |     let fail26 = 43E7_64;
    |                  ^^^^^^^ help: did you mean to write: `43E7_f64`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:18:18
+  --> $DIR/mistyped_literal_suffix.rs:23:18
    |
 LL |     let fail27 = 243E17_32;
    |                  ^^^^^^^^^ help: did you mean to write: `243E17_f32`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:20:18
+  --> $DIR/mistyped_literal_suffix.rs:25:18
    |
 LL |     let fail28 = 241251235E723_64;
    |                  ^^^^^^^^^^^^^^^^ help: did you mean to write: `241_251_235E723_f64`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:21:18
-   |
-LL |     let fail29 = 42279.911_32;
-   |                  ^^^^^^^^^^^^ help: did you mean to write: `42_279.911_f32`
-
-error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:23:13
+  --> $DIR/mistyped_literal_suffix.rs:28:13
    |
 LL |     let _ = 1.12345E1_32;
    |             ^^^^^^^^^^^^ help: did you mean to write: `1.123_45E1_f32`
 
-error: aborting due to 13 previous errors
+error: aborting due to 11 previous errors
 

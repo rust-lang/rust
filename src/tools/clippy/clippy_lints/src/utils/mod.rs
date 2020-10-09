@@ -18,9 +18,9 @@ pub mod internal_lints;
 pub mod numeric_literal;
 pub mod paths;
 pub mod ptr;
+pub mod qualify_min_const_fn;
 pub mod sugg;
 pub mod usage;
-pub mod qualify_min_const_fn;
 
 pub use self::attrs::*;
 pub use self::diagnostics::*;
@@ -47,7 +47,6 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
-use rustc_mir::const_eval;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
@@ -884,19 +883,11 @@ pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 
 /// Checks if an expression is constructing a tuple-like enum variant or struct
 pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    fn has_no_arguments(cx: &LateContext<'_>, def_id: DefId) -> bool {
-        cx.tcx.fn_sig(def_id).skip_binder().inputs().is_empty()
-    }
-
     if let ExprKind::Call(ref fun, _) = expr.kind {
         if let ExprKind::Path(ref qp) = fun.kind {
             let res = cx.qpath_res(qp, fun.hir_id);
             return match res {
                 def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
-                // FIXME: check the constness of the arguments, see https://github.com/rust-lang/rust-clippy/pull/5682#issuecomment-638681210
-                def::Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) if has_no_arguments(cx, def_id) => {
-                    const_eval::is_const_fn(cx.tcx, def_id)
-                },
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
                 _ => false,
             };
@@ -1287,8 +1278,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Opaque(ref def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
                 if let ty::PredicateAtom::Trait(trait_predicate, _) = predicate.skip_binders() {
-                    if must_use_attr(&cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some()
-                    {
+                    if must_use_attr(&cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some() {
                         return true;
                     }
                 }
