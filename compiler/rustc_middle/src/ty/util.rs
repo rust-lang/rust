@@ -7,7 +7,7 @@ use crate::ty::fold::TypeFolder;
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
-use crate::ty::TyKind::*;
+use crate::ty::TyData::*;
 use crate::ty::{self, DefIdTree, GenericParamDefKind, List, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
@@ -33,7 +33,7 @@ pub struct Discr<'tcx> {
 
 impl<'tcx> fmt::Display for Discr<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self.ty.kind() {
+        match *self.ty.data() {
             ty::Int(ity) => {
                 let size = ty::tls::with(|tcx| Integer::from_attr(&tcx, SignedInt(ity)).size());
                 let x = self.val;
@@ -59,7 +59,7 @@ fn unsigned_max(size: Size) -> u128 {
 }
 
 fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
-    let (int, signed) = match *ty.kind() {
+    let (int, signed) = match *ty.data() {
         Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
         Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
         _ => bug!("non integer discriminant"),
@@ -172,10 +172,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
-        if let ty::Adt(def, substs) = *ty.kind() {
+        if let ty::Adt(def, substs) = *ty.data() {
             for field in def.all_fields() {
                 let field_ty = field.ty(self, substs);
-                if let Error(_) = field_ty.kind() {
+                if let Error(_) = field_ty.data() {
                     return true;
                 }
             }
@@ -223,7 +223,7 @@ impl<'tcx> TyCtxt<'tcx> {
         normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Ty<'tcx> {
         loop {
-            match *ty.kind() {
+            match *ty.data() {
                 ty::Adt(def, substs) => {
                     if !def.is_struct() {
                         break;
@@ -296,7 +296,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
         loop {
-            match (&a.kind(), &b.kind()) {
+            match (&a.data(), &b.data()) {
                 (&Adt(a_def, a_substs), &Adt(b_def, b_substs))
                     if a_def == b_def && a_def.is_struct() =>
                 {
@@ -399,12 +399,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // <P1, P2, P0>, and then look up which of the impl substs refer to
         // parameters marked as pure.
 
-        let impl_substs = match *self.type_of(impl_def_id).kind() {
+        let impl_substs = match *self.type_of(impl_def_id).data() {
             ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!(),
         };
 
-        let item_substs = match *self.type_of(def.did).kind() {
+        let item_substs = match *self.type_of(def.did).data() {
             ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!(),
         };
@@ -417,7 +417,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     GenericArgKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
                     }
-                    GenericArgKind::Type(&ty::TyS { kind: ty::Param(ref pt), .. }) => {
+                    GenericArgKind::Type(&ty::TyS { data: ty::Param(ref pt), .. }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
                     GenericArgKind::Const(&ty::Const {
@@ -624,7 +624,7 @@ impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Opaque(def_id, substs) = t.kind {
+        if let ty::Opaque(def_id, substs) = t.data {
             self.expand_opaque_ty(def_id, substs).unwrap_or(t)
         } else if t.has_opaque_types() {
             t.super_fold_with(self)
@@ -638,7 +638,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_max_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
-        let val = match self.kind() {
+        let val = match self.data() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
                 let val = if signed { signed_max(size) as u128 } else { unsigned_max(size) };
@@ -657,7 +657,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_min_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
-        let val = match self.kind() {
+        let val = match self.data() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
                 let val = if signed { truncate(signed_min(size) as u128, size) } else { 0 };
@@ -715,7 +715,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// Returning true means the type is known to be `Freeze`. Returning
     /// `false` means nothing -- could be `Freeze`, might not be.
     fn is_trivially_freeze(&self) -> bool {
-        match self.kind() {
+        match self.data() {
             ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
@@ -791,7 +791,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// down, you will need to use a type visitor.
     #[inline]
     pub fn is_structural_eq_shallow(&'tcx self, tcx: TyCtxt<'tcx>) -> bool {
-        match self.kind() {
+        match self.data() {
             // Look for an impl of both `PartialStructuralEq` and `StructuralEq`.
             Adt(..) => tcx.has_structural_eq_impls(self),
 
@@ -826,7 +826,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match (&a.kind(), &b.kind()) {
+        match (&a.data(), &b.data()) {
             (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
                 if did_a != did_b {
                     return false;
@@ -858,7 +858,7 @@ impl<'tcx> ty::TyS<'tcx> {
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
             ty: Ty<'tcx>,
         ) -> Representability {
-            match ty.kind() {
+            match ty.data() {
                 Tuple(..) => {
                     // Find non representable
                     fold_repr(ty.tuple_fields().map(|ty| {
@@ -907,7 +907,7 @@ impl<'tcx> ty::TyS<'tcx> {
         }
 
         fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: &'tcx ty::AdtDef) -> bool {
-            match *ty.kind() {
+            match *ty.data() {
                 Adt(ty_def, _) => ty_def == def,
                 _ => false,
             }
@@ -945,7 +945,7 @@ impl<'tcx> ty::TyS<'tcx> {
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
             ty: Ty<'tcx>,
         ) -> Representability {
-            match ty.kind() {
+            match ty.data() {
                 Adt(def, _) => {
                     {
                         // Iterate through stack of previously seen types.
@@ -1022,7 +1022,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// - `&'a *const &'b u8 -> *const &'b u8`
     pub fn peel_refs(&'tcx self) -> Ty<'tcx> {
         let mut ty = self;
-        while let Ref(_, inner_ty, _) = ty.kind() {
+        while let Ref(_, inner_ty, _) = ty.data() {
             ty = inner_ty;
         }
         ty
@@ -1068,7 +1068,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     {
         use self::ExplicitSelf::*;
 
-        match *self_arg_ty.kind() {
+        match *self_arg_ty.data() {
             _ if is_self_ty(self_arg_ty) => ByValue,
             ty::Ref(region, ty, mutbl) if is_self_ty(ty) => ByReference(region, mutbl),
             ty::RawPtr(ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => ByRawPointer(mutbl),
@@ -1085,7 +1085,7 @@ pub fn needs_drop_components(
     ty: Ty<'tcx>,
     target_layout: &TargetDataLayout,
 ) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
-    match ty.kind() {
+    match ty.data() {
         ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
         | ty::Bool

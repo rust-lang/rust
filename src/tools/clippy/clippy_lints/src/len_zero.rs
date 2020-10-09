@@ -286,7 +286,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     }
 
     let ty = &cx.typeck_results().expr_ty(expr).peel_refs();
-    match ty.kind() {
+    match ty.data() {
         ty::Dynamic(ref tt, ..) => tt.principal().map_or(false, |principal| {
             cx.tcx
                 .associated_items(principal.def_id())

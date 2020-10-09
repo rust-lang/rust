@@ -54,7 +54,7 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
                     inner == self.target
                         || match (inner.unpack(), self.target.unpack()) {
                             (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
-                                match (inner_ty.kind(), target_ty.kind()) {
+                                match (inner_ty.data(), target_ty.data()) {
                                     (
                                         &ty::Infer(ty::TyVar(a_vid)),
                                         &ty::Infer(ty::TyVar(b_vid)),
@@ -239,7 +239,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> InferenceDiagnosticsData {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
-                if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
+                if let ty::Infer(ty::TyVar(ty_vid)) = *ty.data() {
                     let mut inner = self.inner.borrow_mut();
                     let ty_vars = &inner.type_variables();
                     let var_origin = ty_vars.var_origin(ty_vid);
@@ -378,7 +378,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 None
             };
             printer.name_resolver = Some(Box::new(&getter));
-            let _ = if let ty::FnDef(..) = ty.kind() {
+            let _ = if let ty::FnDef(..) = ty.data() {
                 // We don't want the regular output for `fn`s because it includes its path in
                 // invalid pseudo-syntax, we want the `fn`-pointer output instead.
                 ty.fn_sig(self.tcx).print(printer)
@@ -428,7 +428,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             (_, Some(_)) => String::new(),
             (Some(ty), _) if ty.is_closure() => {
                 let substs =
-                    if let ty::Closure(_, substs) = *ty.kind() { substs } else { unreachable!() };
+                    if let ty::Closure(_, substs) = *ty.data() { substs } else { unreachable!() };
                 let fn_sig = substs.as_closure().sig();
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
@@ -464,7 +464,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let suffix = match local_visitor.found_node_ty {
             Some(ty) if ty.is_closure() => {
                 let substs =
-                    if let ty::Closure(_, substs) = *ty.kind() { substs } else { unreachable!() };
+                    if let ty::Closure(_, substs) = *ty.data() { substs } else { unreachable!() };
                 let fn_sig = substs.as_closure().sig();
                 let ret = fn_sig.output().skip_binder().to_string();
 
@@ -682,8 +682,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let bound_output = sig.output();
                     let output = bound_output.skip_binder();
                     err.span_label(e.span, &format!("this method call resolves to `{}`", output));
-                    let kind = output.kind();
-                    if let ty::Projection(proj) = kind {
+                    let data = output.data();
+                    if let ty::Projection(proj) = data {
                         if let Some(span) = self.tcx.hir().span_if_local(proj.item_def_id) {
                             err.span_label(span, &format!("`{}` defined here", output));
                         }

@@ -195,8 +195,8 @@ fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<
             if eq_expr_value(cx, lhs1, lhs2) {
                 let ty = cx.typeck_results().expr_ty(lhs1).peel_refs();
 
-                if matches!(ty.kind(), ty::Slice(_))
-                    || matches!(ty.kind(), ty::Array(_, _))
+                if matches!(ty.data(), ty::Slice(_))
+                    || matches!(ty.data(), ty::Array(_, _))
                     || is_type_diagnostic_item(cx, ty, sym!(vec_type))
                     || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
                 {

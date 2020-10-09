@@ -47,7 +47,7 @@ pub(crate) fn destructure_const<'tcx>(
     let op = ecx.const_to_op(val, None).unwrap();
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
-    let (field_count, variant, down) = match val.ty.kind() {
+    let (field_count, variant, down) = match val.ty.data() {
         ty::Array(_, len) => (usize::try_from(len.eval_usize(tcx, param_env)).unwrap(), None, op),
         ty::Adt(def, _) if def.variants.is_empty() => {
             return mir::DestructuredConst { variant: None, fields: tcx.arena.alloc_slice(&[]) };
@@ -93,7 +93,7 @@ pub(crate) fn deref_const<'tcx>(
         MemPlaceMeta::None => mplace.layout.ty,
         MemPlaceMeta::Poison => bug!("poison metadata in `deref_const`: {:#?}", mplace),
         // In case of unsized types, figure out the real type behind.
-        MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind() {
+        MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.data() {
             ty::Str => bug!("there's no sized equivalent of a `str`"),
             ty::Slice(elem_ty) => tcx.mk_array(elem_ty, scalar.to_machine_usize(&tcx).unwrap()),
             _ => bug!(

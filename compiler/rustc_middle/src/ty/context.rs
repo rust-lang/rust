@@ -16,12 +16,12 @@ use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
-use crate::ty::TyKind::*;
+use crate::ty::TyData::*;
 use crate::ty::{
     self, AdtDef, AdtKind, BindingMode, BoundVar, CanonicalPolyFnSig, Const, ConstVid, DefIdTree,
     ExistentialPredicate, FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntVar,
     IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
-    ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar,
+    ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyData, TyS, TyVar,
     TyVid, TypeAndMut,
 };
 use rustc_ast as ast;
@@ -66,7 +66,7 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
-/// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
+/// A type that is not publicly constructable. This prevents people from making [`TyData::Error`]s
 /// except through the error-reporting functions on a [`tcx`][TyCtxt].
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
@@ -112,15 +112,15 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     /// Interns a type.
-    #[allow(rustc::usage_of_ty_tykind)]
+    #[allow(rustc::usage_of_ty_tydata)]
     #[inline(never)]
-    fn intern_ty(&self, kind: TyKind<'tcx>) -> Ty<'tcx> {
+    fn intern_ty(&self, data: TyData<'tcx>) -> Ty<'tcx> {
         self.type_
-            .intern(kind, |kind| {
-                let flags = super::flags::FlagComputation::for_kind(&kind);
+            .intern(data, |data| {
+                let flags = super::flags::FlagComputation::for_data(&data);
 
                 let ty_struct = TyS {
-                    kind,
+                    data,
                     flags: flags.flags,
                     outer_exclusive_binder: flags.outer_exclusive_binder,
                 };
@@ -753,7 +753,7 @@ impl CanonicalUserType<'tcx> {
 
                 user_substs.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
                     match kind.unpack() {
-                        GenericArgKind::Type(ty) => match ty.kind() {
+                        GenericArgKind::Type(ty) => match ty.data() {
                             ty::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(*debruijn, ty::INNERMOST);
@@ -1154,13 +1154,13 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
+    /// Constructs a `TyData::Error` type and registers a `delay_span_bug` to ensure it gets used.
     #[track_caller]
     pub fn ty_error(self) -> Ty<'tcx> {
-        self.ty_error_with_message(DUMMY_SP, "TyKind::Error constructed but no error reported")
+        self.ty_error_with_message(DUMMY_SP, "TyData::Error constructed but no error reported")
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
+    /// Constructs a `TyData::Error` type and registers a `delay_span_bug` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
@@ -1492,7 +1492,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let ret_ty = self.type_of(scope_def_id);
-        match ret_ty.kind() {
+        match ret_ty.data() {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(self);
                 let output = self.erase_late_bound_regions(&sig.output());
@@ -1564,7 +1564,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// `None` is returned if the value or one of the components is not part
 /// of the provided context.
 /// For `Ty`, `None` can be returned if either the type interner doesn't
-/// contain the `TyKind` key or if the address of the interned
+/// contain the `TyData` key or if the address of the interned
 /// pointer differs. The latter case is possible if a primitive type,
 /// e.g., `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx>: fmt::Debug {
@@ -1816,7 +1816,7 @@ macro_rules! sty_debug_print {
                 let shards = tcx.interners.type_.lock_shards();
                 let types = shards.iter().flat_map(|shard| shard.keys());
                 for &Interned(t) in types {
-                    let variant = match t.kind() {
+                    let variant = match t.data() {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error(_) => /* unimportant */ continue,
@@ -1922,10 +1922,10 @@ impl<'tcx, T: 'tcx + ?Sized> IntoPointer for Interned<'tcx, T> {
         self.0 as *const _ as *const ()
     }
 }
-// N.B., an `Interned<Ty>` compares and hashes as a `TyKind`.
+// N.B., an `Interned<Ty>` compares and hashes as a `TyData`.
 impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
-        self.0.kind() == other.0.kind()
+        self.0.data() == other.0.data()
     }
 }
 
@@ -1933,14 +1933,14 @@ impl<'tcx> Eq for Interned<'tcx, TyS<'tcx>> {}
 
 impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.0.kind().hash(s)
+        self.0.data().hash(s)
     }
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
-impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
-        &self.0.kind()
+#[allow(rustc::usage_of_ty_tydata)]
+impl<'tcx> Borrow<TyData<'tcx>> for Interned<'tcx, TyS<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a TyData<'tcx> {
+        &self.0.data()
     }
 }
 // N.B., an `Interned<PredicateInner>` compares and hashes as a `PredicateKind`.
@@ -2078,7 +2078,7 @@ impl<'tcx> TyCtxt<'tcx> {
         unsafety: hir::Unsafety,
     ) -> PolyFnSig<'tcx> {
         sig.map_bound(|s| {
-            let params_iter = match s.inputs()[0].kind() {
+            let params_iter = match s.inputs()[0].data() {
                 ty::Tuple(params) => params.into_iter().map(|k| k.expect_ty()),
                 _ => bug!(),
             };
@@ -2093,9 +2093,9 @@ impl<'tcx> TyCtxt<'tcx> {
         if *r == kind { r } else { self.mk_region(kind) }
     }
 
-    #[allow(rustc::usage_of_ty_tykind)]
+    #[allow(rustc::usage_of_ty_tydata)]
     #[inline]
-    pub fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ty(self, st: TyData<'tcx>) -> Ty<'tcx> {
         self.interners.intern_ty(st)
     }
 
@@ -2587,13 +2587,13 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl TyCtxtAt<'tcx> {
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
+    /// Constructs a `TyData::Error` type and registers a `delay_span_bug` to ensure it gets used.
     #[track_caller]
     pub fn ty_error(self) -> Ty<'tcx> {
-        self.tcx.ty_error_with_message(self.span, "TyKind::Error constructed but no error reported")
+        self.tcx.ty_error_with_message(self.span, "TyData::Error constructed but no error reported")
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
+    /// Constructs a `TyData::Error` type and registers a `delay_span_bug` with the given `msg to
     /// ensure it gets used.
     #[track_caller]
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {

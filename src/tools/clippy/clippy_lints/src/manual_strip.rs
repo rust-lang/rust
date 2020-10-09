@@ -155,7 +155,7 @@ fn eq_pattern_length<'tcx>(cx: &LateContext<'tcx>, pattern: &Expr<'_>, expr: &'t
 
 // Tests if `expr` is a `&str`.
 fn is_ref_str(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match cx.typeck_results().expr_ty_adjusted(&expr).kind() {
+    match cx.typeck_results().expr_ty_adjusted(&expr).data() {
         ty::Ref(_, ty, _) => ty.is_str(),
         _ => false,
     }

@@ -375,7 +375,7 @@ where
         }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            match *ty.kind() {
+            match *ty.data() {
                 ty::Opaque(def_id, substs) => {
                     debug!("fixup_opaque_types: found type {:?}", ty);
                     // Here, we replace any inference variables that occur within
@@ -391,7 +391,7 @@ where
                             let old_param = substs[param.index as usize];
                             match old_param.unpack() {
                                 GenericArgKind::Type(old_ty) => {
-                                    if let ty::Infer(_) = old_ty.kind() {
+                                    if let ty::Infer(_) = old_ty.data() {
                                         // Replace inference type with a generic parameter
                                         self.tcx.mk_param_from_def(param)
                                     } else {
@@ -873,7 +873,7 @@ fn bounds_from_generic_predicates<'tcx>(
             "<{}>",
             types
                 .keys()
-                .filter_map(|t| match t.kind() {
+                .filter_map(|t| match t.data() {
                     ty::Param(_) => Some(t.to_string()),
                     // Avoid suggesting the following:
                     // fn foo<T, <T as Trait>::Bar>(_: T) where T: Trait, <T as Trait>::Bar: Other {}
@@ -918,7 +918,7 @@ fn fn_sig_suggestion<'tcx>(
         .iter()
         .enumerate()
         .map(|(i, ty)| {
-            Some(match ty.kind() {
+            Some(match ty.data() {
                 ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = match &format!("{}", reg)[..] {
@@ -926,7 +926,7 @@ fn fn_sig_suggestion<'tcx>(
                         reg => format!("{} ", reg),
                     };
                     if assoc.fn_has_self_parameter {
-                        match ref_ty.kind() {
+                        match ref_ty.data() {
                             ty::Param(param) if param.name == kw::SelfUpper => {
                                 format!("&{}{}self", reg, mutability.prefix_str())
                             }

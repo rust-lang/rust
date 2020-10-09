@@ -55,7 +55,7 @@ pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind;
 pub use self::sty::RegionKind::*;
-pub use self::sty::TyKind::*;
+pub use self::sty::TyData::*;
 pub use self::sty::{Binder, BoundTy, BoundTyKind, BoundVar, DebruijnIndex, INNERMOST};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::{CanonicalPolyFnSig, FnSig, GenSig, PolyFnSig, PolyGenSig};
@@ -65,7 +65,7 @@ pub use self::sty::{ConstVid, FloatVid, IntVid, RegionVid, TyVid};
 pub use self::sty::{ExistentialPredicate, InferTy, ParamConst, ParamTy, ProjectionTy};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
-pub use self::sty::{PolyTraitRef, TraitRef, TyKind};
+pub use self::sty::{PolyTraitRef, TraitRef, TyData};
 pub use crate::ty::diagnostics::*;
 
 pub use self::binding::BindingMode;
@@ -578,11 +578,11 @@ bitflags! {
     }
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
+#[allow(rustc::usage_of_ty_tydata)]
 pub struct TyS<'tcx> {
     /// This field shouldn't be used directly and may be removed in the future.
-    /// Use `TyS::kind()` instead.
-    kind: TyKind<'tcx>,
+    /// Use `TyS::data()` instead.
+    data: TyData<'tcx>,
     /// This field shouldn't be used directly and may be removed in the future.
     /// Use `TyS::flags()` instead.
     flags: TypeFlags,
@@ -613,13 +613,13 @@ static_assert_size!(TyS<'_>, 32);
 
 impl<'tcx> Ord for TyS<'tcx> {
     fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
-        self.kind().cmp(other.kind())
+        self.data().cmp(other.data())
     }
 }
 
 impl<'tcx> PartialOrd for TyS<'tcx> {
     fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
-        Some(self.kind().cmp(other.kind()))
+        Some(self.data().cmp(other.data()))
     }
 }
 
@@ -640,7 +640,7 @@ impl<'tcx> Hash for TyS<'tcx> {
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ty::TyS {
-            ref kind,
+            data: ref kind,
 
             // The other fields just provide fast access to information that is
             // also contained in `kind`, so no need to hash them.
@@ -2643,7 +2643,7 @@ impl<'tcx> AdtDef {
 
 impl<'tcx> FieldDef {
     /// Returns the type of this field. The `subst` is typically obtained
-    /// via the second field of `TyKind::AdtDef`.
+    /// via the second field of `TyData::AdtDef`.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
         tcx.type_of(self.did).subst(tcx, subst)
     }

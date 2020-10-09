@@ -907,7 +907,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindAssignments<'a, 'tcx> {
             // Handle the "subtle case" described above by rejecting any `dest` that is or
             // projects through a union.
             let is_union = |ty: Ty<'_>| {
-                if let ty::Adt(def, _) = ty.kind() {
+                if let ty::Adt(def, _) = ty.data() {
                     if def.is_union() {
                         return true;
                     }

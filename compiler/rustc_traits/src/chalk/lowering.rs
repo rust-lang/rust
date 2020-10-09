@@ -35,7 +35,7 @@ use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInt
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    self, Binder, BoundRegion, Region, RegionKind, Ty, TyCtxt, TyKind, TypeFoldable, TypeVisitor,
+    self, Binder, BoundRegion, Region, RegionKind, Ty, TyCtxt, TypeFoldable, TypeVisitor,
 };
 use rustc_span::def_id::DefId;
 
@@ -164,7 +164,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                 ))
             }
             ty::PredicateAtom::WellFormed(arg) => match arg.unpack() {
-                GenericArgKind::Type(ty) => match ty.kind() {
+                GenericArgKind::Type(ty) => match ty.data() {
                     // FIXME(chalk): In Chalk, a placeholder is WellFormed if it
                     // `FromEnv`. However, when we "lower" Params, we don't update
                     // the environment.
@@ -235,7 +235,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::Ty<RustInterner<'tcx>> {
         use chalk_ir::TyData;
         use rustc_ast as ast;
-        use TyKind::*;
+        use ty::TyData::*;
 
         let empty = || chalk_ir::Substitution::empty(interner);
         let struct_ty =
@@ -247,7 +247,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
         let uint = |i| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Uint(i)), empty());
         let float = |f| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Float(f)), empty());
 
-        match *self.kind() {
+        match *self.data() {
             Bool => apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Bool), empty()),
             Char => apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Char), empty()),
             Int(ty) => match ty {
@@ -490,7 +490,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 universe: ty::UniverseIndex::from_usize(placeholder.ui.counter),
                 name: ty::BoundVar::from_usize(placeholder.idx),
             }),
-            chalk_ir::TyData::Alias(alias_ty) => match alias_ty {
+            TyData::Alias(alias_ty) => match alias_ty {
                 chalk_ir::AliasTy::Projection(projection) => ty::Projection(ty::ProjectionTy {
                     item_def_id: projection.associated_ty_id.0,
                     substs: projection.substitution.lower_into(interner),
@@ -901,7 +901,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        match *t.kind() {
+        match *t.data() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 match self.parameters.entry(bound_ty.var.as_u32()) {
                     Entry::Vacant(entry) => {
@@ -1043,7 +1043,7 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
+        match *t.data() {
             // FIXME(chalk): currently we convert params to placeholders starting at
             // index `0`. To support placeholders, we'll actually need to do a
             // first pass to collect placeholders. Then we can insert params after.
@@ -1111,7 +1111,7 @@ impl PlaceholdersCollector {
 
 impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        match t.kind() {
+        match t.data() {
             ty::Placeholder(p) if p.universe == self.universe_index => {
                 self.next_ty_placeholder = self.next_ty_placeholder.max(p.name.as_usize() + 1);
             }

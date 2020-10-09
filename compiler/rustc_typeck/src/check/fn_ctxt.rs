@@ -943,7 +943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
             trait_ref, self_ty, expected_vid
         );
-        match *self_ty.kind() {
+        match *self_ty.data() {
             ty::Infer(ty::TyVar(found_vid)) => {
                 // FIXME: consider using `sub_root_var` here so we
                 // can see through subtyping.
@@ -1124,7 +1124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let formal_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
-            match tuple_type.kind() {
+            match tuple_type.data() {
                 ty::Tuple(arg_types) if arg_types.len() != args.len() => {
                     param_count_error(arg_types.len(), args.len(), "E0057", false, false);
                     expected_arg_tys = vec![];
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty::Tuple(arg_types) => {
                     expected_arg_tys = match expected_arg_tys.get(0) {
-                        Some(&ty) => match ty.kind() {
+                        Some(&ty) => match ty.data() {
                             ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).collect(),
                             _ => vec![],
                         },
@@ -1277,7 +1277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
                 let arg_ty = self.structurally_resolved_type(arg.span, arg_ty);
-                match arg_ty.kind() {
+                match arg_ty.data() {
                     ty::Float(ast::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
@@ -1429,7 +1429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
             ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
-                let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
+                let opt_ty = expected.to_option(self).and_then(|ty| match ty.data() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     ty::Char => Some(tcx.types.u8),
                     ty::RawPtr(..) => Some(tcx.types.usize),
@@ -1440,7 +1440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => tcx.mk_mach_float(t),
             ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
-                let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
+                let opt_ty = expected.to_option(self).and_then(|ty| match ty.data() {
                     ty::Float(_) => Some(ty),
                     _ => None,
                 });
@@ -1518,12 +1518,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Res::Def(DefKind::Variant, _) => match ty.kind() {
+            Res::Def(DefKind::Variant, _) => match ty.data() {
                 ty::Adt(adt, substs) => Some((adt.variant_of_res(def), adt.did, substs)),
                 _ => bug!("unexpected type: {:?}", ty),
             },
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
-            | Res::SelfTy(..) => match ty.kind() {
+            | Res::SelfTy(..) => match ty.data() {
                 ty::Adt(adt, substs) if !adt.is_enum() => {
                     Some((adt.non_enum_variant(), adt.did, substs))
                 }
@@ -2063,7 +2063,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
     ) -> bool {
         let hir = self.tcx.hir();
-        let (def_id, sig) = match *found.kind() {
+        let (def_id, sig) = match *found.data() {
             ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig()),
             _ => return false,
@@ -2196,7 +2196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some((sp, msg, suggestion, applicability)) = self.check_ref(expr, found, expected) {
             err.span_suggestion(sp, msg, suggestion, applicability);
         } else if let (ty::FnDef(def_id, ..), true) =
-            (&found.kind(), self.suggest_fn_call(err, expr, expected, found))
+            (&found.data(), self.suggest_fn_call(err, expr, expected, found))
         {
             if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
                 let sp = self.sess().source_map().guess_head_span(sp);
@@ -2343,7 +2343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let pin_did = self.tcx.lang_items().pin_type();
-        match expected.kind() {
+        match expected.data() {
             ty::Adt(def, _) if Some(def.did) != pin_did => return false,
             // This guards the `unwrap` and `mk_box` below.
             _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return false,
@@ -2355,7 +2355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.can_coerce(new_found, expected),
             self.sess().source_map().span_to_snippet(expr.span),
         ) {
-            match found.kind() {
+            match found.data() {
                 ty::Adt(def, _) if def.is_box() => {
                     err.help("use `Box::pin`");
                 }
@@ -2463,7 +2463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = AstConv::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
-                if ty.kind() == expected.kind() {
+                if ty.data() == expected.data() {
                     err.span_label(sp, format!("expected `{}` because of return type", expected));
                     return true;
                 }
@@ -2571,7 +2571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
-        let (sig, did, substs) = match (&expected.kind(), &found.kind()) {
+        let (sig, did, substs) = match (&expected.data(), &found.data()) {
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
                 let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
@@ -2642,7 +2642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
-        if matches!(last_expr_ty.kind(), ty::Error(_))
+        if matches!(last_expr_ty.data(), ty::Error(_))
             || self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err()
         {
             return None;
@@ -2771,7 +2771,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
             let ty = self.normalize_ty(span, tcx.at(span).type_of(impl_def_id));
-            match *ty.kind() {
+            match *ty.data() {
                 ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();

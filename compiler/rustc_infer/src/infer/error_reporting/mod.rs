@@ -570,7 +570,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
                 if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) =
-                    (exp_found.expected.kind(), exp_found.found.kind())
+                    (exp_found.expected.data(), exp_found.found.data())
                 {
                     report_path_match(err, exp_adt.did, found_adt.did);
                 }
@@ -856,7 +856,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
                 return Some(());
             }
-            if let &ty::Adt(def, _) = ta.kind() {
+            if let &ty::Adt(def, _) = ta.data() {
                 let path_ = self.tcx.def_path_str(def.did);
                 if path_ == other_path {
                     self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
@@ -1037,11 +1037,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
-        debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.kind(), t2, t2.kind());
+        debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.data(), t2, t2.data());
 
         // helper functions
         fn equals<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-            match (a.kind(), b.kind()) {
+            match (a.data(), b.data()) {
                 (a, b) if *a == *b => true,
                 (&ty::Int(_), &ty::Infer(ty::InferTy::IntVar(_)))
                 | (
@@ -1074,7 +1074,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         // process starts here
-        match (t1.kind(), t2.kind()) {
+        match (t1.data(), t2.data()) {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
                 let sub_no_defaults_2 = self.strip_generic_default_params(def2.did, sub2);
@@ -1536,7 +1536,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
             match (&terr, expected == found) {
                 (TypeError::Sorts(values), extra) => {
-                    let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
+                    let sort_string = |ty: Ty<'tcx>| match (extra, ty.data()) {
                         (true, ty::Opaque(def_id, _)) => format!(
                             " (opaque type at {})",
                             self.tcx
@@ -1623,7 +1623,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             exp_span, exp_found.expected, exp_found.found
         );
 
-        if let ty::Opaque(def_id, _) = *exp_found.expected.kind() {
+        if let ty::Opaque(def_id, _) = *exp_found.expected.data() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output
             let item_def_id = self
@@ -1676,9 +1676,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         diag: &mut DiagnosticBuilder<'tcx>,
     ) {
         if let (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) =
-            (exp_found.expected.kind(), exp_found.found.kind())
+            (exp_found.expected.data(), exp_found.found.data())
         {
-            if let ty::Adt(found_def, found_substs) = *found_ty.kind() {
+            if let ty::Adt(found_def, found_substs) = *found_ty.data() {
                 let path_str = format!("{:?}", exp_def);
                 if exp_def == &found_def {
                     let opt_msg = "you can convert from `&Option<T>` to `Option<&T>` using \
@@ -1697,9 +1697,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     {
                         let mut show_suggestion = true;
                         for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
-                            match *exp_ty.kind() {
+                            match *exp_ty.data() {
                                 ty::Ref(_, exp_ty, _) => {
-                                    match (exp_ty.kind(), found_ty.kind()) {
+                                    match (exp_ty.data(), found_ty.data()) {
                                         (_, ty::Param(_))
                                         | (_, ty::Infer(_))
                                         | (ty::Param(_), _)
@@ -2049,7 +2049,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 if let Some(infer::RelateParamBound(_, t)) = origin {
                     let t = self.resolve_vars_if_possible(&t);
-                    match t.kind() {
+                    match t.data() {
                         // We've got:
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
                         // suggest:
@@ -2291,7 +2291,7 @@ impl TyCategory {
     }
 
     pub fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
-        match *ty.kind() {
+        match *ty.data() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
             ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
             ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),

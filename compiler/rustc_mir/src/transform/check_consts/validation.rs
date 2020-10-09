@@ -342,7 +342,7 @@ impl Validator<'mir, 'tcx> {
                 GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
             };
 
-            match *ty.kind() {
+            match *ty.data() {
                 ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
                 ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
                 ty::FnPtr(..) => self.check_op(ops::ty::FnPtr(kind)),
@@ -395,7 +395,7 @@ impl Validator<'mir, 'tcx> {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
-                        match pred.self_ty().kind() {
+                        match pred.self_ty().data() {
                             ty::Param(p) => {
                                 let generics = tcx.generics_of(current);
                                 let def = generics.type_param(p, tcx);
@@ -505,7 +505,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
             | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
                 let ty = place.ty(self.body, self.tcx).ty;
-                let is_allowed = match ty.kind() {
+                let is_allowed = match ty.data() {
                     // Inside a `static mut`, `&mut [...]` is allowed.
                     ty::Array(..) | ty::Slice(_)
                         if self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut) =>
@@ -568,7 +568,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     let unsized_ty = self.tcx.struct_tail_erasing_lifetimes(ty, self.param_env);
 
                     // Casting/coercing things to slices is fine.
-                    if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
+                    if let ty::Slice(_) | ty::Str = unsized_ty.data() {
                         return;
                     }
                 }
@@ -665,7 +665,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         match elem {
             ProjectionElem::Deref => {
                 let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
-                if let ty::RawPtr(_) = base_ty.kind() {
+                if let ty::RawPtr(_) = base_ty.data() {
                     if proj_base.is_empty() {
                         if let (local, []) = (place_local, proj_base) {
                             let decl = &self.body.local_decls[local];
@@ -742,7 +742,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 let fn_ty = func.ty(body, tcx);
 
-                let (mut callee, substs) = match *fn_ty.kind() {
+                let (mut callee, substs) = match *fn_ty.data() {
                     ty::FnDef(def_id, substs) => (def_id, substs),
 
                     ty::FnPtr(_) => {
@@ -933,7 +933,7 @@ fn place_as_reborrow(
         // This is sufficient to prevent an access to a `static mut` from being marked as a
         // reborrow, even if the check above were to disappear.
         let inner_ty = Place::ty_from(place.local, inner, body, tcx).ty;
-        match inner_ty.kind() {
+        match inner_ty.data() {
             ty::Ref(..) => Some(inner),
             _ => None,
         }

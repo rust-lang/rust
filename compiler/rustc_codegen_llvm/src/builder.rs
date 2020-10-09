@@ -307,7 +307,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         use rustc_ast::UintTy::*;
         use rustc_middle::ty::{Int, Uint};
 
-        let new_kind = match ty.kind() {
+        let new_kind = match ty.data() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.ptr_width)),
             t @ (Uint(_) | Int(_)) => t.clone(),

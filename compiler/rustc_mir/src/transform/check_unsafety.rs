@@ -91,7 +91,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     )
                 }
 
-                if let ty::FnDef(func_id, _) = func_ty.kind() {
+                if let ty::FnDef(func_id, _) = func_ty.data() {
                     self.check_target_features(*func_id);
                 }
             }
@@ -227,7 +227,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
             }
             let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
-            match base_ty.kind() {
+            match base_ty.data() {
                 ty::RawPtr(..) => self.require_unsafe(
                     UnsafetyViolationKind::GeneralAndConstFn,
                     UnsafetyViolationDetails::DerefOfRawPointer,
@@ -394,7 +394,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 ProjectionElem::Field(..) => {
                     let ty =
                         Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx).ty;
-                    if let ty::Adt(def, _) = ty.kind() {
+                    if let ty::Adt(def, _) = ty.data() {
                         if self.tcx.layout_scalar_valid_range(def.did)
                             != (Bound::Unbounded, Bound::Unbounded)
                         {

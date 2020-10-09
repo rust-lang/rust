@@ -33,13 +33,13 @@ pub trait EncodableWithShorthand<'tcx, E: TyEncoder<'tcx>>: Copy + Eq + Hash {
     fn variant(&self) -> &Self::Variant;
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
+#[allow(rustc::usage_of_ty_tydata)]
 impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
-    type Variant = ty::TyKind<'tcx>;
+    type Variant = ty::TyData<'tcx>;
 
     #[inline]
     fn variant(&self) -> &Self::Variant {
-        self.kind()
+        self.data()
     }
 }
 
@@ -224,7 +224,7 @@ where
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
-    #[allow(rustc::usage_of_ty_tykind)]
+    #[allow(rustc::usage_of_ty_tydata)]
     fn decode(decoder: &mut D) -> Result<Ty<'tcx>, D::Error> {
         // Handle shorthands first, if we have an usize > 0x80.
         if decoder.positioned_at_shorthand() {
@@ -237,7 +237,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
             })
         } else {
             let tcx = decoder.tcx();
-            Ok(tcx.mk_ty(ty::TyKind::decode(decoder)?))
+            Ok(tcx.mk_ty(ty::TyData::decode(decoder)?))
         }
     }
 }

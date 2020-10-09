@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             return;
         }
         let ret_ty = utils::return_ty(cx, hir_id);
-        if let Opaque(id, subst) = *ret_ty.kind() {
+        if let Opaque(id, subst) = *ret_ty.data() {
             let preds = cx.tcx.explicit_item_bounds(id);
             let mut is_future = false;
             for &(p, _span) in preds {

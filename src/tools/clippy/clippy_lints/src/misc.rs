@@ -561,17 +561,17 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let value = &cx.typeck_results().expr_ty(expr).peel_refs().kind();
+    let value = &cx.typeck_results().expr_ty(expr).peel_refs().data();
 
     if let ty::Array(arr_ty, _) = value {
-        return matches!(arr_ty.kind(), ty::Float(_));
+        return matches!(arr_ty.data(), ty::Float(_));
     };
 
     matches!(value, ty::Float(_))
 }
 
 fn is_array(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(&cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
+    matches!(&cx.typeck_results().expr_ty(expr).peel_refs().data(), ty::Array(_, _))
 }
 
 fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {

@@ -218,7 +218,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
         match terminator.kind {
             TerminatorKind::Call { ref func, .. } => {
-                if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
+                if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).data() {
                     let fn_sig = self.ccx.tcx.fn_sig(def_id);
                     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
                         let name = self.ccx.tcx.item_name(def_id);
@@ -370,7 +370,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             // In theory, any zero-sized value could be borrowed
                             // mutably without consequences. However, only &mut []
                             // is allowed right now.
-                            if let ty::Array(_, len) = ty.kind() {
+                            if let ty::Array(_, len) = ty.data() {
                                 match len.try_eval_usize(self.tcx, self.param_env) {
                                     Some(0) => {}
                                     _ => return Err(Unpromotable),
@@ -614,7 +614,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).data() {
                     assert!(
                         op == BinOp::Eq
                             || op == BinOp::Ne
@@ -658,7 +658,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // no problem, only using it is.
                 if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
                     let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
-                    if let ty::Ref(..) = base_ty.kind() {
+                    if let ty::Ref(..) = base_ty.data() {
                         return self.validate_place(PlaceRef {
                             local: place.local,
                             projection: proj_base,
@@ -675,7 +675,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
                     // is allowed right now.
-                    if let ty::Array(_, len) = ty.kind() {
+                    if let ty::Array(_, len) = ty.data() {
                         match len.try_eval_usize(self.tcx, self.param_env) {
                             Some(0) => {}
                             _ => return Err(Unpromotable),
@@ -689,7 +689,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let mut place = place.as_ref();
                 if let [proj_base @ .., ProjectionElem::Deref] = &place.projection {
                     let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
-                    if let ty::Ref(..) = base_ty.kind() {
+                    if let ty::Ref(..) = base_ty.data() {
                         place = PlaceRef { local: place.local, projection: proj_base };
                     }
                 }
@@ -743,7 +743,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
         if !self.explicit && self.maybe_runtime() {
-            if let ty::FnDef(def_id, _) = *fn_ty.kind() {
+            if let ty::FnDef(def_id, _) = *fn_ty.data() {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
                 if !self.tcx.is_promotable_const_fn(def_id) {
@@ -752,7 +752,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
         }
 
-        let is_const_fn = match *fn_ty.kind() {
+        let is_const_fn = match *fn_ty.data() {
             ty::FnDef(def_id, _) => {
                 is_const_fn(self.tcx, def_id)
                     || is_unstable_const_fn(self.tcx, def_id).is_some()

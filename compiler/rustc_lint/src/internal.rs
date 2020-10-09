@@ -60,9 +60,9 @@ impl EarlyLintPass for DefaultHashTypes {
 }
 
 declare_tool_lint! {
-    pub rustc::USAGE_OF_TY_TYKIND,
+    pub rustc::USAGE_OF_TY_TYDATA,
     Allow,
-    "usage of `ty::TyKind` outside of the `ty::sty` module",
+    "usage of `ty::TyData` outside of the `ty::sty` module",
     report_in_external_macro: true
 }
 
@@ -80,24 +80,24 @@ declare_tool_lint! {
     report_in_external_macro: true
 }
 
-declare_lint_pass!(TyTyKind => [
-    USAGE_OF_TY_TYKIND,
+declare_lint_pass!(TyTyData => [
+    USAGE_OF_TY_TYDATA,
     TY_PASS_BY_REFERENCE,
     USAGE_OF_QUALIFIED_TY,
 ]);
 
-impl<'tcx> LateLintPass<'tcx> for TyTyKind {
+impl<'tcx> LateLintPass<'tcx> for TyTyData {
     fn check_path(&mut self, cx: &LateContext<'_>, path: &'tcx Path<'tcx>, _: HirId) {
         let segments = path.segments.iter().rev().skip(1).rev();
 
         if let Some(last) = segments.last() {
             let span = path.span.with_hi(last.ident.span.hi());
             if lint_ty_kind_usage(cx, last) {
-                cx.struct_span_lint(USAGE_OF_TY_TYKIND, span, |lint| {
-                    lint.build("usage of `ty::TyKind::<kind>`")
+                cx.struct_span_lint(USAGE_OF_TY_TYDATA, span, |lint| {
+                    lint.build("usage of `ty::TyData::<data>`")
                         .span_suggestion(
                             span,
-                            "try using ty::<kind> directly",
+                            "try using ty::<data> directly",
                             "ty".to_string(),
                             Applicability::MaybeIncorrect, // ty maybe needs an import
                         )
@@ -113,8 +113,8 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                 if let QPath::Resolved(_, path) = qpath {
                     if let Some(last) = path.segments.iter().last() {
                         if lint_ty_kind_usage(cx, last) {
-                            cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, |lint| {
-                                lint.build("usage of `ty::TyKind`")
+                            cx.struct_span_lint(USAGE_OF_TY_TYDATA, path.span, |lint| {
+                                lint.build("usage of `ty::TyData`")
                                     .help("try using `Ty` instead")
                                     .emit();
                             })
@@ -169,7 +169,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
 fn lint_ty_kind_usage(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> bool {
     if let Some(res) = segment.res {
         if let Some(did) = res.opt_def_id() {
-            return cx.tcx.is_diagnostic_item(sym::TyKind, did);
+            return cx.tcx.is_diagnostic_item(sym::TyData, did);
         }
     }
 
@@ -189,7 +189,7 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
                 }
                 // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
                 Res::SelfTy(None, Some((did, _))) => {
-                    if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
+                    if let ty::Adt(adt, substs) = cx.tcx.type_of(did).data() {
                         if cx.tcx.is_diagnostic_item(sym::Ty, adt.did) {
                             // NOTE: This path is currently unreachable as `Ty<'tcx>` is
                             // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`

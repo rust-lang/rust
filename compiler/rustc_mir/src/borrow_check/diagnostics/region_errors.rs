@@ -365,13 +365,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .struct_span_err(*span, "captured variable cannot escape `FnMut` closure body");
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Opaque(def_id, _) = *output_ty.kind() {
+        if let ty::Opaque(def_id, _) = *output_ty.data() {
             output_ty = self.infcx.tcx.type_of(def_id)
         };
 
         debug!("report_fnmut_error: output_ty={:?}", output_ty);
 
-        let message = match output_ty.kind() {
+        let message = match output_ty.data() {
             ty::Closure(_, _) => {
                 "returns a closure that contains a reference to a captured variable, which then \
                  escapes the closure body"
@@ -579,7 +579,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 .is_suitable_region(f)
                 .map(|r| r.def_id)
                 .and_then(|id| self.infcx.tcx.return_type_impl_trait(id))
-                .map(|(ty, _)| ty.kind())
+                .map(|(ty, _)| ty.data())
             {
                 // Check whether or not the impl trait return type is intended to capture
                 // data with the static lifetime.

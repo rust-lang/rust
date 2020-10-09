@@ -21,7 +21,7 @@ crate fn lit_to_const<'tcx>(
         Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
     };
 
-    let lit = match (lit, &ty.kind()) {
+    let lit = match (lit, &ty.data()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let s = s.as_str();
             let allocation = Allocation::from_byte_aligned_bytes(s.as_bytes());
@@ -29,7 +29,7 @@ crate fn lit_to_const<'tcx>(
             ConstValue::Slice { data: allocation, start: 0, end: s.len() }
         }
         (ast::LitKind::ByteStr(data), ty::Ref(_, inner_ty, _))
-            if matches!(inner_ty.kind(), ty::Slice(_)) =>
+            if matches!(inner_ty.data(), ty::Slice(_)) =>
         {
             let allocation = Allocation::from_byte_aligned_bytes(data as &[u8]);
             let allocation = tcx.intern_const_alloc(allocation);

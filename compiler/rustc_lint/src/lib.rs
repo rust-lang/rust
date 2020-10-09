@@ -453,15 +453,15 @@ fn register_internals(store: &mut LintStore) {
     store.register_early_pass(|| box DefaultHashTypes::new());
     store.register_lints(&LintPassImpl::get_lints());
     store.register_early_pass(|| box LintPassImpl);
-    store.register_lints(&TyTyKind::get_lints());
-    store.register_late_pass(|| box TyTyKind);
+    store.register_lints(&TyTyData::get_lints());
+    store.register_late_pass(|| box TyTyData);
     store.register_group(
         false,
         "rustc::internal",
         None,
         vec![
             LintId::of(DEFAULT_HASH_TYPES),
-            LintId::of(USAGE_OF_TY_TYKIND),
+            LintId::of(USAGE_OF_TY_TYDATA),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(TY_PASS_BY_REFERENCE),
             LintId::of(USAGE_OF_QUALIFIED_TY),

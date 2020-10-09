@@ -261,7 +261,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 .collect()
         };
 
-        let kind = match cv.ty.kind() {
+        let kind = match cv.ty.data() {
             ty::Float(_) => {
                 tcx.struct_span_lint_hir(
                     lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
@@ -372,7 +372,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 slice: None,
                 suffix: Vec::new(),
             },
-            ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
+            ty::Ref(_, pointee_ty, ..) => match *pointee_ty.data() {
                 // These are not allowed and will error elsewhere anyway.
                 ty::Dynamic(..) => {
                     self.saw_const_match_error.set(true);

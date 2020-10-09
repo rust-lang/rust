@@ -460,7 +460,7 @@ pub trait PrettyPrinter<'tcx>:
             // Inherent impls. Try to print `Foo::bar` for an inherent
             // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
             // anything other than a simple path.
-            match self_ty.kind() {
+            match self_ty.data() {
                 ty::Adt(..)
                 | ty::Foreign(_)
                 | ty::Bool
@@ -511,7 +511,7 @@ pub trait PrettyPrinter<'tcx>:
     fn pretty_print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         define_scoped_cx!(self);
 
-        match *ty.kind() {
+        match *ty.data() {
             ty::Bool => p!("bool"),
             ty::Char => p!("char"),
             ty::Int(t) => p!(write("{}", t.name_str())),
@@ -783,7 +783,7 @@ pub trait PrettyPrinter<'tcx>:
             // Special-case `Fn(...) -> ...` and resugar it.
             let fn_trait_kind = self.tcx().fn_trait_kind_from_lang_item(principal.def_id);
             if !self.tcx().sess.verbose() && fn_trait_kind.is_some() {
-                if let ty::Tuple(ref args) = principal.substs.type_at(0).kind() {
+                if let ty::Tuple(ref args) = principal.substs.type_at(0).data() {
                     let mut projections = predicates.projection_bounds();
                     if let (Some(proj), None) = (projections.next(), projections.next()) {
                         let tys: Vec<_> = args.iter().map(|k| k.expect_ty()).collect();
@@ -962,16 +962,16 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        match (scalar, &ty.kind()) {
+        match (scalar, &ty.data()) {
             // Byte strings (&[u8; N])
             (
                 Scalar::Ptr(ptr),
                 ty::Ref(
                     _,
                     ty::TyS {
-                        kind:
+                        data:
                             ty::Array(
-                                ty::TyS { kind: ty::Uint(ast::UintTy::U8), .. },
+                                ty::TyS { data: ty::Uint(ast::UintTy::U8), .. },
                                 ty::Const {
                                     val:
                                         ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw {
@@ -1122,11 +1122,11 @@ pub trait PrettyPrinter<'tcx>:
 
         let u8_type = self.tcx().types.u8;
 
-        match (ct, ty.kind()) {
+        match (ct, ty.data()) {
             // Byte/string slices, printed as (byte) string literals.
             (
                 ConstValue::Slice { data, start, end },
-                ty::Ref(_, ty::TyS { kind: ty::Slice(t), .. }, _),
+                ty::Ref(_, ty::TyS { data: ty::Slice(t), .. }, _),
             ) if *t == u8_type => {
                 // The `inspect` here is okay since we checked the bounds, and there are
                 // no relocations (we have an active slice reference here). We don't use
@@ -1136,7 +1136,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             (
                 ConstValue::Slice { data, start, end },
-                ty::Ref(_, ty::TyS { kind: ty::Str, .. }, _),
+                ty::Ref(_, ty::TyS { data: ty::Str, .. }, _),
             ) => {
                 // The `inspect` here is okay since we checked the bounds, and there are no
                 // relocations (we have an active `str` reference here). We don't use this
@@ -1175,7 +1175,7 @@ pub trait PrettyPrinter<'tcx>:
                 );
                 let fields = contents.fields.iter().copied();
 
-                match *ty.kind() {
+                match *ty.data() {
                     ty::Array(..) => {
                         p!("[", comma_sep(fields), "]");
                     }

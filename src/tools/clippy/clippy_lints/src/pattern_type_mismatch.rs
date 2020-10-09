@@ -6,7 +6,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{AdtDef, FieldDef, Ty, TyKind, VariantDef};
+use rustc_middle::ty::{AdtDef, FieldDef, Ty, TyData, VariantDef};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
@@ -179,7 +179,7 @@ enum Level {
     Lower,
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
+#[allow(rustc::usage_of_ty_tydata)]
 fn find_first_mismatch<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &Pat<'_>,
@@ -187,19 +187,19 @@ fn find_first_mismatch<'tcx>(
     level: Level,
 ) -> Option<(Span, Mutability, Level)> {
     if let PatKind::Ref(ref sub_pat, _) = pat.kind {
-        if let TyKind::Ref(_, sub_ty, _) = ty.kind() {
+        if let TyData::Ref(_, sub_ty, _) = ty.data() {
             return find_first_mismatch(cx, sub_pat, sub_ty, Level::Lower);
         }
     }
 
-    if let TyKind::Ref(_, _, mutability) = *ty.kind() {
+    if let TyData::Ref(_, _, mutability) = *ty.data() {
         if is_non_ref_pattern(&pat.kind) {
             return Some((pat.span, mutability, level));
         }
     }
 
     if let PatKind::Struct(ref qpath, ref field_pats, _) = pat.kind {
-        if let TyKind::Adt(ref adt_def, ref substs_ref) = ty.kind() {
+        if let TyData::Adt(ref adt_def, ref substs_ref) = ty.data() {
             if let Some(variant) = get_variant(adt_def, qpath) {
                 let field_defs = &variant.fields;
                 return find_first_mismatch_in_struct(cx, field_pats, field_defs, substs_ref);
@@ -208,7 +208,7 @@ fn find_first_mismatch<'tcx>(
     }
 
     if let PatKind::TupleStruct(ref qpath, ref pats, _) = pat.kind {
-        if let TyKind::Adt(ref adt_def, ref substs_ref) = ty.kind() {
+        if let TyData::Adt(ref adt_def, ref substs_ref) = ty.data() {
             if let Some(variant) = get_variant(adt_def, qpath) {
                 let field_defs = &variant.fields;
                 let ty_iter = field_defs.iter().map(|field_def| field_def.ty(cx.tcx, substs_ref));
@@ -218,7 +218,7 @@ fn find_first_mismatch<'tcx>(
     }
 
     if let PatKind::Tuple(ref pats, _) = pat.kind {
-        if let TyKind::Tuple(..) = ty.kind() {
+        if let TyData::Tuple(..) = ty.data() {
             return find_first_mismatch_in_tuple(cx, pats, ty.tuple_fields());
         }
     }

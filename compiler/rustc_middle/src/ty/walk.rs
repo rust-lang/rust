@@ -120,7 +120,7 @@ impl<'tcx> super::TyS<'tcx> {
 // types as they are written).
 fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>) {
     match parent.unpack() {
-        GenericArgKind::Type(parent_ty) => match *parent_ty.kind() {
+        GenericArgKind::Type(parent_ty) => match *parent_ty.data() {
             ty::Bool
             | ty::Char
             | ty::Int(_)

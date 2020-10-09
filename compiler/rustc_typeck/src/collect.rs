@@ -1911,7 +1911,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
                 // is still checked for WF.
                 if bound_pred.bounds.is_empty() {
-                    if let ty::Param(_) = ty.kind() {
+                    if let ty::Param(_) = ty.data() {
                         // This is a `where T:`, which can be in the HIR from the
                         // transformation that moves `?Sized` to `T`'s declaration.
                         // We can skip the predicate because type parameters are
@@ -2142,7 +2142,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             //       substs are the same as the trait's.
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
-            if let ty::Projection(projection) = ty.kind() {
+            if let ty::Projection(projection) = ty.data() {
                 if projection.substs == trait_identity_substs
                     && tcx.associated_item(projection.item_def_id).container.id() == def_id
                 {

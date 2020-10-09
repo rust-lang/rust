@@ -185,7 +185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
     ) {
-        if let ty::Adt(expected_adt, substs) = expected.kind() {
+        if let ty::Adt(expected_adt, substs) = expected.data() {
             if !expected_adt.is_enum() {
                 return;
             }
@@ -409,8 +409,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
         let expr = expr.peel_drop_temps();
 
-        match (&expr.kind, expected.kind(), checked_ty.kind()) {
-            (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
+        match (&expr.kind, expected.data(), checked_ty.data()) {
+            (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.data(), check.data()) {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
@@ -770,7 +770,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let suffix_suggestion = with_opt_paren(&format_args!(
             "{}{}",
             if matches!(
-                (&expected_ty.kind(), &checked_ty.kind()),
+                (&expected_ty.data(), &checked_ty.data()),
                 (ty::Int(_) | ty::Uint(_), ty::Float(_))
             ) {
                 // Remove fractional part from literal, for example `42.0f32` into `42`
@@ -786,7 +786,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let is_negative_int =
             |expr: &hir::Expr<'_>| matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::UnNeg, ..));
-        let is_uint = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(..));
+        let is_uint = |ty: Ty<'_>| matches!(ty.data(), ty::Uint(..));
 
         let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
 
@@ -853,7 +853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion(expr.span, msg, suggestion, Applicability::MachineApplicable);
             };
 
-        match (&expected_ty.kind(), &checked_ty.kind()) {
+        match (&expected_ty.data(), &checked_ty.data()) {
             (&ty::Int(ref exp), &ty::Int(ref found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {

@@ -220,7 +220,7 @@ impl<'tcx> TypeError<'tcx> {
 
 impl<'tcx> ty::TyS<'tcx> {
     pub fn sort_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
-        match *self.kind() {
+        match *self.data() {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
                 format!("`{}`", self).into()
             }
@@ -284,7 +284,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 
     pub fn prefix_string(&self) -> Cow<'static, str> {
-        match *self.kind() {
+        match *self.data() {
             ty::Infer(_)
             | ty::Error(_)
             | ty::Bool
@@ -353,7 +353,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         );
                     }
                 }
-                match (values.expected.kind(), values.found.kind()) {
+                match (values.expected.data(), values.found.data()) {
                     (ty::Float(_), ty::Infer(ty::IntVar(_))) => {
                         if let Ok(
                             // Issue #53280
@@ -527,9 +527,9 @@ impl<T> Trait<T> for X {
                 debug!(
                     "note_and_explain_type_err expected={:?} ({:?}) found={:?} ({:?})",
                     values.expected,
-                    values.expected.kind(),
+                    values.expected.data(),
                     values.found,
-                    values.found.kind(),
+                    values.found.data(),
                 );
             }
             CyclicTy(ty) => {
@@ -573,7 +573,7 @@ impl<T> Trait<T> for X {
             if let Some(hir_generics) = item.generics() {
                 // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
                 // This will also work for `impl Trait`.
-                let def_id = if let ty::Param(param_ty) = proj_ty.self_ty().kind() {
+                let def_id = if let ty::Param(param_ty) = proj_ty.self_ty().data() {
                     let generics = self.generics_of(body_owner_def_id);
                     generics.type_param(param_ty, self).def_id
                 } else {
@@ -697,7 +697,7 @@ impl<T> Trait<T> for X {
             }
         }
 
-        if let ty::Opaque(def_id, _) = *proj_ty.self_ty().kind() {
+        if let ty::Opaque(def_id, _) = *proj_ty.self_ty().data() {
             // When the expected `impl Trait` is not defined in the current item, it will come from
             // a return type. This can occur when dealing with `TryStream` (#71035).
             if self.constrain_associated_type_structured_suggestion(
@@ -767,7 +767,7 @@ fn foo(&self) -> Self::T { String::new() }
             })
             .filter_map(|(_, item)| {
                 let method = self.fn_sig(item.def_id);
-                match *method.output().skip_binder().kind() {
+                match *method.output().skip_binder().data() {
                     ty::Projection(ty::ProjectionTy { item_def_id, .. })
                         if item_def_id == proj_ty_item_def_id =>
                     {

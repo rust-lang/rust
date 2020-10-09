@@ -85,7 +85,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let (def_id, substs) = match *callee_ty.kind() {
+        let (def_id, substs) = match *callee_ty.data() {
             ty::FnDef(def_id, substs) => (def_id, substs),
             _ => bug!("expected fn item type, found {}", callee_ty),
         };
@@ -783,7 +783,7 @@ fn generic_simd_intrinsic(
 
     if name == sym::simd_select_bitmask {
         let in_ty = arg_tys[0];
-        let m_len = match in_ty.kind() {
+        let m_len = match in_ty.data() {
             // Note that this `.unwrap()` crashes for isize/usize, that's sort
             // of intentional as there's not currently a use case for that.
             ty::Int(i) => i.bit_width().unwrap(),
@@ -952,7 +952,7 @@ fn generic_simd_intrinsic(
             m_len,
             v_len
         );
-        match m_elem_ty.kind() {
+        match m_elem_ty.data() {
             ty::Int(_) => {}
             _ => return_error!("mask element type is `{}`, expected `i_`", m_elem_ty),
         }
@@ -971,13 +971,13 @@ fn generic_simd_intrinsic(
         // If the vector has less than 8 lanes, an u8 is returned with zeroed
         // trailing bits.
         let expected_int_bits = in_len.max(8);
-        match ret_ty.kind() {
+        match ret_ty.data() {
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => (),
             _ => return_error!("bitmask `{}`, expected `u{}`", ret_ty, expected_int_bits),
         }
 
         // Integer vector <i{in_bitwidth} x in_len>:
-        let (i_xn, in_elem_bitwidth) = match in_elem.kind() {
+        let (i_xn, in_elem_bitwidth) = match in_elem.data() {
             ty::Int(i) => {
                 (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
             }
@@ -1034,7 +1034,7 @@ fn generic_simd_intrinsic(
                 }
             }
         }
-        let ety = match in_elem.kind() {
+        let ety = match in_elem.data() {
             ty::Float(f) if f.bit_width() == 32 => {
                 if in_len < 2 || in_len > 16 {
                     return_error!(
@@ -1128,7 +1128,7 @@ fn generic_simd_intrinsic(
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
     fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: u64, no_pointers: usize) -> String {
         let p0s: String = "p0".repeat(no_pointers);
-        match *elem_ty.kind() {
+        match *elem_ty.data() {
             ty::Int(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
             ty::Uint(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
             ty::Float(v) => format!("v{}{}f{}", vec_len, p0s, v.bit_width()),
@@ -1143,7 +1143,7 @@ fn generic_simd_intrinsic(
         mut no_pointers: usize,
     ) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
-        let mut elem_ty = match *elem_ty.kind() {
+        let mut elem_ty = match *elem_ty.data() {
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),
@@ -1196,7 +1196,7 @@ fn generic_simd_intrinsic(
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
-            match t.kind() {
+            match t.data() {
                 ty::RawPtr(p) => 1 + ptr_count(p.ty),
                 _ => 0,
             }
@@ -1204,7 +1204,7 @@ fn generic_simd_intrinsic(
 
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
-            match t.kind() {
+            match t.data() {
                 ty::RawPtr(p) => non_ptr(p.ty),
                 _ => t,
             }
@@ -1212,7 +1212,7 @@ fn generic_simd_intrinsic(
 
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
-        let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).kind() {
+        let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).data() {
             ty::RawPtr(p) if p.ty == in_elem => {
                 (ptr_count(arg_tys[1].simd_type(tcx)), non_ptr(arg_tys[1].simd_type(tcx)))
             }
@@ -1237,7 +1237,7 @@ fn generic_simd_intrinsic(
         assert_eq!(underlying_ty, non_ptr(arg_tys[0].simd_type(tcx)));
 
         // The element type of the third argument must be a signed integer type of any width:
-        match arg_tys[2].simd_type(tcx).kind() {
+        match arg_tys[2].simd_type(tcx).data() {
             ty::Int(_) => (),
             _ => {
                 require!(
@@ -1319,7 +1319,7 @@ fn generic_simd_intrinsic(
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
-            match t.kind() {
+            match t.data() {
                 ty::RawPtr(p) => 1 + ptr_count(p.ty),
                 _ => 0,
             }
@@ -1327,7 +1327,7 @@ fn generic_simd_intrinsic(
 
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
-            match t.kind() {
+            match t.data() {
                 ty::RawPtr(p) => non_ptr(p.ty),
                 _ => t,
             }
@@ -1335,7 +1335,7 @@ fn generic_simd_intrinsic(
 
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
-        let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).kind() {
+        let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).data() {
             ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mut => {
                 (ptr_count(arg_tys[1].simd_type(tcx)), non_ptr(arg_tys[1].simd_type(tcx)))
             }
@@ -1360,7 +1360,7 @@ fn generic_simd_intrinsic(
         assert_eq!(underlying_ty, non_ptr(arg_tys[0].simd_type(tcx)));
 
         // The element type of the third argument must be a signed integer type of any width:
-        match arg_tys[2].simd_type(tcx).kind() {
+        match arg_tys[2].simd_type(tcx).data() {
             ty::Int(_) => (),
             _ => {
                 require!(
@@ -1416,7 +1416,7 @@ fn generic_simd_intrinsic(
                     in_ty,
                     ret_ty
                 );
-                return match in_elem.kind() {
+                return match in_elem.data() {
                     ty::Int(_) | ty::Uint(_) => {
                         let r = bx.$integer_reduce(args[0].immediate());
                         if $ordered {
@@ -1488,7 +1488,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     in_ty,
                     ret_ty
                 );
-                return match in_elem.kind() {
+                return match in_elem.data() {
                     ty::Int(_i) => Ok(bx.$int_red(args[0].immediate(), true)),
                     ty::Uint(_u) => Ok(bx.$int_red(args[0].immediate(), false)),
                     ty::Float(_f) => Ok(bx.$float_red(args[0].immediate())),
@@ -1523,7 +1523,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     );
                     args[0].immediate()
                 } else {
-                    match in_elem.kind() {
+                    match in_elem.data() {
                         ty::Int(_) | ty::Uint(_) => {}
                         _ => return_error!(
                             "unsupported {} from `{}` with element `{}` to `{}`",
@@ -1539,7 +1539,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     let i1xn = bx.type_vector(i1, in_len as u64);
                     bx.trunc(args[0].immediate(), i1xn)
                 };
-                return match in_elem.kind() {
+                return match in_elem.data() {
                     ty::Int(_) | ty::Uint(_) => {
                         let r = bx.$red(input);
                         Ok(if !$boolean { r } else { bx.zext(r, bx.type_bool()) })
@@ -1587,7 +1587,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             Unsupported,
         }
 
-        let (in_style, in_width) = match in_elem.kind() {
+        let (in_style, in_width) = match in_elem.data() {
             // vectors of pointer-sized integers should've been
             // disallowed before here, so this unwrap is safe.
             ty::Int(i) => (Style::Int(true), i.bit_width().unwrap()),
@@ -1595,7 +1595,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             ty::Float(f) => (Style::Float, f.bit_width()),
             _ => (Style::Unsupported, 0),
         };
-        let (out_style, out_width) = match out_elem.kind() {
+        let (out_style, out_width) = match out_elem.data() {
             ty::Int(i) => (Style::Int(true), i.bit_width().unwrap()),
             ty::Uint(u) => (Style::Int(false), u.bit_width().unwrap()),
             ty::Float(f) => (Style::Float, f.bit_width()),
@@ -1651,7 +1651,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
     macro_rules! arith {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
             $(if name == sym::$name {
-                match in_elem.kind() {
+                match in_elem.data() {
                     $($(ty::$p(_))|* => {
                         return Ok(bx.$call(args[0].immediate(), args[1].immediate()))
                     })*
@@ -1685,7 +1685,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
-        let (signed, elem_width, elem_ty) = match *in_elem.kind() {
+        let (signed, elem_width, elem_ty) = match *in_elem.data() {
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_uint_from_ty(i)),
             _ => {
@@ -1720,7 +1720,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 // FIXME: there’s multiple of this functions, investigate using some of the already existing
 // stuffs.
 fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
-    match ty.kind() {
+    match ty.data() {
         ty::Int(t) => {
             Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.ptr_width)), true))
         }

@@ -383,7 +383,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 let mut used_params: FxHashSet<_> = FxHashSet::default();
                 for (i, arg) in substs.iter().enumerate() {
                     let arg_is_param = match arg.unpack() {
-                        GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
+                        GenericArgKind::Type(ty) => matches!(ty.data(), ty::Param(_)),
                         GenericArgKind::Lifetime(lt) => {
                             matches!(lt, ty::ReEarlyBound(_) | ty::ReFree(_))
                         }
@@ -608,7 +608,7 @@ fn infer_placeholder_type(
         }
         None => {
             let mut diag = bad_placeholder_type(tcx, vec![span]);
-            if !matches!(ty.kind(), ty::Error(_)) {
+            if !matches!(ty.data(), ty::Error(_)) {
                 diag.span_suggestion(
                     span,
                     "replace `_` with the correct type",

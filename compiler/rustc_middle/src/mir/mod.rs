@@ -2566,7 +2566,7 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 impl<'tcx> Display for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        match self.literal.ty.kind() {
+        match self.literal.ty.data() {
             ty::FnDef(..) => {}
             _ => write!(fmt, "const ")?,
         }

@@ -52,7 +52,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         let self_ty = self.tcx.type_of(def_id);
         let lang_items = self.tcx.lang_items();
-        match *self_ty.kind() {
+        match *self_ty.data() {
             ty::Adt(def, _) => {
                 self.check_def_id(item, def.did);
             }
@@ -123,7 +123,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Not })
-                if matches!(inner.kind(), ty::Slice(_)) =>
+                if matches!(inner.data(), ty::Slice(_)) =>
             {
                 self.check_primitive_impl(
                     def_id,
@@ -135,7 +135,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Mut })
-                if matches!(inner.kind(), ty::Slice(_)) =>
+                if matches!(inner.data(), ty::Slice(_)) =>
             {
                 self.check_primitive_impl(
                     def_id,
@@ -318,7 +318,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 err.span_label(ty.span, "impl requires a nominal type")
                     .note("either implement a trait on it or create a newtype to wrap it instead");
 
-                if let ty::Ref(_, subty, _) = self_ty.kind() {
+                if let ty::Ref(_, subty, _) = self_ty.data() {
                     err.note(&format!(
                         "you could also try moving the reference to \
                             uses of `{}` (such as `self`) within the implementation",

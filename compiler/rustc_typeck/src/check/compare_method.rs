@@ -1205,7 +1205,7 @@ pub fn check_type_bounds<'tcx>(
     // ParamEnv for normalization specifically.
     let normalize_param_env = {
         let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
-        match impl_ty_value.kind() {
+        match impl_ty_value.data() {
             ty::Projection(proj)
                 if proj.item_def_id == trait_ty.def_id && proj.substs == rebased_substs =>
             {

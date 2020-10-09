@@ -279,7 +279,7 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static 
             }
         }
     }
-    match t.kind() {
+    match t.data() {
         ty::Int(i) => find_fit!(i, val, negative,
                       I8 => [U8] => [I16, I32, I64, I128],
                       I16 => [U16] => [I32, I64, I128],
@@ -365,7 +365,7 @@ fn lint_uint_literal<'tcx>(
         if let Node::Expr(par_e) = cx.tcx.hir().get(parent_id) {
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
-                    if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
+                    if let ty::Char = cx.typeck_results().expr_ty(par_e).data() {
                         cx.struct_span_lint(OVERFLOWING_LITERALS, par_e.span, |lint| {
                             lint.build("only `u8` can be cast into `char`")
                                 .span_suggestion(
@@ -416,7 +416,7 @@ fn lint_literal<'tcx>(
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
 ) {
-    match *cx.typeck_results().node_type(e.hir_id).kind() {
+    match *cx.typeck_results().node_type(e.hir_id).data() {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
@@ -512,7 +512,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match *cx.typeck_results().node_type(expr.hir_id).kind() {
+            match *cx.typeck_results().node_type(expr.hir_id).data() {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {
@@ -660,7 +660,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
 /// Is type known to be non-null?
 crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
     let tcx = cx.tcx;
-    match ty.kind() {
+    match ty.data() {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
@@ -689,7 +689,7 @@ crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: C
 /// If the type passed in was not scalar, returns None.
 fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = cx.tcx;
-    Some(match *ty.kind() {
+    Some(match *ty.data() {
         ty::Adt(field_def, field_substs) => {
             let inner_field_ty = {
                 let first_non_zst_ty =
@@ -741,7 +741,7 @@ crate fn repr_nullable_ptr<'tcx>(
     ckind: CItemKind,
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
-    if let ty::Adt(ty_def, substs) = ty.kind() {
+    if let ty::Adt(ty_def, substs) = ty.data() {
         if ty_def.variants.len() != 2 {
             return None;
         }
@@ -791,7 +791,7 @@ crate fn repr_nullable_ptr<'tcx>(
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the type is array and emit an unsafe type lint.
     fn check_for_array_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        if let ty::Array(..) = ty.kind() {
+        if let ty::Array(..) = ty.data() {
             self.emit_ffi_unsafe_type_lint(
                 ty,
                 sp,
@@ -879,7 +879,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return FfiSafe;
         }
 
-        match ty.kind() {
+        match ty.data() {
             ty::Adt(def, _) if def.is_box() && matches!(self.mode, CItemKind::Definition) => {
                 FfiSafe
             }
@@ -1118,7 +1118,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 diag.help(help);
             }
             diag.note(note);
-            if let ty::Adt(def, _) = ty.kind() {
+            if let ty::Adt(def, _) = ty.data() {
                 if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
                     diag.span_note(sp, "the type is defined here");
                 }
@@ -1135,7 +1135,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-                match ty.kind() {
+                match ty.data() {
                     ty::Opaque(..) => {
                         self.ty = Some(ty);
                         true

@@ -477,7 +477,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
         debug_assert!(!ty.has_infer_types_or_consts());
 
-        Ok(match *ty.kind() {
+        Ok(match *ty.data() {
             // Basic scalars.
             ty::Bool => tcx.intern_layout(Layout::scalar(
                 self,
@@ -522,7 +522,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-                let metadata = match unsized_part.kind() {
+                let metadata = match unsized_part.data() {
                     ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(Layout::scalar(self, data_ptr)));
                     }
@@ -1606,7 +1606,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             );
         };
 
-        let adt_def = match *layout.ty.kind() {
+        let adt_def = match *layout.ty.data() {
             ty::Adt(ref adt_def, _) => {
                 debug!("print-type-size t: `{:?}` process adt", layout.ty);
                 adt_def
@@ -1749,11 +1749,11 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Err(err) => err,
         };
 
-        match *ty.kind() {
+        match *ty.data() {
             ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-                match tail.kind() {
+                match tail.data() {
                     ty::Param(_) | ty::Projection(_) => {
                         debug_assert!(tail.has_param_types_or_consts());
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(&tail) })
@@ -2000,7 +2000,7 @@ where
                     assert_eq!(original_layout.variants, Variants::Single { index });
                 }
 
-                let fields = match this.ty.kind() {
+                let fields = match this.ty.data() {
                     ty::Adt(def, _) if def.variants.is_empty() =>
                         bug!("for_variant called on zero-variant enum"),
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
@@ -2038,7 +2038,7 @@ where
             }))
         };
 
-        cx.layout_of(match *this.ty.kind() {
+        cx.layout_of(match *this.ty.data() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -2074,7 +2074,7 @@ where
                     ));
                 }
 
-                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
+                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).data() {
                     ty::Slice(_) | ty::Str => tcx.types.usize,
                     ty::Dynamic(_, _) => {
                         tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
@@ -2152,7 +2152,7 @@ where
             if ty.is_fn() { cx.data_layout().instruction_address_space } else { AddressSpace::DATA }
         };
 
-        let pointee_info = match *this.ty.kind() {
+        let pointee_info = match *this.ty.data() {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 cx.layout_of(mt.ty).to_result().ok().map(|layout| PointeeInfo {
                     size: layout.size,
@@ -2268,7 +2268,7 @@ where
 
                 // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
                 if let Some(ref mut pointee) = result {
-                    if let ty::Adt(def, _) = this.ty.kind() {
+                    if let ty::Adt(def, _) = this.ty.data() {
                         if def.is_box() && offset.bytes() == 0 {
                             pointee.safe = Some(PointerKind::UniqueOwned);
                         }
@@ -2282,7 +2282,7 @@ where
         debug!(
             "pointee_info_at (offset={:?}, type kind: {:?}) => {:?}",
             offset,
-            this.ty.kind(),
+            this.ty.data(),
             pointee_info
         );
 
@@ -2310,14 +2310,14 @@ impl<'tcx> ty::Instance<'tcx> {
     fn fn_sig_for_fn_abi(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
         // FIXME(davidtwco,eddyb): A `ParamEnv` should be passed through to this function.
         let ty = self.ty(tcx, ty::ParamEnv::reveal_all());
-        match *ty.kind() {
+        match *ty.data() {
             ty::FnDef(..) => {
                 // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
                 // parameters unused if they show up in the signature, but not in the `mir::Body`
                 // (i.e. due to being inside a projection that got normalized, see
                 // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
                 // track of a polymorphization `ParamEnv` to allow normalizing later.
-                let mut sig = match *ty.kind() {
+                let mut sig = match *ty.data() {
                     ty::FnDef(def_id, substs) => tcx
                         .normalize_erasing_regions(tcx.param_env(def_id), tcx.fn_sig(def_id))
                         .subst(tcx, substs),
@@ -2580,7 +2580,7 @@ where
             assert!(!sig.c_variadic && extra_args.is_empty());
 
             if let Some(input) = sig.inputs().last() {
-                if let ty::Tuple(tupled_arguments) = input.kind() {
+                if let ty::Tuple(tupled_arguments) = input.data() {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
                     tupled_arguments.iter().map(|k| k.expect_ty()).collect()
                 } else {

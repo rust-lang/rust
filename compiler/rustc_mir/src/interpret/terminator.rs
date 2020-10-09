@@ -55,7 +55,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi) = match *func.layout.ty.kind() {
+                let (fn_val, abi) = match *func.layout.ty.data() {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(func)?.check_init()?;
@@ -227,7 +227,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         {
             let callee_abi = {
                 let instance_ty = instance.ty(*self.tcx, self.param_env);
-                match instance_ty.kind() {
+                match instance_ty.data() {
                     ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
                     ty::Closure(..) => Abi::RustCall,
                     ty::Generator(..) => Abi::Rust,
@@ -436,7 +436,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // implementation fail -- a problem shared by rustc.
         let place = self.force_allocation(place)?;
 
-        let (instance, place) = match place.layout.ty.kind() {
+        let (instance, place) = match place.layout.ty.data() {
             ty::Dynamic(..) => {
                 // Dropping a trait object.
                 self.unpack_dyn_trait(place)?

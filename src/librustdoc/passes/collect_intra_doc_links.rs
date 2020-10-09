@@ -204,7 +204,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // it's a bug for the error to make it to the user
                     return Err(ResolutionFailure::Dummy.into());
                 }
-                match cx.tcx.type_of(did).kind() {
+                match cx.tcx.type_of(did).data() {
                     ty::Adt(def, _) if def.is_enum() => {
                         if def.all_fields().any(|item| item.ident.name == variant_field_name) {
                             Ok((
@@ -480,7 +480,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     })
                 } else if ns == Namespace::ValueNS {
                     debug!("looking for variants or fields named {} for {:?}", item_name, did);
-                    match cx.tcx.type_of(did).kind() {
+                    match cx.tcx.type_of(did).data() {
                         ty::Adt(def, _) => {
                             let field = if def.is_enum() {
                                 def.all_fields().find(|item| item.ident.name == item_name)
@@ -698,12 +698,12 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
             trace!(
                 "comparing type {} with kind {:?} against type {:?}",
                 impl_type,
-                impl_type.kind(),
+                impl_type.data(),
                 type_
             );
             // Fast path: if this is a primitive simple `==` will work
             let saw_impl = impl_type == ty
-                || match impl_type.kind() {
+                || match impl_type.data() {
                     // Check if these are the same def_id
                     ty::Adt(def, _) => {
                         debug!("adt def_id: {:?}", def.did);

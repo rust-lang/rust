@@ -516,7 +516,7 @@ fn polymorphize<'tcx>(
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
             debug!("fold_ty: ty={:?}", ty);
-            match ty.kind {
+            match ty.data {
                 ty::Closure(def_id, substs) => {
                     let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
                     if substs == polymorphized_substs {

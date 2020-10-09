@@ -47,7 +47,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::ReifyFnPointer) => {
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match *src.layout.ty.data() {
                     ty::FnDef(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
                         ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
@@ -76,7 +76,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::UnsafeFnPointer) => {
                 let src = self.read_immediate(src)?;
-                match cast_ty.kind() {
+                match cast_ty.data() {
                     ty::FnPtr(_) => {
                         // No change to value
                         self.write_immediate(*src, dest)?;
@@ -87,7 +87,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::ClosureFnPointer(_)) => {
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match *src.layout.ty.data() {
                     ty::Closure(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
                         ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
@@ -113,10 +113,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: ImmTy<'tcx, M::PointerTag>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
-        use rustc_middle::ty::TyKind::*;
+        use rustc_middle::ty::TyData::*;
         trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, cast_ty);
 
-        match src.layout.ty.kind() {
+        match src.layout.ty.data() {
             // Floating point
             Float(FloatTy::F32) => {
                 return Ok(self.cast_from_float(src.to_scalar()?.to_f32()?, cast_ty).into());
@@ -195,10 +195,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let signed = src_layout.abi.is_signed(); // Also asserts that abi is `Scalar`.
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_scalar: {}, {} -> {}", v, src_layout.ty, cast_ty);
-        use rustc_middle::ty::TyKind::*;
-        match *cast_ty.kind() {
+        use rustc_middle::ty::TyData::*;
+        match *cast_ty.data() {
             Int(_) | Uint(_) | RawPtr(_) => {
-                let size = match *cast_ty.kind() {
+                let size = match *cast_ty.data() {
                     Int(t) => Integer::from_attr(self, attr::IntType::SignedInt(t)).size(),
                     Uint(t) => Integer::from_attr(self, attr::IntType::UnsignedInt(t)).size(),
                     RawPtr(_) => self.pointer_size(),
@@ -227,8 +227,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     where
         F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
     {
-        use rustc_middle::ty::TyKind::*;
-        match *dest_ty.kind() {
+        use rustc_middle::ty::TyData::*;
+        match *dest_ty.data() {
             // float -> uint
             Uint(t) => {
                 let size = Integer::from_attr(self, attr::IntType::UnsignedInt(t)).size();
@@ -267,7 +267,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let (src_pointee_ty, dest_pointee_ty) =
             self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, cast_ty, self.param_env);
 
-        match (&src_pointee_ty.kind(), &dest_pointee_ty.kind()) {
+        match (&src_pointee_ty.data(), &dest_pointee_ty.data()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_immediate(src)?.to_scalar()?;
                 // u64 cast is from usize to u64, which is always good
@@ -303,7 +303,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
-        match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
+        match (&src.layout.ty.data(), &cast_ty.ty.data()) {
             (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(TypeAndMut { ty: c, .. }))
             | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: c, .. })) => {
                 self.unsize_into_ptr(src, dest, s, c)

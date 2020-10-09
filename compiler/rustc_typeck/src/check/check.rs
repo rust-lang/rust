@@ -76,7 +76,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
-    if let ty::Opaque(..) = declared_ret_ty.kind() {
+    if let ty::Opaque(..) = declared_ret_ty.data() {
         fcx.ret_coercion_impl_trait = Some(declared_ret_ty);
     }
     fn_sig = tcx.mk_fn_sig(
@@ -140,7 +140,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     inherited.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
     fcx.in_tail_expr = true;
-    if let ty::Dynamic(..) = declared_ret_ty.kind() {
+    if let ty::Dynamic(..) = declared_ret_ty.data() {
         // FIXME: We need to verify that the return type is `Sized` after the return expression has
         // been evaluated so that we have types available for all the nodes being returned, but that
         // requires the coerced evaluated type to be stored. Moving `check_return_expr` before this
@@ -240,15 +240,15 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl() {
         if panic_impl_did == hir.local_def_id(fn_id).to_def_id() {
             if let Some(panic_info_did) = tcx.lang_items().panic_info() {
-                if *declared_ret_ty.kind() != ty::Never {
+                if *declared_ret_ty.data() != ty::Never {
                     sess.span_err(decl.output.span(), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
                 let span = hir.span(fn_id);
                 if inputs.len() == 1 {
-                    let arg_is_panic_info = match *inputs[0].kind() {
-                        ty::Ref(region, ty, mutbl) => match *ty.kind() {
+                    let arg_is_panic_info = match *inputs[0].data() {
+                        ty::Ref(region, ty, mutbl) => match *ty.data() {
                             ty::Adt(ref adt, _) => {
                                 adt.did == panic_info_did
                                     && mutbl == hir::Mutability::Not
@@ -284,14 +284,14 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(alloc_error_handler_did) = tcx.lang_items().oom() {
         if alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id() {
             if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
-                if *declared_ret_ty.kind() != ty::Never {
+                if *declared_ret_ty.data() != ty::Never {
                     sess.span_err(decl.output.span(), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
                 let span = hir.span(fn_id);
                 if inputs.len() == 1 {
-                    let arg_is_alloc_layout = match inputs[0].kind() {
+                    let arg_is_alloc_layout = match inputs[0].data() {
                         ty::Adt(ref adt, _) => adt.did == alloc_layout_did,
                         _ => false,
                     };
@@ -352,7 +352,7 @@ pub(super) fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
 /// check that the fields of the `union` does not contain fields that need dropping.
 pub(super) fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> bool {
     let item_type = tcx.type_of(item_def_id);
-    if let ty::Adt(def, substs) = item_type.kind() {
+    if let ty::Adt(def, substs) = item_type.data() {
         assert!(def.is_union());
         let fields = &def.non_enum_variant().fields;
         let param_env = tcx.param_env(item_def_id);
@@ -373,7 +373,7 @@ pub(super) fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: Local
             }
         }
     } else {
-        span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.kind());
+        span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.data());
     }
     true
 }
@@ -1004,7 +1004,7 @@ pub(super) fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: LocalD
 
 pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     let t = tcx.type_of(def_id);
-    if let ty::Adt(def, substs) = t.kind() {
+    if let ty::Adt(def, substs) = t.data() {
         if def.is_struct() {
             let fields = &def.non_enum_variant().fields;
             if fields.is_empty() {
@@ -1018,7 +1018,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                     .emit();
                 return;
             }
-            match e.kind() {
+            match e.data() {
                 ty::Param(_) => { /* struct<T>(T, T, T, T) is ok */ }
                 _ if e.is_machine() => { /* struct(u8, u8, u8, u8) is ok */ }
                 _ => {
@@ -1112,7 +1112,7 @@ pub(super) fn check_packed_inner(
     def_id: DefId,
     stack: &mut Vec<DefId>,
 ) -> Option<Vec<(DefId, Span)>> {
-    if let ty::Adt(def, substs) = tcx.type_of(def_id).kind() {
+    if let ty::Adt(def, substs) = tcx.type_of(def_id).data() {
         if def.is_struct() || def.is_union() {
             if def.repr.align.is_some() {
                 return Some(vec![(def.did, DUMMY_SP)]);
@@ -1120,7 +1120,7 @@ pub(super) fn check_packed_inner(
 
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
-                if let ty::Adt(def, _) = field.ty(tcx, substs).kind() {
+                if let ty::Adt(def, _) = field.ty(tcx, substs).data() {
                     if !stack.contains(&def.did) {
                         if let Some(mut defs) = check_packed_inner(tcx, def.did, stack) {
                             defs.push((def.did, field.ident.span));
@@ -1312,7 +1312,7 @@ pub(super) fn check_type_params_are_used<'tcx>(
 
     for leaf in ty.walk() {
         if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
-            if let ty::Param(param) = leaf_ty.kind() {
+            if let ty::Param(param) = leaf_ty.data() {
                 debug!("found use of ty param {:?}", param);
                 params_used.insert(param.index);
             }
@@ -1378,7 +1378,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
             .returns
             .iter()
             .filter_map(|expr| typeck_results.node_type_opt(expr.hir_id))
-            .all(|ty| matches!(ty.kind(), ty::Never))
+            .all(|ty| matches!(ty.data(), ty::Never))
         {
             let spans = visitor
                 .returns
@@ -1407,12 +1407,12 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
                 .returns
                 .iter()
                 .filter_map(|e| typeck_results.node_type_opt(e.hir_id).map(|t| (e.span, t)))
-                .filter(|(_, ty)| !matches!(ty.kind(), ty::Never))
+                .filter(|(_, ty)| !matches!(ty.data(), ty::Never))
             {
                 struct VisitTypes(Vec<DefId>);
                 impl<'tcx> ty::fold::TypeVisitor<'tcx> for VisitTypes {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                        match *t.kind() {
+                        match *t.data() {
                             ty::Opaque(def, _) => {
                                 self.0.push(def);
                                 false

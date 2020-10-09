@@ -71,7 +71,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
     pub(super) fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
-        match fcx.tcx.struct_tail_without_normalization(ty).kind() {
+        match fcx.tcx.struct_tail_without_normalization(ty).data() {
             ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueLikeUnsized(ty),
             _ => ExpectHasType(ty),
         }

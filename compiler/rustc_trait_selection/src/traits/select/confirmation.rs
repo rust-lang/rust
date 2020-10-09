@@ -129,7 +129,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let placeholder_trait_predicate =
                 self.infcx().replace_bound_vars_with_placeholders(&trait_predicate);
             let placeholder_self_ty = placeholder_trait_predicate.self_ty();
-            let (def_id, substs) = match *placeholder_self_ty.kind() {
+            let (def_id, substs) = match *placeholder_self_ty.data() {
                 ty::Projection(proj) => (proj.item_def_id, proj.substs),
                 ty::Opaque(def_id, substs) => (def_id, substs),
                 _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
@@ -163,7 +163,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }),
             );
 
-            if let ty::Projection(..) = placeholder_self_ty.kind() {
+            if let ty::Projection(..) = placeholder_self_ty.data() {
                 for predicate in tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates {
                     let normalized = normalize_with_depth_to(
                         self,
@@ -386,7 +386,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.infcx.replace_bound_vars_with_placeholders(&obligation.predicate);
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
-        let data = match self_ty.kind() {
+        let data = match self_ty.data() {
             ty::Dynamic(data, ..) => {
                 self.infcx
                     .replace_bound_vars_with_fresh_vars(
@@ -589,7 +589,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (generator_def_id, substs) = match *self_ty.kind() {
+        let (generator_def_id, substs) = match *self_ty.data() {
             ty::Generator(id, substs, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
@@ -638,7 +638,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match *self_ty.kind() {
+        let (closure_def_id, substs) = match *self_ty.data() {
             ty::Closure(id, substs) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
@@ -734,7 +734,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("confirm_builtin_unsize_candidate(source={:?}, target={:?})", source, target);
 
         let mut nested = vec![];
-        match (source.kind(), target.kind()) {
+        match (source.data(), target.data()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
@@ -833,7 +833,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `Struct<T>` -> `Struct<U>`
             (&ty::Adt(def, substs_a), &ty::Adt(_, substs_b)) => {
                 let maybe_unsizing_param_idx = |arg: GenericArg<'tcx>| match arg.unpack() {
-                    GenericArgKind::Type(ty) => match ty.kind() {
+                    GenericArgKind::Type(ty) => match ty.data() {
                         ty::Param(p) => Some(p.index),
                         _ => None,
                     },

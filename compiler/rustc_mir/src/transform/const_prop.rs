@@ -833,7 +833,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // FIXME: enable the general case stated above ^.
                     let ty = &value.layout.ty;
                     // Only do it for tuples
-                    if let ty::Tuple(substs) = ty.kind() {
+                    if let ty::Tuple(substs) = ty.data() {
                         // Only do it if tuple is also a pair with two scalars
                         if substs.len() == 2 {
                             let alloc = self.use_ecx(|this| {

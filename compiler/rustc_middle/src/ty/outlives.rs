@@ -68,7 +68,7 @@ fn compute_components(
     // with `collect()` because of the need to sometimes skip subtrees
     // in the `subtys` iterator (e.g., when encountering a
     // projection).
-    match *ty.kind() {
+    match *ty.data() {
             ty::FnDef(_, substs) => {
                 // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
                 // This is inconsistent with `ty::Adt` (including all substs)

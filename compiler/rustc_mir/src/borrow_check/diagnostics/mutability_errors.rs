@@ -485,7 +485,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let def_id = hir.local_def_id(item_id);
             let tables = self.infcx.tcx.typeck(def_id);
             if let Some(ty::FnDef(def_id, _)) =
-                tables.node_type_opt(func.hir_id).as_ref().map(|ty| ty.kind())
+                tables.node_type_opt(func.hir_id).as_ref().map(|ty| ty.data())
             {
                 let arg = match hir.get_if_local(*def_id) {
                     Some(
@@ -558,7 +558,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 }
 
 fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symbol>) -> bool {
-    debug!("local_info: {:?}, ty.kind(): {:?}", local_decl.local_info, local_decl.ty.kind());
+    debug!("local_info: {:?}, ty.kind(): {:?}", local_decl.local_info, local_decl.ty.data());
 
     match local_decl.local_info.as_deref() {
         // Check if mutably borrowing a mutable reference.
@@ -566,7 +566,7 @@ fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symb
             mir::VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(Mutability::Not), ..
             },
-        )))) => matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut)),
+        )))) => matches!(local_decl.ty.data(), ty::Ref(_, _, hir::Mutability::Mut)),
         Some(LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(kind)))) => {
             // Check if the user variable is a `&mut self` and we can therefore
             // suggest removing the `&mut`.
@@ -579,7 +579,7 @@ fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symb
             // Otherwise, check if the name is the `self` keyword - in which case
             // we have an explicit self. Do the same thing in this case and check
             // for a `self: &mut Self` to suggest removing the `&mut`.
-            matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut))
+            matches!(local_decl.ty.data(), ty::Ref(_, _, hir::Mutability::Mut))
         }
         _ => false,
     }
@@ -690,8 +690,8 @@ fn annotate_struct_field(
     field: &mir::Field,
 ) -> Option<(Span, String)> {
     // Expect our local to be a reference to a struct of some kind.
-    if let ty::Ref(_, ty, _) = ty.kind() {
-        if let ty::Adt(def, _) = ty.kind() {
+    if let ty::Ref(_, ty, _) = ty.data() {
+        if let ty::Adt(def, _) = ty.data() {
             let field = def.all_fields().nth(field.index())?;
             // Use the HIR types to construct the diagnostic message.
             let hir_id = tcx.hir().local_def_id_to_hir_id(field.did.as_local()?);

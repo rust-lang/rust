@@ -198,7 +198,7 @@ symbols! {
         Try,
         Ty,
         TyCtxt,
-        TyKind,
+        TyData,
         Unknown,
         Vec,
         Yield,

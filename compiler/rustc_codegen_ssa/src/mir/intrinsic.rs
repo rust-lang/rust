@@ -58,7 +58,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         let callee_ty = instance.ty(bx.tcx(), ty::ParamEnv::reveal_all());
 
-        let (def_id, substs) = match *callee_ty.kind() {
+        let (def_id, substs) = match *callee_ty.data() {
             ty::FnDef(def_id, substs) => (def_id, substs),
             _ => bug!("expected fn item type, found {}", callee_ty),
         };
@@ -579,7 +579,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 // FIXME: there’s multiple of this functions, investigate using some of the already existing
 // stuffs.
 fn int_type_width_signed(ty: Ty<'_>, tcx: TyCtxt<'_>) -> Option<(u64, bool)> {
-    match ty.kind() {
+    match ty.data() {
         ty::Int(t) => Some((t.bit_width().unwrap_or(u64::from(tcx.sess.target.ptr_width)), true)),
         ty::Uint(t) => Some((t.bit_width().unwrap_or(u64::from(tcx.sess.target.ptr_width)), false)),
         _ => None,
@@ -589,7 +589,7 @@ fn int_type_width_signed(ty: Ty<'_>, tcx: TyCtxt<'_>) -> Option<(u64, bool)> {
 // Returns the width of a float Ty
 // Returns None if the type is not a float
 fn float_type_width(ty: Ty<'_>) -> Option<u64> {
-    match ty.kind() {
+    match ty.data() {
         ty::Float(t) => Some(t.bit_width()),
         _ => None,
     }

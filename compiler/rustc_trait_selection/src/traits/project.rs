@@ -346,7 +346,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
         // should occur eventually).
 
         let ty = ty.super_fold_with(self);
-        match *ty.kind() {
+        match *ty.data() {
             ty::Opaque(def_id, substs) => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
@@ -872,7 +872,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     let tcx = selcx.tcx();
     // Check whether the self-type is itself a projection.
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let bounds = match *obligation_trait_ref.self_ty().kind() {
+    let bounds = match *obligation_trait_ref.self_ty().data() {
         ty::Projection(ref data) => tcx.item_bounds(data.item_def_id).subst(tcx, data.substs),
         ty::Opaque(def_id, substs) => tcx.item_bounds(def_id).subst(tcx, substs),
         ty::Infer(ty::TyVar(_)) => {
@@ -916,7 +916,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
 
     let self_ty = obligation_trait_ref.self_ty();
     let object_ty = selcx.infcx().shallow_resolve(self_ty);
-    let data = match object_ty.kind() {
+    let data = match object_ty.data() {
         ty::Dynamic(data, ..) => data,
         ty::Infer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
@@ -1082,7 +1082,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // Any type with multiple potential discriminant types is therefore not eligible.
                 let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
 
-                match self_ty.kind() {
+                match self_ty.data() {
                     ty::Bool
                     | ty::Char
                     | ty::Int(_)

@@ -17,9 +17,9 @@ fn sized_constraint_for_ty<'tcx>(
     adtdef: &ty::AdtDef,
     ty: Ty<'tcx>,
 ) -> Vec<Ty<'tcx>> {
-    use ty::TyKind::*;
+    use ty::TyData::*;
 
-    let result = match ty.kind() {
+    let result = match ty.data() {
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)
         | FnPtr(_) | Array(..) | Closure(..) | Generator(..) | Never => vec![],
 
@@ -463,7 +463,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     }
 
     let self_ty = trait_ref.self_ty();
-    let self_ty_matches = match self_ty.kind() {
+    let self_ty_matches = match self_ty.data() {
         ty::Dynamic(ref data, ty::ReStatic) => data.principal().is_none(),
         _ => false,
     };

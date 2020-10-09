@@ -334,7 +334,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         for impl_def_id in all_impls {
             let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap();
             let self_ty = trait_ref.self_ty();
-            let provides = match (self_ty.kind(), app_ty.name) {
+            let provides = match (self_ty.data(), app_ty.name) {
                 (&ty::Adt(impl_adt_def, ..), Adt(id)) => impl_adt_def.did == id.0.did,
                 (_, AssociatedType(_ty_id)) => {
                     // FIXME(chalk): See https://github.com/rust-lang/rust/pull/77152#discussion_r494484774

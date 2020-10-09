@@ -34,7 +34,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> McfResult {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
-                    match pred.self_ty().kind() {
+                    match pred.self_ty().data() {
                         ty::Param(ref p) => {
                             let generics = tcx.generics_of(current);
                             let def = generics.type_param(p, tcx);
@@ -88,7 +88,7 @@ fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
             GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
         };
 
-        match ty.kind() {
+        match ty.data() {
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
             },
@@ -162,7 +162,7 @@ fn check_rvalue(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, rvalue: &Rv
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
             let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
-            if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
+            if let ty::Slice(_) | ty::Str = unsized_ty.data() {
                 check_operand(tcx, op, span, body)?;
                 // Casting/coercing things to slices is fine.
                 Ok(())
@@ -300,7 +300,7 @@ fn check_terminator(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, terminator: &Termin
             fn_span: _,
         } => {
             let fn_ty = func.ty(body, tcx);
-            if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
+            if let ty::FnDef(fn_def_id, _) = *fn_ty.data() {
                 if !rustc_mir::const_eval::is_min_const_fn(tcx, fn_def_id) {
                     return Err((
                         span,

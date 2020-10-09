@@ -164,7 +164,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::TyVid {
     fn hash_stable(&self, _hcx: &mut StableHashingContext<'a>, _hasher: &mut StableHasher) {
         // `TyVid` values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TyKind::hash_stable() - can't hash a TyVid {:?}.", *self)
+        bug!("ty::TyData::hash_stable() - can't hash a TyVid {:?}.", *self)
     }
 }
 
@@ -172,7 +172,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::IntVid {
     fn hash_stable(&self, _hcx: &mut StableHashingContext<'a>, _hasher: &mut StableHasher) {
         // `IntVid` values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TyKind::hash_stable() - can't hash an IntVid {:?}.", *self)
+        bug!("ty::TyData::hash_stable() - can't hash an IntVid {:?}.", *self)
     }
 }
 
@@ -180,7 +180,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::FloatVid {
     fn hash_stable(&self, _hcx: &mut StableHashingContext<'a>, _hasher: &mut StableHasher) {
         // `FloatVid` values are confined to an inference context and hence
         // should not be hashed.
-        bug!("ty::TyKind::hash_stable() - can't hash a FloatVid {:?}.", *self)
+        bug!("ty::TyData::hash_stable() - can't hash a FloatVid {:?}.", *self)
     }
 }
 

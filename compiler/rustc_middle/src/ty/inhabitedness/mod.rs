@@ -2,7 +2,7 @@ pub use self::def_id_forest::DefIdForest;
 
 use crate::ty;
 use crate::ty::context::TyCtxt;
-use crate::ty::TyKind::*;
+use crate::ty::TyData::*;
 use crate::ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::{DefId, SubstsRef};
@@ -196,7 +196,7 @@ impl<'tcx> FieldDef {
 impl<'tcx> TyS<'tcx> {
     /// Calculates the forest of `DefId`s from which this type is visibly uninhabited.
     fn uninhabited_from(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> DefIdForest {
-        match *self.kind() {
+        match *self.data() {
             Adt(def, substs) => {
                 ensure_sufficient_stack(|| def.uninhabited_from(tcx, substs, param_env))
             }

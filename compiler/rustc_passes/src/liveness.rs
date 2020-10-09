@@ -876,7 +876,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
 
         let ty = self.typeck_results.node_type(hir_id);
-        match ty.kind() {
+        match ty.data() {
             ty::Closure(_def_id, substs) => match substs.as_closure().kind() {
                 ty::ClosureKind::Fn => {}
                 ty::ClosureKind::FnMut => {}

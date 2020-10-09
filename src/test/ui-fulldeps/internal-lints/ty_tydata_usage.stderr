@@ -1,0 +1,190 @@
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:11:16
+   |
+LL |     let data = TyData::Bool;
+   |                ^^^^^^ help: try using ty::<data> directly: `ty`
+   |
+note: the lint level is defined here
+  --> $DIR/ty_tydata_usage.rs:9:8
+   |
+LL | #[deny(rustc::usage_of_ty_tydata)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:14:9
+   |
+LL |         TyData::Bool => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:15:9
+   |
+LL |         TyData::Char => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:16:9
+   |
+LL |         TyData::Int(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:17:9
+   |
+LL |         TyData::Uint(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:18:9
+   |
+LL |         TyData::Float(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:19:9
+   |
+LL |         TyData::Adt(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:20:9
+   |
+LL |         TyData::Foreign(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:21:9
+   |
+LL |         TyData::Str => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:22:9
+   |
+LL |         TyData::Array(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:23:9
+   |
+LL |         TyData::Slice(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:24:9
+   |
+LL |         TyData::RawPtr(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:25:9
+   |
+LL |         TyData::Ref(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:26:9
+   |
+LL |         TyData::FnDef(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:27:9
+   |
+LL |         TyData::FnPtr(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:28:9
+   |
+LL |         TyData::Dynamic(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:29:9
+   |
+LL |         TyData::Closure(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:30:9
+   |
+LL |         TyData::Generator(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:31:9
+   |
+LL |         TyData::GeneratorWitness(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:32:9
+   |
+LL |         TyData::Never => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:33:9
+   |
+LL |         TyData::Tuple(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:34:9
+   |
+LL |         TyData::Projection(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:35:9
+   |
+LL |         TyData::Opaque(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:36:9
+   |
+LL |         TyData::Param(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:37:9
+   |
+LL |         TyData::Bound(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:38:9
+   |
+LL |         TyData::Placeholder(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:39:9
+   |
+LL |         TyData::Infer(..) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:40:9
+   |
+LL |         TyData::Error(_) => (),
+   |         ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData::<data>`
+  --> $DIR/ty_tydata_usage.rs:45:12
+   |
+LL |     if let TyData::Int(int_ty) = data {}
+   |            ^^^^^^ help: try using ty::<data> directly: `ty`
+
+error: usage of `ty::TyData`
+  --> $DIR/ty_tydata_usage.rs:47:24
+   |
+LL |     fn ty_data(ty_bad: TyData<'_>, ty_good: Ty<'_>) {}
+   |                        ^^^^^^^^^^
+   |
+   = help: try using `Ty` instead
+
+error: aborting due to 30 previous errors
+
