@@ -548,7 +548,6 @@ dependencies = [
  "cargo_metadata 0.11.1",
  "if_chain",
  "itertools 0.9.0",
- "lazy_static",
  "pulldown-cmark 0.8.0",
  "quine-mc_cluskey",
  "quote",

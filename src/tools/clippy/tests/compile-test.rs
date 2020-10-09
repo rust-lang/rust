@@ -1,4 +1,5 @@
 #![feature(test)] // compiletest_rs requires this attribute
+#![feature(once_cell)]
 
 use compiletest_rs as compiletest;
 use compiletest_rs::common::Mode as TestMode;
@@ -71,7 +72,7 @@ fn default_config() -> compiletest::Config {
     }
 
     config.target_rustcflags = Some(format!(
-        "-L {0} -L {1} -Dwarnings -Zui-testing {2}",
+        "--emit=metadata -L {0} -L {1} -Dwarnings -Zui-testing {2}",
         host_lib().join("deps").display(),
         cargo::TARGET_LIB.join("deps").display(),
         third_party_crates(),

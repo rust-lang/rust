@@ -1,5 +1,5 @@
 error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a bad idea
-  --> $DIR/attrs.rs:8:1
+  --> $DIR/attrs.rs:5:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[inline(always)]
    = note: `-D clippy::inline-always` implied by `-D warnings`
 
 error: the since field must contain a semver-compliant version
-  --> $DIR/attrs.rs:28:14
+  --> $DIR/attrs.rs:25:14
    |
 LL | #[deprecated(since = "forever")]
    |              ^^^^^^^^^^^^^^^^^
@@ -15,27 +15,10 @@ LL | #[deprecated(since = "forever")]
    = note: `-D clippy::deprecated-semver` implied by `-D warnings`
 
 error: the since field must contain a semver-compliant version
-  --> $DIR/attrs.rs:31:14
+  --> $DIR/attrs.rs:28:14
    |
 LL | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^
 
-error: restriction lints are not meant to be all enabled
-  --> $DIR/attrs.rs:4:9
-   |
-LL | #![warn(clippy::restriction)]
-   |         ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::blanket-clippy-restriction-lints` implied by `-D warnings`
-   = help: try enabling only the lints you really need
-
-error: restriction lints are not meant to be all enabled
-  --> $DIR/attrs.rs:5:9
-   |
-LL | #![deny(clippy::restriction)]
-   |         ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try enabling only the lints you really need
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

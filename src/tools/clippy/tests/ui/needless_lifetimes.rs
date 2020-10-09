@@ -259,4 +259,102 @@ mod issue4291 {
     }
 }
 
+mod issue2944 {
+    trait Foo {}
+    struct Bar {}
+    struct Baz<'a> {
+        bar: &'a Bar,
+    }
+
+    impl<'a> Foo for Baz<'a> {}
+    impl Bar {
+        fn baz<'a>(&'a self) -> impl Foo + 'a {
+            Baz { bar: self }
+        }
+    }
+}
+
+mod nested_elision_sites {
+    // issue #issue2944
+
+    // closure trait bounds subject to nested elision
+    // don't lint because they refer to outer lifetimes
+    fn trait_fn<'a>(i: &'a i32) -> impl Fn() -> &'a i32 {
+        move || i
+    }
+    fn trait_fn_mut<'a>(i: &'a i32) -> impl FnMut() -> &'a i32 {
+        move || i
+    }
+    fn trait_fn_once<'a>(i: &'a i32) -> impl FnOnce() -> &'a i32 {
+        move || i
+    }
+
+    // don't lint
+    fn impl_trait_in_input_position<'a>(f: impl Fn() -> &'a i32) -> &'a i32 {
+        f()
+    }
+    fn impl_trait_in_output_position<'a>(i: &'a i32) -> impl Fn() -> &'a i32 {
+        move || i
+    }
+    // lint
+    fn impl_trait_elidable_nested_named_lifetimes<'a>(i: &'a i32, f: impl for<'b> Fn(&'b i32) -> &'b i32) -> &'a i32 {
+        f(i)
+    }
+    fn impl_trait_elidable_nested_anonymous_lifetimes<'a>(i: &'a i32, f: impl Fn(&i32) -> &i32) -> &'a i32 {
+        f(i)
+    }
+
+    // don't lint
+    fn generics_not_elidable<'a, T: Fn() -> &'a i32>(f: T) -> &'a i32 {
+        f()
+    }
+    // lint
+    fn generics_elidable<'a, T: Fn(&i32) -> &i32>(i: &'a i32, f: T) -> &'a i32 {
+        f(i)
+    }
+
+    // don't lint
+    fn where_clause_not_elidable<'a, T>(f: T) -> &'a i32
+    where
+        T: Fn() -> &'a i32,
+    {
+        f()
+    }
+    // lint
+    fn where_clause_elidadable<'a, T>(i: &'a i32, f: T) -> &'a i32
+    where
+        T: Fn(&i32) -> &i32,
+    {
+        f(i)
+    }
+
+    // don't lint
+    fn pointer_fn_in_input_position<'a>(f: fn(&'a i32) -> &'a i32, i: &'a i32) -> &'a i32 {
+        f(i)
+    }
+    fn pointer_fn_in_output_position<'a>(_: &'a i32) -> fn(&'a i32) -> &'a i32 {
+        |i| i
+    }
+    // lint
+    fn pointer_fn_elidable<'a>(i: &'a i32, f: fn(&i32) -> &i32) -> &'a i32 {
+        f(i)
+    }
+
+    // don't lint
+    fn nested_fn_pointer_1<'a>(_: &'a i32) -> fn(fn(&'a i32) -> &'a i32) -> i32 {
+        |f| 42
+    }
+    fn nested_fn_pointer_2<'a>(_: &'a i32) -> impl Fn(fn(&'a i32)) {
+        |f| ()
+    }
+
+    // lint
+    fn nested_fn_pointer_3<'a>(_: &'a i32) -> fn(fn(&i32) -> &i32) -> i32 {
+        |f| 42
+    }
+    fn nested_fn_pointer_4<'a>(_: &'a i32) -> impl Fn(fn(&i32)) {
+        |f| ()
+    }
+}
+
 fn main() {}
