@@ -541,6 +541,11 @@ impl Types {
                                 _ => None,
                             });
                             let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
+                            // HACK(flip1995): This is a fix for an ICE occuring when `ty_ty` is a
+                            // trait object with a lifetime, e.g. `dyn T<'_>`. Since trait objects
+                            // don't have a known size, this shouldn't introduce FNs. But there
+                            // should be a better solution.
+                            if !matches!(ty_ty.kind(), ty::Dynamic(..));
                             if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env);
                             if let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes());
                             if ty_ty_size <= self.vec_box_size_threshold;
