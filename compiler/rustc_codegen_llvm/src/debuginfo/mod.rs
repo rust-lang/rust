@@ -120,10 +120,8 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         // for macOS to understand. For more info see #11352
         // This can be overridden using --llvm-opts -dwarf-version,N.
         // Android has the same issue (#22398)
-        if cx.sess().target.target.options.is_like_osx
-            || cx.sess().target.target.options.is_like_android
-        {
-            llvm::LLVMRustAddModuleFlag(cx.llmod, "Dwarf Version\0".as_ptr().cast(), 2)
+        if let Some(version) = cx.sess().target.target.options.dwarf_version {
+            llvm::LLVMRustAddModuleFlag(cx.llmod, "Dwarf Version\0".as_ptr().cast(), version)
         }
 
         // Indicate that we want CodeView debug information on MSVC

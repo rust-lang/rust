@@ -816,6 +816,9 @@ pub struct TargetOptions {
     pub is_like_emscripten: bool,
     /// Whether the target toolchain is like Fuchsia's.
     pub is_like_fuchsia: bool,
+    /// Version of DWARF to use if not using the default.
+    /// Useful because some platforms (osx, bsd) only want up to DWARF2.
+    pub dwarf_version: Option<u32>,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
@@ -1012,6 +1015,7 @@ impl Default for TargetOptions {
             is_like_emscripten: false,
             is_like_msvc: false,
             is_like_fuchsia: false,
+            dwarf_version: None,
             linker_is_gnu: false,
             allows_weak_linkage: true,
             has_rpath: false,
@@ -1163,6 +1167,15 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.find(&name).and_then(Json::as_boolean) {
                     base.options.$key_name = s;
+                }
+            } );
+            ($key_name:ident, Option<u32>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(s) = obj.find(&name).and_then(Json::as_u64) {
+                    if s < 1 || s > 5 {
+                        return Err("Not a valid DWARF version number".to_string());
+                    }
+                    base.options.$key_name = Some(s as u32);
                 }
             } );
             ($key_name:ident, Option<u64>) => ( {
@@ -1417,6 +1430,7 @@ impl Target {
         key!(is_like_emscripten, bool);
         key!(is_like_android, bool);
         key!(is_like_fuchsia, bool);
+        key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
@@ -1654,6 +1668,7 @@ impl ToJson for Target {
         target_option_val!(is_like_emscripten);
         target_option_val!(is_like_android);
         target_option_val!(is_like_fuchsia);
+        target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
