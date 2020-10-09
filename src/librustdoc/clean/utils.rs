@@ -361,7 +361,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
         let primitive = match *target {
             ResolvedPath { did, .. } if did.is_local() => continue,
             ResolvedPath { did, .. } => {
-                ret.extend(inline::build_impls(cx, did, None));
+                ret.extend(inline::build_impls(cx, None, did, None));
                 continue;
             }
             _ => match target.primitive_type() {
@@ -371,7 +371,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
         };
         for &did in primitive.impls(tcx) {
             if !did.is_local() {
-                inline::build_impl(cx, did, None, ret);
+                inline::build_impl(cx, None, did, None, ret);
             }
         }
     }

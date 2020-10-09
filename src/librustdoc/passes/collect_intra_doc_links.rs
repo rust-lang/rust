@@ -8,7 +8,7 @@ use rustc_hir::def::{
     Namespace::{self, *},
     PerNS, Res,
 };
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint::{
@@ -767,9 +767,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             self.mod_ids.push(item.def_id);
         }
 
-        let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
-        trace!("got documentation '{}'", dox);
-
         // find item's parent to resolve `Self` in item's docs below
         let parent_name = self.cx.as_local_hir_id(item.def_id).and_then(|item_hir| {
             let parent_hir = self.cx.tcx.hir().get_parent_item(item_hir);
@@ -807,16 +804,53 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
         });
 
-        for (ori_link, link_range) in markdown_links(&dox) {
-            self.resolve_link(
-                &mut item,
-                &dox,
-                &current_item,
-                parent_node,
-                &parent_name,
-                ori_link,
-                link_range,
-            );
+        // We want to resolve in the lexical scope of the documentation.
+        // In the presence of re-exports, this is not the same as the module of the item.
+        // Rather than merging all documentation into one, resolve it one attribute at a time
+        // so we know which module it came from.
+        let mut attrs = item.attrs.doc_strings.iter().peekable();
+        while let Some(attr) = attrs.next() {
+            // `collapse_docs` does not have the behavior we want:
+            // we want `///` and `#[doc]` to count as the same attribute,
+            // but currently it will treat them as separate.
+            // As a workaround, combine all attributes with the same parent module into the same attribute.
+            let mut combined_docs = attr.doc.clone();
+            loop {
+                match attrs.peek() {
+                    Some(next) if next.parent_module == attr.parent_module => {
+                        combined_docs.push('\n');
+                        combined_docs.push_str(&attrs.next().unwrap().doc);
+                    }
+                    _ => break,
+                }
+            }
+            debug!("combined_docs={}", combined_docs);
+
+            let (krate, parent_node) = if let Some(id) = attr.parent_module {
+                trace!("docs {:?} came from {:?}", attr.doc, id);
+                (id.krate, Some(id))
+            } else {
+                trace!("no parent found for {:?}", attr.doc);
+                (item.def_id.krate, parent_node)
+            };
+            // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
+            // This is a degenerate case and it's not supported by rustdoc.
+            // FIXME: this will break links that start in `#[doc = ...]` and end as a sugared doc. Should this be supported?
+            for (ori_link, link_range) in markdown_links(&combined_docs) {
+                let link = self.resolve_link(
+                    &item,
+                    &combined_docs,
+                    &current_item,
+                    parent_node,
+                    &parent_name,
+                    krate,
+                    ori_link,
+                    link_range,
+                );
+                if let Some(link) = link {
+                    item.attrs.links.push(link);
+                }
+            }
         }
 
         if item.is_mod() && !item.attrs.inner_docs {
@@ -838,24 +872,25 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 impl LinkCollector<'_, '_> {
     fn resolve_link(
         &self,
-        item: &mut Item,
+        item: &Item,
         dox: &str,
         current_item: &Option<String>,
         parent_node: Option<DefId>,
         parent_name: &Option<String>,
+        krate: CrateNum,
         ori_link: String,
         link_range: Option<Range<usize>>,
-    ) {
+    ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link);
 
         // Bail early for real links.
         if ori_link.contains('/') {
-            return;
+            return None;
         }
 
         // [] is mostly likely not supposed to be a link
         if ori_link.is_empty() {
-            return;
+            return None;
         }
 
         let cx = self.cx;
@@ -863,11 +898,11 @@ impl LinkCollector<'_, '_> {
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
             anchor_failure(cx, &item, &link, dox, link_range, AnchorFailure::MultipleAnchors);
-            return;
+            return None;
         } else if parts.len() == 2 {
             if parts[0].trim().is_empty() {
                 // This is an anchor to an element of the current page, nothing to do in here!
-                return;
+                return None;
             }
             (parts[0], Some(parts[1].to_owned()))
         } else {
@@ -888,7 +923,7 @@ impl LinkCollector<'_, '_> {
             .trim();
 
             if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
-                return;
+                return None;
             }
 
             // We stripped `()` and `!` when parsing the disambiguator.
@@ -928,7 +963,7 @@ impl LinkCollector<'_, '_> {
                     link_range,
                     smallvec![err_kind],
                 );
-                return;
+                return None;
             };
 
             // replace `Self` with suitable item's parent name
@@ -947,7 +982,7 @@ impl LinkCollector<'_, '_> {
                 // (consider `crate::char`). Instead, change it to `self::`. This works because 'self' is now the crate root.
                 resolved_self = format!("self::{}", &path_str["crate::".len()..]);
                 path_str = &resolved_self;
-                module_id = DefId { krate: item.def_id.krate, index: CRATE_DEF_INDEX };
+                module_id = DefId { krate, index: CRATE_DEF_INDEX };
             }
 
             match self.resolve_with_disambiguator(
@@ -962,7 +997,7 @@ impl LinkCollector<'_, '_> {
                 link_range.clone(),
             ) {
                 Some(x) => x,
-                None => return,
+                None => return None,
             }
         };
 
@@ -986,7 +1021,7 @@ impl LinkCollector<'_, '_> {
                             link_range,
                             AnchorFailure::RustdocAnchorConflict(prim),
                         );
-                        return;
+                        return None;
                     }
                     res = prim;
                     fragment = Some(path.to_owned());
@@ -994,7 +1029,7 @@ impl LinkCollector<'_, '_> {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
                     ambiguity_error(cx, &item, path_str, dox, link_range, candidates);
-                    return;
+                    return None;
                 }
             }
         }
@@ -1018,16 +1053,11 @@ impl LinkCollector<'_, '_> {
         if let Res::PrimTy(..) = res {
             match disambiguator {
                 Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
-                    item.attrs.links.push(ItemLink {
-                        link: ori_link,
-                        link_text,
-                        did: None,
-                        fragment,
-                    });
+                    Some(ItemLink { link: ori_link, link_text, did: None, fragment })
                 }
                 Some(other) => {
                     report_mismatch(other, Disambiguator::Primitive);
-                    return;
+                    None
                 }
             }
         } else {
@@ -1050,7 +1080,7 @@ impl LinkCollector<'_, '_> {
                     (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
                     (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
                         report_mismatch(specified, Disambiguator::Kind(kind));
-                        return;
+                        return None;
                     }
                 }
             }
@@ -1073,14 +1103,14 @@ impl LinkCollector<'_, '_> {
                 }
             }
             let id = register_res(cx, res);
-            item.attrs.links.push(ItemLink { link: ori_link, link_text, did: Some(id), fragment });
+            Some(ItemLink { link: ori_link, link_text, did: Some(id), fragment })
         }
     }
 
     fn resolve_with_disambiguator(
         &self,
         disambiguator: Option<Disambiguator>,
-        item: &mut Item,
+        item: &Item,
         dox: &str,
         path_str: &str,
         current_item: &Option<String>,

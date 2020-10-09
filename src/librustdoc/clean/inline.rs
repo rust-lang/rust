@@ -15,7 +15,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
-use crate::clean::{self, GetDefId, ToSource, TypeKind};
+use crate::clean::{self, Attributes, GetDefId, ToSource, TypeKind};
 use crate::core::DocContext;
 use crate::doctree;
 
@@ -35,8 +35,11 @@ type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 ///
 /// The returned value is `None` if the definition could not be inlined,
 /// and `Some` of a vector of items if it was successfully expanded.
+///
+/// `parent_module` refers to the parent of the *re-export*, not the original item.
 pub fn try_inline(
     cx: &DocContext<'_>,
+    parent_module: DefId,
     res: Res,
     name: Symbol,
     attrs: Option<Attrs<'_>>,
@@ -48,12 +51,13 @@ pub fn try_inline(
     }
     let mut ret = Vec::new();
 
+    debug!("attrs={:?}", attrs);
     let attrs_clone = attrs;
 
     let inner = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Trait);
-            ret.extend(build_impls(cx, did, attrs));
+            ret.extend(build_impls(cx, Some(parent_module), did, attrs));
             clean::TraitItem(build_external_trait(cx, did))
         }
         Res::Def(DefKind::Fn, did) => {
@@ -62,27 +66,27 @@ pub fn try_inline(
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Struct);
-            ret.extend(build_impls(cx, did, attrs));
+            ret.extend(build_impls(cx, Some(parent_module), did, attrs));
             clean::StructItem(build_struct(cx, did))
         }
         Res::Def(DefKind::Union, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Union);
-            ret.extend(build_impls(cx, did, attrs));
+            ret.extend(build_impls(cx, Some(parent_module), did, attrs));
             clean::UnionItem(build_union(cx, did))
         }
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Typedef);
-            ret.extend(build_impls(cx, did, attrs));
+            ret.extend(build_impls(cx, Some(parent_module), did, attrs));
             clean::TypedefItem(build_type_alias(cx, did), false)
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Enum);
-            ret.extend(build_impls(cx, did, attrs));
+            ret.extend(build_impls(cx, Some(parent_module), did, attrs));
             clean::EnumItem(build_enum(cx, did))
         }
         Res::Def(DefKind::ForeignTy, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Foreign);
-            ret.extend(build_impls(cx, did, attrs));
+            ret.extend(build_impls(cx, Some(parent_module), did, attrs));
             clean::ForeignTypeItem
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -117,7 +121,7 @@ pub fn try_inline(
     };
 
     let target_attrs = load_attrs(cx, did);
-    let attrs = merge_attrs(cx, target_attrs, attrs_clone);
+    let attrs = merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
 
     cx.renderinfo.borrow_mut().inlined.insert(did);
     ret.push(clean::Item {
@@ -291,40 +295,52 @@ pub fn build_ty(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type> {
 }
 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.
-pub fn build_impls(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>) -> Vec<clean::Item> {
+pub fn build_impls(
+    cx: &DocContext<'_>,
+    parent_module: Option<DefId>,
+    did: DefId,
+    attrs: Option<Attrs<'_>>,
+) -> Vec<clean::Item> {
     let tcx = cx.tcx;
     let mut impls = Vec::new();
 
     // for each implementation of an item represented by `did`, build the clean::Item for that impl
     for &did in tcx.inherent_impls(did).iter() {
-        build_impl(cx, did, attrs, &mut impls);
+        build_impl(cx, parent_module, did, attrs, &mut impls);
     }
 
     impls
 }
 
+/// `parent_module` refers to the parent of the re-export, not the original item
 fn merge_attrs(
     cx: &DocContext<'_>,
-    attrs: Attrs<'_>,
-    other_attrs: Option<Attrs<'_>>,
+    parent_module: Option<DefId>,
+    old_attrs: Attrs<'_>,
+    new_attrs: Option<Attrs<'_>>,
 ) -> clean::Attributes {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
     // doc comments show up before the original doc comments
     // when we render them.
-    let merged_attrs = if let Some(inner) = other_attrs {
-        let mut both = inner.to_vec();
-        both.extend_from_slice(attrs);
-        both
+    if let Some(inner) = new_attrs {
+        if let Some(new_id) = parent_module {
+            let diag = cx.sess().diagnostic();
+            Attributes::from_ast(diag, old_attrs, Some((inner, new_id)))
+        } else {
+            let mut both = inner.to_vec();
+            both.extend_from_slice(old_attrs);
+            both.clean(cx)
+        }
     } else {
-        attrs.to_vec()
-    };
-    merged_attrs.clean(cx)
+        old_attrs.clean(cx)
+    }
 }
 
 /// Builds a specific implementation of a type. The `did` could be a type method or trait method.
 pub fn build_impl(
     cx: &DocContext<'_>,
+    parent_module: impl Into<Option<DefId>>,
     did: DefId,
     attrs: Option<Attrs<'_>>,
     ret: &mut Vec<clean::Item>,
@@ -333,7 +349,8 @@ pub fn build_impl(
         return;
     }
 
-    let attrs = merge_attrs(cx, load_attrs(cx, did), attrs);
+    let attrs = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
+    debug!("merged_attrs={:?}", attrs);
 
     let tcx = cx.tcx;
     let associated_trait = tcx.impl_trait_ref(did);
@@ -499,7 +516,9 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                             },
                         )),
                     });
-                } else if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
+                } else if let Some(i) =
+                    try_inline(cx, did, item.res, item.ident.name, None, visited)
+                {
                     items.extend(i)
                 }
             }

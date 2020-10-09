@@ -373,6 +373,11 @@ impl<I: IntoIterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
 pub struct DocFragment {
     pub line: usize,
     pub span: rustc_span::Span,
+    /// The module this doc-comment came from.
+    ///
+    /// This allows distinguishing between the original documentation and a pub re-export.
+    /// If it is `None`, the item was not re-exported.
+    pub parent_module: Option<DefId>,
     pub doc: String,
     pub kind: DocFragmentKind,
 }
@@ -386,6 +391,24 @@ pub enum DocFragmentKind {
     /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
     /// given filename and the file contents.
     Include { filename: String },
+    /// A doc fragment used to distinguish between documentation in different modules.
+    ///
+    /// In particular, this prevents `collapse_docs` from turning all documentation comments
+    /// into a single giant attributes even when the item is re-exported with documentation on the re-export.
+    Divider,
+}
+
+impl DocFragment {
+    /// Creates a dummy doc-fragment which divides earlier and later fragments.
+    fn divider() -> Self {
+        DocFragment {
+            line: 0,
+            span: DUMMY_SP,
+            parent_module: None,
+            doc: String::new(),
+            kind: DocFragmentKind::Divider,
+        }
+    }
 }
 
 impl<'a> FromIterator<&'a DocFragment> for String {
@@ -521,57 +544,77 @@ impl Attributes {
         false
     }
 
-    pub fn from_ast(diagnostic: &::rustc_errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
-        let mut doc_strings = vec![];
+    pub fn from_ast(
+        diagnostic: &::rustc_errors::Handler,
+        attrs: &[ast::Attribute],
+        additional_attrs: Option<(&[ast::Attribute], DefId)>,
+    ) -> Attributes {
+        let doc_strings = RefCell::new(vec![]);
         let mut sp = None;
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
-        let other_attrs = attrs
-            .iter()
-            .filter_map(|attr| {
-                if let Some(value) = attr.doc_str() {
-                    let value = beautify_doc_string(value);
-                    let kind = if attr.is_doc_comment() {
-                        DocFragmentKind::SugaredDoc
-                    } else {
-                        DocFragmentKind::RawDoc
-                    };
-
-                    let line = doc_line;
-                    doc_line += value.lines().count();
-                    doc_strings.push(DocFragment { line, span: attr.span, doc: value, kind });
-
-                    if sp.is_none() {
-                        sp = Some(attr.span);
-                    }
-                    None
+        let clean_attr = |(attr, parent_module): (&ast::Attribute, _)| {
+            if let Some(value) = attr.doc_str() {
+                trace!("got doc_str={:?}", value);
+                let value = beautify_doc_string(value);
+                let kind = if attr.is_doc_comment() {
+                    DocFragmentKind::SugaredDoc
                 } else {
-                    if attr.has_name(sym::doc) {
-                        if let Some(mi) = attr.meta() {
-                            if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
-                                // Extracted #[doc(cfg(...))]
-                                match Cfg::parse(cfg_mi) {
-                                    Ok(new_cfg) => cfg &= new_cfg,
-                                    Err(e) => diagnostic.span_err(e.span, e.msg),
-                                }
-                            } else if let Some((filename, contents)) =
-                                Attributes::extract_include(&mi)
-                            {
-                                let line = doc_line;
-                                doc_line += contents.lines().count();
-                                doc_strings.push(DocFragment {
-                                    line,
-                                    span: attr.span,
-                                    doc: contents,
-                                    kind: DocFragmentKind::Include { filename },
-                                });
+                    DocFragmentKind::RawDoc
+                };
+
+                let line = doc_line;
+                doc_line += value.lines().count();
+                doc_strings.borrow_mut().push(DocFragment {
+                    line,
+                    span: attr.span,
+                    doc: value,
+                    kind,
+                    parent_module,
+                });
+
+                if sp.is_none() {
+                    sp = Some(attr.span);
+                }
+                None
+            } else {
+                if attr.has_name(sym::doc) {
+                    if let Some(mi) = attr.meta() {
+                        if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
+                            // Extracted #[doc(cfg(...))]
+                            match Cfg::parse(cfg_mi) {
+                                Ok(new_cfg) => cfg &= new_cfg,
+                                Err(e) => diagnostic.span_err(e.span, e.msg),
                             }
+                        } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
+                        {
+                            let line = doc_line;
+                            doc_line += contents.lines().count();
+                            doc_strings.borrow_mut().push(DocFragment {
+                                line,
+                                span: attr.span,
+                                doc: contents,
+                                kind: DocFragmentKind::Include { filename },
+                                parent_module: parent_module,
+                            });
                         }
                     }
-                    Some(attr.clone())
                 }
+                Some(attr.clone())
+            }
+        };
+
+        // Additional documentation should be shown before the original documentation
+        let other_attrs = additional_attrs
+            .into_iter()
+            .map(|(attrs, id)| {
+                doc_strings.borrow_mut().push(DocFragment::divider());
+                attrs.iter().map(move |attr| (attr, Some(id)))
             })
+            .flatten()
+            .chain(attrs.iter().map(|attr| (attr, None)))
+            .filter_map(clean_attr)
             .collect();
 
         // treat #[target_feature(enable = "feat")] attributes as if they were
@@ -597,7 +640,7 @@ impl Attributes {
             .map_or(true, |a| a.style == AttrStyle::Inner);
 
         Attributes {
-            doc_strings,
+            doc_strings: doc_strings.into_inner(),
             other_attrs,
             cfg: if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) },
             span: sp,
