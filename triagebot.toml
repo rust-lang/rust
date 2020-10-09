@@ -75,6 +75,7 @@ label = "I-prioritize"
 
 [autolabel."I-prioritize"]
 trigger_labels = [
+    "regression-untriaged",
     "regression-from-stable-to-stable",
     "regression-from-stable-to-beta",
     "regression-from-stable-to-nightly",
