@@ -11,6 +11,10 @@ env:
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
   NO_FMT_TEST: 1
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
@@ -105,7 +109,6 @@ jobs:
       run: bash setup-toolchain.sh
       env:
         HOST_TOOLCHAIN: ${{ matrix.host }}
-      shell: bash
 
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
@@ -124,39 +127,31 @@ jobs:
       run: |
         SYSROOT=$(rustc --print sysroot)
         echo "$SYSROOT/bin" >> $GITHUB_PATH
-      shell: bash
 
     - name: Build
       run: cargo build --features deny-warnings
-      shell: bash
 
     - name: Test
       run: cargo test --features deny-warnings
-      shell: bash
 
     - name: Test clippy_lints
       run: cargo test --features deny-warnings
-      shell: bash
       working-directory: clippy_lints
 
     - name: Test rustc_tools_util
       run: cargo test --features deny-warnings
-      shell: bash
       working-directory: rustc_tools_util
 
     - name: Test clippy_dev
       run: cargo test --features deny-warnings
-      shell: bash
       working-directory: clippy_dev
 
     - name: Test cargo-clippy
       run: ../target/debug/cargo-clippy
-      shell: bash
       working-directory: clippy_workspace_tests
 
     - name: Test clippy-driver
       run: bash .github/driver.sh
-      shell: bash
       env:
         OS: ${{ runner.os }}
 
@@ -165,7 +160,7 @@ jobs:
       run: |
         cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
         cargo cache
-      shell: bash
+
   integration_build:
     needs: changelog
     runs-on: ubuntu-latest
