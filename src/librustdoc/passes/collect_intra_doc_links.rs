@@ -283,7 +283,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 return Err(ResolutionFailure::WrongNamespace(res, ns).into());
             }
         // FIXME: why is this necessary?
-        } else if let Some((path, prim)) = is_primitive(path_str, ns) {
+        } else if let Some((path, prim)) = is_primitive(path_str, ns, cx, module_id) {
             if extra_fragment.is_some() {
                 return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(prim)));
             }
@@ -315,7 +315,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
             })?;
 
-        if let Some((path, prim)) = is_primitive(&path_root, TypeNS) {
+        if let Some((path, prim)) = is_primitive(&path_root, TypeNS, cx, module_id) {
             let impls =
                 primitive_impl(cx, &path).ok_or_else(|| ResolutionFailure::NotResolved {
                     module_id,
@@ -909,63 +909,61 @@ impl LinkCollector<'_, '_> {
             (parts[0], None)
         };
         let resolved_self;
-        let link_text;
-        let mut path_str;
         let disambiguator;
+
+        let mut path_str = if let Ok((d, path)) = Disambiguator::from_str(&link) {
+            disambiguator = Some(d);
+            path
+        } else {
+            disambiguator = None;
+            &link
+        }
+        .trim();
+
+        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
+            return None;
+        }
+
+        // We stripped `()` and `!` when parsing the disambiguator.
+        // Add them back to be displayed, but not prefix disambiguators.
+        let link_text =
+            disambiguator.map(|d| d.display_for(path_str)).unwrap_or_else(|| path_str.to_owned());
+
+        // In order to correctly resolve intra-doc-links we need to
+        // pick a base AST node to work from.  If the documentation for
+        // this module came from an inner comment (//!) then we anchor
+        // our name resolution *inside* the module.  If, on the other
+        // hand it was an outer comment (///) then we anchor the name
+        // resolution in the parent module on the basis that the names
+        // used are more likely to be intended to be parent names.  For
+        // this, we set base_node to None for inner comments since
+        // we've already pushed this node onto the resolution stack but
+        // for outer comments we explicitly try and resolve against the
+        // parent_node first.
+        let base_node = if item.is_mod() && item.attrs.inner_docs {
+            self.mod_ids.last().copied()
+        } else {
+            parent_node
+        };
+
+        let mut module_id = if let Some(id) = base_node {
+            id
+        } else {
+            debug!("attempting to resolve item without parent module: {}", path_str);
+            let err_kind = ResolutionFailure::NoParentItem.into();
+            resolution_failure(
+                self,
+                &item,
+                path_str,
+                disambiguator,
+                dox,
+                link_range,
+                smallvec![err_kind],
+            );
+            return None;
+        };
+
         let (mut res, mut fragment) = {
-            path_str = if let Ok((d, path)) = Disambiguator::from_str(&link) {
-                disambiguator = Some(d);
-                path
-            } else {
-                disambiguator = None;
-                &link
-            }
-            .trim();
-
-            if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
-                return None;
-            }
-
-            // We stripped `()` and `!` when parsing the disambiguator.
-            // Add them back to be displayed, but not prefix disambiguators.
-            link_text = disambiguator
-                .map(|d| d.display_for(path_str))
-                .unwrap_or_else(|| path_str.to_owned());
-
-            // In order to correctly resolve intra-doc-links we need to
-            // pick a base AST node to work from.  If the documentation for
-            // this module came from an inner comment (//!) then we anchor
-            // our name resolution *inside* the module.  If, on the other
-            // hand it was an outer comment (///) then we anchor the name
-            // resolution in the parent module on the basis that the names
-            // used are more likely to be intended to be parent names.  For
-            // this, we set base_node to None for inner comments since
-            // we've already pushed this node onto the resolution stack but
-            // for outer comments we explicitly try and resolve against the
-            // parent_node first.
-            let base_node = if item.is_mod() && item.attrs.inner_docs {
-                self.mod_ids.last().copied()
-            } else {
-                parent_node
-            };
-
-            let mut module_id = if let Some(id) = base_node {
-                id
-            } else {
-                debug!("attempting to resolve item without parent module: {}", path_str);
-                let err_kind = ResolutionFailure::NoParentItem.into();
-                resolution_failure(
-                    self,
-                    &item,
-                    path_str,
-                    disambiguator,
-                    dox,
-                    link_range,
-                    smallvec![err_kind],
-                );
-                return None;
-            };
-
             // replace `Self` with suitable item's parent name
             if path_str.starts_with("Self::") {
                 if let Some(ref name) = parent_name {
@@ -1009,7 +1007,7 @@ impl LinkCollector<'_, '_> {
             None | Some(Disambiguator::Namespace(Namespace::TypeNS) | Disambiguator::Primitive)
         ) && !matches!(res, Res::PrimTy(_))
         {
-            if let Some((path, prim)) = is_primitive(path_str, TypeNS) {
+            if let Some((path, prim)) = is_primitive(path_str, TypeNS, cx, module_id) {
                 // `prim@char`
                 if matches!(disambiguator, Some(Disambiguator::Primitive)) {
                     if fragment.is_some() {
@@ -1892,14 +1890,34 @@ const PRIMITIVES: &[(&str, Res)] = &[
     ("char", Res::PrimTy(hir::PrimTy::Char)),
 ];
 
-fn is_primitive(path_str: &str, ns: Namespace) -> Option<(&'static str, Res)> {
+fn is_primitive(
+    path_str: &str,
+    ns: Namespace,
+    cx: &DocContext<'_>,
+    module_id: DefId,
+) -> Option<(&'static str, Res)> {
     if ns == TypeNS {
-        PRIMITIVES
+        let prim = PRIMITIVES
             .iter()
             .filter(|x| x.0 == path_str)
             .copied()
             .map(|x| if x.0 == "true" || x.0 == "false" { ("bool", x.1) } else { x })
-            .next()
+            .next();
+        prim.or_else(|| {
+            let res = cx
+                .enter_resolver(|resolver| {
+                    resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
+                })
+                .ok()?
+                .1;
+            PRIMITIVES
+                .iter()
+                .find(|(_, prim_res)| match (res, prim_res) {
+                    (Res::PrimTy(ty1), Res::PrimTy(ty2)) if ty1 == *ty2 => true,
+                    (_, _) => false,
+                })
+                .copied()
+        })
     } else {
         None
     }
