@@ -36,9 +36,9 @@ struct SpinlockGuard<'a, T: ?Sized + 'a> {
 impl<T> Spinlock<T> {
     pub const fn new(user_data: T) -> Spinlock<T> {
         Spinlock {
-           queue: AtomicUsize::new(0),
-           dequeue: AtomicUsize::new(1),
-	   data: UnsafeCell::new(user_data),
+            queue: AtomicUsize::new(0),
+            dequeue: AtomicUsize::new(1),
+            data: UnsafeCell::new(user_data),
         }
     }
 
