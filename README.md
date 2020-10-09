@@ -19,8 +19,7 @@ for example:
 
 On top of that, Miri will also tell you about memory leaks: when there is memory
 still allocated at the end of the execution, and that memory is not reachable
-from a global `static`, Miri will raise an error. Note however that
-[leak checking is currently disabled on Windows targets](https://github.com/rust-lang/miri/issues/1302).
+from a global `static`, Miri will raise an error.
 
 Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
