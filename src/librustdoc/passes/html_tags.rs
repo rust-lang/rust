@@ -4,6 +4,8 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::opts;
 use core::ops::Range;
+use std::iter::Peekable;
+use std::str::CharIndices;
 use pulldown_cmark::{Event, Parser};
 use rustc_feature::UnstableFeatures;
 use rustc_session::lint;
@@ -75,7 +77,73 @@ fn drop_tag(
     }
 }
 
-fn extract_tag(
+fn extract_html_tag(
+    tags: &mut Vec<(String, Range<usize>)>,
+    text: &str,
+    range: &Range<usize>,
+    start_pos: usize,
+    iter: &mut Peekable<CharIndices<'_>>,
+    f: &impl Fn(&str, &Range<usize>),
+) {
+    let mut tag_name = String::new();
+    let mut is_closing = false;
+    let mut prev_pos = start_pos;
+
+    loop {
+        let (pos, c) = match iter.peek() {
+            Some((pos, c)) => (*pos, *c),
+            // In case we reached the of the doc comment, we want to check that it's an
+            // unclosed HTML tag. For example "/// <h3".
+            None => (prev_pos, '\0'),
+        };
+        prev_pos = pos;
+        // Checking if this is a closing tag (like `</a>` for `<a>`).
+        if c == '/' && tag_name.is_empty() {
+            is_closing = true;
+        } else if c.is_ascii_alphanumeric() {
+            tag_name.push(c);
+        } else {
+            if !tag_name.is_empty() {
+                let mut r =
+                    Range { start: range.start + start_pos, end: range.start + pos };
+                if c == '>' {
+                    // In case we have a tag without attribute, we can consider the span to
+                    // refer to it fully.
+                    r.end += 1;
+                }
+                if is_closing {
+                    // In case we have "</div >" or even "</div         >".
+                    if c != '>' {
+                        if !c.is_whitespace() {
+                            // It seems like it's not a valid HTML tag.
+                            break;
+                        }
+                        let mut found = false;
+                        for (new_pos, c) in text[pos..].char_indices() {
+                            if !c.is_whitespace() {
+                                if c == '>' {
+                                    r.end = range.start + new_pos + 1;
+                                    found = true;
+                                }
+                                break;
+                            }
+                        }
+                        if !found {
+                            break;
+                        }
+                    }
+                    drop_tag(tags, tag_name, r, f);
+                } else {
+                    tags.push((tag_name, r));
+                }
+            }
+            break;
+        }
+        iter.next();
+    }
+}
+
+fn extract_tags(
     tags: &mut Vec<(String, Range<usize>)>,
     text: &str,
     range: Range<usize>,
@@ -85,61 +153,7 @@ fn extract_tag(
 
     while let Some((start_pos, c)) = iter.next() {
         if c == '<' {
-            let mut tag_name = String::new();
-            let mut is_closing = false;
-            let mut prev_pos = start_pos;
-            loop {
-                let (pos, c) = match iter.peek() {
-                    Some((pos, c)) => (*pos, *c),
-                    // In case we reached the of the doc comment, we want to check that it's an
-                    // unclosed HTML tag. For example "/// <h3".
-                    None => (prev_pos, '\0'),
-                };
-                prev_pos = pos;
-                // Checking if this is a closing tag (like `</a>` for `<a>`).
-                if c == '/' && tag_name.is_empty() {
-                    is_closing = true;
-                } else if c.is_ascii_alphanumeric() {
-                    tag_name.push(c);
-                } else {
-                    if !tag_name.is_empty() {
-                        let mut r =
-                            Range { start: range.start + start_pos, end: range.start + pos };
-                        if c == '>' {
-                            // In case we have a tag without attribute, we can consider the span to
-                            // refer to it fully.
-                            r.end += 1;
-                        }
-                        if is_closing {
-                            // In case we have "</div >" or even "</div         >".
-                            if c != '>' {
-                                if !c.is_whitespace() {
-                                    // It seems like it's not a valid HTML tag.
-                                    break;
-                                }
-                                let mut found = false;
-                                for (new_pos, c) in text[pos..].char_indices() {
-                                    if !c.is_whitespace() {
-                                        if c == '>' {
-                                            r.end = range.start + new_pos + 1;
-                                            found = true;
-                                        }
-                                        break;
-                                    }
-                                }
-                                if !found {
-                                    break;
-                                }
-                            }
-                            drop_tag(tags, tag_name, r, f);
-                        } else {
-                            tags.push((tag_name, r));
-                        }
-                    }
-                    break;
-                }
-                iter.next();
-            }
+            extract_html_tag(tags, text, &range, start_pos, &mut iter, f);
         }
     }
 }
@@ -172,7 +186,7 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
 
             for (event, range) in p {
                 match event {
-                    Event::Html(text) => extract_tag(&mut tags, &text, range, &report_diag),
+                    Event::Html(text) => extract_tags(&mut tags, &text, range, &report_diag),
                     _ => {}
                 }
             }
