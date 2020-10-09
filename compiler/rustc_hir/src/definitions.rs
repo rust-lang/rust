@@ -188,10 +188,6 @@ pub struct DefPath {
 }
 
 impl DefPath {
-    pub fn is_local(&self) -> bool {
-        self.krate == LOCAL_CRATE
-    }
-
     pub fn make<FN>(krate: CrateNum, start_index: DefIndex, mut get_key: FN) -> DefPath
     where
         FN: FnMut(DefIndex) -> DefKey,

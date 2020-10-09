@@ -3,7 +3,6 @@ use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
 
-use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{self as ast, CrateSugar, LlvmAsmDialect};
 use rustc_ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
@@ -306,10 +305,6 @@ impl GenericArgs<'_> {
         Self { args: &[], bindings: &[], parenthesized: false }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
-    }
-
     pub fn inputs(&self) -> &[Ty<'_>] {
         if self.parenthesized {
             for arg in self.args {
@@ -465,23 +460,6 @@ impl Generics<'hir> {
             where_clause: WhereClause { predicates: &[], span: DUMMY_SP },
             span: DUMMY_SP,
         }
-    }
-
-    pub fn own_counts(&self) -> GenericParamCount {
-        // We could cache this as a property of `GenericParamCount`, but
-        // the aim is to refactor this away entirely eventually and the
-        // presence of this method will be a constant reminder.
-        let mut own_counts: GenericParamCount = Default::default();
-
-        for param in self.params {
-            match param.kind {
-                GenericParamKind::Lifetime { .. } => own_counts.lifetimes += 1,
-                GenericParamKind::Type { .. } => own_counts.types += 1,
-                GenericParamKind::Const { .. } => own_counts.consts += 1,
-            };
-        }
-
-        own_counts
     }
 
     pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'_>> {
@@ -2679,8 +2657,6 @@ pub struct Upvar {
     pub span: Span,
 }
 
-pub type CaptureModeMap = NodeMap<CaptureBy>;
-
 // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
@@ -2764,34 +2740,6 @@ impl<'hir> Node<'hir> {
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
             Node::Item(item) => item.kind.generics(),
             _ => None,
-        }
-    }
-
-    pub fn hir_id(&self) -> Option<HirId> {
-        match self {
-            Node::Item(Item { hir_id, .. })
-            | Node::ForeignItem(ForeignItem { hir_id, .. })
-            | Node::TraitItem(TraitItem { hir_id, .. })
-            | Node::ImplItem(ImplItem { hir_id, .. })
-            | Node::Field(StructField { hir_id, .. })
-            | Node::AnonConst(AnonConst { hir_id, .. })
-            | Node::Expr(Expr { hir_id, .. })
-            | Node::Stmt(Stmt { hir_id, .. })
-            | Node::Ty(Ty { hir_id, .. })
-            | Node::Binding(Pat { hir_id, .. })
-            | Node::Pat(Pat { hir_id, .. })
-            | Node::Arm(Arm { hir_id, .. })
-            | Node::Block(Block { hir_id, .. })
-            | Node::Local(Local { hir_id, .. })
-            | Node::MacroDef(MacroDef { hir_id, .. })
-            | Node::Lifetime(Lifetime { hir_id, .. })
-            | Node::Param(Param { hir_id, .. })
-            | Node::GenericParam(GenericParam { hir_id, .. }) => Some(*hir_id),
-            Node::TraitRef(TraitRef { hir_ref_id, .. }) => Some(*hir_ref_id),
-            Node::PathSegment(PathSegment { hir_id, .. }) => *hir_id,
-            Node::Variant(Variant { id, .. }) => Some(*id),
-            Node::Ctor(variant) => variant.ctor_hir_id(),
-            Node::Crate(_) | Node::Visibility(_) => None,
         }
     }
 }
