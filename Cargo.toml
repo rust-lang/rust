@@ -19,18 +19,6 @@ miniz_oxide.opt-level = 3
 incremental = true
 debug = 0 # Set this to 1 or 2 to get more useful backtraces in debugger.
 
-# Ideally, we would use `build-override` here, but some crates are also
-# needed at run-time and we end up compiling them twice.
-[profile.release.package]
-chalk-derive.opt-level = 0
-proc-macro2.opt-level = 0
-quote.opt-level = 0
-salsa-macros.opt-level = 0
-serde_derive.opt-level = 0
-syn.opt-level = 0
-tracing-attributes.opt-level = 0
-xtask.opt-level = 0
-
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
 
