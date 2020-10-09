@@ -2258,8 +2258,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                     return items;
                 }
             }
-
-            Import::Glob(resolve_use_source(cx, path))
+            Import::new_glob(resolve_use_source(cx, path), true)
         } else {
             let name = self.name;
             if !please_inline {
@@ -2273,7 +2272,8 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             }
             if !denied {
                 let mut visited = FxHashSet::default();
-                if let Some(items) = inline::try_inline(
+
+                if let Some(mut items) = inline::try_inline(
                     cx,
                     cx.tcx.parent_module(self.id).to_def_id(),
                     path.res,
@@ -2281,10 +2281,24 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                     Some(self.attrs),
                     &mut visited,
                 ) {
+                    items.push(Item {
+                        name: None,
+                        attrs: self.attrs.clean(cx),
+                        source: self.span.clean(cx),
+                        def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
+                        visibility: self.vis.clean(cx),
+                        stability: None,
+                        deprecation: None,
+                        inner: ImportItem(Import::new_simple(
+                            self.name.clean(cx),
+                            resolve_use_source(cx, path),
+                            false,
+                        )),
+                    });
                     return items;
                 }
             }
-            Import::Simple(name.clean(cx), resolve_use_source(cx, path))
+            Import::new_simple(name.clean(cx), resolve_use_source(cx, path), true)
         };
 
         vec![Item {

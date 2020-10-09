@@ -758,7 +758,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 debug!("ignoring extern crate item {:?}", item.def_id);
                 return self.fold_item_recur(item);
             }
-            ImportItem(Import::Simple(ref name, ..)) => Some(name.clone()),
+            ImportItem(Import { kind: ImportKind::Simple(ref name, ..), .. }) => Some(name.clone()),
             MacroItem(..) => None,
             _ => item.name.clone(),
         };

@@ -498,7 +498,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                         visibility: clean::Public,
                         stability: None,
                         deprecation: None,
-                        inner: clean::ImportItem(clean::Import::Simple(
+                        inner: clean::ImportItem(clean::Import::new_simple(
                             item.ident.to_string(),
                             clean::ImportSource {
                                 path: clean::Path {
@@ -514,6 +514,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                                 },
                                 did: None,
                             },
+                            true,
                         )),
                     });
                 } else if let Some(i) =

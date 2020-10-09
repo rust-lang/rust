@@ -245,6 +245,7 @@ pub struct ExternCrate<'hir> {
     pub span: Span,
 }
 
+#[derive(Debug)]
 pub struct Import<'hir> {
     pub name: Symbol,
     pub id: hir::HirId,

@@ -4438,8 +4438,9 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
 fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     let mut sidebar = String::new();
 
-    if items.iter().any(|it| it.type_() == ItemType::ExternCrate || it.type_() == ItemType::Import)
-    {
+    if items.iter().any(|it| {
+        it.type_() == ItemType::ExternCrate || (it.type_() == ItemType::Import && !it.is_stripped())
+    }) {
         sidebar.push_str(&format!(
             "<li><a href=\"#{id}\">{name}</a></li>",
             id = "reexports",

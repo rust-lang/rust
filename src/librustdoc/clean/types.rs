@@ -177,6 +177,7 @@ impl Item {
     pub fn is_stripped(&self) -> bool {
         match self.inner {
             StrippedItem(..) => true,
+            ImportItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
@@ -1653,11 +1654,28 @@ pub struct Impl {
 }
 
 #[derive(Clone, Debug)]
-pub enum Import {
+pub struct Import {
+    pub kind: ImportKind,
+    pub source: ImportSource,
+    pub should_be_displayed: bool,
+}
+
+impl Import {
+    pub fn new_simple(name: String, source: ImportSource, should_be_displayed: bool) -> Self {
+        Self { kind: ImportKind::Simple(name), source, should_be_displayed }
+    }
+
+    pub fn new_glob(source: ImportSource, should_be_displayed: bool) -> Self {
+        Self { kind: ImportKind::Glob, source, should_be_displayed }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum ImportKind {
     // use source as str;
-    Simple(String, ImportSource),
+    Simple(String),
     // use source::*;
-    Glob(ImportSource),
+    Glob,
 }
 
 #[derive(Clone, Debug)]
