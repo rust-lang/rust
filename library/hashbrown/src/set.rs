@@ -101,11 +101,9 @@ use crate::raw::{AllocRef, Global};
 /// ```
 /// use hashbrown::HashSet;
 ///
-/// fn main() {
 /// let viking_names: HashSet<&'static str> =
 ///     [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
 /// // use the values stored in the set
-/// }
 /// ```
 ///
 /// [`Cell`]: https://doc.rust-lang.org/std/cell/struct.Cell.html
@@ -131,7 +129,7 @@ impl<T: Clone, S: Clone> Clone for HashSet<T, S> {
 }
 
 #[cfg(feature = "ahash")]
-impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
+impl<T> HashSet<T, DefaultHashBuilder> {
     /// Creates an empty `HashSet`.
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
@@ -327,13 +325,13 @@ impl<T, S, A: AllocRef + Clone> HashSet<T, S, A> {
         self.map.retain(|k, _| f(k));
     }
 
-    /// Drains elements which are false under the given predicate,
+    /// Drains elements which are true under the given predicate,
     /// and returns an iterator over the removed items.
     ///
-    /// In other words, move all elements `e` such that `f(&e)` returns `false` out
+    /// In other words, move all elements `e` such that `f(&e)` returns `true` out
     /// into another iterator.
     ///
-    /// When the returned DrainedFilter is dropped, the elements that don't satisfy
+    /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
     /// the predicate are dropped from the set.
     ///
     /// # Examples
@@ -342,9 +340,15 @@ impl<T, S, A: AllocRef + Clone> HashSet<T, S, A> {
     /// use hashbrown::HashSet;
     ///
     /// let mut set: HashSet<i32> = (0..8).collect();
-    /// let drained = set.drain_filter(|&k| k % 2 == 0);
-    /// assert_eq!(drained.count(), 4);
-    /// assert_eq!(set.len(), 4);
+    /// let drained: HashSet<i32> = set.drain_filter(|v| v % 2 == 0).collect();
+    ///
+    /// let mut evens = drained.into_iter().collect::<Vec<_>>();
+    /// let mut odds = set.into_iter().collect::<Vec<_>>();
+    /// evens.sort();
+    /// odds.sort();
+    ///
+    /// assert_eq!(evens, vec![0, 2, 4, 6]);
+    /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, T, F, A>
@@ -378,11 +382,7 @@ impl<T, S, A: AllocRef + Clone> HashSet<T, S, A> {
     }
 }
 
-impl<T, S> HashSet<T, S>
-where
-    T: Eq + Hash,
-    S: BuildHasher,
-{
+impl<T, S> HashSet<T, S, Global> {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
@@ -410,7 +410,7 @@ where
     ///
     /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_hasher(hasher: S) -> Self {
+    pub const fn with_hasher(hasher: S) -> Self {
         Self {
             map: HashMap::with_hasher(hasher),
         }
@@ -529,7 +529,14 @@ where
     pub fn hasher(&self) -> &S {
         self.map.hasher()
     }
+}
 
+impl<T, S, A> HashSet<T, S, A>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+    A: AllocRef + Clone,
+{
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
     /// frequent reallocations.
@@ -1568,7 +1575,15 @@ where
         let (k, _) = self.inner.next(&mut |k, _| f(k))?;
         Some(k)
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.inner.iter.size_hint().1)
+    }
 }
+
+impl<K, F, A: AllocRef + Clone> FusedIterator for DrainFilter<'_, K, F, A> where F: FnMut(&K) -> bool
+{}
 
 impl<T, S, A: AllocRef + Clone> Clone for Intersection<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
@@ -2202,7 +2217,7 @@ mod test_set {
             let drained = set.drain_filter(|&k| k % 2 == 0);
             let mut out = drained.collect::<Vec<_>>();
             out.sort_unstable();
-            assert_eq!(vec![1, 3, 5, 7], out);
+            assert_eq!(vec![0, 2, 4, 6], out);
             assert_eq!(set.len(), 4);
         }
         {
@@ -2210,5 +2225,27 @@ mod test_set {
             drop(set.drain_filter(|&k| k % 2 == 0));
             assert_eq!(set.len(), 4, "Removes non-matching items on drop");
         }
+    }
+
+    #[test]
+    fn test_const_with_hasher() {
+        use core::hash::BuildHasher;
+        use std::collections::hash_map::DefaultHasher;
+
+        #[derive(Clone)]
+        struct MyHasher;
+        impl BuildHasher for MyHasher {
+            type Hasher = DefaultHasher;
+
+            fn build_hasher(&self) -> DefaultHasher {
+                DefaultHasher::new()
+            }
+        }
+
+        const EMPTY_SET: HashSet<u32, MyHasher> = HashSet::with_hasher(MyHasher);
+
+        let mut set = EMPTY_SET.clone();
+        set.insert(19);
+        assert!(set.contains(&19));
     }
 }

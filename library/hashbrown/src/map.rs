@@ -206,6 +206,37 @@ impl<K: Clone, V: Clone, S: Clone> Clone for HashMap<K, V, S> {
     }
 }
 
+/// Ensures that a single closure type across uses of this which, in turn prevents multiple
+/// instances of any functions like RawTable::reserve from being generated
+#[cfg_attr(feature = "inline-more", inline)]
+pub(crate) fn make_hasher<K: Hash, V>(
+    hash_builder: &impl BuildHasher,
+) -> impl Fn(&(K, V)) -> u64 + '_ {
+    move |val| make_hash(hash_builder, &val.0)
+}
+
+/// Ensures that a single closure type across uses of this which, in turn prevents multiple
+/// instances of any functions like RawTable::reserve from being generated
+#[cfg_attr(feature = "inline-more", inline)]
+fn equivalent_key<Q, K, V>(k: &Q) -> impl Fn(&(K, V)) -> bool + '_
+where
+    K: Borrow<Q>,
+    Q: ?Sized + Eq,
+{
+    move |x| k.eq(x.0.borrow())
+}
+
+/// Ensures that a single closure type across uses of this which, in turn prevents multiple
+/// instances of any functions like RawTable::reserve from being generated
+#[cfg_attr(feature = "inline-more", inline)]
+fn equivalent<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
+where
+    K: Borrow<Q>,
+    Q: ?Sized + Eq,
+{
+    move |x| k.eq(x.borrow())
+}
+
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
     let mut state = hash_builder.build_hasher();
@@ -296,10 +327,10 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_hasher(hash_builder: S) -> Self {
+    pub const fn with_hasher(hash_builder: S) -> Self {
         Self {
             hash_builder,
-            table: RawTable::new(Global),
+            table: RawTable::new(),
         }
     }
 
@@ -363,7 +394,7 @@ impl<K, V, S, A: AllocRef + Clone> HashMap<K, V, S, A> {
     pub fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
         Self {
             hash_builder,
-            table: RawTable::new(alloc),
+            table: RawTable::new_in(alloc),
         }
     }
 
@@ -628,11 +659,8 @@ impl<K, V, S, A: AllocRef + Clone> HashMap<K, V, S, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain(&mut self) -> Drain<'_, K, V, A> {
-        // Here we tie the lifetime of self to the iter.
-        unsafe {
-            Drain {
-                inner: self.table.drain(),
-            }
+        Drain {
+            inner: self.table.drain(),
         }
     }
 
@@ -664,13 +692,13 @@ impl<K, V, S, A: AllocRef + Clone> HashMap<K, V, S, A> {
         }
     }
 
-    /// Drains elements which are false under the given predicate,
+    /// Drains elements which are true under the given predicate,
     /// and returns an iterator over the removed items.
     ///
-    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `false` out
+    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `true` out
     /// into another iterator.
     ///
-    /// When the returned DrainedFilter is dropped, the elements that don't satisfy
+    /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
     /// the predicate are dropped from the table.
     ///
     /// # Examples
@@ -678,10 +706,16 @@ impl<K, V, S, A: AllocRef + Clone> HashMap<K, V, S, A> {
     /// ```
     /// use hashbrown::HashMap;
     ///
-    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
-    /// let drained = map.drain_filter(|&k, _| k % 2 == 0);
-    /// assert_eq!(drained.count(), 4);
-    /// assert_eq!(map.len(), 4);
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
+    /// let drained: HashMap<i32, i32> = map.drain_filter(|k, _v| k % 2 == 0).collect();
+    ///
+    /// let mut evens = drained.keys().cloned().collect::<Vec<_>>();
+    /// let mut odds = map.keys().cloned().collect::<Vec<_>>();
+    /// evens.sort();
+    /// odds.sort();
+    ///
+    /// assert_eq!(evens, vec![0, 2, 4, 6]);
+    /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F, A>
@@ -741,9 +775,8 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize) {
-        let hash_builder = &self.hash_builder;
         self.table
-            .reserve(additional, |x| make_hash(hash_builder, &x.0));
+            .reserve(additional, make_hasher(&self.hash_builder));
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -764,9 +797,8 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        let hash_builder = &self.hash_builder;
         self.table
-            .try_reserve(additional, |x| make_hash(hash_builder, &x.0))
+            .try_reserve(additional, make_hasher(&self.hash_builder))
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -787,8 +819,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to_fit(&mut self) {
-        let hash_builder = &self.hash_builder;
-        self.table.shrink_to(0, |x| make_hash(hash_builder, &x.0));
+        self.table.shrink_to(0, make_hasher(&self.hash_builder));
     }
 
     /// Shrinks the capacity of the map with a lower limit. It will drop
@@ -816,9 +847,8 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        let hash_builder = &self.hash_builder;
         self.table
-            .shrink_to(min_capacity, |x| make_hash(hash_builder, &x.0));
+            .shrink_to(min_capacity, make_hasher(&self.hash_builder));
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
@@ -843,8 +873,9 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V, S, A> {
         let hash = make_hash(&self.hash_builder, &key);
-        if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
+        if let Some(elem) = self.table.find(hash, equivalent_key(&key)) {
             Entry::Occupied(OccupiedEntry {
+                hash,
                 key: Some(key),
                 elem,
                 table: self,
@@ -884,8 +915,8 @@ where
         Q: Hash + Eq,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        match self.get_key_value(k) {
-            Some((_, v)) => Some(v),
+        match self.get_inner(k) {
+            Some(&(_, ref v)) => Some(v),
             None => None,
         }
     }
@@ -915,15 +946,21 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash(&self.hash_builder, k);
         // Avoid `Option::map` because it bloats LLVM IR.
-        match self.table.find(hash, |x| k.eq(x.0.borrow())) {
-            Some(item) => unsafe {
-                let &(ref key, ref value) = item.as_ref();
-                Some((key, value))
-            },
+        match self.get_inner(k) {
+            Some(&(ref key, ref value)) => Some((key, value)),
             None => None,
         }
+    }
+
+    #[inline]
+    fn get_inner<Q: ?Sized>(&self, k: &Q) -> Option<&(K, V)>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hash = make_hash(&self.hash_builder, k);
+        self.table.get(hash, equivalent_key(k))
     }
 
     /// Returns the key-value pair corresponding to the supplied key, with a mutable reference to value.
@@ -955,13 +992,9 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash(&self.hash_builder, k);
         // Avoid `Option::map` because it bloats LLVM IR.
-        match self.table.find(hash, |x| k.eq(x.0.borrow())) {
-            Some(item) => unsafe {
-                let &mut (ref key, ref mut value) = item.as_mut();
-                Some((key, value))
-            },
+        match self.get_inner_mut(k) {
+            Some(&mut (ref key, ref mut value)) => Some((key, value)),
             None => None,
         }
     }
@@ -991,7 +1024,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.get(k).is_some()
+        self.get_inner(k).is_some()
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
@@ -1021,12 +1054,21 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash(&self.hash_builder, k);
         // Avoid `Option::map` because it bloats LLVM IR.
-        match self.table.find(hash, |x| k.eq(x.0.borrow())) {
-            Some(item) => Some(unsafe { &mut item.as_mut().1 }),
+        match self.get_inner_mut(k) {
+            Some(&mut (_, ref mut v)) => Some(v),
             None => None,
         }
+    }
+
+    #[inline]
+    fn get_inner_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut (K, V)>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hash = make_hash(&self.hash_builder, k);
+        self.table.get_mut(hash, equivalent_key(k))
     }
 
     /// Inserts a key-value pair into the map.
@@ -1056,16 +1098,13 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        unsafe {
-            let hash = make_hash(&self.hash_builder, &k);
-            if let Some(item) = self.table.find(hash, |x| k.eq(&x.0)) {
-                Some(mem::replace(&mut item.as_mut().1, v))
-            } else {
-                let hash_builder = &self.hash_builder;
-                self.table
-                    .insert(hash, (k, v), |x| make_hash(hash_builder, &x.0));
-                None
-            }
+        let hash = make_hash(&self.hash_builder, &k);
+        if let Some((_, item)) = self.table.get_mut(hash, equivalent_key(&k)) {
+            Some(mem::replace(item, v))
+        } else {
+            self.table
+                .insert(hash, (k, v), make_hasher(&self.hash_builder));
+            None
         }
     }
 
@@ -1128,14 +1167,8 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        unsafe {
-            let hash = make_hash(&self.hash_builder, &k);
-            if let Some(item) = self.table.find(hash, |x| k.eq(x.0.borrow())) {
-                Some(self.table.remove(item))
-            } else {
-                None
-            }
-        }
+        let hash = make_hash(&self.hash_builder, &k);
+        self.table.remove_entry(hash, equivalent_key(k))
     }
 }
 
@@ -1472,7 +1505,14 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next(&mut self.f)
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.inner.iter.size_hint().1)
+    }
 }
+
+impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
 /// Portions of `DrainFilter` shared with `set::DrainFilter`
 pub(super) struct DrainFilterInner<'a, K, V, A: AllocRef + Clone> {
@@ -1489,7 +1529,7 @@ impl<K, V, A: AllocRef + Clone> DrainFilterInner<'_, K, V, A> {
         unsafe {
             while let Some(item) = self.iter.next() {
                 let &mut (ref key, ref mut value) = item.as_mut();
-                if !f(key, value) {
+                if f(key, value) {
                     return Some(self.table.remove(item));
                 }
             }
@@ -1531,7 +1571,7 @@ pub struct RawEntryBuilderMut<'a, K, V, S, A: AllocRef + Clone = Global> {
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
 pub enum RawEntryMut<'a, K, V, S, A: AllocRef + Clone> {
     /// An occupied entry.
-    Occupied(RawOccupiedEntryMut<'a, K, V, A>),
+    Occupied(RawOccupiedEntryMut<'a, K, V, S, A>),
     /// A vacant entry.
     Vacant(RawVacantEntryMut<'a, K, V, S, A>),
 }
@@ -1540,19 +1580,20 @@ pub enum RawEntryMut<'a, K, V, S, A: AllocRef + Clone> {
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawOccupiedEntryMut<'a, K, V, A: AllocRef + Clone = Global> {
+pub struct RawOccupiedEntryMut<'a, K, V, S, A: AllocRef + Clone = Global> {
     elem: Bucket<(K, V)>,
     table: &'a mut RawTable<(K, V), A>,
+    hash_builder: &'a S,
 }
 
-unsafe impl<K, V, A> Send for RawOccupiedEntryMut<'_, K, V, A>
+unsafe impl<K, V, S, A> Send for RawOccupiedEntryMut<'_, K, V, S, A>
 where
     K: Send,
     V: Send,
     A: Send + AllocRef + Clone,
 {
 }
-unsafe impl<K, V, A> Sync for RawOccupiedEntryMut<'_, K, V, A>
+unsafe impl<K, V, S, A> Sync for RawOccupiedEntryMut<'_, K, V, S, A>
 where
     K: Sync,
     V: Sync,
@@ -1601,7 +1642,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
         K: Borrow<Q>,
         Q: Eq,
     {
-        self.from_hash(hash, |q| q.borrow().eq(k))
+        self.from_hash(hash, equivalent(k))
     }
 }
 
@@ -1625,6 +1666,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
             Some(elem) => RawEntryMut::Occupied(RawOccupiedEntryMut {
                 elem,
                 table: &mut self.map.table,
+                hash_builder: &self.map.hash_builder,
             }),
             None => RawEntryMut::Vacant(RawVacantEntryMut {
                 table: &mut self.map.table,
@@ -1655,9 +1697,9 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilder<'a, K, V, S, A> {
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Eq,
     {
-        self.from_hash(hash, |q| q.borrow().eq(k))
+        self.from_hash(hash, equivalent(k))
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1665,11 +1707,8 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilder<'a, K, V, S, A> {
     where
         F: FnMut(&K) -> bool,
     {
-        match self.map.table.find(hash, |(k, _)| is_match(k)) {
-            Some(item) => unsafe {
-                let &(ref key, ref value) = item.as_ref();
-                Some((key, value))
-            },
+        match self.map.table.get(hash, |(k, _)| is_match(k)) {
+            Some(&(ref key, ref value)) => Some((key, value)),
             None => None,
         }
     }
@@ -1699,7 +1738,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryMut<'a, K, V, S, A> {
     /// assert_eq!(entry.remove_entry(), ("horseyland", 37));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, A>
+    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, S, A>
     where
         K: Hash,
         S: BuildHasher,
@@ -1811,9 +1850,75 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryMut<'a, K, V, S, A> {
             RawEntryMut::Vacant(entry) => RawEntryMut::Vacant(entry),
         }
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// an occupied entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::RawEntryMut;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| panic!());
+    ///
+    /// match entry {
+    ///     RawEntryMut::Vacant(_) => {},
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// map.insert("poneyland", 42);
+    ///
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|k, v| {
+    ///         assert_eq!(k, &"poneyland");
+    ///         assert_eq!(v, 42);
+    ///         Some(v + 1)
+    ///     });
+    ///
+    /// match entry {
+    ///     RawEntryMut::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     },
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// match entry {
+    ///     RawEntryMut::Vacant(_) => {},
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn and_replace_entry_with<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        match self {
+            RawEntryMut::Occupied(entry) => entry.replace_entry_with(f),
+            RawEntryMut::Vacant(_) => self,
+        }
+    }
 }
 
-impl<'a, K, V, A: AllocRef + Clone> RawOccupiedEntryMut<'a, K, V, A> {
+impl<'a, K, V, S, A: AllocRef + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     /// Gets a reference to the key in the entry.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &K {
@@ -1903,6 +2008,32 @@ impl<'a, K, V, A: AllocRef + Clone> RawOccupiedEntryMut<'a, K, V, A> {
     pub fn remove_entry(self) -> (K, V) {
         unsafe { self.table.remove(self.elem) }
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// the entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry_with<F>(self, f: F) -> RawEntryMut<'a, K, V, S, A>
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        unsafe {
+            let still_occupied = self
+                .table
+                .replace_bucket_with(self.elem.clone(), |(key, value)| {
+                    f(&key, value).map(|new_value| (key, new_value))
+                });
+
+            if still_occupied {
+                RawEntryMut::Occupied(self)
+            } else {
+                RawEntryMut::Vacant(RawVacantEntryMut {
+                    table: self.table,
+                    hash_builder: self.hash_builder,
+                })
+            }
+        }
+    }
 }
 
 impl<'a, K, V, S, A: AllocRef + Clone> RawVacantEntryMut<'a, K, V, S, A> {
@@ -1928,8 +2059,10 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawVacantEntryMut<'a, K, V, S, A> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash_builder = self.hash_builder;
-        self.insert_with_hasher(hash, key, value, |k| make_hash(hash_builder, k))
+        let &mut (ref mut k, ref mut v) =
+            self.table
+                .insert_entry(hash, (key, value), make_hasher(self.hash_builder));
+        (k, v)
     }
 
     /// Set the value of an entry with a custom hasher function.
@@ -1944,29 +2077,30 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawVacantEntryMut<'a, K, V, S, A> {
     where
         H: Fn(&K) -> u64,
     {
-        unsafe {
-            let elem = self.table.insert(hash, (key, value), |x| hasher(&x.0));
-            let &mut (ref mut k, ref mut v) = elem.as_mut();
-            (k, v)
-        }
+        let &mut (ref mut k, ref mut v) = self
+            .table
+            .insert_entry(hash, (key, value), |x| hasher(&x.0));
+        (k, v)
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
-    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, A>
+    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, S, A>
     where
         K: Hash,
         S: BuildHasher,
     {
-        let hash_builder = self.hash_builder;
         let mut hasher = self.hash_builder.build_hasher();
         key.hash(&mut hasher);
 
-        let elem = self.table.insert(hasher.finish(), (key, value), |k| {
-            make_hash(hash_builder, &k.0)
-        });
+        let elem = self.table.insert(
+            hasher.finish(),
+            (key, value),
+            make_hasher(self.hash_builder),
+        );
         RawOccupiedEntryMut {
             elem,
             table: self.table,
+            hash_builder: self.hash_builder,
         }
     }
 }
@@ -1986,7 +2120,7 @@ impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for RawEntryMut<'_, K, V,
     }
 }
 
-impl<K: Debug, V: Debug, A: AllocRef + Clone> Debug for RawOccupiedEntryMut<'_, K, V, A> {
+impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for RawOccupiedEntryMut<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
@@ -2038,6 +2172,7 @@ impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for Entry<'_, K, V, S, A>
 ///
 /// [`Entry`]: enum.Entry.html
 pub struct OccupiedEntry<'a, K, V, S, A: AllocRef + Clone = Global> {
+    hash: u64,
     key: Option<K>,
     elem: Bucket<(K, V)>,
     table: &'a mut HashMap<K, V, S, A>,
@@ -2502,6 +2637,71 @@ impl<'a, K, V, S, A: AllocRef + Clone> Entry<'a, K, V, S, A> {
             Entry::Vacant(entry) => Entry::Vacant(entry),
         }
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// an occupied entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| panic!());
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///     }
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// map.insert("poneyland", 42);
+    ///
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|k, v| {
+    ///         assert_eq!(k, &"poneyland");
+    ///         assert_eq!(v, 42);
+    ///         Some(v + 1)
+    ///     });
+    ///
+    /// match entry {
+    ///     Entry::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => assert_eq!(e.key(), &"poneyland"),
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn and_replace_entry_with<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        match self {
+            Entry::Occupied(entry) => entry.replace_entry_with(f),
+            Entry::Vacant(_) => self,
+        }
+    }
 }
 
 impl<'a, K, V: Default, S, A: AllocRef + Clone> Entry<'a, K, V, S, A> {
@@ -2756,6 +2956,85 @@ impl<'a, K, V, S, A: AllocRef + Clone> OccupiedEntry<'a, K, V, S, A> {
         let entry = unsafe { self.elem.as_mut() };
         mem::replace(&mut entry.0, self.key.unwrap())
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// the entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// map.insert("poneyland", 42);
+    ///
+    /// let entry = match map.entry("poneyland") {
+    ///     Entry::Occupied(e) => {
+    ///         e.replace_entry_with(|k, v| {
+    ///             assert_eq!(k, &"poneyland");
+    ///             assert_eq!(v, 42);
+    ///             Some(v + 1)
+    ///         })
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = match map.entry("poneyland") {
+    ///     Entry::Occupied(e) => e.replace_entry_with(|_k, _v| None),
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///     }
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry_with<F>(self, f: F) -> Entry<'a, K, V, S, A>
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        unsafe {
+            let mut spare_key = None;
+
+            self.table
+                .table
+                .replace_bucket_with(self.elem.clone(), |(key, value)| {
+                    if let Some(new_value) = f(&key, value) {
+                        Some((key, new_value))
+                    } else {
+                        spare_key = Some(key);
+                        None
+                    }
+                });
+
+            if let Some(key) = spare_key {
+                Entry::Vacant(VacantEntry {
+                    hash: self.hash,
+                    key,
+                    table: self.table,
+                })
+            } else {
+                Entry::Occupied(self)
+            }
+        }
+    }
 }
 
 impl<'a, K, V, S, A: AllocRef + Clone> VacantEntry<'a, K, V, S, A> {
@@ -2816,11 +3095,13 @@ impl<'a, K, V, S, A: AllocRef + Clone> VacantEntry<'a, K, V, S, A> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash_builder = &self.table.hash_builder;
-        let bucket = self.table.table.insert(self.hash, (self.key, value), |x| {
-            make_hash(hash_builder, &x.0)
-        });
-        unsafe { &mut bucket.as_mut().1 }
+        let table = &mut self.table.table;
+        let entry = table.insert_entry(
+            self.hash,
+            (self.key, value),
+            make_hasher(&self.table.hash_builder),
+        );
+        &mut entry.1
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -2829,11 +3110,13 @@ impl<'a, K, V, S, A: AllocRef + Clone> VacantEntry<'a, K, V, S, A> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash_builder = &self.table.hash_builder;
-        let elem = self.table.table.insert(self.hash, (self.key, value), |x| {
-            make_hash(hash_builder, &x.0)
-        });
+        let elem = self.table.table.insert(
+            self.hash,
+            (self.key, value),
+            make_hasher(&self.table.hash_builder),
+        );
         OccupiedEntry {
+            hash: self.hash,
             key: None,
             elem,
             table: self.table,
@@ -3850,6 +4133,233 @@ mod test_map {
     }
 
     #[test]
+    fn test_occupied_entry_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a.entry(key).insert(value).replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
+
+        match entry {
+            Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = match a.entry(key) {
+            Occupied(e) => e.replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            }),
+            Vacant(_) => panic!(),
+        };
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
+            Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_entry_and_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a.entry(key).and_replace_entry_with(|_, _| panic!());
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
+            Occupied(_) => panic!(),
+        }
+
+        a.insert(key, value);
+
+        let entry = a.entry(key).and_replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
+
+        match entry {
+            Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = a.entry(key).and_replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, new_value);
+            None
+        });
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
+            Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_raw_occupied_entry_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a
+            .raw_entry_mut()
+            .from_key(&key)
+            .insert(key, value)
+            .replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, value);
+                Some(new_value)
+            });
+
+        match entry {
+            RawEntryMut::Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            RawEntryMut::Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = match a.raw_entry_mut().from_key(&key) {
+            RawEntryMut::Occupied(e) => e.replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            }),
+            RawEntryMut::Vacant(_) => panic!(),
+        };
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_raw_entry_and_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a
+            .raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|_, _| panic!());
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
+        }
+
+        a.insert(key, value);
+
+        let entry = a
+            .raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, value);
+                Some(new_value)
+            });
+
+        match entry {
+            RawEntryMut::Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            RawEntryMut::Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = a
+            .raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            });
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_replace_entry_with_doesnt_corrupt() {
+        #![allow(deprecated)] //rand
+                              // Test for #19292
+        fn check(m: &HashMap<i32, ()>) {
+            for k in m.keys() {
+                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+            }
+        }
+
+        let mut m = HashMap::new();
+
+        let mut rng = {
+            let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+            SmallRng::from_seed(seed)
+        };
+
+        // Populate the map with some items.
+        for _ in 0..50 {
+            let x = rng.gen_range(-10, 10);
+            m.insert(x, ());
+        }
+
+        for _ in 0..1000 {
+            let x = rng.gen_range(-10, 10);
+            m.entry(x).and_replace_entry_with(|_, _| None);
+            check(&m);
+        }
+    }
+
+    #[test]
     fn test_retain() {
         let mut map: HashMap<i32, i32> = (0..100).map(|x| (x, x * 10)).collect();
 
@@ -3867,7 +4377,7 @@ mod test_map {
             let drained = map.drain_filter(|&k, _| k % 2 == 0);
             let mut out = drained.collect::<Vec<_>>();
             out.sort_unstable();
-            assert_eq!(vec![(1, 10), (3, 30), (5, 50), (7, 70)], out);
+            assert_eq!(vec![(0, 0), (2, 20), (4, 40), (6, 60)], out);
             assert_eq!(map.len(), 4);
         }
         {
@@ -4093,7 +4603,7 @@ mod test_map {
                             assert!(removed.contains(&(i, 2 * i)), "{} not in {:?}", i, removed);
                             let e = m
                                 .table
-                                .insert(hash, (i, 2 * i), |x| super::make_hash(&hasher, &x.0));
+                                .insert(hash, (i, 2 * i), super::make_hasher(&hasher));
                             it.reflect_insert(&e);
                             if let Some(p) = removed.iter().position(|e| e == &(i, 2 * i)) {
                                 removed.swap_remove(p);
@@ -4119,5 +4629,29 @@ mod test_map {
             // just for safety:
             assert_eq!(m.table.len(), left);
         }
+    }
+
+    #[test]
+    fn test_const_with_hasher() {
+        use core::hash::BuildHasher;
+        use std::borrow::ToOwned;
+        use std::collections::hash_map::DefaultHasher;
+
+        #[derive(Clone)]
+        struct MyHasher;
+        impl BuildHasher for MyHasher {
+            type Hasher = DefaultHasher;
+
+            fn build_hasher(&self) -> DefaultHasher {
+                DefaultHasher::new()
+            }
+        }
+
+        const EMPTY_MAP: HashMap<u32, std::string::String, MyHasher> =
+            HashMap::with_hasher(MyHasher);
+
+        let mut map = EMPTY_MAP.clone();
+        map.insert(17, "seventeen".to_owned());
+        assert_eq!("seventeen", map[&17]);
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "hashbrown"
-version = "0.8.2"
+version = "0.9.1"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
 description = "A Rust port of Google's SwissTable hash map"
 license = "Apache-2.0/MIT"
@@ -10,11 +10,10 @@ keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".travis.yml", "bors.toml", "/ci/*"]
 edition = "2018"
-build = "build.rs"
 
 [dependencies]
 # For the default hasher
-ahash = { version = "0.3.2", optional = true, default-features = false }
+ahash = { version = "0.4.4", optional = true, default-features = false }
 
 # For external trait impls
 rayon = { version = "1.0", optional = true }
@@ -24,9 +23,6 @@ serde = { version = "1.0.25", default-features = false, optional = true }
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
 compiler_builtins = { version = "0.1.2", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
-
-[build-dependencies]
-autocfg = "1"
 
 [dev-dependencies]
 lazy_static = "1.2"

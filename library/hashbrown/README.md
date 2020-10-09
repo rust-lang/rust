@@ -4,6 +4,7 @@ hashbrown
 [![Build Status](https://travis-ci.com/rust-lang/hashbrown.svg?branch=master)](https://travis-ci.com/rust-lang/hashbrown)
 [![Crates.io](https://img.shields.io/crates/v/hashbrown.svg)](https://crates.io/crates/hashbrown)
 [![Documentation](https://docs.rs/hashbrown/badge.svg)](https://docs.rs/hashbrown)
+[![Rust](https://img.shields.io/badge/rust-1.36.0%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/hashbrown)
 
 This crate is a Rust port of Google's high-performance [SwissTable] hash
 map, adapted to make it a drop-in replacement for Rust's standard `HashMap`
@@ -84,7 +85,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-hashbrown = "0.8"
+hashbrown = "0.9"
 ```
 
 Then:

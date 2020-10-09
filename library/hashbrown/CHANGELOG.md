@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.9.1] - 2020-09-28
+
+## Added
+- Added safe methods to `RawTable` (#202):
+  - `get`: `find` and `as_ref`
+  - `get_mut`: `find` and `as_mut`
+  - `insert_entry`: `insert` and `as_mut`
+  - `remove_entry`: `find` and `remove`
+  - `erase_entry`: `find` and `erase`
+
+## Changed
+- Removed `from_key_hashed_nocheck`'s `Q: Hash`. (#200)
+- Made `RawTable::drain` safe. (#201)
+
+## [v0.9.0] - 2020-09-03
+
+### Fixed
+- `drain_filter` now removes and yields items that do match the predicate,
+  rather than items that don't.  This is a **breaking change** to match the
+  behavior of the `drain_filter` methods in `std`. (#187)
+
+### Added
+- Added `replace_entry_with` to `OccupiedEntry`, and `and_replace_entry_with` to `Entry`. (#190)
+- Implemented `FusedIterator` and `size_hint` for `DrainFilter`. (#188)
+
+### Changed
+- The minimum Rust version has been bumped to 1.36 (due to `crossbeam` dependency). (#193)
+- Updated `ahash` dependency to 0.4. (#198)
+- `HashMap::with_hasher` and `HashSet::with_hasher` are now `const fn`. (#195)
+- Removed `T: Hash + Eq` and `S: BuildHasher` bounds on `HashSet::new`,
+  `with_capacity`, `with_hasher`, and `with_capacity_and_hasher`.  (#185)
+
 ## [v0.8.2] - 2020-08-08
 
 ### Changed
@@ -231,7 +263,9 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.9.1...HEAD
+[v0.9.1]: https://github.com/rust-lang/hashbrown/compare/v0.9.0...v0.9.1
+[v0.9.0]: https://github.com/rust-lang/hashbrown/compare/v0.8.2...v0.9.0
 [v0.8.2]: https://github.com/rust-lang/hashbrown/compare/v0.8.1...v0.8.2
 [v0.8.1]: https://github.com/rust-lang/hashbrown/compare/v0.8.0...v0.8.1
 [v0.8.0]: https://github.com/rust-lang/hashbrown/compare/v0.7.2...v0.8.0
