@@ -21,8 +21,8 @@ Then, you can generate the manifest and all the packages from `path/to/dist` to
 
 ```
 $ cargo +nightly run path/to/dist path/to/output 1970-01-01 http://example.com \
-    CHANNEL path/to/rust/repo
+    CHANNEL VERSION
 ```
 
 Remember to replace `CHANNEL` with the channel you produced dist artifacts of
-and `path/to/rust/repo` with the path to your checkout of the Rust repository.
+and `VERSION` with the current Rust version.
