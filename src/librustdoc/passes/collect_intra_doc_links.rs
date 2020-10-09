@@ -291,20 +291,40 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
         });
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
-        let result = match result {
-            Ok((_, Res::Err)) => Err(()),
-            x => x,
+        let result = match result.map(|(_, res)| res) {
+            Ok(Res::Err) | Err(()) => {
+                // resolver doesn't know about true and false so we'll have to resolve them
+                // manually as bool
+                if let Some((_, res)) = is_bool_value(path_str, ns) { Ok(res) } else { Err(()) }
+            }
+            Ok(res) => Ok(res.map_id(|_| panic!("unexpected node_id"))),
         };
 
-        if let Ok((_, res)) = result {
-            let res = res.map_id(|_| panic!("unexpected node_id"));
-            // In case this is a trait item, skip the
-            // early return and try looking for the trait.
-            let value = match res {
-                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => true,
-                Res::Def(DefKind::AssocTy, _) => false,
+        if let Ok(res) = result {
+            match res {
+                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => {
+                    if ns != ValueNS {
+                        return Err(ResolutionFailure::WrongNamespace(res, ns).into());
+                    } else {
+                        // In case this is a trait item, skip the
+                        // early return and try looking for the trait.
+                    }
+                }
+                Res::Def(DefKind::AssocTy, _) => {
+                    if ns == ValueNS {
+                        return Err(ResolutionFailure::WrongNamespace(res, ns).into());
+                    } else {
+                        // In case this is a trait item, skip the
+                        // early return and try looking for the trait.
+                    }
+                }
                 Res::Def(DefKind::Variant, _) => {
-                    return handle_variant(cx, res, extra_fragment);
+                    if extra_fragment.is_some() {
+                        return Err(ErrorKind::AnchorFailure(
+                            AnchorFailure::RustdocAnchorConflict(res),
+                        ));
+                    }
+                    return handle_variant(cx, res);
                 }
                 // Not a trait item; just return what we found.
                 Res::PrimTy(ty) => {
@@ -321,17 +341,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 _ => {
                     return Ok((res, extra_fragment.clone()));
                 }
-            };
-
-            if value != (ns == ValueNS) {
-                return Err(ResolutionFailure::WrongNamespace(res, ns).into());
             }
-        // FIXME: why is this necessary?
-        } else if let Some((path, prim)) = is_primitive(path_str, ns) {
-            if extra_fragment.is_some() {
-                return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(prim)));
-            }
-            return Ok((prim, Some(path.to_owned())));
         }
 
         // Try looking for methods and associated items.
@@ -1936,21 +1946,17 @@ fn privacy_error(
 fn handle_variant(
     cx: &DocContext<'_>,
     res: Res,
-    extra_fragment: &Option<String>,
 ) -> Result<(Res, Option<String>), ErrorKind<'static>> {
     use rustc_middle::ty::DefIdTree;
 
-    if extra_fragment.is_some() {
-        return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)));
-    }
-    let parent = if let Some(parent) = cx.tcx.parent(res.def_id()) {
-        parent
-    } else {
-        return Err(ResolutionFailure::NoParentItem.into());
-    };
-    let parent_def = Res::Def(DefKind::Enum, parent);
-    let variant = cx.tcx.expect_variant_res(res);
-    Ok((parent_def, Some(format!("variant.{}", variant.ident.name))))
+    cx.tcx.parent(res.def_id()).map_or_else(
+        || Err(ResolutionFailure::NoParentItem.into()),
+        |parent| {
+            let parent_def = Res::Def(DefKind::Enum, parent);
+            let variant = cx.tcx.expect_variant_res(res);
+            Ok((parent_def, Some(format!("variant.{}", variant.ident.name))))
+        },
+    )
 }
 
 const PRIMITIVES: &[(&str, Res)] = &[
@@ -1970,19 +1976,16 @@ const PRIMITIVES: &[(&str, Res)] = &[
     ("f64", Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F64))),
     ("str", Res::PrimTy(hir::PrimTy::Str)),
     ("bool", Res::PrimTy(hir::PrimTy::Bool)),
-    ("true", Res::PrimTy(hir::PrimTy::Bool)),
-    ("false", Res::PrimTy(hir::PrimTy::Bool)),
     ("char", Res::PrimTy(hir::PrimTy::Char)),
 ];
 
 fn is_primitive(path_str: &str, ns: Namespace) -> Option<(&'static str, Res)> {
-    if ns == TypeNS {
-        PRIMITIVES
-            .iter()
-            .filter(|x| x.0 == path_str)
-            .copied()
-            .map(|x| if x.0 == "true" || x.0 == "false" { ("bool", x.1) } else { x })
-            .next()
+    if ns == TypeNS { PRIMITIVES.iter().find(|x| x.0 == path_str).copied() } else { None }
+}
+
+fn is_bool_value(path_str: &str, ns: Namespace) -> Option<(&'static str, Res)> {
+    if ns == TypeNS && (path_str == "true" || path_str == "false") {
+        Some(("bool", Res::PrimTy(hir::PrimTy::Bool)))
     } else {
         None
     }
