@@ -185,6 +185,12 @@ struct InnerReadDir {
 
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
+    #[cfg(not(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "fuchsia",
+        target_os = "redox",
+    )))]
     end_of_stream: bool,
 }
 
@@ -943,7 +949,18 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             Err(Error::last_os_error())
         } else {
             let inner = InnerReadDir { dirp: Dir(ptr), root };
-            Ok(ReadDir { inner: Arc::new(inner), end_of_stream: false })
+            cfg_if::cfg_if! {
+                if #[cfg(not(any(
+                    target_os = "solaris",
+                    target_os = "illumos",
+                    target_os = "fuchsia",
+                    target_os = "redox",
+                )))] {
+                    Ok(ReadDir { inner: Arc::new(inner), end_of_stream: false })
+                } else {
+                    Ok(ReadDir { inner: Arc::new(inner) })
+                }
+            }
         }
     }
 }
