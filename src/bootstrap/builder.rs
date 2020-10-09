@@ -462,6 +462,7 @@ impl<'a> Builder<'a> {
                 dist::LlvmTools,
                 dist::RustDev,
                 dist::Extended,
+                dist::BuildManifest,
                 dist::HashSign
             ),
             Kind::Install => describe!(
