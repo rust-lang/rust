@@ -14,8 +14,9 @@ mod tests;
 
 extern "Rust" {
     // These are the magic symbols to call the global allocator.  rustc generates
-    // them from the `#[global_allocator]` attribute if there is one, or uses the
-    // default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
+    // them to call `__rg_alloc` etc if there is a `#[global_allocator]` attribute
+    // (the code expanding that attribute macro generates those functions), or to call
+    // the default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
     // otherwise.
     #[rustc_allocator]
     #[rustc_allocator_nounwind]
