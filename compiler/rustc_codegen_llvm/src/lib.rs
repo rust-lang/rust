@@ -249,11 +249,11 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn provide(&self, providers: &mut ty::query::Providers) {
-        attributes::provide(providers);
+        attributes::provide_both(providers);
     }
 
     fn provide_extern(&self, providers: &mut ty::query::Providers) {
-        attributes::provide_extern(providers);
+        attributes::provide_both(providers);
     }
 
     fn codegen_crate<'tcx>(

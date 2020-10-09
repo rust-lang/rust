@@ -144,6 +144,7 @@ pub struct CodegenResults {
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide_both(providers);
+    crate::target_features::provide(providers);
 }
 
 pub fn provide_extern(providers: &mut Providers) {
