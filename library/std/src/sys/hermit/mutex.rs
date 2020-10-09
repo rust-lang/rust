@@ -35,7 +35,11 @@ struct SpinlockGuard<'a, T: ?Sized + 'a> {
 
 impl<T> Spinlock<T> {
     pub const fn new(user_data: T) -> Spinlock<T> {
-        SpinlockGuard { dequeue: &self.dequeue, data: &mut *self.data.get() }
+        Spinlock {
+           queue: AtomicUsize::new(0),
+           dequeue: AtomicUsize::new(1),
+	   data: UnsafeCell::new(user_data),
+        }
     }
 
     #[inline]
