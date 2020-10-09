@@ -117,7 +117,7 @@ impl Hash for Timespec {
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod inner {
     use crate::fmt;
-    use crate::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use crate::sync::atomic::{AtomicU64, Ordering};
     use crate::sys::cvt;
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
@@ -232,15 +232,19 @@ mod inner {
     }
 
     fn info() -> mach_timebase_info {
-        static INITIALIZED: AtomicBool = AtomicBool::new(false);
+        // INFO_BITS conceptually is an `Option<mach_timebase_info>`. We can do
+        // this in 64 bits because we know 0 is never a valid value for the
+        // `denom` field.
+        //
+        // Encoding this as a single `AtomicU64` allows us to use `Relaxed`
+        // operations, as we are only interested in in the effects on a single
+        // memory location.
         static INFO_BITS: AtomicU64 = AtomicU64::new(0);
 
-        // If a previous thread has initialized `INFO_BITS`, use that.
-        if INITIALIZED.load(Ordering::Acquire) {
-            // Note: `Relaxed` is correct here and below -- the `Acquire` /
-            // `Release` pair used for `INITIALIZED` ensures this load can see
-            // the corresponding store below.
-            return info_from_bits(INFO_BITS.load(Ordering::Relaxed));
+        // If a previous thread has initialized `INFO_BITS`, use it.
+        let info_bits = INFO_BITS.load(Ordering::Relaxed);
+        if info_bits != 0 {
+            return info_from_bits(info_bits);
         }
 
         // ... otherwise learn for ourselves ...
@@ -252,15 +256,7 @@ mod inner {
         unsafe {
             mach_timebase_info(&mut info);
         }
-
-        // This is racy, but the race should be against other threads trying to
-        // write the same value.
         INFO_BITS.store(info_to_bits(info), Ordering::Relaxed);
-
-        // The `Release` here "publishes" the store of `INFO_BITS` to other
-        // threads (which do a `INITIALIZED.load(Acquire)`) despite it being
-        // read/written w/ `Relaxed`.
-        INITIALIZED.store(true, Ordering::Release);
         info
     }
 
