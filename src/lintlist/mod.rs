@@ -1845,6 +1845,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "ptr",
     },
     Lint {
+        name: "ptr_eq",
+        group: "style",
+        desc: "use `std::ptr::eq` when comparing raw pointers",
+        deprecation: None,
+        module: "ptr_eq",
+    },
+    Lint {
         name: "ptr_offset_with_cast",
         group: "complexity",
         desc: "unneeded pointer offset cast",
