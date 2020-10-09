@@ -1659,3 +1659,42 @@ fn test_drain_leak() {
     drop(v);
     assert_eq!(unsafe { DROPS }, 7);
 }
+
+#[test]
+fn test_binary_search() {
+    // Contiguous (front only) search:
+    let deque: VecDeque<_> = vec![1, 2, 3, 5, 6].into();
+    assert!(deque.as_slices().1.is_empty());
+    assert_eq!(deque.binary_search(&3), Ok(2));
+    assert_eq!(deque.binary_search(&4), Err(3));
+
+    // Split search (both front & back non-empty):
+    let mut deque: VecDeque<_> = vec![5, 6].into();
+    deque.push_front(3);
+    deque.push_front(2);
+    deque.push_front(1);
+    deque.push_back(10);
+    assert!(!deque.as_slices().0.is_empty());
+    assert!(!deque.as_slices().1.is_empty());
+    assert_eq!(deque.binary_search(&0), Err(0));
+    assert_eq!(deque.binary_search(&1), Ok(0));
+    assert_eq!(deque.binary_search(&5), Ok(3));
+    assert_eq!(deque.binary_search(&7), Err(5));
+    assert_eq!(deque.binary_search(&20), Err(6));
+}
+
+#[test]
+fn test_binary_search_by() {
+    let deque: VecDeque<_> = vec![(1,), (2,), (3,), (5,), (6,)].into();
+
+    assert_eq!(deque.binary_search_by(|&(v,)| v.cmp(&3)), Ok(2));
+    assert_eq!(deque.binary_search_by(|&(v,)| v.cmp(&4)), Err(3));
+}
+
+#[test]
+fn test_binary_search_by_key() {
+    let deque: VecDeque<_> = vec![(1,), (2,), (3,), (5,), (6,)].into();
+
+    assert_eq!(deque.binary_search_by_key(&3, |&(v,)| v), Ok(2));
+    assert_eq!(deque.binary_search_by_key(&4, |&(v,)| v), Err(3));
+}
