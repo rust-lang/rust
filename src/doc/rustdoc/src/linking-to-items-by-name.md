@@ -89,4 +89,6 @@ struct Foo {}
 fn Foo() {}
 ```
 
-Note: Because of how `macro_rules!` macros are scoped in Rust, the intra-doc links of a `macro_rules!` macro will be resolved relative to the crate root, as opposed to the module it is defined in.
+Note: Because of how `macro_rules!` macros are scoped in Rust, the intra-doc links of a `macro_rules!` macro will be resolved [relative to the crate root][#72243], as opposed to the module it is defined in.
+
+[#72243]: https://github.com/rust-lang/rust/issues/72243
