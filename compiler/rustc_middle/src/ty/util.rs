@@ -341,7 +341,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn calculate_dtor(
         self,
         adt_did: DefId,
-        validate: &mut dyn FnMut(Self, DefId) -> Result<(), ErrorReported>,
+        validate: impl Fn(Self, DefId) -> Result<(), ErrorReported>,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure().coherent_trait(drop_trait);

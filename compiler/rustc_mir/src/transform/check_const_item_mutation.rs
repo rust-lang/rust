@@ -53,7 +53,7 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
         //
         //     #[const_mutation_allowed]
         //     pub const LOG: Log = Log { msg: "" };
-        match self.tcx.calculate_dtor(def_id, &mut |_, _| Ok(())) {
+        match self.tcx.calculate_dtor(def_id, |_, _| Ok(())) {
             Some(_) => None,
             None => Some(def_id),
         }

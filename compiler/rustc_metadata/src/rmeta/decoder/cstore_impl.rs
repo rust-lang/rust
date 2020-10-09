@@ -94,7 +94,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;
-        tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
+        tcx.calculate_dtor(def_id, |_,_| Ok(()))
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
