@@ -376,7 +376,7 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
-pub mod __default_lib_allocator {
+pub mod __alloc_error_handler {
     use crate::alloc::Layout;
 
     // called via generated `__rust_alloc_error_handler`
