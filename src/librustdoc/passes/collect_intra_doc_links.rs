@@ -305,26 +305,19 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => {
                     if ns != ValueNS {
                         return Err(ResolutionFailure::WrongNamespace(res, ns).into());
-                    } else {
-                        // In case this is a trait item, skip the
-                        // early return and try looking for the trait.
                     }
+                    // Fall through: In case this is a trait item, skip the
+                    // early return and try looking for the trait.
                 }
                 Res::Def(DefKind::AssocTy, _) => {
-                    if ns == ValueNS {
+                    if ns != TypeNS {
                         return Err(ResolutionFailure::WrongNamespace(res, ns).into());
-                    } else {
-                        // In case this is a trait item, skip the
-                        // early return and try looking for the trait.
                     }
+                    // Fall through: In case this is a trait item, skip the
+                    // early return and try looking for the trait.
                 }
                 Res::Def(DefKind::Variant, _) => {
-                    if extra_fragment.is_some() {
-                        return Err(ErrorKind::AnchorFailure(
-                            AnchorFailure::RustdocAnchorConflict(res),
-                        ));
-                    }
-                    return handle_variant(cx, res);
+                    return handle_variant(cx, res, extra_fragment);
                 }
                 // Not a trait item; just return what we found.
                 Res::PrimTy(ty) => {
@@ -581,7 +574,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         current_item: &Option<String>,
         extra_fragment: &Option<String>,
     ) -> Option<Res> {
-        // resolve can't be used for macro namespace
+        // resolve() can't be used for macro namespace
         let result = match ns {
             Namespace::MacroNS => self.macro_resolve(path_str, module_id).map_err(ErrorKind::from),
             Namespace::TypeNS | Namespace::ValueNS => self
@@ -1946,9 +1939,13 @@ fn privacy_error(
 fn handle_variant(
     cx: &DocContext<'_>,
     res: Res,
+    extra_fragment: &Option<String>,
 ) -> Result<(Res, Option<String>), ErrorKind<'static>> {
     use rustc_middle::ty::DefIdTree;
 
+    if extra_fragment.is_some() {
+        return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)));
+    }
     cx.tcx.parent(res.def_id()).map_or_else(
         || Err(ResolutionFailure::NoParentItem.into()),
         |parent| {
@@ -1980,7 +1977,9 @@ const PRIMITIVES: &[(&str, Res)] = &[
 ];
 
 fn is_primitive(path_str: &str, ns: Namespace) -> Option<(&'static str, Res)> {
-    if ns == TypeNS { PRIMITIVES.iter().find(|x| x.0 == path_str).copied() } else { None }
+    is_bool_value(path_str, ns).or_else(|| {
+        if ns == TypeNS { PRIMITIVES.iter().find(|x| x.0 == path_str).copied() } else { None }
+    })
 }
 
 fn is_bool_value(path_str: &str, ns: Namespace) -> Option<(&'static str, Res)> {
