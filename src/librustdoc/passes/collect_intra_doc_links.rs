@@ -3,7 +3,7 @@
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
 use rustc_ast as ast;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_hir as hir;
@@ -168,6 +168,31 @@ enum AnchorFailure {
     RustdocAnchorConflict(Res),
 }
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+struct CacheKey {
+    module_id: DefId,
+    dis: Option<Disambiguator>,
+    path_str: String,
+    extra_fragment: Option<String>,
+}
+
+impl CacheKey {
+    fn new(
+        module_id: DefId,
+        dis: Option<Disambiguator>,
+        path_str: String,
+        extra_fragment: Option<String>,
+    ) -> Self {
+        Self { module_id, dis, path_str, extra_fragment }
+    }
+}
+
+#[derive(Clone, Debug, Hash)]
+struct CachedLink {
+    pub res: (Res, Option<String>),
+    pub side_channel: Option<(DefKind, DefId)>,
+}
+
 struct LinkCollector<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
     /// A stack of modules used to decide what scope to resolve in.
@@ -179,11 +204,18 @@ struct LinkCollector<'a, 'tcx> {
     /// because `clean` and the disambiguator code expect them to be different.
     /// See the code for associated items on inherent impls for details.
     kind_side_channel: Cell<Option<(DefKind, DefId)>>,
+    /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link
+    visited_links: FxHashMap<CacheKey, CachedLink>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     fn new(cx: &'a DocContext<'tcx>) -> Self {
-        LinkCollector { cx, mod_ids: Vec::new(), kind_side_channel: Cell::new(None) }
+        LinkCollector {
+            cx,
+            mod_ids: Vec::new(),
+            kind_side_channel: Cell::new(None),
+            visited_links: FxHashMap::default(),
+        }
     }
 
     /// Given a full link, parse it as an [enum struct variant].
@@ -937,7 +969,7 @@ impl LinkCollector<'_, '_> {
     ///
     /// FIXME(jynelson): this is way too many arguments
     fn resolve_link(
-        &self,
+        &mut self,
         item: &Item,
         dox: &str,
         self_name: &Option<String>,
@@ -962,6 +994,7 @@ impl LinkCollector<'_, '_> {
         let link = ori_link.replace("`", "");
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
+            // A valid link can't have multiple #'s
             anchor_failure(cx, &item, &link, dox, link_range, AnchorFailure::MultipleAnchors);
             return None;
         } else if parts.len() == 2 {
@@ -1075,16 +1108,9 @@ impl LinkCollector<'_, '_> {
             return None;
         }
 
-        let (mut res, mut fragment) = self.resolve_with_disambiguator(
-            disambiguator,
-            item,
-            dox,
-            path_str,
-            module_id,
-            extra_fragment,
-            &ori_link,
-            link_range.clone(),
-        )?;
+        let key = CacheKey::new(module_id, disambiguator, path_str.to_owned(), extra_fragment);
+        let (mut res, mut fragment) =
+            self.resolve_with_disambiguator_cached(key, item, dox, &ori_link, link_range.clone())?;
 
         // Check for a primitive which might conflict with a module
         // Report the ambiguity and require that the user specify which one they meant.
@@ -1189,6 +1215,45 @@ impl LinkCollector<'_, '_> {
             }
             let id = clean::register_res(cx, res);
             Some(ItemLink { link: ori_link, link_text, did: Some(id), fragment })
+        }
+    }
+
+    fn resolve_with_disambiguator_cached(
+        &mut self,
+        key: CacheKey,
+        item: &Item,
+        dox: &str,
+        ori_link: &str,
+        link_range: Option<Range<usize>>,
+    ) -> Option<(Res, Option<String>)> {
+        // Try to look up both the result and the corresponding side channel value
+        if let Some(ref cached) = self.visited_links.get(&key) {
+            self.kind_side_channel.set(cached.side_channel.clone());
+            Some(cached.res.clone())
+        } else {
+            match self.resolve_with_disambiguator(
+                key.dis,
+                item,
+                dox,
+                &key.path_str,
+                key.module_id,
+                key.extra_fragment.clone(),
+                ori_link,
+                link_range,
+            ) {
+                Some(res) => {
+                    // Store result for the actual namespace
+                    self.visited_links.insert(
+                        key,
+                        CachedLink {
+                            res: res.clone(),
+                            side_channel: self.kind_side_channel.clone().into_inner(),
+                        },
+                    );
+                    Some(res)
+                }
+                _ => None,
+            }
         }
     }
 
@@ -1356,7 +1421,7 @@ impl LinkCollector<'_, '_> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 /// Disambiguators for a link.
 enum Disambiguator {
     /// `prim@`
