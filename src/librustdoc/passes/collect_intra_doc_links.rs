@@ -2028,7 +2028,7 @@ fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<
             '<' => {
                 segment.push(chr);
 
-                match path.peek() {
+                match path.next() {
                     Some('<') => {
                         return Err(ResolutionFailure::MalformedGenerics(
                             MalformedGenerics::TooManyAngleBrackets,
@@ -2039,8 +2039,8 @@ fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<
                             MalformedGenerics::EmptyAngleBrackets,
                         ));
                     }
-                    Some(_) => {
-                        segment.push(path.next().unwrap());
+                    Some(chr) => {
+                        segment.push(chr);
 
                         while let Some(chr) = path.next_if(|c| *c != '>') {
                             segment.push(chr);
