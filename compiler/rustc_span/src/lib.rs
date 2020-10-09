@@ -1861,7 +1861,7 @@ where
         }
 
         if *self == DUMMY_SP {
-            std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            Hash::hash(&TAG_INVALID_SPAN, hasher);
             return;
         }
 
@@ -1872,28 +1872,28 @@ where
         let (file_lo, line_lo, col_lo) = match ctx.byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {
-                std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+                Hash::hash(&TAG_INVALID_SPAN, hasher);
                 span.ctxt.hash_stable(ctx, hasher);
                 return;
             }
         };
 
         if !file_lo.contains(span.hi) {
-            std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            Hash::hash(&TAG_INVALID_SPAN, hasher);
             span.ctxt.hash_stable(ctx, hasher);
             return;
         }
 
-        std::hash::Hash::hash(&TAG_VALID_SPAN, hasher);
+        Hash::hash(&TAG_VALID_SPAN, hasher);
         // We truncate the stable ID hash and line and column numbers. The chances
         // of causing a collision this way should be minimal.
-        std::hash::Hash::hash(&(file_lo.name_hash as u64), hasher);
+        Hash::hash(&(file_lo.name_hash as u64), hasher);
 
         let col = (col_lo.0 as u64) & 0xFF;
         let line = ((line_lo as u64) & 0xFF_FF_FF) << 8;
         let len = ((span.hi - span.lo).0 as u64) << 32;
         let line_col_len = col | line | len;
-        std::hash::Hash::hash(&line_col_len, hasher);
+        Hash::hash(&line_col_len, hasher);
         span.ctxt.hash_stable(ctx, hasher);
     }
 }
