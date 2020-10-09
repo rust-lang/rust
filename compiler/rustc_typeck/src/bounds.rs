@@ -72,7 +72,7 @@ impl<'tcx> Bounds<'tcx> {
                     .iter()
                     .map(|&(region_bound, span)| {
                         let outlives = ty::OutlivesPredicate(param_ty, region_bound);
-                        (ty::Binder::dummy(outlives).to_predicate(tcx), span)
+                        (ty::Binder::bind(outlives).to_predicate(tcx), span)
                     })
                     .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
                         let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
