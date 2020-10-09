@@ -571,30 +571,21 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         current_item: &Option<String>,
         extra_fragment: &Option<String>,
     ) -> Option<Res> {
-        let check_full_res_inner = |this: &Self, result: Result<Res, ErrorKind<'_>>| {
-            let res = match result {
-                Ok(res) => Some(res),
-                Err(ErrorKind::Resolve(box kind)) => kind.full_res(),
-                Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res))) => {
-                    Some(res)
-                }
-                Err(ErrorKind::AnchorFailure(AnchorFailure::MultipleAnchors)) => None,
-            };
-            this.kind_side_channel.take().map(|(kind, id)| Res::Def(kind, id)).or(res)
+        // resolve can't be used for macro namespace
+        let result = match ns {
+            Namespace::MacroNS => self.macro_resolve(path_str, module_id).map_err(ErrorKind::from),
+            Namespace::TypeNS | Namespace::ValueNS => self
+                .resolve(path_str, ns, current_item, module_id, extra_fragment)
+                .map(|(res, _)| res),
         };
-        // cannot be used for macro namespace
-        let check_full_res = |this: &Self, ns| {
-            let result = this.resolve(path_str, ns, current_item, module_id, extra_fragment);
-            check_full_res_inner(this, result.map(|(res, _)| res))
+
+        let res = match result {
+            Ok(res) => Some(res),
+            Err(ErrorKind::Resolve(box kind)) => kind.full_res(),
+            Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res))) => Some(res),
+            Err(ErrorKind::AnchorFailure(AnchorFailure::MultipleAnchors)) => None,
         };
-        let check_full_res_macro = |this: &Self| {
-            let result = this.macro_resolve(path_str, module_id);
-            check_full_res_inner(this, result.map_err(ErrorKind::from))
-        };
-        match ns {
-            Namespace::MacroNS => check_full_res_macro(self),
-            Namespace::TypeNS | Namespace::ValueNS => check_full_res(self, ns),
-        }
+        self.kind_side_channel.take().map(|(kind, id)| Res::Def(kind, id)).or(res)
     }
 }
 
