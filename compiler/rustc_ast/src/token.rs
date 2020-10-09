@@ -54,16 +54,6 @@ pub enum DelimToken {
     NoDelim,
 }
 
-impl DelimToken {
-    pub fn len(self) -> usize {
-        if self == NoDelim { 0 } else { 1 }
-    }
-
-    pub fn is_empty(self) -> bool {
-        self == NoDelim
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`

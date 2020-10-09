@@ -231,7 +231,6 @@ impl AssocOp {
     }
 }
 
-pub const PREC_RESET: i8 = -100;
 pub const PREC_CLOSURE: i8 = -40;
 pub const PREC_JUMP: i8 = -30;
 pub const PREC_RANGE: i8 = -10;
