@@ -866,20 +866,22 @@ impl<'a> Builder<'a> {
                 cargo.arg("-Zunstable-options");
                 // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
                 let host_version = Command::new("rustc").arg("--version").output().map_err(|_| ());
-                if let Err(_) = host_version.and_then(|output| {
+                let output = host_version.and_then(|output| {
                     if output.status.success()
-                        && t!(std::str::from_utf8(&output.stdout)).contains("nightly")
                     {
                         Ok(output)
                     } else {
                         Err(())
                     }
-                }) {
+                }).unwrap_or_else(|_| {
                     eprintln!(
-                        "error: `x.py clippy` requires a nightly host `rustc` toolchain with the `clippy` component"
+                        "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
                     );
-                    eprintln!("help: try `rustup default nightly`");
+                    eprintln!("help: try `rustup component add clippy`");
                     std::process::exit(1);
+                });
+                if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
+                    rustflags.arg("--cfg=bootstrap");
                 }
             } else {
                 rustflags.arg("--cfg=bootstrap");
