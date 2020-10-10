@@ -81,6 +81,8 @@
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+// specialization is used in array impls
+#[rustc_specialization_trait]
 pub trait Default: Sized {
     /// Returns the "default value" for a type.
     ///
