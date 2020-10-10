@@ -111,13 +111,6 @@ fn u64_by_u64_div_rem(duo: u64, div: u64) -> (u64, u64) {
     zero_div_fn()
 }
 
-// `inline(never)` is placed on unsigned division functions so that there are just three division
-// functions (`u32_div_rem`, `u64_div_rem`, and `u128_div_rem`) backing all `compiler-builtins`
-// division functions. The signed functions like `i32_div_rem` will get inlined into the
-// `compiler-builtins` signed division functions, so that they directly call the three division
-// functions. Otherwise, LLVM may try to inline the unsigned division functions 4 times into the
-// signed division functions, which results in an explosion in code size.
-
 // Whether `trifecta` or `delegate` is faster for 128 bit division depends on the speed at which a
 // microarchitecture can multiply and divide. We decide to be optimistic and assume `trifecta` is
 // faster if the target pointer width is at least 64.
@@ -127,16 +120,12 @@ fn u64_by_u64_div_rem(duo: u64, div: u64) -> (u64, u64) {
 ))]
 impl_trifecta!(
     u128_div_rem,
-    i128_div_rem,
     zero_div_fn,
     u64_by_u64_div_rem,
     32,
     u32,
     u64,
-    u128,
-    i128,
-    inline(never);
-    inline
+    u128
 );
 
 // If the pointer width less than 64, then the target architecture almost certainly does not have
@@ -147,7 +136,6 @@ impl_trifecta!(
 ))]
 impl_delegate!(
     u128_div_rem,
-    i128_div_rem,
     zero_div_fn,
     u64_normalization_shift,
     u64_by_u64_div_rem,
@@ -155,9 +143,7 @@ impl_delegate!(
     u32,
     u64,
     u128,
-    i128,
-    inline(never);
-    inline
+    i128
 );
 
 /// Divides `duo` by `div` and returns a tuple of the quotient and the remainder.
@@ -191,17 +177,13 @@ unsafe fn u128_by_u64_div_rem(duo: u128, div: u64) -> (u64, u64) {
 #[cfg(all(feature = "asm", target_arch = "x86_64"))]
 impl_asymmetric!(
     u128_div_rem,
-    i128_div_rem,
     zero_div_fn,
     u64_by_u64_div_rem,
     u128_by_u64_div_rem,
     32,
     u32,
     u64,
-    u128,
-    i128,
-    inline(never);
-    inline
+    u128
 );
 
 /// Divides `duo` by `div` and returns a tuple of the quotient and the remainder.
@@ -226,7 +208,6 @@ fn u32_by_u32_div_rem(duo: u32, div: u32) -> (u32, u32) {
 ))]
 impl_delegate!(
     u64_div_rem,
-    i64_div_rem,
     zero_div_fn,
     u32_normalization_shift,
     u32_by_u32_div_rem,
@@ -234,9 +215,7 @@ impl_delegate!(
     u16,
     u32,
     u64,
-    i64,
-    inline(never);
-    inline
+    i64
 );
 
 // When not on x86 and the pointer width is 64, use `binary_long`.
@@ -246,14 +225,11 @@ impl_delegate!(
 ))]
 impl_binary_long!(
     u64_div_rem,
-    i64_div_rem,
     zero_div_fn,
     u64_normalization_shift,
     64,
     u64,
-    i64,
-    inline(never);
-    inline
+    i64
 );
 
 /// Divides `duo` by `div` and returns a tuple of the quotient and the remainder.
@@ -287,28 +263,21 @@ unsafe fn u64_by_u32_div_rem(duo: u64, div: u32) -> (u32, u32) {
 #[cfg(all(feature = "asm", target_arch = "x86"))]
 impl_asymmetric!(
     u64_div_rem,
-    i64_div_rem,
     zero_div_fn,
     u32_by_u32_div_rem,
     u64_by_u32_div_rem,
     16,
     u16,
     u32,
-    u64,
-    i64,
-    inline(never);
-    inline
+    u64
 );
 
 // 32 bits is the smallest division used by `compiler-builtins`, so we end with binary long division
 impl_binary_long!(
     u32_div_rem,
-    i32_div_rem,
     zero_div_fn,
     u32_normalization_shift,
     32,
     u32,
-    i32,
-    inline(never);
-    inline
+    i32
 );

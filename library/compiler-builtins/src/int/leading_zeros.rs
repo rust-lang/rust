@@ -4,6 +4,7 @@
 // Compilers will insert the check for zero in cases where it is needed.
 
 /// Returns the number of leading binary zeros in `x`.
+#[doc(hidden)]
 pub fn usize_leading_zeros_default(x: usize) -> usize {
     // The basic idea is to test if the higher bits of `x` are zero and bisect the number
     // of leading zeros. It is possible for all branches of the bisection to use the same
@@ -75,6 +76,7 @@ pub fn usize_leading_zeros_default(x: usize) -> usize {
 // RISC-V that allows `(x >= power-of-two) as usize` to be branchless.
 
 /// Returns the number of leading binary zeros in `x`.
+#[doc(hidden)]
 pub fn usize_leading_zeros_riscv(x: usize) -> usize {
     let mut x = x;
     // the number of potential leading zeros
