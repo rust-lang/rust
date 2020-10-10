@@ -286,6 +286,10 @@ extern "Rust" {
     ///     lineno: u32,
     ///     // The column number currently being executed in `filename`, starting from '1'.
     ///     colno: u32,
+    ///     // The function pointer to the function currently being executed.
+    ///     // This can be compared against function pointers obtained by
+    ///     // casting a function (e.g. `my_fn as *mut ()`)
+    ///     fn_ptr: *mut ()
     /// }
     /// ```
     ///
