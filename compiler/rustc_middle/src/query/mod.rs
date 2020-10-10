@@ -92,7 +92,7 @@ rustc_queries! {
         /// Computes the `DefId` of the corresponding const parameter in case the `key` is a
         /// const argument and returns `None` otherwise.
         ///
-        /// ```rust
+        /// ```ignore (incomplete)
         /// let a = foo::<7>();
         /// //            ^ Calling `opt_const_param_of` for this argument,
         ///
@@ -162,10 +162,12 @@ rustc_queries! {
         /// Specifically this is the bounds written on the trait's type
         /// definition, or those after the `impl` keyword
         ///
+        /// ```ignore (incomplete)
         /// type X: Bound + 'lt
-        ///         ^^^^^^^^^^^
+        /// //      ^^^^^^^^^^^
         /// impl Debug + Display
-        ///      ^^^^^^^^^^^^^^^
+        /// //   ^^^^^^^^^^^^^^^
+        /// ```
         ///
         /// `key` is the `DefId` of the associated type or opaque type.
         ///
@@ -176,18 +178,22 @@ rustc_queries! {
 
         /// Elaborated version of the predicates from `explicit_item_bounds`.
         ///
-        /// Example for
+        /// For example:
         ///
+        /// ```
         /// trait MyTrait {
-        ///     type MyAType: Eq + ?Sized`
+        ///     type MyAType: Eq + ?Sized;
         /// }
+        /// ```
         ///
         /// `explicit_item_bounds` returns `[<Self as MyTrait>::MyAType: Eq]`,
         /// and `item_bounds` returns
+        /// ```text
         /// [
         ///     <Self as Trait>::MyAType: Eq,
         ///     <Self as Trait>::MyAType: PartialEq<<Self as Trait>::MyAType>
         /// ]
+        /// ```
         ///
         /// Bounds from the parent (e.g. with nested impl trait) are not included.
         query item_bounds(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
