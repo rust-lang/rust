@@ -27,6 +27,7 @@ impl<'tcx> TyCtxt<'tcx> {
             value,
             param_env,
         );
+        debug_assert_eq!(param_env.reveal(), ty::Reveal::All);
 
         // Erase first before we do the real query -- this keeps the
         // cache from being too polluted.
