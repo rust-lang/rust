@@ -58,22 +58,22 @@ impl MirPass<'_> for UnreachablePropagation {
 
 fn remove_successors<F>(
     terminator_kind: &TerminatorKind<'tcx>,
-    predicate: F,
+    is_unreachable: F,
 ) -> Option<TerminatorKind<'tcx>>
 where
     F: Fn(BasicBlock) -> bool,
 {
     let terminator = match *terminator_kind {
-        TerminatorKind::Goto { target } if predicate(target) => TerminatorKind::Unreachable,
+        TerminatorKind::Goto { target } if is_unreachable(target) => TerminatorKind::Unreachable,
         TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
             let (otherwise, targets) = targets.split_last().unwrap();
 
-            if !predicate(*otherwise) {
+            if !is_unreachable(*otherwise) {
                 return None;
             }
 
             let (values, mut targets): (Vec<_>, Vec<_>) =
-                values.iter().zip(targets.iter()).filter(|(_, &t)| !predicate(t)).unzip();
+                values.iter().zip(targets.iter()).filter(|(_, &t)| !is_unreachable(t)).unzip();
 
             if targets.is_empty() {
                 TerminatorKind::Unreachable
