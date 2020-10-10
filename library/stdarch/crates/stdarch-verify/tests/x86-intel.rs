@@ -290,6 +290,8 @@ fn verify_all_signatures() {
                 "_fxrstor64",
                 "_mm512_undefined_ps",
                 "_mm512_undefined_pd",
+                "_mm512_undefined_epi32",
+                "_mm512_undefined",
             ];
             if !skip.contains(&rust.name) {
                 println!(
@@ -565,8 +567,17 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 
         // Apparently all of clang/msvc/gcc accept these intrinsics on
         // 32-bit, so let's do the same
-        "_mm_set_epi64x" | "_mm_set1_epi64x" | "_mm256_set_epi64x" | "_mm256_setr_epi64x"
-        | "_mm256_set1_epi64x" | "_mm512_set1_epi64" => true,
+        "_mm_set_epi64x"
+        | "_mm_set1_epi64x"
+        | "_mm256_set_epi64x"
+        | "_mm256_setr_epi64x"
+        | "_mm256_set1_epi64x"
+        | "_mm512_set1_epi64"
+        | "_mm512_set4_epi64"
+        | "_mm512_setr4_epi64"
+        | "_mm512_set_epi64"
+        | "_mm512_setr_epi64"
+        | "_mm512_reduce_add_epi64" => true,
 
         // These return a 64-bit argument but they're assembled from other
         // 32-bit registers, so these work on 32-bit just fine. See #308 for
@@ -635,8 +646,10 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::MutPtr(&Type::PrimFloat(64)), "double*") => {}
         (&Type::MutPtr(&Type::PrimFloat(32)), "void*") => {}
         (&Type::MutPtr(&Type::PrimFloat(64)), "void*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(32)), "void*") => {}
         (&Type::MutPtr(&Type::PrimSigned(32)), "int*") => {}
         (&Type::MutPtr(&Type::PrimSigned(32)), "__int32*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(64)), "void*") => {}
         (&Type::MutPtr(&Type::PrimSigned(64)), "__int64*") => {}
         (&Type::MutPtr(&Type::PrimSigned(8)), "char*") => {}
         (&Type::MutPtr(&Type::PrimUnsigned(16)), "unsigned short*") => {}
@@ -660,7 +673,9 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::ConstPtr(&Type::PrimFloat(64)), "void const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "int const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32 const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(32)), "void const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(64)), "void const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(8)), "char const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(16)), "unsigned short const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "unsigned int const*") => {}
