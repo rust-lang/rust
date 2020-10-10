@@ -650,14 +650,9 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
     let ty = cx.tcx.type_of(type_);
     let iter = in_scope_traits.iter().flat_map(|&trait_| {
         trace!("considering explicit impl for trait {:?}", trait_);
-        let mut saw_impl = false;
-        // Look at each trait implementation to see if it's an impl for `did`
-        cx.tcx.for_each_relevant_impl(trait_, ty, |impl_| {
-            // FIXME: this is inefficient, find a way to short-circuit for_each_* so this doesn't take as long
-            if saw_impl {
-                return;
-            }
 
+        // Look at each trait implementation to see if it's an impl for `did`
+        cx.tcx.find_map_relevant_impl(trait_, ty, |impl_| {
             let trait_ref = cx.tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
             // Check if these are the same type.
             let impl_type = trait_ref.self_ty();
@@ -668,7 +663,7 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
                 type_
             );
             // Fast path: if this is a primitive simple `==` will work
-            saw_impl = impl_type == ty
+            let saw_impl = impl_type == ty
                 || match impl_type.kind() {
                     // Check if these are the same def_id
                     ty::Adt(def, _) => {
@@ -678,8 +673,9 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
                     ty::Foreign(def_id) => *def_id == type_,
                     _ => false,
                 };
-        });
-        if saw_impl { Some(trait_) } else { None }
+
+            if saw_impl { Some(trait_) } else { None }
+        })
     });
     iter.collect()
 }

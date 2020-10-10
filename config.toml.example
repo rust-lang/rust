@@ -13,7 +13,7 @@
 # If it does not match the version that is currently running,
 # `x.py` will prompt you to update it and read the changelog.
 # See `src/bootstrap/CHANGELOG.md` for more information.
-changelog-seen = 1
+changelog-seen = 2
 
 # =============================================================================
 # Global Settings
@@ -370,13 +370,13 @@ changelog-seen = 1
 # binary, otherwise they are omitted.
 #
 # Defaults to rust.debug value
-#debug-assertions = debug
+#debug-assertions = rust.debug (boolean)
 
 # Whether or not debug assertions are enabled for the standard library.
 # Overrides the `debug-assertions` option, if defined.
 #
 # Defaults to rust.debug-assertions value
-#debug-assertions-std = debug-assertions
+#debug-assertions-std = rust.debug-assertions (boolean)
 
 # Whether or not to leave debug! and trace! calls in the rust binary.
 # Overrides the `debug-assertions` option, if defined.
@@ -386,7 +386,7 @@ changelog-seen = 1
 # If you see a message from `tracing` saying
 # `max_level_info` is enabled and means logging won't be shown,
 # set this value to `true`.
-#debug-logging = debug-assertions
+#debug-logging = rust.debug-assertions (boolean)
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
