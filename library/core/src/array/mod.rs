@@ -354,7 +354,7 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
 }
 
 /// This module implements `Default` for arrays.
-#[cfg(not(bootstrap))]
+//#[cfg(not(bootstrap))]
 mod default_impls {
     // A trait implemented by all arrays which are either empty or contain a type implementing `Default`.
     #[unstable(
@@ -405,7 +405,7 @@ mod default_impls {
     }
 }
 
-#[cfg(bootstrap)]
+/*#[cfg(bootstrap)]
 mod default_impls {
     macro_rules! array_impl_default {
         {$n:expr, $t:ident $($ts:ident)*} => {
@@ -426,7 +426,7 @@ mod default_impls {
     }
 
     array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
-}
+}*/
 
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
