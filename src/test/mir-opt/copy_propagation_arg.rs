@@ -1,3 +1,5 @@
+// compile-flags: -Z unsound-mir-opts
+
 // Check that CopyPropagation does not propagate an assignment to a function argument
 // (doing so can break usages of the original argument value)
 

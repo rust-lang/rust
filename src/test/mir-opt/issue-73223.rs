@@ -1,3 +1,5 @@
+// compile-flags: -Z unsound-mir-opts -Z mir-opt-skip-pass=CopyProp
+
 fn main() {
     let split = match Some(1) {
         Some(v) => v,
