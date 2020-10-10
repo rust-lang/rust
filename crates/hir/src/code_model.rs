@@ -1372,7 +1372,7 @@ impl Type {
         r#trait: Trait,
         args: &[Type],
         alias: TypeAlias,
-    ) -> Option<Ty> {
+    ) -> Option<Type> {
         let subst = Substs::build_for_def(db, r#trait.id)
             .push(self.ty.value.clone())
             .fill(args.iter().map(|t| t.ty.value.clone()))
@@ -1393,6 +1393,10 @@ impl Type {
             Solution::Unique(SolutionVariables(subst)) => subst.value.first().cloned(),
             Solution::Ambig(_) => None,
         }
+        .map(|ty| Type {
+            krate: self.krate,
+            ty: InEnvironment { value: ty, environment: Arc::clone(&self.ty.environment) },
+        })
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {

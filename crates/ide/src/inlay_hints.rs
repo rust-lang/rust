@@ -228,17 +228,20 @@ fn hint_iterator(
             _ => None,
         })?;
         if let Some(ty) = ty.normalize_trait_assoc_type(db, iter_trait, &[], assoc_type_item) {
-            // TODO kb also check for the iterator impls for this ty
-            dbg!(ty.display(db).to_string());
             const LABEL_START: &str = "impl Iterator<Item = ";
             const LABEL_END: &str = ">";
 
-            let ty_display = ty.display_truncated(
-                db,
-                config
-                    .max_length
-                    .map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len())),
-            );
+            let ty_display = hint_iterator(sema, config, &ty)
+                .map(|assoc_type_impl| assoc_type_impl.to_string())
+                .unwrap_or_else(|| {
+                    ty.display_truncated(
+                        db,
+                        config
+                            .max_length
+                            .map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len())),
+                    )
+                    .to_string()
+                });
             return Some(format!("{}{}{}", LABEL_START, ty_display, LABEL_END).into());
         }
     }
@@ -1169,7 +1172,7 @@ fn main() {
             InlayHintsConfig {
                 parameter_hints: false,
                 type_hints: true,
-                chaining_hints: true,
+                chaining_hints: false,
                 max_length: None,
             },
             r#"
@@ -1193,8 +1196,8 @@ fn main() {
     let mut some_iter = SomeIter::new();
       //^^^^^^^^^^^^^ SomeIter<Take<Repeat<i32>>>
       some_iter.push(iter::repeat(2).take(2));
-    let zz = some_iter.take(2);
-      //^^ impl Iterator<Item = Take<Repeat<i32>>>
+    let iter_of_iters = some_iter.take(2);
+      //^^^^^^^^^^^^^ impl Iterator<Item = impl Iterator<Item = i32>>
 }
 "#,
         );
