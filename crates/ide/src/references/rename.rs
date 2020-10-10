@@ -6,11 +6,16 @@ use ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
 };
-use std::convert::TryInto;
+
+use std::{
+    convert::TryInto,
+    error::Error,
+    fmt::{self, Display},
+};
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    lex_single_valid_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
+    lex_single_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 use test_utils::mark;
 use text_edit::TextEdit;
@@ -20,17 +25,37 @@ use crate::{
     SourceChange, SourceFileEdit, TextRange, TextSize,
 };
 
+#[derive(Debug)]
+pub struct RenameError(pub(crate) String);
+
+impl fmt::Display for RenameError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
+
+impl Error for RenameError {}
+
 pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
     new_name: &str,
-) -> Option<RangeInfo<SourceChange>> {
+) -> Result<RangeInfo<SourceChange>, RenameError> {
     let sema = Semantics::new(db);
 
-    match lex_single_valid_syntax_kind(new_name)? {
-        SyntaxKind::IDENT | SyntaxKind::UNDERSCORE => (),
-        SyntaxKind::SELF_KW => return rename_to_self(&sema, position),
-        _ => return None,
+    match lex_single_syntax_kind(new_name) {
+        Some(res) => match res {
+            (SyntaxKind::IDENT, _) => (),
+            (SyntaxKind::UNDERSCORE, _) => (),
+            (SyntaxKind::SELF_KW, _) => return rename_to_self(&sema, position),
+            (_, Some(syntax_error)) => {
+                return Err(RenameError(format!("Invalid name `{}`: {}", new_name, syntax_error)))
+            }
+            (_, None) => {
+                return Err(RenameError(format!("Invalid name `{}`: not an identifier", new_name)))
+            }
+        },
+        None => return Err(RenameError(format!("Invalid name `{}`: not an identifier", new_name))),
     }
 
     let source_file = sema.parse(position.file_id);
@@ -103,7 +128,7 @@ fn rename_mod(
     position: FilePosition,
     module: Module,
     new_name: &str,
-) -> Option<RangeInfo<SourceChange>> {
+) -> Result<RangeInfo<SourceChange>, RenameError> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
 
@@ -125,7 +150,7 @@ fn rename_mod(
 
     if let Some(src) = module.declaration_source(sema.db) {
         let file_id = src.file_id.original_file(sema.db);
-        let name = src.value.name()?;
+        let name = src.value.name().unwrap();
         let edit = SourceFileEdit {
             file_id,
             edit: TextEdit::replace(name.syntax().text_range(), new_name.into()),
@@ -133,35 +158,40 @@ fn rename_mod(
         source_file_edits.push(edit);
     }
 
-    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)?;
+    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)
+        .ok_or_else(|| RenameError("No references found at position".to_string()))?;
     let ref_edits = refs
         .references
         .into_iter()
         .map(|reference| source_edit_from_reference(reference, new_name));
     source_file_edits.extend(ref_edits);
 
-    Some(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
+    Ok(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
 }
 
 fn rename_to_self(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
-) -> Option<RangeInfo<SourceChange>> {
+) -> Result<RangeInfo<SourceChange>, RenameError> {
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
-    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)?;
-    let params = fn_def.param_list()?;
+    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)
+        .ok_or_else(|| RenameError("No surrounding method declaration found".to_string()))?;
+    let params =
+        fn_def.param_list().ok_or_else(|| RenameError("Method has no parameters".to_string()))?;
     if params.self_param().is_some() {
-        return None; // method already has self param
+        return Err(RenameError("Method already has a self parameter".to_string()));
     }
-    let first_param = params.params().next()?;
+    let first_param =
+        params.params().next().ok_or_else(|| RenameError("Method has no parameters".into()))?;
     let mutable = match first_param.ty() {
         Some(ast::Type::RefType(rt)) => rt.mut_token().is_some(),
-        _ => return None, // not renaming other types
+        _ => return Err(RenameError("Not renaming other types".to_string())),
     };
 
-    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)?;
+    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)
+        .ok_or_else(|| RenameError("No reference found at position".to_string()))?;
 
     let param_range = first_param.syntax().text_range();
     let (param_ref, usages): (Vec<Reference>, Vec<Reference>) = refs
@@ -169,7 +199,7 @@ fn rename_to_self(
         .partition(|reference| param_range.intersect(reference.file_range.range).is_some());
 
     if param_ref.is_empty() {
-        return None;
+        return Err(RenameError("Parameter to rename not found".to_string()));
     }
 
     let mut edits = usages
@@ -185,7 +215,7 @@ fn rename_to_self(
         ),
     });
 
-    Some(RangeInfo::new(range, SourceChange::from(edits)))
+    Ok(RangeInfo::new(range, SourceChange::from(edits)))
 }
 
 fn text_edit_from_self_param(
@@ -216,12 +246,13 @@ fn rename_self_to_param(
     position: FilePosition,
     self_token: SyntaxToken,
     new_name: &str,
-) -> Option<RangeInfo<SourceChange>> {
+) -> Result<RangeInfo<SourceChange>, RenameError> {
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
     let text = sema.db.file_text(position.file_id);
-    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)?;
+    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)
+        .ok_or_else(|| RenameError("No surrounding method declaration found".to_string()))?;
     let search_range = fn_def.syntax().text_range();
 
     let mut edits: Vec<SourceFileEdit> = vec![];
@@ -235,7 +266,8 @@ fn rename_self_to_param(
             syn.token_at_offset(offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
         {
             let edit = if let Some(ref self_param) = ast::SelfParam::cast(usage.parent()) {
-                text_edit_from_self_param(syn, self_param, new_name)?
+                text_edit_from_self_param(syn, self_param, new_name)
+                    .ok_or_else(|| RenameError("No target type found".to_string()))?
             } else {
                 TextEdit::replace(usage.text_range(), String::from(new_name))
             };
@@ -246,15 +278,18 @@ fn rename_self_to_param(
     let range = ast::SelfParam::cast(self_token.parent())
         .map_or(self_token.text_range(), |p| p.syntax().text_range());
 
-    Some(RangeInfo::new(range, SourceChange::from(edits)))
+    Ok(RangeInfo::new(range, SourceChange::from(edits)))
 }
 
 fn rename_reference(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
     new_name: &str,
-) -> Option<RangeInfo<SourceChange>> {
-    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)?;
+) -> Result<RangeInfo<SourceChange>, RenameError> {
+    let RangeInfo { range, info: refs } = match find_all_refs(sema, position, None) {
+        Some(range_info) => range_info,
+        None => return Err(RenameError("No references found at position".to_string())),
+    };
 
     let edit = refs
         .into_iter()
@@ -262,10 +297,10 @@ fn rename_reference(
         .collect::<Vec<_>>();
 
     if edit.is_empty() {
-        return None;
+        return Err(RenameError("No references found at position".to_string()));
     }
 
-    Some(RangeInfo::new(range, SourceChange::from(edit)))
+    Ok(RangeInfo::new(range, SourceChange::from(edit)))
 }
 
 #[cfg(test)]
@@ -280,25 +315,45 @@ mod tests {
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
-        let source_change = analysis.rename(position, new_name).unwrap();
-        let mut text_edit_builder = TextEdit::builder();
-        let mut file_id: Option<FileId> = None;
-        if let Some(change) = source_change {
-            for edit in change.info.source_file_edits {
-                file_id = Some(edit.file_id);
-                for indel in edit.edit.into_iter() {
-                    text_edit_builder.replace(indel.delete, indel.insert);
+        let rename_result = analysis
+            .rename(position, new_name)
+            .unwrap_or_else(|err| panic!("Rename to '{}' was cancelled: {}", new_name, err));
+        match rename_result {
+            Ok(source_change) => {
+                let mut text_edit_builder = TextEdit::builder();
+                let mut file_id: Option<FileId> = None;
+                for edit in source_change.info.source_file_edits {
+                    file_id = Some(edit.file_id);
+                    for indel in edit.edit.into_iter() {
+                        text_edit_builder.replace(indel.delete, indel.insert);
+                    }
+                }
+                let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
+                text_edit_builder.finish().apply(&mut result);
+                assert_eq_text!(ra_fixture_after, &*result);
+            }
+            Err(err) => {
+                if ra_fixture_after.starts_with("error:") {
+                    let error_message = ra_fixture_after
+                        .chars()
+                        .into_iter()
+                        .skip("error:".len())
+                        .collect::<String>();
+                    assert_eq!(error_message.trim(), err.to_string());
+                    return;
+                } else {
+                    panic!("Rename to '{}' failed unexpectedly: {}", new_name, err)
                 }
             }
-        }
-        let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
-        text_edit_builder.finish().apply(&mut result);
-        assert_eq_text!(ra_fixture_after, &*result);
+        };
     }
 
     fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let source_change = analysis.rename(position, new_name).unwrap().unwrap();
+        let source_change = analysis
+            .rename(position, new_name)
+            .unwrap()
+            .expect("Expect returned RangeInfo to be Some, but was None");
         expect.assert_debug_eq(&source_change)
     }
 
@@ -313,11 +368,30 @@ mod tests {
     }
 
     #[test]
-    fn test_rename_to_invalid_identifier() {
-        let (analysis, position) = fixture::position(r#"fn main() { let i<|> = 1; }"#);
-        let new_name = "invalid!";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert!(source_change.is_none());
+    fn test_rename_to_invalid_identifier1() {
+        check(
+            "invalid!",
+            r#"fn main() { let i<|> = 1; }"#,
+            "error: Invalid name `invalid!`: not an identifier",
+        );
+    }
+
+    #[test]
+    fn test_rename_to_invalid_identifier2() {
+        check(
+            "multiple tokens",
+            r#"fn main() { let i<|> = 1; }"#,
+            "error: Invalid name `multiple tokens`: not an identifier",
+        );
+    }
+
+    #[test]
+    fn test_rename_to_invalid_identifier3() {
+        check(
+            "let",
+            r#"fn main() { let i<|> = 1; }"#,
+            "error: Invalid name `let`: not an identifier",
+        );
     }
 
     #[test]
@@ -346,6 +420,15 @@ fn main() {
     k = 5;
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_unresolved_reference() {
+        check(
+            "new_name",
+            r#"fn main() { let _ = unresolved_ref<|>; }"#,
+            "error: No references found at position",
         );
     }
 

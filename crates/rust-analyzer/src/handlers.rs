@@ -646,14 +646,9 @@ pub(crate) fn handle_prepare_rename(
     let _p = profile::span("handle_prepare_rename");
     let position = from_proto::file_position(&snap, params)?;
 
-    let optional_change = snap.analysis.rename(position, "dummy")?;
-    let range = match optional_change {
-        None => return Ok(None),
-        Some(it) => it.range,
-    };
-
+    let change = snap.analysis.rename(position, "dummy")??;
     let line_index = snap.analysis.file_line_index(position.file_id)?;
-    let range = to_proto::range(&line_index, range);
+    let range = to_proto::range(&line_index, change.range);
     Ok(Some(PrepareRenameResponse::Range(range)))
 }
 
@@ -672,12 +667,8 @@ pub(crate) fn handle_rename(
         .into());
     }
 
-    let optional_change = snap.analysis.rename(position, &*params.new_name)?;
-    let source_change = match optional_change {
-        None => return Ok(None),
-        Some(it) => it.info,
-    };
-    let workspace_edit = to_proto::workspace_edit(&snap, source_change)?;
+    let change = snap.analysis.rename(position, &*params.new_name)??;
+    let workspace_edit = to_proto::workspace_edit(&snap, change.info)?;
     Ok(Some(workspace_edit))
 }
 
