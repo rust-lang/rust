@@ -132,7 +132,7 @@ checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 
 [[package]]
 name = "backtrace"
-version = "0.3.50"
+version = "0.3.52"
 dependencies = [
  "addr2line",
  "cfg-if",
