@@ -14,8 +14,9 @@ mod tests;
 
 extern "Rust" {
     // These are the magic symbols to call the global allocator.  rustc generates
-    // them from the `#[global_allocator]` attribute if there is one, or uses the
-    // default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
+    // them to call `__rg_alloc` etc if there is a `#[global_allocator]` attribute
+    // (the code expanding that attribute macro generates those functions), or to call
+    // the default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
     // otherwise.
     #[rustc_allocator]
     #[rustc_allocator_nounwind]
@@ -26,8 +27,6 @@ extern "Rust" {
     fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
     #[rustc_allocator_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
-    #[rustc_allocator_nounwind]
-    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
 /// The global memory allocator.
@@ -323,6 +322,16 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     }
 }
 
+// # Allocation error handler
+
+extern "Rust" {
+    // This is the magic symbol to call the global alloc error handler.  rustc generates
+    // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
+    // default implementations below (`__rdl_oom`) otherwise.
+    #[rustc_allocator_nounwind]
+    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
+}
+
 /// Abort on memory allocation error or failure.
 ///
 /// Callers of memory allocation APIs wishing to abort computation
@@ -367,7 +376,7 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
-pub mod __default_lib_allocator {
+pub mod __alloc_error_handler {
     use crate::alloc::Layout;
 
     // called via generated `__rust_alloc_error_handler`
