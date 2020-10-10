@@ -238,7 +238,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     fn resolve_primitive_associated_item(
         &self,
         prim_ty: hir::PrimTy,
-        prim: Res,
         ns: Namespace,
         module_id: DefId,
         item_name: Symbol,
@@ -263,7 +262,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         ty::AssocKind::Const => "associatedconstant",
                         ty::AssocKind::Type => "associatedtype",
                     })
-                    .map(|out| (prim, Some(format!("{}#{}.{}", prim_ty.name(), out, item_str))))
+                    .map(|out| {
+                        (
+                            Res::PrimTy(prim_ty),
+                            Some(format!("{}#{}.{}", prim_ty.name(), out, item_str)),
+                        )
+                    })
             })
             .ok_or_else(|| {
                 debug!(
@@ -274,7 +278,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 );
                 ResolutionFailure::NotResolved {
                     module_id,
-                    partial_res: Some(prim),
+                    partial_res: Some(Res::PrimTy(prim_ty)),
                     unresolved: item_str.into(),
                 }
                 .into()
@@ -328,10 +332,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         });
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
         match result.map(|(_, res)| res) {
-            Ok(Res::Err) | Err(()) => is_bool_value(path_str, ns).map(|(_, res)| res),
-
             // resolver doesn't know about true and false so we'll have to resolve them
             // manually as bool
+            Ok(Res::Err) | Err(()) => is_bool_value(path_str, ns).map(|(_, res)| res),
             Ok(res) => Some(res.map_id(|_| panic!("unexpected node_id"))),
         }
     }
@@ -406,6 +409,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
             })?;
 
+        // FIXME: are these both necessary?
         let ty_res = if let Some(ty_res) = is_primitive(&path_root, TypeNS)
             .map(|(_, res)| res)
             .or_else(|| self.resolve_path(&path_root, TypeNS, module_id))
@@ -426,9 +430,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         };
 
         let res = match ty_res {
-            Res::PrimTy(prim) => Some(self.resolve_primitive_associated_item(
-                prim, ty_res, ns, module_id, item_name, item_str,
-            )),
+            Res::PrimTy(prim) => Some(
+                self.resolve_primitive_associated_item(prim, ns, module_id, item_name, item_str),
+            ),
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias, did) => {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
                 // Checks if item_name belongs to `impl SomeItem`
@@ -1086,7 +1090,7 @@ impl LinkCollector<'_, '_> {
                         return None;
                     }
                     res = prim;
-                    fragment = Some((*path.as_str()).to_owned());
+                    fragment = Some(path.as_str().to_string());
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
@@ -1943,14 +1947,14 @@ fn handle_variant(
     if extra_fragment.is_some() {
         return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)));
     }
-    cx.tcx.parent(res.def_id()).map_or_else(
-        || Err(ResolutionFailure::NoParentItem.into()),
-        |parent| {
+    cx.tcx
+        .parent(res.def_id())
+        .map(|parent| {
             let parent_def = Res::Def(DefKind::Enum, parent);
             let variant = cx.tcx.expect_variant_res(res);
-            Ok((parent_def, Some(format!("variant.{}", variant.ident.name))))
-        },
-    )
+            (parent_def, Some(format!("variant.{}", variant.ident.name)))
+        })
+        .ok_or_else(|| ResolutionFailure::NoParentItem.into())
 }
 
 // FIXME: At this point, this is basically a copy of the PrimitiveTypeTable
@@ -1977,7 +1981,9 @@ const PRIMITIVES: &[(Symbol, Res)] = &[
 fn is_primitive(path_str: &str, ns: Namespace) -> Option<(Symbol, Res)> {
     is_bool_value(path_str, ns).or_else(|| {
         if ns == TypeNS {
-            PRIMITIVES.iter().find(|x| x.0.as_str() == path_str).copied()
+            // FIXME: this should be replaced by a lookup in PrimitiveTypeTable
+            let maybe_primitive = Symbol::intern(path_str);
+            PRIMITIVES.iter().find(|x| x.0 == maybe_primitive).copied()
         } else {
             None
         }
