@@ -282,6 +282,12 @@ impl CodegenBackend for LlvmCodegenBackend {
             rustc_codegen_ssa::back::write::dump_incremental_data(&codegen_results);
         }
 
+        sess.time("llvm_dump_timing_file", || {
+            if sess.opts.debugging_opts.llvm_time_trace {
+                llvm_util::time_trace_profiler_finish("llvm_timings.json");
+            }
+        });
+
         Ok((codegen_results, work_products))
     }
 
@@ -305,12 +311,6 @@ impl CodegenBackend for LlvmCodegenBackend {
                 &codegen_results.crate_name.as_str(),
                 target_cpu,
             );
-        });
-
-        sess.time("llvm_dump_timing_file", || {
-            if sess.opts.debugging_opts.llvm_time_trace {
-                llvm_util::time_trace_profiler_finish("llvm_timings.json");
-            }
         });
 
         Ok(())
