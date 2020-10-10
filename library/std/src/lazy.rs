@@ -321,13 +321,15 @@ impl<T> SyncOnceCell<T> {
     /// It is an error to reentrantly initialize the cell from `f`. The exact
     /// outcome is unspecified. Current implementation deadlocks, but this may
     /// be changed to a panic in the future.
-    pub(crate) fn get_or_init_pin<F, G>(self: Pin<&Self>, f: F, g: G) -> &T
+    pub(crate) fn get_or_init_pin<F, G>(self: Pin<&Self>, f: F, g: G) -> Pin<&T>
     where
         F: FnOnce() -> T,
         G: FnOnce(Pin<&mut T>),
     {
         if let Some(value) = self.get_ref().get() {
-            return value;
+            // SAFETY: The inner value was already initialized, and will not be
+            // moved anymore.
+            return unsafe { Pin::new_unchecked(value) };
         }
 
         let slot = &self.value;
@@ -345,8 +347,9 @@ impl<T> SyncOnceCell<T> {
             g(unsafe { Pin::new_unchecked(value) });
         });
 
-        // SAFETY: The inner value has been initialized.
-        unsafe { self.get_ref().get_unchecked() }
+        // SAFETY: The inner value has been initialized, and will not be moved
+        // anymore.
+        unsafe { Pin::new_unchecked(self.get_ref().get_unchecked()) }
     }
 
     /// Consumes the `SyncOnceCell`, returning the wrapped value. Returns
