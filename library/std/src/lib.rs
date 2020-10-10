@@ -294,6 +294,7 @@
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
+#![feature(pin_static_ref)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
