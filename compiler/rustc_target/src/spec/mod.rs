@@ -430,48 +430,23 @@ impl fmt::Display for LinkOutputKind {
     }
 }
 
-pub enum LoadTargetError {
-    BuiltinTargetNotFound(String),
-    Other(String),
-}
-
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
-pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
     ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
         $(mod $module;)+
 
         /// List of supported targets
-        const TARGETS: &[&str] = &[$($($triple),+),+];
+        pub const TARGETS: &[&str] = &[$($($triple),+),+];
 
-        fn load_specific(target: &str) -> Result<Target, LoadTargetError> {
-            match target {
-                $(
-                    $($triple)|+ => {
-                        let mut t = $module::target()
-                            .map_err(LoadTargetError::Other)?;
-                        t.options.is_builtin = true;
-
-                        // round-trip through the JSON parser to ensure at
-                        // run-time that the parser works correctly
-                        t = Target::from_json(t.to_json())
-                            .map_err(LoadTargetError::Other)?;
-                        debug!("got builtin target: {:?}", t);
-                        Ok(t)
-                    },
-                )+
-                    _ => Err(LoadTargetError::BuiltinTargetNotFound(
-                        format!("Unable to find target: {}", target)))
-            }
-        }
-
-        pub fn get_targets() -> impl Iterator<Item = String> {
-            TARGETS.iter().filter_map(|t| -> Option<String> {
-                load_specific(t)
-                    .and(Ok(t.to_string()))
-                    .ok()
-            })
+        fn load_builtin(target: &str) -> Option<Target> {
+            let mut t = match target {
+                $( $($triple)|+ => $module::target(), )+
+                _ => return None,
+            };
+            t.options.is_builtin = true;
+            debug!("got builtin target: {:?}", t);
+            Some(t)
         }
 
         #[cfg(test)]
@@ -1140,7 +1115,7 @@ impl Target {
     }
 
     /// Loads a target descriptor from a JSON object.
-    pub fn from_json(obj: Json) -> TargetResult {
+    pub fn from_json(obj: Json) -> Result<Target, String> {
         // While ugly, this code must remain this way to retain
         // compatibility with existing JSON fields and the internal
         // expected naming of the Target and TargetOptions structs.
@@ -1537,11 +1512,9 @@ impl Target {
 
         match *target_triple {
             TargetTriple::TargetTriple(ref target_triple) => {
-                // check if triple is in list of supported targets
-                match load_specific(target_triple) {
-                    Ok(t) => return Ok(t),
-                    Err(LoadTargetError::BuiltinTargetNotFound(_)) => (),
-                    Err(LoadTargetError::Other(e)) => return Err(e),
+                // check if triple is in list of built-in targets
+                if let Some(t) = load_builtin(target_triple) {
+                    return Ok(t);
                 }
 
                 // search for a file named `target_triple`.json in RUST_TARGET_PATH

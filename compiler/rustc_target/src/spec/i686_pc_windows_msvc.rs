@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::windows_msvc_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
@@ -20,7 +20,7 @@ pub fn target() -> TargetResult {
         .unwrap()
         .extend(pre_link_args_msvc);
 
-    Ok(Target {
+    Target {
         llvm_target: "i686-pc-windows-msvc".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -34,5 +34,5 @@ pub fn target() -> TargetResult {
         target_vendor: "pc".to_string(),
         linker_flavor: LinkerFlavor::Msvc,
         options: base,
-    })
+    }
 }

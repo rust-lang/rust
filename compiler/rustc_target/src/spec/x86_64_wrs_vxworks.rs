@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::vxworks_base::opts();
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
@@ -8,7 +8,7 @@ pub fn target() -> TargetResult {
     base.stack_probes = true;
     base.disable_redzone = true;
 
-    Ok(Target {
+    Target {
         llvm_target: "x86_64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -21,5 +21,5 @@ pub fn target() -> TargetResult {
         target_vendor: "wrs".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
-    })
+    }
 }

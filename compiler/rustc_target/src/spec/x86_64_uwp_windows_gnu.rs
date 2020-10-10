@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::windows_uwp_gnu_base::opts();
     base.cpu = "x86-64".to_string();
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
@@ -8,7 +8,7 @@ pub fn target() -> TargetResult {
         .insert(LinkerFlavor::Lld(LldFlavor::Ld), vec!["-m".to_string(), "i386pep".to_string()]);
     base.max_atomic_width = Some(64);
 
-    Ok(Target {
+    Target {
         llvm_target: "x86_64-pc-windows-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -21,5 +21,5 @@ pub fn target() -> TargetResult {
         target_vendor: "uwp".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
-    })
+    }
 }

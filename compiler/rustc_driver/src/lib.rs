@@ -671,7 +671,8 @@ impl RustcDefaultCalls {
         for req in &sess.opts.prints {
             match *req {
                 TargetList => {
-                    let mut targets = rustc_target::spec::get_targets().collect::<Vec<String>>();
+                    let mut targets =
+                        rustc_target::spec::TARGETS.iter().copied().collect::<Vec<_>>();
                     targets.sort();
                     println!("{}", targets.join("\n"));
                 }

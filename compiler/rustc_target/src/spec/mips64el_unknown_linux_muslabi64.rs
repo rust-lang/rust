@@ -1,11 +1,11 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
     base.cpu = "mips64r2".to_string();
     base.features = "+mips64r2".to_string();
     base.max_atomic_width = Some(64);
-    Ok(Target {
+    Target {
         // LLVM doesn't recognize "muslabi64" yet.
         llvm_target: "mips64el-unknown-linux-musl".to_string(),
         target_endian: "little".to_string(),
@@ -18,5 +18,5 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "_mcount".to_string(), ..base },
-    })
+    }
 }

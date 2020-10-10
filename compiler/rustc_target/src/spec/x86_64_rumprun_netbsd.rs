@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::netbsd_base::opts();
     base.cpu = "x86-64".to_string();
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
@@ -13,7 +13,7 @@ pub fn target() -> TargetResult {
     base.disable_redzone = true;
     base.stack_probes = true;
 
-    Ok(Target {
+    Target {
         llvm_target: "x86_64-rumprun-netbsd".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -26,5 +26,5 @@ pub fn target() -> TargetResult {
         target_vendor: "rumprun".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "__mcount".to_string(), ..base },
-    })
+    }
 }

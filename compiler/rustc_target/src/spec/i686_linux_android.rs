@@ -1,9 +1,9 @@
-use crate::spec::{LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, Target};
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::android_base::opts();
 
     base.max_atomic_width = Some(64);
@@ -13,7 +13,7 @@ pub fn target() -> TargetResult {
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3".to_string();
     base.stack_probes = true;
 
-    Ok(Target {
+    Target {
         llvm_target: "i686-linux-android".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -27,5 +27,5 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
-    })
+    }
 }

@@ -1,8 +1,8 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let base = super::vxworks_base::opts();
-    Ok(Target {
+    Target {
         llvm_target: "armv7-unknown-linux-gnueabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -21,5 +21,5 @@ pub fn target() -> TargetResult {
             unsupported_abis: super::arm_base::unsupported_abis(),
             ..base
         },
-    })
+    }
 }

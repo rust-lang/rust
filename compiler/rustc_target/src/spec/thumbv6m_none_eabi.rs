@@ -1,9 +1,9 @@
 // Targets the Cortex-M0, Cortex-M0+ and Cortex-M1 processors (ARMv6-M architecture)
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "thumbv6m-none-eabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -24,5 +24,5 @@ pub fn target() -> TargetResult {
             atomic_cas: false,
             ..super::thumb_base::opts()
         },
-    })
+    }
 }

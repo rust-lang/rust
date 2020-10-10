@@ -1,7 +1,7 @@
-use crate::spec::{CodeModel, LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{CodeModel, LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "riscv64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -21,5 +21,5 @@ pub fn target() -> TargetResult {
             max_atomic_width: Some(64),
             ..super::linux_base::opts()
         },
-    })
+    }
 }

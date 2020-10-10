@@ -1,8 +1,8 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let base = super::linux_base::opts();
-    Ok(Target {
+    Target {
         llvm_target: "armv5te-unknown-linux-gnueabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -23,5 +23,5 @@ pub fn target() -> TargetResult {
             has_thumb_interworking: true,
             ..base
         },
-    })
+    }
 }

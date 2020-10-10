@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 // This target is for glibc Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)
@@ -6,9 +6,9 @@ use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 // registers enabled as well. See section A2.6.2 on page A2-56 in
 // https://static.docs.arm.com/ddi0406/cd/DDI0406C_d_armv7ar_arm.pdf
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let base = super::linux_base::opts();
-    Ok(Target {
+    Target {
         llvm_target: "armv7-unknown-linux-gnueabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -28,5 +28,5 @@ pub fn target() -> TargetResult {
             unsupported_abis: super::arm_base::unsupported_abis(),
             ..base
         },
-    })
+    }
 }
