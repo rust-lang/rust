@@ -141,6 +141,9 @@
 //! ```
 //!
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
+//! [`Box<U>`]: ../../std/boxed/struct.Box.html
+//! [`num::NonZero*`]: crate::num
+//! [`ptr::NonNull<U>`]: crate::ptr::NonNull
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

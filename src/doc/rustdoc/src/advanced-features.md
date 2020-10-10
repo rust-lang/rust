@@ -1,4 +1,4 @@
-# Advanced Features
+# Advanced features
 
 The features listed on this page fall outside the rest of the main categories.
 

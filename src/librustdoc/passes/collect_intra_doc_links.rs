@@ -23,6 +23,7 @@ use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::mem;
 use std::ops::Range;
 
 use crate::clean::*;
@@ -65,8 +66,51 @@ enum ResolutionFailure<'a> {
     NotResolved { module_id: DefId, partial_res: Option<Res>, unresolved: Cow<'a, str> },
     /// should not ever happen
     NoParentItem,
+    /// This link has malformed generic parameters; e.g., the angle brackets are unbalanced.
+    MalformedGenerics(MalformedGenerics),
     /// used to communicate that this should be ignored, but shouldn't be reported to the user
     Dummy,
+}
+
+#[derive(Debug)]
+enum MalformedGenerics {
+    /// This link has unbalanced angle brackets.
+    ///
+    /// For example, `Vec<T` should trigger this, as should `Vec<T>>`.
+    UnbalancedAngleBrackets,
+    /// The generics are not attached to a type.
+    ///
+    /// For example, `<T>` should trigger this.
+    ///
+    /// This is detected by checking if the path is empty after the generics are stripped.
+    MissingType,
+    /// The link uses fully-qualified syntax, which is currently unsupported.
+    ///
+    /// For example, `<Vec as IntoIterator>::into_iter` should trigger this.
+    ///
+    /// This is detected by checking if ` as ` (the keyword `as` with spaces around it) is inside
+    /// angle brackets.
+    HasFullyQualifiedSyntax,
+    /// The link has an invalid path separator.
+    ///
+    /// For example, `Vec:<T>:new()` should trigger this. Note that `Vec:new()` will **not**
+    /// trigger this because it has no generics and thus [`strip_generics_from_path`] will not be
+    /// called.
+    ///
+    /// Note that this will also **not** be triggered if the invalid path separator is inside angle
+    /// brackets because rustdoc mostly ignores what's inside angle brackets (except for
+    /// [`HasFullyQualifiedSyntax`](MalformedGenerics::HasFullyQualifiedSyntax)).
+    ///
+    /// This is detected by checking if there is a colon followed by a non-colon in the link.
+    InvalidPathSeparator,
+    /// The link has too many angle brackets.
+    ///
+    /// For example, `Vec<<T>>` should trigger this.
+    TooManyAngleBrackets,
+    /// The link has empty angle brackets.
+    ///
+    /// For example, `Vec<>` should trigger this.
+    EmptyAngleBrackets,
 }
 
 impl ResolutionFailure<'a> {
@@ -908,6 +952,7 @@ impl LinkCollector<'_, '_> {
         let link_text;
         let mut path_str;
         let disambiguator;
+        let stripped_path_string;
         let (mut res, mut fragment) = {
             path_str = if let Ok((d, path)) = Disambiguator::from_str(&link) {
                 disambiguator = Some(d);
@@ -918,7 +963,7 @@ impl LinkCollector<'_, '_> {
             }
             .trim();
 
-            if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
+            if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, ".contains(ch))) {
                 return None;
             }
 
@@ -979,6 +1024,36 @@ impl LinkCollector<'_, '_> {
                 resolved_self = format!("self::{}", &path_str["crate::".len()..]);
                 path_str = &resolved_self;
                 module_id = DefId { krate, index: CRATE_DEF_INDEX };
+            }
+
+            // Strip generics from the path.
+            if path_str.contains(['<', '>'].as_slice()) {
+                stripped_path_string = match strip_generics_from_path(path_str) {
+                    Ok(path) => path,
+                    Err(err_kind) => {
+                        debug!("link has malformed generics: {}", path_str);
+                        resolution_failure(
+                            self,
+                            &item,
+                            path_str,
+                            disambiguator,
+                            dox,
+                            link_range,
+                            smallvec![err_kind],
+                        );
+                        return None;
+                    }
+                };
+                path_str = &stripped_path_string;
+            }
+
+            // Sanity check to make sure we don't have any angle brackets after stripping generics.
+            assert!(!path_str.contains(['<', '>'].as_slice()));
+
+            // The link is not an intra-doc link if it still contains commas or spaces after
+            // stripping generics.
+            if path_str.contains([',', ' '].as_slice()) {
+                return None;
             }
 
             match self.resolve_with_disambiguator(
@@ -1714,6 +1789,27 @@ fn resolution_failure(
                         diag.level = rustc_errors::Level::Bug;
                         "all intra doc links should have a parent item".to_owned()
                     }
+                    ResolutionFailure::MalformedGenerics(variant) => match variant {
+                        MalformedGenerics::UnbalancedAngleBrackets => {
+                            String::from("unbalanced angle brackets")
+                        }
+                        MalformedGenerics::MissingType => {
+                            String::from("missing type for generic parameters")
+                        }
+                        MalformedGenerics::HasFullyQualifiedSyntax => {
+                            diag.note("see https://github.com/rust-lang/rust/issues/74563 for more information");
+                            String::from("fully-qualified syntax is unsupported")
+                        }
+                        MalformedGenerics::InvalidPathSeparator => {
+                            String::from("has invalid path separator")
+                        }
+                        MalformedGenerics::TooManyAngleBrackets => {
+                            String::from("too many angle brackets")
+                        }
+                        MalformedGenerics::EmptyAngleBrackets => {
+                            String::from("empty angle brackets")
+                        }
+                    },
                 };
                 if let Some(span) = sp {
                     diag.span_label(span, &note);
@@ -1903,4 +1999,109 @@ fn is_primitive(path_str: &str, ns: Namespace) -> Option<(&'static str, Res)> {
 
 fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<&'static SmallVec<[DefId; 4]>> {
     Some(PrimitiveType::from_symbol(Symbol::intern(path_str))?.impls(cx.tcx))
+}
+
+fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<'static>> {
+    let mut stripped_segments = vec![];
+    let mut path = path_str.chars().peekable();
+    let mut segment = Vec::new();
+
+    while let Some(chr) = path.next() {
+        match chr {
+            ':' => {
+                if path.next_if_eq(&':').is_some() {
+                    let stripped_segment =
+                        strip_generics_from_path_segment(mem::take(&mut segment))?;
+                    if !stripped_segment.is_empty() {
+                        stripped_segments.push(stripped_segment);
+                    }
+                } else {
+                    return Err(ResolutionFailure::MalformedGenerics(
+                        MalformedGenerics::InvalidPathSeparator,
+                    ));
+                }
+            }
+            '<' => {
+                segment.push(chr);
+
+                match path.next() {
+                    Some('<') => {
+                        return Err(ResolutionFailure::MalformedGenerics(
+                            MalformedGenerics::TooManyAngleBrackets,
+                        ));
+                    }
+                    Some('>') => {
+                        return Err(ResolutionFailure::MalformedGenerics(
+                            MalformedGenerics::EmptyAngleBrackets,
+                        ));
+                    }
+                    Some(chr) => {
+                        segment.push(chr);
+
+                        while let Some(chr) = path.next_if(|c| *c != '>') {
+                            segment.push(chr);
+                        }
+                    }
+                    None => break,
+                }
+            }
+            _ => segment.push(chr),
+        }
+        debug!("raw segment: {:?}", segment);
+    }
+
+    if !segment.is_empty() {
+        let stripped_segment = strip_generics_from_path_segment(segment)?;
+        if !stripped_segment.is_empty() {
+            stripped_segments.push(stripped_segment);
+        }
+    }
+
+    debug!("path_str: {:?}\nstripped segments: {:?}", path_str, &stripped_segments);
+
+    let stripped_path = stripped_segments.join("::");
+
+    if !stripped_path.is_empty() {
+        Ok(stripped_path)
+    } else {
+        Err(ResolutionFailure::MalformedGenerics(MalformedGenerics::MissingType))
+    }
+}
+
+fn strip_generics_from_path_segment(
+    segment: Vec<char>,
+) -> Result<String, ResolutionFailure<'static>> {
+    let mut stripped_segment = String::new();
+    let mut param_depth = 0;
+
+    let mut latest_generics_chunk = String::new();
+
+    for c in segment {
+        if c == '<' {
+            param_depth += 1;
+            latest_generics_chunk.clear();
+        } else if c == '>' {
+            param_depth -= 1;
+            if latest_generics_chunk.contains(" as ") {
+                // The segment tries to use fully-qualified syntax, which is currently unsupported.
+                // Give a helpful error message instead of completely ignoring the angle brackets.
+                return Err(ResolutionFailure::MalformedGenerics(
+                    MalformedGenerics::HasFullyQualifiedSyntax,
+                ));
+            }
+        } else {
+            if param_depth == 0 {
+                stripped_segment.push(c);
+            } else {
+                latest_generics_chunk.push(c);
+            }
+        }
+    }
+
+    if param_depth == 0 {
+        Ok(stripped_segment)
+    } else {
+        // The segment has unbalanced angle brackets, e.g. `Vec<T` or `Vec<T>>`
+        Err(ResolutionFailure::MalformedGenerics(MalformedGenerics::UnbalancedAngleBrackets))
+    }
 }

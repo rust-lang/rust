@@ -2,7 +2,7 @@
 //~^ NOTE lint level is defined
 
 // FIXME: this should say that it was skipped (maybe an allowed by default lint?)
-/// [<invalid syntax>]
+/// [invalid intra-doc syntax!!]
 
 /// [path::to::nonexistent::module]
 //~^ ERROR unresolved link
