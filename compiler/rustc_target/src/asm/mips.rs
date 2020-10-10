@@ -32,11 +32,12 @@ impl MipsInlineAsmRegClass {
 
     pub fn supported_types(
         self,
-        _arch: InlineAsmArch,
+        arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<&'static str>)] {
-        match self {
-            Self::reg => types! { _: I8, I16, I32, F32; },
-            Self::freg => types! { _: F32; },
+        match (self, arch) {
+            (Self::reg, InlineAsmArch::Mips64) => types! { _: I8, I16, I32, I64, F32, F64; },
+            (Self::reg, _) => types! { _: I8, I16, I32, F32; },
+            (Self::freg, _) => types! { _: F32, F64; },
         }
     }
 }
@@ -44,31 +45,31 @@ impl MipsInlineAsmRegClass {
 // The reserved registers are somewhat taken from <https://git.io/JUR1k#L150>.
 def_regs! {
     Mips MipsInlineAsmReg MipsInlineAsmRegClass {
-        v0: reg = ["$2", "$v0"],
-        v1: reg = ["$3", "$v1"],
-        a0: reg = ["$4", "$a0"],
-        a1: reg = ["$5", "$a1"],
-        a2: reg = ["$6", "$a2"],
-        a3: reg = ["$7", "$a3"],
+        r2: reg = ["$2"],
+        r3: reg = ["$3"],
+        r4: reg = ["$4"],
+        r5: reg = ["$5"],
+        r6: reg = ["$6"],
+        r7: reg = ["$7"],
         // FIXME: Reserve $t0, $t1 if in mips16 mode.
-        t0: reg = ["$8", "$t0"],
-        t1: reg = ["$9", "$t1"],
-        t2: reg = ["$10", "$t2"],
-        t3: reg = ["$11", "$t3"],
-        t4: reg = ["$12", "$t4"],
-        t5: reg = ["$13", "$t5"],
-        t6: reg = ["$14", "$t6"],
-        t7: reg = ["$15", "$t7"],
-        s0: reg = ["$16", "$s0"],
-        s1: reg = ["$17", "$s1"],
-        s2: reg = ["$18", "$s2"],
-        s3: reg = ["$19", "$s3"],
-        s4: reg = ["$20", "$s4"],
-        s5: reg = ["$21", "$s5"],
-        s6: reg = ["$22", "$s6"],
-        s7: reg = ["$23", "$s7"],
-        t8: reg = ["$24", "$t8"],
-        t9: reg = ["$25", "$t9"],
+        r8: reg = ["$8"],
+        r9: reg = ["$9"],
+        r10: reg = ["$10"],
+        r11: reg = ["$11"],
+        r12: reg = ["$12"],
+        r13: reg = ["$13"],
+        r14: reg = ["$14"],
+        r15: reg = ["$15"],
+        r16: reg = ["$16"],
+        r17: reg = ["$17"],
+        r18: reg = ["$18"],
+        r19: reg = ["$19"],
+        r20: reg = ["$20"],
+        r21: reg = ["$21"],
+        r22: reg = ["$22"],
+        r23: reg = ["$23"],
+        r24: reg = ["$24"],
+        r25: reg = ["$25"],
         f0: freg = ["$f0"],
         f1: freg = ["$f1"],
         f2: freg = ["$f2"],
@@ -101,21 +102,21 @@ def_regs! {
         f29: freg = ["$f29"],
         f30: freg = ["$f30"],
         f31: freg = ["$f31"],
-        #error = ["$0", "$zero"] =>
+        #error = ["$0"] =>
             "constant zero cannot be used as an operand for inline asm",
-        #error = ["$1", "$at"] =>
+        #error = ["$1"] =>
             "reserved for assembler (Assembler Temp)",
-        #error = ["$26", "$k0"] =>
+        #error = ["$26"] =>
             "OS-reserved register cannot be used as an operand for inline asm",
-        #error = ["$27", "$k1"] =>
+        #error = ["$27"] =>
             "OS-reserved register cannot be used as an operand for inline asm",
-        #error = ["$28", "$gp"] =>
+        #error = ["$28"] =>
             "the global pointer cannot be used as an operand for inline asm",
-        #error = ["$29", "$sp"] =>
+        #error = ["$29"] =>
             "the stack pointer cannot be used as an operand for inline asm",
-        #error = ["$30", "$s8", "$fp"] =>
+        #error = ["$30"] =>
             "the frame pointer cannot be used as an operand for inline asm",
-        #error = ["$31", "$ra"] =>
+        #error = ["$31"] =>
             "the return address register cannot be used as an operand for inline asm",
     }
 }

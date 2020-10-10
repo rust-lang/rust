@@ -27,7 +27,7 @@ Inline assembly is currently supported on the following architectures:
 - RISC-V
 - NVPTX
 - Hexagon
-- MIPS32
+- MIPS32r2 and MIPS64r2
 
 ## Basic usage
 
@@ -513,8 +513,8 @@ Here is the list of currently supported register classes:
 | ARM | `qreg` | `q[0-15]` | `w` |
 | ARM | `qreg_low8` | `q[0-7]` | `t` |
 | ARM | `qreg_low4` | `q[0-3]` | `x` |
-| MIPS32 | `reg` | `$[2-25]` | `r` |
-| MIPS32 | `freg` | `$f[0-31]` | `f` |
+| MIPS | `reg` | `$[2-25]` | `r` |
+| MIPS | `freg` | `$f[0-31]` | `f` |
 | NVPTX | `reg16` | None\* | `h` |
 | NVPTX | `reg32` | None\* | `r` |
 | NVPTX | `reg64` | None\* | `l` |
@@ -551,7 +551,9 @@ Each register class has constraints on which value types they can be used with. 
 | ARM | `dreg` | `vfp2` | `i64`, `f64`, `i8x8`, `i16x4`, `i32x2`, `i64x1`, `f32x2` |
 | ARM | `qreg` | `neon` | `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4` |
 | MIPS32 | `reg` | None | `i8`, `i16`, `i32`, `f32` |
-| MIPS32 | `freg` | None | `f32` |
+| MIPS32 | `freg` | None | `f32`, `f64` |
+| MIPS64 | `reg` | None | `i8`, `i16`, `i32`, `i64`, `f32`, `f64` |
+| MIPS64 | `freg` | None | `f32`, `f64` |
 | NVPTX | `reg16` | None | `i8`, `i16` |
 | NVPTX | `reg32` | None | `i8`, `i16`, `i32`, `f32` |
 | NVPTX | `reg64` | None | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
@@ -600,7 +602,6 @@ Some registers have multiple names. These are all treated by the compiler as ide
 | ARM | `r13` | `sp` |
 | ARM | `r14` | `lr` |
 | ARM | `r15` | `pc` |
-| MIPS32 | `$[2-25]` | Please [see the Wikipedia page][mips-regs] |
 | RISC-V | `x0` | `zero` |
 | RISC-V | `x1` | `ra` |
 | RISC-V | `x2` | `sp` |
@@ -621,8 +622,6 @@ Some registers have multiple names. These are all treated by the compiler as ide
 | Hexagon | `r30` | `fr` |
 | Hexagon | `r31` | `lr` |
 
-[mips-regs]: https://en.wikibooks.org/wiki/MIPS_Assembly/Register_File#Registers
-
 Some registers cannot be used for input or output operands:
 
 | Architecture | Unsupported register | Reason |
@@ -637,11 +636,11 @@ Some registers cannot be used for input or output operands:
 | x86 | `st([0-7])` | x87 registers are not currently supported (but may be in the future). |
 | AArch64 | `xzr` | This is a constant zero register which can't be modified. |
 | ARM | `pc` | This is the program counter, not a real register. |
-| MIPS32 | `$0` or `$zero` | This is a constant zero register which can't be modified. |
-| MIPS32 | `$1` or `$at` | Reserved for assembler. |
-| MIPS32 | `$26`/`$k0`, `$27`/`$k1` | OS-reserved registers. |
-| MIPS32 | `$28`/`$gp` | Global pointer cannot be used as inputs or outputs. |
-| MIPS32 | `$ra` | Return address cannot be used as inputs or outputs. |
+| MIPS | `$0` or `$zero` | This is a constant zero register which can't be modified. |
+| MIPS | `$1` or `$at` | Reserved for assembler. |
+| MIPS | `$26`/`$k0`, `$27`/`$k1` | OS-reserved registers. |
+| MIPS | `$28`/`$gp` | Global pointer cannot be used as inputs or outputs. |
+| MIPS | `$ra` | Return address cannot be used as inputs or outputs. |
 | RISC-V | `x0` | This is a constant zero register which can't be modified. |
 | RISC-V | `gp`, `tp` | These registers are reserved and cannot be used as inputs or outputs. |
 | Hexagon | `lr` | This is the link register which cannot be used as an input or output. |
@@ -689,8 +688,8 @@ The supported modifiers are a subset of LLVM's (and GCC's) [asm template argumen
 | ARM | `dreg` | None | `d0` | `P` |
 | ARM | `qreg` | None | `q0` | `q` |
 | ARM | `qreg` | `e` / `f` | `d0` / `d1` | `e` / `f` |
-| MIPS32 | `reg` | None | `$2` | None |
-| MIPS32 | `freg` | None | `$f0` | None |
+| MIPS | `reg` | None | `$2` | None |
+| MIPS | `freg` | None | `$f0` | None |
 | NVPTX | `reg16` | None | `rs0` | None |
 | NVPTX | `reg32` | None | `r0` | None |
 | NVPTX | `reg64` | None | `rd0` | None |
