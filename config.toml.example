@@ -13,7 +13,7 @@
 # If it does not match the version that is currently running,
 # `x.py` will prompt you to update it and read the changelog.
 # See `src/bootstrap/CHANGELOG.md` for more information.
-changelog-seen = 1
+changelog-seen = 2
 
 # =============================================================================
 # Global Settings
