@@ -82,7 +82,6 @@
 #![feature(const_pin)]
 #![feature(const_fn)]
 #![feature(const_fn_union)]
-#![feature(const_assume)]
 #![cfg_attr(not(bootstrap), feature(const_impl_trait))]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
