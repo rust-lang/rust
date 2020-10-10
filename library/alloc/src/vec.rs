@@ -1477,7 +1477,7 @@ impl<T> Vec<T> {
     /// may be chosen to be `'static`.
     ///
     /// This function is similar to the [`leak`][Box::leak] function on [`Box`]
-    /// except there are no way to undo the leak yet.
+    /// except that there is no way to recover the leaked memory.
     ///
     /// This function is mainly useful for data that lives for the remainder of
     /// the program's life. Dropping the returned reference will cause a memory
