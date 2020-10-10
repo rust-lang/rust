@@ -1,3 +1,11 @@
+//! The only difference between this and cg_clif.rs is that this binary defaults to using cg_llvm
+//! instead of cg_clif and requires `--clif` to use cg_clif and that this binary doesn't have JIT
+//! support.
+//! This is necessary as with Cargo `RUSTC` applies to both target crates and host crates. The host
+//! crates must be built with cg_llvm as we are currently building a sysroot for cg_clif.
+//! `RUSTFLAGS` however is only applied to target crates, so `--clif` would only be passed to the
+//! target crates.
+
 #![feature(rustc_private)]
 
 extern crate rustc_data_structures;
@@ -6,23 +14,35 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_target;
 
-use rustc_data_structures::profiling::print_time_passes_entry;
+use std::path::PathBuf;
+
 use rustc_interface::interface;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
 use rustc_target::spec::PanicStrategy;
 
-#[derive(Default)]
+fn find_sysroot() -> String {
+    // Taken from https://github.com/Manishearth/rust-clippy/pull/911.
+    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
+    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
+    match (home, toolchain) {
+        (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
+        _ => option_env!("RUST_SYSROOT")
+            .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
+            .to_owned(),
+    }
+}
+
 pub struct CraneliftPassesCallbacks {
-    time_passes: bool,
+    use_clif: bool,
 }
 
 impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
-        // If a --prints=... option has been given, we don't print the "total"
-        // time because it will mess up the --prints output. See #64339.
-        self.time_passes = config.opts.prints.is_empty()
-            && (config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time);
+        if !self.use_clif {
+            config.opts.maybe_sysroot = Some(PathBuf::from(find_sysroot()));
+            return;
+        }
 
         // FIXME workaround for an ICE
         config.opts.debugging_opts.trim_diagnostic_paths = false;
@@ -45,14 +65,12 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
 }
 
 fn main() {
-    let start = std::time::Instant::now();
     rustc_driver::init_rustc_env_logger();
-    let mut callbacks = CraneliftPassesCallbacks::default();
     rustc_driver::install_ice_hook();
     let exit_code = rustc_driver::catch_with_exit_code(|| {
-        let mut use_jit = false;
+        let mut use_clif = false;
 
-        let mut args = std::env::args_os()
+        let args = std::env::args_os()
             .enumerate()
             .map(|(i, arg)| {
                 arg.into_string().unwrap_or_else(|arg| {
@@ -63,30 +81,32 @@ fn main() {
                 })
             })
             .filter(|arg| {
-                if arg == "--jit" {
-                    use_jit = true;
+                if arg == "--clif" {
+                    use_clif = true;
                     false
                 } else {
                     true
                 }
             })
             .collect::<Vec<_>>();
-        if use_jit {
-            args.push("-Cprefer-dynamic".to_string());
-        }
+
+        let mut callbacks = CraneliftPassesCallbacks { use_clif };
+
         rustc_driver::run_compiler(
             &args,
             &mut callbacks,
             None,
             None,
-            Some(Box::new(move |_| {
-                Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
-                    config: rustc_codegen_cranelift::BackendConfig { use_jit },
-                })
-            })),
+            if use_clif {
+                Some(Box::new(move |_| {
+                    Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
+                        config: rustc_codegen_cranelift::BackendConfig { use_jit: false },
+                    })
+                }))
+            } else {
+                None
+            },
         )
     });
-    // The extra `\t` is necessary to align this label with the others.
-    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
     std::process::exit(exit_code)
 }

@@ -16,8 +16,8 @@ rm -r sysroot/ 2>/dev/null || true
 
 # Use rustc with cg_clif as hotpluggable backend instead of the custom cg_clif driver so that
 # build scripts are still compiled using cg_llvm.
-export RUSTC=rustc
-export RUSTFLAGS=$RUSTFLAGS" -Ztrim-diagnostic-paths=no -Zcodegen-backend=$(pwd)/../target/"$CHANNEL"/librustc_codegen_cranelift."$dylib_ext" --sysroot $(pwd)/sysroot"
+export RUSTC=$(pwd)/../"target/"$CHANNEL"/cg_clif_build_sysroot"
+export RUSTFLAGS=$RUSTFLAGS" --clif"
 
 # Build libs
 export RUSTFLAGS="$RUSTFLAGS -Zforce-unstable-if-unmarked -Cpanic=abort"
