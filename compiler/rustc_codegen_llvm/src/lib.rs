@@ -23,8 +23,9 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{ErrorReported, FatalError, Handler};
-use rustc_middle::dep_graph::{DepGraph, WorkProduct};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::json;
@@ -274,8 +275,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        dep_graph: &DepGraph,
-    ) -> Result<Box<dyn Any>, ErrorReported> {
+    ) -> Result<(Box<dyn Any>, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -284,13 +284,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             rustc_codegen_ssa::back::write::dump_incremental_data(&codegen_results);
         }
 
-        sess.time("serialize_work_products", move || {
-            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
-        });
-
-        sess.compile_status()?;
-
-        Ok(Box::new(codegen_results))
+        Ok((Box::new(codegen_results), work_products))
     }
 
     fn link(

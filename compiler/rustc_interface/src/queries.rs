@@ -356,10 +356,18 @@ pub struct Linker {
 
 impl Linker {
     pub fn link(self) -> Result<()> {
-        let codegen_results =
-            self.codegen_backend.join_codegen(self.ongoing_codegen, &self.sess, &self.dep_graph)?;
-        let prof = self.sess.prof.clone();
+        let (codegen_results, work_products) =
+            self.codegen_backend.join_codegen(self.ongoing_codegen, &self.sess)?;
+
+        self.sess.compile_status()?;
+
+        let sess = &self.sess;
         let dep_graph = self.dep_graph;
+        sess.time("serialize_work_products", || {
+            rustc_incremental::save_work_product_index(&sess, &dep_graph, work_products)
+        });
+
+        let prof = self.sess.prof.clone();
         prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
 
         if !self
