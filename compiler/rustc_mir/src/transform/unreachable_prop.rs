@@ -44,10 +44,12 @@ impl MirPass<'_> for UnreachablePropagation {
         }
 
         let replaced = !replacements.is_empty();
+        for bb in unreachable_blocks {
+            body.basic_blocks_mut()[bb].statements.clear();
+        }
         for (bb, terminator_kind) in replacements {
             body.basic_blocks_mut()[bb].terminator_mut().kind = terminator_kind;
         }
-
         if replaced {
             simplify::remove_dead_blocks(body);
         }
@@ -64,32 +66,25 @@ where
     let terminator = match *terminator_kind {
         TerminatorKind::Goto { target } if predicate(target) => TerminatorKind::Unreachable,
         TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
-            let original_targets_len = targets.len();
             let (otherwise, targets) = targets.split_last().unwrap();
-            let (mut values, mut targets): (Vec<_>, Vec<_>) =
-                values.iter().zip(targets.iter()).filter(|(_, &t)| !predicate(t)).unzip();
 
             if !predicate(*otherwise) {
-                targets.push(*otherwise);
-            } else {
-                values.pop();
+                return None;
             }
 
-            let retained_targets_len = targets.len();
+            let (values, mut targets): (Vec<_>, Vec<_>) =
+                values.iter().zip(targets.iter()).filter(|(_, &t)| !predicate(t)).unzip();
 
             if targets.is_empty() {
                 TerminatorKind::Unreachable
-            } else if targets.len() == 1 {
-                TerminatorKind::Goto { target: targets[0] }
-            } else if original_targets_len != retained_targets_len {
+            } else {
+                targets.push(*otherwise);
                 TerminatorKind::SwitchInt {
                     discr: discr.clone(),
                     switch_ty,
                     values: Cow::from(values),
                     targets,
                 }
-            } else {
-                return None;
             }
         }
         _ => return None,

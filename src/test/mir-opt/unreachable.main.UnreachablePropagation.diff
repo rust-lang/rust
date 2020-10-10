@@ -27,17 +27,16 @@
   
       bb1: {
           _2 = discriminant(_1);           // scope 0 at $DIR/unreachable.rs:9:12: 9:20
--         switchInt(move _2) -> [1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/unreachable.rs:9:12: 9:20
-+         goto -> bb2;                     // scope 0 at $DIR/unreachable.rs:9:12: 9:20
+          switchInt(move _2) -> [1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/unreachable.rs:9:12: 9:20
       }
   
       bb2: {
           _0 = const ();                   // scope 0 at $DIR/unreachable.rs:9:5: 19:6
           StorageDead(_1);                 // scope 0 at $DIR/unreachable.rs:20:1: 20:2
           return;                          // scope 0 at $DIR/unreachable.rs:20:2: 20:2
--     }
-- 
--     bb3: {
+      }
+  
+      bb3: {
 -         StorageLive(_3);                 // scope 0 at $DIR/unreachable.rs:9:17: 9:19
 -         _3 = move ((_1 as Some).0: Empty); // scope 0 at $DIR/unreachable.rs:9:17: 9:19
 -         StorageLive(_4);                 // scope 1 at $DIR/unreachable.rs:10:13: 10:19
@@ -64,6 +63,7 @@
 -         StorageDead(_5);                 // scope 2 at $DIR/unreachable.rs:16:9: 16:10
 -         StorageLive(_7);                 // scope 2 at $DIR/unreachable.rs:18:9: 18:21
 -         unreachable;                     // scope 2 at $DIR/unreachable.rs:18:15: 18:17
++         unreachable;                     // scope 2 at $DIR/unreachable.rs:12:9: 16:10
       }
   }
   
