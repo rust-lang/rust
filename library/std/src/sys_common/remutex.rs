@@ -2,7 +2,6 @@
 mod tests;
 
 use crate::fmt;
-use crate::marker;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sys::mutex as sys;
@@ -40,7 +39,7 @@ pub struct ReentrantMutexGuard<'a, T: 'a> {
     lock: &'a ReentrantMutex<T>,
 }
 
-impl<T> !marker::Send for ReentrantMutexGuard<'_, T> {}
+impl<T> !Send for ReentrantMutexGuard<'_, T> {}
 
 impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
