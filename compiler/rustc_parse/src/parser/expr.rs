@@ -245,11 +245,7 @@ impl<'a> Parser<'a> {
                 this.parse_assoc_expr_with(prec + prec_adjustment, LhsExpr::NotYetParsed)
             })?;
 
-            // Make sure that the span of the parent node is larger than the span of lhs and rhs,
-            // including the attributes.
-            let lhs_span =
-                lhs.attrs.iter().find(|a| a.style == AttrStyle::Outer).map_or(lhs_span, |a| a.span);
-            let span = lhs_span.to(rhs.span);
+            let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
             lhs = match op {
                 AssocOp::Add
                 | AssocOp::Subtract
@@ -570,7 +566,11 @@ impl<'a> Parser<'a> {
         expr_kind: fn(P<Expr>, P<Ty>) -> ExprKind,
     ) -> PResult<'a, P<Expr>> {
         let mk_expr = |this: &mut Self, rhs: P<Ty>| {
-            this.mk_expr(lhs_span.to(rhs.span), expr_kind(lhs, rhs), AttrVec::new())
+            this.mk_expr(
+                this.mk_expr_sp(&lhs, lhs_span, rhs.span),
+                expr_kind(lhs, rhs),
+                AttrVec::new(),
+            )
         };
 
         // Save the state of the parser before parsing type normally, in case there is a
@@ -2297,5 +2297,15 @@ impl<'a> Parser<'a> {
 
     pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {
         self.mk_expr(span, ExprKind::Err, AttrVec::new())
+    }
+
+    /// Create expression span ensuring the span of the parent node
+    /// is larger than the span of lhs and rhs, including the attributes.
+    fn mk_expr_sp(&self, lhs: &P<Expr>, lhs_span: Span, rhs_span: Span) -> Span {
+        lhs.attrs
+            .iter()
+            .find(|a| a.style == AttrStyle::Outer)
+            .map_or(lhs_span, |a| a.span)
+            .to(rhs_span)
     }
 }
