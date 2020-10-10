@@ -1,13 +1,11 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
+use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
 use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo};
 use crate::config::TargetSelection;
 use crate::tool::{prepare_tool_cargo, SourceType};
 use crate::INTERNER;
-use crate::{
-    builder::{Builder, Kind, RunConfig, ShouldRun, Step},
-};
 use crate::{Compiler, Mode, Subcommand};
 use std::path::PathBuf;
 
