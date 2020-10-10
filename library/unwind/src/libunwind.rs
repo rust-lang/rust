@@ -89,7 +89,7 @@ extern "C" {
 }
 
 cfg_if::cfg_if! {
-if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm"))))] {
+if #[cfg(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm")))] {
     // Not ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
