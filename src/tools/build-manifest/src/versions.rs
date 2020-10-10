@@ -38,23 +38,6 @@ impl PkgType {
         }
     }
 
-    /// The directory containing the `Cargo.toml` of this component inside the monorepo, to
-    /// retrieve the source code version. If `None` is returned Rust's version will be used.
-    fn rust_monorepo_path(&self) -> Option<&'static str> {
-        match self {
-            PkgType::Cargo => Some("src/tools/cargo"),
-            PkgType::Rls => Some("src/tools/rls"),
-            PkgType::RustAnalyzer => Some("src/tools/rust-analyzer/crates/rust-analyzer"),
-            PkgType::Clippy => Some("src/tools/clippy"),
-            PkgType::Rustfmt => Some("src/tools/rustfmt"),
-            PkgType::Miri => Some("src/tools/miri"),
-            PkgType::Rust => None,
-            PkgType::RustSrc => None,
-            PkgType::LlvmTools => None,
-            PkgType::Other(_) => None,
-        }
-    }
-
     /// First part of the tarball name.
     fn tarball_component_name(&self) -> &str {
         match self {
@@ -105,9 +88,7 @@ pub(crate) struct VersionInfo {
 pub(crate) struct Versions {
     channel: String,
     rustc_version: String,
-    monorepo_root: PathBuf,
     dist_path: PathBuf,
-    package_versions: HashMap<PkgType, String>,
     versions: HashMap<PkgType, VersionInfo>,
 }
 
@@ -123,9 +104,7 @@ impl Versions {
                 .context("failed to read the rustc version from src/version")?
                 .trim()
                 .to_string(),
-            monorepo_root: monorepo_root.into(),
             dist_path: dist_path.into(),
-            package_versions: HashMap::new(),
             versions: HashMap::new(),
         })
     }
@@ -204,9 +183,13 @@ impl Versions {
         target: &str,
     ) -> Result<String, Error> {
         let component_name = package.tarball_component_name();
-        let version = self.package_version(package).with_context(|| {
-            format!("failed to get the package version for component {:?}", package,)
-        })?;
+        let version = match self.channel.as_str() {
+            "stable" => self.rustc_version.clone(),
+            "beta" => "beta".into(),
+            "nightly" => "nightly".into(),
+            _ => format!("{}-dev", self.rustc_version),
+        };
+
         if package.target_independent() {
             Ok(format!("{}-{}.tar.gz", component_name, version))
         } else {
@@ -214,39 +197,7 @@ impl Versions {
         }
     }
 
-    pub(crate) fn package_version(&mut self, package: &PkgType) -> Result<String, Error> {
-        match self.package_versions.get(package) {
-            Some(release) => Ok(release.clone()),
-            None => {
-                let version = match package.rust_monorepo_path() {
-                    Some(path) => {
-                        let path = self.monorepo_root.join(path).join("Cargo.toml");
-                        let cargo_toml: CargoToml = toml::from_slice(&std::fs::read(path)?)?;
-                        cargo_toml.package.version
-                    }
-                    None => self.rustc_version.clone(),
-                };
-
-                let release = match self.channel.as_str() {
-                    "stable" => version,
-                    "beta" => "beta".into(),
-                    "nightly" => "nightly".into(),
-                    _ => format!("{}-dev", version),
-                };
-
-                self.package_versions.insert(package.clone(), release.clone());
-                Ok(release)
-            }
-        }
+    pub(crate) fn rustc_version(&self) -> &str {
+        &self.rustc_version
     }
-}
-
-#[derive(serde::Deserialize)]
-struct CargoToml {
-    package: CargoTomlPackage,
-}
-
-#[derive(serde::Deserialize)]
-struct CargoTomlPackage {
-    version: String,
 }
