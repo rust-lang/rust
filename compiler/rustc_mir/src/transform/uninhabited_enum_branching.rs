@@ -3,7 +3,8 @@
 use crate::transform::MirPass;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, TerminatorKind,
+    BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, SwitchTargets,
+    TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -101,21 +102,15 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
 
             trace!("allowed_variants = {:?}", allowed_variants);
 
-            if let TerminatorKind::SwitchInt { values, targets, .. } =
+            if let TerminatorKind::SwitchInt { targets, .. } =
                 &mut body.basic_blocks_mut()[bb].terminator_mut().kind
             {
-                // take otherwise out early
-                let otherwise = targets.pop().unwrap();
-                assert_eq!(targets.len(), values.len());
-                let mut i = 0;
-                targets.retain(|_| {
-                    let keep = allowed_variants.contains(&values[i]);
-                    i += 1;
-                    keep
-                });
-                targets.push(otherwise);
+                let new_targets = SwitchTargets::new(
+                    targets.iter().filter(|(val, _)| allowed_variants.contains(val)),
+                    targets.otherwise(),
+                );
 
-                values.to_mut().retain(|var| allowed_variants.contains(var));
+                *targets = new_targets;
             } else {
                 unreachable!()
             }

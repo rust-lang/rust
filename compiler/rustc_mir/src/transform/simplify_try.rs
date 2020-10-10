@@ -576,15 +576,13 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
             .iter_enumerated()
             .filter_map(|(bb_idx, bb)| {
                 let (discr_switched_on, targets_and_values) = match &bb.terminator().kind {
-                    TerminatorKind::SwitchInt { targets, discr, values, .. } => {
-                        // if values.len() == targets.len() - 1, we need to include None where no value is present
-                        // such that the zip does not throw away targets. If no `otherwise` case is in targets, the zip will simply throw away the added None
-                        let values_extended = values.iter().map(|x|Some(*x)).chain(once(None));
-                        let targets_and_values:Vec<_> = targets.iter().zip(values_extended)
-                            .map(|(target, value)| SwitchTargetAndValue{target:*target, value})
+                    TerminatorKind::SwitchInt { targets, discr, .. } => {
+                        let targets_and_values: Vec<_> = targets.iter()
+                            .map(|(val, target)| SwitchTargetAndValue { target, value: Some(val) })
+                            .chain(once(SwitchTargetAndValue { target: targets.otherwise(), value: None }))
                             .collect();
-                        assert_eq!(targets.len(), targets_and_values.len());
-                        (discr, targets_and_values)},
+                        (discr, targets_and_values)
+                    },
                     _ => return None,
                 };
 

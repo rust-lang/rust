@@ -46,10 +46,13 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     discr: Operand::Copy(ref place) | Operand::Move(ref place),
                     switch_ty,
                     ref targets,
-                    ref values,
                     ..
-                } if targets.len() == 2 && values.len() == 1 && targets[0] != targets[1] => {
-                    (place, values[0], switch_ty, targets[0], targets[1])
+                } if targets.iter().len() == 1 => {
+                    let (value, target) = targets.iter().next().unwrap();
+                    if target == targets.otherwise() {
+                        continue;
+                    }
+                    (place, value, switch_ty, target, targets.otherwise())
                 }
                 // Only optimize switch int statements
                 _ => continue,

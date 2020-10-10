@@ -167,48 +167,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let target_blocks = make_target_blocks(self);
                 // Variants is a BitVec of indexes into adt_def.variants.
                 let num_enum_variants = adt_def.variants.len();
-                let used_variants = variants.count();
                 debug_assert_eq!(target_blocks.len(), num_enum_variants + 1);
                 let otherwise_block = *target_blocks.last().unwrap();
-                let mut targets = Vec::with_capacity(used_variants + 1);
-                let mut values = Vec::with_capacity(used_variants);
                 let tcx = self.hir.tcx();
-                for (idx, discr) in adt_def.discriminants(tcx) {
-                    if variants.contains(idx) {
-                        debug_assert_ne!(
-                            target_blocks[idx.index()],
-                            otherwise_block,
-                            "no canididates for tested discriminant: {:?}",
-                            discr,
-                        );
-                        values.push(discr.val);
-                        targets.push(target_blocks[idx.index()]);
-                    } else {
-                        debug_assert_eq!(
-                            target_blocks[idx.index()],
-                            otherwise_block,
-                            "found canididates for untested discriminant: {:?}",
-                            discr,
-                        );
-                    }
-                }
-                targets.push(otherwise_block);
-                debug!(
-                    "num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
-                    num_enum_variants, values, variants
+                let switch_targets = SwitchTargets::new(
+                    adt_def.discriminants(tcx).filter_map(|(idx, discr)| {
+                        if variants.contains(idx) {
+                            debug_assert_ne!(
+                                target_blocks[idx.index()],
+                                otherwise_block,
+                                "no canididates for tested discriminant: {:?}",
+                                discr,
+                            );
+                            Some((discr.val, target_blocks[idx.index()]))
+                        } else {
+                            debug_assert_eq!(
+                                target_blocks[idx.index()],
+                                otherwise_block,
+                                "found canididates for untested discriminant: {:?}",
+                                discr,
+                            );
+                            None
+                        }
+                    }),
+                    otherwise_block,
                 );
+                debug!("num_enum_variants: {}, variants: {:?}", num_enum_variants, variants);
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
                 self.cfg.push_assign(block, source_info, discr, Rvalue::Discriminant(place));
-                assert_eq!(values.len() + 1, targets.len());
                 self.cfg.terminate(
                     block,
                     source_info,
                     TerminatorKind::SwitchInt {
                         discr: Operand::Move(discr),
                         switch_ty: discr_ty,
-                        values: From::from(values),
-                        targets,
+                        targets: switch_targets,
                     },
                 );
             }
@@ -230,11 +224,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     // The switch may be inexhaustive so we have a catch all block
                     debug_assert_eq!(options.len() + 1, target_blocks.len());
+                    let otherwise_block = *target_blocks.last().unwrap();
+                    let switch_targets = SwitchTargets::new(
+                        options.values().copied().zip(target_blocks),
+                        otherwise_block,
+                    );
                     TerminatorKind::SwitchInt {
                         discr: Operand::Copy(place),
                         switch_ty,
-                        values: options.values().copied().collect(),
-                        targets: target_blocks,
+                        targets: switch_targets,
                     }
                 };
                 self.cfg.terminate(block, source_info, terminator);

@@ -453,7 +453,6 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::SwitchInt {
                         discr,
                         switch_ty,
-                        values: _,
                         targets: _
                     } => {
                         self.visit_operand(discr, location);

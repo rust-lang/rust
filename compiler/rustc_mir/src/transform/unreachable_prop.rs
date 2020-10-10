@@ -7,7 +7,6 @@ use crate::transform::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use std::borrow::Cow;
 
 pub struct UnreachablePropagation;
 
@@ -69,14 +68,15 @@ where
 {
     let terminator = match *terminator_kind {
         TerminatorKind::Goto { target } if predicate(target) => TerminatorKind::Unreachable,
-        TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
-            let original_targets_len = targets.len();
-            let (otherwise, targets) = targets.split_last().unwrap();
-            let (mut values, mut targets): (Vec<_>, Vec<_>) =
-                values.iter().zip(targets.iter()).filter(|(_, &t)| !predicate(t)).unzip();
+        TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
+            let otherwise = targets.otherwise();
 
-            if !predicate(*otherwise) {
-                targets.push(*otherwise);
+            let original_targets_len = targets.iter().len() + 1;
+            let (mut values, mut targets): (Vec<_>, Vec<_>) =
+                targets.iter().filter(|(_, bb)| !predicate(*bb)).unzip();
+
+            if !predicate(otherwise) {
+                targets.push(otherwise);
             } else {
                 values.pop();
             }
@@ -91,8 +91,10 @@ where
                 TerminatorKind::SwitchInt {
                     discr: discr.clone(),
                     switch_ty,
-                    values: Cow::from(values),
-                    targets,
+                    targets: SwitchTargets::new(
+                        values.iter().copied().zip(targets.iter().copied()),
+                        *targets.last().unwrap(),
+                    ),
                 }
             } else {
                 return None;
