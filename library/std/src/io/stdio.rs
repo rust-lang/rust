@@ -754,13 +754,9 @@ pub struct StderrLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    // Note that unlike `stdout()` we don't use `Lazy` here which registers a
-    // destructor. Stderr is not buffered nor does the `stderr_raw` type consume
-    // any owned resources, so there's no need to run any destructors at some
-    // point in the future.
-    //
-    // This has the added benefit of allowing `stderr` to be usable during
-    // process shutdown as well!
+    // Note that unlike `stdout()` we don't use `at_exit` here to register a
+    // destructor. Stderr is not buffered , so there's no need to run a
+    // destructor for flushing the buffer
     static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<StderrRaw>>> = SyncOnceCell::new();
 
     Stderr {
