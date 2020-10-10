@@ -12,6 +12,7 @@ use std::{slice, vec};
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
+use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -1279,6 +1280,28 @@ impl GetDefId for Type {
 }
 
 impl PrimitiveType {
+    pub fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
+        match prim {
+            hir::PrimTy::Int(IntTy::Isize) => PrimitiveType::Isize,
+            hir::PrimTy::Int(IntTy::I8) => PrimitiveType::I8,
+            hir::PrimTy::Int(IntTy::I16) => PrimitiveType::I16,
+            hir::PrimTy::Int(IntTy::I32) => PrimitiveType::I32,
+            hir::PrimTy::Int(IntTy::I64) => PrimitiveType::I64,
+            hir::PrimTy::Int(IntTy::I128) => PrimitiveType::I128,
+            hir::PrimTy::Uint(UintTy::Usize) => PrimitiveType::Usize,
+            hir::PrimTy::Uint(UintTy::U8) => PrimitiveType::U8,
+            hir::PrimTy::Uint(UintTy::U16) => PrimitiveType::U16,
+            hir::PrimTy::Uint(UintTy::U32) => PrimitiveType::U32,
+            hir::PrimTy::Uint(UintTy::U64) => PrimitiveType::U64,
+            hir::PrimTy::Uint(UintTy::U128) => PrimitiveType::U128,
+            hir::PrimTy::Float(FloatTy::F32) => PrimitiveType::F32,
+            hir::PrimTy::Float(FloatTy::F64) => PrimitiveType::F64,
+            hir::PrimTy::Str => PrimitiveType::Str,
+            hir::PrimTy::Bool => PrimitiveType::Bool,
+            hir::PrimTy::Char => PrimitiveType::Char,
+        }
+    }
+
     pub fn from_symbol(s: Symbol) -> Option<PrimitiveType> {
         match s {
             sym::isize => Some(PrimitiveType::Isize),
