@@ -12,13 +12,8 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/issue-65436-raw-ptr-not-send.rs:14:9
    |
 LL |         bar(Foo(std::ptr::null())).await;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: first, await occurs here, with `std::ptr::null()` maybe used later
-  --> $DIR/issue-65436-raw-ptr-not-send.rs:14:9
-   |
-LL |         bar(Foo(std::ptr::null())).await;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...but, `std::ptr::null()` is later dropped here
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ first, await occurs here, with `std::ptr::null()` maybe used later...
+note: `std::ptr::null()` is later dropped here
   --> $DIR/issue-65436-raw-ptr-not-send.rs:14:41
    |
 LL |         bar(Foo(std::ptr::null())).await;

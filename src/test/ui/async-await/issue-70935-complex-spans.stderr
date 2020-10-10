@@ -11,15 +11,8 @@ note: future is not `Send` as this value is used across an await
 LL | /         baz(|| async{
 LL | |             foo(tx.clone());
 LL | |         }).await;
-   | |________________^
-note: first, await occurs here, with the value maybe used later
-  --> $DIR/issue-70935-complex-spans.rs:13:9
-   |
-LL | /         baz(|| async{
-LL | |             foo(tx.clone());
-LL | |         }).await;
-   | |________________^
-note: ...but, the value is later dropped here
+   | |________________^ first, await occurs here, with the value maybe used later...
+note: the value is later dropped here
   --> $DIR/issue-70935-complex-spans.rs:15:17
    |
 LL |         }).await;
