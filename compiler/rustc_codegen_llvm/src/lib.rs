@@ -28,14 +28,12 @@ use rustc_errors::{ErrorReported, FatalError, Handler};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_serialize::json;
-use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
+use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
 use std::any::Any;
 use std::ffi::CStr;
-use std::fs;
 use std::sync::Arc;
 
 mod back {
@@ -275,7 +273,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-    ) -> Result<(Box<dyn Any>, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
+    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -284,31 +282,15 @@ impl CodegenBackend for LlvmCodegenBackend {
             rustc_codegen_ssa::back::write::dump_incremental_data(&codegen_results);
         }
 
-        Ok((Box::new(codegen_results), work_products))
+        Ok((codegen_results, work_products))
     }
 
     fn link(
         &self,
         sess: &Session,
-        codegen_results: Box<dyn Any>,
+        codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
-        let codegen_results = codegen_results
-            .downcast::<CodegenResults>()
-            .expect("Expected CodegenResults, found Box<Any>");
-
-        if sess.opts.debugging_opts.no_link {
-            // FIXME: use a binary format to encode the `.rlink` file
-            let rlink_data = json::encode(&codegen_results).map_err(|err| {
-                sess.fatal(&format!("failed to encode rlink: {}", err));
-            })?;
-            let rlink_file = outputs.with_extension(config::RLINK_EXT);
-            fs::write(&rlink_file, rlink_data).map_err(|err| {
-                sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
-            })?;
-            return Ok(());
-        }
-
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
         sess.time("link_crate", || {

@@ -1,6 +1,6 @@
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
-use crate::ModuleCodegen;
+use crate::{CodegenResults, ModuleCodegen};
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::FxHashMap;
@@ -81,7 +81,7 @@ pub trait CodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-    ) -> Result<(Box<dyn Any>, FxHashMap<WorkProductId, WorkProduct>), ErrorReported>;
+    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported>;
 
     /// This is called on the returned `Box<dyn Any>` from `join_codegen`
     ///
@@ -91,7 +91,7 @@ pub trait CodegenBackend {
     fn link(
         &self,
         sess: &Session,
-        codegen_results: Box<dyn Any>,
+        codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported>;
 }
