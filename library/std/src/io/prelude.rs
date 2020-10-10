@@ -8,7 +8,8 @@
 //! use std::io::prelude::*;
 //! ```
 
-#![stable(feature = "rust1", since = "1.0.0")]
+pub use super::{Read, Write, Seek};
+#[cfg(feature="alloc")] pub use super::BufRead;
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use super::{BufRead, Read, Seek, Write};
+#[cfg(feature="alloc")] pub use alloc::boxed::Box;
+#[cfg(feature="alloc")] pub use alloc::vec::Vec;
