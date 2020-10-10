@@ -689,11 +689,14 @@ impl Step for Sysroot {
     /// 1-3.
     fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
         let compiler = self.compiler;
-        let sysroot = if compiler.stage == 0 {
-            builder.out.join(&compiler.host.triple).join("stage0-sysroot")
+        let sysroot = if builder.kind == Kind::Check {
+            "check-sysroot".to_owned()
+        } else if compiler.stage == 0 {
+            "stage0-sysroot".to_owned()
         } else {
-            builder.out.join(&compiler.host.triple).join(format!("stage{}", compiler.stage))
+            format!("stage{}", compiler.stage)
         };
+        let sysroot = builder.out.join(&compiler.host.triple).join(sysroot);
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
