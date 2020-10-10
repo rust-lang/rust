@@ -25,7 +25,6 @@ use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{
     self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
-use rustc_session::config::nightly_options;
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
@@ -1272,7 +1271,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self.tcx.def_path_str(stable_pick.item.def_id),
                 ));
 
-                if nightly_options::is_nightly_build() {
+                if self.tcx.sess.is_nightly_build() {
                     for (candidate, feature) in unstable_candidates {
                         diag.help(&format!(
                             "add `#![feature({})]` to the crate attributes to enable `{}`",

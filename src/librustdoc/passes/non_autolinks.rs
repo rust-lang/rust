@@ -7,7 +7,6 @@ use core::ops::Range;
 use pulldown_cmark::{Event, LinkType, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
-use rustc_feature::UnstableFeatures;
 use rustc_session::lint;
 
 pub const CHECK_NON_AUTOLINKS: Pass = Pass {
@@ -54,7 +53,7 @@ impl<'a, 'tcx> NonAutolinksLinter<'a, 'tcx> {
 }
 
 pub fn check_non_autolinks(krate: Crate, cx: &DocContext<'_>) -> Crate {
-    if !UnstableFeatures::from_environment().is_nightly_build() {
+    if !cx.tcx.sess.is_nightly_build() {
         krate
     } else {
         let mut coll = NonAutolinksLinter::new(cx);

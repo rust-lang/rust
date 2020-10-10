@@ -1,7 +1,6 @@
 use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
-use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_hir::{HirId, CRATE_HIR_ID};
@@ -70,7 +69,7 @@ pub fn run(options: Options) -> Result<(), ErrorReported> {
         lint_cap: Some(options.lint_cap.clone().unwrap_or_else(|| lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
-        unstable_features: UnstableFeatures::from_environment(),
+        unstable_features: options.render_options.unstable_features,
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
         edition: options.edition,

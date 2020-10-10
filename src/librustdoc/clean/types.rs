@@ -681,7 +681,9 @@ impl Attributes {
                                 }
                                 Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
                                 Some(&(_, _, ExternalLocation::Unknown)) | None => String::from(
-                                    if UnstableFeatures::from_environment().is_nightly_build() {
+                                    // NOTE: intentionally doesn't pass crate name to avoid having
+                                    // different primitive links between crates
+                                    if UnstableFeatures::from_environment(None).is_nightly_build() {
                                         "https://doc.rust-lang.org/nightly"
                                     } else {
                                         "https://doc.rust-lang.org"

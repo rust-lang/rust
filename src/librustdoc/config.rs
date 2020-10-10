@@ -253,6 +253,7 @@ pub struct RenderOptions {
     pub document_private: bool,
     /// Document items that have `doc(hidden)`.
     pub document_hidden: bool,
+    pub unstable_features: rustc_feature::UnstableFeatures,
 }
 
 /// Temporary storage for data obtained during `RustdocVisitor::clean()`.
@@ -295,7 +296,7 @@ impl Options {
                 println_condition(p.condition);
             }
 
-            if nightly_options::is_nightly_build() {
+            if nightly_options::match_is_nightly_build(matches) {
                 println!("\nPasses run with `--show-coverage`:");
                 for p in passes::COVERAGE_PASSES {
                     print!("{:>20}", p.pass.name);
@@ -479,6 +480,7 @@ impl Options {
             &matches.opt_strs("html-after-content"),
             &matches.opt_strs("markdown-before-content"),
             &matches.opt_strs("markdown-after-content"),
+            nightly_options::match_is_nightly_build(&matches),
             &diag,
             &mut id_map,
             edition,
@@ -535,7 +537,9 @@ impl Options {
         let output_format = match matches.opt_str("output-format") {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
                 Ok(o) => {
-                    if o.is_json() && !(show_coverage || nightly_options::is_nightly_build()) {
+                    if o.is_json()
+                        && !(show_coverage || nightly_options::match_is_nightly_build(matches))
+                    {
                         diag.struct_err("json output format isn't supported for doc generation")
                             .emit();
                         return Err(1);
@@ -586,7 +590,6 @@ impl Options {
 
         Ok(Options {
             input,
-            crate_name,
             proc_macro_crate,
             error_format,
             libs,
@@ -637,7 +640,11 @@ impl Options {
                 generate_search_filter,
                 document_private,
                 document_hidden,
+                unstable_features: rustc_feature::UnstableFeatures::from_environment(
+                    crate_name.as_deref(),
+                ),
             },
+            crate_name,
             output_format,
         })
     }
@@ -655,7 +662,8 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
             if *flag == "output-format"
-                && (matches.opt_present("show-coverage") || nightly_options::is_nightly_build())
+                && (matches.opt_present("show-coverage")
+                    || nightly_options::match_is_nightly_build(matches))
             {
                 continue;
             }

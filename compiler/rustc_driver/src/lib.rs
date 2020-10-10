@@ -20,7 +20,7 @@ use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorReported, PResult};
-use rustc_feature::{find_gated_cfg, UnstableFeatures};
+use rustc_feature::find_gated_cfg;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{self, collect_crate_types, get_builtin_codegen_backend};
 use rustc_interface::{interface, Queries};
@@ -746,9 +746,6 @@ impl RustcDefaultCalls {
                     }
                 }
                 Cfg => {
-                    let allow_unstable_cfg =
-                        UnstableFeatures::from_environment().is_nightly_build();
-
                     let mut cfgs = sess
                         .parse_sess
                         .config
@@ -763,7 +760,7 @@ impl RustcDefaultCalls {
                             // it, this is intended to get into Cargo and then go
                             // through to build scripts.
                             if (name != sym::target_feature || value != Some(sym::crt_dash_static))
-                                && !allow_unstable_cfg
+                                && !sess.is_nightly_build()
                                 && find_gated_cfg(|cfg_sym| cfg_sym == name).is_some()
                             {
                                 return None;
@@ -814,14 +811,14 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
     }
 }
 
-fn usage(verbose: bool, include_unstable_options: bool) {
+fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     let groups = if verbose { config::rustc_optgroups() } else { config::rustc_short_optgroups() };
     let mut options = getopts::Options::new();
     for option in groups.iter().filter(|x| include_unstable_options || x.is_stable()) {
         (option.apply)(&mut options);
     }
     let message = "Usage: rustc [OPTIONS] INPUT";
-    let nightly_help = if nightly_options::is_nightly_build() {
+    let nightly_help = if nightly_build {
         "\n    -Z help             Print unstable compiler options"
     } else {
         ""
@@ -831,7 +828,7 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    let at_path = if verbose && nightly_options::is_nightly_build() {
+    let at_path = if verbose && nightly_build {
         "    @path               Read newline separated options from `path`\n"
     } else {
         ""
@@ -1034,7 +1031,9 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
-        usage(false, false);
+        let nightly_build =
+            rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build();
+        usage(false, false, nightly_build);
         return None;
     }
 
@@ -1063,7 +1062,9 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
-        usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
+        let unstable_enabled = nightly_options::is_unstable_enabled(&matches);
+        let nightly_build = nightly_options::match_is_nightly_build(&matches);
+        usage(matches.opt_present("verbose"), unstable_enabled, nightly_build);
         return None;
     }
 
