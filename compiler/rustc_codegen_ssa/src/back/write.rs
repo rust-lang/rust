@@ -13,7 +13,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
-use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{DiagnosticId, FatalError, Handler, Level};
@@ -414,7 +413,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let sess = tcx.sess;
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let no_builtins = tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
     let is_compiler_builtins =
         tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::compiler_builtins);
@@ -463,7 +461,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     OngoingCodegen {
         backend,
         crate_name,
-        crate_hash,
         metadata,
         windows_subsystem,
         linker_info,
@@ -1720,7 +1717,6 @@ impl SharedEmitterMain {
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
     pub crate_name: Symbol,
-    pub crate_hash: Svh,
     pub metadata: EncodedMetadata,
     pub windows_subsystem: Option<String>,
     pub linker_info: LinkerInfo,
@@ -1766,7 +1762,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         (
             CodegenResults {
                 crate_name: self.crate_name,
-                crate_hash: self.crate_hash,
                 metadata: self.metadata,
                 windows_subsystem: self.windows_subsystem,
                 linker_info: self.linker_info,

@@ -325,10 +325,6 @@ impl CodegenBackend for LlvmCodegenBackend {
             );
         });
 
-        // Now that we won't touch anything in the incremental compilation directory
-        // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(sess, codegen_results.crate_hash);
-
         sess.time("llvm_dump_timing_file", || {
             if sess.opts.debugging_opts.llvm_time_trace {
                 llvm_util::time_trace_profiler_finish("llvm_timings.json");
