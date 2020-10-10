@@ -227,5 +227,5 @@ struct OptimizationInfo<'tcx> {
     /// Either Eq or Ne
     op: BinOp,
     /// Current targets used in the switch
-    targets: SwitchTargets<'tcx>,
+    targets: SwitchTargets,
 }

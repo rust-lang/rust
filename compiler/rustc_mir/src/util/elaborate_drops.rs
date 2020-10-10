@@ -760,8 +760,6 @@ where
         let elem_size = Place::from(self.new_temp(tcx.types.usize));
         let len = Place::from(self.new_temp(tcx.types.usize));
 
-        static USIZE_SWITCH_ZERO: &[u128; 1] = &[0];
-
         let base_block = BasicBlockData {
             statements: vec![
                 self.assign(elem_size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
@@ -774,7 +772,7 @@ where
                     discr: move_(elem_size),
                     switch_ty: tcx.types.usize,
                     targets: SwitchTargets::static_if(
-                        USIZE_SWITCH_ZERO,
+                        0,
                         self.drop_loop_pair(ety, false, len),
                         self.drop_loop_pair(ety, true, len),
                     ),

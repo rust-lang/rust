@@ -196,7 +196,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mut bx: Bx,
         discr: &mir::Operand<'tcx>,
         switch_ty: Ty<'tcx>,
-        targets: &SwitchTargets<'tcx>,
+        targets: &SwitchTargets,
     ) {
         let discr = self.codegen_operand(&mut bx, &discr);
         // `switch_ty` is redundant, sanity-check that.

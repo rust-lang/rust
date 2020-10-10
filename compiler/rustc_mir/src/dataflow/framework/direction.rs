@@ -514,7 +514,7 @@ impl Direction for Forward {
 
 struct SwitchIntEdgeEffectApplier<'a, D, F> {
     exit_state: &'a mut D,
-    targets: &'a SwitchTargets<'a>,
+    targets: &'a SwitchTargets,
     propagate: F,
 
     effects_applied: bool,

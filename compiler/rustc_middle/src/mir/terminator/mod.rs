@@ -1,6 +1,7 @@
 use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use smallvec::{smallvec, SmallVec};
 
 use super::{
     AssertMessage, BasicBlock, InlineAsmOperand, Operand, Place, SourceInfo, Successors,
@@ -17,10 +18,10 @@ use std::slice;
 pub use super::query::*;
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
-pub struct SwitchTargets<'tcx> {
+pub struct SwitchTargets {
     /// Possible values. The locations to branch to in each case
     /// are found in the corresponding indices from the `targets` vector.
-    values: Cow<'tcx, [u128]>,
+    values: SmallVec<[u128; 1]>,
 
     /// Possible branch sites. The last element of this vector is used
     /// for the otherwise branch, so targets.len() == values.len() + 1
@@ -34,24 +35,24 @@ pub struct SwitchTargets<'tcx> {
     //
     // However we’ve decided to keep this as-is until we figure a case
     // where some other approach seems to be strictly better than other.
-    targets: Vec<BasicBlock>,
+    targets: SmallVec<[BasicBlock; 2]>,
 }
 
-impl<'tcx> SwitchTargets<'tcx> {
+impl SwitchTargets {
     /// Creates switch targets from an iterator of values and target blocks.
     ///
     /// The iterator may be empty, in which case the `SwitchInt` instruction is equivalent to
     /// `goto otherwise;`.
     pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
-        let (values, mut targets): (Vec<_>, Vec<_>) = targets.unzip();
+        let (values, mut targets): (SmallVec<_>, SmallVec<_>) = targets.unzip();
         targets.push(otherwise);
         Self { values: values.into(), targets }
     }
 
     /// Builds a switch targets definition that jumps to `then` if the tested value equals `value`,
     /// and to `else_` if not.
-    pub fn static_if(value: &'static [u128; 1], then: BasicBlock, else_: BasicBlock) -> Self {
-        Self { values: Cow::Borrowed(value), targets: vec![then, else_] }
+    pub fn static_if(value: u128, then: BasicBlock, else_: BasicBlock) -> Self {
+        Self { values: smallvec![value], targets: smallvec![then, else_] }
     }
 
     /// Returns the fallback target that is jumped to when none of the values match the operand.
@@ -113,7 +114,7 @@ pub enum TerminatorKind<'tcx> {
         /// FIXME: remove this redundant information. Currently, it is relied on by pretty-printing.
         switch_ty: Ty<'tcx>,
 
-        targets: SwitchTargets<'tcx>,
+        targets: SwitchTargets,
     },
 
     /// Indicates that the landing pad is finished and unwinding should
@@ -295,7 +296,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         TerminatorKind::SwitchInt {
             discr: cond,
             switch_ty: tcx.types.bool,
-            targets: SwitchTargets::static_if(&[0], f, t),
+            targets: SwitchTargets::static_if(0, f, t),
         }
     }
 
