@@ -43,7 +43,7 @@ impl RemoveNoopLandingPads {
                     // These are all nops in a landing pad
                 }
 
-                StatementKind::Assign(box (place, Rvalue::Use(_))) => {
+                StatementKind::Assign(box (place, Rvalue::Use(_) | Rvalue::Discriminant(_))) => {
                     if place.as_local().is_some() {
                         // Writing to a local (e.g., a drop flag) does not
                         // turn a landing pad to a non-nop
