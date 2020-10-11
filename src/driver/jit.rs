@@ -5,6 +5,7 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 
 use rustc_codegen_ssa::CrateInfo;
+use rustc_middle::mir::mono::MonoItem;
 
 use cranelift_simplejit::{SimpleJITBuilder, SimpleJITModule};
 
@@ -73,12 +74,26 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
             super::predefine_mono_items(&mut cx, &mono_items);
             for (mono_item, (linkage, visibility)) in mono_items {
                 let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-                super::codegen_mono_item(&mut cx, mono_item, linkage);
+                match mono_item {
+                    MonoItem::Fn(inst) => {
+                        cx.tcx.sess.time("codegen fn", || {
+                            crate::base::codegen_fn(&mut cx, inst, linkage)
+                        });
+                    }
+                    MonoItem::Static(def_id) => {
+                        crate::constant::codegen_static(&mut cx.constants_cx, def_id)
+                    }
+                    MonoItem::GlobalAsm(hir_id) => {
+                        let item = cx.tcx.hir().expect_item(hir_id);
+                        tcx.sess
+                            .span_fatal(item.span, "Global asm is not supported in JIT mode");
+                    }
+                }
             }
             tcx.sess.time("finalize CodegenCx", || cx.finalize())
         });
     if !global_asm.is_empty() {
-        tcx.sess.fatal("Global asm is not supported in JIT mode");
+        tcx.sess.fatal("Inline asm is not supported in JIT mode");
     }
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context, true);
     crate::allocator::codegen(tcx, &mut jit_module, &mut unwind_context);

@@ -8,7 +8,7 @@ use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::EncodedMetadata;
-use rustc_middle::mir::mono::CodegenUnit;
+use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{DebugInfo, OutputType};
 
@@ -148,7 +148,25 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     super::predefine_mono_items(&mut cx, &mono_items);
     for (mono_item, (linkage, visibility)) in mono_items {
         let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-        super::codegen_mono_item(&mut cx, mono_item, linkage);
+        match mono_item {
+            MonoItem::Fn(inst) => {
+                cx.tcx.sess.time("codegen fn", || {
+                    crate::base::codegen_fn(&mut cx, inst, linkage)
+                });
+            }
+            MonoItem::Static(def_id) => {
+                crate::constant::codegen_static(&mut cx.constants_cx, def_id)
+            }
+            MonoItem::GlobalAsm(hir_id) => {
+                let item = cx.tcx.hir().expect_item(hir_id);
+                if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
+                    cx.global_asm.push_str(&*asm.as_str());
+                    cx.global_asm.push_str("\n\n");
+                } else {
+                    bug!("Expected GlobalAsm found {:?}", item);
+                }
+            }
+        }
     }
     let (mut module, global_asm, debug, mut unwind_context) =
         tcx.sess.time("finalize CodegenCx", || cx.finalize());
