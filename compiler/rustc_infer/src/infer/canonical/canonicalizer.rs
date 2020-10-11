@@ -107,38 +107,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             &mut query_state,
         )
     }
-
-    /// A hacky variant of `canonicalize_query` that does not
-    /// canonicalize `'static`. Unfortunately, the existing leak
-    /// check treats `'static` differently in some cases (see also
-    /// #33684), so if we are performing an operation that may need to
-    /// prove "leak-check" related things, we leave `'static`
-    /// alone.
-    ///
-    /// `'static` is also special cased when winnowing candidates when
-    /// selecting implementation candidates, so we also have to leave `'static`
-    /// alone for queries that do selection.
-    //
-    // FIXME(#48536): once the above issues are resolved, we can remove this
-    // and just use `canonicalize_query`.
-    pub fn canonicalize_hr_query_hack<V>(
-        &self,
-        value: &V,
-        query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
-    where
-        V: TypeFoldable<'tcx>,
-    {
-        self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
-
-        Canonicalizer::canonicalize(
-            value,
-            Some(self),
-            self.tcx,
-            &CanonicalizeFreeRegionsOtherThanStatic,
-            query_state,
-        )
-    }
 }
 
 /// Controls how we canonicalize "free regions" that are not inference
@@ -247,26 +215,6 @@ impl CanonicalizeRegionMode for CanonicalizeAllFreeRegions {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         canonicalizer.canonical_var_for_region_in_root_universe(r)
-    }
-
-    fn any(&self) -> bool {
-        true
-    }
-}
-
-struct CanonicalizeFreeRegionsOtherThanStatic;
-
-impl CanonicalizeRegionMode for CanonicalizeFreeRegionsOtherThanStatic {
-    fn canonicalize_free_region(
-        &self,
-        canonicalizer: &mut Canonicalizer<'_, 'tcx>,
-        r: ty::Region<'tcx>,
-    ) -> ty::Region<'tcx> {
-        if let ty::ReStatic = r {
-            r
-        } else {
-            canonicalizer.canonical_var_for_region_in_root_universe(r)
-        }
     }
 
     fn any(&self) -> bool {

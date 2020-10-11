@@ -163,9 +163,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
                 // so we cannot canonicalize it.
-                let c_data = self
-                    .infcx
-                    .canonicalize_hr_query_hack(&self.param_env.and(*data), &mut orig_values);
+                let c_data =
+                    self.infcx.canonicalize_query(&self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 match tcx.normalize_projection_ty(c_data) {

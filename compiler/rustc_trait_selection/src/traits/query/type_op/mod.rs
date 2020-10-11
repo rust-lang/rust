@@ -76,13 +76,8 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + 'tcx {
             return Ok(result);
         }
 
-        // FIXME(#33684) -- We need to use
-        // `canonicalize_hr_query_hack` here because of things
-        // like the subtype query, which go awry around
-        // `'static` otherwise.
         let mut canonical_var_values = OriginalQueryValues::default();
-        let canonical_self =
-            infcx.canonicalize_hr_query_hack(&query_key, &mut canonical_var_values);
+        let canonical_self = infcx.canonicalize_query(&query_key, &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
 
         let param_env = query_key.param_env;
