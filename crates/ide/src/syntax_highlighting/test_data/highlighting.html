@@ -62,7 +62,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword">impl</span> <span class="struct">Foo</span> <span class="punctuation">{</span>
     <span class="keyword">fn</span> <span class="function declaration">baz</span><span class="punctuation">(</span><span class="keyword">mut</span> <span class="self_keyword mutable">self</span><span class="punctuation">,</span> <span class="value_param declaration">f</span><span class="punctuation">:</span> <span class="struct">Foo</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="punctuation">{</span>
-        <span class="value_param">f</span><span class="punctuation">.</span><span class="function consuming">baz</span><span class="punctuation">(</span><span class="self_keyword consuming">self</span><span class="punctuation">)</span>
+        <span class="value_param">f</span><span class="punctuation">.</span><span class="function consuming">baz</span><span class="punctuation">(</span><span class="self_keyword mutable consuming">self</span><span class="punctuation">)</span>
     <span class="punctuation">}</span>
 
     <span class="keyword">fn</span> <span class="function declaration">qux</span><span class="punctuation">(</span><span class="operator">&</span><span class="keyword">mut</span> <span class="self_keyword mutable">self</span><span class="punctuation">)</span> <span class="punctuation">{</span>

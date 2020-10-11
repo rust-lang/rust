@@ -107,7 +107,10 @@ impl ExprCollector<'_> {
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
                         name: name![self],
-                        mode: BindingAnnotation::Unannotated,
+                        mode: BindingAnnotation::new(
+                            self_param.mut_token().is_some() && self_param.amp_token().is_none(),
+                            false,
+                        ),
                         subpat: None,
                     },
                     Either::Right(ptr),
