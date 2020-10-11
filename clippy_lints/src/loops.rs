@@ -293,9 +293,24 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for empty `loop` expressions.
     ///
-    /// **Why is this bad?** Those busy loops burn CPU cycles without doing
-    /// anything. Think of the environment and either block on something or at least
-    /// make the thread sleep for some microseconds.
+    /// **Why is this bad?** These busy loops burn CPU cycles without doing
+    /// anything. It is _almost always_ a better idea to `panic!` than to have
+    /// a busy loop.
+    ///
+    /// If panicking isn't possible, think of the environment and either:
+    ///   - block on something
+    ///   - sleep the thread for some microseconds
+    ///   - yield or pause the thread
+    ///
+    /// For `std` targets, this can be done with
+    /// [`std::thread::sleep`](https://doc.rust-lang.org/std/thread/fn.sleep.html)
+    /// or [`std::thread::yield_now`](https://doc.rust-lang.org/std/thread/fn.yield_now.html).
+    ///
+    /// For `no_std` targets, doing this is more complicated, especially because
+    /// `#[panic_handler]`s can't panic. To stop/pause the thread, you will
+    /// probably need to invoke some target-specific intrinsic. Examples include:
+    ///   - [`x86_64::instructions::hlt`](https://docs.rs/x86_64/0.12.2/x86_64/instructions/fn.hlt.html)
+    ///   - [`cortex_m::asm::wfi`](https://docs.rs/cortex-m/0.6.3/cortex_m/asm/fn.wfi.html)
     ///
     /// **Known problems:** None.
     ///
@@ -502,13 +517,15 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // (even if the "match" or "if let" is used for declaration)
         if let ExprKind::Loop(ref block, _, LoopSource::Loop) = expr.kind {
             // also check for empty `loop {}` statements
+            // TODO(issue #6161): Enable for no_std crates (outside of #[panic_handler])
             if block.stmts.is_empty() && block.expr.is_none() && !is_no_std_crate(cx.tcx.hir().krate()) {
-                span_lint(
+                span_lint_and_help(
                     cx,
                     EMPTY_LOOP,
                     expr.span,
-                    "empty `loop {}` detected. You may want to either use `panic!()` or add \
-                     `std::thread::sleep(..);` to the loop body.",
+                    "empty `loop {}` wastes CPU cycles",
+                    None,
+                    "You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.",
                 );
             }
 
