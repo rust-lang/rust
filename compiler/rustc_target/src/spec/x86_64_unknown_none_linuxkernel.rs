@@ -14,8 +14,11 @@ pub fn target() -> Target {
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
 
     Target {
-        // FIXME: Some dispute, the linux-on-clang folks think this should use "Linux"
-        llvm_target: "x86_64-elf".to_string(),
+        // FIXME: Some dispute, the linux-on-clang folks think this should use
+        // "Linux". We disagree because running *on* Linux is nothing like
+        // running *as" linux, and historically the "os" component as has always
+        // been used to mean the "on" part.
+        llvm_target: "x86_64-unknown-none-elf".to_string(),
         pointer_width: 64,
         data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
             .to_string(),

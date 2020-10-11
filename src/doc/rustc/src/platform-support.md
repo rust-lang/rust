@@ -217,13 +217,13 @@ target | std | host | notes
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 `x86_64-apple-tvos` | * | | x86 64-bit tvOS
-`x86_64-linux-kernel` | * |  | Linux kernel modules
+`x86_64-unknown-none-linuxkernel` | * |  | Linux kernel modules
 `x86_64-sun-solaris` | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos
 `x86_64-pc-windows-msvc` | ✓ |  | 64-bit Windows XP support
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 `x86_64-unknown-hermit` | ? |  |
-`x86_64-unknown-hermit-kernel` | ? |  | HermitCore kernel
+`x86_64-unknown-none-hermitkernel` | ? |  | HermitCore kernel
 `x86_64-unknown-l4re-uclibc` | ? |  |
 `x86_64-unknown-openbsd` | ✓ | ✓ | 64-bit OpenBSD
 `x86_64-unknown-uefi` | ? |  |
