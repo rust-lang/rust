@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::ty::query::Query;
+use crate::ty::query::{on_disk_cache, Query};
 use crate::ty::tls::{self, ImplicitCtxt};
 use crate::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
@@ -13,17 +13,21 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level};
+use rustc_serialize::opaque;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
 #[derive(Copy, Clone)]
-pub struct QueryCtxt<'tcx>(pub TyCtxt<'tcx>);
+pub struct QueryCtxt<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub queries: &'tcx super::Queries<'tcx>,
+}
 
 impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
     type Target = TyCtxt<'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.tcx
     }
 }
 
@@ -34,7 +38,7 @@ impl HasDepContext for QueryCtxt<'tcx> {
 
     #[inline]
     fn dep_context(&self) -> &Self::DepContext {
-        &self.0
+        &self.tcx
     }
 }
 
@@ -49,7 +53,7 @@ impl QueryContext for QueryCtxt<'tcx> {
     }
 
     fn def_path_str(&self, def_id: DefId) -> String {
-        self.0.def_path_str(def_id)
+        self.tcx.def_path_str(def_id)
     }
 
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>> {
@@ -142,6 +146,28 @@ impl<'tcx> QueryCtxt<'tcx> {
             err
         })
     }
+
+    pub(super) fn encode_query_results(
+        self,
+        encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
+        query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+    ) -> opaque::FileEncodeResult {
+        macro_rules! encode_queries {
+            ($($query:ident,)*) => {
+                $(
+                    on_disk_cache::encode_query_results::<ty::query::queries::$query<'_>>(
+                        self,
+                        encoder,
+                        query_result_index
+                    )?;
+                )*
+            }
+        }
+
+        rustc_cached_queries!(encode_queries!);
+
+        Ok(())
+    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -174,7 +200,10 @@ impl<'tcx> TyCtxt<'tcx> {
                             "#{} [{}] {}",
                             i,
                             query_info.info.query.name(),
-                            query_info.info.query.describe(QueryCtxt(icx.tcx))
+                            query_info
+                                .info
+                                .query
+                                .describe(QueryCtxt { tcx: icx.tcx, queries: icx.tcx.queries })
                         ),
                     );
                     diag.span =
@@ -537,7 +566,7 @@ macro_rules! define_queries_struct {
         }
 
         impl<$tcx> Queries<$tcx> {
-            pub(crate) fn new(
+            pub fn new(
                 providers: IndexVec<CrateNum, Providers>,
                 fallback_extern_providers: Providers,
             ) -> Self {
@@ -564,16 +593,32 @@ macro_rules! define_queries_struct {
                 Some(jobs)
             }
 
+            #[cfg(parallel_compiler)]
+            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
+                let tcx = QueryCtxt { tcx, queries: self };
+                rustc_query_system::query::deadlock(tcx, registry)
+            }
+
+            pub(crate) fn encode_query_results(
+                &'tcx self,
+                tcx: TyCtxt<'tcx>,
+                encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
+                query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+            ) -> opaque::FileEncodeResult {
+                let tcx = QueryCtxt { tcx, queries: self };
+                tcx.encode_query_results(encoder, query_result_index)
+            }
+
             $($(#[$attr])*
             #[inline(always)]
             fn $name(
-                &self,
+                &'tcx self,
                 tcx: TyCtxt<$tcx>,
                 span: Span,
                 key: query_keys::$name<$tcx>,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<$tcx>> {
-                let qcx = QueryCtxt(tcx);
+                let qcx = QueryCtxt { tcx, queries: self };
                 get_query::<queries::$name<$tcx>, _>(qcx, span, key, mode)
             })*
         }

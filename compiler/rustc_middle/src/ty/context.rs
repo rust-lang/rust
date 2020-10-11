@@ -14,7 +14,7 @@ use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
-use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
+use crate::ty::query::{self, OnDiskCache, Queries, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
@@ -968,7 +968,7 @@ pub struct GlobalCtxt<'tcx> {
     /// This is `None` if we are not incremental compilation mode
     pub(crate) on_disk_cache: Option<OnDiskCache<'tcx>>,
 
-    pub queries: query::Queries<'tcx>,
+    pub queries: &'tcx Queries<'tcx>,
 
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -1108,14 +1108,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_global_ctxt(
         s: &'tcx Session,
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
-        local_providers: ty::query::Providers,
-        extern_providers: ty::query::Providers,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         krate: &'tcx hir::Crate<'tcx>,
         definitions: &'tcx Definitions,
         dep_graph: DepGraph,
         on_disk_cache: Option<query::OnDiskCache<'tcx>>,
+        queries: &'tcx Queries<'tcx>,
         crate_name: &str,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1127,10 +1126,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
         let cstore = resolutions.cstore;
-        let crates = cstore.crates_untracked();
-        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
-        let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
-        providers[LOCAL_CRATE] = local_providers;
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (hir_id, v) in krate.trait_map.iter() {
@@ -1160,7 +1155,7 @@ impl<'tcx> TyCtxt<'tcx> {
             untracked_crate: krate,
             definitions,
             on_disk_cache,
-            queries: query::Queries::new(providers, extern_providers),
+            queries,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
             selection_cache: Default::default(),

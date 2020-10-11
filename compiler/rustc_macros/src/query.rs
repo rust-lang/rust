@@ -373,10 +373,9 @@ fn add_query_description_impl(
             quote! {
                 #[inline]
                 fn try_load_from_disk(
-                    tcx: QueryCtxt<'tcx>,
-                    id: SerializedDepNodeIndex
+                    #tcx: QueryCtxt<'tcx>,
+                    #id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
-                    let (#tcx, #id) = (*tcx, id);
                     #block
                 }
             }
@@ -413,11 +412,10 @@ fn add_query_description_impl(
             #[inline]
             #[allow(unused_variables, unused_braces)]
             fn cache_on_disk(
-                tcx: QueryCtxt<'tcx>,
-                key: &Self::Key,
-                value: Option<&Self::Value>
+                #tcx: QueryCtxt<'tcx>,
+                #key: &Self::Key,
+                #value: Option<&Self::Value>
             ) -> bool {
-                let (#tcx, #key, #value) = (*tcx, key, value);
                 #expr
             }
 

@@ -259,7 +259,7 @@ pub mod dep_kind {
 
                     if let Some(key) = recover(tcx, dep_node) {
                         force_query::<queries::$variant<'_>, _>(
-                            QueryCtxt(tcx),
+                            QueryCtxt { tcx, queries: tcx.queries },
                             key,
                             DUMMY_SP,
                             *dep_node
@@ -285,7 +285,8 @@ pub mod dep_kind {
                                      .unwrap_or(false));
 
                     let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                    if queries::$variant::cache_on_disk(QueryCtxt(tcx), &key, None) {
+                    let qcx = QueryCtxt { tcx, queries: tcx.queries };
+                    if queries::$variant::cache_on_disk(qcx, &key, None) {
                         let _ = tcx.$variant(key);
                     }
                 }

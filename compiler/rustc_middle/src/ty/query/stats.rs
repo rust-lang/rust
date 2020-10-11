@@ -1,5 +1,4 @@
 use crate::ty::query::{queries, Query, QueryCtxt};
-use crate::ty::TyCtxt;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_query_system::query::{QueryAccessors, QueryCache, QueryState};
 
@@ -64,7 +63,7 @@ where
     stats
 }
 
-pub fn print_stats(tcx: TyCtxt<'_>) {
+pub fn print_stats(tcx: QueryCtxt<'_>) {
     let queries = query_stats(tcx);
 
     if cfg!(debug_assertions) {
@@ -123,7 +122,7 @@ macro_rules! print_stats {
     (<$tcx:tt>
         $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,)*
     ) => {
-        fn query_stats(tcx: TyCtxt<'_>) -> Vec<QueryStats> {
+        fn query_stats(tcx: QueryCtxt<'_>) -> Vec<QueryStats> {
             let mut queries = Vec::new();
 
             $(

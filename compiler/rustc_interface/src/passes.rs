@@ -15,11 +15,13 @@ use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
+use rustc_index::vec::IndexVec;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::ty::query;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -731,19 +733,26 @@ pub static DEFAULT_EXTERN_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|
     extern_providers
 });
 
-pub struct QueryContext<'tcx>(&'tcx GlobalCtxt<'tcx>);
+pub struct QueryContext<'tcx> {
+    gcx: &'tcx GlobalCtxt<'tcx>,
+    queries: &'tcx query::Queries<'tcx>,
+}
 
 impl<'tcx> QueryContext<'tcx> {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        let icx = ty::tls::ImplicitCtxt::new(self.0);
+        let icx = ty::tls::ImplicitCtxt::new(self.gcx);
         ty::tls::enter_context(&icx, |_| f(icx.tcx))
     }
 
     pub fn print_stats(&mut self) {
-        self.enter(ty::query::print_stats)
+        let icx = ty::tls::ImplicitCtxt::new(self.gcx);
+        ty::tls::enter_context(&icx, |_| {
+            let qcx = query::QueryCtxt { tcx: icx.tcx, queries: self.queries };
+            ty::query::print_stats(qcx)
+        })
     }
 }
 
@@ -755,6 +764,7 @@ pub fn create_global_ctxt<'tcx>(
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
+    queries: &'tcx OnceCell<query::Queries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
@@ -778,26 +788,33 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
+    let queries = {
+        let crates = resolver_outputs.cstore.crates_untracked();
+        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
+        providers[LOCAL_CRATE] = local_providers;
+        queries.get_or_init(|| query::Queries::new(providers, extern_providers))
+    };
+
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(|| {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,
-                local_providers,
-                extern_providers,
                 arena,
                 resolver_outputs,
                 krate,
                 defs,
                 dep_graph,
                 query_result_on_disk_cache,
+                queries,
                 &crate_name,
                 &outputs,
             )
         })
     });
 
-    QueryContext(gcx)
+    QueryContext { gcx, queries }
 }
 
 /// Runs the resolution, type-checking, region checking and other
