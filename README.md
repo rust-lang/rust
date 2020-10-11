@@ -113,7 +113,7 @@ error: unsupported operation: can't call foreign function: bind
 
 ### Cross-interpretation: running for different targets
 
-Miri cannot just run a binary or test suite for your host target, it can also
+Miri can not only run a binary or test suite for your host target, it can also
 perform cross-interpretation for arbitrary foreign targets: `cargo miri run
 --target x86_64-unknown-linux-gnu` will run your program as if it was a Linux
 program, no matter your host OS.  This is particularly useful if you are using
