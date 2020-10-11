@@ -17,6 +17,7 @@ use rustc_hir::{ExprKind, Node, QPath};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
+use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{self, MultiSpan, Span};
@@ -515,6 +516,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Type check a `let` statement.
     pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
+        // Check for destructuring assignment.
+        match local.source {
+            hir::LocalSource::AssignDesugar(eq_sign_span)
+                if !self.tcx.features().destructuring_assignment =>
+            {
+                feature_err(
+                    &self.tcx.sess.parse_sess,
+                    sym::destructuring_assignment,
+                    eq_sign_span,
+                    "destructuring assignments are unstable",
+                )
+                .span_label(local.pat.span, "cannot assign to this expression")
+                .emit();
+            }
+            _ => {}
+        }
+
         // Determine and write the type which we'll check the pattern against.
         let ty = self.local_ty(local.span, local.hir_id).decl_ty;
         self.write_ty(local.hir_id, ty);

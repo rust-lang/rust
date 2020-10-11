@@ -44,15 +44,6 @@ LL |     if Some(foo) = bar {}
    |        ^^^^^^^^^^^^^^^ expected `bool`, found `()`
 
 error[E0308]: mismatched types
-  --> $DIR/if-let-typo.rs:9:12
-   |
-LL |     if 3 = foo {}
-   |            ^^^ expected integer, found enum `Option`
-   |
-   = note: expected type `{integer}`
-              found enum `Option<{integer}>`
-
-error[E0308]: mismatched types
   --> $DIR/if-let-typo.rs:9:8
    |
 LL |     if 3 = foo {}
@@ -64,7 +55,7 @@ LL |     if let 3 = foo {}
    |        ^^^
 
 error[E0658]: destructuring assignments are unstable
-  --> $DIR/if-let-typo.rs:11:16
+  --> $DIR/if-let-typo.rs:10:16
    |
 LL |     if Some(3) = foo {}
    |        ------- ^
@@ -75,7 +66,7 @@ LL |     if Some(3) = foo {}
    = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/if-let-typo.rs:11:16
+  --> $DIR/if-let-typo.rs:10:16
    |
 LL |     if Some(3) = foo {}
    |             -  ^
@@ -83,12 +74,12 @@ LL |     if Some(3) = foo {}
    |             cannot assign to this expression
 
 error[E0308]: mismatched types
-  --> $DIR/if-let-typo.rs:11:8
+  --> $DIR/if-let-typo.rs:10:8
    |
 LL |     if Some(3) = foo {}
    |        ^^^^^^^^^^^^^ expected `bool`, found `()`
 
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0070, E0308, E0425, E0658.
 For more information about an error, try `rustc --explain E0070`.

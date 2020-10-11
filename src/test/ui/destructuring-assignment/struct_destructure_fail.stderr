@@ -29,6 +29,15 @@ error[E0027]: pattern does not mention field `b`
    |
 LL |     Struct { a, _ } = Struct { a: 1, b: 2 };
    |     ^^^^^^^^^^^^^^^ missing field `b`
+   |
+help: include the missing field in the pattern
+   |
+LL |     Struct { a, b, _ } = Struct { a: 1, b: 2 };
+   |               ^^^
+help: if you don't care about this missing field, you can explicitely ignore it
+   |
+LL |     Struct { a, .., _ } = Struct { a: 1, b: 2 };
+   |               ^^^^
 
 error: aborting due to 5 previous errors
 
