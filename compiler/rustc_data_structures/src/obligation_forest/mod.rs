@@ -149,8 +149,8 @@ pub struct ObligationForest<O: ForestObligation> {
     /// comments in `process_obligation` for details.
     active_cache: FxHashMap<O::CacheKey, usize>,
 
-    /// A vector reused in compress(), to avoid allocating new vectors.
-    node_rewrites: Vec<usize>,
+    /// A vector reused in compress() and find_cycles_from_node(), to avoid allocating new vectors.
+    reused_node_vec: Vec<usize>,
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
 
@@ -289,7 +289,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             nodes: vec![],
             done_cache: Default::default(),
             active_cache: Default::default(),
-            node_rewrites: vec![],
+            reused_node_vec: vec![],
             obligation_tree_id_generator: (0..).map(ObligationTreeId),
             error_cache: Default::default(),
         }
@@ -544,12 +544,11 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Report cycles between all `Success` nodes, and convert all `Success`
     /// nodes to `Done`. This must be called after `mark_successes`.
-    fn process_cycles<P>(&self, processor: &mut P)
+    fn process_cycles<P>(&mut self, processor: &mut P)
     where
         P: ObligationProcessor<Obligation = O>,
     {
-        let mut stack = vec![];
-
+        let mut stack = std::mem::take(&mut self.reused_node_vec);
         for (index, node) in self.nodes.iter().enumerate() {
             // For some benchmarks this state test is extremely hot. It's a win
             // to handle the no-op cases immediately to avoid the cost of the
@@ -560,6 +559,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
 
         debug_assert!(stack.is_empty());
+        self.reused_node_vec = stack;
     }
 
     fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, index: usize)
@@ -594,7 +594,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     #[inline(never)]
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
         let orig_nodes_len = self.nodes.len();
-        let mut node_rewrites: Vec<_> = std::mem::take(&mut self.node_rewrites);
+        let mut node_rewrites: Vec<_> = std::mem::take(&mut self.reused_node_vec);
         debug_assert!(node_rewrites.is_empty());
         node_rewrites.extend(0..orig_nodes_len);
         let mut dead_nodes = 0;
@@ -655,7 +655,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
 
         node_rewrites.truncate(0);
-        self.node_rewrites = node_rewrites;
+        self.reused_node_vec = node_rewrites;
 
         if do_completed == DoCompleted::Yes { Some(removed_done_obligations) } else { None }
     }
