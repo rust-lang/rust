@@ -76,6 +76,7 @@ pub mod dropck;
 mod expectation;
 mod expr;
 mod fn_ctxt;
+mod fn_ctxt_impl;
 mod gather_locals;
 mod generator_interior;
 mod inherited;
@@ -97,6 +98,7 @@ pub use check::{check_item_type, check_wf_new};
 pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::FnCtxt;
+pub use fn_ctxt_impl::*;
 pub use inherited::{Inherited, InheritedBuilder};
 
 use crate::astconv::AstConv;
