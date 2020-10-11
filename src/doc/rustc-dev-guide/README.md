@@ -100,11 +100,10 @@ New-Item -Path .git/hooks/pre-commit -ItemType HardLink -Value <absolute_path/to
 We use `mdbook-linkcheck` to validate URLs included in our documentation. To perform link checks, uncomment the `[output.linkcheck]` field in the `book.toml` configuration file and install `mdbook-linkcheck` with:
 
 ```bash
-> cargo install mdbook-linkcheck --git https://github.com/Michael-F-Bryan/mdbook-linkcheck --rev 14441d77646d58cea8ffc32fde9ea33b2bedb1a2
+> cargo install mdbook-linkcheck
 ```
 
-Note that we use an alpha version of `mdbook-linkcheck` to be able to use a feature that hasn't landed in a release yet.
-You will also need `mdbook` version `>= 0.3.5`.
+You will need `mdbook` version `>= 0.3.5` and `mdbook-linkcheck` version `>= 0.7.1` to check links.
 `linkcheck` will be run automatically when you build with the instructions in the section above.
 
 **Please note**: You may receive errors like the following when link checks are active on local `mdbook` builds:
@@ -118,7 +117,7 @@ error: The server responded with 429 Too Many Requests for "https://github.com/r
    │ ^ Server responded with 429 Too Many Requests
 ```
 
-There is not a workaround for this error at the moment.  Comment out the `[output.linkcheck]` field in the `book.toml` using the build instructions above to complete a local site build without link validations.
+There is not a workaround for this error at the moment. Comment out the `[output.linkcheck]` field in the `book.toml` using the build instructions above to complete a local site build without link validations.
 
 
 ## How to fix toolstate failures

@@ -12,7 +12,7 @@ before_install:
 install:
 - source ~/.cargo/env || true
 - cargo install mdbook --version '^0.4.3'
-- cargo install mdbook-linkcheck --git https://github.com/Michael-F-Bryan/mdbook-linkcheck --rev 14441d77646d58cea8ffc32fde9ea33b2bedb1a2
+- cargo install mdbook-linkcheck --version '^0.7.1'
 script:
 - git checkout -b ci
 - git rebase origin/master
