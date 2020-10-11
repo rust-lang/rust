@@ -6,11 +6,10 @@ fn closure_to_loc() {
 
 fn closure_from_match() {
     let x = match 1usize {
-        1 => |c| c + 1,
+        1 => |c| c + 1, //~ ERROR type annotations needed
         2 => |c| c - 1,
         _ => |c| c - 1
     };
-    //~^^^^ ERROR type annotations needed
 }
 
 fn main() { }

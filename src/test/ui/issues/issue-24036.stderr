@@ -11,11 +11,16 @@ LL |     x = |c| c + 1;
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
 
-error[E0282]: type annotations needed
-  --> $DIR/issue-24036.rs:9:15
+error[E0282]: type annotations needed for `fn(_) -> _`
+  --> $DIR/issue-24036.rs:9:18
    |
 LL |         1 => |c| c + 1,
-   |               ^ consider giving this closure parameter a type
+   |                  ^ cannot infer type
+   |
+help: consider giving this binding the explicit type `fn(_) -> _`, with the type parameters specified
+   |
+LL |     let x: fn(_) -> _ = match 1usize {
+   |          ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

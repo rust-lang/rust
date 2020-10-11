@@ -21,6 +21,18 @@ mod b {
     }
 }
 
+mod c {
+    fn foo() {
+        let _x = vec![1, 2, 3].into_iter().collect(); //~ ERROR type annotations needed
+    }
+    fn bar() {
+        let _x = vec!["a", "b", "c"].into_iter().collect(); //~ ERROR type annotations needed
+    }
+    fn qux() {
+        let _x = vec!['a', 'b', 'c'].into_iter().collect(); //~ ERROR type annotations needed
+    }
+}
+
 trait T: Sized {
     fn new() -> Self;
 }

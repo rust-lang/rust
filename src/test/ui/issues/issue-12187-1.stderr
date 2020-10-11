@@ -1,10 +1,10 @@
 error[E0282]: type annotations needed for `&T`
-  --> $DIR/issue-12187-1.rs:6:10
+  --> $DIR/issue-12187-1.rs:6:14
    |
 LL |     let &v = new();
-   |          ^ cannot infer type
+   |              ^^^ cannot infer type for type parameter `T` declared on the function `new`
    |
-help: consider giving this binding the explicit type `&T`, with the type parameters specified
+help: consider giving this binding the explicit type `&T`, where the type parameter `T` is specified
    |
 LL |     let &v: &T = new();
    |           ^^^^

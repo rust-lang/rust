@@ -1,3 +1,3 @@
 fn main() {
-    let x = "hello".chars().rev().collect(); //~ ERROR E0282
+    None; //~ ERROR E0282
 }

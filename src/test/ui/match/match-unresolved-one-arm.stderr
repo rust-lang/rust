@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
-  --> $DIR/match-unresolved-one-arm.rs:4:9
+  --> $DIR/match-unresolved-one-arm.rs:5:15
    |
-LL |     let x = match () {
-   |         ^ cannot infer type
+LL |         () => foo()
+   |               ^^^ cannot infer type for type parameter `T` declared on the function `foo`
    |
 help: consider giving this binding a type
    |

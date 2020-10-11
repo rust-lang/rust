@@ -1,17 +1,4 @@
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
-  --> $DIR/issue-5883.rs:7:15
-   |
-LL | fn new_struct(r: dyn A + 'static)
-   |               ^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
-   = help: unsized locals are gated as an unstable feature
-help: function arguments must have a statically known size, borrowed types always have a known size
-   |
-LL | fn new_struct(r: &dyn A + 'static)
-   |                  ^
-
-error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/issue-5883.rs:8:8
    |
 LL |     -> Struct {
@@ -23,6 +10,19 @@ LL |     Struct { r: r }
    = help: within `Struct`, the trait `Sized` is not implemented for `(dyn A + 'static)`
    = note: required because it appears within the type `Struct`
    = note: the return type of a function must have a statically known size
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/issue-5883.rs:7:15
+   |
+LL | fn new_struct(r: dyn A + 'static)
+   |               ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+   = help: unsized locals are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn new_struct(r: &dyn A + 'static)
+   |                  ^
 
 error: aborting due to 2 previous errors
 

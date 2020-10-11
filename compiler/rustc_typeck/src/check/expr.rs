@@ -813,7 +813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
         let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
 
-        self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
+        self.require_type_is_sized_deferred(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
         if lhs_ty.references_error() || rhs_ty.references_error() {
             self.tcx.ty_error()
