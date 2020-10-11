@@ -14,7 +14,7 @@ pub use self::caches::{
 mod config;
 pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};
 
-use crate::dep_graph::{DepContext, DepGraph};
+use crate::dep_graph::DepContext;
 use crate::query::job::QueryMap;
 
 use rustc_data_structures::stable_hasher::HashStable;
@@ -31,9 +31,6 @@ pub trait QueryContext: DepContext {
 
     /// Get string representation from DefPath.
     fn def_path_str(&self, def_id: DefId) -> String;
-
-    /// Access the DepGraph.
-    fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
 
     /// Get the query information from the TLS context.
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;

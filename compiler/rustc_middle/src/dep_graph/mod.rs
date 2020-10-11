@@ -111,6 +111,11 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
             || self.sess.opts.debugging_opts.query_dep_graph
     }
 
+    #[inline]
+    fn dep_graph(&self) -> &DepGraph {
+        &self.dep_graph
+    }
+
     fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
         // FIXME: This match is just a workaround for incremental bugs and should
         // be removed. https://github.com/rust-lang/rust/issues/62649 is one such

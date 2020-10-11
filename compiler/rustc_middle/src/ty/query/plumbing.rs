@@ -2,7 +2,6 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::DepGraph;
 use crate::ty::query::Query;
 use crate::ty::tls::{self, ImplicitCtxt};
 use crate::ty::{self, TyCtxt};
@@ -28,10 +27,6 @@ impl QueryContext for TyCtxt<'tcx> {
 
     fn def_path_str(&self, def_id: DefId) -> String {
         TyCtxt::def_path_str(*self, def_id)
-    }
-
-    fn dep_graph(&self) -> &DepGraph {
-        &self.dep_graph
     }
 
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>> {
