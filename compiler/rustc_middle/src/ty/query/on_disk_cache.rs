@@ -133,7 +133,7 @@ struct Footer {
     foreign_def_path_hashes: UnhashMap<DefPathHash, RawDefId>,
 }
 
-type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
+pub type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 type EncodedDiagnosticsIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 type EncodedDiagnostics = Vec<Diagnostic>;
 
@@ -141,7 +141,7 @@ type EncodedDiagnostics = Vec<Diagnostic>;
 struct SourceFileIndex(u32);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
-struct AbsoluteBytePos(u32);
+pub struct AbsoluteBytePos(u32);
 
 impl AbsoluteBytePos {
     fn new(pos: usize) -> AbsoluteBytePos {
@@ -308,22 +308,7 @@ impl<'sess> OnDiskCache<'sess> {
             tcx.sess.time("encode_query_results", || -> FileEncodeResult {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-
-                macro_rules! encode_queries {
-                    ($($query:ident,)*) => {
-                        $(
-                            encode_query_results::<ty::query::queries::$query<'_>>(
-                                QueryCtxt(tcx),
-                                enc,
-                                qri
-                            )?;
-                        )*
-                    }
-                }
-
-                rustc_cached_queries!(encode_queries!);
-
-                Ok(())
+                tcx.queries.encode_query_results(tcx, enc, qri)
             })?;
 
             // Encode diagnostics.
@@ -973,7 +958,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Span] {
 
 //- ENCODING -------------------------------------------------------------------
 
-trait OpaqueEncoder: Encoder {
+pub trait OpaqueEncoder: Encoder {
     fn position(&self) -> usize;
 }
 
@@ -985,7 +970,7 @@ impl OpaqueEncoder for FileEncoder {
 }
 
 /// An encoder that can write to the incremental compilation cache.
-struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
+pub struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     tcx: TyCtxt<'tcx>,
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -1230,7 +1215,7 @@ impl<'a> Decodable<opaque::Decoder<'a>> for IntEncodedWithFixedSize {
     }
 }
 
-fn encode_query_results<'a, 'tcx, Q>(
+pub fn encode_query_results<'a, 'tcx, Q>(
     tcx: QueryCtxt<'tcx>,
     encoder: &mut CacheEncoder<'a, 'tcx, FileEncoder>,
     query_result_index: &mut EncodedQueryResultIndex,
