@@ -103,7 +103,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 
 // extract the stability index for a node from tcx, if possible
 pub fn get_stability(cx: &DocContext<'_>, def_id: DefId) -> Option<Stability> {
-    cx.tcx.lookup_stability(def_id).clean(cx)
+    cx.tcx.lookup_stability(def_id).cloned()
 }
 
 pub fn get_deprecation(cx: &DocContext<'_>, def_id: DefId) -> Option<Deprecation> {
