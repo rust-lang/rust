@@ -2006,6 +2006,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "map_unit_fn",
     },
     Lint {
+        name: "result_unit_err",
+        group: "style",
+        desc: "public function returning `Result` with an `Err` type of `()`",
+        deprecation: None,
+        module: "functions",
+    },
+    Lint {
         name: "reversed_empty_ranges",
         group: "correctness",
         desc: "reversing the limits of range expressions, resulting in empty ranges",
