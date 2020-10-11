@@ -250,7 +250,7 @@ macro_rules! query_helper_param_ty {
 macro_rules! define_queries {
     (<$tcx:tt>
      $($(#[$attr:meta])*
-        [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*) => {
+        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
 
         use std::mem;
         use crate::{
@@ -356,7 +356,7 @@ macro_rules! define_queries {
         impl<$tcx> QueryAccessors<TyCtxt<$tcx>> for queries::$name<$tcx> {
             const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
-            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
+            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
 
             type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
 

@@ -121,7 +121,7 @@ pub fn print_stats(tcx: TyCtxt<'_>) {
 
 macro_rules! print_stats {
     (<$tcx:tt>
-        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*
+        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,)*
     ) => {
         fn query_stats(tcx: TyCtxt<'_>) -> Vec<QueryStats> {
             let mut queries = Vec::new();

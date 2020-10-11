@@ -490,7 +490,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             // Add the query to the group
             query_stream.extend(quote! {
                 #(#doc_comments)*
-                [#attribute_stream] fn #name: #name(#arg) #result,
+                [#attribute_stream] fn #name(#arg) #result,
             });
 
             // Create a dep node for the query
