@@ -598,6 +598,9 @@ declare_features! (
     /// Allows `#[instruction_set(_)]` attribute
     (active, isa_attribute, "1.48.0", Some(74727), None),
 
+    /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
+    (active, capture_disjoint_fields, "1.49.0", Some(53488), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -618,6 +621,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_trait_bound_opt_out,
     sym::lazy_normalization_consts,
     sym::specialization,
+    sym::capture_disjoint_fields,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
