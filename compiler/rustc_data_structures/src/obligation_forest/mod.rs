@@ -526,7 +526,6 @@ impl<O: ForestObligation> ObligationForest<O> {
             let node = &self.nodes[index];
             let state = node.state.get();
             if state == NodeState::Success {
-                node.state.set(NodeState::Waiting);
                 // This call site is cold.
                 self.uninlined_mark_dependents_as_waiting(node);
             } else {
@@ -538,6 +537,8 @@ impl<O: ForestObligation> ObligationForest<O> {
     // This never-inlined function is for the cold call site.
     #[inline(never)]
     fn uninlined_mark_dependents_as_waiting(&self, node: &Node<O>) {
+        // Mark node Waiting in the cold uninlined code instead of the hot inlined
+        node.state.set(NodeState::Waiting);
         self.inlined_mark_dependents_as_waiting(node)
     }
 
