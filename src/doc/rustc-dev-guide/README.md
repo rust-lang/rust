@@ -103,10 +103,10 @@ We use `mdbook-linkcheck` to validate URLs included in our documentation. To per
 > cargo install mdbook-linkcheck
 ```
 
-You will need `mdbook` version `>= 0.3.5` and `mdbook-linkcheck` version `>= 0.7.1` to check links.
+You will need recent versions of `mdbook` and `mdbook-linkcheck` to check links.
 `linkcheck` will be run automatically when you build with the instructions in the section above.
 
-**Please note**: You may receive errors like the following when link checks are active on local `mdbook` builds:
+**Please note**: You may receive errors like the following when link-checking is enabled on local `mdbook` builds:
 
 ```
 error: The server responded with 429 Too Many Requests for "https://github.com/rust-lang/rust/tree/master/src/tools/compiletest"
