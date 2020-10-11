@@ -68,20 +68,15 @@ fn codegen_mono_item<'tcx, M: Module>(
     mono_item: MonoItem<'tcx>,
     linkage: Linkage,
 ) {
-    let tcx = cx.tcx;
     match mono_item {
         MonoItem::Fn(inst) => {
-            let _inst_guard =
-                crate::PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).name));
-            debug_assert!(!inst.substs.needs_infer());
-            tcx.sess
+            cx.tcx
+                .sess
                 .time("codegen fn", || crate::base::codegen_fn(cx, inst, linkage));
         }
-        MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(&mut cx.constants_cx, def_id);
-        }
+        MonoItem::Static(def_id) => crate::constant::codegen_static(&mut cx.constants_cx, def_id),
         MonoItem::GlobalAsm(hir_id) => {
-            let item = tcx.hir().expect_item(hir_id);
+            let item = cx.tcx.hir().expect_item(hir_id);
             if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
                 cx.global_asm.push_str(&*asm.as_str());
                 cx.global_asm.push_str("\n\n");

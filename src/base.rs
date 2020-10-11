@@ -12,6 +12,10 @@ pub(crate) fn codegen_fn<'tcx>(
 ) {
     let tcx = cx.tcx;
 
+    let _inst_guard =
+        crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
+    debug_assert!(!instance.substs.needs_infer());
+
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
