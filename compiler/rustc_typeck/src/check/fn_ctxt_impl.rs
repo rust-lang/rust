@@ -54,9 +54,6 @@ use std::mem::replace;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn sess(&self) -> &Session {
-        &self.tcx.sess
-    }
 
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
@@ -88,14 +85,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             }
         }
-    }
-
-    pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
-        ObligationCause::new(span, self.body_id, code)
-    }
-
-    pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
-        self.cause(span, ObligationCauseCode::MiscObligation)
     }
 
     /// Resolves type and const variables in `ty` if possible. Unlike the infcx

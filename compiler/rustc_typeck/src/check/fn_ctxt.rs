@@ -11,7 +11,9 @@ use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
+use rustc_session::Session;
 use rustc_span::{self, Span};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
@@ -104,8 +106,6 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) inh: &'a Inherited<'a, 'tcx>,
 }
 
-// FIXME: This impl is for functions which access the (private) `err_count_on_creation` field.
-// It looks like that field will be changed soon and so this solution may end up being temporary.
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn new(
         inh: &'a Inherited<'a, 'tcx>,
@@ -132,6 +132,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             inh,
         }
     }
+
+    pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
+        ObligationCause::new(span, self.body_id, code)
+    }
+
+    pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
+        self.cause(span, ObligationCauseCode::MiscObligation)
+    }
+
+    pub fn sess(&self) -> &Session {
+        &self.tcx.sess
+    }
+
     pub fn errors_reported_since_creation(&self) -> bool {
         self.tcx.sess.err_count() > self.err_count_on_creation
     }
