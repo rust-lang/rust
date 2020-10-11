@@ -6,7 +6,6 @@ macro_rules! implement {
             ceil = $ceil_intrinsic:literal,
             round = $round_intrinsic:literal,
             trunc = $trunc_intrinsic:literal,
-            round_to_int = $round_to_int_intrinsic:literal,
         }
     } => {
         mod $type {
@@ -20,8 +19,6 @@ macro_rules! implement {
                 fn round_intrinsic(x: crate::$type) -> crate::$type;
                 #[link_name = $trunc_intrinsic]
                 fn trunc_intrinsic(x: crate::$type) -> crate::$type;
-                #[link_name = $round_to_int_intrinsic]
-                fn round_to_int_intrinsic(x: crate::$type) -> crate::$int_type;
             }
 
             impl crate::$type {
@@ -60,11 +57,24 @@ macro_rules! implement {
                     self - self.trunc()
                 }
 
-                /// Returns the nearest integer to each lane. Round half-way cases away from 0.0.
-                #[must_use = "method returns a new vector and does not mutate the original value"]
+                /// Rounds toward zero and converts to the same-width integer type, assuming that
+                /// the value is finite and fits in that type.
+                ///
+                /// # Safety
+                /// The value must:
+                ///
+                /// * Not be NaN
+                /// * Not be infinite
+                /// * Be representable in the return type, after truncating off its fractional part
                 #[inline]
-                pub fn round_to_int(self) -> crate::$int_type {
-                    unsafe { round_to_int_intrinsic(self) }
+                pub unsafe fn to_int_unchecked(self) -> crate::$int_type {
+                    crate::intrinsics::simd_cast(self)
+                }
+
+                /// Returns the nearest integer to each lane. Round half-way cases away from 0.0.
+                #[inline]
+                pub fn round_from_int(value: crate::$int_type) -> Self {
+                    unsafe { crate::intrinsics::simd_cast(value) }
                 }
             }
         }
@@ -78,7 +88,6 @@ implement! {
         ceil = "llvm.ceil.v2f32",
         round = "llvm.round.v2f32",
         trunc = "llvm.trunc.v2f32",
-        round_to_int = "llvm.lround.i32.v2f32",
     }
 }
 
@@ -89,7 +98,6 @@ implement! {
         ceil = "llvm.ceil.v4f32",
         round = "llvm.round.v4f32",
         trunc = "llvm.trunc.v4f32",
-        round_to_int = "llvm.lround.i32.v4f32",
     }
 }
 
@@ -100,7 +108,6 @@ implement! {
         ceil = "llvm.ceil.v8f32",
         round = "llvm.round.v8f32",
         trunc = "llvm.trunc.v8f32",
-        round_to_int = "llvm.lround.i32.v8f32",
     }
 }
 
@@ -111,7 +118,6 @@ implement! {
         ceil = "llvm.ceil.v16f32",
         round = "llvm.round.v16f32",
         trunc = "llvm.trunc.v16f32",
-        round_to_int = "llvm.lround.i32.v16f32",
     }
 }
 
@@ -122,7 +128,6 @@ implement! {
         ceil = "llvm.ceil.v2f64",
         round = "llvm.round.v2f64",
         trunc = "llvm.trunc.v2f64",
-        round_to_int = "llvm.lround.i64.v2f64",
     }
 }
 
@@ -133,7 +138,6 @@ implement! {
         ceil = "llvm.ceil.v4f64",
         round = "llvm.round.v4f64",
         trunc = "llvm.trunc.v4f64",
-        round_to_int = "llvm.lround.i64.v4f64",
     }
 }
 
@@ -144,6 +148,5 @@ implement! {
         ceil = "llvm.ceil.v8f64",
         round = "llvm.round.v8f64",
         trunc = "llvm.trunc.v8f64",
-        round_to_int = "llvm.lround.i64.v8f64",
     }
 }
