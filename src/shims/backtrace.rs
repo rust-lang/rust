@@ -101,8 +101,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let num_fields = dest.layout.layout.fields.count();
 
         if !(4..=5).contains(&num_fields) {
-            // Always mention 5 fields, since the 4-field struct is only supported
-            // for backwards compatiblity. New code should declare 5 fields.
+            // Always mention 5 fields, since the 4-field struct
+            // is deprecated and slated for removal.
             throw_ub_format!("bad declaration of miri_resolve_frame - should return a struct with 5 fields");
         }
 
@@ -133,6 +133,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.write_scalar(lineno_alloc, this.mplace_field(dest, 2)?.into())?;
         this.write_scalar(colno_alloc, this.mplace_field(dest, 3)?.into())?;
 
+        // Support a 4-field struct for now - this is deprecated
+        // and slated for removal.
         if num_fields == 5 {
             this.write_scalar(fn_ptr, this.mplace_field(dest, 4)?.into())?;
         }
