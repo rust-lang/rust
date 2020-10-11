@@ -1766,7 +1766,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_never(&self) -> bool {
-        matches!(self.kind(), Never)
+        *self.kind() == Never
     }
 
     /// Checks whether a type is definitely uninhabited. This is
@@ -2019,7 +2019,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_char(&self) -> bool {
-        matches!(self.kind(), Char)
+        *self.kind() == Char
     }
 
     #[inline]
