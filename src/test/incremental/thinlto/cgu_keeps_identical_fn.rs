@@ -1,6 +1,7 @@
-// This test checks that the LTO phase is re-done for CGUs that import something
-// via ThinLTO and that imported thing changes while the definition of the CGU
-// stays untouched.
+// This test is almost identical to `cgu_invalided_via_import`, except that
+// the two versions of `inline_fn` are identical. Neither version of `inlined_fn`
+// ends up with any spans in its LLVM bitecode, so LLVM is able to skip
+// re-building any modules which import 'inlined_fn'
 
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -O
@@ -9,17 +10,17 @@
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
 
-#![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-foo",
+#![rustc_expected_cgu_reuse(module="cgu_keeps_identical_fn-foo",
                             cfg="cfail2",
                             kind="no")]
-#![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-foo",
+#![rustc_expected_cgu_reuse(module="cgu_keeps_identical_fn-foo",
                             cfg="cfail3",
                             kind="post-lto")]
 
-#![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-bar",
+#![rustc_expected_cgu_reuse(module="cgu_keeps_identical_fn-bar",
                             cfg="cfail2",
-                            kind="pre-lto")]
-#![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-bar",
+                            kind="post-lto")]
+#![rustc_expected_cgu_reuse(module="cgu_keeps_identical_fn-bar",
                             cfg="cfail3",
                             kind="post-lto")]
 
@@ -33,9 +34,7 @@ mod foo {
 
     #[cfg(not(cfail1))]
     pub fn inlined_fn() -> u32 {
-        // See `cgu_keeps_identical_fn.rs` for why this is different
-        // from the other version of this function.
-        12345
+        1234
     }
 }
 
