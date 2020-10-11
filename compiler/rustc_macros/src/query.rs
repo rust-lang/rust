@@ -421,7 +421,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
-    let mut dep_node_force_stream = quote! {};
     let mut try_load_from_on_disk_cache_stream = quote! {};
     let mut cached_queries = quote! {};
 
@@ -498,32 +497,9 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 [#attribute_stream] #name(#arg),
             });
 
-            // Add a match arm to force the query given the dep node
-            dep_node_force_stream.extend(quote! {
-                ::rustc_middle::dep_graph::DepKind::#name => {
-                    if <#arg as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
-                        if let Some(key) = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node) {
-                            force_query::<crate::ty::query::queries::#name<'_>, _>(
-                                $tcx,
-                                key,
-                                DUMMY_SP,
-                                *$dep_node
-                            );
-                            return true;
-                        }
-                    }
-                }
-            });
-
             add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
     }
-
-    dep_node_force_stream.extend(quote! {
-        ::rustc_middle::dep_graph::DepKind::Null => {
-            bug!("Cannot force dep node: {:?}", $dep_node)
-        }
-    });
 
     TokenStream::from(quote! {
         macro_rules! rustc_query_append {
@@ -543,15 +519,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
                     #dep_node_def_stream
                 );
-            }
-        }
-        macro_rules! rustc_dep_node_force {
-            ([$dep_node:expr, $tcx:expr] $($other:tt)*) => {
-                match $dep_node.kind {
-                    $($other)*
-
-                    #dep_node_force_stream
-                }
             }
         }
         macro_rules! rustc_cached_queries {

@@ -168,20 +168,43 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
         return false;
     }
 
-    rustc_dep_node_force!([dep_node, tcx]
-        // These are inputs that are expected to be pre-allocated and that
-        // should therefore always be red or green already.
-        DepKind::CrateMetadata |
+    macro_rules! force_from_dep_node {
+        ($($(#[$attr:meta])* [$($modifiers:tt)*] $name:ident($K:ty),)*) => {
+            match dep_node.kind {
+                // These are inputs that are expected to be pre-allocated and that
+                // should therefore always be red or green already.
+                DepKind::CrateMetadata |
 
-        // These are anonymous nodes.
-        DepKind::TraitSelect |
+                // These are anonymous nodes.
+                DepKind::TraitSelect |
 
-        // We don't have enough information to reconstruct the query key of
-        // these.
-        DepKind::CompileCodegenUnit => {
-            bug!("force_from_dep_node: encountered {:?}", dep_node)
+                // We don't have enough information to reconstruct the query key of
+                // these.
+                DepKind::CompileCodegenUnit |
+
+                // Forcing this makes no sense.
+                DepKind::Null => {
+                    bug!("force_from_dep_node: encountered {:?}", dep_node)
+                }
+
+                $(DepKind::$name => {
+                    debug_assert!(<$K as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key());
+
+                    if let Some(key) = <$K as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node) {
+                        force_query::<queries::$name<'_>, _>(
+                            tcx,
+                            key,
+                            DUMMY_SP,
+                            *dep_node
+                        );
+                        return true;
+                    }
+                })*
+            }
         }
-    );
+    }
+
+    rustc_dep_node_append! { [force_from_dep_node!][] }
 
     false
 }
