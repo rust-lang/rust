@@ -708,7 +708,7 @@ fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, 
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
-pub fn get_parent_expr<'c>(cx: &'c LateContext<'_>, e: &Expr<'_>) -> Option<&'c Expr<'c>> {
+pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     let map = &cx.tcx.hir();
     let hir_id = e.hir_id;
     let parent_id = map.get_parent_node(hir_id);
