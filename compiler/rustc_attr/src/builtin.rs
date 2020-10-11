@@ -9,6 +9,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
+use std::cmp;
 use std::num::NonZeroU32;
 use version_check::Version;
 
@@ -154,12 +155,25 @@ pub struct ConstStability {
 }
 
 /// The available stability levels.
-#[derive(Encodable, Decodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
     Stable { since: Symbol },
+}
+
+impl cmp::PartialOrd for StabilityLevel {
+    // This only take into account stability, not any fields.
+    // Therefore it is only `PartialOrd` and not `Ord`.
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        match (self, other) {
+            (Self::Unstable { .. }, Self::Unstable { .. }) => Some(cmp::Ordering::Equal),
+            (Self::Stable { .. }, Self::Stable { .. }) => Some(cmp::Ordering::Equal),
+            (Self::Unstable { .. }, Self::Stable { .. }) => Some(cmp::Ordering::Less),
+            (Self::Stable { .. }, Self::Unstable { .. }) => Some(cmp::Ordering::Greater),
+        }
+    }
 }
 
 impl StabilityLevel {

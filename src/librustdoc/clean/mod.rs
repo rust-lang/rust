@@ -19,7 +19,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
 use rustc_middle::middle::resolve_lifetime as rl;
-use rustc_middle::middle::stability;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
@@ -274,7 +273,7 @@ impl Clean<Item> for doctree::Module<'_> {
             attrs,
             source: span.clean(cx),
             visibility: self.vis.clean(cx),
-            stability: cx.stability(self.id).clean(cx),
+            stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             inner: ModuleItem(Module { is_crate: self.is_crate, items }),
@@ -2397,24 +2396,9 @@ impl Clean<Item> for doctree::ProcMacro<'_> {
     }
 }
 
-impl Clean<Stability> for attr::Stability {
-    fn clean(&self, _: &DocContext<'_>) -> Stability {
-        Stability {
-            level: stability::StabilityLevel::from_attr_level(&self.level),
-            feature: self.feature.to_string(),
-            since: match self.level {
-                attr::Stable { ref since } => since.to_string(),
-                _ => String::new(),
-            },
-            unstable_reason: match self.level {
-                attr::Unstable { reason: Some(ref reason), .. } => Some(reason.to_string()),
-                _ => None,
-            },
-            issue: match self.level {
-                attr::Unstable { issue, .. } => issue,
-                _ => None,
-            },
-        }
+impl Clean<attr::Stability> for attr::Stability {
+    fn clean(&self, _: &DocContext<'_>) -> attr::Stability {
+        self.clone()
     }
 }
 
