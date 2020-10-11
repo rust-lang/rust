@@ -32,8 +32,6 @@
 
 use super::FnCtxt;
 
-use std::env;
-
 use crate::expr_use_visitor as euv;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
@@ -43,7 +41,24 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId};
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
+use rustc_span::sym;
 use rustc_span::{Span, Symbol};
+
+macro_rules! log_capture_analysis {
+    ($fcx:expr, $closure_def_id:expr, $fmt:literal) => {
+        if $fcx.should_log_capture_analysis($closure_def_id) {
+            print!("For closure={:?}: ", $closure_def_id);
+            println!($fmt);
+        }
+    };
+
+    ($fcx:expr, $closure_def_id:expr, $fmt:literal, $($args:expr),*) => {
+        if $fcx.should_log_capture_analysis($closure_def_id) {
+            print!("For closure={:?}: ", $closure_def_id);
+            println!($fmt, $($args),*);
+        }
+    };
+}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {
@@ -115,8 +130,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let local_def_id = closure_def_id.expect_local();
 
         let mut capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::default();
-        if !new_capture_analysis() {
-            debug!("Using old-style capture analysis");
+        if self.tcx.features().capture_disjoint_fields {
+            log_capture_analysis!(self, closure_def_id, "Using new-style capture analysis");
+        } else {
+            log_capture_analysis!(self, closure_def_id, "Using old-style capture analysis");
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 for (&var_hir_id, _) in upvars.iter() {
                     let place = self.place_for_root_variable(local_def_id, var_hir_id);
@@ -324,6 +341,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             base: PlaceBase::Upvar(upvar_id),
             projections: Default::default(),
         }
+    }
+
+    fn should_log_capture_analysis(&self, closure_def_id: DefId) -> bool {
+        self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
     }
 }
 
@@ -601,10 +622,6 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             let expr_id = Some(diag_expr_id);
             let capture_info = ty::CaptureInfo { expr_id, capture_kind };
 
-            if log_capture_analysis() {
-                debug!("capture_info: {:?}", capture_info);
-            }
-
             self.capture_information.insert(place_with_id.place.clone(), capture_info);
         } else {
             debug!("Not upvar: {:?}", place_with_id);
@@ -669,12 +686,4 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
-}
-
-fn new_capture_analysis() -> bool {
-    matches!(env::var("SG_NEW"), Ok(_))
-}
-
-fn log_capture_analysis() -> bool {
-    matches!(env::var("SG_VERBOSE"), Ok(_))
 }

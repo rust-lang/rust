@@ -547,6 +547,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(TEST, rustc_outlives, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_capture_analysis, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_variance, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ...")),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word)),
