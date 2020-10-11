@@ -6,10 +6,14 @@ use std::os::raw::{c_char, c_int};
 
 use rustc_codegen_ssa::CrateInfo;
 
+use cranelift_simplejit::{SimpleJITBuilder, SimpleJITModule};
+
 use crate::prelude::*;
 
 pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
-    use cranelift_simplejit::{SimpleJITBuilder, SimpleJITModule};
+    if !tcx.sess.opts.output_types.should_codegen() {
+        tcx.sess.fatal("JIT mode doesn't work with `cargo check`.");
+    }
 
     #[cfg(unix)]
     unsafe {
@@ -53,10 +57,6 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .declare_function("main", Linkage::Import, &sig)
         .unwrap();
 
-    if !tcx.sess.opts.output_types.should_codegen() {
-        tcx.sess.fatal("JIT mode doesn't work with `cargo check`.");
-    }
-
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     let mono_items = cgus
         .iter()
@@ -79,11 +79,11 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context, true);
     crate::allocator::codegen(tcx, &mut jit_module, &mut unwind_context);
 
+    tcx.sess.abort_if_errors();
+
     let jit_product = jit_module.finish();
 
     let _unwind_register_guard = unsafe { unwind_context.register_jit(&jit_product) };
-
-    tcx.sess.abort_if_errors();
 
     let finalized_main: *const u8 = jit_product.lookup_func(main_func_id);
 
