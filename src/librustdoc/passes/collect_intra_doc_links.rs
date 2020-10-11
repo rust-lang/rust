@@ -16,6 +16,7 @@ use rustc_session::lint::{
     Lint,
 };
 use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::sym;
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
@@ -234,6 +235,56 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         }
     }
 
+    fn resolve_primitive_associated_item(
+        &self,
+        prim_ty: hir::PrimTy,
+        ns: Namespace,
+        module_id: DefId,
+        item_name: Symbol,
+        item_str: &'path str,
+    ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
+        let cx = self.cx;
+
+        PrimitiveType::from_hir(prim_ty)
+            .impls(cx.tcx)
+            .into_iter()
+            .find_map(|&impl_| {
+                cx.tcx
+                    .associated_items(impl_)
+                    .find_by_name_and_namespace(
+                        cx.tcx,
+                        Ident::with_dummy_span(item_name),
+                        ns,
+                        impl_,
+                    )
+                    .map(|item| match item.kind {
+                        ty::AssocKind::Fn => "method",
+                        ty::AssocKind::Const => "associatedconstant",
+                        ty::AssocKind::Type => "associatedtype",
+                    })
+                    .map(|out| {
+                        (
+                            Res::PrimTy(prim_ty),
+                            Some(format!("{}#{}.{}", prim_ty.name(), out, item_str)),
+                        )
+                    })
+            })
+            .ok_or_else(|| {
+                debug!(
+                    "returning primitive error for {}::{} in {} namespace",
+                    prim_ty.name(),
+                    item_name,
+                    ns.descr()
+                );
+                ResolutionFailure::NotResolved {
+                    module_id,
+                    partial_res: Some(Res::PrimTy(prim_ty)),
+                    unresolved: item_str.into(),
+                }
+                .into()
+            })
+    }
+
     /// Resolves a string as a macro.
     fn macro_resolve(
         &self,
@@ -275,6 +326,19 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         })
     }
 
+    fn resolve_path(&self, path_str: &str, ns: Namespace, module_id: DefId) -> Option<Res> {
+        let result = self.cx.enter_resolver(|resolver| {
+            resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
+        });
+        debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
+        match result.map(|(_, res)| res) {
+            // resolver doesn't know about true and false so we'll have to resolve them
+            // manually as bool
+            Ok(Res::Err) | Err(()) => is_bool_value(path_str, ns).map(|(_, res)| res),
+            Ok(res) => Some(res.map_id(|_| panic!("unexpected node_id"))),
+        }
+    }
+
     /// Resolves a string as a path within a particular namespace. Also returns an optional
     /// URL fragment in the case of variants and methods.
     fn resolve<'path>(
@@ -287,22 +351,18 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let cx = self.cx;
 
-        let result = cx.enter_resolver(|resolver| {
-            resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
-        });
-        debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
-        let result = match result {
-            Ok((_, Res::Err)) => Err(()),
-            x => x,
-        };
-
-        if let Ok((_, res)) = result {
-            let res = res.map_id(|_| panic!("unexpected node_id"));
-            // In case this is a trait item, skip the
-            // early return and try looking for the trait.
-            let value = match res {
-                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => true,
-                Res::Def(DefKind::AssocTy, _) => false,
+        if let Some(res) = self.resolve_path(path_str, ns, module_id) {
+            match res {
+                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => {
+                    assert_eq!(ns, ValueNS);
+                    // Fall through: In case this is a trait item, skip the
+                    // early return and try looking for the trait.
+                }
+                Res::Def(DefKind::AssocTy, _) => {
+                    assert_eq!(ns, TypeNS);
+                    // Fall through: In case this is a trait item, skip the
+                    // early return and try looking for the trait.
+                }
                 Res::Def(DefKind::Variant, _) => {
                     return handle_variant(cx, res, extra_fragment);
                 }
@@ -321,17 +381,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 _ => {
                     return Ok((res, extra_fragment.clone()));
                 }
-            };
-
-            if value != (ns == ValueNS) {
-                return Err(ResolutionFailure::WrongNamespace(res, ns).into());
             }
-        // FIXME: why is this necessary?
-        } else if let Some((path, prim)) = is_primitive(path_str, ns) {
-            if extra_fragment.is_some() {
-                return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(prim)));
-            }
-            return Ok((prim, Some(path.to_owned())));
         }
 
         // Try looking for methods and associated items.
@@ -359,70 +409,30 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
             })?;
 
-        if let Some((path, prim)) = is_primitive(&path_root, TypeNS) {
-            let impls =
-                primitive_impl(cx, &path).ok_or_else(|| ResolutionFailure::NotResolved {
+        // FIXME: are these both necessary?
+        let ty_res = if let Some(ty_res) = is_primitive(&path_root, TypeNS)
+            .map(|(_, res)| res)
+            .or_else(|| self.resolve_path(&path_root, TypeNS, module_id))
+        {
+            ty_res
+        } else {
+            // FIXME: this is duplicated on the end of this function.
+            return if ns == Namespace::ValueNS {
+                self.variant_field(path_str, current_item, module_id)
+            } else {
+                Err(ResolutionFailure::NotResolved {
                     module_id,
-                    partial_res: Some(prim),
-                    unresolved: item_str.into(),
-                })?;
-            for &impl_ in impls {
-                let link = cx
-                    .tcx
-                    .associated_items(impl_)
-                    .find_by_name_and_namespace(
-                        cx.tcx,
-                        Ident::with_dummy_span(item_name),
-                        ns,
-                        impl_,
-                    )
-                    .map(|item| match item.kind {
-                        ty::AssocKind::Fn => "method",
-                        ty::AssocKind::Const => "associatedconstant",
-                        ty::AssocKind::Type => "associatedtype",
-                    })
-                    .map(|out| (prim, Some(format!("{}#{}.{}", path, out, item_str))));
-                if let Some(link) = link {
-                    return Ok(link);
+                    partial_res: None,
+                    unresolved: path_root.into(),
                 }
-            }
-            debug!(
-                "returning primitive error for {}::{} in {} namespace",
-                path,
-                item_name,
-                ns.descr()
-            );
-            return Err(ResolutionFailure::NotResolved {
-                module_id,
-                partial_res: Some(prim),
-                unresolved: item_str.into(),
-            }
-            .into());
-        }
-
-        let ty_res = cx
-            .enter_resolver(|resolver| {
-                // only types can have associated items
-                resolver.resolve_str_path_error(DUMMY_SP, &path_root, TypeNS, module_id)
-            })
-            .map(|(_, res)| res);
-        let ty_res = match ty_res {
-            Err(()) | Ok(Res::Err) => {
-                return if ns == Namespace::ValueNS {
-                    self.variant_field(path_str, current_item, module_id)
-                } else {
-                    Err(ResolutionFailure::NotResolved {
-                        module_id,
-                        partial_res: None,
-                        unresolved: path_root.into(),
-                    }
-                    .into())
-                };
-            }
-            Ok(res) => res,
+                .into())
+            };
         };
-        let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
+
         let res = match ty_res {
+            Res::PrimTy(prim) => Some(
+                self.resolve_primitive_associated_item(prim, ns, module_id, item_name, item_str),
+            ),
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias, did) => {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
                 // Checks if item_name belongs to `impl SomeItem`
@@ -462,7 +472,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     Some(if extra_fragment.is_some() {
                         Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(ty_res)))
                     } else {
-                        // HACK(jynelson): `clean` expects the type, not the associated item.
+                        // HACK(jynelson): `clean` expects the type, not the associated item
                         // but the disambiguator logic expects the associated item.
                         // Store the kind in a side channel so that only the disambiguator logic looks at it.
                         self.kind_side_channel.set(Some((kind.as_def_kind(), id)));
@@ -508,13 +518,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         _ => None,
                     }
                 } else {
-                    // We already know this isn't in ValueNS, so no need to check variant_field
-                    return Err(ResolutionFailure::NotResolved {
-                        module_id,
-                        partial_res: Some(ty_res),
-                        unresolved: item_str.into(),
-                    }
-                    .into());
+                    None
                 }
             }
             Res::Def(DefKind::Trait, did) => cx
@@ -571,30 +575,21 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         current_item: &Option<String>,
         extra_fragment: &Option<String>,
     ) -> Option<Res> {
-        let check_full_res_inner = |this: &Self, result: Result<Res, ErrorKind<'_>>| {
-            let res = match result {
-                Ok(res) => Some(res),
-                Err(ErrorKind::Resolve(box kind)) => kind.full_res(),
-                Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res))) => {
-                    Some(res)
-                }
-                Err(ErrorKind::AnchorFailure(AnchorFailure::MultipleAnchors)) => None,
-            };
-            this.kind_side_channel.take().map(|(kind, id)| Res::Def(kind, id)).or(res)
+        // resolve() can't be used for macro namespace
+        let result = match ns {
+            Namespace::MacroNS => self.macro_resolve(path_str, module_id).map_err(ErrorKind::from),
+            Namespace::TypeNS | Namespace::ValueNS => self
+                .resolve(path_str, ns, current_item, module_id, extra_fragment)
+                .map(|(res, _)| res),
         };
-        // cannot be used for macro namespace
-        let check_full_res = |this: &Self, ns| {
-            let result = this.resolve(path_str, ns, current_item, module_id, extra_fragment);
-            check_full_res_inner(this, result.map(|(res, _)| res))
+
+        let res = match result {
+            Ok(res) => Some(res),
+            Err(ErrorKind::Resolve(box kind)) => kind.full_res(),
+            Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res))) => Some(res),
+            Err(ErrorKind::AnchorFailure(AnchorFailure::MultipleAnchors)) => None,
         };
-        let check_full_res_macro = |this: &Self| {
-            let result = this.macro_resolve(path_str, module_id);
-            check_full_res_inner(this, result.map_err(ErrorKind::from))
-        };
-        match ns {
-            Namespace::MacroNS => check_full_res_macro(self),
-            Namespace::TypeNS | Namespace::ValueNS => check_full_res(self, ns),
-        }
+        self.kind_side_channel.take().map(|(kind, id)| Res::Def(kind, id)).or(res)
     }
 }
 
@@ -1095,7 +1090,7 @@ impl LinkCollector<'_, '_> {
                         return None;
                     }
                     res = prim;
-                    fragment = Some(path.to_owned());
+                    fragment = Some(path.as_str().to_string());
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
@@ -1952,53 +1947,55 @@ fn handle_variant(
     if extra_fragment.is_some() {
         return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)));
     }
-    let parent = if let Some(parent) = cx.tcx.parent(res.def_id()) {
-        parent
-    } else {
-        return Err(ResolutionFailure::NoParentItem.into());
-    };
-    let parent_def = Res::Def(DefKind::Enum, parent);
-    let variant = cx.tcx.expect_variant_res(res);
-    Ok((parent_def, Some(format!("variant.{}", variant.ident.name))))
+    cx.tcx
+        .parent(res.def_id())
+        .map(|parent| {
+            let parent_def = Res::Def(DefKind::Enum, parent);
+            let variant = cx.tcx.expect_variant_res(res);
+            (parent_def, Some(format!("variant.{}", variant.ident.name)))
+        })
+        .ok_or_else(|| ResolutionFailure::NoParentItem.into())
 }
 
-const PRIMITIVES: &[(&str, Res)] = &[
-    ("u8", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U8))),
-    ("u16", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U16))),
-    ("u32", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U32))),
-    ("u64", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U64))),
-    ("u128", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U128))),
-    ("usize", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::Usize))),
-    ("i8", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I8))),
-    ("i16", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I16))),
-    ("i32", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I32))),
-    ("i64", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I64))),
-    ("i128", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I128))),
-    ("isize", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::Isize))),
-    ("f32", Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F32))),
-    ("f64", Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F64))),
-    ("str", Res::PrimTy(hir::PrimTy::Str)),
-    ("bool", Res::PrimTy(hir::PrimTy::Bool)),
-    ("true", Res::PrimTy(hir::PrimTy::Bool)),
-    ("false", Res::PrimTy(hir::PrimTy::Bool)),
-    ("char", Res::PrimTy(hir::PrimTy::Char)),
+// FIXME: At this point, this is basically a copy of the PrimitiveTypeTable
+const PRIMITIVES: &[(Symbol, Res)] = &[
+    (sym::u8, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U8))),
+    (sym::u16, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U16))),
+    (sym::u32, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U32))),
+    (sym::u64, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U64))),
+    (sym::u128, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U128))),
+    (sym::usize, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::Usize))),
+    (sym::i8, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I8))),
+    (sym::i16, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I16))),
+    (sym::i32, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I32))),
+    (sym::i64, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I64))),
+    (sym::i128, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I128))),
+    (sym::isize, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::Isize))),
+    (sym::f32, Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F32))),
+    (sym::f64, Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F64))),
+    (sym::str, Res::PrimTy(hir::PrimTy::Str)),
+    (sym::bool, Res::PrimTy(hir::PrimTy::Bool)),
+    (sym::char, Res::PrimTy(hir::PrimTy::Char)),
 ];
 
-fn is_primitive(path_str: &str, ns: Namespace) -> Option<(&'static str, Res)> {
-    if ns == TypeNS {
-        PRIMITIVES
-            .iter()
-            .filter(|x| x.0 == path_str)
-            .copied()
-            .map(|x| if x.0 == "true" || x.0 == "false" { ("bool", x.1) } else { x })
-            .next()
+fn is_primitive(path_str: &str, ns: Namespace) -> Option<(Symbol, Res)> {
+    is_bool_value(path_str, ns).or_else(|| {
+        if ns == TypeNS {
+            // FIXME: this should be replaced by a lookup in PrimitiveTypeTable
+            let maybe_primitive = Symbol::intern(path_str);
+            PRIMITIVES.iter().find(|x| x.0 == maybe_primitive).copied()
+        } else {
+            None
+        }
+    })
+}
+
+fn is_bool_value(path_str: &str, ns: Namespace) -> Option<(Symbol, Res)> {
+    if ns == TypeNS && (path_str == "true" || path_str == "false") {
+        Some((sym::bool, Res::PrimTy(hir::PrimTy::Bool)))
     } else {
         None
     }
-}
-
-fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<&'static SmallVec<[DefId; 4]>> {
-    Some(PrimitiveType::from_symbol(Symbol::intern(path_str))?.impls(cx.tcx))
 }
 
 fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<'static>> {
