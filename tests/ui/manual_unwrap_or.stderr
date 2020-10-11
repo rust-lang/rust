@@ -1,5 +1,5 @@
-error: this pattern can be more concisely encoded with `Option::unwrap_or`
-  --> $DIR/less_concise_than.rs:7:5
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:6:5
    |
 LL | /     match Some(1) {
 LL | |         Some(i) => i,
@@ -7,10 +7,19 @@ LL | |         None => 42,
 LL | |     };
    | |_____^ help: replace with: `Some(1).unwrap_or(42)`
    |
-   = note: `-D clippy::less-concise-than-option-unwrap-or` implied by `-D warnings`
+   = note: `-D clippy::manual-unwrap-or` implied by `-D warnings`
 
-error: this pattern can be more concisely encoded with `Option::unwrap_or`
-  --> $DIR/less_concise_than.rs:13:5
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:12:5
+   |
+LL | /     match Some(1) {
+LL | |         None => 42,
+LL | |         Some(i) => i,
+LL | |     };
+   | |_____^ help: replace with: `Some(1).unwrap_or(42)`
+
+error: this pattern reimplements `Option::unwrap_or_else`
+  --> $DIR/manual_unwrap_or.rs:18:5
    |
 LL | /     match Some(1) {
 LL | |         Some(i) => i,
@@ -18,8 +27,8 @@ LL | |         None => 1 + 42,
 LL | |     };
    | |_____^ help: replace with: `Some(1).unwrap_or_else(|| 1 + 42)`
 
-error: this pattern can be more concisely encoded with `Option::unwrap_or`
-  --> $DIR/less_concise_than.rs:19:5
+error: this pattern reimplements `Option::unwrap_or_else`
+  --> $DIR/manual_unwrap_or.rs:24:5
    |
 LL | /     match Some(1) {
 LL | |         Some(i) => i,
@@ -39,8 +48,8 @@ LL |         b + 42
 LL |     });
    |
 
-error: this pattern can be more concisely encoded with `Option::unwrap_or`
-  --> $DIR/less_concise_than.rs:29:5
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:34:5
    |
 LL | /     match Some("Bob") {
 LL | |         Some(i) => i,
@@ -48,5 +57,5 @@ LL | |         None => "Alice",
 LL | |     };
    | |_____^ help: replace with: `Some("Bob").unwrap_or("Alice")`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

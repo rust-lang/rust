@@ -1,23 +1,40 @@
 // run-rustfix
-#![warn(clippy::less_concise_than_option_unwrap_or)]
 #![allow(dead_code)]
 
 fn unwrap_or() {
     // int case
-    Some(1).unwrap_or(42);
+    match Some(1) {
+        Some(i) => i,
+        None => 42,
+    };
+
+    // int case reversed
+    match Some(1) {
+        None => 42,
+        Some(i) => i,
+    };
 
     // richer none expr
-    Some(1).unwrap_or_else(|| 1 + 42);
+    match Some(1) {
+        Some(i) => i,
+        None => 1 + 42,
+    };
 
     // multiline case
-    Some(1).unwrap_or_else(|| {
-        let a = 1 + 42;
-        let b = a + 42;
-        b + 42
-    });
+    match Some(1) {
+        Some(i) => i,
+        None => {
+            let a = 1 + 42;
+            let b = a + 42;
+            b + 42
+        },
+    };
 
     // string case
-    Some("Bob").unwrap_or("Alice");
+    match Some("Bob") {
+        Some(i) => i,
+        None => "Alice",
+    };
 
     // don't lint
     match Some(1) {
