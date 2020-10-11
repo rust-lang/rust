@@ -1365,7 +1365,7 @@ enum Setting {
 impl Setting {
     fn display(&self, root_path: &str, suffix: &str) -> String {
         match *self {
-            Setting::Section { ref description, ref sub_settings } => format!(
+            Setting::Section { description, ref sub_settings } => format!(
                 "<div class='setting-line'>\
                      <div class='title'>{}</div>\
                      <div class='sub-settings'>{}</div>
@@ -1373,7 +1373,7 @@ impl Setting {
                 description,
                 sub_settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>()
             ),
-            Setting::Toggle { ref js_data_name, ref description, ref default_value } => format!(
+            Setting::Toggle { js_data_name, description, default_value } => format!(
                 "<div class='setting-line'>\
                      <label class='toggle'>\
                      <input type='checkbox' id='{}' {}>\
@@ -1382,15 +1382,10 @@ impl Setting {
                      <div>{}</div>\
                  </div>",
                 js_data_name,
-                if *default_value { " checked" } else { "" },
+                if default_value { " checked" } else { "" },
                 description,
             ),
-            Setting::Select {
-                ref js_data_name,
-                ref description,
-                ref default_value,
-                ref options,
-            } => format!(
+            Setting::Select { js_data_name, description, default_value, ref options } => format!(
                 "<div class='setting-line'>\
                      <div>{}</div>\
                      <label class='select-wrapper'>\
@@ -1405,7 +1400,7 @@ impl Setting {
                     .map(|opt| format!(
                         "<option value=\"{}\" {}>{}</option>",
                         opt.0,
-                        if &opt.0 == *default_value { "selected" } else { "" },
+                        if &opt.0 == default_value { "selected" } else { "" },
                         opt.1,
                     ))
                     .collect::<String>(),
