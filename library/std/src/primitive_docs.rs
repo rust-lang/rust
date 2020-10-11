@@ -184,9 +184,6 @@ mod prim_bool {}
 /// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str::FromStr::from_str
-/// [`Result<String, !>`]: Result
-/// [`Result<T, !>`]: Result
-/// [`Result<!, E>`]: Result
 /// [`String`]: string::String
 /// [`FromStr`]: str::FromStr
 ///

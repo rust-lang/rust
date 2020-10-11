@@ -805,8 +805,6 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(5));
     /// assert_eq!(iter.next(), None);
     /// ```
-    ///
-    /// [`Option<T>`]: Option
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>

@@ -349,7 +349,6 @@
 //! mutable reference even when you just have [`Pin`]`<&mut Self>` (such as in your own
 //! [`poll`] implementation).
 //!
-//! [`Pin<P>`]: Pin
 //! [`Deref`]: crate::ops::Deref
 //! [`DerefMut`]: crate::ops::DerefMut
 //! [`mem::swap`]: crate::mem::swap
@@ -364,7 +363,6 @@
 //! [`RefCell<T>`]: crate::cell::RefCell
 //! [`drop`]: Drop::drop
 //! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
-//! [`Option<T>`]: Option
 //! [`Some(v)`]: Some
 //! [`ptr::write`]: crate::ptr::write
 //! [`Future`]: crate::future::Future

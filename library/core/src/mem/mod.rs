@@ -650,7 +650,6 @@ pub unsafe fn zeroed<T>() -> T {
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
 /// until they are, it is advisable to avoid them.)
 ///
-/// [`MaybeUninit<T>`]: MaybeUninit
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init
 /// [inv]: MaybeUninit#initialization-invariant

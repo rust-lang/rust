@@ -512,7 +512,6 @@ impl<T> Option<T> {
     /// result of a function call, it is recommended to use [`ok_or_else`], which is
     /// lazily evaluated.
     ///
-    /// [`Result<T, E>`]: Result
     /// [`Ok(v)`]: Ok
     /// [`Err(err)`]: Err
     /// [`Some(v)`]: Some
@@ -539,7 +538,6 @@ impl<T> Option<T> {
     /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
     /// [`Ok(v)`] and [`None`] to [`Err(err())`].
     ///
-    /// [`Result<T, E>`]: Result
     /// [`Ok(v)`]: Ok
     /// [`Err(err())`]: Err
     /// [`Some(v)`]: Some
