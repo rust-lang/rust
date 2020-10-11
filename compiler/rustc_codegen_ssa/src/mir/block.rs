@@ -41,10 +41,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         &self,
         fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
     ) -> Option<&'b Bx::Funclet> {
-        match self.funclet_bb {
-            Some(funcl) => fx.funclets[funcl].as_ref(),
-            None => None,
-        }
+        self.funclet_bb.and_then(move |funcl| fx.funclets[funcl].as_ref())
     }
 
     fn lltarget<Bx: BuilderMethods<'a, 'tcx>>(
