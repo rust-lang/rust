@@ -77,6 +77,7 @@ mod expectation;
 mod expr;
 mod fn_ctxt;
 mod fn_ctxt_impl;
+mod fn_ctxt_suggestions;
 mod gather_locals;
 mod generator_interior;
 mod inherited;
@@ -99,6 +100,7 @@ pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::FnCtxt;
 pub use fn_ctxt_impl::*;
+pub use fn_ctxt_suggestions::*;
 pub use inherited::{Inherited, InheritedBuilder};
 
 use crate::astconv::AstConv;
