@@ -33,16 +33,16 @@
             ]
         },
         {
-            "roots": ["./scripts/analyze_profile.rs"],
+            "roots": ["./scripts/filter_profile.rs"],
             "crates": [
                 {
-                    "root_module": "./scripts/analyze_profile.rs",
+                    "root_module": "./scripts/filter_profile.rs",
                     "edition": "2018",
                     "deps": [{ "crate": 1, "name": "std" }],
                     "cfg": [],
                 },
                 {
-                    "root_module": "./build_sysroot/sysroot_src/src/libstd/lib.rs",
+                    "root_module": "./build_sysroot/sysroot_src/library/std/src/lib.rs",
                     "edition": "2018",
                     "deps": [],
                     "cfg": [],
