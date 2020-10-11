@@ -47,10 +47,11 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
             .infcx
             .in_progress_typeck_results
             .and_then(|typeck_results| typeck_results.borrow().node_type_opt(hir_id));
-        match ty_opt {
-            Some(ty) => {
-                let ty = self.infcx.resolve_vars_if_possible(&ty);
-                if ty.walk().any(|inner| {
+
+        ty_opt
+            .map(|ty| self.infcx.resolve_vars_if_possible(&ty))
+            .filter(|ty| {
+                ty.walk().any(|inner| {
                     inner == self.target
                         || match (inner.unpack(), self.target.unpack()) {
                             (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
@@ -58,25 +59,20 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
                                     (
                                         &ty::Infer(ty::TyVar(a_vid)),
                                         &ty::Infer(ty::TyVar(b_vid)),
-                                    ) => self
-                                        .infcx
-                                        .inner
-                                        .borrow_mut()
-                                        .type_variables()
-                                        .sub_unified(a_vid, b_vid),
+                                    ) => {
+                                        self.infcx
+                                            .inner
+                                            .borrow_mut()
+                                            .type_variables()
+                                            .sub_unified(a_vid, b_vid)
+                                    },
                                     _ => false,
                                 }
                             }
                             _ => false,
                         }
-                }) {
-                    Some(ty)
-                } else {
-                    None
-                }
-            }
-            None => None,
-        }
+                })
+            })
     }
 }
 
