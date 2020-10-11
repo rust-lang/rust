@@ -55,5 +55,5 @@ pub fn run(filename: &str, bencher: &mut Bencher) {
         "--sysroot".to_string(),
         find_sysroot(),
     ];
-    rustc_driver::run_compiler(args, &mut MiriCompilerCalls { bencher }, None, None, None).unwrap()
+    rustc_driver::RunCompiler::new(args, &mut MiriCompilerCalls { bencher }).run().unwrap()
 }
