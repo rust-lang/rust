@@ -362,7 +362,7 @@ public:
 
 #if LLVM_VERSION_MAJOR == 6
       auto align_arg =
-          ConstantInt::get(Type::getInt32Ty(orig->getContext()), 0);
+          ConstantInt::get(Type::getInt32Ty(orig->getContext()), 1);
       Value *nargs[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
 #else
       Value *nargs[] = {dst_arg, val_arg, len_arg, volatile_arg};
@@ -432,10 +432,18 @@ public:
                 bool ActiveReturn,
                 ValueToValueMapTy &originalToNewFn_, DerivativeMode mode)
       : CacheUtility(TLI_, newFunc_), mode(mode), oldFunc(oldFunc_), invertedPointers(),
-        OrigDT(*oldFunc_), OrigPDT(*oldFunc_),
+        OrigDT(*oldFunc_), 
+        #if LLVM_VERSION_MAJOR >= 7
+        OrigPDT(*oldFunc_),
+        #else
+        OrigPDT(),
+        #endif
         ATA(new ActivityAnalyzer(AA_, TLI_, constantvalues_, activevals_, ActiveReturn)),
         OrigLI(OrigDT), 
         AA(AA_), TA(TA_) {
+    #if LLVM_VERSION_MAJOR <= 6
+    OrigPDT.recalculate(*oldFunc_);
+    #endif
     invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
     for (BasicBlock &BB : *newFunc) {
@@ -1082,12 +1090,13 @@ public:
   }
 
   virtual void freeCache(llvm::BasicBlock* forwardPreheader, const SubLimitType& sublimits, int i, llvm::AllocaInst* alloc, llvm::ConstantInt* byteSizeOfType, llvm::Value* storeInto, llvm::MDNode* InvariantMD) override {
-    
+    assert(reverseBlocks.find(forwardPreheader) != reverseBlocks.end());
+    assert(reverseBlocks[forwardPreheader]);
     IRBuilder<> tbuild(reverseBlocks[forwardPreheader]);
     tbuild.setFastMathFlags(getFast());
 
     // ensure we are before the terminator if it exists
-    if (tbuild.GetInsertBlock()->size()) {
+    if (tbuild.GetInsertBlock()->size() && tbuild.GetInsertBlock()->getTerminator()) {
       tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getTerminator());
     }
 

@@ -38,6 +38,8 @@ public:
   ScalarEvolution::ExitLimit computeExitLimit(const llvm::Loop *L,
                                               llvm::BasicBlock *ExitingBlock,
                                               bool AllowPredicates);
+
+  #if LLVM_VERSION_MAJOR >= 7
   ScalarEvolution::ExitLimit
   computeExitLimitFromCond(const llvm::Loop *L, llvm::Value *ExitCond, bool ExitIfTrue,
                            bool ControlsExit, bool AllowPredicates);
@@ -46,7 +48,6 @@ public:
   computeExitLimitFromCondCached(ExitLimitCacheTy &Cache, const llvm::Loop *L,
                                  llvm::Value *ExitCond, bool ExitIfTrue,
                                  bool ControlsExit, bool AllowPredicates);
-
   ScalarEvolution::ExitLimit
   computeExitLimitFromCondImpl(ExitLimitCacheTy &Cache, const llvm::Loop *L,
                                llvm::Value *ExitCond, bool ExitIfTrue,
@@ -55,6 +56,32 @@ public:
   ScalarEvolution::ExitLimit
   computeExitLimitFromICmp(const llvm::Loop *L, llvm::ICmpInst *ExitCond, bool ExitIfTrue,
                            bool ControlsExit, bool AllowPredicates = false);
+  #else
+  ScalarEvolution::ExitLimit
+  computeExitLimitFromCond(
+    const llvm::Loop *L, llvm::Value *ExitCond, llvm::BasicBlock *TBB, llvm::BasicBlock *FBB,
+    bool ControlsExit, bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit
+  computeExitLimitFromCondCached(
+    ExitLimitCacheTy &Cache, const llvm::Loop *L, llvm::Value *ExitCond, llvm::BasicBlock *TBB,
+    llvm::BasicBlock *FBB, bool ControlsExit, bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit
+  computeExitLimitFromCondImpl(
+    ExitLimitCacheTy &Cache, const llvm::Loop *L, llvm::Value *ExitCond, llvm::BasicBlock *TBB,
+    llvm::BasicBlock *FBB, bool ControlsExit, bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit
+  computeExitLimitFromICmp(const llvm::Loop *L,
+                                            llvm::ICmpInst *ExitCond,
+                                            llvm::BasicBlock *TBB,
+                                            llvm::BasicBlock *FBB,
+                                            bool ControlsExit,
+                                            bool AllowPredicates=false);
+  #endif
+
+
 
   ScalarEvolution::ExitLimit howManyLessThans(const llvm::SCEV *LHS, const llvm::SCEV *RHS,
                                               const llvm::Loop *L, bool IsSigned,

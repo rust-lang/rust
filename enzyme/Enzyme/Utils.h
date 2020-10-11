@@ -62,6 +62,12 @@ template <typename T> static inline T max(T a, T b) {
     return a;
   return b;
 }
+/// Pick the maximum value
+template <typename T> static inline T min(T a, T b) {
+  if (a < b)
+    return a;
+  return b;
+}
 
 /// Output a set as a string
 template <typename T>

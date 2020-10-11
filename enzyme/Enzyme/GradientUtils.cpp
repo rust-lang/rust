@@ -1381,7 +1381,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     auto volatile_arg = ConstantInt::getFalse(oval->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-    auto align_arg = ConstantInt::get(Type::getInt32Ty(val->getContext()),
+    auto align_arg = ConstantInt::get(Type::getInt32Ty(oval->getContext()),
                                       antialloca->getAlignment());
     Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
 #else

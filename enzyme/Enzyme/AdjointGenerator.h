@@ -935,6 +935,9 @@ public:
           args.push_back(
               ConstantInt::get(Type::getInt8Ty(parent->getContext()), 0));
           args.push_back(lookup(length, Builder2));
+          #if LLVM_VERSION_MAJOR <= 6
+          args.push_back(ConstantInt::get(Type::getInt32Ty(parent->getContext()), max(1U, dstalign)));
+          #endif
           args.push_back(ConstantInt::getFalse(parent->getContext()));
 
           Type *tys[] = {args[0]->getType(), args[2]->getType()};
@@ -1015,10 +1018,17 @@ public:
         args.push_back(srco);
 
         args.push_back(length);
+        #if LLVM_VERSION_MAJOR <= 6
+        args.push_back(ConstantInt::get(Type::getInt32Ty(parent->getContext()), max(1U, min(srcalign, dstalign))));
+        #endif
         args.push_back(isVolatile);
 
-        Type *tys[] = {args[0]->getType(), args[1]->getType(),
-                       args[2]->getType()};
+        //#if LLVM_VERSION_MAJOR >= 7
+        Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
+        //#else
+        //Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType(), args[3]->getType()};
+        //#endif
+
         auto memtransIntr = Intrinsic::getDeclaration(
             gutils->newFunc->getParent(), intrinsic, tys);
         auto cal = BuilderZ.CreateCall(memtransIntr, args);
@@ -1062,7 +1072,11 @@ public:
     Value *orig_op0 = MTI.getOperand(0);
     Value *orig_op1 = MTI.getOperand(1);
     Value *op2 = gutils->getNewFromOriginal(MTI.getOperand(2));
-    Value *op3 = gutils->getNewFromOriginal(MTI.getOperand(3));
+    #if LLVM_VERSION_MAJOR >= 7
+    Value *isVolatile = gutils->getNewFromOriginal(MTI.getOperand(3));
+    #else
+    Value *isVolatile = gutils->getNewFromOriginal(MTI.getOperand(4));
+    #endif
 
     // copying into nullptr is invalid (not sure why it exists here), but we
     // shouldn't do it in reverse pass or shadow
@@ -1169,7 +1183,7 @@ public:
 
       subTransferHelper(dt.isFloat(), MTI.getParent(), MTI.getIntrinsicID(),
                         subdstalign, subsrcalign, /*offset*/ start, orig_op0,
-                        orig_op1, /*length*/ length, /*volatile*/ op3, MTI);
+                        orig_op1, /*length*/ length, /*volatile*/ isVolatile, MTI);
 
       if (nextStart == size)
         break;

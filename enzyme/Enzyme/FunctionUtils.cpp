@@ -56,7 +56,9 @@
 
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
 
+#if LLVM_VERSION_MAJOR > 6
 #include "llvm/Transforms/Utils.h"
+#endif
 
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"

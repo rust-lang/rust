@@ -29,6 +29,7 @@
 
 using namespace llvm;
 
+#if LLVM_VERSION_MAJOR >= 7
 ScalarEvolution::ExitLimit
 MustExitScalarEvolution::computeExitLimitFromCond(const Loop *L, Value *ExitCond,
                                             bool ExitIfTrue, bool ControlsExit,
@@ -37,6 +38,15 @@ MustExitScalarEvolution::computeExitLimitFromCond(const Loop *L, Value *ExitCond
   return computeExitLimitFromCondCached(Cache, L, ExitCond, ExitIfTrue,
                                         ControlsExit, AllowPredicates);
 }
+#else
+ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCond(
+    const Loop *L, Value *ExitCond, BasicBlock *TBB, BasicBlock *FBB,
+    bool ControlsExit, bool AllowPredicates) {
+  ScalarEvolution::ExitLimitCacheTy Cache(L, TBB, FBB, AllowPredicates);
+  return computeExitLimitFromCondCached(Cache, L, ExitCond, TBB, FBB,
+                                        ControlsExit, AllowPredicates);
+}
+#endif
 
 ScalarEvolution::ExitLimit
 MustExitScalarEvolution::computeExitLimit(const Loop *L, BasicBlock *ExitingBlock,
@@ -56,9 +66,15 @@ MustExitScalarEvolution::computeExitLimit(const Loop *L, BasicBlock *ExitingBloc
     assert(ExitIfTrue == L->contains(BI->getSuccessor(1)) &&
            "It should have one successor in loop and one exit block!");
     // Proceed to the next level to examine the exit condition expression.
+    #if LLVM_VERSION_MAJOR >= 7
     return computeExitLimitFromCond(L, BI->getCondition(), ExitIfTrue,
                                     /*ControlsExit=*/IsOnlyExit,
                                     AllowPredicates);
+    #else
+    return computeExitLimitFromCond(
+        L, BI->getCondition(), BI->getSuccessor(0), BI->getSuccessor(1),
+        /*ControlsExit=*/IsOnlyExit, AllowPredicates);
+    #endif
   }
 
   if (SwitchInst *SI = dyn_cast<SwitchInst>(Term)) {
@@ -78,6 +94,7 @@ MustExitScalarEvolution::computeExitLimit(const Loop *L, BasicBlock *ExitingBloc
   return getCouldNotCompute();
 }
 
+#if LLVM_VERSION_MAJOR >= 7
 ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondCached(
     ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, bool ExitIfTrue,
     bool ControlsExit, bool AllowPredicates) {
@@ -91,7 +108,23 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondCach
   Cache.insert(L, ExitCond, ExitIfTrue, ControlsExit, AllowPredicates, EL);
   return EL;
 }
+#else
+ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondCached(
+    ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, BasicBlock *TBB,
+    BasicBlock *FBB, bool ControlsExit, bool AllowPredicates) {
 
+  if (auto MaybeEL =
+          Cache.find(L, ExitCond, TBB, FBB, ControlsExit, AllowPredicates))
+    return *MaybeEL;
+
+  ExitLimit EL = computeExitLimitFromCondImpl(Cache, L, ExitCond, TBB, FBB,
+                                              ControlsExit, AllowPredicates);
+  Cache.insert(L, ExitCond, TBB, FBB, ControlsExit, AllowPredicates, EL);
+  return EL;
+}
+#endif
+
+#if LLVM_VERSION_MAJOR >= 7
 ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondImpl(
     ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, bool ExitIfTrue,
     bool ControlsExit, bool AllowPredicates) {
@@ -215,7 +248,135 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondImpl
   // If it's not an integer or pointer comparison then compute it the hard way.
   return computeExitCountExhaustively(L, ExitCond, ExitIfTrue);
 }
+#else
+ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondImpl(
+    ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, BasicBlock *TBB,
+    BasicBlock *FBB, bool ControlsExit, bool AllowPredicates) {
+  // Check if the controlling expression for this loop is an And or Or.
+  if (BinaryOperator *BO = dyn_cast<BinaryOperator>(ExitCond)) {
+    if (BO->getOpcode() == Instruction::And) {
+      // Recurse on the operands of the and.
+      bool EitherMayExit = L->contains(TBB);
+      ExitLimit EL0 = computeExitLimitFromCondCached(
+          Cache, L, BO->getOperand(0), TBB, FBB, ControlsExit && !EitherMayExit,
+          AllowPredicates);
+      ExitLimit EL1 = computeExitLimitFromCondCached(
+          Cache, L, BO->getOperand(1), TBB, FBB, ControlsExit && !EitherMayExit,
+          AllowPredicates);
+      const SCEV *BECount = getCouldNotCompute();
+      const SCEV *MaxBECount = getCouldNotCompute();
+      if (EitherMayExit) {
+        // Both conditions must be true for the loop to continue executing.
+        // Choose the less conservative count.
+        if (EL0.ExactNotTaken == getCouldNotCompute() ||
+            EL1.ExactNotTaken == getCouldNotCompute())
+          BECount = getCouldNotCompute();
+        else
+          BECount =
+              getUMinFromMismatchedTypes(EL0.ExactNotTaken, EL1.ExactNotTaken);
+        if (EL0.MaxNotTaken == getCouldNotCompute())
+          MaxBECount = EL1.MaxNotTaken;
+        else if (EL1.MaxNotTaken == getCouldNotCompute())
+          MaxBECount = EL0.MaxNotTaken;
+        else
+          MaxBECount =
+              getUMinFromMismatchedTypes(EL0.MaxNotTaken, EL1.MaxNotTaken);
+      } else {
+        // Both conditions must be true at the same time for the loop to exit.
+        // For now, be conservative.
+        assert(L->contains(FBB) && "Loop block has no successor in loop!");
+        if (EL0.MaxNotTaken == EL1.MaxNotTaken)
+          MaxBECount = EL0.MaxNotTaken;
+        if (EL0.ExactNotTaken == EL1.ExactNotTaken)
+          BECount = EL0.ExactNotTaken;
+      }
 
+      // There are cases (e.g. PR26207) where computeExitLimitFromCond is able
+      // to be more aggressive when computing BECount than when computing
+      // MaxBECount.  In these cases it is possible for EL0.ExactNotTaken and
+      // EL1.ExactNotTaken to match, but for EL0.MaxNotTaken and EL1.MaxNotTaken
+      // to not.
+      if (isa<SCEVCouldNotCompute>(MaxBECount) &&
+          !isa<SCEVCouldNotCompute>(BECount))
+        MaxBECount = getConstant(getUnsignedRangeMax(BECount));
+
+      return ExitLimit(BECount, MaxBECount, false,
+                       {&EL0.Predicates, &EL1.Predicates});
+    }
+    if (BO->getOpcode() == Instruction::Or) {
+      // Recurse on the operands of the or.
+      bool EitherMayExit = L->contains(FBB);
+      ExitLimit EL0 = computeExitLimitFromCondCached(
+          Cache, L, BO->getOperand(0), TBB, FBB, ControlsExit && !EitherMayExit,
+          AllowPredicates);
+      ExitLimit EL1 = computeExitLimitFromCondCached(
+          Cache, L, BO->getOperand(1), TBB, FBB, ControlsExit && !EitherMayExit,
+          AllowPredicates);
+      const SCEV *BECount = getCouldNotCompute();
+      const SCEV *MaxBECount = getCouldNotCompute();
+      if (EitherMayExit) {
+        // Both conditions must be false for the loop to continue executing.
+        // Choose the less conservative count.
+        if (EL0.ExactNotTaken == getCouldNotCompute() ||
+            EL1.ExactNotTaken == getCouldNotCompute())
+          BECount = getCouldNotCompute();
+        else
+          BECount =
+              getUMinFromMismatchedTypes(EL0.ExactNotTaken, EL1.ExactNotTaken);
+        if (EL0.MaxNotTaken == getCouldNotCompute())
+          MaxBECount = EL1.MaxNotTaken;
+        else if (EL1.MaxNotTaken == getCouldNotCompute())
+          MaxBECount = EL0.MaxNotTaken;
+        else
+          MaxBECount =
+              getUMinFromMismatchedTypes(EL0.MaxNotTaken, EL1.MaxNotTaken);
+      } else {
+        // Both conditions must be false at the same time for the loop to exit.
+        // For now, be conservative.
+        assert(L->contains(TBB) && "Loop block has no successor in loop!");
+        if (EL0.MaxNotTaken == EL1.MaxNotTaken)
+          MaxBECount = EL0.MaxNotTaken;
+        if (EL0.ExactNotTaken == EL1.ExactNotTaken)
+          BECount = EL0.ExactNotTaken;
+      }
+
+      return ExitLimit(BECount, MaxBECount, false,
+                       {&EL0.Predicates, &EL1.Predicates});
+    }
+  }
+
+  // With an icmp, it may be feasible to compute an exact backedge-taken count.
+  // Proceed to the next level to examine the icmp.
+  if (ICmpInst *ExitCondICmp = dyn_cast<ICmpInst>(ExitCond)) {
+    ExitLimit EL =
+        computeExitLimitFromICmp(L, ExitCondICmp, TBB, FBB, ControlsExit);
+    if (EL.hasFullInfo() || !AllowPredicates)
+      return EL;
+
+    // Try again, but use SCEV predicates this time.
+    return computeExitLimitFromICmp(L, ExitCondICmp, TBB, FBB, ControlsExit,
+                                    /*AllowPredicates=*/true);
+  }
+
+  // Check for a constant condition. These are normally stripped out by
+  // SimplifyCFG, but ScalarEvolution may be used by a pass which wishes to
+  // preserve the CFG and is temporarily leaving constant conditions
+  // in place.
+  if (ConstantInt *CI = dyn_cast<ConstantInt>(ExitCond)) {
+    if (L->contains(FBB) == !CI->getZExtValue())
+      // The backedge is always taken.
+      return getCouldNotCompute();
+    else
+      // The backedge is never taken.
+      return getZero(CI->getType());
+  }
+
+  // If it's not an integer or pointer comparison then compute it the hard way.
+  return computeExitCountExhaustively(L, ExitCond, !L->contains(TBB));
+}
+#endif
+
+#if LLVM_VERSION_MAJOR >= 7
 ScalarEvolution::ExitLimit
 MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L, ICmpInst *ExitCond,
                                             bool ExitIfTrue, bool ControlsExit,
@@ -338,6 +499,107 @@ MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L, ICmpInst *ExitC
   return computeShiftCompareExitLimit(ExitCond->getOperand(0),
                                       ExitCond->getOperand(1), L, OriginalPred);
 }
+#else
+ScalarEvolution::ExitLimit
+MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L,
+                                          ICmpInst *ExitCond,
+                                          BasicBlock *TBB,
+                                          BasicBlock *FBB,
+                                          bool ControlsExit,
+                                          bool AllowPredicates) {
+  // If the condition was exit on true, convert the condition to exit on false
+  ICmpInst::Predicate Pred;
+  if (!L->contains(FBB))
+    Pred = ExitCond->getPredicate();
+  else
+    Pred = ExitCond->getInversePredicate();
+  const ICmpInst::Predicate OriginalPred = Pred;
+
+  // Handle common loops like: for (X = "string"; *X; ++X)
+  if (LoadInst *LI = dyn_cast<LoadInst>(ExitCond->getOperand(0)))
+    if (Constant *RHS = dyn_cast<Constant>(ExitCond->getOperand(1))) {
+      ExitLimit ItCnt =
+        computeLoadConstantCompareExitLimit(LI, RHS, L, Pred);
+      if (ItCnt.hasAnyInfo())
+        return ItCnt;
+    }
+
+  const SCEV *LHS = getSCEV(ExitCond->getOperand(0));
+  const SCEV *RHS = getSCEV(ExitCond->getOperand(1));
+
+  // Try to evaluate any dependencies out of the loop.
+  LHS = getSCEVAtScope(LHS, L);
+  RHS = getSCEVAtScope(RHS, L);
+
+  // At this point, we would like to compute how many iterations of the
+  // loop the predicate will return true for these inputs.
+  if (isLoopInvariant(LHS, L) && !isLoopInvariant(RHS, L)) {
+    // If there is a loop-invariant, force it into the RHS.
+    std::swap(LHS, RHS);
+    Pred = ICmpInst::getSwappedPredicate(Pred);
+  }
+
+  // Simplify the operands before analyzing them.
+  (void)SimplifyICmpOperands(Pred, LHS, RHS);
+
+  // If we have a comparison of a chrec against a constant, try to use value
+  // ranges to answer this query.
+  if (const SCEVConstant *RHSC = dyn_cast<SCEVConstant>(RHS))
+    if (const SCEVAddRecExpr *AddRec = dyn_cast<SCEVAddRecExpr>(LHS))
+      if (AddRec->getLoop() == L) {
+        // Form the constant range.
+        ConstantRange CompRange =
+            ConstantRange::makeExactICmpRegion(Pred, RHSC->getAPInt());
+
+        const SCEV *Ret = AddRec->getNumIterationsInRange(CompRange, *this);
+        if (!isa<SCEVCouldNotCompute>(Ret)) return Ret;
+      }
+
+  switch (Pred) {
+  case ICmpInst::ICMP_NE: {                     // while (X != Y)
+    // Convert to: while (X-Y != 0)
+    ExitLimit EL = howFarToZero(getMinusSCEV(LHS, RHS), L, ControlsExit,
+                                AllowPredicates);
+    if (EL.hasAnyInfo()) return EL;
+    break;
+  }
+  case ICmpInst::ICMP_EQ: {                     // while (X == Y)
+    // Convert to: while (X-Y == 0)
+    ExitLimit EL = howFarToNonZero(getMinusSCEV(LHS, RHS), L);
+    if (EL.hasAnyInfo()) return EL;
+    break;
+  }
+  case ICmpInst::ICMP_SLT:
+  case ICmpInst::ICMP_ULT: {                    // while (X < Y)
+    bool IsSigned = Pred == ICmpInst::ICMP_SLT;
+    ExitLimit EL = howManyLessThans(LHS, RHS, L, IsSigned, ControlsExit,
+                                    AllowPredicates);
+    if (EL.hasAnyInfo()) return EL;
+    break;
+  }
+  case ICmpInst::ICMP_SGT:
+  case ICmpInst::ICMP_UGT: {                    // while (X > Y)
+    bool IsSigned = Pred == ICmpInst::ICMP_SGT;
+    ExitLimit EL =
+        howManyGreaterThans(LHS, RHS, L, IsSigned, ControlsExit,
+                            AllowPredicates);
+    if (EL.hasAnyInfo()) return EL;
+    break;
+  }
+  default:
+    break;
+  }
+
+  auto *ExhaustiveCount =
+      computeExitCountExhaustively(L, ExitCond, !L->contains(TBB));
+
+  if (!isa<SCEVCouldNotCompute>(ExhaustiveCount))
+    return ExhaustiveCount;
+
+  return computeShiftCompareExitLimit(ExitCond->getOperand(0),
+                                      ExitCond->getOperand(1), L, OriginalPred);
+}
+#endif
 
 ScalarEvolution::ExitLimit
 MustExitScalarEvolution::howManyLessThans(const SCEV *LHS, const SCEV *RHS,
