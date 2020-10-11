@@ -9,7 +9,7 @@ fn unwrap_or() {
     Some(1).unwrap_or(42);
 
     // richer none expr
-    Some(1).unwrap_or_else(|| 1 + 42);
+    Some(1).unwrap_or(1 + 42);
 
     // multiline case
     Some(1).unwrap_or_else(|| {

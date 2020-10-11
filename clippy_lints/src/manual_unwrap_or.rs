@@ -1,3 +1,4 @@
+use crate::consts::constant_simple;
 use crate::utils;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -18,15 +19,17 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// match int_option {
+    /// let foo: Option<i32> = None;
+    /// match foo {
     ///     Some(v) => v,
     ///     None => 1,
-    /// }
+    /// };
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// int_option.unwrap_or(1)
+    /// let foo: Option<i32> = None;
+    /// foo.unwrap_or(1);
     /// ```
     pub MANUAL_UNWRAP_OR,
     complexity,
@@ -84,7 +87,7 @@ fn lint_option_unwrap_or_case<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tc
         then {
             let reindented_none_body =
                 utils::reindent_multiline(none_body_snippet.into(), true, Some(indent));
-            let eager_eval = utils::eager_or_lazy::is_eagerness_candidate(cx, none_arm.body);
+            let eager_eval = constant_simple(cx, cx.typeck_results(), none_arm.body).is_some();
             let method = if eager_eval {
                 "unwrap_or"
             } else {

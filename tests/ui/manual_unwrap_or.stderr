@@ -18,14 +18,14 @@ LL | |         Some(i) => i,
 LL | |     };
    | |_____^ help: replace with: `Some(1).unwrap_or(42)`
 
-error: this pattern reimplements `Option::unwrap_or_else`
+error: this pattern reimplements `Option::unwrap_or`
   --> $DIR/manual_unwrap_or.rs:18:5
    |
 LL | /     match Some(1) {
 LL | |         Some(i) => i,
 LL | |         None => 1 + 42,
 LL | |     };
-   | |_____^ help: replace with: `Some(1).unwrap_or_else(|| 1 + 42)`
+   | |_____^ help: replace with: `Some(1).unwrap_or(1 + 42)`
 
 error: this pattern reimplements `Option::unwrap_or_else`
   --> $DIR/manual_unwrap_or.rs:24:5
