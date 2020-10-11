@@ -145,7 +145,11 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     }
 
     let mut cx = crate::CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
-    super::codegen_mono_items(&mut cx, mono_items);
+    super::predefine_mono_items(&mut cx, &mono_items);
+    for (mono_item, (linkage, visibility)) in mono_items {
+        let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+        super::codegen_mono_item(&mut cx, mono_item, linkage);
+    }
     let (mut module, global_asm, debug, mut unwind_context) =
         tcx.sess.time("finalize CodegenCx", || cx.finalize());
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context, false);

@@ -1,4 +1,4 @@
-//! Drivers are responsible for calling [`codegen_mono_items`] and performing any further actions
+//! Drivers are responsible for calling [`codegen_mono_item`] and performing any further actions
 //! like JIT executing or writing object files.
 
 use std::any::Any;
@@ -40,12 +40,12 @@ pub(crate) fn codegen_crate(
     aot::run_aot(tcx, metadata, need_metadata_module)
 }
 
-fn codegen_mono_items<'tcx>(
+fn predefine_mono_items<'tcx>(
     cx: &mut crate::CodegenCx<'tcx, impl Module>,
-    mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
+    mono_items: &[(MonoItem<'tcx>, (RLinkage, Visibility))],
 ) {
     cx.tcx.sess.time("predefine functions", || {
-        for &(mono_item, (linkage, visibility)) in &mono_items {
+        for &(mono_item, (linkage, visibility)) in mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
                     let (name, sig) = get_function_name_and_sig(
@@ -61,11 +61,6 @@ fn codegen_mono_items<'tcx>(
             }
         }
     });
-
-    for (mono_item, (linkage, visibility)) in mono_items {
-        let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-        codegen_mono_item(cx, mono_item, linkage);
-    }
 }
 
 fn codegen_mono_item<'tcx, M: Module>(

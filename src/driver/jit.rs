@@ -70,7 +70,11 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let (mut jit_module, global_asm, _debug, mut unwind_context) =
         super::time(tcx, "codegen mono items", || {
-            super::codegen_mono_items(&mut cx, mono_items);
+            super::predefine_mono_items(&mut cx, &mono_items);
+            for (mono_item, (linkage, visibility)) in mono_items {
+                let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+                super::codegen_mono_item(&mut cx, mono_item, linkage);
+            }
             tcx.sess.time("finalize CodegenCx", || cx.finalize())
         });
     if !global_asm.is_empty() {
