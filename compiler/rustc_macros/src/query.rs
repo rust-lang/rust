@@ -421,7 +421,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
-    let mut try_load_from_on_disk_cache_stream = quote! {};
     let mut cached_queries = quote! {};
 
     for group in groups.0 {
@@ -438,22 +437,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             if modifiers.cache.is_some() {
                 cached_queries.extend(quote! {
                     #name,
-                });
-
-                try_load_from_on_disk_cache_stream.extend(quote! {
-                    ::rustc_middle::dep_graph::DepKind::#name => {
-                        if <#arg as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
-                            debug_assert!($tcx.dep_graph
-                                            .node_color($dep_node)
-                                            .map(|c| c.is_green())
-                                            .unwrap_or(false));
-
-                            let key = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node).unwrap();
-                            if queries::#name::cache_on_disk($tcx, &key, None) {
-                                let _ = $tcx.#name(key);
-                            }
-                        }
-                    }
                 });
             }
 
@@ -528,14 +511,5 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         }
 
         #query_description_stream
-
-        macro_rules! rustc_dep_node_try_load_from_on_disk_cache {
-            ($dep_node:expr, $tcx:expr) => {
-                match $dep_node.kind {
-                    #try_load_from_on_disk_cache_stream
-                    _ => (),
-                }
-            }
-        }
     })
 }
