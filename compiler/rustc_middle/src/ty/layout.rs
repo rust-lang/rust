@@ -1216,7 +1216,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 };
 
                 let best_layout = match (tagged_layout, niche_filling_layout) {
-                    (tagged_layout, Some(niche_filling_layout)) => {
+                    (tagged_layout, Some(niche_filling_layout))
+                        if niche_filling_layout.size <= Size::from_bytes(16) =>
+                    {
                         // Pick the smaller layout; otherwise,
                         // pick the layout with the larger niche; otherwise,
                         // pick tagged as it has simpler codegen.
@@ -1226,7 +1228,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             (layout.size, cmp::Reverse(niche_size))
                         })
                     }
-                    (tagged_layout, None) => tagged_layout,
+                    (tagged_layout, _) => tagged_layout,
                 };
 
                 tcx.intern_layout(best_layout)
