@@ -1,3 +1,4 @@
+use crate::intrinsics;
 use crate::iter::adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
 use crate::ops::{Add, AddAssign, Try};
@@ -15,10 +16,149 @@ use crate::ops::{Add, AddAssign, Try};
 pub struct Enumerate<I> {
     iter: I,
     count: usize,
+    len: usize,
 }
-impl<I> Enumerate<I> {
+impl<I: Iterator> Enumerate<I> {
     pub(in crate::iter) fn new(iter: I) -> Enumerate<I> {
-        Enumerate { iter, count: 0 }
+        EnumerateImpl::new(iter)
+    }
+}
+
+/// Enumerate specialization trait
+///
+/// This exists to work around https://bugs.llvm.org/show_bug.cgi?id=48965. It can be removed again
+/// once this is solved in LLVM and the implementation of the trait functions can be folded again
+/// into the corresponding functions on `Enumerate` based on the default implementation.
+///
+/// The trait is implemented via specialization on any iterator that implements `TrustedRandomAccess`
+/// to provide the information about the maximum value this iterator can return to the optimizer.
+/// Specifically, for slices this allows the optimizer to know that the returned values are never
+/// bigger than the size of the slice.
+///
+/// The only difference between the default and specialized implementation is the use of
+/// `intrinsics::assume()` on the to be returned values, and both implementations must be kept in
+/// sync.
+#[doc(hidden)]
+trait EnumerateImpl<I> {
+    type Item;
+    fn new(iter: I) -> Self;
+    fn next(&mut self) -> Option<Self::Item>;
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess;
+    fn next_back(&mut self) -> Option<Self::Item>
+    where
+        I: ExactSizeIterator + DoubleEndedIterator;
+}
+
+impl<I> EnumerateImpl<I> for Enumerate<I>
+where
+    I: Iterator,
+{
+    type Item = (usize, I::Item);
+
+    default fn new(iter: I) -> Self {
+        Enumerate {
+            iter,
+            count: 0,
+            len: 0, // unused
+        }
+    }
+
+    #[inline]
+    default fn next(&mut self) -> Option<Self::Item> {
+        let a = self.iter.next()?;
+        let i = self.count;
+        // Possible undefined overflow.
+        AddAssign::add_assign(&mut self.count, 1);
+        Some((i, a))
+    }
+
+    #[inline]
+    default unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::__iterator_get_unchecked`.
+        let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
+        (Add::add(self.count, idx), value)
+    }
+
+    #[inline]
+    default fn next_back(&mut self) -> Option<Self::Item>
+    where
+        I: ExactSizeIterator + DoubleEndedIterator,
+    {
+        let a = self.iter.next_back()?;
+        let len = self.iter.len();
+        // Can safely add, `ExactSizeIterator` promises that the number of
+        // elements fits into a `usize`.
+        Some((self.count + len, a))
+    }
+}
+
+// This is the same code as above but using `intrinsics::assume()` to hint at the compiler
+// that the returned index is smaller than the length of the underlying iterator.
+//
+// This could be bound to `TrustedLen + ExactSizeIterator` or `TrustedRandomAccess` to guarantee
+// that the number of elements fits into an `usize` and that the returned length is actually the
+// real length. `TrustedRandomAccess` was selected because specialization on `ExactSizeIterator` is
+// not possible (yet?).
+impl<I> EnumerateImpl<I> for Enumerate<I>
+where
+    I: TrustedRandomAccess + Iterator,
+{
+    fn new(iter: I) -> Self {
+        let len = iter.size();
+
+        Enumerate { iter, count: 0, len }
+    }
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let a = self.iter.next()?;
+        // SAFETY: There must be fewer than `self.len` items because of `TrustedLen`'s API contract
+        unsafe {
+            intrinsics::assume(self.count < self.len);
+        }
+        let i = self.count;
+        // Possible undefined overflow.
+        AddAssign::add_assign(&mut self.count, 1);
+        Some((i, a))
+    }
+
+    #[inline]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::__iterator_get_unchecked`.
+        let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
+        let idx = Add::add(self.count, idx);
+        // SAFETY: There must be fewer than `self.len` items because of `TrustedLen`'s API contract
+        unsafe {
+            intrinsics::assume(idx < self.len);
+        }
+        (idx, value)
+    }
+
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item>
+    where
+        I: ExactSizeIterator + DoubleEndedIterator,
+    {
+        let a = self.iter.next_back()?;
+        let len = self.iter.len();
+        // Can safely add, `ExactSizeIterator` promises that the number of
+        // elements fits into a `usize`.
+        let idx = self.count + len;
+        // SAFETY: There must be fewer than `self.len` items because of `TrustedLen`'s API contract
+        unsafe {
+            intrinsics::assume(idx < self.len);
+        }
+        Some((idx, a))
     }
 }
 
@@ -40,11 +180,7 @@ where
     /// Might panic if the index of the element overflows a `usize`.
     #[inline]
     fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
-        let a = self.iter.next()?;
-        let i = self.count;
-        // Possible undefined overflow.
-        AddAssign::add_assign(&mut self.count, 1);
-        Some((i, a))
+        EnumerateImpl::next(self)
     }
 
     #[inline]
@@ -114,10 +250,8 @@ where
     where
         Self: TrustedRandomAccess,
     {
-        // SAFETY: the caller must uphold the contract for
-        // `Iterator::__iterator_get_unchecked`.
-        let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
-        (Add::add(self.count, idx), value)
+        // SAFETY: Just forwarding to the actual implementation.
+        unsafe { EnumerateImpl::__iterator_get_unchecked(self, idx) }
     }
 }
 
@@ -128,11 +262,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
-        let a = self.iter.next_back()?;
-        let len = self.iter.len();
-        // Can safely add, `ExactSizeIterator` promises that the number of
-        // elements fits into a `usize`.
-        Some((self.count + len, a))
+        EnumerateImpl::next_back(self)
     }
 
     #[inline]
