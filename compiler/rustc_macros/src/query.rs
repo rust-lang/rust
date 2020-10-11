@@ -190,7 +190,11 @@ impl<T: Parse> Parse for List<T> {
 }
 
 /// A named group containing queries.
+///
+/// For now, the name is not used any more, but the capability remains interesting for future
+/// developments of the query system.
 struct Group {
+    #[allow(unused)]
     name: Ident,
     queries: List<Query>,
 }
@@ -422,7 +426,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut cached_queries = quote! {};
 
     for group in groups.0 {
-        let mut group_stream = quote! {};
         for mut query in group.queries.0 {
             let modifiers = process_modifiers(&mut query);
             let name = &query.name;
@@ -485,7 +488,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             let attribute_stream = quote! {#(#attributes),*};
             let doc_comments = query.doc_comments.iter();
             // Add the query to the group
-            group_stream.extend(quote! {
+            query_stream.extend(quote! {
                 #(#doc_comments)*
                 [#attribute_stream] fn #name: #name(#arg) #result,
             });
@@ -514,10 +517,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
             add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
-        let name = &group.name;
-        query_stream.extend(quote! {
-            #name { #group_stream },
-        });
     }
 
     dep_node_force_stream.extend(quote! {

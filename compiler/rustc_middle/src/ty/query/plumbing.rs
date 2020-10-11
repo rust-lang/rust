@@ -242,24 +242,14 @@ macro_rules! hash_result {
     };
 }
 
-macro_rules! define_queries {
-    (<$tcx:tt> $($category:tt {
-        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*
-    },)*) => {
-        define_queries_inner! { <$tcx>
-            $($( $(#[$attr])* category<$category> [$($modifiers)*] fn $name: $node($($K)*) -> $V,)*)*
-        }
-    }
-}
-
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     ($K:ty) => { $K };
 }
 
-macro_rules! define_queries_inner {
+macro_rules! define_queries {
     (<$tcx:tt>
-     $($(#[$attr:meta])* category<$category:tt>
+     $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*) => {
 
         use std::mem;
