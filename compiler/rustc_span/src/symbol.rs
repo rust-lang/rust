@@ -1114,6 +1114,7 @@ symbols! {
         try_trait,
         tt,
         tuple,
+        tuple_from_req,
         tuple_indexing,
         two_phase,
         ty,
