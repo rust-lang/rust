@@ -7,10 +7,15 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
 #![feature(once_cell)]
+#![feature(panic_unwind)]
 #![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;
+
+// This is here just to make sure we link to an unwinder
+#[allow(unused_extern_crates)]
+extern crate unwind;
 
 pub extern crate rustc_plugin_impl as plugin;
 

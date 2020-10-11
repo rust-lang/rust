@@ -13,9 +13,9 @@ bench = false
 doc = false
 
 [dependencies]
-core = { path = "../core" }
-libc = { version = "0.2.79", features = ['rustc-dep-of-std'], default-features = false }
-compiler_builtins = "0.1.0"
+core = { version = '1.0.0', optional = true, package = 'rustc-std-workspace-core' }
+libc = { version = "0.2.79", default-features = false }
+compiler_builtins = { version = "0.1.0", optional = true }
 cfg-if = "0.1.8"
 
 [build-dependencies]
@@ -23,3 +23,4 @@ cc = { version = "1.0.1" }
 
 [features]
 llvm-libunwind = []
+rustc-dep-of-std = ['compiler_builtins', 'core', 'libc/rustc-dep-of-std']

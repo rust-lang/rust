@@ -3556,6 +3556,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
+ "unwind",
  "winapi 0.3.9",
 ]
 
@@ -5279,8 +5280,8 @@ dependencies = [
  "cc",
  "cfg-if",
  "compiler_builtins",
- "core",
  "libc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]

@@ -19,7 +19,7 @@ core = { path = "../core" }
 libc = { version = "0.2.79", default-features = false, features = ['rustc-dep-of-std'] }
 compiler_builtins = { version = "0.1.35" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
-unwind = { path = "../unwind" }
+unwind = { path = "../unwind", features = ['rustc-dep-of-std'] }
 hashbrown = { version = "0.9.0", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate
