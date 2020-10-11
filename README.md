@@ -87,11 +87,6 @@ can pass arguments to Miri via `MIRIFLAGS`. For example,
 `MIRIFLAGS="-Zmiri-disable-stacked-borrows" cargo miri run` runs the program
 without checking the aliasing of references.
 
-Miri supports cross-execution: if you want to run the program as if it was a
-Linux program, you can do `cargo miri run --target x86_64-unknown-linux-gnu`.
-This is particularly useful if you are using Windows, as the Linux target is
-much better supported than Windows targets.
-
 When compiling code via `cargo miri`, the `cfg(miri)` config flag is set.  You
 can use this to ignore test cases that fail under Miri because they do things
 Miri does not support:
@@ -115,6 +110,19 @@ error: unsupported operation: can't call foreign function: bind
     = help: this is likely not a bug in the program; it indicates that the program \
             performed an operation that the interpreter does not support
 ```
+
+### Cross-interpretation: running for different targets
+
+Miri cannot just run a binary or test suite for your host target, it can also
+perform cross-interpretation for arbitrary foreign targets: `cargo miri run
+--target x86_64-unknown-linux-gnu` will run your program as if it was a Linux
+program, no matter your host OS.  This is particularly useful if you are using
+Windows, as the Linux target is much better supported than Windows targets.
+
+You can also use this to test platforms with different properties than your host
+platform.  For example `cargo miri test --target mips64-unknown-linux-gnuabi64`
+will run your test suite on a big-endian target, which is useful for testing
+endian-sensitive code.
 
 ### Running Miri on CI
 
