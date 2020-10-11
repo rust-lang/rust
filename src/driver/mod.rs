@@ -79,27 +79,6 @@ fn trans_mono_item<'tcx, M: Module>(
             let _inst_guard =
                 crate::PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).name));
             debug_assert!(!inst.substs.needs_infer());
-            let _mir_guard = crate::PrintOnPanic(|| {
-                match inst.def {
-                    InstanceDef::Item(_)
-                    | InstanceDef::DropGlue(_, _)
-                    | InstanceDef::Virtual(_, _) => {
-                        let mut mir = ::std::io::Cursor::new(Vec::new());
-                        crate::rustc_mir::util::write_mir_pretty(
-                            tcx,
-                            Some(inst.def_id()),
-                            &mut mir,
-                        )
-                        .unwrap();
-                        String::from_utf8(mir.into_inner()).unwrap()
-                    }
-                    _ => {
-                        // FIXME fix write_mir_pretty for these instances
-                        format!("{:#?}", tcx.instance_mir(inst.def))
-                    }
-                }
-            });
-
             tcx.sess
                 .time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
         }
