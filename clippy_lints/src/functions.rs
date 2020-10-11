@@ -194,19 +194,19 @@ declare_clippy_lint! {
     /// use std::fmt;
     ///
     /// #[derive(Debug)]
-    /// struct EndOfStream;
+    /// pub struct EndOfStream;
     ///
     /// impl fmt::Display for EndOfStream {
-    /// 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///			write!(f, "End of Stream")
-    /// 	}
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "End of Stream")
+    ///     }
     /// }
     ///
     /// impl std::error::Error for EndOfStream { }
     ///
     /// pub fn read_u8() -> Result<u8, EndOfStream> { Err(EndOfStream) }
     ///# fn main() {
-    ///# 	read_u8().unwrap();
+    ///#     read_u8().unwrap();
     ///# }
     /// ```
     ///
@@ -483,9 +483,9 @@ fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span
                 cx,
                 RESULT_UNIT_ERR,
                 fn_header_span,
-                "This returns a `Result<_, ()>",
+                "this returns a `Result<_, ()>",
                 None,
-                "Use a custom Error type instead",
+                "use a custom Error type instead",
             );
         }
     }
