@@ -1386,11 +1386,11 @@ impl Setting {
                 description,
             ),
             Setting::Select { js_data_name, description, default_value, ref options } => format!(
-                "<div class='setting-line'>\
+                "<div class=\"setting-line\">\
                      <div>{}</div>\
-                     <label class='select-wrapper'>\
-                         <select id='{}' autocomplete='off'>{}</select>\
-                         <img src='{}down-arrow{}.svg' alt='Select item'>\
+                     <label class=\"select-wrapper\">\
+                         <select id=\"{}\" autocomplete=\"off\">{}</select>\
+                         <img src=\"{}down-arrow{}.svg\" alt=\"Select item\">\
                      </label>\
                  </div>",
                 description,

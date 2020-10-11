@@ -110,8 +110,8 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     });
     if (found === true) {
         styleElem.href = newHref;
-        // If this new value comes from a system setting or from the previously saved theme, no
-        // need to save it.
+        // If this new value comes from a system setting or from the previously
+        // saved theme, no need to save it.
         if (saveTheme === true) {
             updateLocalStorage("rustdoc-theme", newTheme);
         }
@@ -182,7 +182,10 @@ if (getCurrentValue("rustdoc-use-system-theme") !== "false" && window.matchMedia
     // call the function to initialize the theme at least once!
     updateSystemTheme();
 } else {
-    switchTheme(currentTheme, mainTheme,
-                getCurrentValue("rustdoc-theme") || "light",
-                false);
+    switchTheme(
+        currentTheme,
+        mainTheme,
+        getCurrentValue("rustdoc-theme") || "light",
+        false
+    );
 }
