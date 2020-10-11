@@ -140,13 +140,10 @@ fn main() {
         let buf = BufWriter::default();
         let output = buf.clone();
         let result = std::panic::catch_unwind(|| {
-            let _ = rustc_driver::run_compiler(
-                &args,
-                &mut MiriCompilerCalls { host_target },
-                None,
-                Some(Box::new(buf)),
-                None,
-            );
+            let mut callbacks = MiriCompilerCalls { host_target };
+            let mut run = rustc_driver::RunCompiler::new(&args, &mut callbacks);
+            run.set_emitter(Some(Box::new(buf)));
+            let _ = run.run();
         });
 
         match result {
