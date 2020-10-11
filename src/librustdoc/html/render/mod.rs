@@ -575,7 +575,8 @@ impl FormatRenderer for Context {
             settings(
                 self.shared.static_root_path.as_deref().unwrap_or("./"),
                 &self.shared.resource_suffix,
-            ),
+                &self.shared.style_files,
+            )?,
             &style_files,
         );
         self.shared.fs.write(&settings_file, v.as_bytes())?;
@@ -810,6 +811,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     but.textContent = item;
     but.onclick = function(el) {{
         switchTheme(currentTheme, mainTheme, item, true);
+        useSystemTheme(false);
     }};
     but.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
@@ -1343,12 +1345,25 @@ impl AllTypes {
 
 #[derive(Debug)]
 enum Setting {
-    Section { description: &'static str, sub_settings: Vec<Setting> },
-    Entry { js_data_name: &'static str, description: &'static str, default_value: bool },
+    Section {
+        description: &'static str,
+        sub_settings: Vec<Setting>,
+    },
+    Toggle {
+        js_data_name: &'static str,
+        description: &'static str,
+        default_value: bool,
+    },
+    Select {
+        js_data_name: &'static str,
+        description: &'static str,
+        default_value: &'static str,
+        options: Vec<(String, String)>,
+    },
 }
 
 impl Setting {
-    fn display(&self) -> String {
+    fn display(&self, root_path: &str, suffix: &str) -> String {
         match *self {
             Setting::Section { ref description, ref sub_settings } => format!(
                 "<div class='setting-line'>\
@@ -1356,9 +1371,9 @@ impl Setting {
                      <div class='sub-settings'>{}</div>
                  </div>",
                 description,
-                sub_settings.iter().map(|s| s.display()).collect::<String>()
+                sub_settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>()
             ),
-            Setting::Entry { ref js_data_name, ref description, ref default_value } => format!(
+            Setting::Toggle { ref js_data_name, ref description, ref default_value } => format!(
                 "<div class='setting-line'>\
                      <label class='toggle'>\
                      <input type='checkbox' id='{}' {}>\
@@ -1370,13 +1385,40 @@ impl Setting {
                 if *default_value { " checked" } else { "" },
                 description,
             ),
+            Setting::Select {
+                ref js_data_name,
+                ref description,
+                ref default_value,
+                ref options,
+            } => format!(
+                "<div class='setting-line'>\
+                     <div>{}</div>\
+                     <label class='select-wrapper'>\
+                         <select id='{}' autocomplete='off'>{}</select>\
+                         <img src='{}down-arrow{}.svg' alt='Select item'>\
+                     </label>\
+                 </div>",
+                description,
+                js_data_name,
+                options
+                    .iter()
+                    .map(|opt| format!(
+                        "<option value=\"{}\" {}>{}</option>",
+                        opt.0,
+                        if &opt.0 == *default_value { "selected" } else { "" },
+                        opt.1,
+                    ))
+                    .collect::<String>(),
+                root_path,
+                suffix,
+            ),
         }
     }
 }
 
 impl From<(&'static str, &'static str, bool)> for Setting {
     fn from(values: (&'static str, &'static str, bool)) -> Setting {
-        Setting::Entry { js_data_name: values.0, description: values.1, default_value: values.2 }
+        Setting::Toggle { js_data_name: values.0, description: values.1, default_value: values.2 }
     }
 }
 
@@ -1389,9 +1431,39 @@ impl<T: Into<Setting>> From<(&'static str, Vec<T>)> for Setting {
     }
 }
 
-fn settings(root_path: &str, suffix: &str) -> String {
+fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<String, Error> {
+    let theme_names: Vec<(String, String)> = themes
+        .iter()
+        .map(|entry| {
+            let theme =
+                try_none!(try_none!(entry.path.file_stem(), &entry.path).to_str(), &entry.path)
+                    .to_string();
+
+            Ok((theme.clone(), theme))
+        })
+        .collect::<Result<_, Error>>()?;
+
     // (id, explanation, default value)
     let settings: &[Setting] = &[
+        (
+            "Theme preferences",
+            vec![
+                Setting::from(("use-system-theme", "Use system theme", true)),
+                Setting::Select {
+                    js_data_name: "preferred-dark-theme",
+                    description: "Preferred dark theme",
+                    default_value: "dark",
+                    options: theme_names.clone(),
+                },
+                Setting::Select {
+                    js_data_name: "preferred-light-theme",
+                    description: "Preferred light theme",
+                    default_value: "light",
+                    options: theme_names,
+                },
+            ],
+        )
+            .into(),
         (
             "Auto-hide item declarations",
             vec![
@@ -1413,16 +1485,17 @@ fn settings(root_path: &str, suffix: &str) -> String {
         ("line-numbers", "Show line numbers on code examples", false).into(),
         ("disable-shortcuts", "Disable keyboard shortcuts", false).into(),
     ];
-    format!(
+
+    Ok(format!(
         "<h1 class='fqn'>\
-    <span class='in-band'>Rustdoc settings</span>\
-</h1>\
-<div class='settings'>{}</div>\
-<script src='{}settings{}.js'></script>",
-        settings.iter().map(|s| s.display()).collect::<String>(),
+            <span class='in-band'>Rustdoc settings</span>\
+        </h1>\
+        <div class='settings'>{}</div>\
+        <script src='{}settings{}.js'></script>",
+        settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>(),
         root_path,
         suffix
-    )
+    ))
 }
 
 impl Context {
