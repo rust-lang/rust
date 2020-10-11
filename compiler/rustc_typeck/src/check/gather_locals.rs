@@ -49,35 +49,31 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
 
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
-        let local_ty = match local.ty {
-            Some(ref ty) => {
-                let o_ty = self.fcx.to_ty(&ty);
+        let local_ty = local.ty.map(|ty| {
+            let o_ty = self.fcx.to_ty(ty);
 
-                let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
-                    self.fcx.instantiate_opaque_types_from_value(self.parent_id, &o_ty, ty.span)
-                } else {
-                    o_ty
-                };
+            let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
+                self.fcx.instantiate_opaque_types_from_value(self.parent_id, &o_ty, ty.span)
+            } else {
+                o_ty
+            };
 
-                let c_ty = self
-                    .fcx
-                    .inh
-                    .infcx
-                    .canonicalize_user_type_annotation(&UserType::Ty(revealed_ty));
-                debug!(
-                    "visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
-                    ty.hir_id, o_ty, revealed_ty, c_ty
-                );
-                self.fcx
-                    .typeck_results
-                    .borrow_mut()
-                    .user_provided_types_mut()
-                    .insert(ty.hir_id, c_ty);
+            let c_ty = self.fcx
+                .inh
+                .infcx
+                .canonicalize_user_type_annotation(&UserType::Ty(revealed_ty));
+            debug!(
+                "visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
+                ty.hir_id, o_ty, revealed_ty, c_ty
+            );
+            self.fcx
+                .typeck_results
+                .borrow_mut()
+                .user_provided_types_mut()
+                .insert(ty.hir_id, c_ty);
 
-                Some(LocalTy { decl_ty: o_ty, revealed_ty })
-            }
-            None => None,
-        };
+            LocalTy { decl_ty: o_ty, revealed_ty }
+        });
         self.assign(local.span, local.hir_id, local_ty);
 
         debug!(

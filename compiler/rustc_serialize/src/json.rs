@@ -1500,13 +1500,14 @@ impl Stack {
 
     /// Returns the top-most element (if any).
     pub fn top(&self) -> Option<StackElement<'_>> {
-        match self.stack.last() {
-            None => None,
-            Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
-            Some(&InternalKey(start, size)) => Some(StackElement::Key(
-                str::from_utf8(&self.str_buffer[start as usize..(start + size) as usize]).unwrap(),
-            )),
-        }
+        self.stack.last().map(|stack_elem|
+            match stack_elem {
+                &InternalIndex(i) => StackElement::Index(i),
+                &InternalKey(start, size) => StackElement::Key(
+                    str::from_utf8(&self.str_buffer[start as usize..(start + size) as usize]).unwrap()
+                ),
+            }
+        )
     }
 
     // Used by Parser to insert StackElement::Key elements at the top of the stack.
