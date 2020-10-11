@@ -71,7 +71,8 @@ macro_rules! implement {
                     crate::intrinsics::simd_cast(self)
                 }
 
-                /// Returns the nearest integer to each lane. Round half-way cases away from 0.0.
+                /// Creates a floating-point vector from an integer vector.  Rounds values that are
+                /// not exactly representable.
                 #[inline]
                 pub fn round_from_int(value: crate::$int_type) -> Self {
                     unsafe { crate::intrinsics::simd_cast(value) }
