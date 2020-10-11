@@ -17,7 +17,6 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, FatalError};
-use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
 use std::hash::{Hash, Hasher};
@@ -656,25 +655,19 @@ where
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_query_impl<CTX, C>(
-    tcx: CTX,
-    state: &QueryState<CTX::DepKind, CTX::Query, C>,
-    key: C::Key,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
-) where
-    C: QueryCache,
-    C::Key: crate::dep_graph::DepNodeParams<CTX>,
+fn ensure_query_impl<CTX, K, V>(tcx: CTX, key: &K, query: &QueryVtable<CTX, K, V>) -> bool
+where
+    K: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
     if query.eval_always {
-        let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
-        return;
+        return false;
     }
 
     // Ensuring an anonymous query makes no sense
     assert!(!query.anon);
 
-    let dep_node = query.to_dep_node(tcx, &key);
+    let dep_node = query.to_dep_node(tcx, key);
 
     match tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node) {
         None => {
@@ -684,10 +677,11 @@ fn ensure_query_impl<CTX, C>(
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
+            false
         }
         Some((_, dep_node_index)) => {
             tcx.profiler().query_cache_hit(dep_node_index.into());
+            true
         }
     }
 }
@@ -752,7 +746,10 @@ where
 {
     match caller {
         QueryCaller::Ensure => {
-            ensure_query_impl(tcx, state, key, query);
+            if ensure_query_impl(tcx, &key, query) {
+                return None;
+            }
+            let _ = get_query_impl(tcx, state, span, key, query);
             None
         }
         QueryCaller::Get => {
