@@ -1984,12 +1984,12 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
         }
         let s1 = i1.stability.as_ref().map(|s| s.level);
         let s2 = i2.stability.as_ref().map(|s| s.level);
-        match (s1, s2) {
-            (Some(a), Some(b)) => match a.partial_cmp(&b) {
-                Some(Ordering::Equal) | None => {}
-                Some(other) => return other,
-            },
-            _ => {}
+        if let (Some(a), Some(b)) = (s1, s2) {
+            match (a.is_stable(), b.is_stable()) {
+                (true, true) | (false, false) => {}
+                (false, true) => return Ordering::Less,
+                (true, false) => return Ordering::Greater,
+            }
         }
         let lhs = i1.name.as_ref().map_or("", |s| &**s);
         let rhs = i2.name.as_ref().map_or("", |s| &**s);
