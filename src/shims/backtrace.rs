@@ -100,9 +100,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let num_fields = dest.layout.layout.fields.count();
 
-        if num_fields != 4 && num_fields != 5 {
+        if !(4..=5).contains(&num_fields) {
             // Always mention 5 fields, since the 4-field struct is only supported
-            // for backwards compatiblity. New code should declare 5 fields
+            // for backwards compatiblity. New code should declare 5 fields.
             throw_ub_format!("bad declaration of miri_resolve_frame - should return a struct with 5 fields");
         }
 
