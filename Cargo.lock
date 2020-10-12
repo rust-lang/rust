@@ -82,12 +82,12 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "backtrace"
-version = "0.3.51"
+version = "0.3.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec1931848a574faa8f7c71a12ea00453ff5effbb5f51afe7f77d7a48cace6ac1"
+checksum = "707b586e0e2f247cbde68cdd2c3ce69ea7b7be43e1c5b426e37c9319c4b9838e"
 dependencies = [
  "addr2line",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "libc",
  "miniz_oxide",
  "object",
@@ -140,9 +140,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.60"
+version = "1.0.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef611cc68ff783f18535d77ddd080185275713d852c4f5cbb6122c462a7a825c"
+checksum = "ed67cbde08356238e75fc4656be4749481eeffb09e19f320a25237d5221c985d"
 
 [[package]]
 name = "cfg"
@@ -168,9 +168,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.32.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d072b2ba723f0bada7c515d8b3725224bc4f5052d2a92dcbeb0b118ff37084a"
+checksum = "569014cab9084a6b826fe2507cc6d08f7897ba144fb1bc74e71b593dc8a0b952"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.32.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f60cdb0e18c5455cb6a85e8464aad3622b70476018edfa8845691df66f7e9a05"
+checksum = "8d9eab2a6590b696419f89c9ca3616fe8e8266ef676e6a6da8818c94963c9541"
 dependencies = [
  "chalk-derive",
  "lazy_static",
@@ -190,9 +190,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.32.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b14f40242102e7c0e2791a2cc86dbbc213a1d7b7acc0e22b7da329f4957d1722"
+checksum = "4a4671bcc70aa2d7e12ff4fe03f91d0c3c9ce387de915915e57fdf0c91dc5abd"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -203,9 +203,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.32.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "981534d499a8476ecc0b520be4d3864757f96211826a75360fbf2cb6fae362ab"
+checksum = "45f75cc603f2fd302576c8b2976437f334e159e26d0afbb108a565b96c52184e"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -737,9 +737,9 @@ checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 
 [[package]]
 name = "libloading"
-version = "0.6.3"
+version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2443d8f0478b16759158b2f66d525991a05491138bc05814ef52a250148ef4f9"
+checksum = "3557c9384f7f757f6d139cd3a4c62ef4e850696c16bf27924a5538c8a09717a1"
 dependencies = [
  "cfg-if 0.1.10",
  "winapi 0.3.9",
@@ -747,9 +747,9 @@ dependencies = [
 
 [[package]]
 name = "libmimalloc-sys"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bd65748dfb74a807e8379fd49bf4d38964d92b8637b56f173f87e1d70433368"
+checksum = "82151ff13433c4d403cb15d0e6fbda14b24d65bd1a5b33f7d52ec983cc00752d"
 dependencies = [
  "cmake",
 ]
@@ -859,9 +859,9 @@ dependencies = [
 
 [[package]]
 name = "mimalloc"
-version = "0.1.21"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e18b3d01186c4a7bec0b56cff9a4b9d5a1461aa162c7b8eaf2e5ee10b265b02"
+checksum = "4a5d2c9cb18f9cdc6d88f4aca6d3d8ea89c4c8202d6facfc7e56efdee97b80fa"
 dependencies = [
  "libmimalloc-sys",
 ]
@@ -981,9 +981,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.20.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ab52be62400ca80aa00285d25253d7f7c437b7375c4de678f5405d3afe82ca5"
+checksum = "37fd5004feb2ce328a52b0b3d01dbf4ffff72583493900ed15f22d4111c51693"
 
 [[package]]
 name = "once_cell"
@@ -1383,18 +1383,18 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "scroll"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abb2332cb595d33f7edd5700f4cbf94892e680c7f0ae56adab58a35190b66cb1"
+checksum = "fda28d4b4830b807a8b43f7b0e6b5df875311b3e7621d84577188c175b6ec1ec"
 dependencies = [
  "scroll_derive",
 ]
 
 [[package]]
 name = "scroll_derive"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e367622f934864ffa1c704ba2b82280aab856e3d8213c84c5720257eb34b15b9"
+checksum = "6dfde5d1531034db129e95c76ac857e2baecea3443579d493d02224950b0fb6d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1510,9 +1510,9 @@ version = "0.0.0"
 
 [[package]]
 name = "syn"
-version = "1.0.42"
+version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c51d92969d209b54a98397e1b91c8ae82d8c87a7bb87df0b29aa2ad81454228"
+checksum = "e03e57e4fcbfe7749842d53e24ccb9aa12b7252dbe5e91d2acad31834c8b8fdd"
 dependencies = [
  "proc-macro2",
  "quote",
