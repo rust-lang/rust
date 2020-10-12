@@ -109,7 +109,7 @@ pub fn get_deprecation(cx: &DocContext<'_>, def_id: DefId) -> Option<Deprecation
     cx.tcx.lookup_deprecation(def_id).clean(cx)
 }
 
-pub fn external_generic_args(
+fn external_generic_args(
     cx: &DocContext<'_>,
     trait_did: Option<DefId>,
     has_self: bool,
@@ -159,7 +159,7 @@ pub fn external_generic_args(
 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
-pub fn external_path(
+pub(super) fn external_path(
     cx: &DocContext<'_>,
     name: Symbol,
     trait_did: Option<DefId>,
