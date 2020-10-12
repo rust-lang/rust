@@ -2,7 +2,7 @@ use crate::raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable};
 use crate::TryReserveError;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
-use core::hash::{BuildHasher, Hash, Hasher};
+use core::hash::{BuildHasher, Hash};
 use core::iter::{FromIterator, FusedIterator};
 use core::marker::PhantomData;
 use core::mem;
@@ -239,14 +239,16 @@ where
 
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
-    let mut state = hash_builder.build_hasher();
     #[cfg(feature = "ahash")]
     {
         use ahash::CallHasher;
+        let state = hash_builder.build_hasher();
         val.get_hash(state)
     }
     #[cfg(not(feature = "ahash"))]
     {
+        use core::hash::Hasher;
+        let mut state = hash_builder.build_hasher();
         val.hash(&mut state);
         state.finish()
     }
@@ -2007,11 +2009,9 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         S: BuildHasher,
     {
         let hash = make_hash(self.hash_builder, &key);
-        let elem = self.table.insert(
-            hash,
-            (key, value),
-            make_hasher(self.hash_builder),
-        );
+        let elem = self
+            .table
+            .insert(hash, (key, value), make_hasher(self.hash_builder));
         RawOccupiedEntryMut {
             elem,
             table: self.table,
