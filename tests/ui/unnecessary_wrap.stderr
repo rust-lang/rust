@@ -1,4 +1,4 @@
-error: this function returns unnecessarily wrapping data
+error: this function's return value is unnecessarily wrapped by `Option`
   --> $DIR/unnecessary_wrap.rs:8:1
    |
 LL | / fn func1(a: bool, b: bool) -> Option<i32> {
@@ -25,7 +25,7 @@ LL |         2
 LL |     } else {
  ...
 
-error: this function returns unnecessarily wrapping data
+error: this function's return value is unnecessarily wrapped by `Option`
   --> $DIR/unnecessary_wrap.rs:21:1
    |
 LL | / fn func2(a: bool, b: bool) -> Option<i32> {
@@ -51,7 +51,7 @@ LL |     } else {
 LL |         30
    |
 
-error: this function returns unnecessarily wrapping data
+error: this function's return value is unnecessarily wrapped by `Option`
   --> $DIR/unnecessary_wrap.rs:51:1
    |
 LL | / fn func5() -> Option<i32> {
@@ -68,7 +68,7 @@ help: ...and change the returning expressions
 LL |     1
    |
 
-error: this function returns unnecessarily wrapping data
+error: this function's return value is unnecessarily wrapped by `Result`
   --> $DIR/unnecessary_wrap.rs:61:1
    |
 LL | / fn func7() -> Result<i32, ()> {
