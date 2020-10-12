@@ -93,12 +93,12 @@ handled naturally. `./configure` should almost never be used for local
 installations, and is primarily useful for CI. Prefer to customize behavior
 using `config.toml`.
 
-Finally, rustbuild makes use of the [gcc-rs crate] which has [its own
+Finally, rustbuild makes use of the [cc-rs crate] which has [its own
 method][env-vars] of configuring C compilers and C flags via environment
 variables.
 
-[gcc-rs crate]: https://github.com/alexcrichton/gcc-rs
-[env-vars]: https://github.com/alexcrichton/gcc-rs#external-configuration-via-environment-variables
+[cc-rs crate]: https://github.com/alexcrichton/cc-rs
+[env-vars]: https://github.com/alexcrichton/cc-rs#external-configuration-via-environment-variables
 
 ## Build stages
 
