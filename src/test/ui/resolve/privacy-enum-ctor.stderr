@@ -2,17 +2,57 @@ error[E0423]: expected value, found enum `n::Z`
   --> $DIR/privacy-enum-ctor.rs:23:9
    |
 LL |         n::Z;
-   |         ^^^^ help: try using one of the enum's variants: `m::Z::Unit`
+   |         ^^^^
    |
-   = help: you might have meant to use one of the enum's other variants that have fields
+note: the enum is defined here
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL | /         pub(in m) enum Z {
+LL | |             Fn(u8),
+LL | |             Struct {
+LL | |                 s: u8,
+LL | |             },
+LL | |             Unit,
+LL | |         }
+   | |_________^
+help: you might have meant to use the following enum variant
+   |
+LL |         m::Z::Unit;
+   |         ^^^^^^^^^^
+help: the following enum variants are available
+   |
+LL |         (m::Z::Fn(/* fields */));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         (m::Z::Struct { /* fields */ });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
 LL |         Z;
-   |         ^ help: try using one of the enum's variants: `m::Z::Unit`
+   |         ^
    |
-   = help: you might have meant to use one of the enum's other variants that have fields
+note: the enum is defined here
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL | /         pub(in m) enum Z {
+LL | |             Fn(u8),
+LL | |             Struct {
+LL | |                 s: u8,
+LL | |             },
+LL | |             Unit,
+LL | |         }
+   | |_________^
+help: you might have meant to use the following enum variant
+   |
+LL |         m::Z::Unit;
+   |         ^^^^^^^^^^
+help: the following enum variants are available
+   |
+LL |         (m::Z::Fn(/* fields */));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         (m::Z::Struct { /* fields */ });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0423]: expected value, found struct variant `Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:29:20
@@ -34,11 +74,27 @@ LL |     fn f() {
 LL |     let _: E = m::E;
    |                ^^^^
    |
-   = help: you might have meant to use one of the enum's other variants that have fields
-help: try using one of the enum's variants
+note: the enum is defined here
+  --> $DIR/privacy-enum-ctor.rs:2:5
+   |
+LL | /     pub enum E {
+LL | |         Fn(u8),
+LL | |         Struct {
+LL | |             s: u8,
+LL | |         },
+LL | |         Unit,
+LL | |     }
+   | |_____^
+help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
+help: the following enum variants are available
+   |
+LL |     let _: E = (E::Fn(/* fields */));
+   |                ^^^^^^^^^^^^^^^^^^^^^
+LL |     let _: E = (E::Struct { /* fields */ });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a function with a similar name exists
    |
 LL |     let _: E = m::f;
@@ -67,11 +123,27 @@ error[E0423]: expected value, found enum `E`
 LL |     let _: E = E;
    |                ^
    |
-   = help: you might have meant to use one of the enum's other variants that have fields
-help: try using one of the enum's variants
+note: the enum is defined here
+  --> $DIR/privacy-enum-ctor.rs:2:5
+   |
+LL | /     pub enum E {
+LL | |         Fn(u8),
+LL | |         Struct {
+LL | |             s: u8,
+LL | |         },
+LL | |         Unit,
+LL | |     }
+   | |_____^
+help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
+help: the following enum variants are available
+   |
+LL |     let _: E = (E::Fn(/* fields */));
+   |                ^^^^^^^^^^^^^^^^^^^^^
+LL |     let _: E = (E::Struct { /* fields */ });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
@@ -112,9 +184,29 @@ error[E0423]: expected value, found enum `m::n::Z`
   --> $DIR/privacy-enum-ctor.rs:57:16
    |
 LL |     let _: Z = m::n::Z;
-   |                ^^^^^^^ help: try using one of the enum's variants: `m::Z::Unit`
+   |                ^^^^^^^
    |
-   = help: you might have meant to use one of the enum's other variants that have fields
+note: the enum is defined here
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL | /         pub(in m) enum Z {
+LL | |             Fn(u8),
+LL | |             Struct {
+LL | |                 s: u8,
+LL | |             },
+LL | |             Unit,
+LL | |         }
+   | |_________^
+help: you might have meant to use the following enum variant
+   |
+LL |     let _: Z = m::Z::Unit;
+   |                ^^^^^^^^^^
+help: the following enum variants are available
+   |
+LL |     let _: Z = (m::Z::Fn(/* fields */));
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _: Z = (m::Z::Struct { /* fields */ });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12

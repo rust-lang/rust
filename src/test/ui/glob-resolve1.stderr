@@ -24,7 +24,17 @@ error[E0423]: expected value, found enum `B`
   --> $DIR/glob-resolve1.rs:24:5
    |
 LL |     B;
-   |     ^ help: try using the enum's variant: `B::B1`
+   |     ^
+   |
+note: the enum is defined here
+  --> $DIR/glob-resolve1.rs:12:5
+   |
+LL |     pub enum B { B1 }
+   |     ^^^^^^^^^^^^^^^^^
+help: you might have meant to use the following enum variant
+   |
+LL |     B::B1;
+   |     ^^^^^
 
 error[E0425]: cannot find value `C` in this scope
   --> $DIR/glob-resolve1.rs:25:5
