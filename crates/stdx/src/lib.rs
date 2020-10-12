@@ -28,18 +28,30 @@ pub fn timeit(label: &'static str) -> impl Drop {
     Guard { label, start: Instant::now() }
 }
 
-pub fn to_lower_snake_case(s: &str) -> String {
+fn to_snake_case<F: Fn(&char) -> char>(s: &str, change_case: F) -> String {
     let mut buf = String::with_capacity(s.len());
     let mut prev = false;
     for c in s.chars() {
+        // `&& prev` is required to not insert `_` before the first symbol.
         if c.is_ascii_uppercase() && prev {
-            buf.push('_')
+            // This check is required to not translate `Weird_Case` into `weird__case`.
+            if !buf.ends_with('_') {
+                buf.push('_')
+            }
         }
         prev = true;
 
-        buf.push(c.to_ascii_lowercase());
+        buf.push(change_case(&c));
     }
     buf
+}
+
+pub fn to_lower_snake_case(s: &str) -> String {
+    to_snake_case(s, char::to_ascii_lowercase)
+}
+
+pub fn to_upper_snake_case(s: &str) -> String {
+    to_snake_case(s, char::to_ascii_uppercase)
 }
 
 pub fn replace(buf: &mut String, from: char, to: &str) {

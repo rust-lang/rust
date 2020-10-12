@@ -255,6 +255,25 @@ impl ModuleDef {
             ModuleDef::BuiltinType(it) => Some(it.as_name()),
         }
     }
+
+    pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
+        let id = match self {
+            ModuleDef::Adt(it) => match it {
+                Adt::Struct(it) => it.id.into(),
+                Adt::Enum(it) => it.id.into(),
+                Adt::Union(it) => it.id.into(),
+            },
+            ModuleDef::Trait(it) => it.id.into(),
+            ModuleDef::Function(it) => it.id.into(),
+            ModuleDef::TypeAlias(it) => it.id.into(),
+            ModuleDef::Module(it) => it.id.into(),
+            ModuleDef::Const(it) => it.id.into(),
+            ModuleDef::Static(it) => it.id.into(),
+            _ => return,
+        };
+
+        hir_ty::diagnostics::validate_module_item(db, id, sink)
+    }
 }
 
 pub use hir_def::{
@@ -358,6 +377,8 @@ impl Module {
         let crate_def_map = db.crate_def_map(self.id.krate);
         crate_def_map.add_diagnostics(db.upcast(), self.id.local_id, sink);
         for decl in self.declarations(db) {
+            decl.diagnostics(db, sink);
+
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
                 crate::ModuleDef::Module(m) => {
@@ -760,7 +781,8 @@ impl Function {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
-        hir_ty::diagnostics::validate_body(db, self.id.into(), sink)
+        hir_ty::diagnostics::validate_module_item(db, self.id.into(), sink);
+        hir_ty::diagnostics::validate_body(db, self.id.into(), sink);
     }
 
     /// Whether this function declaration has a definition.

@@ -3,7 +3,10 @@
 use base_db::FileId;
 use hir::{
     db::AstDatabase,
-    diagnostics::{Diagnostic, MissingFields, MissingOkInTailExpr, NoSuchField, UnresolvedModule},
+    diagnostics::{
+        Diagnostic, IncorrectCase, MissingFields, MissingOkInTailExpr, NoSuchField,
+        UnresolvedModule,
+    },
     HasSource, HirDisplay, Semantics, VariantDef,
 };
 use ide_db::{
@@ -17,7 +20,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::diagnostics::Fix;
+use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePosition};
 
 /// A [Diagnostic] that potentially has a fix available.
 ///
@@ -96,6 +99,23 @@ impl DiagnosticWithFix for MissingOkInTailExpr {
         let source_change =
             SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
         Some(Fix::new("Wrap with ok", source_change, tail_expr_range))
+    }
+}
+
+impl DiagnosticWithFix for IncorrectCase {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+        let root = sema.db.parse_or_expand(self.file)?;
+        let name_node = self.ident.to_node(&root);
+
+        let file_id = self.file.original_file(sema.db);
+        let offset = name_node.syntax().text_range().start();
+        let file_position = FilePosition { file_id, offset };
+
+        let rename_changes =
+            rename_with_semantics(sema, file_position, &self.suggested_text).ok()?;
+
+        let label = format!("Rename to {}", self.suggested_text);
+        Some(Fix::new(&label, rename_changes.info, rename_changes.range))
     }
 }
 

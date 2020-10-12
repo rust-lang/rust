@@ -42,7 +42,14 @@ pub(crate) fn rename(
     new_name: &str,
 ) -> Result<RangeInfo<SourceChange>, RenameError> {
     let sema = Semantics::new(db);
+    rename_with_semantics(&sema, position, new_name)
+}
 
+pub(crate) fn rename_with_semantics(
+    sema: &Semantics<RootDatabase>,
+    position: FilePosition,
+    new_name: &str,
+) -> Result<RangeInfo<SourceChange>, RenameError> {
     match lex_single_syntax_kind(new_name) {
         Some(res) => match res {
             (SyntaxKind::IDENT, _) => (),

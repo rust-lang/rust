@@ -95,6 +95,12 @@ impl ItemScope {
         self.impls.iter().copied()
     }
 
+    pub fn values(
+        &self,
+    ) -> impl Iterator<Item = (ModuleDefId, Visibility)> + ExactSizeIterator + '_ {
+        self.values.values().copied()
+    }
+
     pub fn visibility_of(&self, def: ModuleDefId) -> Option<Visibility> {
         self.name_of(ItemInNs::Types(def))
             .or_else(|| self.name_of(ItemInNs::Values(def)))

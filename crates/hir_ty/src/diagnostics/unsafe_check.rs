@@ -190,13 +190,13 @@ struct Ty {
     a: u8,
 }
 
-static mut static_mut: Ty = Ty { a: 0 };
+static mut STATIC_MUT: Ty = Ty { a: 0 };
 
 fn main() {
-    let x = static_mut.a;
+    let x = STATIC_MUT.a;
           //^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
     unsafe {
-        let x = static_mut.a;
+        let x = STATIC_MUT.a;
     }
 }
 "#,

@@ -320,6 +320,10 @@ pub fn param(name: String, ty: String) -> ast::Param {
     ast_from_text(&format!("fn f({}: {}) {{ }}", name, ty))
 }
 
+pub fn ret_type(ty: ast::Type) -> ast::RetType {
+    ast_from_text(&format!("fn f() -> {} {{ }}", ty))
+}
+
 pub fn param_list(pats: impl IntoIterator<Item = ast::Param>) -> ast::ParamList {
     let args = pats.into_iter().join(", ");
     ast_from_text(&format!("fn f({}) {{ }}", args))
@@ -350,14 +354,20 @@ pub fn fn_(
     type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
     body: ast::BlockExpr,
+    ret_type: Option<ast::RetType>,
 ) -> ast::Fn {
     let type_params =
         if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
+    let ret_type = if let Some(ret_type) = ret_type { format!("{} ", ret_type) } else { "".into() };
     let visibility = match visibility {
         None => String::new(),
         Some(it) => format!("{} ", it),
     };
-    ast_from_text(&format!("{}fn {}{}{} {}", visibility, fn_name, type_params, params, body))
+
+    ast_from_text(&format!(
+        "{}fn {}{}{} {}{}",
+        visibility, fn_name, type_params, params, ret_type, body
+    ))
 }
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {

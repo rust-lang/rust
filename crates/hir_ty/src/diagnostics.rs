@@ -2,10 +2,11 @@
 mod expr;
 mod match_check;
 mod unsafe_check;
+mod decl_check;
 
-use std::any::Any;
+use std::{any::Any, fmt};
 
-use hir_def::DefWithBodyId;
+use hir_def::{DefWithBodyId, ModuleDefId};
 use hir_expand::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use hir_expand::{name::Name, HirFileId, InFile};
 use stdx::format_to;
@@ -14,6 +15,16 @@ use syntax::{ast, AstPtr, SyntaxNodePtr};
 use crate::db::HirDatabase;
 
 pub use crate::diagnostics::expr::{record_literal_missing_fields, record_pattern_missing_fields};
+
+pub fn validate_module_item(
+    db: &dyn HirDatabase,
+    owner: ModuleDefId,
+    sink: &mut DiagnosticSink<'_>,
+) {
+    let _p = profile::span("validate_module_item");
+    let mut validator = decl_check::DeclValidator::new(owner, sink);
+    validator.validate_item(db);
+}
 
 pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut DiagnosticSink<'_>) {
     let _p = profile::span("validate_body");
@@ -231,6 +242,66 @@ impl Diagnostic for MismatchedArgCount {
     }
 }
 
+#[derive(Debug)]
+pub enum CaseType {
+    // `some_var`
+    LowerSnakeCase,
+    // `SOME_CONST`
+    UpperSnakeCase,
+    // `SomeStruct`
+    UpperCamelCase,
+}
+
+impl fmt::Display for CaseType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let repr = match self {
+            CaseType::LowerSnakeCase => "snake_case",
+            CaseType::UpperSnakeCase => "UPPER_SNAKE_CASE",
+            CaseType::UpperCamelCase => "CamelCase",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
+#[derive(Debug)]
+pub struct IncorrectCase {
+    pub file: HirFileId,
+    pub ident: AstPtr<ast::Name>,
+    pub expected_case: CaseType,
+    pub ident_type: String,
+    pub ident_text: String,
+    pub suggested_text: String,
+}
+
+impl Diagnostic for IncorrectCase {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("incorrect-ident-case")
+    }
+
+    fn message(&self) -> String {
+        format!(
+            "{} `{}` should have {} name, e.g. `{}`",
+            self.ident_type,
+            self.ident_text,
+            self.expected_case.to_string(),
+            self.suggested_text
+        )
+    }
+
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile::new(self.file, self.ident.clone().into())
+    }
+
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+
+    fn is_experimental(&self) -> bool {
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use base_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
@@ -242,7 +313,10 @@ mod tests {
     use rustc_hash::FxHashMap;
     use syntax::{TextRange, TextSize};
 
-    use crate::{diagnostics::validate_body, test_db::TestDB};
+    use crate::{
+        diagnostics::{validate_body, validate_module_item},
+        test_db::TestDB,
+    };
 
     impl TestDB {
         fn diagnostics<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
@@ -253,6 +327,9 @@ mod tests {
                 let mut fns = Vec::new();
                 for (module_id, _) in crate_def_map.modules.iter() {
                     for decl in crate_def_map[module_id].scope.declarations() {
+                        let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
+                        validate_module_item(self, decl, &mut sink);
+
                         if let ModuleDefId::FunctionId(f) = decl {
                             fns.push(f)
                         }
@@ -262,6 +339,8 @@ mod tests {
                         let impl_data = self.impl_data(impl_id);
                         for item in impl_data.items.iter() {
                             if let AssocItemId::FunctionId(f) = item {
+                                let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
+                                validate_module_item(self, ModuleDefId::FunctionId(*f), &mut sink);
                                 fns.push(*f)
                             }
                         }

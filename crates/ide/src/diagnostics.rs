@@ -96,6 +96,9 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
+        .on::<hir::diagnostics::IncorrectCase, _>(|d| {
+            res.borrow_mut().push(warning_with_fix(d, &sema));
+        })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
         .filter(|diag| !config.disabled.contains(diag.code().as_str()));
@@ -126,6 +129,15 @@ fn diagnostic_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabas
         range: sema.diagnostics_display_range(d).range,
         message: d.message(),
         severity: Severity::Error,
+        fix: d.fix(&sema),
+    }
+}
+
+fn warning_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
+    Diagnostic {
+        range: sema.diagnostics_display_range(d).range,
+        message: d.message(),
+        severity: Severity::WeakWarning,
         fix: d.fix(&sema),
     }
 }
@@ -245,8 +257,37 @@ mod tests {
 
         assert_eq_text!(&after, &actual);
         assert!(
-            fix.fix_trigger_range.start() <= file_position.offset
-                && fix.fix_trigger_range.end() >= file_position.offset,
+            fix.fix_trigger_range.contains_inclusive(file_position.offset),
+            "diagnostic fix range {:?} does not touch cursor position {:?}",
+            fix.fix_trigger_range,
+            file_position.offset
+        );
+    }
+
+    /// Similar to `check_fix`, but applies all the available fixes.
+    fn check_fixes(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let after = trim_indent(ra_fixture_after);
+
+        let (analysis, file_position) = fixture::position(ra_fixture_before);
+        let diagnostic = analysis
+            .diagnostics(&DiagnosticsConfig::default(), file_position.file_id)
+            .unwrap()
+            .pop()
+            .unwrap();
+        let fix = diagnostic.fix.unwrap();
+        let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
+        let actual = {
+            let mut actual = target_file_contents.to_string();
+            // Go from the last one to the first one, so that ranges won't be affected by previous edits.
+            for edit in fix.source_change.source_file_edits.iter().rev() {
+                edit.edit.apply(&mut actual);
+            }
+            actual
+        };
+
+        assert_eq_text!(&after, &actual);
+        assert!(
+            fix.fix_trigger_range.contains_inclusive(file_position.offset),
             "diagnostic fix range {:?} does not touch cursor position {:?}",
             fix.fix_trigger_range,
             file_position.offset
@@ -789,5 +830,101 @@ struct Foo {
 
         let diagnostics = analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap();
         assert!(!diagnostics.is_empty());
+    }
+
+    #[test]
+    fn test_rename_incorrect_case() {
+        check_fixes(
+            r#"
+pub struct test_struct<|> { one: i32 }
+
+pub fn some_fn(val: test_struct) -> test_struct {
+    test_struct { one: val.one + 1 }
+}
+"#,
+            r#"
+pub struct TestStruct { one: i32 }
+
+pub fn some_fn(val: TestStruct) -> TestStruct {
+    TestStruct { one: val.one + 1 }
+}
+"#,
+        );
+
+        check_fixes(
+            r#"
+pub fn some_fn(NonSnakeCase<|>: u8) -> u8 {
+    NonSnakeCase
+}
+"#,
+            r#"
+pub fn some_fn(non_snake_case: u8) -> u8 {
+    non_snake_case
+}
+"#,
+        );
+
+        check_fixes(
+            r#"
+pub fn SomeFn<|>(val: u8) -> u8 {
+    if val != 0 { SomeFn(val - 1) } else { val }
+}
+"#,
+            r#"
+pub fn some_fn(val: u8) -> u8 {
+    if val != 0 { some_fn(val - 1) } else { val }
+}
+"#,
+        );
+
+        check_fixes(
+            r#"
+fn some_fn() {
+    let whatAWeird_Formatting<|> = 10;
+    another_func(whatAWeird_Formatting);
+}
+"#,
+            r#"
+fn some_fn() {
+    let what_a_weird_formatting = 10;
+    another_func(what_a_weird_formatting);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_uppercase_const_no_diagnostics() {
+        check_no_diagnostics(
+            r#"
+fn foo() {
+    const ANOTHER_ITEM<|>: &str = "some_item";
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_incorrect_case_struct_method() {
+        check_fixes(
+            r#"
+pub struct TestStruct;
+
+impl TestStruct {
+    pub fn SomeFn<|>() -> TestStruct {
+        TestStruct
+    }
+}
+"#,
+            r#"
+pub struct TestStruct;
+
+impl TestStruct {
+    pub fn some_fn() -> TestStruct {
+        TestStruct
+    }
+}
+"#,
+        );
     }
 }
