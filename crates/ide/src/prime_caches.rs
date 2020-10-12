@@ -3,10 +3,45 @@
 //! request takes longer to compute. This modules implemented prepopulating of
 //! various caches, it's not really advanced at the moment.
 
-use crate::{FileId, RootDatabase};
+use base_db::SourceDatabase;
+use hir::db::DefDatabase;
 
-pub(crate) fn prime_caches(db: &RootDatabase, files: Vec<FileId>) {
-    for file in files {
-        let _ = crate::syntax_highlighting::highlight(db, file, None, false);
+use crate::RootDatabase;
+
+#[derive(Debug)]
+pub enum PrimeCachesProgress {
+    Started,
+    /// We started indexing a crate.
+    StartedOnCrate {
+        on_crate: String,
+        n_done: usize,
+        n_total: usize,
+    },
+    /// We finished indexing all crates.
+    Finished,
+}
+
+pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) + Sync)) {
+    let _p = profile::span("prime_caches");
+    let graph = db.crate_graph();
+    let topo = &graph.crates_in_topological_order();
+
+    cb(PrimeCachesProgress::Started);
+
+    // FIXME: This would be easy to parallelize, since it's in the ideal ordering for that.
+    // Unfortunately rayon prevents panics from propagation out of a `scope`, which breaks
+    // cancellation, so we cannot use rayon.
+    for (i, krate) in topo.iter().enumerate() {
+        let crate_name =
+            graph[*krate].declaration_name.as_ref().map(ToString::to_string).unwrap_or_default();
+
+        cb(PrimeCachesProgress::StartedOnCrate {
+            on_crate: crate_name,
+            n_done: i,
+            n_total: topo.len(),
+        });
+        db.crate_def_map(*krate);
     }
+
+    cb(PrimeCachesProgress::Finished);
 }

@@ -221,6 +221,34 @@ impl CrateGraph {
         deps.into_iter()
     }
 
+    /// Returns all crates in the graph, sorted in topological order (ie. dependencies of a crate
+    /// come before the crate itself).
+    pub fn crates_in_topological_order(&self) -> Vec<CrateId> {
+        let mut res = Vec::new();
+        let mut visited = FxHashSet::default();
+
+        for krate in self.arena.keys().copied() {
+            go(self, &mut visited, &mut res, krate);
+        }
+
+        return res;
+
+        fn go(
+            graph: &CrateGraph,
+            visited: &mut FxHashSet<CrateId>,
+            res: &mut Vec<CrateId>,
+            source: CrateId,
+        ) {
+            if !visited.insert(source) {
+                return;
+            }
+            for dep in graph[source].dependencies.iter() {
+                go(graph, visited, res, dep.crate_id)
+            }
+            res.push(source)
+        }
+    }
+
     // FIXME: this only finds one crate with the given root; we could have multiple
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
         let (&crate_id, _) =

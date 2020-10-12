@@ -7,6 +7,7 @@ use std::{
 
 use base_db::VfsPath;
 use crossbeam_channel::{select, Receiver};
+use ide::PrimeCachesProgress;
 use ide::{Canceled, FileId};
 use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
@@ -61,7 +62,7 @@ pub(crate) enum Task {
     Response(Response),
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     Workspaces(Vec<anyhow::Result<ProjectWorkspace>>),
-    Unit,
+    PrimeCaches(PrimeCachesProgress),
 }
 
 impl fmt::Debug for Event {
@@ -197,7 +198,28 @@ impl GlobalState {
                     }
                 }
                 Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
-                Task::Unit => (),
+                Task::PrimeCaches(progress) => {
+                    let (state, message, fraction);
+                    match progress {
+                        PrimeCachesProgress::Started => {
+                            state = Progress::Begin;
+                            message = None;
+                            fraction = 0.0;
+                        }
+                        PrimeCachesProgress::StartedOnCrate { on_crate, n_done, n_total } => {
+                            state = Progress::Report;
+                            message = Some(format!("{}/{} ({})", n_done, n_total, on_crate));
+                            fraction = Progress::fraction(n_done, n_total);
+                        }
+                        PrimeCachesProgress::Finished => {
+                            state = Progress::End;
+                            message = None;
+                            fraction = 1.0;
+                        }
+                    };
+
+                    self.report_progress("indexing", state, message, Some(fraction));
+                }
             },
             Event::Vfs(mut task) => {
                 let _p = profile::span("GlobalState::handle_event/vfs");
@@ -573,12 +595,18 @@ impl GlobalState {
                 Task::Diagnostics(diagnostics)
             })
         }
-        self.task_pool.handle.spawn({
-            let subs = subscriptions;
+        self.task_pool.handle.spawn_with_sender({
             let snap = self.snapshot();
-            move || {
-                snap.analysis.prime_caches(subs).unwrap_or_else(|_: Canceled| ());
-                Task::Unit
+            move |sender| {
+                snap.analysis
+                    .prime_caches(|progress| {
+                        sender.send(Task::PrimeCaches(progress)).unwrap();
+                    })
+                    .unwrap_or_else(|_: Canceled| {
+                        // Pretend that we're done, so that the progress bar is removed. Otherwise
+                        // the editor may complain about it already existing.
+                        sender.send(Task::PrimeCaches(PrimeCachesProgress::Finished)).unwrap()
+                    });
             }
         });
     }
