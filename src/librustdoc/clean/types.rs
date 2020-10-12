@@ -533,7 +533,7 @@ impl Attributes {
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
-        let doc_strings = RefCell::new(vec![]);
+        let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
@@ -550,7 +550,7 @@ impl Attributes {
 
                 let line = doc_line;
                 doc_line += value.lines().count();
-                doc_strings.borrow_mut().push(DocFragment {
+                doc_strings.push(DocFragment {
                     line,
                     span: attr.span,
                     doc: value,
@@ -575,7 +575,7 @@ impl Attributes {
                         {
                             let line = doc_line;
                             doc_line += contents.lines().count();
-                            doc_strings.borrow_mut().push(DocFragment {
+                            doc_strings.push(DocFragment {
                                 line,
                                 span: attr.span,
                                 doc: contents,
@@ -621,7 +621,7 @@ impl Attributes {
             .map_or(true, |a| a.style == AttrStyle::Inner);
 
         Attributes {
-            doc_strings: doc_strings.into_inner(),
+            doc_strings,
             other_attrs,
             cfg: if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) },
             span: sp,
