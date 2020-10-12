@@ -225,10 +225,13 @@ pub(crate) fn trans_const_value<'tcx>(
                         }
                         None => bug!("missing allocation {:?}", ptr.alloc_id),
                     };
-                    let val = fx
-                        .bcx
-                        .ins()
-                        .iadd_imm(base_addr, i64::try_from(ptr.offset.bytes()).unwrap());
+                    let val = if ptr.offset.bytes() != 0 {
+                        fx.bcx
+                            .ins()
+                            .iadd_imm(base_addr, i64::try_from(ptr.offset.bytes()).unwrap())
+                    } else {
+                        base_addr
+                    };
                     return CValue::by_val(val, layout);
                 }
             }
