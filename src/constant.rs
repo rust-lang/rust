@@ -337,7 +337,7 @@ fn data_id_for_static(
 
         let ref_name = format!("_rust_extern_with_linkage_{}", symbol_name);
         let ref_data_id = module
-            .declare_data(&ref_name, Linkage::Local, true, false)
+            .declare_data(&ref_name, Linkage::Local, false, false)
             .unwrap();
         let mut data_ctx = DataContext::new();
         data_ctx.set_align(align);
