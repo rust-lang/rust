@@ -1,15 +1,16 @@
-//! This file is managed by `cargo dev update_lints`. Do not edit.
+//! This file is managed by `cargo dev update_lints`. Do not edit or format this file.
 
-use lazy_static::lazy_static;
+use std::lazy::SyncLazy;
 
 pub mod lint;
 pub use lint::Level;
 pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
-lazy_static! {
+#[rustfmt::skip]
+pub static ALL_LINTS: SyncLazy<Vec<Lint>> = SyncLazy::new(|| {
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub static ref ALL_LINTS: Vec<Lint> = vec![
+vec![
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -2831,6 +2832,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         deprecation: None,
         module: "methods",
     },
-];
+]
 // end lint list, do not remove this comment, it’s used in `update_lints`
-}
+});

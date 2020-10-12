@@ -29,7 +29,7 @@ pub fn run(update_mode: UpdateMode) {
         false,
         update_mode == UpdateMode::Change,
         || {
-            format!("pub static ref ALL_LINTS: Vec<Lint> = vec!{:#?};", sorted_usable_lints)
+            format!("vec!{:#?}", sorted_usable_lints)
                 .lines()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>()
