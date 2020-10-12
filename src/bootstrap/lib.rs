@@ -179,6 +179,8 @@ const LLVM_TOOLS: &[&str] = &[
     "llvm-ar", // used for creating and modifying archive files
 ];
 
+pub const VERSION: usize = 2;
+
 /// A structure representing a Rust compiler.
 ///
 /// Each compiler has a `stage` that it is associated with and a `host` that
