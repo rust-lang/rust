@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
                 cx,
                 UNNECESSARY_WRAP,
                 span,
-                "this function returns unnecessarily wrapping data",
+                format!("this function's return value is unnecessarily wrapped by `{}`, return_type)",
                 |diag| {
                     let inner_ty = return_ty(cx, hir_id)
                         .walk()
