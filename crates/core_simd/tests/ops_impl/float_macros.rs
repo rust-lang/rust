@@ -387,7 +387,7 @@ macro_rules! float_tests {
                 // all of the mantissa digits set to 1, pushed up to the MSB.
                 const ALL_MANTISSA_BITS: $int_scalar = ((1 << <$scalar>::MANTISSA_DIGITS) - 1);
                 const MAX_REPRESENTABLE_VALUE: $int_scalar =
-                    ALL_MANTISSA_BITS << (core::mem::size_of::<$scalar>() * 8 as usize - <$scalar>::MANTISSA_DIGITS as usize);
+                    ALL_MANTISSA_BITS << (core::mem::size_of::<$scalar>() * 8 - <$scalar>::MANTISSA_DIGITS as usize - 1);
                 const VALUES: [$scalar; 16] = [
                     -0.0,
                     0.0,
