@@ -40,7 +40,7 @@ impl Profile {
     pub fn all_for_help(indent: &str) -> String {
         let mut out = String::new();
         for choice in Profile::all() {
-            writeln!(&mut out, "{}{}", indent, choice).unwrap();
+            writeln!(&mut out, "{}{}: {}", indent, choice, choice.purpose()).unwrap();
         }
         out
     }
@@ -143,7 +143,7 @@ pub fn interactive_path() -> io::Result<Profile> {
     let mut input = String::new();
     println!("Welcome to the Rust project! What do you want to do with x.py?");
     for (letter, profile) in abbrev_all() {
-        println!("{}) {}", letter, profile.purpose());
+        println!("{}) {}: {}", letter, profile, profile.purpose());
     }
     let template = loop {
         print!(
