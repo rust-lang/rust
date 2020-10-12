@@ -14,9 +14,9 @@ mod tests;
 
 extern "Rust" {
     // These are the magic symbols to call the global allocator.  rustc generates
-    // them to call `__rg_alloc` etc if there is a `#[global_allocator]` attribute
+    // them to call `__rg_alloc` etc. if there is a `#[global_allocator]` attribute
     // (the code expanding that attribute macro generates those functions), or to call
-    // the default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
+    // the default implementations in libstd (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
     // otherwise.
     #[rustc_allocator]
     #[rustc_allocator_nounwind]
@@ -36,7 +36,7 @@ extern "Rust" {
 /// if there is one, or the `std` crate’s default.
 ///
 /// Note: while this type is unstable, the functionality it provides can be
-/// accessed through the [free functions in `alloc`](index.html#functions).
+/// accessed through the [free functions in `alloc`](self#functions).
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
