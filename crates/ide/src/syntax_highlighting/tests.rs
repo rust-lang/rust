@@ -89,6 +89,10 @@ macro_rules! noop {
     }
 }
 
+macro_rules! keyword_frag {
+    ($type:ty) => ($type)
+}
+
 // comment
 fn main() {
     println!("Hello, {}!", 92);

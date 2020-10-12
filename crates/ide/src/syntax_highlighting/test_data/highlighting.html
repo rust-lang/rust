@@ -115,6 +115,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
+<span class="macro">macro_rules!</span> <span class="macro declaration">keyword_frag</span> <span class="punctuation">{</span>
+    <span class="punctuation">(</span><span class="punctuation">$</span>type<span class="punctuation">:</span>ty<span class="punctuation">)</span> <span class="operator">=</span><span class="punctuation">&gt;</span> <span class="punctuation">(</span><span class="punctuation">$</span>type<span class="punctuation">)</span>
+<span class="punctuation">}</span>
+
 <span class="comment">// comment</span>
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">{</span>
     <span class="macro">println!</span><span class="punctuation">(</span><span class="string_literal">"Hello, {}!"</span><span class="punctuation">,</span> <span class="numeric_literal">92</span><span class="punctuation">)</span><span class="punctuation">;</span>
