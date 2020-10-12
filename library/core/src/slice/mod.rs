@@ -1703,8 +1703,7 @@ impl<T> [T] {
 
     /// Returns a subslice with the prefix removed.
     ///
-    /// If the slice starts with `prefix`, returns
-    /// the subslice after the prefix, wrapped in `Some`.
+    /// If the slice starts with `prefix`, returns the subslice after the prefix, wrapped in `Some`.
     ///
     /// If the slice does not start with `prefix`, returns `None`.
     ///
@@ -1738,8 +1737,7 @@ impl<T> [T] {
 
     /// Returns a subslice with the suffix removed.
     ///
-    /// If the slice ends with `suffix`, returns
-    /// the subslice before the suffix, wrapped in `Some`.
+    /// If the slice ends with `suffix`, returns the subslice before the suffix, wrapped in `Some`.
     ///
     /// If the slice does not end with `suffix`, returns `None`.
     ///
