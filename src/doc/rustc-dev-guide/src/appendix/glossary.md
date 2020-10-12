@@ -64,6 +64,7 @@ query <div id="query"/>                  |  Perhaps some sub-computation during 
 recovery <div id="recovery"/>            |  Recovery refers to handling invalid syntax during parsing (e.g. a missing comma) and continuing to parse the AST. This avoid showing spurious errors to the user (e.g. showing 'missing field' errors when the struct definition contains errors).
 region <div id="region"/>                |  Another term for "lifetime" often used in the literature and in the borrow checker.
 rib <div id="rib"/>                      |  A data structure in the name resolver that keeps track of a single scope for names. ([see more](../name-resolution.html))
+scrutinee                                |  A scrutinee is the expression that is matched on in `match` expressions and similar pattern matching constructs. For example, in `match x { A => 1, B => 2 }`, the expression `x` is the scrutinee.
 sess <div id="sess"/>                    |  The compiler session, which stores global data used throughout compilation
 side tables <div id="side-tables"/>      |  Because the AST and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
 sigil <div id="sigil"/>                  |  Like a keyword but composed entirely of non-alphanumeric tokens. For example, `&` is a sigil for references.
