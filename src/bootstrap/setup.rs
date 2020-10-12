@@ -1,4 +1,4 @@
-use crate::t;
+use crate::{t, VERSION};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{
@@ -69,8 +69,9 @@ pub fn setup(src_path: &Path, profile: Profile) {
     let path = cfg_file.unwrap_or_else(|| src_path.join("config.toml"));
     let settings = format!(
         "# Includes one of the default files in src/bootstrap/defaults\n\
-    profile = \"{}\"\n",
-        profile
+    profile = \"{}\"\n\
+    changelog-seen = {}\n",
+        profile, VERSION
     );
     t!(fs::write(path, settings));
 
