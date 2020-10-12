@@ -146,7 +146,6 @@ not available.
 
 target | std | host | notes
 -------|-----|------|-------
-=======
 `aarch64-apple-darwin` | ? |  | ARM64 macOS
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
