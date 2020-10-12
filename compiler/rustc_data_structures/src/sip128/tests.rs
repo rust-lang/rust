@@ -456,12 +456,12 @@ macro_rules! test_fill_buffer {
         // Test filling and overfilling the buffer from all possible offsets
         // for a given integer type and its corresponding write method.
         const SIZE: usize = std::mem::size_of::<$type>();
-        let input = [42; BUFFER_SIZE_BYTES];
+        let input = [42; BUFFER_SIZE];
         let x = 0x01234567_89ABCDEF_76543210_FEDCBA98_u128 as $type;
         let x_bytes = &x.to_ne_bytes();
 
         for i in 1..=SIZE {
-            let s = &input[..BUFFER_SIZE_BYTES - i];
+            let s = &input[..BUFFER_SIZE - i];
 
             let mut h1 = SipHasher128::new_with_keys(7, 13);
             h1.write(s);

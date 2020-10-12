@@ -7,12 +7,34 @@ use std::ptr;
 #[cfg(test)]
 mod tests;
 
+// The SipHash algorithm operates on 8-byte chunks.
 const ELEM_SIZE: usize = mem::size_of::<u64>();
-const BUFFER_SIZE_ELEMS: usize = 8;
-const BUFFER_SIZE_BYTES: usize = BUFFER_SIZE_ELEMS * ELEM_SIZE;
-const BUFFER_SIZE_ELEMS_SPILL: usize = BUFFER_SIZE_ELEMS + 1;
-const BUFFER_SIZE_BYTES_SPILL: usize = BUFFER_SIZE_ELEMS_SPILL * ELEM_SIZE;
-const BUFFER_SPILL_INDEX: usize = BUFFER_SIZE_ELEMS_SPILL - 1;
+
+// Size of the buffer in number of elements, not including the spill.
+//
+// The selection of this size was guided by rustc-perf benchmark comparisons of
+// different buffer sizes. It should be periodically reevaluated as the compiler
+// implementation and input characteristics change.
+//
+// Using the same-sized buffer for everything we hash is a performance versus
+// complexity tradeoff. The ideal buffer size, and whether buffering should even
+// be used, depends on what is being hashed. It may be worth it to size the
+// buffer appropriately (perhaps by making SipHasher128 generic over the buffer
+// size) or disable buffering depending on what is being hashed. But at this
+// time, we use the same buffer size for everything.
+const BUFFER_CAPACITY: usize = 8;
+
+// Size of the buffer in bytes, not including the spill.
+const BUFFER_SIZE: usize = BUFFER_CAPACITY * ELEM_SIZE;
+
+// Size of the buffer in number of elements, including the spill.
+const BUFFER_WITH_SPILL_CAPACITY: usize = BUFFER_CAPACITY + 1;
+
+// Size of the buffer in bytes, including the spill.
+const BUFFER_WITH_SPILL_SIZE: usize = BUFFER_WITH_SPILL_CAPACITY * ELEM_SIZE;
+
+// Index of the spill element in the buffer.
+const BUFFER_SPILL_INDEX: usize = BUFFER_WITH_SPILL_CAPACITY - 1;
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -22,10 +44,10 @@ pub struct SipHasher128 {
     // `processed`, and then repetition of that pattern until hashing is done.
     // This is the basis for the ordering of fields below. However, in practice
     // the cache miss-rate for data access is extremely low regardless of order.
-    nbuf: usize,                                      // how many bytes in buf are valid
-    buf: [MaybeUninit<u64>; BUFFER_SIZE_ELEMS_SPILL], // unprocessed bytes le
-    state: State,                                     // hash State
-    processed: usize,                                 // how many bytes we've processed
+    nbuf: usize, // how many bytes in buf are valid
+    buf: [MaybeUninit<u64>; BUFFER_WITH_SPILL_CAPACITY], // unprocessed bytes le
+    state: State, // hash State
+    processed: usize, // how many bytes we've processed
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -64,13 +86,18 @@ macro_rules! compress {
 // Copies up to 8 bytes from source to destination. This performs better than
 // `ptr::copy_nonoverlapping` on microbenchmarks and may perform better on real
 // workloads since all of the copies have fixed sizes and avoid calling memcpy.
+//
+// This is specifically designed for copies of up to 8 bytes, because that's the
+// maximum of number bytes needed to fill an 8-byte-sized element on which
+// SipHash operates. Note that for variable-sized copies which are known to be
+// less than 8 bytes, this function will perform more work than necessary unless
+// the compiler is able to optimize the extra work away.
 #[inline]
 unsafe fn copy_nonoverlapping_small(src: *const u8, dst: *mut u8, count: usize) {
-    const COUNT_MAX: usize = 8;
-    debug_assert!(count <= COUNT_MAX);
+    debug_assert!(count <= 8);
 
-    if count == COUNT_MAX {
-        ptr::copy_nonoverlapping(src, dst, COUNT_MAX);
+    if count == 8 {
+        ptr::copy_nonoverlapping(src, dst, 8);
         return;
     }
 
@@ -116,10 +143,13 @@ unsafe fn copy_nonoverlapping_small(src: *const u8, dst: *mut u8, count: usize) 
 // The buffer includes a "spill"--an extra element at the end--which simplifies
 // the integer write buffer processing path. The value that fills the buffer can
 // be written with a statically sized write that may spill over into the spill.
-// After the buffer is processed, the part of the value that spilled over can
+// After the buffer is processed, the part of the value that spilled over can be
 // written from the spill to the beginning of the buffer with another statically
-// sized write. Due to static sizes, this scheme performs better than copying
-// the exact number of bytes needed into the end and beginning of the buffer.
+// sized write. This write may copy more bytes than actually spilled over, but
+// we maintain the metadata such that any extra copied bytes will be ignored by
+// subsequent processing. Due to the static sizes, this scheme performs better
+// than copying the exact number of bytes needed into the end and beginning of
+// the buffer.
 //
 // The buffer is uninitialized, which improves performance, but may preclude
 // efficient implementation of alternative approaches. The improvement is not so
@@ -142,12 +172,12 @@ unsafe fn copy_nonoverlapping_small(src: *const u8, dst: *mut u8, count: usize) 
 //
 // In order to make `SipHasher128` consistent with `SipHasher` in libstd, we
 // choose to do the integer to byte sequence conversion in the platform-
-// dependent way. Clients can achieve (nearly) platform-independent hashing by
-// widening `isize` and `usize` integers to 64 bits on 32-bit systems and
-// byte-swapping integers on big-endian systems before passing them to the
-// writing functions. This causes the input byte sequence to look identical on
-// big- and little- endian systems (supposing `isize` and `usize` values can be
-// represented in 32 bits), which ensures platform-independent results.
+// dependent way. Clients can achieve platform-independent hashing by widening
+// `isize` and `usize` integers to 64 bits on 32-bit systems and byte-swapping
+// integers on big-endian systems before passing them to the writing functions.
+// This causes the input byte sequence to look identical on big- and little-
+// endian systems (supposing `isize` and `usize` values can be represented in 32
+// bits), which ensures platform-independent results.
 impl SipHasher128 {
     #[inline]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher128 {
@@ -178,10 +208,10 @@ impl SipHasher128 {
         let size = mem::size_of::<T>();
         let nbuf = self.nbuf;
         debug_assert!(size <= 8);
-        debug_assert!(nbuf < BUFFER_SIZE_BYTES);
-        debug_assert!(nbuf + size < BUFFER_SIZE_BYTES_SPILL);
+        debug_assert!(nbuf < BUFFER_SIZE);
+        debug_assert!(nbuf + size < BUFFER_WITH_SPILL_SIZE);
 
-        if nbuf + size < BUFFER_SIZE_BYTES {
+        if nbuf + size < BUFFER_SIZE {
             unsafe {
                 // The memcpy call is optimized away because the size is known.
                 let dst = (self.buf.as_mut_ptr() as *mut u8).add(nbuf);
@@ -207,9 +237,9 @@ impl SipHasher128 {
         let size = mem::size_of::<T>();
         let nbuf = self.nbuf;
         debug_assert!(size <= 8);
-        debug_assert!(nbuf < BUFFER_SIZE_BYTES);
-        debug_assert!(nbuf + size >= BUFFER_SIZE_BYTES);
-        debug_assert!(nbuf + size < BUFFER_SIZE_BYTES_SPILL);
+        debug_assert!(nbuf < BUFFER_SIZE);
+        debug_assert!(nbuf + size >= BUFFER_SIZE);
+        debug_assert!(nbuf + size < BUFFER_WITH_SPILL_SIZE);
 
         // Copy first part of input into end of buffer, possibly into spill
         // element. The memcpy call is optimized away because the size is known.
@@ -217,7 +247,7 @@ impl SipHasher128 {
         ptr::copy_nonoverlapping(&x as *const _ as *const u8, dst, size);
 
         // Process buffer.
-        for i in 0..BUFFER_SIZE_ELEMS {
+        for i in 0..BUFFER_CAPACITY {
             let elem = self.buf.get_unchecked(i).assume_init().to_le();
             self.state.v3 ^= elem;
             Sip24Rounds::c_rounds(&mut self.state);
@@ -234,8 +264,8 @@ impl SipHasher128 {
         // This function should only be called when the write fills the buffer.
         // Therefore, when size == 1, the new `self.nbuf` must be zero. The size
         // is statically known, so the branch is optimized away.
-        self.nbuf = if size == 1 { 0 } else { nbuf + size - BUFFER_SIZE_BYTES };
-        self.processed += BUFFER_SIZE_BYTES;
+        self.nbuf = if size == 1 { 0 } else { nbuf + size - BUFFER_SIZE };
+        self.processed += BUFFER_SIZE;
     }
 
     // A write function for byte slices.
@@ -243,9 +273,9 @@ impl SipHasher128 {
     fn slice_write(&mut self, msg: &[u8]) {
         let length = msg.len();
         let nbuf = self.nbuf;
-        debug_assert!(nbuf < BUFFER_SIZE_BYTES);
+        debug_assert!(nbuf < BUFFER_SIZE);
 
-        if nbuf + length < BUFFER_SIZE_BYTES {
+        if nbuf + length < BUFFER_SIZE {
             unsafe {
                 let dst = (self.buf.as_mut_ptr() as *mut u8).add(nbuf);
 
@@ -275,8 +305,8 @@ impl SipHasher128 {
     unsafe fn slice_write_process_buffer(&mut self, msg: &[u8]) {
         let length = msg.len();
         let nbuf = self.nbuf;
-        debug_assert!(nbuf < BUFFER_SIZE_BYTES);
-        debug_assert!(nbuf + length >= BUFFER_SIZE_BYTES);
+        debug_assert!(nbuf < BUFFER_SIZE);
+        debug_assert!(nbuf + length >= BUFFER_SIZE);
 
         // Always copy first part of input into current element of buffer.
         // This function should only be called when the write fills the buffer,
@@ -328,7 +358,7 @@ impl SipHasher128 {
 
     #[inline]
     pub fn finish128(mut self) -> (u64, u64) {
-        debug_assert!(self.nbuf < BUFFER_SIZE_BYTES);
+        debug_assert!(self.nbuf < BUFFER_SIZE);
 
         // Process full elements in buffer.
         let last = self.nbuf / ELEM_SIZE;
