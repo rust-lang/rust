@@ -110,7 +110,7 @@ pub unsafe trait SourceIter {
     /// * whatever remains in the source after iteration has stopped
     /// * the memory that has become unused by advancing a consuming iterator
     ///
-    /// [`next()`]: Iterator::next
+    /// [`next()`]: Iterator::next()
     unsafe fn as_inner(&mut self) -> &mut Self::Source;
 }
 
