@@ -393,24 +393,6 @@ pub enum DocFragmentKind {
     /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
     /// given filename and the file contents.
     Include { filename: String },
-    /// A doc fragment used to distinguish between documentation in different modules.
-    ///
-    /// In particular, this prevents `collapse_docs` from turning all documentation comments
-    /// into a single giant attributes even when the item is re-exported with documentation on the re-export.
-    Divider,
-}
-
-impl DocFragment {
-    /// Creates a dummy doc-fragment which divides earlier and later fragments.
-    fn divider() -> Self {
-        DocFragment {
-            line: 0,
-            span: DUMMY_SP,
-            parent_module: None,
-            doc: String::new(),
-            kind: DocFragmentKind::Divider,
-        }
-    }
 }
 
 impl<'a> FromIterator<&'a DocFragment> for String {
@@ -610,10 +592,7 @@ impl Attributes {
         // Additional documentation should be shown before the original documentation
         let other_attrs = additional_attrs
             .into_iter()
-            .map(|(attrs, id)| {
-                doc_strings.borrow_mut().push(DocFragment::divider());
-                attrs.iter().map(move |attr| (attr, Some(id)))
-            })
+            .map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
             .flatten()
             .chain(attrs.iter().map(|attr| (attr, None)))
             .filter_map(clean_attr)
