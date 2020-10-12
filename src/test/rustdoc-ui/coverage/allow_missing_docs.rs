@@ -36,4 +36,6 @@ pub mod bar {
     pub struct Bar { //~ WARN
         pub f: u32, //~ WARN
     }
+
+    pub struct NeedsNoDocs;
 }
