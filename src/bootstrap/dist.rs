@@ -2353,7 +2353,6 @@ impl Step for HashSign {
         cmd.arg(today.trim());
         cmd.arg(addr);
         cmd.arg(&builder.config.channel);
-        cmd.arg(&builder.version);
         cmd.env("BUILD_MANIFEST_LEGACY", "1");
 
         builder.create_dir(&distdir(builder));
