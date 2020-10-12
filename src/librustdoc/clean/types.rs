@@ -393,24 +393,6 @@ pub enum DocFragmentKind {
     /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
     /// given filename and the file contents.
     Include { filename: String },
-    /// A doc fragment used to distinguish between documentation in different modules.
-    ///
-    /// In particular, this prevents `collapse_docs` from turning all documentation comments
-    /// into a single giant attributes even when the item is re-exported with documentation on the re-export.
-    Divider,
-}
-
-impl DocFragment {
-    /// Creates a dummy doc-fragment which divides earlier and later fragments.
-    fn divider() -> Self {
-        DocFragment {
-            line: 0,
-            span: DUMMY_SP,
-            parent_module: None,
-            doc: String::new(),
-            kind: DocFragmentKind::Divider,
-        }
-    }
 }
 
 impl<'a> FromIterator<&'a DocFragment> for String {
@@ -551,7 +533,7 @@ impl Attributes {
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
-        let doc_strings = RefCell::new(vec![]);
+        let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
@@ -568,7 +550,7 @@ impl Attributes {
 
                 let line = doc_line;
                 doc_line += value.lines().count();
-                doc_strings.borrow_mut().push(DocFragment {
+                doc_strings.push(DocFragment {
                     line,
                     span: attr.span,
                     doc: value,
@@ -593,7 +575,7 @@ impl Attributes {
                         {
                             let line = doc_line;
                             doc_line += contents.lines().count();
-                            doc_strings.borrow_mut().push(DocFragment {
+                            doc_strings.push(DocFragment {
                                 line,
                                 span: attr.span,
                                 doc: contents,
@@ -610,10 +592,7 @@ impl Attributes {
         // Additional documentation should be shown before the original documentation
         let other_attrs = additional_attrs
             .into_iter()
-            .map(|(attrs, id)| {
-                doc_strings.borrow_mut().push(DocFragment::divider());
-                attrs.iter().map(move |attr| (attr, Some(id)))
-            })
+            .map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
             .flatten()
             .chain(attrs.iter().map(|attr| (attr, None)))
             .filter_map(clean_attr)
@@ -642,7 +621,7 @@ impl Attributes {
             .map_or(true, |a| a.style == AttrStyle::Inner);
 
         Attributes {
-            doc_strings: doc_strings.into_inner(),
+            doc_strings,
             other_attrs,
             cfg: if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) },
             span: sp,

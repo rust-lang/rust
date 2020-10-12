@@ -1,6 +1,9 @@
+// aux-build:intra-link-reexport-additional-docs.rs
+// build-aux-docs
 #![crate_name = "foo"]
+extern crate inner;
 
-// @has foo/struct.JoinPathsError.html '//a[@href="../foo/fn.with_code.html"]' 'crate::with_code'
+// @has foo/struct.Inner.html '//a[@href="../foo/fn.with_code.html"]' 'crate::with_code'
 /// [crate::with_code]
 // @has - '//a[@href="../foo/fn.with_code.html"]' 'different text'
 /// [different text][with_code]
@@ -11,7 +14,9 @@
 #[doc = "has an attr in the way"]
 ///
 /// [reference link]: me_three
-pub use std::env::JoinPathsError;
+// Should still resolve links from the original module in that scope
+// @has - '//a[@href="../inner/fn.f.html"]' 'f()'
+pub use inner::Inner;
 
 pub fn with_code() {}
 pub fn me_too() {}

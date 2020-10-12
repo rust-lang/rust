@@ -36,7 +36,10 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
             let curr_kind = &curr_frag.kind;
             let new_kind = &frag.kind;
 
-            if matches!(*curr_kind, DocFragmentKind::Include { .. }) || curr_kind != new_kind {
+            if matches!(*curr_kind, DocFragmentKind::Include { .. })
+                || curr_kind != new_kind
+                || curr_frag.parent_module != frag.parent_module
+            {
                 if *curr_kind == DocFragmentKind::SugaredDoc
                     || *curr_kind == DocFragmentKind::RawDoc
                 {
