@@ -390,15 +390,11 @@ nav.sub {
 	cursor: pointer;
 }
 
+.docblock-short {
+	overflow-wrap: anywhere;
+}
 .docblock-short p {
 	display: inline;
-}
-
-.docblock-short.nowrap {
-	display: block;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
 }
 
 .docblock-short p {
