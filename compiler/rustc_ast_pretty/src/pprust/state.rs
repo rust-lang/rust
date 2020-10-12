@@ -63,7 +63,7 @@ impl<'a> Comments<'a> {
     }
 
     pub fn trailing_comment(
-        &mut self,
+        &self,
         span: rustc_span::Span,
         next_pos: Option<BytePos>,
     ) -> Option<Comment> {
