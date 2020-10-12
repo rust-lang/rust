@@ -1,10 +1,10 @@
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/issue-67375.rs:9:25
    |
 LL |     inner: [(); { [|_: &T| {}; 0].len() }],
    |                         ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in anonymous constants
+   = note: type parameters may not be used in const expressions
 
 error[E0392]: parameter `T` is never used
   --> $DIR/issue-67375.rs:7:12

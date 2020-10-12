@@ -1,18 +1,18 @@
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/simple.rs:8:53
    |
 LL | fn test<const N: usize>() -> [u8; N - 1] where [u8; N - 1]: Default {
    |                                                     ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments `N`
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
 
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/simple.rs:8:35
    |
 LL | fn test<const N: usize>() -> [u8; N - 1] where [u8; N - 1]: Default {
    |                                   ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments `N`
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
 
 error: aborting due to 2 previous errors
 

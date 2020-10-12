@@ -1,34 +1,34 @@
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:11:17
    |
 LL |     Condition<{ LHS <= RHS }>: True
    |                 ^^^ cannot perform const operation using `LHS`
    |
-   = help: const parameters may only be used as standalone arguments `LHS`
+   = help: const parameters may only be used as standalone arguments, i.e. `LHS`
 
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:11:24
    |
 LL |     Condition<{ LHS <= RHS }>: True
    |                        ^^^ cannot perform const operation using `RHS`
    |
-   = help: const parameters may only be used as standalone arguments `RHS`
+   = help: const parameters may only be used as standalone arguments, i.e. `RHS`
 
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:26:25
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |                         ^ cannot perform const operation using `I`
    |
-   = help: const parameters may only be used as standalone arguments `I`
+   = help: const parameters may only be used as standalone arguments, i.e. `I`
 
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:26:36
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |                                    ^ cannot perform const operation using `J`
    |
-   = help: const parameters may only be used as standalone arguments `J`
+   = help: const parameters may only be used as standalone arguments, i.e. `J`
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72787.rs:22:26

@@ -1,10 +1,10 @@
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/issue-61747.rs:8:30
    |
 LL |     fn successor() -> Const<{C + 1}> {
    |                              ^ cannot perform const operation using `C`
    |
-   = help: const parameters may only be used as standalone arguments `C`
+   = help: const parameters may only be used as standalone arguments, i.e. `C`
 
 error: aborting due to previous error
 

@@ -1,10 +1,10 @@
-error: generic parameters must not be used inside const evaluations
+error: generic parameters may not be used in const operations
   --> $DIR/const-argument-if-length.rs:19:24
    |
 LL |     pad: [u8; is_zst::<T>()],
    |                        ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in anonymous constants
+   = note: type parameters may not be used in const expressions
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/const-argument-if-length.rs:17:12
