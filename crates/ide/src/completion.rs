@@ -112,6 +112,11 @@ pub(crate) fn completions(
 ) -> Option<Completions> {
     let ctx = CompletionContext::new(db, position, config)?;
 
+    if ctx.no_completion_required() {
+        // No work required here.
+        return None;
+    }
+
     let mut acc = Completions::default();
     complete_attribute::complete_attribute(&mut acc, &ctx);
     complete_fn_param::complete_fn_param(&mut acc, &ctx);
@@ -155,6 +160,23 @@ mod tests {
             }
         }
         panic!("completion detail not found: {}", expected.detail)
+    }
+
+    fn check_no_completion(ra_fixture: &str) {
+        let (analysis, position) = fixture::position(ra_fixture);
+        let config = CompletionConfig::default();
+        analysis.completions(&config, position).unwrap();
+
+        let completions: Option<Vec<String>> = analysis
+            .completions(&config, position)
+            .unwrap()
+            .and_then(|completions| if completions.is_empty() { None } else { Some(completions) })
+            .map(|completions| {
+                completions.into_iter().map(|completion| format!("{:?}", completion)).collect()
+            });
+
+        // `assert_eq` instead of `assert!(completions.is_none())` to get the list of completions if test will panic.
+        assert_eq!(completions, None, "Completions were generated, but weren't expected");
     }
 
     #[test]
@@ -207,5 +229,16 @@ mod tests {
             "#,
             DetailAndDocumentation { detail: "fn foo(&self)", documentation: " Do the foo" },
         );
+    }
+
+    #[test]
+    fn test_no_completions_required() {
+        check_no_completion(
+            r#"
+            fn foo() {
+                for i i<|>
+            }
+            "#,
+        )
     }
 }

@@ -116,6 +116,25 @@ pub(crate) fn if_is_prev(element: SyntaxElement) -> bool {
         .is_some()
 }
 
+pub(crate) fn fn_is_prev(element: SyntaxElement) -> bool {
+    element
+        .into_token()
+        .and_then(|it| previous_non_trivia_token(it))
+        .filter(|it| it.kind() == FN_KW)
+        .is_some()
+}
+
+/// Check if the token previous to the previous one is `for`.
+/// For example, `for _ i<|>` => true.
+pub(crate) fn for_is_prev2(element: SyntaxElement) -> bool {
+    element
+        .into_token()
+        .and_then(|it| previous_non_trivia_token(it))
+        .and_then(|it| previous_non_trivia_token(it))
+        .filter(|it| it.kind() == FOR_KW)
+        .is_some()
+}
+
 #[test]
 fn test_if_is_prev() {
     check_pattern_is_applicable(r"if l<|>", if_is_prev);
