@@ -307,7 +307,6 @@
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
-#![feature(slice_strip)]
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stdsimd)]

@@ -1778,7 +1778,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_strip)]
     /// let v = &[10, 40, 30];
     /// assert_eq!(v.strip_prefix(&[10]), Some(&[40, 30][..]));
     /// assert_eq!(v.strip_prefix(&[10, 40]), Some(&[30][..]));
@@ -1786,12 +1785,14 @@ impl<T> [T] {
     /// assert_eq!(v.strip_prefix(&[10, 50]), None);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[unstable(feature = "slice_strip", issue = "73413")]
-    pub fn strip_prefix(&self, prefix: &[T]) -> Option<&[T]>
+    #[stable(feature = "slice_strip", since = "1.50.0")]
+    pub fn strip_prefix<P: SlicePattern<Item = T>>(&self, prefix: &P) -> Option<&[T]>
     where
         T: PartialEq,
     {
-        let n = prefix.len();
+        // This function will need rewriting if and when SlicePattern becomes more sophisticated.
+        let prefix = prefix.as_slice();
+        let n = prefix.as_slice().len();
         if n <= self.len() {
             let (head, tail) = self.split_at(n);
             if head == prefix {
@@ -1811,7 +1812,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_strip)]
     /// let v = &[10, 40, 30];
     /// assert_eq!(v.strip_suffix(&[30]), Some(&[10, 40][..]));
     /// assert_eq!(v.strip_suffix(&[40, 30]), Some(&[10][..]));
@@ -1819,11 +1819,13 @@ impl<T> [T] {
     /// assert_eq!(v.strip_suffix(&[50, 30]), None);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[unstable(feature = "slice_strip", issue = "73413")]
-    pub fn strip_suffix(&self, suffix: &[T]) -> Option<&[T]>
+    #[stable(feature = "slice_strip", since = "1.50.0")]
+    pub fn strip_suffix<P: SlicePattern<Item = T>>(&self, suffix: &P) -> Option<&[T]>
     where
         T: PartialEq,
     {
+        // This function will need rewriting if and when SlicePattern becomes more sophisticated.
+        let suffix = suffix.as_slice();
         let (len, n) = (self.len(), suffix.len());
         if n <= len {
             let (head, tail) = self.split_at(len - n);
@@ -3214,5 +3216,37 @@ impl<T> Default for &mut [T] {
     /// Creates a mutable empty slice.
     fn default() -> Self {
         &mut []
+    }
+}
+
+#[unstable(feature = "x", issue = "none")]
+/// Patterns in slices - currently, only used by `strip_prefix` and `strip_suffix`.  At a future
+/// point, we hope to generalise `core::str::Pattern` (which at the time of writing is limited to
+/// `str`) to slices, and then this trait will be replaced or abolished.
+pub trait SlicePattern {
+    /// The element type of the slice being matched on.
+    type Item;
+
+    /// Currently, the consumers of `SlicePattern` need a slice.
+    fn as_slice(&self) -> &[Self::Item];
+}
+
+#[stable(feature = "slice_strip", since = "1.50.0")]
+impl<T> SlicePattern for [T] {
+    type Item = T;
+
+    #[inline]
+    fn as_slice(&self) -> &[Self::Item] {
+        self
+    }
+}
+
+#[stable(feature = "slice_strip", since = "1.50.0")]
+impl<T, const N: usize> SlicePattern for [T; N] {
+    type Item = T;
+
+    #[inline]
+    fn as_slice(&self) -> &[Self::Item] {
+        self
     }
 }
