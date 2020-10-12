@@ -346,7 +346,7 @@ macro_rules! define_queries_inner {
             $(pub type $name<$tcx> = $V;)*
         }
 
-        $(impl<$tcx> QueryConfig<TyCtxt<$tcx>> for queries::$name<$tcx> {
+        $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
             type Key = $($K)*;
             type Value = $V;
             type Stored = <
@@ -447,7 +447,7 @@ macro_rules! define_queries_inner {
             #[inline(always)]
             #[must_use]
             pub fn $name(self, key: query_helper_param_ty!($($K)*))
-                -> <queries::$name<$tcx> as QueryConfig<TyCtxt<$tcx>>>::Stored
+                -> <queries::$name<$tcx> as QueryConfig>::Stored
             {
                 self.at(DUMMY_SP).$name(key.into_query_param())
             })*
@@ -486,7 +486,7 @@ macro_rules! define_queries_inner {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*))
-                -> <queries::$name<$tcx> as QueryConfig<TyCtxt<$tcx>>>::Stored
+                -> <queries::$name<$tcx> as QueryConfig>::Stored
             {
                 get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param())
             })*
