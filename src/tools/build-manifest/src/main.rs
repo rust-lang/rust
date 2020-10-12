@@ -205,13 +205,13 @@ fn main() {
     //
     // Once the old release process is fully decommissioned, the environment variable, all the
     // related code in this tool and ./x.py dist hash-and-sign can be removed.
-    let legacy = env::var("BUILD_MANIFEST_LEGACY").is_ok();
+    let legacy = env::var_os("BUILD_MANIFEST_LEGACY").is_some();
 
     let num_threads = if legacy {
         // Avoid overloading the old server in legacy mode.
         1
-    } else if let Ok(num) = env::var("BUILD_MANIFEST_NUM_THREADS") {
-        num.parse().expect("invalid number for BUILD_MANIFEST_NUM_THREADS")
+    } else if let Some(num) = env::var_os("BUILD_MANIFEST_NUM_THREADS") {
+        num.to_str().unwrap().parse().expect("invalid number for BUILD_MANIFEST_NUM_THREADS")
     } else {
         num_cpus::get()
     };
