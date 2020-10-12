@@ -226,7 +226,6 @@ fn main() {
     let date = args.next().unwrap();
     let s3_address = args.next().unwrap();
     let channel = args.next().unwrap();
-    let rustc_version = args.next().unwrap();
 
     // Do not ask for a passphrase while manually testing
     let mut passphrase = String::new();
@@ -236,7 +235,7 @@ fn main() {
     }
 
     Builder {
-        versions: Versions::new(&channel, &rustc_version, &input).unwrap(),
+        versions: Versions::new(&channel, &input).unwrap(),
 
         input,
         output,
