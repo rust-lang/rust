@@ -61,7 +61,7 @@ target | std | host | notes
 `aarch64-apple-ios` | ✓ |  | ARM64 iOS
 `aarch64-fuchsia` | ✓ |  | ARM64 Fuchsia
 `aarch64-linux-android` | ✓ |  | ARM64 Android
-`aarch64-pc-windows-msvc` | ✓ |  | ARM64 Windows MSVC
+`aarch64-pc-windows-msvc` | ✓ | ✓ | ARM64 Windows MSVC
 `aarch64-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (kernel 4.2, glibc 2.17)
 `aarch64-unknown-linux-musl` | ✓ | ✓ | ARM64 Linux with MUSL
 `aarch64-unknown-none` | * |  | Bare ARM64, hardfloat
