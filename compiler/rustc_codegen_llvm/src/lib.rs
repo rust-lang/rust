@@ -278,9 +278,6 @@ impl CodegenBackend for LlvmCodegenBackend {
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
             .join(sess);
-        if sess.opts.debugging_opts.incremental_info {
-            rustc_codegen_ssa::back::write::dump_incremental_data(&codegen_results);
-        }
 
         sess.time("llvm_dump_timing_file", || {
             if sess.opts.debugging_opts.llvm_time_trace {

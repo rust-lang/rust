@@ -655,15 +655,6 @@ fn produce_final_output_artifacts(
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-pub fn dump_incremental_data(_codegen_results: &CodegenResults) {
-    // FIXME(mw): This does not work at the moment because the situation has
-    //            become more complicated due to incremental LTO. Now a CGU
-    //            can have more than two caching states.
-    // println!("[incremental] Re-using {} out of {} modules",
-    //           codegen_results.modules.iter().filter(|m| m.pre_existing).count(),
-    //           codegen_results.modules.len());
-}
-
 pub enum WorkItem<B: WriteBackendMethods> {
     /// Optimize a newly codegened, totally unoptimized module.
     Optimize(ModuleCodegen<B::Module>),
