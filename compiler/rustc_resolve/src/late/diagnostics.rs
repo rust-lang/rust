@@ -1341,21 +1341,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
             let non_suggestable_variant_count = variants.len() - suggestable_variants.len();
 
-            if !suggestable_variants.is_empty() {
-                let msg = if non_suggestable_variant_count == 0 && suggestable_variants.len() == 1 {
-                    "try using the enum's variant"
-                } else {
-                    "try using one of the enum's variants"
-                };
-
-                err.span_suggestions(
-                    span,
-                    msg,
-                    suggestable_variants.drain(..),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-
             let source_msg = if source.is_call() {
                 "to construct"
             } else if matches!(source, PathSource::TupleStruct(..)) {
@@ -1363,6 +1348,21 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             } else {
                 unreachable!()
             };
+
+            if !suggestable_variants.is_empty() {
+                let msg = if non_suggestable_variant_count == 0 && suggestable_variants.len() == 1 {
+                    format!("try {} the enum's variant", source_msg)
+                } else {
+                    format!("try {} one of the enum's variants", source_msg)
+                };
+
+                err.span_suggestions(
+                    span,
+                    &msg,
+                    suggestable_variants.drain(..),
+                    Applicability::MaybeIncorrect,
+                );
+            }
 
             // If the enum has no tuple variants..
             if non_suggestable_variant_count == variants.len() {
