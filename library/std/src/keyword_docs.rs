@@ -168,7 +168,7 @@ mod break_keyword {}
 /// [Rust Book]:
 /// ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
 /// [Reference]: ../reference/items/constant-items.html
-/// [cosnt-eval]: ./reference/const_eval.html
+/// [const-eval]: ../reference/const_eval.html
 mod const_keyword {}
 
 #[doc(keyword = "continue")]
