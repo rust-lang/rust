@@ -1892,13 +1892,13 @@ declare_lint! {
 
 declare_lint! {
     /// The `automatic_links` lint detects when a URL/email address could be
-    /// written using only brackets. This is a `rustdoc` only lint, see the
-    /// documentation in the [rustdoc book].
+    /// written using only angle brackets. This is a `rustdoc` only lint, see
+    /// the documentation in the [rustdoc book].
     ///
     /// [rustdoc book]: ../../../rustdoc/lints.html#automatic_links
     pub AUTOMATIC_LINKS,
     Allow,
-    "detects URLs/email adresses that could be written using only brackets"
+    "detects URLs/email adresses that could be written using only angle brackets"
 }
 
 declare_lint! {

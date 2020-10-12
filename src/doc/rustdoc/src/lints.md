@@ -285,3 +285,43 @@ warning: unclosed HTML tag `h1`
 
 warning: 2 warnings emitted
 ```
+
+## automatic_links
+
+This link is **allowed by default** and is **nightly-only**. It detects links
+which could use the "automatic" link syntax. For example:
+
+```rust
+#![warn(automatic_links)]
+
+/// [http://a.com](http://a.com)
+/// [http://b.com]
+///
+/// [http://b.com]: http://b.com
+pub fn foo() {}
+```
+
+Which will give:
+
+```text
+error: Unneeded long form for URL
+ --> foo.rs:3:5
+  |
+3 | /// [http://a.com](http://a.com)
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+note: the lint level is defined here
+ --> foo.rs:1:9
+  |
+1 | #![deny(automatic_links)]
+  |         ^^^^^^^^^^^^^^^
+  = help: Try with `<http://a.com>` instead
+
+error: Unneeded long form for URL
+ --> foo.rs:5:5
+  |
+5 | /// [http://b.com]
+  |     ^^^^^^^^^^^^^^
+  |
+  = help: Try with `<http://b.com>` instead
+```
