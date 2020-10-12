@@ -383,21 +383,26 @@ macro_rules! float_tests {
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn to_int_unchecked() {
+                // The maximum integer that can be represented by the equivalently sized float has
+                // all of the mantissa digits set to 1, pushed up to the MSB.
+                const ALL_MANTISSA_BITS: $int_scalar = ((1 << <$scalar>::MANTISSA_DIGITS) - 1);
+                const MAX_REPRESENTABLE_VALUE: $int_scalar =
+                    ALL_MANTISSA_BITS << (core::mem::size_of::<$scalar>() * 8 as usize - <$scalar>::MANTISSA_DIGITS as usize);
                 const VALUES: [$scalar; 16] = [
                     -0.0,
                     0.0,
                     -1.0,
                     1.0,
-                    <$int_scalar>::MAX as $scalar,
-                    <$int_scalar>::MIN as $scalar,
+                    ALL_MANTISSA_BITS as $scalar,
+                    -ALL_MANTISSA_BITS as $scalar,
+                    MAX_REPRESENTABLE_VALUE as $scalar,
+                    -MAX_REPRESENTABLE_VALUE as $scalar,
+                    (MAX_REPRESENTABLE_VALUE / 2) as $scalar,
+                    (-MAX_REPRESENTABLE_VALUE / 2) as $scalar,
                     <$scalar>::MIN_POSITIVE,
                     -<$scalar>::MIN_POSITIVE,
                     <$scalar>::EPSILON,
                     -<$scalar>::EPSILON,
-                    core::$scalar::consts::PI,
-                    -core::$scalar::consts::PI,
-                    core::$scalar::consts::TAU,
-                    -core::$scalar::consts::TAU,
                     100.0 / 3.0,
                     -100.0 / 3.0,
                 ];
