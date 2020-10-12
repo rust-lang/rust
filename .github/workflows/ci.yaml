@@ -42,6 +42,8 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
 
+    # Work around https://github.com/actions/cache/issues/403 by using GNU tar
+    # instead of BSD tar.
     - name: Install GNU tar
       if: matrix.os == 'macos-latest'
       run: |
