@@ -551,9 +551,7 @@ Arguments:
                     profile_string.parse().unwrap_or_else(|err| {
                         eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
-                        for choice in Profile::all() {
-                            eprintln!("- {}", choice);
-                        }
+                        eprint!("{}", Profile::all_for_help("- "));
                         std::process::exit(1);
                     })
                 } else {
