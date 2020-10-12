@@ -1,7 +1,7 @@
 status = [
     "Rust (ubuntu-latest)",
     "Rust (windows-latest)",
-    # "Rust (macos-latest)",
+    "Rust (macos-latest)",
     "TypeScript (ubuntu-latest)",
     "TypeScript (windows-latest)",
 ]
