@@ -121,7 +121,8 @@ jobs:
           # for NaNs which makes it worth testing on despite that.
           - mips-unknown-linux-gnu
           - mips64-unknown-linux-gnuabi64
-          - riscv64gc-unknown-linux-gnu
+          # TODO: reenable pending https://github.com/rust-lang/rust/issues/77866
+          # - riscv64gc-unknown-linux-gnu
 
     steps:
       - uses: actions/checkout@v2
