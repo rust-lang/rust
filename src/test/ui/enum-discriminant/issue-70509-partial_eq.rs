@@ -1,5 +1,6 @@
 // run-pass
 #![feature(repr128, arbitrary_enum_discriminant)]
+//~^ WARN the feature `repr128` is incomplete
 
 #[derive(PartialEq, Debug)]
 #[repr(i128)]
