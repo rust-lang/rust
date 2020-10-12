@@ -197,6 +197,7 @@ use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use smallvec::SmallVec;
 use std::iter;
+use std::ops::Range;
 use std::path::PathBuf;
 
 #[derive(PartialEq)]
@@ -210,9 +211,8 @@ pub enum MonoItemCollectionMode {
 pub struct InliningMap<'tcx> {
     // Maps a source mono item to the range of mono items
     // accessed by it.
-    // The two numbers in the tuple are the start (inclusive) and
-    // end index (exclusive) within the `targets` vecs.
-    index: FxHashMap<MonoItem<'tcx>, (usize, usize)>,
+    // The range selects elements within the `targets` vecs.
+    index: FxHashMap<MonoItem<'tcx>, Range<usize>>,
     targets: Vec<MonoItem<'tcx>>,
 
     // Contains one bit per mono item in the `targets` field. That bit
@@ -245,7 +245,7 @@ impl<'tcx> InliningMap<'tcx> {
         }
 
         let end_index = self.targets.len();
-        assert!(self.index.insert(source, (start_index, end_index)).is_none());
+        assert!(self.index.insert(source, start_index..end_index).is_none());
     }
 
     // Internally iterate over all items referenced by `source` which will be
@@ -254,9 +254,9 @@ impl<'tcx> InliningMap<'tcx> {
     where
         F: FnMut(MonoItem<'tcx>),
     {
-        if let Some(&(start_index, end_index)) = self.index.get(&source) {
-            for (i, candidate) in self.targets[start_index..end_index].iter().enumerate() {
-                if self.inlines.contains(start_index + i) {
+        if let Some(range) = self.index.get(&source) {
+            for (i, candidate) in self.targets[range.clone()].iter().enumerate() {
+                if self.inlines.contains(range.start + i) {
                     f(*candidate);
                 }
             }
@@ -268,8 +268,8 @@ impl<'tcx> InliningMap<'tcx> {
     where
         F: FnMut(MonoItem<'tcx>, &[MonoItem<'tcx>]),
     {
-        for (&accessor, &(start_index, end_index)) in &self.index {
-            f(accessor, &self.targets[start_index..end_index])
+        for (&accessor, range) in &self.index {
+            f(accessor, &self.targets[range.clone()])
         }
     }
 }
