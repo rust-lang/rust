@@ -1,12 +1,12 @@
-use super::coercion::CoerceMany;
-use super::method::MethodCallee;
-use super::Expectation::*;
-use super::TupleArgumentsFlag::*;
-use super::{
+use crate::astconv::AstConv;
+use crate::check::coercion::CoerceMany;
+use crate::check::method::MethodCallee;
+use crate::check::Expectation::*;
+use crate::check::TupleArgumentsFlag::*;
+use crate::check::{
     potentially_plural_count, struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt,
     LocalTy, Needs, TupleArgumentsFlag,
 };
-use crate::astconv::AstConv;
 
 use rustc_ast as ast;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId};
@@ -26,14 +26,14 @@ use std::mem::replace;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(super) fn check_casts(&self) {
+    pub(in super::super) fn check_casts(&self) {
         let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
         for cast in deferred_cast_checks.drain(..) {
             cast.check(self);
         }
     }
 
-    pub(super) fn check_method_argument_types(
+    pub(in super::super) fn check_method_argument_types(
         &self,
         sp: Span,
         expr: &'tcx hir::Expr<'tcx>,
@@ -90,7 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Generic function that factors out common logic from function calls,
     /// method calls and overloaded operators.
-    pub(super) fn check_argument_types(
+    pub(in super::super) fn check_argument_types(
         &self,
         sp: Span,
         expr: &'tcx hir::Expr<'tcx>,
@@ -377,7 +377,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // AST fragment checking
-    pub(super) fn check_lit(&self, lit: &hir::Lit, expected: Expectation<'tcx>) -> Ty<'tcx> {
+    pub(in super::super) fn check_lit(
+        &self,
+        lit: &hir::Lit,
+        expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
         match lit.node {
@@ -563,7 +567,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn check_block_with_expected(
+    pub(in super::super) fn check_block_with_expected(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected: Expectation<'tcx>,
@@ -692,7 +696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    pub(super) fn check_rustc_args_require_const(
+    pub(in super::super) fn check_rustc_args_require_const(
         &self,
         def_id: DefId,
         hir_id: hir::HirId,

@@ -1,6 +1,14 @@
-use super::coercion::DynamicCoerceMany;
-use super::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
+mod _impl;
+mod checks;
+mod suggestions;
+
+pub use _impl::*;
+pub use checks::*;
+pub use suggestions::*;
+
 use crate::astconv::AstConv;
+use crate::check::coercion::DynamicCoerceMany;
+use crate::check::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
 
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -18,7 +26,6 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
-// The impl for this struct lives in fn_ctxt_impl.rs for file length reasons.
 pub struct FnCtxt<'a, 'tcx> {
     pub(super) body_id: hir::HirId,
 

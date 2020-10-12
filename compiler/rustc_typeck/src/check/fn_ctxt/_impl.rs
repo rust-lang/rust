@@ -1,9 +1,9 @@
-use super::callee::{self, DeferredCallResolution};
-use super::method::{self, MethodCallee, SelfSource};
-use super::{BreakableCtxt, Diverges, Expectation, FallbackMode, FnCtxt, LocalTy};
 use crate::astconv::{
     AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, PathSeg,
 };
+use crate::check::callee::{self, DeferredCallResolution};
+use crate::check::method::{self, MethodCallee, SelfSource};
+use crate::check::{BreakableCtxt, Diverges, Expectation, FallbackMode, FnCtxt, LocalTy};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -41,7 +41,7 @@ use std::slice;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
-    pub(super) fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
+    pub(in super::super) fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
         // FIXME: Combine these two 'if' expressions into one once
         // let chains are implemented
         if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
@@ -75,7 +75,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
-    pub(super) fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub(in super::super) fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
         debug!("resolve_vars_with_obligations(ty={:?})", ty);
 
         // No Infer()? Nothing needs doing.
@@ -102,7 +102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    pub(super) fn record_deferred_call_resolution(
+    pub(in super::super) fn record_deferred_call_resolution(
         &self,
         closure_def_id: DefId,
         r: DeferredCallResolution<'tcx>,
@@ -111,7 +111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         deferred_call_resolutions.entry(closure_def_id).or_default().push(r);
     }
 
-    pub(super) fn remove_deferred_call_resolutions(
+    pub(in super::super) fn remove_deferred_call_resolutions(
         &self,
         closure_def_id: DefId,
     ) -> Vec<DeferredCallResolution<'tcx>> {
@@ -149,7 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().field_indices_mut().insert(hir_id, index);
     }
 
-    pub(super) fn write_resolution(
+    pub(in super::super) fn write_resolution(
         &self,
         hir_id: hir::HirId,
         r: Result<(DefKind, DefId), ErrorReported>,
@@ -335,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// As `instantiate_type_scheme`, but for the bounds found in a
     /// generic type scheme.
-    pub(super) fn instantiate_bounds(
+    pub(in super::super) fn instantiate_bounds(
         &self,
         span: Span,
         def_id: DefId,
@@ -355,7 +355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Replaces the opaque types from the given value with type variables,
     /// and records the `OpaqueTypeMap` for later use during writeback. See
     /// `InferCtxt::instantiate_opaque_types` for more details.
-    pub(super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
+    pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
         &self,
         parent_id: hir::HirId,
         value: &T,
@@ -386,14 +386,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         value
     }
 
-    pub(super) fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
+    pub(in super::super) fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
         self.inh.normalize_associated_types_in(span, self.body_id, self.param_env, value)
     }
 
-    pub(super) fn normalize_associated_types_in_as_infer_ok<T>(
+    pub(in super::super) fn normalize_associated_types_in_as_infer_ok<T>(
         &self,
         span: Span,
         value: &T,
@@ -600,11 +600,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.normalize_associated_types_in(span, &field.ty(self.tcx, substs))
     }
 
-    pub(super) fn resolve_generator_interiors(&self, def_id: DefId) {
+    pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior, kind) in generators.drain(..) {
             self.select_obligations_where_possible(false, |_| {});
-            super::generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
+            crate::check::generator_interior::resolve_interior(
+                self, def_id, body_id, interior, kind,
+            );
         }
     }
 
@@ -620,7 +622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Fallback becomes very dubious if we have encountered type-checking errors.
     // In that case, fallback to Error.
     // The return value indicates whether fallback has occurred.
-    pub(super) fn fallback_if_possible(&self, ty: Ty<'tcx>, mode: FallbackMode) -> bool {
+    pub(in super::super) fn fallback_if_possible(&self, ty: Ty<'tcx>, mode: FallbackMode) -> bool {
         use rustc_middle::ty::error::UnconstrainedNumeric::Neither;
         use rustc_middle::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
 
@@ -685,7 +687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
-    pub(super) fn select_all_obligations_or_error(&self) {
+    pub(in super::super) fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");
         if let Err(errors) = self.fulfillment_cx.borrow_mut().select_all_or_error(&self) {
             self.report_fulfillment_errors(&errors, self.inh.body_id, false);
@@ -693,7 +695,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Select as many obligations as we can at present.
-    pub(super) fn select_obligations_where_possible(
+    pub(in super::super) fn select_obligations_where_possible(
         &self,
         fallback_has_occurred: bool,
         mutate_fullfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
@@ -709,7 +711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
     /// type by one layer to yield `T`.
-    pub(super) fn make_overloaded_place_return_type(
+    pub(in super::super) fn make_overloaded_place_return_type(
         &self,
         method: MethodCallee<'tcx>,
     ) -> ty::TypeAndMut<'tcx> {
@@ -742,7 +744,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn obligations_for_self_ty<'b>(
+    pub(in super::super) fn obligations_for_self_ty<'b>(
         &'b self,
         self_ty: ty::TyVid,
     ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, traits::PredicateObligation<'tcx>)>
@@ -792,18 +794,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
     }
 
-    pub(super) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
+    pub(in super::super) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
         self.obligations_for_self_ty(self_ty)
             .any(|(tr, _)| Some(tr.def_id()) == self.tcx.lang_items().sized_trait())
     }
 
-    pub(super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
+    pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
         vec![self.tcx.ty_error(); len]
     }
 
     /// Unifies the output type with the expected type early, for more coercions
     /// and forward type information on the input expressions.
-    pub(super) fn expected_inputs_for_expected_output(
+    pub(in super::super) fn expected_inputs_for_expected_output(
         &self,
         call_span: Span,
         expected_ret: Expectation<'tcx>,
@@ -856,7 +858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expect_args
     }
 
-    pub(super) fn resolve_lang_item_path(
+    pub(in super::super) fn resolve_lang_item_path(
         &self,
         lang_item: hir::LangItem,
         span: Span,
@@ -937,7 +939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
-    pub(super) fn get_node_fn_decl(
+    pub(in super::super) fn get_node_fn_decl(
         &self,
         node: Node<'tcx>,
     ) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident, bool)> {
@@ -973,7 +975,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    pub(super) fn note_internal_mutation_in_method(
+    pub(in super::super) fn note_internal_mutation_in_method(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
@@ -1018,7 +1020,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn note_need_for_fn_pointer(
+    pub(in super::super) fn note_need_for_fn_pointer(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expected: Ty<'tcx>,
@@ -1055,7 +1057,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
     }
 
-    pub(super) fn could_remove_semicolon(
+    pub(in super::super) fn could_remove_semicolon(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -1404,7 +1406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn with_breakable_ctxt<F: FnOnce() -> R, R>(
+    pub(in super::super) fn with_breakable_ctxt<F: FnOnce() -> R, R>(
         &self,
         id: hir::HirId,
         ctxt: BreakableCtxt<'tcx>,
@@ -1429,7 +1431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Instantiate a QueryResponse in a probe context, without a
     /// good ObligationCause.
-    pub(super) fn probe_instantiate_query_response(
+    pub(in super::super) fn probe_instantiate_query_response(
         &self,
         span: Span,
         original_values: &OriginalQueryValues<'tcx>,
@@ -1444,7 +1446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Returns `true` if an expression is contained inside the LHS of an assignment expression.
-    pub(super) fn expr_in_place(&self, mut expr_id: hir::HirId) -> bool {
+    pub(in super::super) fn expr_in_place(&self, mut expr_id: hir::HirId) -> bool {
         let mut contained_in_place = false;
 
         while let hir::Node::Expr(parent_expr) =

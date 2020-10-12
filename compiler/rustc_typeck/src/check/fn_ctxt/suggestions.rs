@@ -18,7 +18,11 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut DiagnosticBuilder<'_>) {
+    pub(in super::super) fn suggest_semicolon_at_end(
+        &self,
+        span: Span,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
         err.span_suggestion_short(
             span.shrink_to_hi(),
             "consider using a semicolon here",
@@ -251,7 +255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// When encountering the expected boxed value allocated in the stack, suggest allocating it
     /// in the heap by calling `Box::new()`.
-    pub(super) fn suggest_boxing_when_appropriate(
+    pub(in super::super) fn suggest_boxing_when_appropriate(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
@@ -286,7 +290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// When encountering an `impl Future` where `BoxFuture` is expected, suggest `Box::pin`.
-    pub(super) fn suggest_calling_boxed_future_when_appropriate(
+    pub(in super::super) fn suggest_calling_boxed_future_when_appropriate(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
@@ -381,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This routine checks if the return type is left as default, the method is not part of an
     /// `impl` block and that it isn't the `main` method. If so, it suggests setting the return
     /// type.
-    pub(super) fn suggest_missing_return_type(
+    pub(in super::super) fn suggest_missing_return_type(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         fn_decl: &hir::FnDecl<'_>,
@@ -447,7 +451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This routine checks if the found type `T` implements `Future<Output=U>` where `U` is the
     /// expected type. If this is the case, and we are inside of an async body, it suggests adding
     /// `.await` to the tail of the expression.
-    pub(super) fn suggest_missing_await(
+    pub(in super::super) fn suggest_missing_await(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
@@ -510,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn suggest_missing_parentheses(
+    pub(in super::super) fn suggest_missing_parentheses(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
