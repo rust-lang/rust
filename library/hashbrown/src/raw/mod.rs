@@ -32,7 +32,7 @@ cfg_if! {
 }
 
 mod alloc;
-pub use self::alloc::{AllocRef, Global};
+pub use self::alloc::{do_alloc, AllocRef, Global};
 
 mod bitmask;
 
@@ -435,7 +435,7 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
             Some(lco) => lco,
             None => return Err(fallability.capacity_overflow()),
         };
-        let ptr: NonNull<u8> = match alloc.alloc(layout) {
+        let ptr: NonNull<u8> = match do_alloc(&alloc, layout) {
             Ok(block) => block.cast(),
             Err(_) => return Err(fallability.alloc_err(layout)),
         };

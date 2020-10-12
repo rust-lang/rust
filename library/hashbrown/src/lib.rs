@@ -18,7 +18,8 @@
         dropck_eyepatch,
         min_specialization,
         extend_one,
-        allocator_api
+        allocator_api,
+        slice_ptr_get
     )
 )]
 #![allow(
