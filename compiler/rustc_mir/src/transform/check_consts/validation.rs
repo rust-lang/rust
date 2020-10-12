@@ -557,6 +557,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 CastKind::Pointer(
                     PointerCast::UnsafeFnPointer
                     | PointerCast::ClosureFnPointer(_)
+                    | PointerCast::ReifyNotConstFnPointer
+                    | PointerCast::NotConstFnPointer
+                    | PointerCast::UnsafeNotConstFnPointer
                     | PointerCast::ReifyFnPointer,
                 ),
                 _,

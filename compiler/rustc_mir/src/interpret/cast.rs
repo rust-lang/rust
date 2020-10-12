@@ -87,7 +87,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::NotConstFnPointer) => {
                 let src = self.read_immediate(src)?;
-                match cast_ty.kind {
+                match cast_ty.kind() {
                     ty::FnPtr(_) => {
                         // No change to value
                         self.write_immediate(*src, dest)?;
@@ -98,7 +98,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::UnsafeNotConstFnPointer) => {
                 let src = self.read_immediate(src)?;
-                match cast_ty.kind {
+                match cast_ty.kind() {
                     ty::FnPtr(_) => {
                         // No change to value
                         self.write_immediate(*src, dest)?;

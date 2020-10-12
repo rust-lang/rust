@@ -85,6 +85,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fn_sig.c_variadic,
         fn_sig.unsafety,
         fn_sig.abi,
+        fn_sig.constness,
     );
 
     let span = body.value.span;

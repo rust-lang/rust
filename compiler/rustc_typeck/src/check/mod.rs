@@ -498,6 +498,7 @@ fn typeck_with_fallback<'tcx>(
                     &fcx,
                     header.unsafety,
                     header.abi,
+                    header.constness,
                     decl,
                     &hir::Generics::empty(),
                     None,
