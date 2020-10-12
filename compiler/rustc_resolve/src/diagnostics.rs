@@ -469,7 +469,7 @@ impl<'a> Resolver<'a> {
             ResolutionError::ParamInNonTrivialAnonConst { name, is_type } => {
                 let mut err = self.session.struct_span_err(
                     span,
-                    "generic parameters must not be used inside const evaluations",
+                    "generic parameters may not be used in const operations",
                 );
                 err.span_label(span, &format!("cannot perform const operation using `{}`", name));
 
