@@ -474,7 +474,7 @@ impl<'a> Resolver<'a> {
                 err.span_label(span, &format!("cannot perform const operation using `{}`", name));
 
                 if is_type {
-                    err.note("type parameters may not be used in anonymous constants");
+                    err.note("type parameters may not be used in const expressions");
                 } else {
                     err.help(&format!(
                         "const parameters may only be used as standalone arguments, i.e. `{}`",
