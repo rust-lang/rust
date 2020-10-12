@@ -820,7 +820,11 @@ enum Constructor<'tcx> {
     Single,
     /// Enum variants.
     Variant(DefId),
-    /// String literals
+    /// String literals. These have their own variant, because they behave essentially like
+    /// `&[u8]`, but there's no way to pattern match on parts of strings. So we could convert them
+    /// to slice constructors, but then we'd have to special case other code sites to not treat them
+    /// *exactly* like slice constructors. It seems simpler overall to just give them their own
+    /// variant.
     Str(&'tcx ty::Const<'tcx>),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange<'tcx>),
