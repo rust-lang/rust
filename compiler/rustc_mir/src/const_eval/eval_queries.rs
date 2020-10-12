@@ -343,7 +343,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     // deny-by-default lint
                     _ => {
                         if let Some(p) = cid.promoted {
-                            let span = tcx.promoted_mir_of_opt_const_arg(def.to_global())[p].span;
+                            let span = tcx.promoted_mir_opt_const_arg(def.to_global())[p].span;
                             if let err_inval!(ReferencedConstant) = err.error {
                                 Err(err.report_as_error(
                                     tcx.at(span),
