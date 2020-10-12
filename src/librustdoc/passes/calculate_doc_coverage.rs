@@ -254,8 +254,10 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 let has_doc_example = tests.found_tests != 0;
                 let hir_id = self.ctx.tcx.hir().local_def_id_to_hir_id(i.def_id.expect_local());
                 let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
+                // `missing_docs` is allow-by-default, so don't treat this as ignoring the item
+                // unless the user had an explicit `allow`
                 let should_have_docs =
-                    level != lint::Level::Allow || !matches!(source, LintSource::Node(..));
+                    level != lint::Level::Allow || matches!(source, LintSource::Default);
                 debug!("counting {:?} {:?} in {}", i.type_(), i.name, i.source.filename);
                 self.items.entry(i.source.filename.clone()).or_default().count_item(
                     has_docs,

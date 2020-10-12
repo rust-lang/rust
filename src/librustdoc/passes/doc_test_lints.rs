@@ -76,7 +76,7 @@ pub fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool 
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_local());
     let (level, source) =
         cx.tcx.lint_level_at_node(lint::builtin::MISSING_DOC_CODE_EXAMPLES, hir_id);
-    level != lint::Level::Allow || !matches!(source, LintSource::Node(..))
+    level != lint::Level::Allow || matches!(source, LintSource::Default)
 }
 
 pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
