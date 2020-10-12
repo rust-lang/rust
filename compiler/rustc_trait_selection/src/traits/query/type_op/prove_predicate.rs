@@ -17,10 +17,9 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         // such cases.
         if let ty::PredicateAtom::Trait(trait_ref, _) = key.value.predicate.skip_binders() {
             if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
-                if trait_ref.def_id() == sized_def_id {
-                    if trait_ref.self_ty().is_trivially_sized(tcx) {
-                        return Some(());
-                    }
+                if trait_ref.def_id() == sized_def_id && trait_ref.self_ty().is_trivially_sized(tcx)
+                {
+                    return Some(());
                 }
             }
         }

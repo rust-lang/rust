@@ -109,8 +109,7 @@ impl<'tcx> Node {
 
     pub fn def_id(&self) -> DefId {
         match *self {
-            Node::Impl(did) => did,
-            Node::Trait(did) => did,
+            Node::Impl(did) | Node::Trait(did) => did,
         }
     }
 }
