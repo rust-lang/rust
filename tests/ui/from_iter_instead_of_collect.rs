@@ -8,4 +8,6 @@ fn main() {
     Vec::from_iter(iter_expr);
 
     HashMap::<usize, &i8>::from_iter(vec![5, 5, 5, 5].iter().enumerate());
+
+    Vec::from_iter(vec![42u32]);
 }

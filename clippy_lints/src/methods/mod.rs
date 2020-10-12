@@ -3874,9 +3874,12 @@ fn lint_filetype_is_file(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir
 
 fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let ty = cx.typeck_results().expr_ty(expr);
-    let id = get_trait_def_id(cx, &paths::FROM_ITERATOR).unwrap();
+    let arg_ty = cx.typeck_results().expr_ty(&args[0]);
 
-    if implements_trait(cx, ty, id, &[]) {
+    let from_iter_id = get_trait_def_id(cx, &paths::FROM_ITERATOR).unwrap();
+    let iter_id = get_trait_def_id(cx, &paths::ITERATOR).unwrap();
+
+    if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]) {
         // `expr` implements `FromIterator` trait
         let iter_expr = snippet(cx, args[0].span, "..");
         span_lint_and_sugg(
