@@ -1,3 +1,4 @@
+use crate::pin::Pin;
 use crate::sys::rwlock as imp;
 
 /// An OS-based reader-writer lock.
@@ -18,53 +19,41 @@ impl RWLock {
 
     /// Acquires shared access to the underlying lock, blocking the current
     /// thread to do so.
-    ///
-    /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous method call.
     #[inline]
-    pub unsafe fn read(&self) {
-        self.0.read()
+    pub fn read(self: Pin<&Self>) {
+        unsafe { self.0.read() }
     }
 
     /// Attempts to acquire shared access to this lock, returning whether it
     /// succeeded or not.
     ///
     /// This function does not block the current thread.
-    ///
-    /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous method call.
     #[inline]
-    pub unsafe fn try_read(&self) -> bool {
-        self.0.try_read()
+    pub fn try_read(self: Pin<&Self>) -> bool {
+        unsafe { self.0.try_read() }
     }
 
     /// Acquires write access to the underlying lock, blocking the current thread
     /// to do so.
-    ///
-    /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous method call.
     #[inline]
-    pub unsafe fn write(&self) {
-        self.0.write()
+    pub fn write(self: Pin<&Self>) {
+        unsafe { self.0.write() }
     }
 
     /// Attempts to acquire exclusive access to this lock, returning whether it
     /// succeeded or not.
     ///
     /// This function does not block the current thread.
-    ///
-    /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous method call.
     #[inline]
-    pub unsafe fn try_write(&self) -> bool {
-        self.0.try_write()
+    pub fn try_write(self: Pin<&Self>) -> bool {
+        unsafe { self.0.try_write() }
     }
 
     /// Unlocks previously acquired shared access to this lock.
     ///
     /// Behavior is undefined if the current thread does not have shared access.
     #[inline]
-    pub unsafe fn read_unlock(&self) {
+    pub unsafe fn read_unlock(self: Pin<&Self>) {
         self.0.read_unlock()
     }
 
@@ -73,16 +62,16 @@ impl RWLock {
     /// Behavior is undefined if the current thread does not currently have
     /// exclusive access.
     #[inline]
-    pub unsafe fn write_unlock(&self) {
+    pub unsafe fn write_unlock(self: Pin<&Self>) {
         self.0.write_unlock()
     }
+}
 
-    /// Destroys OS-related resources with this RWLock.
-    ///
-    /// Behavior is undefined if there are any currently active users of this
-    /// lock.
+impl Drop for RWLock {
     #[inline]
-    pub unsafe fn destroy(&self) {
-        self.0.destroy()
+    fn drop(&mut self) {
+        // SAFETY: The rwlock wasn't moved since using any of its
+        // functions, because they all require a Pin.
+        unsafe { self.0.destroy() }
     }
 }

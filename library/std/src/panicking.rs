@@ -15,6 +15,7 @@ use crate::any::Any;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
+use crate::pin::Pin;
 use crate::process;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::stdio::panic_output;
@@ -116,11 +117,11 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
+    Pin::static_ref(&HOOK_LOCK).write();
     unsafe {
-        HOOK_LOCK.write();
         let old_hook = HOOK;
         HOOK = Hook::Custom(Box::into_raw(hook));
-        HOOK_LOCK.write_unlock();
+        Pin::static_ref(&HOOK_LOCK).write_unlock();
 
         if let Hook::Custom(ptr) = old_hook {
             #[allow(unused_must_use)]
@@ -164,11 +165,11 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
+    Pin::static_ref(&HOOK_LOCK).write();
     unsafe {
-        HOOK_LOCK.write();
         let hook = HOOK;
         HOOK = Hook::Default;
-        HOOK_LOCK.write_unlock();
+        Pin::static_ref(&HOOK_LOCK).write_unlock();
 
         match hook {
             Hook::Default => Box::new(default_hook),
@@ -563,7 +564,7 @@ fn rust_panic_with_hook(
 
     unsafe {
         let mut info = PanicInfo::internal_constructor(message, location);
-        HOOK_LOCK.read();
+        Pin::static_ref(&HOOK_LOCK).read();
         match HOOK {
             // Some platforms (like wasm) know that printing to stderr won't ever actually
             // print anything, and if that's the case we can skip the default
@@ -581,7 +582,7 @@ fn rust_panic_with_hook(
                 (*ptr)(&info);
             }
         };
-        HOOK_LOCK.read_unlock();
+        Pin::static_ref(&HOOK_LOCK).read_unlock();
     }
 
     if panics > 1 {
