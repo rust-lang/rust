@@ -20,11 +20,11 @@ use rustc_tools_util::VersionInfo;
 
 use std::borrow::Cow;
 use std::env;
+use std::lazy::SyncLazy;
 use std::ops::Deref;
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
-use std::lazy::SyncLazy;
 
 mod lintlist;
 
