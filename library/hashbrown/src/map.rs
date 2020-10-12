@@ -240,8 +240,16 @@ where
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
     let mut state = hash_builder.build_hasher();
-    val.hash(&mut state);
-    state.finish()
+    #[cfg(feature = "ahash")]
+    {
+        use ahash::CallHasher;
+        val.get_hash(state)
+    }
+    #[cfg(not(feature = "ahash"))]
+    {
+        val.hash(&mut state);
+        state.finish()
+    }
 }
 
 #[cfg(feature = "ahash")]
@@ -1541,9 +1549,8 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut hasher = self.map.hash_builder.build_hasher();
-        k.hash(&mut hasher);
-        self.from_key_hashed_nocheck(hasher.finish(), k)
+        let hash = make_hash(&self.map.hash_builder, k);
+        self.from_key_hashed_nocheck(hash, k)
     }
 
     /// Creates a `RawEntryMut` from the given key and its hash.
@@ -1598,9 +1605,8 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut hasher = self.map.hash_builder.build_hasher();
-        k.hash(&mut hasher);
-        self.from_key_hashed_nocheck(hasher.finish(), k)
+        let hash = make_hash(&self.map.hash_builder, k);
+        self.from_key_hashed_nocheck(hash, k)
     }
 
     /// Access an entry by a key and its hash.
@@ -1957,9 +1963,8 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
-        let mut hasher = self.hash_builder.build_hasher();
-        key.hash(&mut hasher);
-        self.insert_hashed_nocheck(hasher.finish(), key, value)
+        let hash = make_hash(self.hash_builder, &key);
+        self.insert_hashed_nocheck(hash, key, value)
     }
 
     /// Sets the value of the entry with the VacantEntry's key,
@@ -2001,11 +2006,9 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
-        let mut hasher = self.hash_builder.build_hasher();
-        key.hash(&mut hasher);
-
+        let hash = make_hash(self.hash_builder, &key);
         let elem = self.table.insert(
-            hasher.finish(),
+            hash,
             (key, value),
             make_hasher(self.hash_builder),
         );
