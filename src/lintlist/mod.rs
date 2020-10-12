@@ -2014,6 +2014,13 @@ vec![
         module: "reference",
     },
     Lint {
+        name: "ref_option_ref",
+        group: "style",
+        desc: "use `Option<&T>` instead of `&Option<&T>`",
+        deprecation: None,
+        module: "ref_option_ref",
+    },
+    Lint {
         name: "repeat_once",
         group: "complexity",
         desc: "using `.repeat(1)` instead of `String.clone()`, `str.to_string()` or `slice.to_vec()` ",

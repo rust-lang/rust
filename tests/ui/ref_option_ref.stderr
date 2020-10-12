@@ -1,0 +1,10 @@
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:4:12
+   |
+LL |     let x: &Option<&u32> = &None;
+   |            ^^^^^^^^^^^^^ help: try: `Option<&u32>`
+   |
+   = note: `-D clippy::ref-option-ref` implied by `-D warnings`
+
+error: aborting due to previous error
+
