@@ -424,7 +424,7 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
     /// The control bytes are left uninitialized.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new_uninitialized(
-        mut alloc: A,
+        alloc: A,
         buckets: usize,
         fallability: Fallibility,
     ) -> Result<Self, TryReserveError> {
