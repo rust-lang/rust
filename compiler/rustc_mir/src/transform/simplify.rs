@@ -363,7 +363,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
 fn make_local_map<V>(
     local_decls: &mut IndexVec<Local, V>,
-    used_locals: IndexVec<Local, usize>,
+    used_locals: IndexVec<Local, u32>,
     arg_count: usize,
 ) -> IndexVec<Local, Option<Local>> {
     let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*local_decls);
@@ -385,7 +385,7 @@ fn make_local_map<V>(
 }
 
 struct DeclMarker<'a, 'tcx> {
-    pub local_counts: IndexVec<Local, usize>,
+    pub local_counts: IndexVec<Local, u32>,
     pub body: &'a Body<'tcx>,
 }
 
@@ -444,13 +444,13 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
 }
 
 struct StatementDeclMarker<'a, 'tcx> {
-    used_locals: &'a mut IndexVec<Local, usize>,
+    used_locals: &'a mut IndexVec<Local, u32>,
     statement: &'a Statement<'tcx>,
 }
 
 impl<'a, 'tcx> StatementDeclMarker<'a, 'tcx> {
     pub fn new(
-        used_locals: &'a mut IndexVec<Local, usize>,
+        used_locals: &'a mut IndexVec<Local, u32>,
         statement: &'a Statement<'tcx>,
     ) -> Self {
         Self { used_locals, statement }
@@ -475,7 +475,7 @@ impl<'a, 'tcx> Visitor<'tcx> for StatementDeclMarker<'a, 'tcx> {
 }
 
 struct RemoveStatements<'a, 'tcx> {
-    used_locals: &'a mut IndexVec<Local, usize>,
+    used_locals: &'a mut IndexVec<Local, u32>,
     arg_count: usize,
     tcx: TyCtxt<'tcx>,
     modified: bool,
@@ -483,7 +483,7 @@ struct RemoveStatements<'a, 'tcx> {
 
 impl<'a, 'tcx> RemoveStatements<'a, 'tcx> {
     fn new(
-        used_locals: &'a mut IndexVec<Local, usize>,
+        used_locals: &'a mut IndexVec<Local, u32>,
         arg_count: usize,
         tcx: TyCtxt<'tcx>,
     ) -> Self {
