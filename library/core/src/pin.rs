@@ -795,6 +795,20 @@ impl<T: ?Sized> Pin<&'static T> {
     }
 }
 
+impl<T: ?Sized> Pin<&'static T> {
+    /// Get a pinned mutable reference from a static mutable reference.
+    ///
+    /// This is safe, because the `'static` lifetime guarantees the data will
+    /// never be moved.
+    #[unstable(feature = "pin_static_ref", issue = "none")]
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    pub const fn static_mut(r: &'static mut T) -> Pin<&'static mut T> {
+        // SAFETY: The 'static lifetime guarantees the data will not be
+        // moved/invalidated until it gets dropped (which is never).
+        unsafe { Pin::new_unchecked(r) }
+    }
+}
+
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P: Deref> Deref for Pin<P> {
     type Target = P::Target;
