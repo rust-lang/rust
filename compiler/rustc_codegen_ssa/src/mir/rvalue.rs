@@ -185,7 +185,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let val = match *kind {
                     mir::CastKind::Pointer(
-                        PointerCast::ReifyFnPointer | PointerCast::ReifyNotConstFnPointer,
+                        PointerCast::ReifyFnPointer,
                     ) => match *operand.layout.ty.kind() {
                         ty::FnDef(def_id, substs) => {
                             if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {

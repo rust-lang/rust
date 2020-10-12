@@ -975,7 +975,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (None, None)
             } else {
                 match (&prev_ty.kind(), &new_ty.kind()) {
-                    (&ty::FnDef(..), &ty::FnDef(..)) => {
+                    (&ty::FnDef(..) | &ty::FnPtr(..), &ty::FnDef(..) | &ty::FnPtr(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
                         match self
@@ -1040,34 +1040,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Reify both sides and return the reified fn pointer type.
             let fn_ptr = self.tcx.mk_fn_ptr(sig);
             let prev_adjustment = match prev_ty.kind() {
-                ty::Closure(..) => Adjust::Pointer(PointerCast::ClosureFnPointer(a_sig.unsafety())),
+                ty::Closure(..) => {
+                    Some(Adjust::Pointer(PointerCast::ClosureFnPointer(a_sig.unsafety())))
+                }
                 ty::FnDef(..) => {
+                    Some(Adjust::Pointer(PointerCast::ReifyFnPointer))
+                }
+                ty::FnPtr(..) => {
                     if prev_drop_const {
-                        Adjust::Pointer(PointerCast::ReifyNotConstFnPointer)
+                        Some(Adjust::Pointer(PointerCast::NotConstFnPointer))
                     } else {
-                        Adjust::Pointer(PointerCast::ReifyFnPointer)
+                        None
                     }
                 }
                 _ => unreachable!(),
             };
             let next_adjustment = match new_ty.kind() {
-                ty::Closure(..) => Adjust::Pointer(PointerCast::ClosureFnPointer(b_sig.unsafety())),
+                ty::Closure(..) => {
+                    Some(Adjust::Pointer(PointerCast::ClosureFnPointer(b_sig.unsafety())))
+                }
                 ty::FnDef(..) => {
+                    Some(Adjust::Pointer(PointerCast::ReifyFnPointer))
+                }
+                ty::FnPtr(..) => {
                     if new_drop_const {
-                        Adjust::Pointer(PointerCast::ReifyNotConstFnPointer)
+                        Some(Adjust::Pointer(PointerCast::NotConstFnPointer))
                     } else {
-                        Adjust::Pointer(PointerCast::ReifyFnPointer)
+                        None
                     }
                 }
                 _ => unreachable!(),
             };
-            for expr in exprs.iter().map(|e| e.as_coercion_site()) {
+            if prev_adjustment.is_some() {
+                for expr in exprs.iter().map(|e| e.as_coercion_site()) {
+                    self.apply_adjustments(
+                        expr,
+                        vec![Adjustment { kind: prev_adjustment.clone().unwrap().clone(), target: fn_ptr }],
+                    );
+                }
+            }
+            if next_adjustment.is_some() {
                 self.apply_adjustments(
-                    expr,
-                    vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
+                    new,
+                    vec![Adjustment { kind: next_adjustment.unwrap(), target: fn_ptr }],
                 );
             }
-            self.apply_adjustments(new, vec![Adjustment { kind: next_adjustment, target: fn_ptr }]);
             return Ok(fn_ptr);
         }
 

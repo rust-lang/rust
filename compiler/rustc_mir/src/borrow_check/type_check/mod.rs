@@ -2072,35 +2072,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::Pointer(PointerCast::ReifyNotConstFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
-
-                        // The type that we see in the fcx is like
-                        // `foo::<'a, 'b>`, where `foo` is the path to a
-                        // function definition. When we extract the
-                        // signature, it comes from the `fn_sig` query,
-                        // and hence may contain unnormalized results.
-                        let fn_sig = self.normalize(fn_sig, location);
-
-                        let ty_fn_ptr_from = tcx.mk_not_const_fn_ptr(fn_sig);
-
-                        if let Err(terr) = self.eq_types(
-                            ty_fn_ptr_from,
-                            ty,
-                            location.to_locations(),
-                            ConstraintCategory::Cast,
-                        ) {
-                            span_mirbug!(
-                                self,
-                                rvalue,
-                                "equating {:?} with {:?} yields {:?}",
-                                ty_fn_ptr_from,
-                                ty,
-                                terr
-                            );
-                        }
-                    }
-
                     CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
                         let sig = match op.ty(body, tcx).kind() {
                             ty::Closure(_, substs) => substs.as_closure().sig(),
