@@ -92,21 +92,15 @@ fn main() {
 
         let mut callbacks = CraneliftPassesCallbacks { use_clif };
 
-        rustc_driver::run_compiler(
-            &args,
-            &mut callbacks,
-            None,
-            None,
-            if use_clif {
-                Some(Box::new(move |_| {
-                    Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
-                        config: rustc_codegen_cranelift::BackendConfig { use_jit: false },
-                    })
-                }))
-            } else {
-                None
-            },
-        )
+        let mut run_compiler = rustc_driver::RunCompiler::new(&args, &mut callbacks);
+        if use_clif {
+            run_compiler.set_make_codegen_backend(Some(Box::new(move |_| {
+                Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
+                    config: rustc_codegen_cranelift::BackendConfig { use_jit: false },
+                })
+            })));
+        }
+        run_compiler.run()
     });
     std::process::exit(exit_code)
 }

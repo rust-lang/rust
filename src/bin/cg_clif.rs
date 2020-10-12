@@ -74,17 +74,13 @@ fn main() {
         if use_jit {
             args.push("-Cprefer-dynamic".to_string());
         }
-        rustc_driver::run_compiler(
-            &args,
-            &mut callbacks,
-            None,
-            None,
-            Some(Box::new(move |_| {
-                Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
-                    config: rustc_codegen_cranelift::BackendConfig { use_jit },
-                })
-            })),
-        )
+        let mut run_compiler = rustc_driver::RunCompiler::new(&args, &mut callbacks);
+        run_compiler.set_make_codegen_backend(Some(Box::new(move |_| {
+            Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
+                config: rustc_codegen_cranelift::BackendConfig { use_jit },
+            })
+        })));
+        run_compiler.run()
     });
     // The extra `\t` is necessary to align this label with the others.
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
