@@ -207,13 +207,18 @@ fn main() {
     // related code in this tool and ./x.py dist hash-and-sign can be removed.
     let legacy = env::var("BUILD_MANIFEST_LEGACY").is_ok();
 
-    // Avoid overloading the old server in legacy mode.
-    if legacy {
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(1)
-            .build_global()
-            .expect("failed to initialize Rayon");
-    }
+    let num_threads = if legacy {
+        // Avoid overloading the old server in legacy mode.
+        1
+    } else if let Ok(num) = env::var("BUILD_MANIFEST_NUM_THREADS") {
+        num.parse().expect("invalid number for BUILD_MANIFEST_NUM_THREADS")
+    } else {
+        num_cpus::get()
+    };
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build_global()
+        .expect("failed to initialize Rayon");
 
     let mut args = env::args().skip(1);
     let input = PathBuf::from(args.next().unwrap());
