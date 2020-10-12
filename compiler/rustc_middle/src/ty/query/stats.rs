@@ -1,11 +1,10 @@
 use crate::ty::query::queries;
 use crate::ty::TyCtxt;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_query_system::query::QueryCache;
-use rustc_query_system::query::QueryState;
-use rustc_query_system::query::{QueryAccessors, QueryContext};
+use rustc_query_system::query::{QueryAccessors, QueryCache, QueryContext, QueryState};
 
 use std::any::type_name;
+use std::hash::Hash;
 use std::mem;
 #[cfg(debug_assertions)]
 use std::sync::atomic::Ordering;
@@ -38,10 +37,12 @@ struct QueryStats {
     local_def_id_keys: Option<usize>,
 }
 
-fn stats<CTX: QueryContext, C: QueryCache>(
-    name: &'static str,
-    map: &QueryState<CTX, C>,
-) -> QueryStats {
+fn stats<D, Q, C>(name: &'static str, map: &QueryState<D, Q, C>) -> QueryStats
+where
+    D: Copy + Clone + Eq + Hash,
+    Q: Clone,
+    C: QueryCache,
+{
     let mut stats = QueryStats {
         name,
         #[cfg(debug_assertions)]
@@ -127,7 +128,8 @@ macro_rules! print_stats {
 
             $($(
                 queries.push(stats::<
-                    TyCtxt<'_>,
+                    crate::dep_graph::DepKind,
+                    <TyCtxt<'_> as QueryContext>::Query,
                     <queries::$name<'_> as QueryAccessors<TyCtxt<'_>>>::Cache,
                 >(
                     stringify!($name),

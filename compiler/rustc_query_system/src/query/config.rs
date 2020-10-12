@@ -76,7 +76,7 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX, Self::Cache>;
+    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX::DepKind, CTX::Query, Self::Cache>;
 
     fn to_dep_node(tcx: CTX, key: &Self::Key) -> DepNode<CTX::DepKind>
     where

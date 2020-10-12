@@ -40,7 +40,8 @@ impl QueryContext for TyCtxt<'tcx> {
 
     fn try_collect_active_jobs(
         &self,
-    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>> {
+    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self::DepKind, Self::Query>>>
+    {
         self.queries.try_collect_active_jobs()
     }
 
@@ -365,7 +366,7 @@ macro_rules! define_queries_inner {
             type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
 
             #[inline(always)]
-            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<TyCtxt<$tcx>, Self::Cache> {
+            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, <TyCtxt<$tcx> as QueryContext>::Query, Self::Cache> {
                 &tcx.queries.$name
             }
 
@@ -520,7 +521,8 @@ macro_rules! define_queries_struct {
             fallback_extern_providers: Box<Providers>,
 
             $($(#[$attr])*  $name: QueryState<
-                TyCtxt<$tcx>,
+                crate::dep_graph::DepKind,
+                <TyCtxt<$tcx> as QueryContext>::Query,
                 <queries::$name<$tcx> as QueryAccessors<TyCtxt<'tcx>>>::Cache,
             >,)*
         }
@@ -541,7 +543,7 @@ macro_rules! define_queries_struct {
 
             pub(crate) fn try_collect_active_jobs(
                 &self
-            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<TyCtxt<'tcx>>>> {
+            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<crate::dep_graph::DepKind, <TyCtxt<$tcx> as QueryContext>::Query>>> {
                 let mut jobs = FxHashMap::default();
 
                 $(

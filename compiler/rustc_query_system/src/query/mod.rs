@@ -15,8 +15,8 @@ mod config;
 pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};
 
 use crate::dep_graph::{DepContext, DepGraph};
+use crate::query::job::QueryMap;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -38,9 +38,7 @@ pub trait QueryContext: DepContext {
     /// Get the query information from the TLS context.
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
 
-    fn try_collect_active_jobs(
-        &self,
-    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>>;
+    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind, Self::Query>>;
 
     /// Executes a job by changing the `ImplicitCtxt` to point to the
     /// new query job while it executes. It returns the diagnostics
