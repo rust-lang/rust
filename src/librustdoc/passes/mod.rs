@@ -12,6 +12,9 @@ use crate::clean::{self, DocFragmentKind, GetDefId, Item};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
 
+mod automatic_links;
+pub use self::automatic_links::CHECK_AUTOMATIC_LINKS;
+
 mod collapse_docs;
 pub use self::collapse_docs::COLLAPSE_DOCS;
 
@@ -91,6 +94,7 @@ pub const PASSES: &[Pass] = &[
     COLLECT_TRAIT_IMPLS,
     CALCULATE_DOC_COVERAGE,
     CHECK_INVALID_HTML_TAGS,
+    CHECK_AUTOMATIC_LINKS,
 ];
 
 /// The list of passes run by default.
@@ -106,6 +110,7 @@ pub const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
     ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
     ConditionalPass::always(PROPAGATE_DOC_CFG),
+    ConditionalPass::always(CHECK_AUTOMATIC_LINKS),
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.

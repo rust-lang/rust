@@ -330,11 +330,13 @@ pub fn run_core(
     let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
     let invalid_html_tags = rustc_lint::builtin::INVALID_HTML_TAGS.name;
     let renamed_and_removed_lints = rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name;
+    let automatic_links = rustc_lint::builtin::AUTOMATIC_LINKS.name;
     let unknown_lints = rustc_lint::builtin::UNKNOWN_LINTS.name;
 
     // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
     let lints_to_show = vec![
+        automatic_links.to_owned(),
         intra_link_resolution_failure_name.to_owned(),
         missing_docs.to_owned(),
         missing_doc_example.to_owned(),
