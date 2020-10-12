@@ -26,7 +26,7 @@ in environments without `std`, such as embedded systems and kernels.
 ## Features
 
 - Drop-in replacement for the standard library `HashMap` and `HashSet` types.
-- Uses `AHash` as the default hasher, which is much faster than SipHash.
+- Uses [AHash](https://github.com/tkaitchuck/aHash) as the default hasher, which is much faster than SipHash.
 - Around 2x faster than the previous standard library `HashMap`.
 - Lower memory usage: only 1 byte of overhead per entry instead of 8.
 - Compatible with `#[no_std]` (but requires a global allocator with the `alloc` crate).
@@ -37,7 +37,7 @@ in environments without `std`, such as embedded systems and kernels.
 
 Compared to the previous implementation of `std::collections::HashMap` (Rust 1.35).
 
-With the hashbrown default AHash hasher (not HashDoS-resistant):
+With the hashbrown default AHash hasher ([without HashDoS-resistance](#Flags)):
 
 ```text
  name                       oldstdhash ns/iter  hashbrown ns/iter  diff ns/iter   diff %  speedup 
@@ -96,19 +96,22 @@ use hashbrown::HashMap;
 let mut map = HashMap::new();
 map.insert(1, "one");
 ```
-
+## Flags
 This crate has the following Cargo features:
 
+- `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
+   of compilation time. (enabled by default)
+- `ahash`: Compiles with ahash as default hasher. (enabled by default)
+- `std`: Enables use of features that depend on the standard library.
+   If `ahash` is used this includes using random keys to provide DOS resistance. (disabled by default)
+- `ahash-compile-time-rng`: This is an alternative to `std` which still allows for some degree of DOS-resistance.
+   However, it can result in issues for certain platforms.
+   See details in [issue#124](https://github.com/rust-lang/hashbrown/issues/124). (disabled by default)
 - `nightly`: Enables nightly-only features: `#[may_dangle]`.
 - `serde`: Enables serde serialization support.
 - `rayon`: Enables rayon parallel iterator support.
 - `raw`: Enables access to the experimental and unsafe `RawTable` API.
-- `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
-  of compilation time. (enabled by default)
-- `ahash`: Compiles with ahash as default hasher. (enabled by default)
-- `ahash-compile-time-rng`: Activates the `compile-time-rng` feature of ahash, to increase the
-   DOS-resistance, but can result in issues for `no_std` builds. More details in
-   [issue#124](https://github.com/rust-lang/hashbrown/issues/124). (enabled by default)
+
 
 ## License
 

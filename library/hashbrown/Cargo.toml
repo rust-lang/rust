@@ -13,7 +13,7 @@ edition = "2018"
 
 [dependencies]
 # For the default hasher
-ahash = { version = "0.5.1", optional = true }
+ahash = { version = "0.5.1", default-features = false, optional = true }
 
 # For external trait impls
 rayon = { version = "1.0", optional = true }
@@ -34,7 +34,7 @@ doc-comment = "0.3.1"
 
 [features]
 default = ["ahash", "inline-more"]
-
+std = ["ahash/std", "serde/std"]
 ahash-compile-time-rng = ["ahash/compile-time-rng"]
 nightly = ["ahash/specialize"]
 rustc-internal-api = []

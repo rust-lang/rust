@@ -9,8 +9,18 @@ use core::mem;
 use core::ops::Index;
 
 /// Default hasher for `HashMap`.
-#[cfg(feature = "ahash")]
+#[cfg(all(
+    feature = "ahash",
+    any(feature = "std", feature = "ahash-compile-time-rng")
+))]
 pub type DefaultHashBuilder = ahash::RandomState;
+
+/// Default hasher for `HashMap`.
+#[cfg(all(
+    feature = "ahash",
+    not(any(feature = "std", feature = "ahash-compile-time-rng"))
+))]
+pub type DefaultHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
 
 /// Dummy default hasher for `HashMap`.
 #[cfg(not(feature = "ahash"))]
