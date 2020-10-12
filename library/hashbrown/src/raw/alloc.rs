@@ -6,6 +6,7 @@ mod inner {
     pub use crate::alloc::alloc::{AllocRef, Global};
     use core::ptr::NonNull;
 
+    #[allow(clippy::map_err_ignore)]
     pub fn do_alloc<A: AllocRef>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
         alloc
             .alloc(layout)
@@ -42,6 +43,7 @@ mod inner {
         }
     }
 
+    #[allow(clippy::map_err_ignore)]
     pub fn do_alloc<A: AllocRef>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
         alloc.alloc(layout).map_err(|_| ())
     }
