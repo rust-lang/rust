@@ -477,7 +477,7 @@ impl<'a> Resolver<'a> {
                     err.note("type parameters may not be used in anonymous constants");
                 } else {
                     err.help(&format!(
-                        "const parameters may only be used as standalone arguments `{}`",
+                        "const parameters may only be used as standalone arguments, i.e. `{}`",
                         name
                     ));
                 }
