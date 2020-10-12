@@ -67,19 +67,15 @@ impl<'a> Comments<'a> {
         span: rustc_span::Span,
         next_pos: Option<BytePos>,
     ) -> Option<Comment> {
-        if let Some(cmnt) = self.next() {
-            if cmnt.style != CommentStyle::Trailing {
-                return None;
-            }
-            let span_line = self.sm.lookup_char_pos(span.hi());
-            let comment_line = self.sm.lookup_char_pos(cmnt.pos);
-            let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
-            if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
-                return Some(cmnt);
-            }
-        }
+        self.next().filter(|cmnt| {
+            cmnt.style == CommentStyle::Trailing && {
+                let span_line = self.sm.lookup_char_pos(span.hi());
+                let comment_line = self.sm.lookup_char_pos(cmnt.pos);
+                let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
 
-        None
+                span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line
+            }
+        })
     }
 }
 
