@@ -622,6 +622,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_trait_bound_opt_out,
     sym::lazy_normalization_consts,
     sym::specialization,
+    sym::repr128,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
