@@ -1,7 +1,5 @@
-use core::ops;
-
-use int::Int;
 use int::LargeInt;
+use int::{DInt, HInt, Int};
 
 trait Mul: LargeInt {
     fn mul(self, other: Self) -> Self {
@@ -29,59 +27,72 @@ trait Mul: LargeInt {
 impl Mul for u64 {}
 impl Mul for i128 {}
 
-trait Mulo: Int + ops::Neg<Output = Self> {
-    fn mulo(self, other: Self, overflow: &mut i32) -> Self {
-        *overflow = 0;
-        let result = self.wrapping_mul(other);
-        if self == Self::min_value() {
-            if other != Self::ZERO && other != Self::ONE {
-                *overflow = 1;
+pub(crate) trait UMulo: Int + DInt {
+    fn mulo(self, rhs: Self) -> (Self, bool) {
+        match (self.hi().is_zero(), rhs.hi().is_zero()) {
+            // overflow is guaranteed
+            (false, false) => (self.wrapping_mul(rhs), true),
+            (true, false) => {
+                let mul_lo = self.lo().widen_mul(rhs.lo());
+                let mul_hi = self.lo().widen_mul(rhs.hi());
+                let (mul, o) = mul_lo.overflowing_add(mul_hi.lo().widen_hi());
+                (mul, o || !mul_hi.hi().is_zero())
             }
-            return result;
-        }
-        if other == Self::min_value() {
-            if self != Self::ZERO && self != Self::ONE {
-                *overflow = 1;
+            (false, true) => {
+                let mul_lo = rhs.lo().widen_mul(self.lo());
+                let mul_hi = rhs.lo().widen_mul(self.hi());
+                let (mul, o) = mul_lo.overflowing_add(mul_hi.lo().widen_hi());
+                (mul, o || !mul_hi.hi().is_zero())
             }
-            return result;
+            // overflow is guaranteed to not happen, and use a smaller widening multiplication
+            (true, true) => (self.lo().widen_mul(rhs.lo()), false),
         }
-
-        let sa = self >> (Self::BITS - 1);
-        let abs_a = (self ^ sa) - sa;
-        let sb = other >> (Self::BITS - 1);
-        let abs_b = (other ^ sb) - sb;
-        let two = Self::ONE + Self::ONE;
-        if abs_a < two || abs_b < two {
-            return result;
-        }
-        if sa == sb {
-            if abs_a > Self::max_value().aborting_div(abs_b) {
-                *overflow = 1;
-            }
-        } else {
-            if abs_a > Self::min_value().aborting_div(-abs_b) {
-                *overflow = 1;
-            }
-        }
-        result
     }
 }
 
-impl Mulo for i32 {}
-impl Mulo for i64 {}
-impl Mulo for i128 {}
-
-trait UMulo: Int {
-    fn mulo(self, other: Self, overflow: &mut i32) -> Self {
-        *overflow = 0;
-        let result = self.wrapping_mul(other);
-        if self > Self::max_value().aborting_div(other) {
-            *overflow = 1;
-        }
-        result
-    }
-}
+impl UMulo for u32 {}
+impl UMulo for u64 {}
 impl UMulo for u128 {}
+
+macro_rules! impl_signed_mulo {
+    ($fn:ident, $iD:ident, $uD:ident) => {
+        fn $fn(lhs: $iD, rhs: $iD) -> ($iD, bool) {
+            let mut lhs = lhs;
+            let mut rhs = rhs;
+            // the test against `mul_neg` below fails without this early return
+            if lhs == 0 || rhs == 0 {
+                return (0, false);
+            }
+
+            let lhs_neg = lhs < 0;
+            let rhs_neg = rhs < 0;
+            if lhs_neg {
+                lhs = lhs.wrapping_neg();
+            }
+            if rhs_neg {
+                rhs = rhs.wrapping_neg();
+            }
+            let mul_neg = lhs_neg != rhs_neg;
+
+            let (mul, o) = (lhs as $uD).mulo(rhs as $uD);
+            let mut mul = mul as $iD;
+
+            if mul_neg {
+                mul = mul.wrapping_neg();
+            }
+            if (mul < 0) != mul_neg {
+                // this one check happens to catch all edge cases related to `$iD::MIN`
+                (mul, true)
+            } else {
+                (mul, o)
+            }
+        }
+    };
+}
+
+impl_signed_mulo!(i32_overflowing_mul, i32, u32);
+impl_signed_mulo!(i64_overflowing_mul, i64, u64);
+impl_signed_mulo!(i128_overflowing_mul, i128, u128);
 
 intrinsics! {
     #[maybe_use_optimized_c_shim]
@@ -95,27 +106,29 @@ intrinsics! {
     }
 
     pub extern "C" fn __mulosi4(a: i32, b: i32, oflow: &mut i32) -> i32 {
-        a.mulo(b, oflow)
+        let (mul, o) = i32_overflowing_mul(a, b);
+        *oflow = o as i32;
+        mul
     }
 
     pub extern "C" fn __mulodi4(a: i64, b: i64, oflow: &mut i32) -> i64 {
-        a.mulo(b, oflow)
+        let (mul, o) = i64_overflowing_mul(a, b);
+        *oflow = o as i32;
+        mul
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __muloti4(a: i128, b: i128, oflow: &mut i32) -> i128 {
-        a.mulo(b, oflow)
+        let (mul, o) = i128_overflowing_mul(a, b);
+        *oflow = o as i32;
+        mul
     }
 
     pub extern "C" fn __rust_i128_mulo(a: i128, b: i128) -> (i128, bool) {
-        let mut oflow = 0;
-        let r = __muloti4(a, b, &mut oflow);
-        (r, oflow != 0)
+        i128_overflowing_mul(a, b)
     }
 
     pub extern "C" fn __rust_u128_mulo(a: u128, b: u128) -> (u128, bool) {
-        let mut oflow = 0;
-        let r = a.mulo(b, &mut oflow);
-        (r, oflow != 0)
+        a.mulo(b)
     }
 }
