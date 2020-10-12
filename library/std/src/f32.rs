@@ -891,14 +891,13 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(clamp)]
     /// assert!((-3.0f32).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f32).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f32).clamp(-2.0, 1.0) == 1.0);
     /// assert!((f32::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "clamp", issue = "44095")]
+    #[stable(feature = "clamp", since = "1.49.0")]
     #[inline]
     pub fn clamp(self, min: f32, max: f32) -> f32 {
         assert!(min <= max);
