@@ -231,12 +231,17 @@ fn hint_iterator(
             const LABEL_START: &str = "impl Iterator<Item = ";
             const LABEL_END: &str = ">";
 
-            let ty_display = ty.display_truncated(
-                db,
-                config
-                    .max_length
-                    .map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len())),
-            );
+            let ty_display = hint_iterator(sema, config, &ty)
+                .map(|assoc_type_impl| assoc_type_impl.to_string())
+                .unwrap_or_else(|| {
+                    ty.display_truncated(
+                        db,
+                        config
+                            .max_length
+                            .map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len())),
+                    )
+                    .to_string()
+                });
             return Some(format!("{}{}{}", LABEL_START, ty_display, LABEL_END).into());
         }
     }
@@ -1002,18 +1007,6 @@ fn main() {
 
     println!("Unit expr");
 }
-
-//- /alloc.rs crate:alloc deps:core
-mod collections {
-    struct Vec<T> {}
-    impl<T> Vec<T> {
-        fn new() -> Self { Vec {} }
-        fn push(&mut self, t: T) { }
-    }
-    impl<T> IntoIterator for Vec<T> {
-        type Item=T;
-    }
-}
 "#,
         );
     }
@@ -1041,17 +1034,6 @@ fn main() {
       //^ &str
       let z = i;
         //^ &str
-    }
-}
-//- /alloc.rs crate:alloc deps:core
-mod collections {
-    struct Vec<T> {}
-    impl<T> Vec<T> {
-        fn new() -> Self { Vec {} }
-        fn push(&mut self, t: T) { }
-    }
-    impl<T> IntoIterator for Vec<T> {
-        type Item=T;
     }
 }
 "#,
@@ -1181,6 +1163,43 @@ fn main() {
                     },
                 ]
             "#]],
+        );
+    }
+
+    #[test]
+    fn shorten_iterators_in_associated_params() {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: true,
+                chaining_hints: false,
+                max_length: None,
+            },
+            r#"
+use core::iter;
+
+pub struct SomeIter<T> {}
+
+impl<T> SomeIter<T> {
+    pub fn new() -> Self { SomeIter {} }
+    pub fn push(&mut self, t: T) {}
+}
+
+impl<T> Iterator for SomeIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+fn main() {
+    let mut some_iter = SomeIter::new();
+      //^^^^^^^^^^^^^ SomeIter<Take<Repeat<i32>>>
+      some_iter.push(iter::repeat(2).take(2));
+    let iter_of_iters = some_iter.take(2);
+      //^^^^^^^^^^^^^ impl Iterator<Item = impl Iterator<Item = i32>>
+}
+"#,
         );
     }
 }
