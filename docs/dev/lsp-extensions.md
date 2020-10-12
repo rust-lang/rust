@@ -129,7 +129,7 @@ As a result of the command call the client will get the respective workspace edi
 
 **Server Capability:** `{ "parentModule": boolean }`
 
-This request is send from client to server to handle "Goto Parent Module" editor action.
+This request is sent from client to server to handle "Goto Parent Module" editor action.
 
 **Method:** `experimental/parentModule`
 
@@ -163,7 +163,7 @@ mod foo;
 
 **Server Capability:** `{ "joinLines": boolean }`
 
-This request is send from client to server to handle "Join Lines" editor action.
+This request is sent from client to server to handle "Join Lines" editor action.
 
 **Method:** `experimental/joinLines`
 
@@ -210,7 +210,7 @@ fn main() {
 
 **Server Capability:** `{ "onEnter": boolean }`
 
-This request is send from client to server to handle <kbd>Enter</kbd> keypress.
+This request is sent from client to server to handle <kbd>Enter</kbd> keypress.
 
 **Method:** `experimental/onEnter`
 
@@ -261,7 +261,7 @@ As proper cursor positioning is raison-d'etat for `onEnter`, it uses `SnippetTex
 
 **Server Capability:** `{ "ssr": boolean }`
 
-This request is send from client to server to handle structural search replace -- automated syntax tree based transformation of the source.
+This request is sent from client to server to handle structural search replace -- automated syntax tree based transformation of the source.
 
 **Method:** `experimental/ssr`
 
@@ -303,7 +303,7 @@ SSR with query `foo($a, $b) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)
 
 **Server Capability:** `{ "matchingBrace": boolean }`
 
-This request is send from client to server to handle "Matching Brace" editor action.
+This request is sent from client to server to handle "Matching Brace" editor action.
 
 **Method:** `experimental/matchingBrace`
 
@@ -348,7 +348,7 @@ Moreover, it would be cool if editors didn't need to implement even basic langua
 
 **Server Capability:** `{ "runnables": { "kinds": string[] } }`
 
-This request is send from client to server to get the list of things that can be run (tests, binaries, `cargo check -p`).
+This request is sent from client to server to get the list of things that can be run (tests, binaries, `cargo check -p`).
 
 **Method:** `experimental/runnables`
 
@@ -385,6 +385,17 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
     executableArgs: string[];
 }
 ```
+
+## Open External Documentation
+
+This request is sent from client to server to get a URL to documentation for the symbol under the cursor, if available.
+
+**Method** `experimental/externalDocs`
+
+**Request:**: `TextDocumentPositionParams`
+
+**Response** `string | null`
+
 
 ## Analyzer Status
 
@@ -477,7 +488,7 @@ Expands macro call at a given position.
 
 **Method:** `rust-analyzer/inlayHints`
 
-This request is send from client to server to render "inlay hints" -- virtual text inserted into editor to show things like inferred types.
+This request is sent from client to server to render "inlay hints" -- virtual text inserted into editor to show things like inferred types.
 Generally, the client should re-query inlay hints after every modification.
 Note that we plan to move this request to `experimental/inlayHints`, as it is not really Rust-specific, but the current API is not necessary the right one.
 Upstream issue: https://github.com/microsoft/language-server-protocol/issues/956

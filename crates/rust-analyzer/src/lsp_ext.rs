@@ -347,3 +347,11 @@ pub struct CommandLink {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tooltip: Option<String>,
 }
+
+pub enum ExternalDocs {}
+
+impl Request for ExternalDocs {
+    type Params = lsp_types::TextDocumentPositionParams;
+    type Result = Option<lsp_types::Url>;
+    const METHOD: &'static str = "experimental/externalDocs";
+}

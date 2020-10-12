@@ -419,10 +419,31 @@ export function gotoLocation(ctx: Ctx): Cmd {
     };
 }
 
+export function openDocs(ctx: Ctx): Cmd {
+    return async () => {
+
+        const client = ctx.client;
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !client) {
+            return;
+        };
+
+        const position = editor.selection.active;
+        const textDocument = { uri: editor.document.uri.toString() };
+
+        const doclink = await client.sendRequest(ra.openDocs, { position, textDocument });
+
+        if (doclink != null) {
+            vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(doclink));
+        }
+    };
+
+}
+
 export function resolveCodeAction(ctx: Ctx): Cmd {
     const client = ctx.client;
-    return async (params: ra.ResolveCodeActionParams) => {
-        const item: lc.WorkspaceEdit = await client.sendRequest(ra.resolveCodeAction, params);
+    return async () => {
+        const item: lc.WorkspaceEdit = await client.sendRequest(ra.resolveCodeAction, null);
         if (!item) {
             return;
         }

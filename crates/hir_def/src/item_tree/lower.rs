@@ -330,12 +330,15 @@ impl Ctx {
             ret_type
         };
 
+        let has_body = func.body().is_some();
+
         let ast_id = self.source_ast_id_map.ast_id(func);
         let mut res = Function {
             name,
             visibility,
             generic_params: GenericParamsId::EMPTY,
             has_self_param,
+            has_body,
             is_unsafe: func.unsafe_token().is_some(),
             params: params.into_boxed_slice(),
             is_varargs,

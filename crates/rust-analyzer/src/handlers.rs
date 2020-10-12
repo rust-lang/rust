@@ -1301,6 +1301,18 @@ pub(crate) fn handle_semantic_tokens_range(
     Ok(Some(semantic_tokens.into()))
 }
 
+pub(crate) fn handle_open_docs(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::TextDocumentPositionParams,
+) -> Result<Option<lsp_types::Url>> {
+    let _p = profile::span("handle_open_docs");
+    let position = from_proto::file_position(&snap, params)?;
+
+    let remote = snap.analysis.external_docs(position)?;
+
+    Ok(remote.and_then(|remote| Url::parse(&remote).ok()))
+}
+
 fn implementation_title(count: usize) -> String {
     if count == 1 {
         "1 implementation".into()

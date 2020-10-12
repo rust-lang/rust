@@ -384,6 +384,7 @@ impl GlobalState {
             .on::<lsp_ext::CodeActionRequest>(handlers::handle_code_action)?
             .on::<lsp_ext::ResolveCodeActionRequest>(handlers::handle_resolve_code_action)?
             .on::<lsp_ext::HoverRequest>(handlers::handle_hover)?
+            .on::<lsp_ext::ExternalDocs>(handlers::handle_open_docs)?
             .on::<lsp_types::request::OnTypeFormatting>(handlers::handle_on_type_formatting)?
             .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)?
             .on::<lsp_types::request::WorkspaceSymbol>(handlers::handle_workspace_symbol)?

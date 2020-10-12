@@ -186,6 +186,16 @@ impl_from!(
     for ModuleDef
 );
 
+impl From<VariantDef> for ModuleDef {
+    fn from(var: VariantDef) -> Self {
+        match var {
+            VariantDef::Struct(t) => Adt::from(t).into(),
+            VariantDef::Union(t) => Adt::from(t).into(),
+            VariantDef::EnumVariant(t) => t.into(),
+        }
+    }
+}
+
 impl ModuleDef {
     pub fn module(self, db: &dyn HirDatabase) -> Option<Module> {
         match self {
@@ -751,6 +761,13 @@ impl Function {
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         hir_ty::diagnostics::validate_body(db, self.id.into(), sink)
+    }
+
+    /// Whether this function declaration has a definition.
+    ///
+    /// This is false in the case of required (not provided) trait methods.
+    pub fn has_body(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).has_body
     }
 }
 

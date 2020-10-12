@@ -45,8 +45,8 @@ mod status;
 mod syntax_highlighting;
 mod syntax_tree;
 mod typing;
-mod link_rewrite;
 mod markdown_remove;
+mod doc_links;
 
 use std::sync::Arc;
 
@@ -382,6 +382,14 @@ impl Analysis {
         markdown: bool,
     ) -> Cancelable<Option<RangeInfo<HoverResult>>> {
         self.with_db(|db| hover::hover(db, position, links_in_hover, markdown))
+    }
+
+    /// Return URL(s) for the documentation of the symbol under the cursor.
+    pub fn external_docs(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Option<doc_links::DocumentationLink>> {
+        self.with_db(|db| doc_links::external_docs(db, &position))
     }
 
     /// Computes parameter information for the given call expression.
