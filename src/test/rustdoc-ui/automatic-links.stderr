@@ -1,23 +1,26 @@
-error: Unneeded long form for URL
+error: unneeded long form for URL
   --> $DIR/automatic-links.rs:3:5
    |
 LL | /// [http://a.com](http://a.com)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://a.com>`
    |
 note: the lint level is defined here
   --> $DIR/automatic-links.rs:1:9
    |
 LL | #![deny(automatic_links)]
    |         ^^^^^^^^^^^^^^^
-   = help: Try with `<http://a.com>` instead
 
-error: Unneeded long form for URL
+error: unneeded long form for URL
   --> $DIR/automatic-links.rs:5:5
    |
 LL | /// [http://b.com]
-   |     ^^^^^^^^^^^^^^
-   |
-   = help: Try with `<http://b.com>` instead
+   |     ^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://b.com>`
 
-error: aborting due to 2 previous errors
+error: won't be a link as is
+  --> $DIR/automatic-links.rs:13:5
+   |
+LL | /// https://somewhere.com?hello=12
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com?hello=12>`
+
+error: aborting due to 3 previous errors
 
