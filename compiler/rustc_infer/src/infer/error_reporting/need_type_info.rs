@@ -182,7 +182,7 @@ fn closure_args(fn_sig: &ty::PolyFnSig<'_>) -> String {
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
-    /// let x = "hello".chars().rev().collect();
+    /// let _ = None;
     /// ```
     E0282,
     /// An implementation cannot be chosen unambiguously because of lack of information.
