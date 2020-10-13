@@ -73,6 +73,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_merge_equal() {
+        check_assist(
+            merge_imports,
+            r"
+use std::fmt<|>::{Display, Debug};
+use std::fmt::{Display, Debug};
+",
+            r"
+use std::fmt::{Debug, Display};
+",
+        )
+    }
+
+    #[test]
     fn test_merge_first() {
         check_assist(
             merge_imports,
