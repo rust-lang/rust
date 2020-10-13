@@ -28,8 +28,9 @@ use std::mem;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Simplify a candidate so that all match pairs require a test.
     ///
-    /// This method will also split a candidate where the only match-pair is an
-    /// or-pattern into multiple candidates. This is so that
+    /// This method will also split a candidate, in which the only
+    /// match-pair is an or-pattern, into multiple candidates.
+    /// This is so that
     ///
     /// match x {
     ///     0 | 1 => { ... },
