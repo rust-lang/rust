@@ -47,7 +47,7 @@ impl LateLintPass<'_> for ManualUnwrapOr {
     }
 }
 
-fn lint_option_unwrap_or_case<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+fn lint_option_unwrap_or_case<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     fn applicable_none_arm<'a>(arms: &'a [Arm<'a>]) -> Option<&'a Arm<'a>> {
         if_chain! {
             if arms.len() == 2;
@@ -69,8 +69,7 @@ fn lint_option_unwrap_or_case<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tc
             if !utils::usage::contains_return_break_continue_macro(none_arm.body);
             then {
                 Some(none_arm)
-            }
-            else {
+            } else {
                 None
             }
         }
@@ -102,14 +101,11 @@ fn lint_option_unwrap_or_case<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tc
                     "{}.{}({}{})",
                     scrutinee_snippet,
                     method,
-                    if eager_eval { ""} else { "|| " },
+                    if eager_eval { "" } else { "|| " },
                     reindented_none_body
                 ),
                 Applicability::MachineApplicable,
             );
-            true
-        } else {
-            false
         }
     }
 }
