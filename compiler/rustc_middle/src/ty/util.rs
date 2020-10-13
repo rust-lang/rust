@@ -646,8 +646,8 @@ impl<'tcx> ty::TyS<'tcx> {
             }
             ty::Char => Some(std::char::MAX as u128),
             ty::Float(fty) => Some(match fty {
-                ast::FloatTy::F32 => ::rustc_apfloat::ieee::Single::INFINITY.to_bits(),
-                ast::FloatTy::F64 => ::rustc_apfloat::ieee::Double::INFINITY.to_bits(),
+                ast::FloatTy::F32 => rustc_apfloat::ieee::Single::INFINITY.to_bits(),
+                ast::FloatTy::F64 => rustc_apfloat::ieee::Double::INFINITY.to_bits(),
             }),
             _ => None,
         };

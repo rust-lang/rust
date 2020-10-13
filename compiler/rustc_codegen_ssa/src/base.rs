@@ -695,7 +695,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         total_codegen_time.into_inner(),
     );
 
-    ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
+    rustc_incremental::assert_module_sources::assert_module_sources(tcx);
 
     symbol_names_test::report_symbol_names(tcx);
 
@@ -754,8 +754,8 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 }
 
 fn finalize_tcx(tcx: TyCtxt<'_>) {
-    tcx.sess.time("assert_dep_graph", || ::rustc_incremental::assert_dep_graph(tcx));
-    tcx.sess.time("serialize_dep_graph", || ::rustc_incremental::save_dep_graph(tcx));
+    tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
+    tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
 
     // We assume that no queries are run past here. If there are new queries
     // after this point, they'll show up as "<unknown>" in self-profiling data.

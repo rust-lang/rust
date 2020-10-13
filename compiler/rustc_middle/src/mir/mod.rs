@@ -775,7 +775,7 @@ mod binding_form_impl {
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
         fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
             use super::BindingForm::*;
-            ::std::mem::discriminant(self).hash_stable(hcx, hasher);
+            std::mem::discriminant(self).hash_stable(hcx, hasher);
 
             match self {
                 Var(binding) => binding.hash_stable(hcx, hasher),
