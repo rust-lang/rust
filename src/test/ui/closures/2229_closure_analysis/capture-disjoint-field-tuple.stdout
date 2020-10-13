@@ -26,3 +26,38 @@ For closure=DefId(0:4 ~ capture_disjoint_field_tuple[317d]::main::{closure#0}): 
         ),
     },
 }
+For closure=DefId(0:4 ~ capture_disjoint_field_tuple[317d]::main::{closure#0}): min_captures={
+    HirId {
+        owner: DefId(0:3 ~ capture_disjoint_field_tuple[317d]::main),
+        local_id: 1,
+    }: [
+        CapturedPlace {
+            place: Place {
+                base_ty: (i32, i32),
+                base: Upvar(
+                    UpvarId(HirId { owner: DefId(0:3 ~ capture_disjoint_field_tuple[317d]::main), local_id: 1 };`t`;DefId(0:4 ~ capture_disjoint_field_tuple[317d]::main::{closure#0})),
+                ),
+                projections: [
+                    Projection {
+                        ty: i32,
+                        kind: Field(
+                            0,
+                            0,
+                        ),
+                    },
+                ],
+            },
+            info: CaptureInfo {
+                expr_id: Some(
+                    HirId {
+                        owner: DefId(0:3 ~ capture_disjoint_field_tuple[317d]::main),
+                        local_id: 28,
+                    },
+                ),
+                capture_kind: ByRef(
+                    UpvarBorrow(ImmBorrow, '_#35r),
+                ),
+            },
+        },
+    ],
+}
