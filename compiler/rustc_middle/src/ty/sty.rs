@@ -2081,6 +2081,7 @@ impl<'tcx> TyS<'tcx> {
             FnPtr(f) => *f,
             Error(_) => {
                 // ignore errors (#54954)
+
                 ty::Binder::dummy(FnSig::fake())
             }
             Closure(..) => bug!(

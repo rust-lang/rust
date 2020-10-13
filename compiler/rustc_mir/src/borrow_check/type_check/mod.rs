@@ -26,10 +26,7 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
-use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPredicate, Ty,
-    TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
-};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness, Binder};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -2051,7 +2048,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // function definition. When we extract the
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
-                        let fn_sig = self.normalize(fn_sig, location);
+                        let mut fn_sig = self.normalize(fn_sig, location);
+
+                        if let ty::FnPtr(pol_sig) = ty.kind() {
+                            let mut sig = fn_sig.skip_binder();
+                            sig.constness = pol_sig.constness();
+                            sig.unsafety = pol_sig.unsafety();
+                            fn_sig = Binder::bind(sig);
+                        }
 
                         let ty_fn_ptr_from = tcx.mk_fn_ptr(fn_sig);
 

@@ -994,6 +994,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         new_sig = self.tcx.signature_not_const_fn(prev_sig);
                                         new_drop_const = true;
                                     }
+                                    if prev_sig.unsafety() != new_sig.unsafety() {
+                                        prev_sig = prev_sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig });
+                                        new_sig = new_sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig });=
+                                    }
                                 }
                                 (Some(prev_sig), Some(new_sig))
                             }
@@ -1043,12 +1047,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Closure(..) => {
                     Some(Adjust::Pointer(PointerCast::ClosureFnPointer(a_sig.unsafety())))
                 }
-                ty::FnDef(..) => {
-                    Some(Adjust::Pointer(PointerCast::ReifyFnPointer))
-                }
+                ty::FnDef(..) => Some(Adjust::Pointer(PointerCast::ReifyFnPointer)),
                 ty::FnPtr(..) => {
                     if prev_drop_const {
-                        Some(Adjust::Pointer(PointerCast::NotConstFnPointer))
+                        if a_sig.unsafety() != b_sig.unsafety() {
+                            Some(Adjust::Pointer(PointerCast::UnsafeNotConstFnPointer))
+                        } else {
+                            Some(Adjust::Pointer(PointerCast::NotConstFnPointer))
+                        }
                     } else {
                         None
                     }
@@ -1059,12 +1065,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Closure(..) => {
                     Some(Adjust::Pointer(PointerCast::ClosureFnPointer(b_sig.unsafety())))
                 }
-                ty::FnDef(..) => {
-                    Some(Adjust::Pointer(PointerCast::ReifyFnPointer))
-                }
+                ty::FnDef(..) => Some(Adjust::Pointer(PointerCast::ReifyFnPointer)),
                 ty::FnPtr(..) => {
                     if new_drop_const {
-                        Some(Adjust::Pointer(PointerCast::NotConstFnPointer))
+                        if a_sig.unsafety() != b_sig.unsafety() {
+                            Some(Adjust::Pointer(PointerCast::UnsafeNotConstFnPointer))
+                        } else {
+                            Some(Adjust::Pointer(PointerCast::NotConstFnPointer))
+                        }
                     } else {
                         None
                     }
@@ -1075,7 +1083,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for expr in exprs.iter().map(|e| e.as_coercion_site()) {
                     self.apply_adjustments(
                         expr,
-                        vec![Adjustment { kind: prev_adjustment.clone().unwrap().clone(), target: fn_ptr }],
+                        vec![Adjustment {
+                            kind: prev_adjustment.clone().unwrap().clone(),
+                            target: fn_ptr,
+                        }],
                     );
                 }
             }

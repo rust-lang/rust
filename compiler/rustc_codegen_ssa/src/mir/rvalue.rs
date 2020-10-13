@@ -184,25 +184,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast = bx.cx().layout_of(self.monomorphize(&mir_cast_ty));
 
                 let val = match *kind {
-                    mir::CastKind::Pointer(
-                        PointerCast::ReifyFnPointer,
-                    ) => match *operand.layout.ty.kind() {
-                        ty::FnDef(def_id, substs) => {
-                            if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {
-                                bug!("reifying a fn ptr that requires const arguments");
+                    mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
+                        match *operand.layout.ty.kind() {
+                            ty::FnDef(def_id, substs) => {
+                                if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {
+                                    bug!("reifying a fn ptr that requires const arguments");
+                                }
+                                let instance = ty::Instance::resolve_for_fn_ptr(
+                                    bx.tcx(),
+                                    ty::ParamEnv::reveal_all(),
+                                    def_id,
+                                    substs,
+                                )
+                                .unwrap()
+                                .polymorphize(bx.cx().tcx());
+                                OperandValue::Immediate(bx.get_fn_addr(instance))
                             }
-                            let instance = ty::Instance::resolve_for_fn_ptr(
-                                bx.tcx(),
-                                ty::ParamEnv::reveal_all(),
-                                def_id,
-                                substs,
-                            )
-                            .unwrap()
-                            .polymorphize(bx.cx().tcx());
-                            OperandValue::Immediate(bx.get_fn_addr(instance))
+                            _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
-                        _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
-                    },
+                    }
                     mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)) => {
                         match *operand.layout.ty.kind() {
                             ty::Closure(def_id, substs) => {
