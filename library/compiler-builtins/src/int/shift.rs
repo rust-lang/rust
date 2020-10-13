@@ -1,20 +1,18 @@
-use int::{Int, LargeInt};
+use int::{DInt, HInt, Int};
 
-trait Ashl: Int + LargeInt {
+trait Ashl: DInt {
     /// Returns `a << b`, requires `b < Self::BITS`
-    fn ashl(self, offset: u32) -> Self
-    where
-        Self: LargeInt<HighHalf = <Self as LargeInt>::LowHalf>,
-    {
-        let half_bits = Self::BITS / 2;
-        if offset & half_bits != 0 {
-            Self::from_parts(Int::ZERO, self.low() << (offset - half_bits))
-        } else if offset == 0 {
+    fn ashl(self, shl: u32) -> Self {
+        let n_h = Self::H::BITS;
+        if shl & n_h != 0 {
+            // we only need `self.lo()` because `self.hi()` will be shifted out entirely
+            (self.lo() << (shl - n_h)).widen_hi()
+        } else if shl == 0 {
             self
         } else {
-            Self::from_parts(
-                self.low() << offset,
-                (self.high() << offset) | (self.low() >> (half_bits - offset)),
+            Self::from_lo_hi(
+                self.lo() << shl,
+                self.lo().logical_shr(n_h - shl) | (self.hi() << shl),
             )
         }
     }
@@ -24,25 +22,22 @@ impl Ashl for u32 {}
 impl Ashl for u64 {}
 impl Ashl for u128 {}
 
-trait Ashr: Int + LargeInt {
+trait Ashr: DInt {
     /// Returns arithmetic `a >> b`, requires `b < Self::BITS`
-    fn ashr(self, offset: u32) -> Self
-    where
-        Self: LargeInt<LowHalf = <<Self as LargeInt>::HighHalf as Int>::UnsignedInt>,
-    {
-        let half_bits = Self::BITS / 2;
-        if offset & half_bits != 0 {
-            Self::from_parts(
-                (self.high() >> (offset - half_bits)).unsigned(),
-                self.high() >> (half_bits - 1),
+    fn ashr(self, shr: u32) -> Self {
+        let n_h = Self::H::BITS;
+        if shr & n_h != 0 {
+            Self::from_lo_hi(
+                self.hi() >> (shr - n_h),
+                // smear the sign bit
+                self.hi() >> (n_h - 1),
             )
-        } else if offset == 0 {
+        } else if shr == 0 {
             self
         } else {
-            let high_unsigned = self.high().unsigned();
-            Self::from_parts(
-                (high_unsigned << (half_bits - offset)) | (self.low() >> offset),
-                self.high() >> offset,
+            Self::from_lo_hi(
+                self.lo().logical_shr(shr) | (self.hi() << (n_h - shr)),
+                self.hi() >> shr,
             )
         }
     }
@@ -52,21 +47,18 @@ impl Ashr for i32 {}
 impl Ashr for i64 {}
 impl Ashr for i128 {}
 
-trait Lshr: Int + LargeInt {
+trait Lshr: DInt {
     /// Returns logical `a >> b`, requires `b < Self::BITS`
-    fn lshr(self, offset: u32) -> Self
-    where
-        Self: LargeInt<HighHalf = <Self as LargeInt>::LowHalf>,
-    {
-        let half_bits = Self::BITS / 2;
-        if offset & half_bits != 0 {
-            Self::from_parts(self.high() >> (offset - half_bits), Int::ZERO)
-        } else if offset == 0 {
+    fn lshr(self, shr: u32) -> Self {
+        let n_h = Self::H::BITS;
+        if shr & n_h != 0 {
+            self.hi().logical_shr(shr - n_h).zero_widen()
+        } else if shr == 0 {
             self
         } else {
-            Self::from_parts(
-                (self.high() << (half_bits - offset)) | (self.low() >> offset),
-                self.high() >> offset,
+            Self::from_lo_hi(
+                self.lo().logical_shr(shr) | (self.hi() << (n_h - shr)),
+                self.hi().logical_shr(shr),
             )
         }
     }

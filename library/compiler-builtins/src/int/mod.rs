@@ -384,50 +384,6 @@ impl_h_int!(
     i64 u64 i128
 );
 
-/// Trait to convert an integer to/from smaller parts
-pub(crate) trait LargeInt: Int {
-    type LowHalf: Int;
-    type HighHalf: Int;
-
-    fn low(self) -> Self::LowHalf;
-    fn low_as_high(low: Self::LowHalf) -> Self::HighHalf;
-    fn high(self) -> Self::HighHalf;
-    fn high_as_low(low: Self::HighHalf) -> Self::LowHalf;
-    fn from_parts(low: Self::LowHalf, high: Self::HighHalf) -> Self;
-}
-
-macro_rules! large_int {
-    ($ty:ty, $tylow:ty, $tyhigh:ty, $halfbits:expr) => {
-        impl LargeInt for $ty {
-            type LowHalf = $tylow;
-            type HighHalf = $tyhigh;
-
-            fn low(self) -> $tylow {
-                self as $tylow
-            }
-            fn low_as_high(low: $tylow) -> $tyhigh {
-                low as $tyhigh
-            }
-            fn high(self) -> $tyhigh {
-                (self >> $halfbits) as $tyhigh
-            }
-            fn high_as_low(high: $tyhigh) -> $tylow {
-                high as $tylow
-            }
-            fn from_parts(low: $tylow, high: $tyhigh) -> $ty {
-                low as $ty | ((high as $ty) << $halfbits)
-            }
-        }
-    };
-}
-
-large_int!(u32, u16, u16, 16);
-large_int!(i32, u16, i16, 16);
-large_int!(u64, u32, u32, 32);
-large_int!(i64, u32, i32, 32);
-large_int!(u128, u64, u64, 64);
-large_int!(i128, u64, i64, 64);
-
 /// Trait to express (possibly lossy) casting of integers
 pub(crate) trait CastInto<T: Copy>: Copy {
     fn cast(self) -> T;

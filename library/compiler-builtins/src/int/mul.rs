@@ -1,26 +1,29 @@
-use int::LargeInt;
 use int::{DInt, HInt, Int};
 
-trait Mul: LargeInt {
-    fn mul(self, other: Self) -> Self {
-        let half_bits = Self::BITS / 4;
-        let lower_mask = !<<Self as LargeInt>::LowHalf>::ZERO >> half_bits;
-        let mut low = (self.low() & lower_mask).wrapping_mul(other.low() & lower_mask);
-        let mut t = low >> half_bits;
-        low &= lower_mask;
-        t += (self.low() >> half_bits).wrapping_mul(other.low() & lower_mask);
-        low += (t & lower_mask) << half_bits;
-        let mut high = Self::low_as_high(t >> half_bits);
-        t = low >> half_bits;
-        low &= lower_mask;
-        t += (other.low() >> half_bits).wrapping_mul(self.low() & lower_mask);
-        low += (t & lower_mask) << half_bits;
-        high += Self::low_as_high(t >> half_bits);
-        high += Self::low_as_high((self.low() >> half_bits).wrapping_mul(other.low() >> half_bits));
-        high = high
-            .wrapping_add(self.high().wrapping_mul(Self::low_as_high(other.low())))
-            .wrapping_add(Self::low_as_high(self.low()).wrapping_mul(other.high()));
-        Self::from_parts(low, high)
+trait Mul: DInt
+where
+    Self::H: DInt,
+{
+    fn mul(self, rhs: Self) -> Self {
+        // In order to prevent infinite recursion, we cannot use the `widen_mul` in this:
+        //self.lo().widen_mul(rhs.lo())
+        //    .wrapping_add(self.lo().wrapping_mul(rhs.hi()).widen_hi())
+        //    .wrapping_add(self.hi().wrapping_mul(rhs.lo()).widen_hi())
+
+        let lhs_lo = self.lo();
+        let rhs_lo = rhs.lo();
+        // construct the widening multiplication using only `Self::H` sized multiplications
+        let tmp_0 = lhs_lo.lo().zero_widen_mul(rhs_lo.lo());
+        let tmp_1 = lhs_lo.lo().zero_widen_mul(rhs_lo.hi());
+        let tmp_2 = lhs_lo.hi().zero_widen_mul(rhs_lo.lo());
+        let tmp_3 = lhs_lo.hi().zero_widen_mul(rhs_lo.hi());
+        // sum up all widening partials
+        let mul = Self::from_lo_hi(tmp_0, tmp_3)
+            .wrapping_add(tmp_1.zero_widen() << (Self::BITS / 4))
+            .wrapping_add(tmp_2.zero_widen() << (Self::BITS / 4));
+        // add the higher partials
+        mul.wrapping_add(lhs_lo.wrapping_mul(rhs.hi()).widen_hi())
+            .wrapping_add(self.hi().wrapping_mul(rhs_lo).widen_hi())
     }
 }
 
