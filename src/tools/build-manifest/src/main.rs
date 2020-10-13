@@ -22,6 +22,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 static HOSTS: &[&str] = &[
+    "aarch64-apple-darwin",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
     "arm-unknown-linux-gnueabi",
@@ -55,6 +56,7 @@ static HOSTS: &[&str] = &[
 ];
 
 static TARGETS: &[&str] = &[
+    "aarch64-apple-darwin",
     "aarch64-apple-ios",
     "aarch64-fuchsia",
     "aarch64-linux-android",
