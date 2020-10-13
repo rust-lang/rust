@@ -1142,7 +1142,7 @@ pub trait PrettyPrinter<'tcx>:
                 // relocations (we have an active `str` reference here). We don't use this
                 // result to affect interpreter execution.
                 let slice = data.inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
+                let s = std::str::from_utf8(slice).expect("non utf8 str from miri");
                 p!(write("{:?}", s));
                 Ok(self)
             }

@@ -96,14 +96,14 @@ impl PatCtxt<'_, '_> {
                 }
                 PatternError::FloatBug => {
                     // FIXME(#31407) this is only necessary because float parsing is buggy
-                    ::rustc_middle::mir::interpret::struct_error(
+                    rustc_middle::mir::interpret::struct_error(
                         self.tcx.at(pat_span),
                         "could not evaluate float literal (see issue #31407)",
                     )
                     .emit();
                 }
                 PatternError::NonConstPath(span) => {
-                    ::rustc_middle::mir::interpret::struct_error(
+                    rustc_middle::mir::interpret::struct_error(
                         self.tcx.at(span),
                         "runtime values cannot be referenced in patterns",
                     )

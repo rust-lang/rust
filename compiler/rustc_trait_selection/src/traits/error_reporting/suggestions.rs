@@ -22,6 +22,7 @@ use rustc_middle::ty::{
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_target::spec::abi;
 use std::fmt;
 
 use super::InferCtxtPrivExt;
@@ -1157,15 +1158,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     tcx.mk_ty_infer(ty::TyVar(ty::TyVid { index: 0 })),
                     false,
                     hir::Unsafety::Normal,
-                    ::rustc_target::spec::abi::Abi::Rust,
+                    abi::Abi::Rust,
                 )
             } else {
                 tcx.mk_fn_sig(
-                    ::std::iter::once(inputs),
+                    std::iter::once(inputs),
                     tcx.mk_ty_infer(ty::TyVar(ty::TyVid { index: 0 })),
                     false,
                     hir::Unsafety::Normal,
-                    ::rustc_target::spec::abi::Abi::Rust,
+                    abi::Abi::Rust,
                 )
             };
             ty::Binder::bind(sig).to_string()
