@@ -4,7 +4,7 @@
 #![cfg_attr(min, feature(min_const_generics))]
 
 type Arr<const N: usize> = [u8; N - 1];
-//[min]~^ ERROR generic parameters must not be used inside of non-trivial constant values
+//[min]~^ ERROR generic parameters may not be used in const operations
 
 fn test<const N: usize>() -> Arr<N> where Arr<N>: Default {
     //[full]~^ ERROR constant expression depends

@@ -1,10 +1,10 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/intrinsics-type_name-as-const-argument.rs:15:44
    |
 LL |     T: Trait<{std::intrinsics::type_name::<T>()}>
-   |                                            ^ non-trivial anonymous constants must not depend on the parameter `T`
+   |                                            ^ cannot perform const operation using `T`
    |
-   = note: type parameters are currently not permitted in anonymous constants
+   = note: type parameters may not be used in const expressions
 
 error: `&'static str` is forbidden as the type of a const generic parameter
   --> $DIR/intrinsics-type_name-as-const-argument.rs:10:22

@@ -1,18 +1,18 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-61522-array-len-succ.rs:7:45
    |
 LL | pub struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
-   |                                             ^^^^^ non-trivial anonymous constants must not depend on the parameter `COUNT`
+   |                                             ^^^^^ cannot perform const operation using `COUNT`
    |
-   = help: it is currently only allowed to use either `COUNT` or `{ COUNT }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `COUNT`
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-61522-array-len-succ.rs:12:30
    |
 LL |     fn inner(&self) -> &[u8; COUNT + 1] {
-   |                              ^^^^^ non-trivial anonymous constants must not depend on the parameter `COUNT`
+   |                              ^^^^^ cannot perform const operation using `COUNT`
    |
-   = help: it is currently only allowed to use either `COUNT` or `{ COUNT }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `COUNT`
 
 error: aborting due to 2 previous errors
 

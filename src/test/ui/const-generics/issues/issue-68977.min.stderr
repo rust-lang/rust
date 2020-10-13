@@ -1,18 +1,18 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-68977.rs:29:17
    |
 LL |     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
-   |                 ^^^^^^^^ non-trivial anonymous constants must not depend on the parameter `INT_BITS`
+   |                 ^^^^^^^^ cannot perform const operation using `INT_BITS`
    |
-   = help: it is currently only allowed to use either `INT_BITS` or `{ INT_BITS }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `INT_BITS`
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-68977.rs:29:28
    |
 LL |     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
-   |                            ^^^^^^^^^ non-trivial anonymous constants must not depend on the parameter `FRAC_BITS`
+   |                            ^^^^^^^^^ cannot perform const operation using `FRAC_BITS`
    |
-   = help: it is currently only allowed to use either `FRAC_BITS` or `{ FRAC_BITS }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `FRAC_BITS`
 
 error: aborting due to 2 previous errors
 

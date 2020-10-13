@@ -1,18 +1,18 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-67945-1.rs:14:16
    |
 LL |         let x: S = MaybeUninit::uninit();
-   |                ^ non-trivial anonymous constants must not depend on the parameter `S`
+   |                ^ cannot perform const operation using `S`
    |
-   = note: type parameters are currently not permitted in anonymous constants
+   = note: type parameters may not be used in const expressions
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-67945-1.rs:17:45
    |
 LL |         let b = &*(&x as *const _ as *const S);
-   |                                             ^ non-trivial anonymous constants must not depend on the parameter `S`
+   |                                             ^ cannot perform const operation using `S`
    |
-   = note: type parameters are currently not permitted in anonymous constants
+   = note: type parameters may not be used in const expressions
 
 error[E0392]: parameter `S` is never used
   --> $DIR/issue-67945-1.rs:11:12
