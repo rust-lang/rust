@@ -288,6 +288,7 @@ pub fn provide(providers: &mut Providers) {
             Lrc::new(link_args::collect(tcx))
         },
 
+        visibility: crate::rmeta::encoder::visibility,
         // Returns a map from a sufficiently visible external item (i.e., an
         // external item that is visible from at least one local module) to a
         // sufficiently visible parent (considering modules that re-export the

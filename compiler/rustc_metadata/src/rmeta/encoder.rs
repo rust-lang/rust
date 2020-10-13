@@ -28,7 +28,6 @@ use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_span::hygiene::{ExpnDataEncodeMode, HygieneEncodeContext};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use rustc_target::abi::VariantIdx;
@@ -436,8 +435,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_info_for_items(&mut self) {
         let krate = self.tcx.hir().krate();
-        let vis = Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public };
-        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.item.module, &krate.item.attrs, &vis);
+        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.item.module, &krate.item.attrs);
 
         // Proc-macro crates only export proc-macro items, which are looked
         // up using `proc_macro_data`
@@ -739,12 +737,8 @@ impl EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        let enum_id = tcx.hir().local_def_id_to_hir_id(def.did.expect_local());
-        let enum_vis = &tcx.hir().expect_item(enum_id).vis;
-
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        record!(self.tables.visibility[def_id] <-
-            ty::Visibility::from_hir(enum_vis, enum_id, self.tcx));
+        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id] <- &self.tcx.get_attrs(def_id)[..]);
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
@@ -785,17 +779,8 @@ impl EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        // Variant constructors have the same visibility as the parent enums, unless marked as
-        // non-exhaustive, in which case they are lowered to `pub(crate)`.
-        let enum_id = tcx.hir().local_def_id_to_hir_id(def.did.expect_local());
-        let enum_vis = &tcx.hir().expect_item(enum_id).vis;
-        let mut ctor_vis = ty::Visibility::from_hir(enum_vis, enum_id, tcx);
-        if variant.is_field_list_non_exhaustive() && ctor_vis == ty::Visibility::Public {
-            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
-        }
-
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        record!(self.tables.visibility[def_id] <- ctor_vis);
+        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
@@ -811,13 +796,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_promoted_mir(def_id.expect_local());
     }
 
-    fn encode_info_for_mod(
-        &mut self,
-        id: hir::HirId,
-        md: &hir::Mod<'_>,
-        attrs: &[ast::Attribute],
-        vis: &hir::Visibility<'_>,
-    ) {
+    fn encode_info_for_mod(&mut self, id: hir::HirId, md: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
         let tcx = self.tcx;
         let local_def_id = tcx.hir().local_def_id(id);
         let def_id = local_def_id.to_def_id();
@@ -850,7 +829,7 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
-        record!(self.tables.visibility[def_id] <- ty::Visibility::from_hir(vis, id, self.tcx));
+        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id] <- attrs);
         if self.is_proc_macro {
@@ -881,7 +860,7 @@ impl EncodeContext<'a, 'tcx> {
         let variant_data = tcx.hir().expect_variant_data(variant_id);
 
         record!(self.tables.kind[def_id] <- EntryKind::Field);
-        record!(self.tables.visibility[def_id] <- field.vis);
+        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id] <- variant_data.fields()[field_index].attrs);
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
@@ -1030,7 +1009,7 @@ impl EncodeContext<'a, 'tcx> {
                 EntryKind::AssocType(container)
             }
         });
-        record!(self.tables.visibility[def_id] <- trait_item.vis);
+        record!(self.tables.visibility[def_id] <- tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- ast_item.span);
         record!(self.tables.attributes[def_id] <- ast_item.attrs);
         self.encode_ident_span(def_id, ast_item.ident);
@@ -1112,7 +1091,7 @@ impl EncodeContext<'a, 'tcx> {
             }
             ty::AssocKind::Type => EntryKind::AssocType(container)
         });
-        record!(self.tables.visibility[def_id] <- impl_item.vis);
+        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- ast_item.span);
         record!(self.tables.attributes[def_id] <- ast_item.attrs);
         self.encode_ident_span(def_id, impl_item.ident);
@@ -1261,7 +1240,7 @@ impl EncodeContext<'a, 'tcx> {
                 EntryKind::Fn(self.lazy(data))
             }
             hir::ItemKind::Mod(ref m) => {
-                return self.encode_info_for_mod(item.hir_id, m, &item.attrs, &item.vis);
+                return self.encode_info_for_mod(item.hir_id, m, &item.attrs);
             }
             hir::ItemKind::ForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
@@ -1762,8 +1741,7 @@ impl EncodeContext<'a, 'tcx> {
             hir::ForeignItemKind::Static(_, hir::Mutability::Not) => EntryKind::ForeignImmStatic,
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         });
-        record!(self.tables.visibility[def_id] <-
-            ty::Visibility::from_hir(&nitem.vis, nitem.hir_id, self.tcx));
+        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- nitem.span);
         record!(self.tables.attributes[def_id] <- nitem.attrs);
         self.encode_ident_span(def_id, nitem.ident);
@@ -2121,4 +2099,72 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     result[header + 3] = (pos >> 0) as u8;
 
     EncodedMetadata { raw_data: result }
+}
+
+crate fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
+    use rustc_hir::Node;
+
+    // crates are not in the HIR map
+    if def_id.index == CRATE_DEF_INDEX {
+        return ty::Visibility::Public;
+    }
+
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.as_local().unwrap());
+    let vis = match tcx.hir().get(hir_id) {
+        Node::Item(item) => ty::Visibility::from_hir(&item.vis, hir_id, tcx),
+        Node::Variant(_) => {
+            let enum_id = tcx.hir().local_def_id_to_hir_id(hir_id.owner);
+            let enum_vis = &tcx.hir().expect_item(enum_id).vis;
+            ty::Visibility::from_hir(enum_vis, enum_id, tcx)
+        }
+        Node::Field(_) => {
+            let adt_def = tcx.adt_def(hir_id.owner);
+            let field = &adt_def.all_fields().find(|field| field.did == def_id);
+            field.unwrap().vis
+        }
+        Node::Ctor(hir::VariantData::Struct(..)) => {
+            let adt_def = tcx.adt_def(hir_id.owner);
+            let struct_id = tcx.hir().local_def_id_to_hir_id(adt_def.did.expect_local());
+            let struct_vis = &tcx.hir().expect_item(struct_id).vis;
+            let mut ctor_vis = ty::Visibility::from_hir(struct_vis, struct_id, tcx);
+
+            let variant = adt_def.non_enum_variant();
+            for field in &variant.fields {
+                if ctor_vis.is_at_least(field.vis, tcx) {
+                    ctor_vis = field.vis;
+                }
+            }
+
+            // If the structure is marked as non_exhaustive then lower the visibility
+            // to within the crate.
+            if adt_def.non_enum_variant().is_field_list_non_exhaustive()
+                && ctor_vis == ty::Visibility::Public
+            {
+                ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+            }
+
+            ctor_vis
+        }
+        Node::Ctor(_) => {
+            // Variant constructors have the same visibility as the parent enums, unless marked as
+            // non-exhaustive, in which case they are lowered to `pub(crate)`.
+            let parent = tcx.hir().local_def_id_to_hir_id(hir_id.owner);
+            let enum_vis = &tcx.hir().expect_item(parent).vis;
+            let mut ctor_vis = ty::Visibility::from_hir(enum_vis, hir_id, tcx);
+
+            let adt_def = tcx.adt_def(hir_id.owner);
+            debug!("looking for variant of {:?} with id {:?}", adt_def, def_id);
+            let variant = adt_def.variant_with_ctor_id(def_id);
+            if variant.is_field_list_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+                ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+            }
+            ctor_vis
+        }
+        Node::TraitItem(_) | Node::ImplItem(_) => tcx.associated_item(def_id).vis,
+        Node::ForeignItem(nitem) => ty::Visibility::from_hir(&nitem.vis, nitem.hir_id, tcx),
+        other => bug!("visibility: unknown node {:?}", other),
+    };
+
+    debug!("found {:?} to have visibility {:?}", def_id, vis);
+    vis
 }
