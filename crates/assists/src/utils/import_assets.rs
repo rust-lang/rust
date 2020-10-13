@@ -12,18 +12,29 @@ use crate::assist_config::InsertUseConfig;
 #[derive(Debug)]
 pub(crate) enum ImportCandidate {
     /// Simple name like 'HashMap'
-    UnqualifiedName(String),
+    UnqualifiedName(PathImportCandidate),
     /// First part of the qualified name.
     /// For 'std::collections::HashMap', that will be 'std'.
-    QualifierStart(String),
+    QualifierStart(PathImportCandidate),
     /// A trait associated function (with no self parameter) or associated constant.
-    /// For 'test_mod::TestEnum::test_function', `Type` is the `test_mod::TestEnum` expression type
-    /// and `String` is the `test_function`
-    TraitAssocItem(hir::Type, String),
+    /// For 'test_mod::TestEnum::test_function', `ty` is the `test_mod::TestEnum` expression type
+    /// and `name` is the `test_function`
+    TraitAssocItem(TraitImportCandidate),
     /// A trait method with self parameter.
-    /// For 'test_enum.test_method()', `Type` is the `test_enum` expression type
-    /// and `String` is the `test_method`
-    TraitMethod(hir::Type, String),
+    /// For 'test_enum.test_method()', `ty` is the `test_enum` expression type
+    /// and `name` is the `test_method`
+    TraitMethod(TraitImportCandidate),
+}
+
+#[derive(Debug)]
+pub(crate) struct TraitImportCandidate {
+    pub ty: hir::Type,
+    pub name: String,
+}
+
+#[derive(Debug)]
+pub(crate) struct PathImportCandidate {
+    pub name: String,
 }
 
 #[derive(Debug)]
@@ -74,10 +85,10 @@ impl ImportAssets {
 
     fn get_search_query(&self) -> &str {
         match &self.import_candidate {
-            ImportCandidate::UnqualifiedName(name) => name,
-            ImportCandidate::QualifierStart(qualifier_start) => qualifier_start,
-            ImportCandidate::TraitAssocItem(_, trait_assoc_item_name) => trait_assoc_item_name,
-            ImportCandidate::TraitMethod(_, trait_method_name) => trait_method_name,
+            ImportCandidate::UnqualifiedName(candidate)
+            | ImportCandidate::QualifierStart(candidate) => &candidate.name,
+            ImportCandidate::TraitAssocItem(candidate)
+            | ImportCandidate::TraitMethod(candidate) => &candidate.name,
         }
     }
 
@@ -106,27 +117,29 @@ impl ImportAssets {
         prefixed: Option<hir::PrefixKind>,
     ) -> BTreeSet<hir::ModPath> {
         let db = sema.db;
+        let mut trait_candidates = FxHashSet::default();
         let current_crate = self.module_with_name_to_import.krate();
-        imports_locator::find_imports(sema, current_crate, &self.get_search_query())
-            .into_iter()
-            .filter_map(|candidate| match &self.import_candidate {
-                ImportCandidate::TraitAssocItem(assoc_item_type, _) => {
-                    let located_assoc_item = match candidate {
-                        Either::Left(ModuleDef::Function(located_function)) => located_function
-                            .as_assoc_item(db)
-                            .map(|assoc| assoc.container(db))
-                            .and_then(Self::assoc_to_trait),
-                        Either::Left(ModuleDef::Const(located_const)) => located_const
-                            .as_assoc_item(db)
-                            .map(|assoc| assoc.container(db))
-                            .and_then(Self::assoc_to_trait),
-                        _ => None,
-                    }?;
 
-                    let mut trait_candidates = FxHashSet::default();
+        let filter = |candidate: Either<hir::ModuleDef, hir::MacroDef>| {
+            trait_candidates.clear();
+            match &self.import_candidate {
+                ImportCandidate::TraitAssocItem(trait_candidate) => {
+                    let located_assoc_item = match candidate {
+                        Either::Left(ModuleDef::Function(located_function)) => {
+                            located_function.as_assoc_item(db)
+                        }
+                        Either::Left(ModuleDef::Const(located_const)) => {
+                            located_const.as_assoc_item(db)
+                        }
+                        _ => None,
+                    }
+                    .map(|assoc| assoc.container(db))
+                    .and_then(Self::assoc_to_trait)?;
+
                     trait_candidates.insert(located_assoc_item.into());
 
-                    assoc_item_type
+                    trait_candidate
+                        .ty
                         .iterate_path_candidates(
                             db,
                             current_crate,
@@ -137,7 +150,7 @@ impl ImportAssets {
                         .map(ModuleDef::from)
                         .map(Either::Left)
                 }
-                ImportCandidate::TraitMethod(function_callee, _) => {
+                ImportCandidate::TraitMethod(trait_candidate) => {
                     let located_assoc_item =
                         if let Either::Left(ModuleDef::Function(located_function)) = candidate {
                             located_function
@@ -148,10 +161,10 @@ impl ImportAssets {
                             None
                         }?;
 
-                    let mut trait_candidates = FxHashSet::default();
                     trait_candidates.insert(located_assoc_item.into());
 
-                    function_callee
+                    trait_candidate
+                        .ty
                         .iterate_method_candidates(
                             db,
                             current_crate,
@@ -165,12 +178,14 @@ impl ImportAssets {
                         .map(Either::Left)
                 }
                 _ => Some(candidate),
-            })
+            }
+        };
+
+        imports_locator::find_imports(sema, current_crate, &self.get_search_query())
+            .into_iter()
+            .filter_map(filter)
             .filter_map(|candidate| {
-                let item: hir::ItemInNs = match candidate {
-                    Either::Left(module_def) => module_def.into(),
-                    Either::Right(macro_def) => macro_def.into(),
-                };
+                let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
                 if let Some(prefix_kind) = prefixed {
                     self.module_with_name_to_import.find_use_path_prefixed(db, item, prefix_kind)
                 } else {
@@ -196,13 +211,13 @@ impl ImportCandidate {
         sema: &Semantics<RootDatabase>,
         method_call: &ast::MethodCallExpr,
     ) -> Option<Self> {
-        if sema.resolve_method_call(method_call).is_some() {
-            return None;
+        match sema.resolve_method_call(method_call) {
+            Some(_) => None,
+            None => Some(Self::TraitMethod(TraitImportCandidate {
+                ty: sema.type_of_expr(&method_call.receiver()?)?,
+                name: method_call.name_ref()?.syntax().to_string(),
+            })),
         }
-        Some(Self::TraitMethod(
-            sema.type_of_expr(&method_call.receiver()?)?,
-            method_call.name_ref()?.syntax().to_string(),
-        ))
     }
 
     fn for_regular_path(
@@ -214,7 +229,7 @@ impl ImportCandidate {
         }
 
         let segment = path_under_caret.segment()?;
-        if let Some(qualifier) = path_under_caret.qualifier() {
+        let candidate = if let Some(qualifier) = path_under_caret.qualifier() {
             let qualifier_start = qualifier.syntax().descendants().find_map(ast::NameRef::cast)?;
             let qualifier_start_path =
                 qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
@@ -224,23 +239,30 @@ impl ImportCandidate {
                 } else {
                     sema.resolve_path(&qualifier)?
                 };
-                if let hir::PathResolution::Def(hir::ModuleDef::Adt(assoc_item_path)) =
-                    qualifier_resolution
-                {
-                    Some(ImportCandidate::TraitAssocItem(
-                        assoc_item_path.ty(sema.db),
-                        segment.syntax().to_string(),
-                    ))
-                } else {
-                    None
+                match qualifier_resolution {
+                    hir::PathResolution::Def(hir::ModuleDef::Adt(assoc_item_path)) => {
+                        ImportCandidate::TraitAssocItem(TraitImportCandidate {
+                            ty: assoc_item_path.ty(sema.db),
+                            name: segment.syntax().to_string(),
+                        })
+                    }
+                    _ => return None,
                 }
             } else {
-                Some(ImportCandidate::QualifierStart(qualifier_start.syntax().to_string()))
+                ImportCandidate::QualifierStart(PathImportCandidate {
+                    name: qualifier_start.syntax().to_string(),
+                })
             }
         } else {
-            Some(ImportCandidate::UnqualifiedName(
-                segment.syntax().descendants().find_map(ast::NameRef::cast)?.syntax().to_string(),
-            ))
-        }
+            ImportCandidate::UnqualifiedName(PathImportCandidate {
+                name: segment
+                    .syntax()
+                    .descendants()
+                    .find_map(ast::NameRef::cast)?
+                    .syntax()
+                    .to_string(),
+            })
+        };
+        Some(candidate)
     }
 }

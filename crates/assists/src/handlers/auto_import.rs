@@ -63,13 +63,13 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
 fn import_group_message(import_candidate: &ImportCandidate) -> GroupLabel {
     let name = match import_candidate {
-        ImportCandidate::UnqualifiedName(name) => format!("Import {}", name),
-        ImportCandidate::QualifierStart(qualifier_start) => format!("Import {}", qualifier_start),
-        ImportCandidate::TraitAssocItem(_, trait_assoc_item_name) => {
-            format!("Import a trait for item {}", trait_assoc_item_name)
+        ImportCandidate::UnqualifiedName(candidate)
+        | ImportCandidate::QualifierStart(candidate) => format!("Import {}", &candidate.name),
+        ImportCandidate::TraitAssocItem(candidate) => {
+            format!("Import a trait for item {}", &candidate.name)
         }
-        ImportCandidate::TraitMethod(_, trait_method_name) => {
-            format!("Import a trait for method {}", trait_method_name)
+        ImportCandidate::TraitMethod(candidate) => {
+            format!("Import a trait for method {}", &candidate.name)
         }
     };
     GroupLabel(name)
