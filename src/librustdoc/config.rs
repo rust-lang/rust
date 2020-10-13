@@ -377,6 +377,20 @@ impl Options {
             }
         };
 
+        let mut default_settings: Vec<Vec<(String, String)>> = vec![
+            matches
+                .opt_strs("default-setting")
+                .iter()
+                .map(|s| {
+                    let mut kv = s.splitn(2, '=');
+                    let k = kv.next().unwrap().to_string();
+                    let v = kv.next().unwrap_or("true").to_string();
+                    (k, v)
+                })
+                .collect(),
+        ];
+        let default_settings = default_settings.drain(..).flatten().collect();
+
         let test_args = matches.opt_strs("test-args");
         let test_args: Vec<String> =
             test_args.iter().flat_map(|s| s.split_whitespace()).map(|s| s.to_string()).collect();
@@ -599,7 +613,7 @@ impl Options {
                 themes,
                 extension_css,
                 extern_html_root_urls,
-                default_settings: Default::default(),
+                default_settings,
                 resource_suffix,
                 enable_minification,
                 enable_index_page,

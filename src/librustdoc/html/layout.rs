@@ -178,7 +178,7 @@ pub fn render<T: Print, S: Print>(
         default_settings = layout
             .default_settings
             .iter()
-            .map(|(k, v)| format!(r#" data-{}="{}""#, k.replace('-',"_"), Escape(v),))
+            .map(|(k, v)| format!(r#" data-{}="{}""#, k.replace('-', "_"), Escape(v),))
             .collect::<String>(),
         style_files = style_files
             .iter()
