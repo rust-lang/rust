@@ -21,7 +21,6 @@ impl StaticMutex {
     /// first used with any of the functions below.
     /// Also, the behavior is undefined if this mutex is ever used reentrantly,
     /// i.e., `lock` is called by the thread currently holding the lock.
-    #[rustc_const_stable(feature = "const_sys_mutex_new", since = "1.0.0")]
     pub const fn new() -> Self {
         Self(imp::Mutex::new())
     }
