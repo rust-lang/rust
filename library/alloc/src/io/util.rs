@@ -3,8 +3,9 @@
 #[cfg(test)]
 mod tests;
 
-use crate::fmt;
-use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use core::fmt;
+use crate::io::{self, BufRead, ErrorKind, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use core::mem::MaybeUninit;
 
 /// A reader which is always at EOF.
 ///

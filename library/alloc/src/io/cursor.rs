@@ -3,10 +3,11 @@ mod tests;
 
 use crate::io::prelude::*;
 
-use crate::cmp;
+use core::cmp;
 use crate::io::{self, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, SeekFrom};
 
 use core::convert::TryInto;
+use crate::{vec::Vec, boxed::Box};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.

@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests;
 
-use crate::convert::From;
-use crate::error;
-use crate::fmt;
-use crate::result;
-use crate::sys;
+use core::convert::From;
+use core::fmt;
+use core::result;
+use crate::{boxed::Box, string::String};
 
 /// A specialized [`Result`] type for I/O operations.
 ///

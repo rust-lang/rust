@@ -184,6 +184,7 @@ pub mod task;
 #[cfg(test)]
 mod tests;
 pub mod vec;
+pub mod io;
 
 #[doc(hidden)]
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]

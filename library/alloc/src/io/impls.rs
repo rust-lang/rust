@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
-use crate::fmt;
+use core::cmp;
+use core::fmt;
 use crate::io::{
     self, BufRead, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
 };
-use crate::mem;
+use core::mem;
+use crate::{vec::Vec, boxed::Box, string::String};
 
 // =============================================================================
 // Forwarding implementations

@@ -4,6 +4,7 @@ use crate::io::{
     self, Error, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
 use crate::mem;
+use crate::vec::Vec;
 
 /// Wraps a writer and buffers its output.
 ///

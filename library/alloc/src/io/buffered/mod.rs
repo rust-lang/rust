@@ -8,7 +8,6 @@ mod linewritershim;
 #[cfg(test)]
 mod tests;
 
-use crate::error;
 use crate::fmt;
 use crate::io::Error;
 
