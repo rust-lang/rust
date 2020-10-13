@@ -456,10 +456,7 @@ impl Ipv4Addr {
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_link_local(&self) -> bool {
-        match self.octets() {
-            [169, 254, ..] => true,
-            _ => false,
-        }
+        matches!(self.octets(), [169, 254, ..])
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
