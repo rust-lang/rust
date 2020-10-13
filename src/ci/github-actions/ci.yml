@@ -469,11 +469,11 @@ jobs:
                 --build=x86_64-apple-darwin
                 --host=aarch64-apple-darwin
                 --target=aarch64-apple-darwin
+                --enable-full-tools
                 --enable-sanitizers
                 --enable-profiler
                 --set rust.jemalloc
                 --set llvm.ninja=false
-                --tools=rls,clippy,rustfmt,analysis,src
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               SELECT_XCODE: /Applications/Xcode_12_beta.app
               USE_XCODE_CLANG: 1
@@ -481,12 +481,15 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
-              # TODO: Cargo is disabled until OpenSSL 1.1.1 can be
-              # compiled for aarch64-apple-darwin::
-              # https://github.com/openssl/openssl/pull/12369. Once
-              # fixed, remove `--tools`, add back
-              # `--enable-full-tools`, and enable this again
-              # DIST_REQUIRE_ALL_TOOLS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+              # Corresponds to 16K page size
+              #
+              # Shouldn't be needed if jemalloc-sys is updated to
+              # handle this platform like iOS or if we build on
+              # aarch64-apple-darwin itself.
+              #
+              # https://github.com/gnzlbg/jemallocator/blob/c27a859e98e3cb790dc269773d9da71a1e918458/jemalloc-sys/build.rs#L237
+              JEMALLOC_SYS_WITH_LG_PAGE: 14
             <<: *job-macos-xl
 
           ######################
