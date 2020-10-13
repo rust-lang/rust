@@ -63,6 +63,9 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         yield_data.expr_and_pat_count, self.expr_count, source_span
                     );
 
+                    // If it is a borrowing happening in the guard,
+                    // it needs to be recorded regardless because they
+                    // do live across this yield point.
                     if guard_borrowing_from_pattern
                         || yield_data.expr_and_pat_count >= self.expr_count
                     {
@@ -225,11 +228,9 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx Arm<'tcx>) {
-        if arm.guard.is_some() {
-            self.guard_bindings.push(<_>::default());
-        }
-        self.visit_pat(&arm.pat);
-        if let Some(ref g) = arm.guard {
+        let Arm { guard, pat, body, .. } = arm;
+        self.visit_pat(pat);
+        if let Some(ref g) = guard {
             self.guard_bindings.push(<_>::default());
             ArmPatCollector {
                 guard_bindings_set: &mut self.guard_bindings_set,
@@ -238,7 +239,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                     .last_mut()
                     .expect("should have pushed at least one earlier"),
             }
-            .visit_pat(&arm.pat);
+            .visit_pat(pat);
 
             match g {
                 Guard::If(ref e) => {
@@ -255,7 +256,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 );
             }
         }
-        self.visit_expr(&arm.body);
+        self.visit_expr(body);
     }
 
     fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
