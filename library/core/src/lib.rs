@@ -270,6 +270,10 @@ pub mod task;
 #[allow(missing_docs)]
 pub mod alloc;
 
+#[stable(feature = "core_primitive", since = "1.43.0")]
+#[allow(missing_docs)]
+pub mod ctypes;
+
 // note: does not need to be public
 mod bool;
 mod tuple;
