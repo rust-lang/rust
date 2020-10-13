@@ -2381,11 +2381,7 @@ where
         }
 
         let n = self.len();
-        if n == 0 {
-            try { init }
-        } else {
-            self.iter.try_rfold(init, check(n, fold)).into_try()
-        }
+        if n == 0 { try { init } } else { self.iter.try_rfold(init, check(n, fold)).into_try() }
     }
 
     fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
