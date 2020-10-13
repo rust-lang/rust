@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub AWAIT_HOLDING_LOCK,
-    pedantic,
+    correctness,
     "Inside an async function, holding a MutexGuard while calling await"
 }
 
@@ -126,7 +126,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub AWAIT_HOLDING_REFCELL_REF,
-    pedantic,
+    correctness,
     "Inside an async function, holding a RefCell ref while calling await"
 }
 
