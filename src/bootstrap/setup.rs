@@ -140,7 +140,6 @@ pub fn interactive_path() -> io::Result<Profile> {
         input.parse()
     }
 
-    let mut input = String::new();
     println!("Welcome to the Rust project! What do you want to do with x.py?");
     for (letter, profile) in abbrev_all() {
         println!("{}) {}: {}", letter, profile, profile.purpose());
@@ -151,6 +150,7 @@ pub fn interactive_path() -> io::Result<Profile> {
             abbrev_all().map(|(l, _)| l).collect::<Vec<_>>().join("/")
         );
         io::stdout().flush()?;
+        let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
