@@ -364,6 +364,15 @@ macro_rules! float_tests {
 
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn round_mode() {
+                assert_biteq!(core_simd::$vector::splat(1.5).round(), core_simd::$vector::splat(2.0));
+                assert_biteq!(core_simd::$vector::splat(2.5).round(), core_simd::$vector::splat(3.0));
+                assert_biteq!(core_simd::$vector::splat(-1.5).round(), core_simd::$vector::splat(-2.0));
+                assert_biteq!(core_simd::$vector::splat(-2.5).round(), core_simd::$vector::splat(-3.0));
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn trunc_odd_floats() {
                 for v in slice_chunks(&C) {
                     let expected = apply_unary_lanewise(v, <$scalar>::trunc);
