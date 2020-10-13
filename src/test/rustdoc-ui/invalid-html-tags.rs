@@ -81,5 +81,9 @@ pub fn f() {}
 pub fn g() {}
 
 /// <!--
-//~^ ERROR Unclosed HTML comment
+/// -->
 pub fn h() {}
+
+/// <!--
+//~^ ERROR Unclosed HTML comment
+pub fn i() {}

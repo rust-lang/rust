@@ -77,7 +77,7 @@ LL | /// <div></div
    |     ^^^^^
 
 error: Unclosed HTML comment
-  --> $DIR/invalid-html-tags.rs:83:5
+  --> $DIR/invalid-html-tags.rs:87:5
    |
 LL | /// <!--
    |     ^^^

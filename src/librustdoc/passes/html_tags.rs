@@ -142,39 +142,30 @@ fn extract_html_tag(
     }
 }
 
-fn extract_html_comment(
-    text: &str,
-    range: &Range<usize>,
-    start_pos: usize,
-    iter: &mut Peekable<CharIndices<'_>>,
-    f: &impl Fn(&str, &Range<usize>),
-) {
-    // We first skip the "!--" part.
-    let mut iter = iter.skip(3);
-    while let Some((pos, c)) = iter.next() {
-        if c == '-' && text[pos..].starts_with("-->") {
-            // All good, we can leave!
-            return;
-        }
-    }
-    f(
-        "Unclosed HTML comment",
-        &Range { start: range.start + start_pos, end: range.start + start_pos + 3 },
-    );
-}
-
 fn extract_tags(
     tags: &mut Vec<(String, Range<usize>)>,
     text: &str,
     range: Range<usize>,
+    is_in_comment: &mut Option<Range<usize>>,
     f: &impl Fn(&str, &Range<usize>),
 ) {
     let mut iter = text.char_indices().peekable();
 
     while let Some((start_pos, c)) = iter.next() {
-        if c == '<' {
+        if is_in_comment.is_some() {
+            if text[start_pos..].starts_with("-->") {
+                *is_in_comment = None;
+            }
+        } else if c == '<' {
             if text[start_pos..].starts_with("<!--") {
-                extract_html_comment(text, &range, start_pos, &mut iter, f);
+                // We skip the "!--" part. (Once `advance_by` is stable, might be nice to use it!)
+                iter.next();
+                iter.next();
+                iter.next();
+                *is_in_comment = Some(Range {
+                    start: range.start + start_pos,
+                    end: range.start + start_pos + 3,
+                });
             } else {
                 extract_html_tag(tags, text, &range, start_pos, &mut iter, f);
             }
@@ -205,12 +196,15 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
             };
 
             let mut tags = Vec::new();
+            let mut is_in_comment = None;
 
             let p = Parser::new_ext(&dox, opts()).into_offset_iter();
 
             for (event, range) in p {
                 match event {
-                    Event::Html(text) => extract_tags(&mut tags, &text, range, &report_diag),
+                    Event::Html(text) | Event::Text(text) => {
+                        extract_tags(&mut tags, &text, range, &mut is_in_comment, &report_diag)
+                    }
                     _ => {}
                 }
             }
@@ -220,6 +214,10 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
                 ALLOWED_UNCLOSED.iter().find(|&&at| at == t).is_none()
             }) {
                 report_diag(&format!("unclosed HTML tag `{}`", tag), range);
+            }
+
+            if let Some(range) = is_in_comment {
+                report_diag("Unclosed HTML comment", &range);
             }
         }
 
