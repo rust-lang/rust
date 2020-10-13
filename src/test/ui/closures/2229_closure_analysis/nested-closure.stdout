@@ -1,0 +1,98 @@
+For closure=DefId(0:8 ~ nested_closure[317d]::main::{closure#0}::{closure#0}): Using new-style capture analysis
+For closure=DefId(0:8 ~ nested_closure[317d]::main::{closure#0}::{closure#0}): capture information: {
+    Place {
+        base_ty: Point,
+        base: Upvar(
+            UpvarId(HirId { owner: DefId(0:6 ~ nested_closure[317d]::main), local_id: 1 };`p`;DefId(0:8 ~ nested_closure[317d]::main::{closure#0}::{closure#0})),
+        ),
+        projections: [
+            Projection {
+                ty: i32,
+                kind: Field(
+                    1,
+                    0,
+                ),
+            },
+        ],
+    }: CaptureInfo {
+        expr_id: Some(
+            HirId {
+                owner: DefId(0:6 ~ nested_closure[317d]::main),
+                local_id: 70,
+            },
+        ),
+        capture_kind: ByRef(
+            UpvarBorrow(MutBorrow, '_#109r),
+        ),
+    },
+    Place {
+        base_ty: i32,
+        base: Upvar(
+            UpvarId(HirId { owner: DefId(0:6 ~ nested_closure[317d]::main), local_id: 5 };`incr`;DefId(0:8 ~ nested_closure[317d]::main::{closure#0}::{closure#0})),
+        ),
+        projections: [],
+    }: CaptureInfo {
+        expr_id: Some(
+            HirId {
+                owner: DefId(0:6 ~ nested_closure[317d]::main),
+                local_id: 72,
+            },
+        ),
+        capture_kind: ByRef(
+            UpvarBorrow(ImmBorrow, '_#110r),
+        ),
+    },
+}
+For closure=DefId(0:7 ~ nested_closure[317d]::main::{closure#0}): Using new-style capture analysis
+For closure=DefId(0:7 ~ nested_closure[317d]::main::{closure#0}): capture information: {
+    Place {
+        base_ty: Point,
+        base: Upvar(
+            UpvarId(HirId { owner: DefId(0:6 ~ nested_closure[317d]::main), local_id: 1 };`p`;DefId(0:7 ~ nested_closure[317d]::main::{closure#0})),
+        ),
+        projections: [
+            Projection {
+                ty: i32,
+                kind: Field(
+                    0,
+                    0,
+                ),
+            },
+        ],
+    }: CaptureInfo {
+        expr_id: Some(
+            HirId {
+                owner: DefId(0:6 ~ nested_closure[317d]::main),
+                local_id: 37,
+            },
+        ),
+        capture_kind: ByRef(
+            UpvarBorrow(ImmBorrow, '_#114r),
+        ),
+    },
+    Place {
+        base_ty: Point,
+        base: Upvar(
+            UpvarId(HirId { owner: DefId(0:6 ~ nested_closure[317d]::main), local_id: 1 };`p`;DefId(0:7 ~ nested_closure[317d]::main::{closure#0})),
+        ),
+        projections: [
+            Projection {
+                ty: i32,
+                kind: Field(
+                    1,
+                    0,
+                ),
+            },
+        ],
+    }: CaptureInfo {
+        expr_id: Some(
+            HirId {
+                owner: DefId(0:6 ~ nested_closure[317d]::main),
+                local_id: 70,
+            },
+        ),
+        capture_kind: ByRef(
+            UpvarBorrow(MutBorrow, '_#115r),
+        ),
+    },
+}
