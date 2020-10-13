@@ -2617,7 +2617,7 @@ impl Step for BuildManifest {
         let image_bin = image.join("bin");
         let _ = fs::remove_dir_all(&image);
         t!(fs::create_dir_all(&image_bin));
-        builder.install(&build_manifest, &image_bin.join("build-manifest"), 0o755);
+        builder.install(&build_manifest, &image_bin, 0o755);
 
         // Prepare the overlay.
         let overlay = tmp.join("build-manifest-overlay");
