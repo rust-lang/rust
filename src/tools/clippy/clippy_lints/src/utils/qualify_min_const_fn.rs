@@ -282,7 +282,6 @@ fn check_terminator(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, terminator: &Termin
         TerminatorKind::SwitchInt {
             discr,
             switch_ty: _,
-            values: _,
             targets: _,
         } => check_operand(tcx, discr, span, body),
 

@@ -1,5 +1,5 @@
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, Location};
+use rustc_middle::mir::{self, BasicBlock, Location, SwitchTargets};
 use rustc_middle::ty::TyCtxt;
 use std::ops::RangeInclusive;
 
@@ -488,11 +488,10 @@ impl Direction for Forward {
                 }
             }
 
-            SwitchInt { ref targets, ref values, ref discr, switch_ty: _ } => {
+            SwitchInt { ref targets, ref discr, switch_ty: _ } => {
                 let mut applier = SwitchIntEdgeEffectApplier {
                     exit_state,
-                    targets: targets.as_ref(),
-                    values: values.as_ref(),
+                    targets,
                     propagate,
                     effects_applied: false,
                 };
@@ -504,8 +503,8 @@ impl Direction for Forward {
                 } = applier;
 
                 if !effects_applied {
-                    for &target in targets.iter() {
-                        propagate(target, exit_state);
+                    for target in targets.all_targets() {
+                        propagate(*target, exit_state);
                     }
                 }
             }
@@ -515,8 +514,7 @@ impl Direction for Forward {
 
 struct SwitchIntEdgeEffectApplier<'a, D, F> {
     exit_state: &'a mut D,
-    values: &'a [u128],
-    targets: &'a [BasicBlock],
+    targets: &'a SwitchTargets,
     propagate: F,
 
     effects_applied: bool,
@@ -531,7 +529,7 @@ where
         assert!(!self.effects_applied);
 
         let mut tmp = None;
-        for (&value, &target) in self.values.iter().zip(self.targets.iter()) {
+        for (value, target) in self.targets.iter() {
             let tmp = opt_clone_from_or_clone(&mut tmp, self.exit_state);
             apply_edge_effect(tmp, SwitchIntTarget { value: Some(value), target });
             (self.propagate)(target, tmp);
@@ -539,7 +537,7 @@ where
 
         // Once we get to the final, "otherwise" branch, there is no need to preserve `exit_state`,
         // so pass it directly to `apply_edge_effect` to save a clone of the dataflow state.
-        let otherwise = self.targets.last().copied().unwrap();
+        let otherwise = self.targets.otherwise();
         apply_edge_effect(self.exit_state, SwitchIntTarget { value: None, target: otherwise });
         (self.propagate)(otherwise, self.exit_state);
 

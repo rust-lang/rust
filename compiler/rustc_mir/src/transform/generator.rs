@@ -71,7 +71,6 @@ use rustc_middle::ty::GeneratorSubsts;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::PanicStrategy;
-use std::borrow::Cow;
 use std::{iter, ops};
 
 pub struct StateTransform;
@@ -839,11 +838,12 @@ fn insert_switch<'tcx>(
 ) {
     let default_block = insert_term_block(body, default);
     let (assign, discr) = transform.get_discr(body);
+    let switch_targets =
+        SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
     let switch = TerminatorKind::SwitchInt {
         discr: Operand::Move(discr),
         switch_ty: transform.discr_ty,
-        values: Cow::from(cases.iter().map(|&(i, _)| i as u128).collect::<Vec<_>>()),
-        targets: cases.iter().map(|&(_, d)| d).chain(iter::once(default_block)).collect(),
+        targets: switch_targets,
     };
 
     let source_info = SourceInfo::outermost(body.span);
