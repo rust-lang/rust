@@ -70,35 +70,36 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         );
         top_level_module.is_crate = true;
         // Attach the crate's exported macros to the top-level module.
-        // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s as well
-        // (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
+        // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
+        // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
         // moving them back to their correct locations.
         krate.exported_macros.iter().for_each(|def| {
-            macro_rules! try_some {($($body:tt)*) => ({
-                fn fn_once<R, F: FnOnce() -> R> (f: F) -> F { f }
-                fn_once(|| Some({ $($body)* }))()
-            })}
-            // In the case of dummy items, some of the following operations may fail. We propagate
-            // that within a `?`-capturing block, so as to fallback to the basic behavior.
-            let containing_module_of_def = try_some! {
+            /// A return value of `None` signifies a fallback to the default behavior (locating
+            /// the macro at the root of the crate).
+            fn containing_mod_of_macro<'module, 'hir>(
+                def: &'_ rustc_hir::MacroDef<'_>,
+                tcx: TyCtxt<'_>,
+                top_level_module: &'module mut Module<'hir>,
+            ) -> Option<&'module mut Module<'hir>> {
                 // The `def` of a macro in `exported_macros` should correspond to either:
                 //  - a `#[macro-export] macro_rules!` macro,
-                //  - a built-in `derive` macro such as the ones in `::core`,
+                //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,
                 //  - a `pub macro`.
                 // Only the last two need to be fixed, thus:
                 if def.ast.macro_rules {
                     return None;
                 }
-                let macro_parent_module = self.cx.tcx.def_path({
+                /* Because of #77828 we cannot do the simpler:
+                let macro_parent_module = tcx.def_path(tcx.parent_module(def.hir_id).to_def_id());
+                // and instead have to do: */
+                let macro_parent_module = tcx.def_path({
                     use rustc_middle::ty::DefIdTree;
-                    self.cx
-                        .tcx
-                        /* Because of #77828 we cannot do the simpler:
-                        .parent_module(def.hir_id).to_def_id()
-                        // and instead have to do: */
-                        .parent(self.cx.tcx.hir().local_def_id(def.hir_id).to_def_id())?
+                    tcx.parent(tcx.hir().local_def_id(def.hir_id).to_def_id())?
                 });
-                let mut cur_mod = &mut top_level_module;
+                // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,
+                // lookup the module by its name, by looking at each path segment one at a time.
+                // WARNING: this will probably break in the presence of re-exports or shadowing.
+                let mut cur_mod = top_level_module;
                 for path_segment in macro_parent_module.data {
                     let path_segment = path_segment.to_string();
                     cur_mod = cur_mod.mods.iter_mut().find(|module| {
@@ -108,9 +109,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         )
                     })?;
                 }
-                cur_mod
-            };
-            if let Some(module) = containing_module_of_def {
+                Some(cur_mod)
+            }
+
+            if let Some(module) = containing_mod_of_macro(def, self.cx.tcx, &mut top_level_module) {
                 &mut module.macros
             } else {
                 &mut top_level_module.macros
