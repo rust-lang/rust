@@ -802,11 +802,11 @@ dependencies = [
 
 [[package]]
 name = "lsp-server"
-version = "0.3.4"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87fce8851309a325974ec76efe7c9d954d152c9ff4fded6520eb3c96d0aa3a96"
+checksum = "ff7452ee21b8de64f10ceb4e9fee1212e1a9579cd717226613333e751676c86a"
 dependencies = [
- "crossbeam-channel 0.4.4",
+ "crossbeam-channel 0.5.0",
  "log",
  "serde",
  "serde_json",
@@ -1293,7 +1293,7 @@ dependencies = [
  "anyhow",
  "base_db",
  "cfg",
- "crossbeam-channel 0.4.4",
+ "crossbeam-channel 0.5.0",
  "env_logger",
  "expect-test",
  "flycheck",
