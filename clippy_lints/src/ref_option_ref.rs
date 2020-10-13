@@ -1,5 +1,5 @@
 use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint_and_sugg};
-use rustc_hir::{GenericArg, Local, Mutability, TyKind};
+use rustc_hir::{GenericArg, Local, Mutability, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -34,12 +34,20 @@ declare_lint_pass!(RefOptionRef => [REF_OPTION_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
+
+        if let Some(ref ty) = local.ty {
+            self.check_ref_option_ref(cx, ty);
+        }
+    }
+}
+
+impl RefOptionRef {
+    fn check_ref_option_ref(&self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
         if_chain! {
-            if let Some(ref ty) = local.ty;
             if let TyKind::Rptr(_, ref mut_ty) = ty.kind;
             if mut_ty.mutbl == Mutability::Not;
             if let TyKind::Path(ref qpath) = &mut_ty.ty.kind ;
-            if let Some(def_id) = cx.typeck_results().qpath_res(qpath, local.hir_id).opt_def_id();
+            if let Some(def_id) = cx.typeck_results().qpath_res(qpath, ty.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::OPTION);
             if let Some(ref params) = last_path_segment(qpath).args ;
             if !params.parenthesized;
@@ -57,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
                     "since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>",
                     "try",
                     format!("Option<{}>", &snippet(cx, inner_ty.span, "..")),
-                    Applicability::MachineApplicable,
+                    Applicability::Unspecified,
                 );
             }
         }
