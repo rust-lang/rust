@@ -481,11 +481,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
                     t
                 }
             }
-            _ if !t.has_vars_bound_at_or_above(self.current_index) => {
-                // Nothing more to substitute.
-                t
+            _ => {
+                if !t.has_vars_bound_at_or_above(self.current_index) {
+                    // Nothing more to substitute.
+                    t
+                } else {
+                    t.super_fold_with(self)
+                }
             }
-            _ => t.super_fold_with(self),
         }
     }
 
@@ -518,11 +521,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
             } else {
                 ct
             }
-        } else if !ct.has_vars_bound_at_or_above(self.current_index) {
-            // Nothing more to substitute.
-            ct
         } else {
-            ct.super_fold_with(self)
+            if !ct.has_vars_bound_at_or_above(self.current_index) {
+                // Nothing more to substitute.
+                ct
+            } else {
+                ct.super_fold_with(self)
+            }
         }
     }
 }
@@ -987,7 +992,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs to a projection, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if matches!(t.kind(), ty::Projection(..) | ty::Opaque(..)) {
+            if let ty::Projection(..) | ty::Opaque(..) = t.kind() {
                 return false;
             }
         }

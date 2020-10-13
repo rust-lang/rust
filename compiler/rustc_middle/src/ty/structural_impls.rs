@@ -934,24 +934,26 @@ impl<'tcx> TypeFoldable<'tcx> for interpret::GlobalId<'tcx> {
 #[inline(never)]
 fn ty_cold_super_fold_with<'tcx>(t: Ty<'tcx>, folder: &mut impl TypeFolder<'tcx>) -> Ty<'tcx> {
     let kind = match t.kind() {
-        ty::RawPtr(tm) => ty::RawPtr(tm.fold_with(folder)),
-        ty::Array(typ, sz) => ty::Array(typ.fold_with(folder), sz.fold_with(folder)),
-        ty::Slice(typ) => ty::Slice(typ.fold_with(folder)),
-        ty::Adt(tid, substs) => ty::Adt(*tid, substs.fold_with(folder)),
+        // remaining items not handled below sorted by frequency(except in cases where they did
+        // not appear at all in which case they are at the bottom)
         ty::Dynamic(ref trait_ty, ref region) => {
             ty::Dynamic(trait_ty.fold_with(folder), region.fold_with(folder))
         }
-        ty::Tuple(ts) => ty::Tuple(ts.fold_with(folder)),
-        ty::FnDef(def_id, substs) => ty::FnDef(*def_id, substs.fold_with(folder)),
-        ty::FnPtr(f) => ty::FnPtr(f.fold_with(folder)),
-        ty::Ref(ref r, ty, mutbl) => ty::Ref(r.fold_with(folder), ty.fold_with(folder), *mutbl),
+        ty::Closure(did, substs) => ty::Closure(*did, substs.fold_with(folder)),
+        ty::Str => return t,
+        ty::Opaque(did, substs) => ty::Opaque(*did, substs.fold_with(folder)),
+
+        ty::Float(_) | ty::Never | ty::Foreign(..) => return t,
+
+        // Items that did not appear enough to register.
         ty::Generator(did, substs, movability) => {
             ty::Generator(*did, substs.fold_with(folder), *movability)
         }
         ty::GeneratorWitness(types) => ty::GeneratorWitness(types.fold_with(folder)),
-        ty::Closure(did, substs) => ty::Closure(*did, substs.fold_with(folder)),
-        ty::Projection(ref data) => ty::Projection(data.fold_with(folder)),
-        ty::Opaque(did, substs) => ty::Opaque(*did, substs.fold_with(folder)),
+        ty::Placeholder(..) | ty::Bound(..) => return t,
+        // Error is handled separately since it won't appear while compiling because there are
+        // no errors in core.
+        ty::Error(_) => return t,
 
         _ => unreachable!(),
     };
@@ -960,34 +962,31 @@ fn ty_cold_super_fold_with<'tcx>(t: Ty<'tcx>, folder: &mut impl TypeFolder<'tcx>
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
+    #[inline]
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        match self.kind() {
-            ty::Bool
-            | ty::Char
-            | ty::Str
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Error(_)
-            | ty::Infer(_)
-            | ty::Param(..)
-            | ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::Never
-            | ty::Foreign(..) => self,
-            _ => ty_cold_super_fold_with(self, folder),
-        }
+        let kind = match self.kind() {
+            // These are sorted by frequency of appearance
+            // (top 16 are here, rest are in cold fn):
+            ty::Infer(_) => return self,
+            ty::Ref(ref r, ty, mutbl) => ty::Ref(r.fold_with(folder), ty.fold_with(folder), *mutbl),
+            ty::Adt(tid, substs) => ty::Adt(*tid, substs.fold_with(folder)),
+            ty::Uint(_) | ty::Int(_) => return self,
+            ty::FnDef(def_id, substs) => ty::FnDef(*def_id, substs.fold_with(folder)),
+            ty::Projection(ref data) => ty::Projection(data.fold_with(folder)),
+            ty::Param(..) => return self,
+            ty::Tuple(ts) => ty::Tuple(ts.fold_with(folder)),
+            ty::FnPtr(f) => ty::FnPtr(f.fold_with(folder)),
+            ty::RawPtr(tm) => ty::RawPtr(tm.fold_with(folder)),
+            ty::Slice(typ) => ty::Slice(typ.fold_with(folder)),
+            ty::Array(typ, sz) => ty::Array(typ.fold_with(folder), sz.fold_with(folder)),
+            ty::Char | ty::Bool => return self,
+
+            _ => return ty_cold_super_fold_with(self, folder),
+        };
+        if *self.kind() == kind { self } else { folder.tcx().mk_ty(kind) }
     }
 
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        // Hot path(is this valid?)
-        match self.kind() {
-            ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never => {
-                return *self;
-            }
-            _ => {}
-        }
-        // Cold path
         folder.fold_ty(*self)
     }
 
