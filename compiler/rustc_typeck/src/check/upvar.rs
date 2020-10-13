@@ -169,6 +169,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
         .consume_body(body);
 
+        log_capture_analysis!(
+            self,
+            closure_def_id,
+            "capture information: {:#?}",
+            delegate.capture_information
+        );
+
         if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
             // substs with the kind we inferred.

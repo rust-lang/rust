@@ -1,0 +1,28 @@
+For closure=DefId(0:4 ~ capture_disjoint_field_tuple[317d]::main::{closure#0}): Using new-style capture analysis
+For closure=DefId(0:4 ~ capture_disjoint_field_tuple[317d]::main::{closure#0}): capture information: {
+    Place {
+        base_ty: (i32, i32),
+        base: Upvar(
+            UpvarId(HirId { owner: DefId(0:3 ~ capture_disjoint_field_tuple[317d]::main), local_id: 1 };`t`;DefId(0:4 ~ capture_disjoint_field_tuple[317d]::main::{closure#0})),
+        ),
+        projections: [
+            Projection {
+                ty: i32,
+                kind: Field(
+                    0,
+                    0,
+                ),
+            },
+        ],
+    }: CaptureInfo {
+        expr_id: Some(
+            HirId {
+                owner: DefId(0:3 ~ capture_disjoint_field_tuple[317d]::main),
+                local_id: 28,
+            },
+        ),
+        capture_kind: ByRef(
+            UpvarBorrow(ImmBorrow, '_#35r),
+        ),
+    },
+}
