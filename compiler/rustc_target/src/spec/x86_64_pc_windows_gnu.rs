@@ -3,7 +3,10 @@ use crate::spec::{LinkerFlavor, LldFlavor, Target};
 pub fn target() -> Target {
     let mut base = super::windows_gnu_base::opts();
     base.cpu = "x86-64".to_string();
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
+    let gcc_pre_link_args = base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap();
+    gcc_pre_link_args.push("-m64".to_string());
+    // Use high-entropy 64 bit address space for ASLR
+    gcc_pre_link_args.push("-Wl,--high-entropy-va".to_string());
     base.pre_link_args
         .insert(LinkerFlavor::Lld(LldFlavor::Ld), vec!["-m".to_string(), "i386pep".to_string()]);
     base.max_atomic_width = Some(64);
