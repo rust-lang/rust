@@ -77,4 +77,14 @@ fn ifs_same_cond_fn() {
     }
 }
 
-fn main() {}
+fn main() {
+    // macro as condition (see #6168)
+    let os = if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else {
+        "linux"
+    };
+    println!("{}", os);
+}
