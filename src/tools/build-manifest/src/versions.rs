@@ -1,4 +1,4 @@
-use anyhow::{Context, Error};
+use anyhow::Error;
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::fs::File;
@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use tar::Archive;
 
 const DEFAULT_TARGET: &str = "x86_64-unknown-linux-gnu";
+const RUSTC_VERSION: &str = include_str!("../../../version");
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub(crate) enum PkgType {
@@ -87,26 +88,13 @@ pub(crate) struct VersionInfo {
 
 pub(crate) struct Versions {
     channel: String,
-    rustc_version: String,
     dist_path: PathBuf,
     versions: HashMap<PkgType, VersionInfo>,
 }
 
 impl Versions {
-    pub(crate) fn new(
-        channel: &str,
-        dist_path: &Path,
-        monorepo_root: &Path,
-    ) -> Result<Self, Error> {
-        Ok(Self {
-            channel: channel.into(),
-            rustc_version: std::fs::read_to_string(monorepo_root.join("src").join("version"))
-                .context("failed to read the rustc version from src/version")?
-                .trim()
-                .to_string(),
-            dist_path: dist_path.into(),
-            versions: HashMap::new(),
-        })
+    pub(crate) fn new(channel: &str, dist_path: &Path) -> Result<Self, Error> {
+        Ok(Self { channel: channel.into(), dist_path: dist_path.into(), versions: HashMap::new() })
     }
 
     pub(crate) fn channel(&self) -> &str {
@@ -184,10 +172,10 @@ impl Versions {
     ) -> Result<String, Error> {
         let component_name = package.tarball_component_name();
         let version = match self.channel.as_str() {
-            "stable" => self.rustc_version.clone(),
+            "stable" => RUSTC_VERSION.into(),
             "beta" => "beta".into(),
             "nightly" => "nightly".into(),
-            _ => format!("{}-dev", self.rustc_version),
+            _ => format!("{}-dev", RUSTC_VERSION),
         };
 
         if package.target_independent() {
@@ -198,6 +186,6 @@ impl Versions {
     }
 
     pub(crate) fn rustc_version(&self) -> &str {
-        &self.rustc_version
+        RUSTC_VERSION
     }
 }

@@ -243,6 +243,7 @@ dependencies = [
  "anyhow",
  "flate2",
  "hex 0.4.2",
+ "num_cpus",
  "rayon",
  "serde",
  "serde_json",

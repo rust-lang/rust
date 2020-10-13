@@ -2353,7 +2353,6 @@ impl Step for HashSign {
         cmd.arg(today.trim());
         cmd.arg(addr);
         cmd.arg(&builder.config.channel);
-        cmd.arg(&builder.src);
         cmd.env("BUILD_MANIFEST_LEGACY", "1");
 
         builder.create_dir(&distdir(builder));
@@ -2582,5 +2581,72 @@ impl Step for RustDev {
 
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+    }
+}
+
+/// Tarball containing a prebuilt version of the build-manifest tool, intented to be used by the
+/// release process to avoid cloning the monorepo and building stuff.
+///
+/// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct BuildManifest {
+    pub target: TargetSelection,
+}
+
+impl Step for BuildManifest {
+    type Output = PathBuf;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/build-manifest")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BuildManifest { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let build_manifest = builder.tool_exe(Tool::BuildManifest);
+
+        let name = pkgname(builder, "build-manifest");
+        let tmp = tmpdir(builder);
+
+        // Prepare the image.
+        let image = tmp.join("build-manifest-image");
+        let image_bin = image.join("bin");
+        let _ = fs::remove_dir_all(&image);
+        t!(fs::create_dir_all(&image_bin));
+        builder.install(&build_manifest, &image_bin.join("build-manifest"), 0o755);
+
+        // Prepare the overlay.
+        let overlay = tmp.join("build-manifest-overlay");
+        let _ = fs::remove_dir_all(&overlay);
+        builder.create_dir(&overlay);
+        builder.create(&overlay.join("version"), &builder.rust_version());
+        for file in &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"] {
+            builder.install(&builder.src.join(file), &overlay, 0o644);
+        }
+
+        // Create the final tarball.
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+            .arg("--product-name=Rust")
+            .arg("--rel-manifest-dir=rustlib")
+            .arg("--success-message=build-manifest installed.")
+            .arg("--image-dir")
+            .arg(&image)
+            .arg("--work-dir")
+            .arg(&tmpdir(builder))
+            .arg("--output-dir")
+            .arg(&distdir(builder))
+            .arg("--non-installed-overlay")
+            .arg(&overlay)
+            .arg(format!("--package-name={}-{}", name, self.target.triple))
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg("--component-name=build-manifest");
+
+        builder.run(&mut cmd);
+        distdir(builder).join(format!("{}-{}.tar.gz", name, self.target.triple))
     }
 }

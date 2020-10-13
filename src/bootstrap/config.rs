@@ -61,6 +61,7 @@ pub struct Config {
     pub profiler: bool,
     pub ignore_git: bool,
     pub exclude: Vec<PathBuf>,
+    pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub test_compare_mode: bool,
@@ -532,6 +533,7 @@ impl Config {
 
         let mut config = Config::default_opts();
         config.exclude = flags.exclude;
+        config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
         config.on_fail = flags.on_fail;
