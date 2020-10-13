@@ -152,19 +152,13 @@ fn udp_clone_two_write() {
         let (done, rx) = channel();
         let tx2 = tx.clone();
         let _t = thread::spawn(move || {
-            match sock3.send_to(&[1], &addr2) {
-                Ok(..) => {
-                    let _ = tx2.send(());
-                }
-                Err(..) => {}
+            if sock3.send_to(&[1], &addr2).is_ok() {
+                let _ = tx2.send(());
             }
             done.send(()).unwrap();
         });
-        match sock1.send_to(&[2], &addr2) {
-            Ok(..) => {
-                let _ = tx.send(());
-            }
-            Err(..) => {}
+        if sock1.send_to(&[2], &addr2).is_ok() {
+            let _ = tx.send(());
         }
         drop(tx);
 
