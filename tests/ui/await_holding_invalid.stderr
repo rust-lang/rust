@@ -1,12 +1,12 @@
 error: this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.
-  --> $DIR/await_holding_invalid.rs:7:9
+  --> $DIR/await_holding_invalid.rs:8:9
    |
 LL |     let guard = x.lock().unwrap();
    |         ^^^^^
    |
    = note: `-D clippy::await-holding-lock` implied by `-D warnings`
 note: these are all the await points this lock is held through
-  --> $DIR/await_holding_invalid.rs:7:5
+  --> $DIR/await_holding_invalid.rs:8:5
    |
 LL | /     let guard = x.lock().unwrap();
 LL | |     baz().await
@@ -14,13 +14,13 @@ LL | | }
    | |_^
 
 error: this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.
-  --> $DIR/await_holding_invalid.rs:28:9
+  --> $DIR/await_holding_invalid.rs:29:9
    |
 LL |     let guard = x.lock().unwrap();
    |         ^^^^^
    |
 note: these are all the await points this lock is held through
-  --> $DIR/await_holding_invalid.rs:28:5
+  --> $DIR/await_holding_invalid.rs:29:5
    |
 LL | /     let guard = x.lock().unwrap();
 LL | |
@@ -32,13 +32,13 @@ LL | | }
    | |_^
 
 error: this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.
-  --> $DIR/await_holding_invalid.rs:41:13
+  --> $DIR/await_holding_invalid.rs:42:13
    |
 LL |         let guard = x.lock().unwrap();
    |             ^^^^^
    |
 note: these are all the await points this lock is held through
-  --> $DIR/await_holding_invalid.rs:41:9
+  --> $DIR/await_holding_invalid.rs:42:9
    |
 LL | /         let guard = x.lock().unwrap();
 LL | |         baz().await
@@ -46,18 +46,111 @@ LL | |     };
    | |_____^
 
 error: this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.
-  --> $DIR/await_holding_invalid.rs:53:13
+  --> $DIR/await_holding_invalid.rs:54:13
    |
 LL |         let guard = x.lock().unwrap();
    |             ^^^^^
    |
 note: these are all the await points this lock is held through
-  --> $DIR/await_holding_invalid.rs:53:9
+  --> $DIR/await_holding_invalid.rs:54:9
    |
 LL | /         let guard = x.lock().unwrap();
 LL | |         baz().await
 LL | |     }
    | |_____^
 
-error: aborting due to 4 previous errors
+error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
+  --> $DIR/await_holding_invalid.rs:60:9
+   |
+LL |     let b = x.borrow();
+   |         ^
+   |
+   = note: `-D clippy::await-holding-refcell-ref` implied by `-D warnings`
+note: these are all the await points this ref is held through
+  --> $DIR/await_holding_invalid.rs:60:5
+   |
+LL | /     let b = x.borrow();
+LL | |     baz().await
+LL | | }
+   | |_^
+
+error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
+  --> $DIR/await_holding_invalid.rs:65:9
+   |
+LL |     let b = x.borrow_mut();
+   |         ^
+   |
+note: these are all the await points this ref is held through
+  --> $DIR/await_holding_invalid.rs:65:5
+   |
+LL | /     let b = x.borrow_mut();
+LL | |     baz().await
+LL | | }
+   | |_^
+
+error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
+  --> $DIR/await_holding_invalid.rs:82:9
+   |
+LL |     let b = x.borrow_mut();
+   |         ^
+   |
+note: these are all the await points this ref is held through
+  --> $DIR/await_holding_invalid.rs:82:5
+   |
+LL | /     let b = x.borrow_mut();
+LL | |
+LL | |     let second = baz().await;
+LL | |
+...  |
+LL | |     first + second + third
+LL | | }
+   | |_^
+
+error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
+  --> $DIR/await_holding_invalid.rs:94:9
+   |
+LL |     let b = x.borrow_mut();
+   |         ^
+   |
+note: these are all the await points this ref is held through
+  --> $DIR/await_holding_invalid.rs:94:5
+   |
+LL | /     let b = x.borrow_mut();
+LL | |
+LL | |     let second = baz().await;
+LL | |
+...  |
+LL | |     first + second + third
+LL | | }
+   | |_^
+
+error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
+  --> $DIR/await_holding_invalid.rs:109:13
+   |
+LL |         let b = x.borrow_mut();
+   |             ^
+   |
+note: these are all the await points this ref is held through
+  --> $DIR/await_holding_invalid.rs:109:9
+   |
+LL | /         let b = x.borrow_mut();
+LL | |         baz().await
+LL | |     };
+   | |_____^
+
+error: this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.
+  --> $DIR/await_holding_invalid.rs:121:13
+   |
+LL |         let b = x.borrow_mut();
+   |             ^
+   |
+note: these are all the await points this ref is held through
+  --> $DIR/await_holding_invalid.rs:121:9
+   |
+LL | /         let b = x.borrow_mut();
+LL | |         baz().await
+LL | |     }
+   | |_____^
+
+error: aborting due to 10 previous errors
 

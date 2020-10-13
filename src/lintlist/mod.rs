@@ -72,7 +72,7 @@ vec![
         group: "pedantic",
         desc: "Inside an async function, holding a RefCell ref while calling await",
         deprecation: None,
-        module: "await_holding_refcell_ref",
+        module: "await_holding_invalid",
     },
     Lint {
         name: "bad_bit_mask",

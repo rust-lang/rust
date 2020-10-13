@@ -161,7 +161,6 @@ mod async_yields_async;
 mod atomic_ordering;
 mod attrs;
 mod await_holding_invalid;
-mod await_holding_refcell_ref;
 mod bit_mask;
 mod blacklisted_name;
 mod blocks_in_if_conditions;
@@ -511,7 +510,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &attrs::UNKNOWN_CLIPPY_LINTS,
         &attrs::USELESS_ATTRIBUTE,
         &await_holding_invalid::AWAIT_HOLDING_LOCK,
-        &await_holding_refcell_ref::AWAIT_HOLDING_REFCELL_REF,
+        &await_holding_invalid::AWAIT_HOLDING_REFCELL_REF,
         &bit_mask::BAD_BIT_MASK,
         &bit_mask::INEFFECTIVE_BIT_MASK,
         &bit_mask::VERBOSE_BIT_MASK,
@@ -908,7 +907,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     // end register lints, do not remove this comment, it’s used in `update_lints`
 
     store.register_late_pass(|| box await_holding_invalid::AwaitHoldingLock);
-    store.register_late_pass(|| box await_holding_refcell_ref::AwaitHoldingRefCellRef);
+    store.register_late_pass(|| box await_holding_invalid::AwaitHoldingRefCellRef);
     store.register_late_pass(|| box serde_api::SerdeAPI);
     store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
     store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
@@ -1192,7 +1191,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
         LintId::of(&attrs::INLINE_ALWAYS),
         LintId::of(&await_holding_invalid::AWAIT_HOLDING_LOCK),
-        LintId::of(&await_holding_refcell_ref::AWAIT_HOLDING_REFCELL_REF),
+        LintId::of(&await_holding_invalid::AWAIT_HOLDING_REFCELL_REF),
         LintId::of(&bit_mask::VERBOSE_BIT_MASK),
         LintId::of(&checked_conversions::CHECKED_CONVERSIONS),
         LintId::of(&copies::MATCH_SAME_ARMS),
