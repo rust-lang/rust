@@ -1,14 +1,11 @@
-use crate::utils::ast_utils::eq_expr;
 use crate::utils::{
-    eq_expr_value, implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then,
+    eq_expr_value, implements_trait, in_macro, is_copy, is_expn_of, multispan_sugg, snippet, span_lint,
+    span_lint_and_then,
 };
 use if_chain::if_chain;
-use rustc_ast::{ast, token};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOp, BinOpKind, BorrowKind, Expr, ExprKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
-use rustc_parse::parser;
+use rustc_hir::{BinOp, BinOpKind, BorrowKind, Expr, ExprKind, StmtKind};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -63,44 +60,38 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
 
-impl EarlyLintPass for EqOp {
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
-        let macro_list = [
-            sym!(assert_eq),
-            sym!(assert_ne),
-            sym!(debug_assert_eq),
-            sym!(debug_assert_ne),
-        ];
-        if_chain! {
-            if !in_external_macro(cx.sess, mac.span());
-            if mac.path.segments.len() == 1;
-            let macro_name = mac.path.segments[0].ident.name;
-            if macro_list.contains(&macro_name);
-            let tokens = mac.args.inner_tokens();
-            let mut parser = parser::Parser::new(
-                &cx.sess.parse_sess, tokens, false, None);
-            if let Ok(left) = parser.parse_expr();
-            if parser.eat(&token::Comma);
-            if let Ok(right) = parser.parse_expr();
-            let left_expr = left.into_inner();
-            let right_expr = right.into_inner();
-            if eq_expr(&left_expr, &right_expr);
-
-            then {
-                span_lint(
-                    cx,
-                    EQ_OP,
-                    left_expr.span.to(right_expr.span),
-                    &format!("identical args used in this `{}!` macro call", macro_name),
-                );
-            }
-        }
-    }
-}
+const ASSERT_MACRO_NAMES: [&str; 4] = ["assert_eq", "assert_ne", "debug_assert_eq", "debug_assert_ne"];
 
 impl<'tcx> LateLintPass<'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
+        if let ExprKind::Block(ref block, _) = e.kind {
+            for stmt in block.stmts {
+                for amn in &ASSERT_MACRO_NAMES {
+                    if_chain! {
+                        if is_expn_of(stmt.span, amn).is_some();
+                        if let StmtKind::Semi(ref matchexpr) = stmt.kind;
+                        if let ExprKind::Block(ref matchblock, _) = matchexpr.kind;
+                        if let Some(ref matchheader) = matchblock.expr;
+                        if let ExprKind::Match(ref headerexpr, _, _) = matchheader.kind;
+                        if let ExprKind::Tup(ref conditions) = headerexpr.kind;
+                        if conditions.len() == 2;
+                        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref lhs) = conditions[0].kind;
+                        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref rhs) = conditions[1].kind;
+                        if eq_expr_value(cx, lhs, rhs);
+
+                        then {
+                            span_lint(
+                                cx,
+                                EQ_OP,
+                                lhs.span.to(rhs.span),
+                                &format!("identical args used in this `{}!` macro call", amn),
+                            );
+                        }
+                    }
+                }
+            }
+        }
         if let ExprKind::Binary(op, ref left, ref right) = e.kind {
             if e.span.from_expansion() {
                 return;
