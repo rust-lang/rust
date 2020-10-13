@@ -30,7 +30,7 @@ impl FromStr for Profile {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "a" | "lib" | "library" => Ok(Profile::Library),
-            "b" | "compiler" => Ok(Profile::Compiler),
+            "b" | "compiler" | "rustdoc" => Ok(Profile::Compiler),
             "c" | "llvm" | "codegen" => Ok(Profile::Codegen),
             "d" | "maintainer" | "user" => Ok(Profile::User),
             _ => Err(format!("unknown profile: '{}'", s)),
@@ -108,7 +108,7 @@ pub fn interactive_path() -> io::Result<Profile> {
     println!(
         "Welcome to the Rust project! What do you want to do with x.py?
 a) Contribute to the standard library
-b) Contribute to the compiler
+b) Contribute to the compiler or rustdoc
 c) Contribute to the compiler, and also modify LLVM or codegen
 d) Install Rust from source"
     );
