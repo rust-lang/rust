@@ -1175,7 +1175,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
     return thread::spawn(move || {
-        let max_workers = ::num_cpus::get();
+        let max_workers = num_cpus::get();
         let mut worker_id_counter = 0;
         let mut free_worker_ids = Vec::new();
         let mut get_worker_id = |free_worker_ids: &mut Vec<usize>| {

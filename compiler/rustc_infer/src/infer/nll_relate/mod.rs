@@ -341,7 +341,7 @@ where
         // been fully instantiated and hence the set of scopes we have
         // doesn't matter -- just to be sure, put an empty vector
         // in there.
-        let old_a_scopes = ::std::mem::take(pair.vid_scopes(self));
+        let old_a_scopes = std::mem::take(pair.vid_scopes(self));
 
         // Relate the generalized kind to the original one.
         let result = pair.relate_generalized_ty(self, generalized_ty);
@@ -680,7 +680,7 @@ where
             //   itself occurs. Note that `'b` and `'c` must both
             //   include P. At the point, the call works because of
             //   subtyping (i.e., `&'b u32 <: &{P} u32`).
-            let variance = ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Covariant);
+            let variance = std::mem::replace(&mut self.ambient_variance, ty::Variance::Covariant);
 
             self.relate(a.skip_binder(), b.skip_binder())?;
 
@@ -709,7 +709,7 @@ where
             // Reset ambient variance to contravariance. See the
             // covariant case above for an explanation.
             let variance =
-                ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
+                std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
 
             self.relate(a.skip_binder(), b.skip_binder())?;
 

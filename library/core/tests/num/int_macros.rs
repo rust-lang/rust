@@ -204,8 +204,8 @@ macro_rules! int_module {
 
             #[test]
             fn test_from_str() {
-                fn from_str<T: ::std::str::FromStr>(t: &str) -> Option<T> {
-                    ::std::str::FromStr::from_str(t).ok()
+                fn from_str<T: std::str::FromStr>(t: &str) -> Option<T> {
+                    std::str::FromStr::from_str(t).ok()
                 }
                 assert_eq!(from_str::<$T>("0"), Some(0 as $T));
                 assert_eq!(from_str::<$T>("3"), Some(3 as $T));
