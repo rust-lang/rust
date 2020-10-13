@@ -2170,7 +2170,7 @@ fn stability_tags(item: &clean::Item, parent: &clean::Item) -> String {
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    info!("Portability {:?} - {:?} = {:?}", item.attrs.cfg, parent.attrs.cfg, cfg);
+    debug!("Portability {:?} - {:?} = {:?}", item.attrs.cfg, parent.attrs.cfg, cfg);
     if let Some(ref cfg) = cfg {
         tags += &tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html());
     }
@@ -2259,7 +2259,7 @@ fn short_stability(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    info!(
+    debug!(
         "Portability {:?} - {:?} = {:?}",
         item.attrs.cfg,
         parent.and_then(|p| p.attrs.cfg.as_ref()),
