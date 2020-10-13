@@ -1,3 +1,5 @@
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_middle::ty::query::Providers;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
@@ -147,4 +149,17 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "wasm32" => WASM_ALLOWED_FEATURES,
         _ => &[],
     }
+}
+
+pub(crate) fn provide(providers: &mut Providers) {
+    providers.supported_target_features = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        if tcx.sess.opts.actually_rustdoc {
+            // rustdoc needs to be able to document functions that use all the features, so
+            // whitelist them all
+            all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
+        } else {
+            supported_target_features(tcx.sess).iter().map(|&(a, b)| (a.to_string(), b)).collect()
+        }
+    };
 }
