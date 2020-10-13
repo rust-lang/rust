@@ -6,7 +6,7 @@
 fn foo<const N: usize>() {
     let _ = [0u64; N + 1];
     //[full]~^ ERROR constant expression depends on a generic parameter
-    //[min]~^^ ERROR generic parameters must not be used inside of non-trivial constant values
+    //[min]~^^ ERROR generic parameters may not be used in const operations
 }
 
 fn main() {}

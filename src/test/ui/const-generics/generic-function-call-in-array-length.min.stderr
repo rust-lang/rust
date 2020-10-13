@@ -1,18 +1,18 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/generic-function-call-in-array-length.rs:9:39
    |
 LL | fn bar<const N: usize>() -> [u32; foo(N)] {
-   |                                       ^ non-trivial anonymous constants must not depend on the parameter `N`
+   |                                       ^ cannot perform const operation using `N`
    |
-   = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/generic-function-call-in-array-length.rs:12:13
    |
 LL |     [0; foo(N)]
-   |             ^ non-trivial anonymous constants must not depend on the parameter `N`
+   |             ^ cannot perform const operation using `N`
    |
-   = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
 
 error: aborting due to 2 previous errors
 
