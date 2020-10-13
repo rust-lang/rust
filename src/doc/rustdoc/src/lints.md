@@ -294,6 +294,7 @@ which could use the "automatic" link syntax. For example:
 ```rust
 #![warn(automatic_links)]
 
+/// http://hello.rs
 /// [http://a.com](http://a.com)
 /// [http://b.com]
 ///
@@ -304,24 +305,27 @@ pub fn foo() {}
 Which will give:
 
 ```text
-error: Unneeded long form for URL
+warning: won't be a link as is
  --> foo.rs:3:5
   |
-3 | /// [http://a.com](http://a.com)
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3 | /// http://hello.rs
+  |     ^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://hello.rs>`
   |
 note: the lint level is defined here
  --> foo.rs:1:9
   |
-1 | #![deny(automatic_links)]
+1 | #![warn(automatic_links)]
   |         ^^^^^^^^^^^^^^^
-  = help: Try with `<http://a.com>` instead
 
-error: Unneeded long form for URL
+warning: unneeded long form for URL
+ --> foo.rs:4:5
+  |
+4 | /// [http://a.com](http://a.com)
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://a.com>`
+
+warning: unneeded long form for URL
  --> foo.rs:5:5
   |
 5 | /// [http://b.com]
-  |     ^^^^^^^^^^^^^^
-  |
-  = help: Try with `<http://b.com>` instead
+  |     ^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://b.com>`
 ```

@@ -4297,6 +4297,7 @@ dependencies = [
  "itertools 0.9.0",
  "minifier",
  "pulldown-cmark 0.8.0",
+ "regex",
  "rustc-rayon",
  "serde",
  "serde_json",
