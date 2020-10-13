@@ -1,6 +1,7 @@
 use crate::cell::Cell;
 
 pub struct RWLock {
+    // This platform has no threads, so we can use a Cell here.
     mode: Cell<isize>,
 }
 
