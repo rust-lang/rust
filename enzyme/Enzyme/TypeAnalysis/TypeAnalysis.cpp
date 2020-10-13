@@ -516,37 +516,74 @@ void TypeAnalyzer::considerTBAA() {
 }
 
 void TypeAnalyzer::runPHIHypotheses() {
-  for (BasicBlock &BB : *fntypeinfo.Function) {
-    for (Instruction &inst : BB) {
-      if (PHINode* phi = dyn_cast<PHINode>(&inst)) {
-        if (direction & DOWN && phi->getType()->isIntOrIntVectorTy() && !getAnalysis(phi).isKnown()) {
-          // Assume that this is an integer, does that mean we can prove that the incoming
-          // operands are integral
+  bool Changed;
+  do{
+    Changed = false;
+    for (BasicBlock &BB : *fntypeinfo.Function) {
+      for (Instruction &inst : BB) {
+        if (PHINode* phi = dyn_cast<PHINode>(&inst)) {
+          if (direction & DOWN && phi->getType()->isIntOrIntVectorTy() && !getAnalysis(phi).isKnown()) {
+            // Assume that this is an integer, does that mean we can prove that the incoming
+            // operands are integral
 
-          TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural, DOWN);
-          tmpAnalysis.workList.clear();
-          tmpAnalysis.intseen = intseen;
-          tmpAnalysis.analysis = analysis;
-          tmpAnalysis.analysis[phi] = TypeTree(BaseType::Integer).Only(-1);
-          for(auto U : phi->users()) {
-            if (auto I = dyn_cast<Instruction>(U)) {
-              tmpAnalysis.visit(*I);
+            TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural, DOWN);
+            tmpAnalysis.workList.clear();
+            tmpAnalysis.intseen = intseen;
+            tmpAnalysis.analysis = analysis;
+            tmpAnalysis.analysis[phi] = TypeTree(BaseType::Integer).Only(-1);
+            for(auto U : phi->users()) {
+              if (auto I = dyn_cast<Instruction>(U)) {
+                tmpAnalysis.visit(*I);
+              }
+            }
+            tmpAnalysis.run();
+            if (!tmpAnalysis.Invalid) {
+              TypeTree Result = tmpAnalysis.getAnalysis(phi);
+              for (auto &op : phi->incoming_values()) {
+                Result &= tmpAnalysis.getAnalysis(op);
+              }
+              if (Result == TypeTree(BaseType::Integer).Only(-1) || Result == TypeTree(BaseType::Anything).Only(-1)) {
+                updateAnalysis(phi, Result, phi);
+                for(auto & pair : tmpAnalysis.analysis) {
+                  updateAnalysis(pair.first, pair.second, phi);
+                }
+                Changed = true;
+              }
             }
           }
-          tmpAnalysis.run();
-          if (!tmpAnalysis.Invalid) {
-            TypeTree Result = tmpAnalysis.getAnalysis(phi);
-            for (auto &op : phi->incoming_values()) {
-              Result &= tmpAnalysis.getAnalysis(op);
+
+          if (direction & DOWN && phi->getType()->isFPOrFPVectorTy() && !getAnalysis(phi).isKnown()) {
+            // Assume that this is an integer, does that mean we can prove that the incoming
+            // operands are integral
+            TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural, DOWN);
+            tmpAnalysis.workList.clear();
+            tmpAnalysis.intseen = intseen;
+            tmpAnalysis.analysis = analysis;
+            tmpAnalysis.analysis[phi] = TypeTree(phi->getType()->getScalarType()).Only(-1);
+            for(auto U : phi->users()) {
+              if (auto I = dyn_cast<Instruction>(U)) {
+                tmpAnalysis.visit(*I);
+              }
             }
-            if (Result == TypeTree(BaseType::Integer).Only(-1) || Result == TypeTree(BaseType::Anything).Only(-1)) {
-              updateAnalysis(phi, Result, phi);
+            tmpAnalysis.run();
+            if (!tmpAnalysis.Invalid) {
+              TypeTree Result = tmpAnalysis.getAnalysis(phi);
+              for (auto &op : phi->incoming_values()) {
+                Result &= tmpAnalysis.getAnalysis(op);
+              }
+              if (Result == TypeTree(phi->getType()->getScalarType()).Only(-1) || Result == TypeTree(BaseType::Anything).Only(-1)) {
+                updateAnalysis(phi, Result, phi);
+                for(auto & pair : tmpAnalysis.analysis) {
+                  updateAnalysis(pair.first, pair.second, phi);
+                }
+                Changed = true;
+              }
             }
           }
         }
       }
     }
-  }
+  }while(Changed);
   return;
 }
 
@@ -1044,10 +1081,14 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
   if (direction & UP)
   updateAnalysis(I.getFalseValue(), getAnalysis(&I), &I);
 
-  TypeTree vd = getAnalysis(I.getTrueValue());
-  vd &= getAnalysis(I.getFalseValue());
-  if (direction & DOWN)
-  updateAnalysis(&I, vd, &I);
+  if (direction & DOWN) {
+    updateAnalysis(&I, getAnalysis(I.getTrueValue()).PurgeAnything(), &I);
+    updateAnalysis(&I, getAnalysis(I.getFalseValue()).PurgeAnything(), &I);
+
+    TypeTree vd = getAnalysis(I.getTrueValue());
+    vd &= getAnalysis(I.getFalseValue());
+    updateAnalysis(&I, vd, &I);
+  }
 }
 
 void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
