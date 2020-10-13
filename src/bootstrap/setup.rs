@@ -152,6 +152,10 @@ pub fn interactive_path() -> io::Result<Profile> {
         io::stdout().flush()?;
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
+        if input == "" {
+            eprintln!("EOF on stdin, when expecting answer to question.  Giving up.");
+            std::process::exit(1);
+        }
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
             Err(err) => {
