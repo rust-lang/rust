@@ -200,7 +200,18 @@ fn recursive_merge(
             return None;
         }
         let rhs_path = rhs_t.path();
-        match use_trees.binary_search_by(|p| path_cmp_bin_search(p.path(), rhs_path.clone())) {
+        match use_trees.binary_search_by(|lhs_t| {
+            let (lhs_t, rhs_t) = match lhs_t
+                .path()
+                .zip(rhs_path.clone())
+                .and_then(|(lhs, rhs)| common_prefix(&lhs, &rhs))
+            {
+                Some((lhs_p, rhs_p)) => (lhs_t.split_prefix(&lhs_p), rhs_t.split_prefix(&rhs_p)),
+                None => (lhs_t.clone(), rhs_t.clone()),
+            };
+
+            path_cmp_bin_search(lhs_t.path(), rhs_t.path())
+        }) {
             Ok(idx) => {
                 let lhs_t = &mut use_trees[idx];
                 let lhs_path = lhs_t.path()?;
@@ -327,11 +338,11 @@ fn path_cmp_for_sort(a: Option<ast::Path>, b: Option<ast::Path>) -> Ordering {
 
 /// Path comparison func for binary searching for merging.
 fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<ast::Path>) -> Ordering {
-    match (lhs, rhs) {
+    match (lhs.and_then(|path| path.segment()), rhs.and_then(|path| path.segment())) {
         (None, None) => Ordering::Equal,
         (None, Some(_)) => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
-        (Some(ref a), Some(ref b)) => path_cmp_short(a, b),
+        (Some(ref a), Some(ref b)) => path_segment_cmp(a, b),
     }
 }
 
@@ -799,6 +810,24 @@ use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
             r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
             r"use std::foo::bar::{Qux, quux::{Baz, Fez, Fizz}};",
         )
+    }
+
+    #[test]
+    fn merge_groups_full_nested_long() {
+        check_full(
+            "std::foo::bar::Baz",
+            r"use std::{foo::bar::Qux};",
+            r"use std::{foo::bar::{Baz, Qux}};",
+        );
+    }
+
+    #[test]
+    fn merge_groups_last_nested_long() {
+        check_full(
+            "std::foo::bar::Baz",
+            r"use std::{foo::bar::Qux};",
+            r"use std::{foo::bar::{Baz, Qux}};",
+        );
     }
 
     #[test]
