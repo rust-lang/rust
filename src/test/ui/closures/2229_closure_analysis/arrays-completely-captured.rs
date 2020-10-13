@@ -2,12 +2,16 @@
 //~^ WARNING the feature `capture_disjoint_fields` is incomplete
 #![feature(rustc_attrs)]
 
+// Ensure that capture analysis results in arrays being completely captured.
 fn main() {
-    let s = format!("s");
+    let mut m = [1, 2, 3, 4, 5];
 
-    let c = #[rustc_capture_analysis]
+    let mut c = #[rustc_capture_analysis]
     || {
         //~^ ERROR: attributes on expressions are experimental
-        println!("This uses new capture analyysis to capture s={}", s);
+        m[0] += 10;
+        m[1] += 40;
     };
+
+    c();
 }
