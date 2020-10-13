@@ -16,8 +16,8 @@ itertools = "0.9.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 oorandom = "11.1.2"
-pulldown-cmark-to-cmark = "5.0.0"
-pulldown-cmark = {version = "0.7.2", default-features = false}
+pulldown-cmark-to-cmark = "6.0.0"
+pulldown-cmark = { version = "0.8.0", default-features = false }
 url = "2.1.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }
