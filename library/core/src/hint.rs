@@ -93,6 +93,15 @@ pub fn spin_loop() {
             unsafe { crate::arch::arm::__yield() };
         }
     }
+    // This makes sure that spin_loop is always a side-effect on all platfomrs,
+    // allowing users to work around https://github.com/rust-lang/rust/issues/28728
+    // Remove when that bug is fixed.
+    #[cfg(not(miri))]
+    // SAFETY: the inline assembly is a no-op.
+    unsafe {
+        // FIXME: Cannot use `asm!` because it doesn't support MIPS and other architectures.
+        llvm_asm!("" : : : : "volatile");
+    }
 }
 
 /// An identity function that *__hints__* to the compiler to be maximally pessimistic about what
