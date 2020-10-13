@@ -36,6 +36,7 @@ mod c {
 trait T: Sized {
     fn new() -> Self;
 }
+
 fn x<X: T>() -> X {
     T::new()
 }
@@ -43,6 +44,14 @@ struct S;
 impl T for S {
     fn new() -> Self {
         S
+    }
+}
+
+struct AAA<X> { x: X, }
+
+impl<Z: std::fmt::Display> std::iter::FromIterator<Z> for AAA<Z> {
+    fn from_iter<I: IntoIterator<Item = Z>>(_iter: I) -> AAA<Z> {
+        panic!()
     }
 }
 
@@ -54,4 +63,34 @@ fn bar() {
     let _ = x(); //~ ERROR type annotations needed
 }
 
-fn main() {}
+fn qux() {
+    let x: Vec<&std::path::Path> = vec![];
+    let y = x.into_iter().collect(); //~ ERROR type annotations needed
+}
+
+trait Foo {
+    fn foo<T: Bar<K>, K>(&self) -> T {
+        panic!()
+    }
+}
+
+trait Bar<X> {}
+
+struct R<X>(X);
+impl<X> Bar<X> for R<X> {}
+struct K<X>(X);
+impl Bar<i32> for K<i32> {}
+
+struct I;
+
+impl Foo for I {}
+
+// These two cases do not have good suggestions yet:
+fn bat() {
+    let _ = I.foo(); //~ ERROR type annotations needed
+}
+fn bak<T: Into<String>>() {}
+
+fn main() {
+    bak(); //~ ERROR type annotations needed
+}

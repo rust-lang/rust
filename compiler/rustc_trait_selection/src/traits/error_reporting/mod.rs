@@ -1462,8 +1462,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         let bound_predicate = predicate.bound_atom();
         let mut err = match bound_predicate.skip_binder() {
             ty::PredicateAtom::Trait(data, _) => {
-                let trait_ref = bound_predicate.rebind(data.trait_ref);
-                debug!("trait_ref {:?}", trait_ref);
+                let self_ty = data.trait_ref.self_ty();
 
                 if predicate.references_error() {
                     return;
@@ -1504,7 +1503,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+                if self.tcx.lang_items().sized_trait() == Some(data.trait_ref.def_id) {
                     self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282, &[])
                         .emit();
                     return;
@@ -1523,7 +1522,12 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err.note(&format!("cannot satisfy `{}`", predicate));
 
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
-                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
+                    self.suggest_fully_qualified_path(
+                        &mut err,
+                        def_id,
+                        span,
+                        data.trait_ref.def_id,
+                    );
                 } else if let (
                     Ok(ref snippet),
                     ObligationCauseCode::BindingObligation(ref def_id, _),

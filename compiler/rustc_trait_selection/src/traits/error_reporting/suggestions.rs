@@ -4,7 +4,7 @@ use super::{
 };
 
 use crate::autoderef::Autoderef;
-use crate::infer::{InferCtxt, InferOk};
+use crate::infer::InferCtxt;
 use crate::traits::{self, normalize_projection_type};
 
 use rustc_data_structures::fx::FxHashSet;
@@ -16,12 +16,11 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
-use rustc_middle::ty::subst::{GenericArgKind, Subst};
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
-    TyCtxt, TypeFoldable, WithConstness,
+    TyCtxt, TypeAndMut, TypeFoldable, TypeckResults, WithConstness,
 };
-use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -338,67 +337,45 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut turbofish_suggestions = FxHashSet::default();
         self.tcx.for_each_relevant_impl(data.trait_ref.def_id, self_ty, |impl_def_id| {
             self.probe(|_| {
-                let impl_substs = self.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+                let trait_args = InternalSubsts::identity_for_item(self.tcx, data.trait_ref.def_id);
+                let impl_args = traits::specialize::fulfill_implication(
+                    self,
+                    obligation.param_env,
+                    data.trait_ref,
+                    impl_def_id,
+                );
+                let substs = match impl_args {
+                    Ok(impl_args) => trait_args.rebase_onto(self.tcx, impl_def_id, impl_args),
+                    _ => return,
+                };
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
-                let trait_ref = trait_ref.subst(self.tcx, impl_substs);
 
-                // Require the type the impl is implemented on to match
-                // our type, and ignore the impl if there was a mismatch.
                 let cause = traits::ObligationCause::dummy();
-                let eq_result =
-                    self.at(&cause, obligation.param_env).eq(trait_ref.self_ty(), self_ty);
-                if let Ok(InferOk { value: (), obligations: _ }) = eq_result {
-                    if let Ok(eval_result) = self.evaluate_obligation(&Obligation::new(
+                let mut selcx = SelectionContext::new(&self);
+                let param_env = obligation.param_env.clone();
+                let (target_trait_ref, obligations) = traits::util::impl_trait_ref_and_oblig(
+                    &mut selcx,
+                    param_env,
+                    impl_def_id,
+                    substs,
+                );
+                self.resolve_vars_if_possible(&target_trait_ref);
+                if let Ok(eval_result) = selcx.evaluate_predicates(
+                    Some(Obligation::new(
                         cause.clone(),
-                        obligation.param_env,
-                        trait_ref.without_const().to_predicate(self.tcx),
-                    )) {
-                        // FIXME: We will also suggest cases where `eval_result` is
-                        // `EvaluatedToAmbig`, we just put them at the end of the sugg list.
-                        // Ideally we would only suggest types that would always apply cleanly.
-                        // This means that for `collect` we will suggest `PathBuf` as a valid type
-                        // whereas that `impl` has an extra requirement `T: AsRef<Path>` which we
-                        // don't evaluate.
-                        if eval_result.may_apply()
-                            && data.trait_ref.substs.iter().zip(trait_ref.substs.iter()).all(
-                                // Here we'll have something like `[_, i32]` coming from our code
-                                // and `[Vec<_>, _]` from the probe. For cases with
-                                // inference variables we are left with ambiguous cases due to
-                                // trait bounds we couldn't evaluate, but we *can* filter out cases
-                                // like `[std::string::String, char]`, where we can `collect` a
-                                // `String` only if we have an `IntoIterator<Item = char>`, which
-                                // won't match the `i32` we have.
-                                |(l, r)| {
-                                    // FIXME: ideally we would use `can_coerce` here instead, but `typeck`
-                                    // comes *after* in the dependency graph.
-                                    match (l.unpack(), r.unpack()) {
-                                        (
-                                            GenericArgKind::Type(left_ty),
-                                            GenericArgKind::Type(right_ty),
-                                        ) => match (
-                                            &left_ty.peel_refs().kind(),
-                                            &right_ty.peel_refs().kind(),
-                                        ) {
-                                            (Infer(_), _) | (_, Infer(_)) => true,
-                                            (left_kind, right_kind) => left_kind == right_kind,
-                                        },
-                                        (
-                                            GenericArgKind::Lifetime(_),
-                                            GenericArgKind::Lifetime(_),
-                                        )
-                                        | (GenericArgKind::Const(_), GenericArgKind::Const(_)) => {
-                                            true
-                                        }
-                                        _ => false,
-                                    }
-                                },
-                            )
-                            && !matches!(trait_ref.self_ty().kind(), ty::Infer(_))
-                        {
-                            turbofish_suggestions.insert(trait_ref.self_ty());
-                        }
-                    };
-                }
+                        param_env,
+                        target_trait_ref.without_const().to_predicate(self.tcx),
+                    ))
+                    .into_iter()
+                    .chain(obligations),
+                ) {
+                    debug!("get_turbofish_suggestions result {:?}", eval_result);
+                    if eval_result.must_apply_modulo_regions()
+                        && !matches!(trait_ref.self_ty().kind(), ty::Infer(_))
+                    {
+                        turbofish_suggestions.insert(trait_ref.self_ty());
+                    }
+                };
             })
         });
         // Sort types by always suggesting `Vec<_>` and `String` first, as they are the

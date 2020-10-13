@@ -7,15 +7,15 @@ LL |         vec![1, 2, 3].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<i32>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec![1, 2, 3].into_iter().collect::<Vec<_>>();
+LL |         vec![1, 2, 3].into_iter().collect::<Vec<T>>();
    |                                          ^^^^^^^^^^
-LL |         vec![1, 2, 3].into_iter().collect::<Arc<[_]>>();
+LL |         vec![1, 2, 3].into_iter().collect::<AAA<Z>>();
+   |                                          ^^^^^^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<Arc<[T]>>();
    |                                          ^^^^^^^^^^^^
-LL |         vec![1, 2, 3].into_iter().collect::<BTreeSet<_>>();
+LL |         vec![1, 2, 3].into_iter().collect::<BTreeSet<T>>();
    |                                          ^^^^^^^^^^^^^^^
-LL |         vec![1, 2, 3].into_iter().collect::<BinaryHeap<_>>();
-   |                                          ^^^^^^^^^^^^^^^^^
-     and 8 other candidates
+     and 6 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:6:41
@@ -26,15 +26,15 @@ LL |         vec!["a", "b", "c"].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<&str>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec!["a", "b", "c"].into_iter().collect::<Vec<_>>();
+LL |         vec!["a", "b", "c"].into_iter().collect::<Vec<T>>();
    |                                                ^^^^^^^^^^
 LL |         vec!["a", "b", "c"].into_iter().collect::<String>();
    |                                                ^^^^^^^^^^
-LL |         vec!["a", "b", "c"].into_iter().collect::<Arc<[_]>>();
+LL |         vec!["a", "b", "c"].into_iter().collect::<AAA<Z>>();
+   |                                                ^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<Arc<[T]>>();
    |                                                ^^^^^^^^^^^^
-LL |         vec!["a", "b", "c"].into_iter().collect::<BTreeSet<_>>();
-   |                                                ^^^^^^^^^^^^^^^
-     and 10 other candidates
+     and 9 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:9:41
@@ -45,15 +45,15 @@ LL |         vec!['a', 'b', 'c'].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<char>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<Vec<_>>();
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<Vec<T>>();
    |                                                ^^^^^^^^^^
 LL |         vec!['a', 'b', 'c'].into_iter().collect::<String>();
    |                                                ^^^^^^^^^^
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<Arc<[_]>>();
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<AAA<Z>>();
+   |                                                ^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<Arc<[T]>>();
    |                                                ^^^^^^^^^^^^
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<BTreeSet<_>>();
-   |                                                ^^^^^^^^^^^^^^^
-     and 10 other candidates
+     and 8 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:14:43
@@ -64,15 +64,15 @@ LL |         let _ = vec![1, 2, 3].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<i32>`
 help: consider giving this binding a type
    |
-LL |         let _: Vec<_> = vec![1, 2, 3].into_iter().collect();
+LL |         let _: Vec<T> = vec![1, 2, 3].into_iter().collect();
    |              ^^^^^^^^
-LL |         let _: Arc<[_]> = vec![1, 2, 3].into_iter().collect();
+LL |         let _: AAA<Z> = vec![1, 2, 3].into_iter().collect();
+   |              ^^^^^^^^
+LL |         let _: Arc<[T]> = vec![1, 2, 3].into_iter().collect();
    |              ^^^^^^^^^^
-LL |         let _: BTreeSet<_> = vec![1, 2, 3].into_iter().collect();
+LL |         let _: BTreeSet<T> = vec![1, 2, 3].into_iter().collect();
    |              ^^^^^^^^^^^^^
-LL |         let _: BinaryHeap<_> = vec![1, 2, 3].into_iter().collect();
-   |              ^^^^^^^^^^^^^^^
-     and 8 other candidates
+     and 6 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:17:49
@@ -83,15 +83,15 @@ LL |         let _ = vec!["a", "b", "c"].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<&str>`
 help: consider giving this binding a type
    |
-LL |         let _: Vec<_> = vec!["a", "b", "c"].into_iter().collect();
+LL |         let _: Vec<T> = vec!["a", "b", "c"].into_iter().collect();
    |              ^^^^^^^^
 LL |         let _: String = vec!["a", "b", "c"].into_iter().collect();
    |              ^^^^^^^^
-LL |         let _: Arc<[_]> = vec!["a", "b", "c"].into_iter().collect();
+LL |         let _: AAA<Z> = vec!["a", "b", "c"].into_iter().collect();
+   |              ^^^^^^^^
+LL |         let _: Arc<[T]> = vec!["a", "b", "c"].into_iter().collect();
    |              ^^^^^^^^^^
-LL |         let _: BTreeSet<_> = vec!["a", "b", "c"].into_iter().collect();
-   |              ^^^^^^^^^^^^^
-     and 10 other candidates
+     and 9 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:20:49
@@ -102,15 +102,15 @@ LL |         let _ = vec!['a', 'b', 'c'].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<char>`
 help: consider giving this binding a type
    |
-LL |         let _: Vec<_> = vec!['a', 'b', 'c'].into_iter().collect();
+LL |         let _: Vec<T> = vec!['a', 'b', 'c'].into_iter().collect();
    |              ^^^^^^^^
 LL |         let _: String = vec!['a', 'b', 'c'].into_iter().collect();
    |              ^^^^^^^^
-LL |         let _: Arc<[_]> = vec!['a', 'b', 'c'].into_iter().collect();
+LL |         let _: AAA<Z> = vec!['a', 'b', 'c'].into_iter().collect();
+   |              ^^^^^^^^
+LL |         let _: Arc<[T]> = vec!['a', 'b', 'c'].into_iter().collect();
    |              ^^^^^^^^^^
-LL |         let _: BTreeSet<_> = vec!['a', 'b', 'c'].into_iter().collect();
-   |              ^^^^^^^^^^^^^
-     and 10 other candidates
+     and 8 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:26:44
@@ -121,15 +121,15 @@ LL |         let _x = vec![1, 2, 3].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<i32>`
 help: consider giving this binding a type
    |
-LL |         let _x: Vec<_> = vec![1, 2, 3].into_iter().collect();
+LL |         let _x: Vec<T> = vec![1, 2, 3].into_iter().collect();
    |               ^^^^^^^^
-LL |         let _x: Arc<[_]> = vec![1, 2, 3].into_iter().collect();
+LL |         let _x: AAA<Z> = vec![1, 2, 3].into_iter().collect();
+   |               ^^^^^^^^
+LL |         let _x: Arc<[T]> = vec![1, 2, 3].into_iter().collect();
    |               ^^^^^^^^^^
-LL |         let _x: BTreeSet<_> = vec![1, 2, 3].into_iter().collect();
+LL |         let _x: BTreeSet<T> = vec![1, 2, 3].into_iter().collect();
    |               ^^^^^^^^^^^^^
-LL |         let _x: BinaryHeap<_> = vec![1, 2, 3].into_iter().collect();
-   |               ^^^^^^^^^^^^^^^
-     and 8 other candidates
+     and 6 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:29:50
@@ -140,15 +140,15 @@ LL |         let _x = vec!["a", "b", "c"].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<&str>`
 help: consider giving this binding a type
    |
-LL |         let _x: Vec<_> = vec!["a", "b", "c"].into_iter().collect();
+LL |         let _x: Vec<T> = vec!["a", "b", "c"].into_iter().collect();
    |               ^^^^^^^^
 LL |         let _x: String = vec!["a", "b", "c"].into_iter().collect();
    |               ^^^^^^^^
-LL |         let _x: Arc<[_]> = vec!["a", "b", "c"].into_iter().collect();
+LL |         let _x: AAA<Z> = vec!["a", "b", "c"].into_iter().collect();
+   |               ^^^^^^^^
+LL |         let _x: Arc<[T]> = vec!["a", "b", "c"].into_iter().collect();
    |               ^^^^^^^^^^
-LL |         let _x: BTreeSet<_> = vec!["a", "b", "c"].into_iter().collect();
-   |               ^^^^^^^^^^^^^
-     and 10 other candidates
+     and 9 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:32:50
@@ -159,18 +159,18 @@ LL |         let _x = vec!['a', 'b', 'c'].into_iter().collect();
    = note: cannot satisfy `_: FromIterator<char>`
 help: consider giving this binding a type
    |
-LL |         let _x: Vec<_> = vec!['a', 'b', 'c'].into_iter().collect();
+LL |         let _x: Vec<T> = vec!['a', 'b', 'c'].into_iter().collect();
    |               ^^^^^^^^
 LL |         let _x: String = vec!['a', 'b', 'c'].into_iter().collect();
    |               ^^^^^^^^
-LL |         let _x: Arc<[_]> = vec!['a', 'b', 'c'].into_iter().collect();
+LL |         let _x: AAA<Z> = vec!['a', 'b', 'c'].into_iter().collect();
+   |               ^^^^^^^^
+LL |         let _x: Arc<[T]> = vec!['a', 'b', 'c'].into_iter().collect();
    |               ^^^^^^^^^^
-LL |         let _x: BTreeSet<_> = vec!['a', 'b', 'c'].into_iter().collect();
-   |               ^^^^^^^^^^^^^
-     and 10 other candidates
+     and 8 other candidates
 
 error[E0283]: type annotations needed
-  --> $DIR/appropriate-type-param-turbofish.rs:50:5
+  --> $DIR/appropriate-type-param-turbofish.rs:59:5
    |
 LL | fn x<X: T>() -> X {
    |         - required by this bound in `x`
@@ -185,7 +185,7 @@ LL |     x::<S>();
    |      ^^^^^
 
 error[E0283]: type annotations needed
-  --> $DIR/appropriate-type-param-turbofish.rs:54:13
+  --> $DIR/appropriate-type-param-turbofish.rs:63:13
    |
 LL | fn x<X: T>() -> X {
    |         - required by this bound in `x`
@@ -203,6 +203,52 @@ help: consider specifying the type argument in the function call
 LL |     let _ = x::<S>();
    |              ^^^^^
 
-error: aborting due to 11 previous errors
+error[E0283]: type annotations needed
+  --> $DIR/appropriate-type-param-turbofish.rs:68:27
+   |
+LL |     let y = x.into_iter().collect();
+   |                           ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
+   |
+   = note: cannot satisfy `_: FromIterator<&Path>`
+help: consider giving this binding a type
+   |
+LL |     let y: Vec<T> = x.into_iter().collect();
+   |          ^^^^^^^^
+LL |     let y: Arc<[T]> = x.into_iter().collect();
+   |          ^^^^^^^^^^
+LL |     let y: BTreeSet<T> = x.into_iter().collect();
+   |          ^^^^^^^^^^^^^
+LL |     let y: BinaryHeap<T> = x.into_iter().collect();
+   |          ^^^^^^^^^^^^^^^
+     and 6 other candidates
 
-For more information about this error, try `rustc --explain E0283`.
+error[E0282]: type annotations needed
+  --> $DIR/appropriate-type-param-turbofish.rs:90:15
+   |
+LL |     let _ = I.foo();
+   |               ^^^ cannot infer type for type parameter `T` declared on the associated function `foo`
+   |
+help: consider giving this binding a type
+   |
+LL |     let _: Type = I.foo();
+   |          ^^^^^^
+
+error[E0283]: type annotations needed
+  --> $DIR/appropriate-type-param-turbofish.rs:95:5
+   |
+LL | fn bak<T: Into<String>>() {}
+   |           ------------ required by this bound in `bak`
+...
+LL |     bak();
+   |     ^^^ cannot infer type for type parameter `T` declared on the function `bak`
+   |
+   = note: cannot satisfy `_: Into<String>`
+help: consider specifying the type argument in the function call
+   |
+LL |     bak::<T>();
+   |        ^^^^^
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.

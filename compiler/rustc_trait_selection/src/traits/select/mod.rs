@@ -403,20 +403,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    crate fn evaluate_predicates(
+        &mut self,
+        predicates: impl Iterator<Item = PredicateObligation<'tcx>>,
+    ) -> Result<EvaluationResult, OverflowError> {
+        self.evaluate_predicates_recursively(
+            TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
+            predicates,
+        )
+    }
+
     /// Evaluates the predicates in `predicates` recursively. Note that
     /// this applies projections in the predicates, and therefore
     /// is run within an inference probe.
-    fn evaluate_predicates_recursively<'o, I>(
+    fn evaluate_predicates_recursively<'o>(
         &mut self,
         stack: TraitObligationStackList<'o, 'tcx>,
-        predicates: I,
-    ) -> Result<EvaluationResult, OverflowError>
-    where
-        I: IntoIterator<Item = PredicateObligation<'tcx>> + std::fmt::Debug,
-    {
+        predicates: impl Iterator<Item = PredicateObligation<'tcx>>,
+    ) -> Result<EvaluationResult, OverflowError> {
         let mut result = EvaluatedToOk;
-        debug!(?predicates, "evaluate_predicates_recursively");
         for obligation in predicates {
+            debug!(?obligation, "evaluate_predicates_recursively obligation");
             let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
             if let EvaluatedToErr = eval {
                 // fast-path - EvaluatedToErr is the top of the lattice,
@@ -484,7 +491,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ) {
                     Some(mut obligations) => {
                         self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-                        self.evaluate_predicates_recursively(previous_stack, obligations)
+                        self.evaluate_predicates_recursively(
+                            previous_stack,
+                            obligations.into_iter(),
+                        )
                     }
                     None => Ok(EvaluatedToAmbig),
                 },
@@ -508,8 +518,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match project::poly_project_and_unify_type(self, &project_obligation) {
                         Ok(Ok(Some(mut subobligations))) => {
                             self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
-                            let result = self
-                                .evaluate_predicates_recursively(previous_stack, subobligations);
+                            let result = self.evaluate_predicates_recursively(
+                                previous_stack,
+                                subobligations.into_iter(),
+                            );
                             if let Some(key) =
                                 ProjectionCacheKey::from_poly_projection_predicate(self, data)
                             {
@@ -1245,7 +1257,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
             match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
-                Ok(obligations) => this.evaluate_predicates_recursively(stack.list(), obligations),
+                Ok(obligations) => {
+                    this.evaluate_predicates_recursively(stack.list(), obligations.into_iter())
+                }
                 Err(()) => Ok(EvaluatedToErr),
             }
         })

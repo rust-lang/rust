@@ -8,15 +8,8 @@ LL |     l.iter().map(f).collect()?
    = note: required by `into_result`
 help: consider specifying the type argument in the method call
    |
-LL |     l.iter().map(f).collect::<ControlFlow<_, _>>()?
-   |                            ^^^^^^^^^^^^^^^^^^^^^
-LL |     l.iter().map(f).collect::<Option<_>>()?
-   |                            ^^^^^^^^^^^^^
-LL |     l.iter().map(f).collect::<Poll<Option<std::result::Result<_, _>>>>()?
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     l.iter().map(f).collect::<Poll<std::result::Result<_, _>>>()?
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     and 1 other candidate
+LL |     l.iter().map(f).collect::<B>()?
+   |                            ^^^^^
 
 error: aborting due to previous error
 

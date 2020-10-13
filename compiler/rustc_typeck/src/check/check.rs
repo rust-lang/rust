@@ -131,7 +131,11 @@ pub(super) fn check_fn<'a, 'tcx>(
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
         if param.pat.simple_ident().is_none() && !tcx.features().unsized_locals {
-            fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType(ty_span));
+            fcx.require_type_is_sized_deferred(
+                param_ty,
+                param.pat.span,
+                traits::SizedArgumentType(ty_span),
+            );
         }
 
         fcx.write_ty(param.hir_id, param_ty);
