@@ -34,12 +34,6 @@ declare_lint_pass!(RefOptionRef => [REF_OPTION_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
-        self.check_ref_option_ref(cx, ty);
-    }
-}
-
-impl RefOptionRef {
-    fn check_ref_option_ref(&self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
         if_chain! {
             if let TyKind::Rptr(_, ref mut_ty) = ty.kind;
             if mut_ty.mutbl == Mutability::Not;
