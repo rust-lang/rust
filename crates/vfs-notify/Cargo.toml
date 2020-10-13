@@ -14,7 +14,7 @@ log = "0.4.8"
 rustc-hash = "1.0"
 jod-thread = "0.1.0"
 walkdir = "2.3.1"
-crossbeam-channel = "0.4.0"
+crossbeam-channel = "0.5.0"
 notify = "5.0.0-pre.3"
 
 vfs = { path = "../vfs", version = "0.0.0" }
