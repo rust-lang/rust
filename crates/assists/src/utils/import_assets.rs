@@ -10,6 +10,23 @@ use syntax::{ast, AstNode, SyntaxNode};
 use crate::assist_config::InsertUseConfig;
 
 #[derive(Debug)]
+pub(crate) enum ImportCandidate {
+    /// Simple name like 'HashMap'
+    UnqualifiedName(String),
+    /// First part of the qualified name.
+    /// For 'std::collections::HashMap', that will be 'std'.
+    QualifierStart(String),
+    /// A trait associated function (with no self parameter) or associated constant.
+    /// For 'test_mod::TestEnum::test_function', `Type` is the `test_mod::TestEnum` expression type
+    /// and `String` is the `test_function`
+    TraitAssocItem(hir::Type, String),
+    /// A trait method with self parameter.
+    /// For 'test_enum.test_method()', `Type` is the `test_enum` expression type
+    /// and `String` is the `test_method`
+    TraitMethod(hir::Type, String),
+}
+
+#[derive(Debug)]
 pub(crate) struct ImportAssets {
     import_candidate: ImportCandidate,
     module_with_name_to_import: hir::Module,
@@ -17,23 +34,7 @@ pub(crate) struct ImportAssets {
 }
 
 impl ImportAssets {
-    pub(crate) fn new(ctx: &crate::assist_context::AssistContext) -> Option<Self> {
-        if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
-            Self::for_regular_path(path_under_caret, &ctx.sema)
-        } else {
-            Self::for_method_call(ctx.find_node_at_offset_with_descend()?, &ctx.sema)
-        }
-    }
-
-    pub(crate) fn syntax_under_caret(&self) -> &SyntaxNode {
-        &self.syntax_under_caret
-    }
-
-    pub(crate) fn import_candidate(&self) -> &ImportCandidate {
-        &self.import_candidate
-    }
-
-    fn for_method_call(
+    pub(crate) fn for_method_call(
         method_call: ast::MethodCallExpr,
         sema: &Semantics<RootDatabase>,
     ) -> Option<Self> {
@@ -46,7 +47,7 @@ impl ImportAssets {
         })
     }
 
-    fn for_regular_path(
+    pub(crate) fn for_regular_path(
         path_under_caret: ast::Path,
         sema: &Semantics<RootDatabase>,
     ) -> Option<Self> {
@@ -61,6 +62,14 @@ impl ImportAssets {
             module_with_name_to_import,
             syntax_under_caret,
         })
+    }
+
+    pub(crate) fn syntax_under_caret(&self) -> &SyntaxNode {
+        &self.syntax_under_caret
+    }
+
+    pub(crate) fn import_candidate(&self) -> &ImportCandidate {
+        &self.import_candidate
     }
 
     fn get_search_query(&self) -> &str {
@@ -182,25 +191,8 @@ impl ImportAssets {
     }
 }
 
-#[derive(Debug)]
-pub(crate) enum ImportCandidate {
-    /// Simple name like 'HashMap'
-    UnqualifiedName(String),
-    /// First part of the qualified name.
-    /// For 'std::collections::HashMap', that will be 'std'.
-    QualifierStart(String),
-    /// A trait associated function (with no self parameter) or associated constant.
-    /// For 'test_mod::TestEnum::test_function', `Type` is the `test_mod::TestEnum` expression type
-    /// and `String` is the `test_function`
-    TraitAssocItem(hir::Type, String),
-    /// A trait method with self parameter.
-    /// For 'test_enum.test_method()', `Type` is the `test_enum` expression type
-    /// and `String` is the `test_method`
-    TraitMethod(hir::Type, String),
-}
-
 impl ImportCandidate {
-    pub(crate) fn for_method_call(
+    fn for_method_call(
         sema: &Semantics<RootDatabase>,
         method_call: &ast::MethodCallExpr,
     ) -> Option<Self> {
@@ -213,7 +205,7 @@ impl ImportCandidate {
         ))
     }
 
-    pub(crate) fn for_regular_path(
+    fn for_regular_path(
         sema: &Semantics<RootDatabase>,
         path_under_caret: &ast::Path,
     ) -> Option<Self> {

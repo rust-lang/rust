@@ -1,3 +1,5 @@
+use syntax::ast;
+
 use crate::{
     utils::import_assets::{ImportAssets, ImportCandidate},
     utils::{insert_use, mod_path_to_ast, ImportScope},
@@ -24,16 +26,24 @@ use crate::{
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let auto_import_assets = ImportAssets::new(&ctx)?;
-    let proposed_imports = auto_import_assets.search_for_imports(&ctx.sema, &ctx.config.insert_use);
+    let import_assets =
+        if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
+            ImportAssets::for_regular_path(path_under_caret, &ctx.sema)
+        } else if let Some(method_under_caret) =
+            ctx.find_node_at_offset_with_descend::<ast::MethodCallExpr>()
+        {
+            ImportAssets::for_method_call(method_under_caret, &ctx.sema)
+        } else {
+            None
+        }?;
+    let proposed_imports = import_assets.search_for_imports(&ctx.sema, &ctx.config.insert_use);
     if proposed_imports.is_empty() {
         return None;
     }
 
-    let range = ctx.sema.original_range(auto_import_assets.syntax_under_caret()).range;
-    let group = import_group_message(auto_import_assets.import_candidate());
-    let scope =
-        ImportScope::find_insert_use_container(auto_import_assets.syntax_under_caret(), ctx)?;
+    let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
+    let group = import_group_message(import_assets.import_candidate());
+    let scope = ImportScope::find_insert_use_container(import_assets.syntax_under_caret(), ctx)?;
     let syntax = scope.as_syntax_node();
     for import in proposed_imports {
         acc.add_group(
