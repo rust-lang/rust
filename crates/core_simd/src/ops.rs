@@ -96,7 +96,7 @@ macro_rules! impl_ref_ops {
 }
 
 /// Implements op traits for masks
-macro_rules! impl_mask_ops {
+macro_rules! impl_mask_element_ops {
     { $($mask:ty),* } => {
         $(
             impl_ref_ops! {
@@ -161,7 +161,15 @@ macro_rules! impl_mask_ops {
         )*
     }
 }
-impl_mask_ops! { crate::mask8, crate::mask16, crate::mask32, crate::mask64, crate::mask128, crate::masksize }
+
+impl_mask_element_ops! {
+    crate::masks::wide::m8,
+    crate::masks::wide::m16,
+    crate::masks::wide::m32,
+    crate::masks::wide::m64,
+    crate::masks::wide::m128,
+    crate::masks::wide::msize
+}
 
 /// Automatically implements operators over vectors and scalars for a particular vector.
 macro_rules! impl_op {
@@ -632,10 +640,10 @@ impl_float_ops! {
 }
 
 impl_mask_ops! {
-    crate::mask8    => crate::mask8x8,    crate::mask8x16,   crate::mask8x32,   crate::mask8x64;
-    crate::mask16   => crate::mask16x4,   crate::mask16x8,   crate::mask16x16,  crate::mask16x32;
-    crate::mask32   => crate::mask32x2,   crate::mask32x4,   crate::mask32x8,   crate::mask32x16;
-    crate::mask64   => crate::mask64x2,   crate::mask64x4,   crate::mask64x8;
-    crate::mask128  => crate::mask128x2,  crate::mask128x4;
-    crate::masksize => crate::masksizex2, crate::masksizex4, crate::masksizex8;
+    crate::masks::wide::m8    => crate::masks::wide::m8x8,    crate::masks::wide::m8x16,   crate::masks::wide::m8x32,   crate::masks::wide::m8x64;
+    crate::masks::wide::m16   => crate::masks::wide::m16x4,   crate::masks::wide::m16x8,   crate::masks::wide::m16x16,  crate::masks::wide::m16x32;
+    crate::masks::wide::m32   => crate::masks::wide::m32x2,   crate::masks::wide::m32x4,   crate::masks::wide::m32x8,   crate::masks::wide::m32x16;
+    crate::masks::wide::m64   => crate::masks::wide::m64x2,   crate::masks::wide::m64x4,   crate::masks::wide::m64x8;
+    crate::masks::wide::m128  => crate::masks::wide::m128x2,  crate::masks::wide::m128x4;
+    crate::masks::wide::msize => crate::masks::wide::msizex2, crate::masks::wide::msizex4, crate::masks::wide::msizex8;
 }

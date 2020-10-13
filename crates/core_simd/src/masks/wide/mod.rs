@@ -1,3 +1,18 @@
+//! Masks that take up full vector registers.
+
+mod vectors_m8;
+pub use vectors_m8::*;
+mod vectors_m16;
+pub use vectors_m16::*;
+mod vectors_m32;
+pub use vectors_m32::*;
+mod vectors_m64;
+pub use vectors_m64::*;
+mod vectors_m128;
+pub use vectors_m128::*;
+mod vectors_msize;
+pub use vectors_msize::*;
+
 /// The error type returned when converting an integer to a mask fails.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TryFromMaskError(());
@@ -95,30 +110,30 @@ macro_rules! define_mask {
 
 define_mask! {
     /// 8-bit mask
-    struct mask8(i8);
+    struct m8(i8);
 }
 
 define_mask! {
     /// 16-bit mask
-    struct mask16(i16);
+    struct m16(i16);
 }
 
 define_mask! {
     /// 32-bit mask
-    struct mask32(i32);
+    struct m32(i32);
 }
 
 define_mask! {
     /// 64-bit mask
-    struct mask64(i64);
+    struct m64(i64);
 }
 
 define_mask! {
     /// 128-bit mask
-    struct mask128(i128);
+    struct m128(i128);
 }
 
 define_mask! {
     /// `isize`-wide mask
-    struct masksize(isize);
+    struct msize(isize);
 }

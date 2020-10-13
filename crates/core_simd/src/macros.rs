@@ -314,7 +314,6 @@ macro_rules! define_float_vector {
     }
 }
 
-
 /// Defines an integer vector `$name` containing multiple `$lanes` of integer `$type`.
 macro_rules! define_integer_vector {
     { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); } => {
@@ -336,6 +335,7 @@ macro_rules! define_mask_vector {
         impl $name {
             call_repeat! { $lanes => define_mask_vector [$impl_type] splat $type | }
             call_counting_args! { $lanes => define_mask_vector => new $type | }
+            call_counting_args! { $lanes => define_mask_vector => new_from_bool $type | }
         }
 
         base_vector_traits! { $name => [$type; $lanes] }
@@ -360,6 +360,15 @@ macro_rules! define_mask_vector {
         #[inline]
         pub const fn new($($var: $type),*) -> Self {
             Self($($var.0),*)
+        }
+    };
+    { new_from_bool $type:ty | $($var:ident)* } => {
+        /// Used internally (since we can't use the Into trait in `const fn`s)
+        #[allow(clippy::too_many_arguments)]
+        #[allow(unused)]
+        #[inline]
+        pub(crate) const fn new_from_bool($($var: bool),*) -> Self {
+            Self($(<$type>::new($var).0),*)
         }
     }
 }
