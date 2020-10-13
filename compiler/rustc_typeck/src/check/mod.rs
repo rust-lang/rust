@@ -264,7 +264,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
-    tcx.calculate_dtor(def_id, &mut dropck::check_drop_impl)
+    tcx.calculate_dtor(def_id, dropck::check_drop_impl)
 }
 
 /// If this `DefId` is a "primary tables entry", returns
