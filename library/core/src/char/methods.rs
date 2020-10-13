@@ -112,7 +112,7 @@ impl char {
     /// For an unsafe version of this function which ignores these checks, see
     /// [`from_u32_unchecked`].
     ///
-    /// [`from_u32_unchecked`]: prim@char::from_u32_unchecked()
+    /// [`from_u32_unchecked`]: crate::primitive::char::from_u32_unchecked()
     ///
     /// # Examples
     ///
@@ -163,7 +163,7 @@ impl char {
     ///
     /// For a safe version of this function, see the [`from_u32`] function.
     ///
-    /// [`from_u32`]: prim@char::from_u32()
+    /// [`from_u32`]: crate::primitive::char::from_u32()
     ///
     /// # Examples
     ///
@@ -256,7 +256,7 @@ impl char {
     ///
     /// For a more comprehensive understanding of 'digit', see [`is_numeric()`].
     ///
-    /// [`is_numeric()`]: prim@char::is_numeric()
+    /// [`is_numeric()`]: crate::primitive::char::is_numeric()
     ///
     /// # Panics
     ///
@@ -481,7 +481,7 @@ impl char {
     /// * All other characters are given hexadecimal Unicode escapes; see
     ///   [`escape_unicode`].
     ///
-    /// [`escape_unicode`]: prim@char::escape_unicode()
+    /// [`escape_unicode`]: crate::primitive::char::escape_unicode()
     ///
     /// # Examples
     ///
@@ -582,7 +582,7 @@ impl char {
     /// See the documentation for [`len_utf8()`] for more explanation of this
     /// concept. This function is a mirror, but for UTF-16 instead of UTF-8.
     ///
-    /// [`len_utf8()`]: prim@char::len_utf8()
+    /// [`len_utf8()`]: crate::primitive::char::len_utf8()
     ///
     /// # Examples
     ///
@@ -797,8 +797,8 @@ impl char {
 
     /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`].
     ///
-    /// [`is_alphabetic()`]: prim@char::is_alphabetic()
-    /// [`is_numeric()`]: prim@char::is_numeric()
+    /// [`is_alphabetic()`]: crate::primitive::char::is_alphabetic()
+    /// [`is_numeric()`]: crate::primitive::char::is_numeric()
     ///
     /// # Examples
     ///
@@ -1085,8 +1085,8 @@ impl char {
     /// assert_eq!('❤', non_ascii.to_ascii_uppercase());
     /// ```
     ///
-    /// [`make_ascii_uppercase()`]: prim@char::make_ascii_uppercase()
-    /// [`to_uppercase()`]: prim@char::to_uppercase()
+    /// [`make_ascii_uppercase()`]: crate::primitive::char::make_ascii_uppercase()
+    /// [`to_uppercase()`]: crate::primitive::char::to_uppercase()
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> char {
@@ -1113,8 +1113,8 @@ impl char {
     /// assert_eq!('❤', non_ascii.to_ascii_lowercase());
     /// ```
     ///
-    /// [`make_ascii_lowercase()`]: prim@char::make_ascii_lowercase()
-    /// [`to_lowercase()`]: prim@char::to_lowercase()
+    /// [`make_ascii_lowercase()`]: crate::primitive::char::make_ascii_lowercase()
+    /// [`to_lowercase()`]: crate::primitive::char::to_lowercase()
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> char {
@@ -1160,7 +1160,7 @@ impl char {
     /// assert_eq!('A', ascii);
     /// ```
     ///
-    /// [`to_ascii_uppercase()`]: prim@char::to_ascii_uppercase()
+    /// [`to_ascii_uppercase()`]: crate::primitive::char::to_ascii_uppercase()
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
@@ -1185,7 +1185,7 @@ impl char {
     /// assert_eq!('a', ascii);
     /// ```
     ///
-    /// [`to_ascii_lowercase()`]: prim@char::to_ascii_lowercase()
+    /// [`to_ascii_lowercase()`]: crate::primitive::char::to_ascii_lowercase()
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
