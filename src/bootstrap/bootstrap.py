@@ -447,7 +447,8 @@ class RustBuild(object):
 
     def downloading_llvm(self):
         opt = self.get_toml('download-ci-llvm', 'llvm')
-        return opt == "true"
+        return opt == "true" \
+            or (opt == "if-available" and self.build == "x86_64-unknown-linux-gnu")
 
     def _download_stage0_helper(self, filename, pattern, tarball_suffix, date=None):
         if date is None:
@@ -892,7 +893,7 @@ class RustBuild(object):
         submodules_names = []
         for module in submodules:
             if module.endswith("llvm-project"):
-                if self.get_toml('llvm-config') or self.get_toml('download-ci-llvm') == 'true':
+                if self.get_toml('llvm-config') or self.downloading_llvm():
                     if self.get_toml('lld') != 'true':
                         continue
             check = self.check_submodule(module, slow_submodules)
