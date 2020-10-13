@@ -1,10 +1,22 @@
 error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
-  --> $DIR/ref_option_ref.rs:4:12
+  --> $DIR/ref_option_ref.rs:4:22
    |
-LL |     let x: &Option<&u32> = &None;
-   |            ^^^^^^^^^^^^^ help: try: `Option<&u32>`
+LL | type OptRefU32<'a> = &'a Option<&'a u32>;
+   |                      ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
    |
    = note: `-D clippy::ref-option-ref` implied by `-D warnings`
 
-error: aborting due to previous error
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:5:22
+   |
+LL | type OptRef<'a, T> = &'a Option<&'a T>;
+   |                      ^^^^^^^^^^^^^^^^^ help: try: `Option<&'a T>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:8:12
+   |
+LL |     let x: &Option<&u32> = &None;
+   |            ^^^^^^^^^^^^^ help: try: `Option<&u32>`
+
+error: aborting due to 3 previous errors
 

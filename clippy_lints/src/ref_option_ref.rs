@@ -33,11 +33,8 @@ declare_clippy_lint! {
 declare_lint_pass!(RefOptionRef => [REF_OPTION_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
-
-        if let Some(ref ty) = local.ty {
-            self.check_ref_option_ref(cx, ty);
-        }
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
+        self.check_ref_option_ref(cx, ty);
     }
 }
 
@@ -46,8 +43,11 @@ impl RefOptionRef {
         if_chain! {
             if let TyKind::Rptr(_, ref mut_ty) = ty.kind;
             if mut_ty.mutbl == Mutability::Not;
-            if let TyKind::Path(ref qpath) = &mut_ty.ty.kind ;
-            if let Some(def_id) = cx.typeck_results().qpath_res(qpath, ty.hir_id).opt_def_id();
+            if let TyKind::Path(ref qpath) = &mut_ty.ty.kind;
+            let last = last_path_segment(qpath);
+            if let Some(res) = last.res;
+            if let Some(def_id) = res.opt_def_id();
+
             if match_def_path(cx, def_id, &paths::OPTION);
             if let Some(ref params) = last_path_segment(qpath).args ;
             if !params.parenthesized;
