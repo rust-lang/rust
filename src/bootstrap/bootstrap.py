@@ -1004,6 +1004,16 @@ def bootstrap(help_triggered):
         with open(toml_path) as config:
             build.config_toml = config.read()
 
+    profile = build.get_toml('profile')
+    if profile is not None:
+        include_file = 'config.{}.toml'.format(profile)
+        include_dir = os.path.join(build.rust_root, 'src', 'bootstrap', 'defaults')
+        include_path = os.path.join(include_dir, include_file)
+        # HACK: This works because `build.get_toml()` returns the first match it finds for a
+        # specific key, so appending our defaults at the end allows the user to override them
+        with open(include_path) as included_toml:
+            build.config_toml += os.linesep + included_toml.read()
+
     config_verbose = build.get_toml('verbose', 'build')
     if config_verbose is not None:
         build.verbose = max(build.verbose, int(config_verbose))
