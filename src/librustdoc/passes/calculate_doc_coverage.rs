@@ -1,10 +1,12 @@
 use crate::clean;
-use crate::config::OutputFormat;
 use crate::core::DocContext;
 use crate::fold::{self, DocFolder};
 use crate::html::markdown::{find_testable_code, ErrorCodes};
 use crate::passes::doc_test_lints::{should_have_doc_example, Tests};
 use crate::passes::Pass;
+use rustc_lint::builtin::MISSING_DOCS;
+use rustc_middle::lint::LintSource;
+use rustc_session::lint;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use serde::Serialize;
@@ -19,10 +21,10 @@ pub const CALCULATE_DOC_COVERAGE: Pass = Pass {
 };
 
 fn calculate_doc_coverage(krate: clean::Crate, ctx: &DocContext<'_>) -> clean::Crate {
-    let mut calc = CoverageCalculator::new();
+    let mut calc = CoverageCalculator::new(ctx);
     let krate = calc.fold_crate(krate);
 
-    calc.print_results(ctx.renderinfo.borrow().output_format);
+    calc.print_results();
 
     krate
 }
@@ -41,8 +43,11 @@ impl ItemCount {
         has_docs: bool,
         has_doc_example: bool,
         should_have_doc_examples: bool,
+        should_have_docs: bool,
     ) {
-        self.total += 1;
+        if has_docs || should_have_docs {
+            self.total += 1;
+        }
 
         if has_docs {
             self.with_docs += 1;
@@ -94,8 +99,9 @@ impl ops::AddAssign for ItemCount {
     }
 }
 
-struct CoverageCalculator {
+struct CoverageCalculator<'a, 'b> {
     items: BTreeMap<FileName, ItemCount>,
+    ctx: &'a DocContext<'b>,
 }
 
 fn limit_filename_len(filename: String) -> String {
@@ -108,9 +114,9 @@ fn limit_filename_len(filename: String) -> String {
     }
 }
 
-impl CoverageCalculator {
-    fn new() -> CoverageCalculator {
-        CoverageCalculator { items: Default::default() }
+impl<'a, 'b> CoverageCalculator<'a, 'b> {
+    fn new(ctx: &'a DocContext<'b>) -> CoverageCalculator<'a, 'b> {
+        CoverageCalculator { items: Default::default(), ctx }
     }
 
     fn to_json(&self) -> String {
@@ -124,7 +130,8 @@ impl CoverageCalculator {
         .expect("failed to convert JSON data to string")
     }
 
-    fn print_results(&self, output_format: Option<OutputFormat>) {
+    fn print_results(&self) {
+        let output_format = self.ctx.renderinfo.borrow().output_format;
         if output_format.map(|o| o.is_json()).unwrap_or_else(|| false) {
             println!("{}", self.to_json());
             return;
@@ -178,7 +185,7 @@ impl CoverageCalculator {
     }
 }
 
-impl fold::DocFolder for CoverageCalculator {
+impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
     fn fold_item(&mut self, i: clean::Item) -> Option<clean::Item> {
         match i.inner {
             _ if !i.def_id.is_local() => {
@@ -245,11 +252,18 @@ impl fold::DocFolder for CoverageCalculator {
                 );
 
                 let has_doc_example = tests.found_tests != 0;
+                let hir_id = self.ctx.tcx.hir().local_def_id_to_hir_id(i.def_id.expect_local());
+                let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
+                // `missing_docs` is allow-by-default, so don't treat this as ignoring the item
+                // unless the user had an explicit `allow`
+                let should_have_docs =
+                    level != lint::Level::Allow || matches!(source, LintSource::Default);
                 debug!("counting {:?} {:?} in {}", i.type_(), i.name, i.source.filename);
                 self.items.entry(i.source.filename.clone()).or_default().count_item(
                     has_docs,
                     has_doc_example,
-                    should_have_doc_example(&i.inner),
+                    should_have_doc_example(self.ctx, &i),
+                    should_have_docs,
                 );
             }
         }
