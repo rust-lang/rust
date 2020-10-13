@@ -7,6 +7,7 @@ use rustc_ast::{ast, token};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, BorrowKind, Expr, ExprKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_parse::parser;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -64,10 +65,20 @@ declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
 
 impl EarlyLintPass for EqOp {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
+        let macro_list = [
+            sym!(assert_eq),
+            sym!(assert_ne),
+            sym!(debug_assert_eq),
+            sym!(debug_assert_ne),
+        ];
         if_chain! {
-            if mac.path == sym!(assert_eq);
+            if !in_external_macro(cx.sess, mac.span());
+            if mac.path.segments.len() == 1;
+            let macro_name = mac.path.segments[0].ident.name;
+            if macro_list.contains(&macro_name);
             let tokens = mac.args.inner_tokens();
-            let mut parser = parser::Parser::new(&cx.sess.parse_sess, tokens, false, None);
+            let mut parser = parser::Parser::new(
+                &cx.sess.parse_sess, tokens, false, None);
             if let Ok(left) = parser.parse_expr();
             if parser.eat(&token::Comma);
             if let Ok(right) = parser.parse_expr();
@@ -80,7 +91,7 @@ impl EarlyLintPass for EqOp {
                     cx,
                     EQ_OP,
                     left_expr.span.to(right_expr.span),
-                    "identical args used in this `assert_eq!` macro call",
+                    &format!("identical args used in this `{}!` macro call", macro_name),
                 );
             }
         }

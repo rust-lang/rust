@@ -12,5 +12,41 @@ error: identical args used in this `assert_eq!` macro call
 LL |     assert_eq!(a + 1, a + 1);
    |                ^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: identical args used in this `assert_ne!` macro call
+  --> $DIR/eq_op_early.rs:16:16
+   |
+LL |     assert_ne!(a, a);
+   |                ^^^^
+
+error: identical args used in this `assert_ne!` macro call
+  --> $DIR/eq_op_early.rs:17:16
+   |
+LL |     assert_ne!(a + 1, a + 1);
+   |                ^^^^^^^^^^^^
+
+error: identical args used in this `debug_assert_eq!` macro call
+  --> $DIR/eq_op_early.rs:24:22
+   |
+LL |     debug_assert_eq!(a, a);
+   |                      ^^^^
+
+error: identical args used in this `debug_assert_eq!` macro call
+  --> $DIR/eq_op_early.rs:25:22
+   |
+LL |     debug_assert_eq!(a + 1, a + 1);
+   |                      ^^^^^^^^^^^^
+
+error: identical args used in this `debug_assert_ne!` macro call
+  --> $DIR/eq_op_early.rs:32:22
+   |
+LL |     debug_assert_ne!(a, a);
+   |                      ^^^^
+
+error: identical args used in this `debug_assert_ne!` macro call
+  --> $DIR/eq_op_early.rs:33:22
+   |
+LL |     debug_assert_ne!(a + 1, a + 1);
+   |                      ^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 
