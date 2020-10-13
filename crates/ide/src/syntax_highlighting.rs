@@ -1,6 +1,7 @@
-mod tags;
+mod format;
 mod html;
 mod injection;
+mod tags;
 #[cfg(test)]
 mod tests;
 
@@ -17,9 +18,8 @@ use syntax::{
     SyntaxNode, SyntaxToken, TextRange, WalkEvent, T,
 };
 
-use crate::FileId;
+use crate::{syntax_highlighting::format::FormatStringHighlighter, FileId};
 
-use ast::FormatSpecifier;
 pub(crate) use html::highlight_as_html;
 pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
 
@@ -69,7 +69,7 @@ pub(crate) fn highlight(
     let mut stack = HighlightedRangeStack::new();
 
     let mut current_macro_call: Option<(ast::MacroCall, Option<MacroMatcherParseState>)> = None;
-    let mut format_string: Option<SyntaxElement> = None;
+    let mut format_string_highlighter = FormatStringHighlighter::default();
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -121,7 +121,7 @@ pub(crate) fn highlight(
             WalkEvent::Leave(Some(mc)) => {
                 assert!(current_macro_call.map(|it| it.0) == Some(mc));
                 current_macro_call = None;
-                format_string = None;
+                format_string_highlighter.reset();
             }
             _ => (),
         }
@@ -173,30 +173,7 @@ pub(crate) fn highlight(
             let token = sema.descend_into_macros(token.clone());
             let parent = token.parent();
 
-            // Check if macro takes a format string and remember it for highlighting later.
-            // The macros that accept a format string expand to a compiler builtin macros
-            // `format_args` and `format_args_nl`.
-            if let Some(name) = parent
-                .parent()
-                .and_then(ast::MacroCall::cast)
-                .and_then(|mc| mc.path())
-                .and_then(|p| p.segment())
-                .and_then(|s| s.name_ref())
-            {
-                match name.text().as_str() {
-                    "format_args" | "format_args_nl" => {
-                        format_string = parent
-                            .children_with_tokens()
-                            .filter(|t| t.kind() != WHITESPACE)
-                            .nth(1)
-                            .filter(|e| {
-                                ast::String::can_cast(e.kind())
-                                    || ast::RawString::can_cast(e.kind())
-                            })
-                    }
-                    _ => {}
-                }
-            }
+            format_string_highlighter.check_for_format_string(&parent);
 
             // We only care Name and Name_ref
             match (token.kind(), parent.kind()) {
@@ -214,8 +191,6 @@ pub(crate) fn highlight(
             }
         }
 
-        let is_format_string = format_string.as_ref() == Some(&element_to_highlight);
-
         if let Some((highlight, binding_hash)) = highlight_element(
             &sema,
             &mut bindings_shadow_count,
@@ -226,19 +201,7 @@ pub(crate) fn highlight(
             if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::String::cast)
             {
-                if is_format_string {
-                    stack.push();
-                    string.lex_format_specifier(|piece_range, kind| {
-                        if let Some(highlight) = highlight_format_specifier(kind) {
-                            stack.add(HighlightedRange {
-                                range: piece_range + range.start(),
-                                highlight: highlight.into(),
-                                binding_hash: None,
-                            });
-                        }
-                    });
-                    stack.pop();
-                }
+                format_string_highlighter.highlight_format_string(&mut stack, &string, range);
                 // Highlight escape sequences
                 if let Some(char_ranges) = string.char_ranges() {
                     stack.push();
@@ -256,19 +219,7 @@ pub(crate) fn highlight(
             } else if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::RawString::cast)
             {
-                if is_format_string {
-                    stack.push();
-                    string.lex_format_specifier(|piece_range, kind| {
-                        if let Some(highlight) = highlight_format_specifier(kind) {
-                            stack.add(HighlightedRange {
-                                range: piece_range + range.start(),
-                                highlight: highlight.into(),
-                                binding_hash: None,
-                            });
-                        }
-                    });
-                    stack.pop();
-                }
+                format_string_highlighter.highlight_format_string(&mut stack, &string, range);
             }
         }
     }
@@ -434,24 +385,6 @@ impl HighlightedRangeStack {
             .all(|(left, right)| left.range.end() <= right.range.start()));
         res
     }
-}
-
-fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HighlightTag> {
-    Some(match kind {
-        FormatSpecifier::Open
-        | FormatSpecifier::Close
-        | FormatSpecifier::Colon
-        | FormatSpecifier::Fill
-        | FormatSpecifier::Align
-        | FormatSpecifier::Sign
-        | FormatSpecifier::NumberSign
-        | FormatSpecifier::DollarSign
-        | FormatSpecifier::Dot
-        | FormatSpecifier::Asterisk
-        | FormatSpecifier::QuestionMark => HighlightTag::FormatSpecifier,
-        FormatSpecifier::Integer | FormatSpecifier::Zero => HighlightTag::NumericLiteral,
-        FormatSpecifier::Identifier => HighlightTag::Local,
-    })
 }
 
 fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
