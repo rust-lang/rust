@@ -1259,10 +1259,10 @@ impl Ipv6Addr {
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_link_local_strict(&self) -> bool {
-        (self.segments()[0] & 0xffff) == 0xfe80
-            && (self.segments()[1] & 0xffff) == 0
-            && (self.segments()[2] & 0xffff) == 0
-            && (self.segments()[3] & 0xffff) == 0
+        (self.segments()[0]) == 0xfe80
+            && self.segments()[1] == 0
+            && self.segments()[2] == 0
+            && self.segments()[3] == 0
     }
 
     /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
