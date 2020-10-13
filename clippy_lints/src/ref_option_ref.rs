@@ -1,5 +1,5 @@
 use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint_and_sugg};
-use rustc_hir::{GenericArg, Local, Mutability, Ty, TyKind};
+use rustc_hir::{GenericArg, Mutability, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
