@@ -996,7 +996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     }
                                     if prev_sig.unsafety() != new_sig.unsafety() {
                                         prev_sig = prev_sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig });
-                                        new_sig = new_sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig });=
+                                        new_sig = new_sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig });
                                     }
                                 }
                                 (Some(prev_sig), Some(new_sig))
