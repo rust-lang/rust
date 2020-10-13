@@ -170,6 +170,22 @@ impl<K, V> Root<K, V> {
         NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
     }
 
+    /// Borrows and returns a mutable reference to the leaf node owned by the root.
+    /// # Safety
+    /// The root node is a leaf.
+    unsafe fn leaf_node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Leaf> {
+        debug_assert!(self.height == 0);
+        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+    }
+
+    /// Borrows and returns a mutable reference to the internal node owned by the root.
+    /// # Safety
+    /// The root node is not a leaf.
+    unsafe fn internal_node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
+        debug_assert!(self.height > 0);
+        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+    }
+
     pub fn node_as_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, marker::LeafOrInternal> {
         NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
     }
@@ -188,14 +204,11 @@ impl<K, V> Root<K, V> {
         self.node = BoxedNode::from_internal(new_node);
         self.height += 1;
 
-        let mut ret =
-            NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData };
-
         unsafe {
+            let mut ret = self.internal_node_as_mut();
             ret.reborrow_mut().first_edge().correct_parent_link();
+            ret
         }
-
-        ret
     }
 
     /// Removes the internal root node, using its first child as the new root node.
@@ -212,11 +225,8 @@ impl<K, V> Root<K, V> {
 
         let top = self.node.ptr;
 
-        self.node = unsafe {
-            BoxedNode::from_ptr(
-                self.node_as_mut().cast_unchecked::<marker::Internal>().first_edge().descend().node,
-            )
-        };
+        let internal_node = unsafe { self.internal_node_as_mut() };
+        self.node = unsafe { BoxedNode::from_ptr(internal_node.first_edge().descend().node) };
         self.height -= 1;
         self.node_as_mut().as_leaf_mut().parent = None;
 
@@ -443,9 +453,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 }
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
-    /// Unsafely asserts to the compiler some static information about whether this
-    /// node is a `Leaf` or an `Internal`.
-    unsafe fn cast_unchecked<NewType>(self) -> NodeRef<marker::Mut<'a>, K, V, NewType> {
+    /// Unsafely asserts to the compiler the static information that this node is an `Internal`.
+    unsafe fn cast_to_internal_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
+        debug_assert!(self.height > 0);
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
@@ -943,10 +953,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                     Handle::new_edge(left.reborrow_mut(), insert_idx)
                 },
                 InsertionPlace::Right(insert_idx) => unsafe {
-                    Handle::new_edge(
-                        right.node_as_mut().cast_unchecked::<marker::Leaf>(),
-                        insert_idx,
-                    )
+                    Handle::new_edge(right.leaf_node_as_mut(), insert_idx)
                 },
             };
             let val_ptr = insertion_edge.insert_fit(key, val);
@@ -1006,10 +1013,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                     Handle::new_edge(left.reborrow_mut(), insert_idx)
                 },
                 InsertionPlace::Right(insert_idx) => unsafe {
-                    Handle::new_edge(
-                        right.node_as_mut().cast_unchecked::<marker::Internal>(),
-                        insert_idx,
-                    )
+                    Handle::new_edge(right.internal_node_as_mut(), insert_idx)
                 },
             };
             insertion_edge.insert_fit(key, val, edge);
@@ -1205,7 +1209,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
 
             let mut new_root = Root { node: BoxedNode::from_internal(new_node), height };
 
-            new_root.node_as_mut().cast_unchecked().correct_childrens_parent_links(0..=new_len);
+            new_root.internal_node_as_mut().correct_childrens_parent_links(0..=new_len);
 
             (self.node, k, v, new_root)
         }
@@ -1258,8 +1262,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             if self.node.height > 1 {
                 // SAFETY: the height of the nodes being merged is one below the height
                 // of the node of this edge, thus above zero, so they are internal.
-                let mut left_node = left_node.cast_unchecked::<marker::Internal>();
-                let right_node = right_node.cast_unchecked::<marker::Internal>();
+                let mut left_node = left_node.cast_to_internal_unchecked();
+                let right_node = right_node.cast_to_internal_unchecked();
                 ptr::copy_nonoverlapping(
                     right_node.edge_at(0),
                     left_node.edges_mut().as_mut_ptr().add(left_len + 1),
