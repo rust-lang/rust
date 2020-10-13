@@ -1,6 +1,7 @@
 //! Inlining pass for MIR functions
 
 use rustc_attr as attr;
+use rustc_data_structures::statistics::Statistic;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
@@ -27,6 +28,8 @@ const RESUME_PENALTY: usize = 45;
 const UNKNOWN_SIZE_COST: usize = 10;
 
 pub struct Inline;
+
+static NUM_INLINED: Statistic = Statistic::new(module_path!(), "Number of functions inlined");
 
 #[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
@@ -156,6 +159,7 @@ impl Inliner<'tcx> {
                     continue;
                 }
                 debug!("attempting to inline callsite {:?} - success", callsite);
+                NUM_INLINED.increment(1);
 
                 // Add callsites from inlined function
                 for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated().skip(start) {

@@ -2,6 +2,7 @@
 
 use crate::transform::MirPass;
 use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::statistics::Statistic;
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, SwitchTargets,
     TerminatorKind,
@@ -11,6 +12,11 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{Abi, Variants};
 
 pub struct UninhabitedEnumBranching;
+
+static NUM_REMOVED: Statistic = Statistic::new(
+    module_path!(),
+    "Number of branches corresponding to uninhabited enum variants removed",
+);
 
 fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
     if let TerminatorKind::SwitchInt { discr: Operand::Move(p), .. } = terminator {
@@ -109,7 +115,8 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
                     targets.iter().filter(|(val, _)| allowed_variants.contains(val)),
                     targets.otherwise(),
                 );
-
+                NUM_REMOVED
+                    .increment(targets.all_targets().len() - new_targets.all_targets().len());
                 *targets = new_targets;
             } else {
                 unreachable!()

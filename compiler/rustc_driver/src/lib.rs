@@ -312,6 +312,7 @@ fn run_compiler(
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
+
         let should_stop = RustcDefaultCalls::print_crate_info(
             &***compiler.codegen_backend(),
             sess,
@@ -451,6 +452,10 @@ fn run_compiler(
         if let Some(linker) = linker {
             let _timer = sess.timer("link");
             linker.link()?
+        }
+
+        if sess.opts.debugging_opts.mir_opt_stats {
+            rustc_data_structures::statistics::print();
         }
 
         if sess.opts.debugging_opts.perf_stats {

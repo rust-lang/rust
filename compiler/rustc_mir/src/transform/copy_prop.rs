@@ -21,6 +21,7 @@
 
 use crate::transform::MirPass;
 use crate::util::def_use::DefUseAnalysis;
+use rustc_data_structures::statistics::Statistic;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{
     Body, Constant, Local, LocalKind, Location, Operand, Place, Rvalue, StatementKind,
@@ -28,6 +29,13 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 
 pub struct CopyPropagation;
+
+static NUM_PROPAGATED_LOCAL: Statistic =
+    Statistic::new(module_path!(), "Number of locals copy propagated");
+static NUM_PROPAGATED_CONST: Statistic =
+    Statistic::new(module_path!(), "Number of constants copy propagated");
+static MAX_PROPAGATED: Statistic =
+    Statistic::new(module_path!(), "Maximum number of copy propagations in a function");
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -39,6 +47,8 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
             return;
         }
 
+        let mut propagated_local = 0;
+        let mut propagated_const = 0;
         let mut def_use_analysis = DefUseAnalysis::new(body);
         loop {
             def_use_analysis.analyze(body);
@@ -139,8 +149,13 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     }
                 }
 
-                changed =
-                    action.perform(body, &def_use_analysis, dest_local, location, tcx) || changed;
+                if action.perform(body, &def_use_analysis, dest_local, location, tcx) {
+                    match action {
+                        Action::PropagateLocalCopy(_) => propagated_local += 1,
+                        Action::PropagateConstant(_) => propagated_const += 1,
+                    }
+                    changed = true;
+                }
                 // FIXME(pcwalton): Update the use-def chains to delete the instructions instead of
                 // regenerating the chains.
                 break;
@@ -149,6 +164,10 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                 break;
             }
         }
+
+        NUM_PROPAGATED_LOCAL.increment(propagated_const);
+        NUM_PROPAGATED_CONST.increment(propagated_local);
+        MAX_PROPAGATED.update_max(propagated_local + propagated_const);
     }
 }
 
@@ -193,6 +212,7 @@ fn eliminate_self_assignments(body: &mut Body<'_>, def_use_analysis: &DefUseAnal
     changed
 }
 
+#[derive(Copy, Clone)]
 enum Action<'tcx> {
     PropagateLocalCopy(Local),
     PropagateConstant(Constant<'tcx>),

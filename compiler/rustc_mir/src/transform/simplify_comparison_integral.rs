@@ -1,6 +1,7 @@
 use std::iter;
 
 use super::MirPass;
+use rustc_data_structures::statistics::Statistic;
 use rustc_middle::{
     mir::{
         interpret::Scalar, BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement,
@@ -24,6 +25,11 @@ use rustc_middle::{
 /// switchInt(_4) -> [43i32: bb3, otherwise: bb2];
 /// ```
 pub struct SimplifyComparisonIntegral;
+
+static NUM_SIMPLIFIED: Statistic = Statistic::new(
+    module_path!(),
+    "Number of switches on a result of integer comparison simplified to switches on integers",
+);
 
 impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
     fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -65,6 +71,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                 _ => unreachable!(),
             }
 
+            NUM_SIMPLIFIED.increment(1);
             // delete comparison statement if it the value being switched on was moved, which means it can not be user later on
             if opt.can_remove_bin_op_stmt {
                 bb.statements[opt.bin_op_stmt_idx].make_nop();

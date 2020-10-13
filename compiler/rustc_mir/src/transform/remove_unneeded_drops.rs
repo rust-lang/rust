@@ -1,6 +1,7 @@
 //! This pass replaces a drop of a type that does not need dropping, with a goto
 
 use crate::transform::MirPass;
+use rustc_data_structures::statistics::Statistic;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
@@ -8,6 +9,9 @@ use rustc_middle::ty::{ParamEnv, TyCtxt};
 use super::simplify::simplify_cfg;
 
 pub struct RemoveUnneededDrops;
+
+static NUM_REMOVED: Statistic =
+    Statistic::new(module_path!(), "Number of unnecessary drop terminators removed");
 
 impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -23,6 +27,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
         for (loc, target) in opt_finder.optimizations {
             let terminator = body.basic_blocks_mut()[loc.block].terminator_mut();
             debug!("SUCCESS: replacing `drop` with goto({:?})", target);
+            NUM_REMOVED.increment(1);
             terminator.kind = TerminatorKind::Goto { target };
         }
 

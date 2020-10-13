@@ -1,3 +1,4 @@
+use rustc_data_structures::statistics::Statistic;
 use rustc_hir::Mutability;
 use rustc_index::bit_set::HybridBitSet;
 use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
@@ -29,6 +30,11 @@ use crate::transform::MirPass;
 /// [#47954]: https://github.com/rust-lang/rust/pull/47954
 /// [#71003]: https://github.com/rust-lang/rust/pull/71003
 pub struct RenameReturnPlace;
+
+static NUM_OPTIMIZED: Statistic = Statistic::new(
+    module_path!(),
+    "Number of functions eligible for named return value optimization",
+);
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
@@ -70,6 +76,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
 
         // The return place is always mutable.
         ret_decl.mutability = Mutability::Mut;
+        NUM_OPTIMIZED.increment(1);
     }
 }
 

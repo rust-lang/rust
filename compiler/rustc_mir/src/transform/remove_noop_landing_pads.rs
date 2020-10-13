@@ -1,5 +1,6 @@
 use crate::transform::MirPass;
 use crate::util::patch::MirPatch;
+use rustc_data_structures::statistics::Statistic;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -9,6 +10,10 @@ use rustc_target::spec::PanicStrategy;
 /// `None`. This is important because otherwise LLVM generates terrible
 /// code for these.
 pub struct RemoveNoopLandingPads;
+
+static NUM_FOLDED: Statistic = Statistic::new(module_path!(), "Number of no-op jumps folded");
+static NUM_REMOVED: Statistic =
+    Statistic::new(module_path!(), "Number of no-op landing pads removed");
 
 pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     if tcx.sess.panic_strategy() == PanicStrategy::Abort {
@@ -128,5 +133,7 @@ impl RemoveNoopLandingPads {
         }
 
         debug!("removed {:?} jumps and {:?} landing pads", jumps_folded, landing_pads_removed);
+        NUM_FOLDED.increment(jumps_folded);
+        NUM_REMOVED.increment(landing_pads_removed);
     }
 }

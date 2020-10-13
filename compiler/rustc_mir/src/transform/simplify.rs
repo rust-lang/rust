@@ -28,6 +28,7 @@
 //! return.
 
 use crate::transform::MirPass;
+use rustc_data_structures::statistics::Statistic;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -35,6 +36,21 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use smallvec::SmallVec;
 use std::borrow::Cow;
+
+static NUM_DEAD_BLOCKS_REMOVED: Statistic =
+    Statistic::new(module_path!(), "Number of dead basic blocks removed");
+static NUM_SWITCH_INT_SIMPLIFIED: Statistic = Statistic::new(
+    module_path!(),
+    "Number of switch int terminators with identical successors replaced with a goto",
+);
+static NUM_BLOCKS_MERGED: Statistic =
+    Statistic::new(module_path!(), "Number of basic blocks merged with their only predecessor");
+static MAX_CFG_ITERATIONS: Statistic =
+    Statistic::new(module_path!(), "Maximum number of iterations of control-flow-graph simplifier");
+static NUM_LOCALS_REMOVED: Statistic =
+    Statistic::new(module_path!(), "Number of unused locals removed");
+static MAX_LOCALS_ITERATIONS: Statistic =
+    Statistic::new(module_path!(), "Maximum number of iterations of locals simplifier");
 
 pub struct SimplifyCfg {
     label: String,
@@ -101,7 +117,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // We do not push the statements directly into the target block (`bb`) as that is slower
         // due to additional reallocations
         let mut merged_blocks = Vec::new();
-        loop {
+        for iterations in 1.. {
             let mut changed = false;
 
             self.collapse_goto_chain(&mut start, &mut changed);
@@ -145,6 +161,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             }
 
             if !changed {
+                MAX_CFG_ITERATIONS.update_max(iterations);
                 break;
             }
         }
@@ -238,6 +255,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         debug!("merging block {:?} into {:?}", target, terminator);
+        NUM_BLOCKS_MERGED.increment(1);
+
         *terminator = match self.basic_blocks[target].terminator.take() {
             Some(terminator) => terminator,
             None => {
@@ -275,6 +294,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         debug!("simplifying branch {:?}", terminator);
+        NUM_SWITCH_INT_SIMPLIFIED.increment(1);
         terminator.kind = TerminatorKind::Goto { target: first_succ };
         true
     }
@@ -306,7 +326,9 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
         }
         used_blocks += 1;
     }
-    basic_blocks.raw.truncate(used_blocks);
+    let removed_blocks = basic_blocks.len() - used_blocks;
+    basic_blocks.truncate(used_blocks);
+    NUM_DEAD_BLOCKS_REMOVED.increment(removed_blocks);
 
     for block in basic_blocks {
         for target in block.terminator_mut().successors_mut() {
@@ -337,11 +359,12 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
         // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
         // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
         // fixedpoint where there are no more unused locals.
-        loop {
+        for iterations in 1.. {
             let mut remove_statements = RemoveStatements::new(&mut used_locals, arg_count, tcx);
             remove_statements.visit_body(body);
 
             if !remove_statements.modified {
+                MAX_LOCALS_ITERATIONS.update_max(iterations);
                 break;
             }
         }
@@ -380,6 +403,8 @@ fn make_local_map<V>(
         }
         used.increment_by(1);
     }
+    let unused = local_decls.len() - used.index();
+    NUM_LOCALS_REMOVED.increment(unused);
     local_decls.truncate(used.index());
     map
 }

@@ -2,11 +2,15 @@
 //! return instead.
 
 use crate::transform::{simplify, MirPass};
+use rustc_data_structures::statistics::Statistic;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
 pub struct MultipleReturnTerminators;
+
+static NUM_REPLACED: Statistic =
+    Statistic::new(module_path!(), "Number of goto terminators replaced with a return");
 
 impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -28,6 +32,7 @@ impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
         for bb in bbs {
             if let TerminatorKind::Goto { target } = bb.terminator().kind {
                 if bbs_simple_returns.contains(target) {
+                    NUM_REPLACED.increment(1);
                     bb.terminator_mut().kind = TerminatorKind::Return;
                 }
             }

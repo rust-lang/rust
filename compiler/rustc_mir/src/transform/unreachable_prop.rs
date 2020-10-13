@@ -5,10 +5,16 @@
 use crate::transform::simplify;
 use crate::transform::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::statistics::Statistic;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
 pub struct UnreachablePropagation;
+
+static NUM_PROPAGATED: Statistic =
+    Statistic::new(module_path!(), "Number of unreachable terminators propagated");
+static NUM_TARGETS_REMOVED: Statistic =
+    Statistic::new(module_path!(), "Number of blocks with some of targets removed");
 
 impl MirPass<'_> for UnreachablePropagation {
     fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -43,6 +49,13 @@ impl MirPass<'_> for UnreachablePropagation {
                     if terminator_kind == TerminatorKind::Unreachable && !asm_stmt_in_block() {
                         unreachable_blocks.insert(bb);
                     }
+
+                    if terminator_kind == TerminatorKind::Unreachable {
+                        NUM_PROPAGATED.increment(1);
+                    } else {
+                        NUM_TARGETS_REMOVED.increment(1);
+                    }
+
                     replacements.insert(bb, terminator_kind);
                 }
             }

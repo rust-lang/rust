@@ -103,6 +103,7 @@ use crate::{
     util::{dump_mir, PassWhere},
 };
 use itertools::Itertools;
+use rustc_data_structures::statistics::Statistic;
 use rustc_data_structures::unify::{InPlaceUnificationTable, UnifyKey};
 use rustc_index::{
     bit_set::{BitMatrix, BitSet},
@@ -124,6 +125,13 @@ const MAX_LOCALS: usize = 500;
 const MAX_BLOCKS: usize = 250;
 
 pub struct DestinationPropagation;
+
+static NUM_TOO_MANY_LOCALS: Statistic =
+    Statistic::new(module_path!(), "Number of functions with too many locals to optimize");
+static NUM_TOO_MANY_BLOCKS: Statistic =
+    Statistic::new(module_path!(), "Number of functions with too many blocks to optimize");
+static NUM_PROPAGATED: Statistic =
+    Statistic::new(module_path!(), "Number of destination propagations");
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -164,6 +172,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 "too many candidate locals in {:?} ({}, max is {}), not optimizing",
                 def_id, relevant, MAX_LOCALS
             );
+            NUM_TOO_MANY_LOCALS.increment(1);
             return;
         }
         if body.basic_blocks().len() > MAX_BLOCKS {
@@ -173,6 +182,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 body.basic_blocks().len(),
                 MAX_BLOCKS
             );
+            NUM_TOO_MANY_BLOCKS.increment(1);
             return;
         }
 
@@ -197,6 +207,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 break;
             }
 
+            NUM_PROPAGATED.increment(1);
             replacements.push(candidate);
             conflicts.unify(candidate.src, candidate.dest.local);
         }

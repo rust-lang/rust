@@ -1,4 +1,5 @@
 use crate::transform::MirPass;
+use rustc_data_structures::statistics::Statistic;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
@@ -35,6 +36,9 @@ pub struct MatchBranchSimplification;
 ///    goto -> bb3;
 /// }
 /// ```
+
+static NUM_MERGED: Statistic =
+    Statistic::new(module_path!(), "Number of similar basic blocks merged together");
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -133,6 +137,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             });
             from.statements.extend(new_stmts);
             from.terminator_mut().kind = first.terminator().kind.clone();
+            NUM_MERGED.increment(1);
         }
     }
 }

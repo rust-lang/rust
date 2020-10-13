@@ -2,6 +2,7 @@
 
 use crate::transform::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::statistics::Statistic;
 use rustc_hir::Mutability;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{
@@ -17,6 +18,15 @@ use rustc_middle::ty::{self, TyCtxt};
 use std::mem;
 
 pub struct InstCombine;
+
+static NUM_REF_DEREF_SIMPLIFIED: Statistic =
+    Statistic::new(module_path!(), "Number of ref-derefs operations simplified");
+static NUM_EQ_BOOL_COMPARE_SIMPLIFIED: Statistic =
+    Statistic::new(module_path!(), "Number of equality comparisons with a const bool simplified");
+static NUM_ARRAY_LEN_SIMPLIFIED: Statistic =
+    Statistic::new(module_path!(), "Number of array length operations simplified");
+static NUM_DEREF_REF_SIMPLIFIED: Statistic =
+    Statistic::new(module_path!(), "Number of derer-refs operations simplified");
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -63,21 +73,25 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };
+            NUM_REF_DEREF_SIMPLIFIED.increment(1);
             *rvalue = Rvalue::Use(Operand::Copy(new_place))
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
             debug!("replacing `Len([_; N])`: {:?}", rvalue);
+            NUM_ARRAY_LEN_SIMPLIFIED.increment(1);
             *rvalue = Rvalue::Use(Operand::Constant(box constant));
         }
 
         if let Some(operand) = self.optimizations.unneeded_equality_comparison.remove(&location) {
             debug!("replacing {:?} with {:?}", rvalue, operand);
+            NUM_EQ_BOOL_COMPARE_SIMPLIFIED.increment(1);
             *rvalue = Rvalue::Use(operand);
         }
 
         if let Some(place) = self.optimizations.unneeded_deref.remove(&location) {
             debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
+            NUM_DEREF_REF_SIMPLIFIED.increment(1);
             *rvalue = Rvalue::Use(Operand::Copy(place));
         }
 

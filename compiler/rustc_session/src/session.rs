@@ -1538,6 +1538,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             break;
         }
     }
+
+    if sess.opts.debugging_opts.mir_opt_stats {
+        if let Err(_) = rustc_data_structures::statistics::try_enable() {
+            sess.err(&format!(
+                "-Zmir-opt-stats is only available when rustc is compiled with debug-assertions"
+            ));
+        }
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.

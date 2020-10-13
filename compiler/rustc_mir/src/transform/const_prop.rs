@@ -5,6 +5,7 @@ use std::cell::Cell;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::statistics::Statistic;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
@@ -58,6 +59,10 @@ macro_rules! throw_machine_stop_str {
 }
 
 pub struct ConstProp;
+
+static NUM_PROPAGATED: Statistic = Statistic::new(module_path!(), "Number of const propagations");
+static NUM_VALIDATION_ERRORS: Statistic =
+    Statistic::new(module_path!(), "Number of validation errors during const propagation");
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -622,6 +627,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             ScalarMaybeUninit::Scalar(scalar),
                         )) = *value
                         {
+                            NUM_PROPAGATED.increment(1);
                             *operand = self.operand_from_scalar(
                                 scalar,
                                 value.layout.ty,
@@ -809,6 +815,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             /*may_ref_to_static*/ true,
         ) {
             trace!("validation error, attempt failed: {:?}", e);
+            NUM_VALIDATION_ERRORS.increment(1);
             return;
         }
 
@@ -818,6 +825,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if let Some(Ok(imm)) = imm {
             match *imm {
                 interpret::Immediate::Scalar(ScalarMaybeUninit::Scalar(scalar)) => {
+                    NUM_PROPAGATED.increment(1);
                     *rval = Rvalue::Use(self.operand_from_scalar(
                         scalar,
                         value.layout.ty,
@@ -859,6 +867,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             if let Some(Some(alloc)) = alloc {
                                 // Assign entire constant in a single statement.
                                 // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
+                                NUM_PROPAGATED.increment(1);
                                 *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
                                     span: source_info.span,
                                     user_ty: None,

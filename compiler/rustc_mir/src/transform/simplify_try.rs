@@ -11,6 +11,7 @@
 
 use crate::transform::{simplify, MirPass};
 use itertools::Itertools as _;
+use rustc_data_structures::statistics::Statistic;
 use rustc_index::{bit_set::BitSet, vec::IndexVec};
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -36,6 +37,13 @@ use std::slice::Iter;
 /// _LOCAL_0 = move _LOCAL_1
 /// ```
 pub struct SimplifyArmIdentity;
+
+static NUM_ARM_IDENTITY_SIMPLIFIED: Statistic =
+    Statistic::new(module_path!(), "Number of arm identities simplified to a move");
+static NUM_SAME_BRANCH_SIMPLIFIED: Statistic = Statistic::new(
+    module_path!(),
+    "Number of switches with equivalent targets replaced with a goto to the first target",
+);
 
 #[derive(Debug)]
 struct ArmIdentityInfo<'tcx> {
@@ -429,6 +437,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
                 }
 
                 trace!("block is now {:?}", bb.statements);
+                NUM_ARM_IDENTITY_SIMPLIFIED.increment(1);
             }
         }
     }
@@ -544,6 +553,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
         }
 
         if did_remove_blocks {
+            NUM_SAME_BRANCH_SIMPLIFIED.increment(opts.len());
             // We have dead blocks now, so remove those.
             simplify::remove_dead_blocks(body);
         }
