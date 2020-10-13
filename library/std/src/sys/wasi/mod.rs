@@ -53,6 +53,7 @@ pub mod thread_local_key;
 pub mod time;
 
 #[path = "../unsupported/common.rs"]
+#[deny(unsafe_op_in_unsafe_fn)]
 #[allow(unused)]
 mod common;
 pub use common::*;

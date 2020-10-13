@@ -122,7 +122,7 @@ unsafe fn configure_llvm(sess: &Session) {
 
     llvm::LLVMInitializePasses();
 
-    ::rustc_llvm::initialize_available_targets();
+    rustc_llvm::initialize_available_targets();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
 }

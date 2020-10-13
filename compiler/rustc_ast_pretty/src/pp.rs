@@ -170,17 +170,11 @@ pub enum Token {
 
 impl Token {
     crate fn is_eof(&self) -> bool {
-        match *self {
-            Token::Eof => true,
-            _ => false,
-        }
+        matches!(self, Token::Eof)
     }
 
     pub fn is_hardbreak_tok(&self) -> bool {
-        match *self {
-            Token::Break(BreakToken { offset: 0, blank_space: bs }) if bs == SIZE_INFINITY => true,
-            _ => false,
-        }
+        matches!(self, Token::Break(BreakToken { offset: 0, blank_space: SIZE_INFINITY }))
     }
 }
 
@@ -491,12 +485,9 @@ impl Printer {
     }
 
     fn get_top(&mut self) -> PrintStackElem {
-        match self.print_stack.last() {
-            Some(el) => *el,
-            None => {
-                PrintStackElem { offset: 0, pbreak: PrintStackBreak::Broken(Breaks::Inconsistent) }
-            }
-        }
+        *self.print_stack.last().unwrap_or({
+            &PrintStackElem { offset: 0, pbreak: PrintStackBreak::Broken(Breaks::Inconsistent) }
+        })
     }
 
     fn print_begin(&mut self, b: BeginToken, l: isize) {

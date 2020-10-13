@@ -543,7 +543,7 @@ impl<'a, 'tcx> DecoderWithPosition for CacheDecoder<'a, 'tcx> {
 // tag matches and the correct amount of bytes was read.
 fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> Result<V, D::Error>
 where
-    T: Decodable<D> + Eq + ::std::fmt::Debug,
+    T: Decodable<D> + Eq + std::fmt::Debug,
     V: Decodable<D>,
     D: DecoderWithPosition,
 {
@@ -1023,7 +1023,7 @@ where
     let _timer = tcx
         .sess
         .prof
-        .extra_verbose_generic_activity("encode_query_results_for", ::std::any::type_name::<Q>());
+        .extra_verbose_generic_activity("encode_query_results_for", std::any::type_name::<Q>());
 
     let state = Q::query_state(tcx);
     assert!(state.all_inactive());

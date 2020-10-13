@@ -3,6 +3,7 @@
 //! interpreting common C functions leak into CTFE.
 
 use std::borrow::{Borrow, Cow};
+use std::fmt::Debug;
 use std::hash::Hash;
 
 use rustc_middle::mir;
@@ -79,19 +80,19 @@ pub trait AllocMap<K: Hash + Eq, V> {
 /// and some use case dependent behaviour can instead be applied.
 pub trait Machine<'mir, 'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKind: ::std::fmt::Debug + ::std::fmt::Display + MayLeak + Eq + 'static;
+    type MemoryKind: Debug + std::fmt::Display + MayLeak + Eq + 'static;
 
     /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
     /// The `Debug` formatting is used for displaying pointers; we cannot use `Display`
     /// as `()` does not implement that, but it should be "nice" output.
-    type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
+    type PointerTag: Debug + Copy + Eq + Hash + 'static;
 
     /// Machines can define extra (non-instance) things that represent values of function pointers.
     /// For example, Miri uses this to return a function pointer from `dlsym`
     /// that can later be called to execute the right thing.
-    type ExtraFnVal: ::std::fmt::Debug + Copy;
+    type ExtraFnVal: Debug + Copy;
 
     /// Extra data stored in every call frame.
     type FrameExtra;

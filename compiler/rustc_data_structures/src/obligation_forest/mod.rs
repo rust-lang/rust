@@ -129,7 +129,7 @@ pub enum ProcessResult<O, E> {
 struct ObligationTreeId(usize);
 
 type ObligationTreeIdGenerator =
-    ::std::iter::Map<::std::ops::RangeFrom<usize>, fn(usize) -> ObligationTreeId>;
+    std::iter::Map<std::ops::RangeFrom<usize>, fn(usize) -> ObligationTreeId>;
 
 pub struct ObligationForest<O: ForestObligation> {
     /// The list of obligations. In between calls to `process_obligations`,

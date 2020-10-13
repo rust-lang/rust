@@ -306,7 +306,7 @@ jobs:
           - name: dist-aarch64-apple
             env:
               SCRIPT: "./x.py dist --stage 2"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --tools=rls,clippy,rustfmt,analysis,src"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               SELECT_XCODE: /Applications/Xcode_12_beta.app
               USE_XCODE_CLANG: 1
@@ -314,6 +314,8 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+              JEMALLOC_SYS_WITH_LG_PAGE: 14
             os: macos-latest
           - name: x86_64-msvc-1
             env:

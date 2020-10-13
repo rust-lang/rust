@@ -469,24 +469,17 @@ impl<'a> Resolver<'a> {
             ResolutionError::ParamInNonTrivialAnonConst { name, is_type } => {
                 let mut err = self.session.struct_span_err(
                     span,
-                    "generic parameters must not be used inside of non-trivial constant values",
+                    "generic parameters may not be used in const operations",
                 );
-                err.span_label(
-                    span,
-                    &format!(
-                        "non-trivial anonymous constants must not depend on the parameter `{}`",
-                        name
-                    ),
-                );
+                err.span_label(span, &format!("cannot perform const operation using `{}`", name));
 
                 if is_type {
-                    err.note("type parameters are currently not permitted in anonymous constants");
+                    err.note("type parameters may not be used in const expressions");
                 } else {
-                    err.help(
-                        &format!("it is currently only allowed to use either `{0}` or `{{ {0} }}` as generic constants",
-                                 name
-                        )
-                    );
+                    err.help(&format!(
+                        "const parameters may only be used as standalone arguments, i.e. `{}`",
+                        name
+                    ));
                 }
 
                 err

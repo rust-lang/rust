@@ -44,7 +44,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
     {
         debug!(
             "normalize::<{}>(value={:?}, param_env={:?})",
-            ::std::any::type_name::<T>(),
+            std::any::type_name::<T>(),
             value,
             self.param_env,
         );
@@ -65,13 +65,13 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
         let result = value.fold_with(&mut normalizer);
         debug!(
             "normalize::<{}>: result={:?} with {} obligations",
-            ::std::any::type_name::<T>(),
+            std::any::type_name::<T>(),
             result,
             normalizer.obligations.len(),
         );
         debug!(
             "normalize::<{}>: obligations={:?}",
-            ::std::any::type_name::<T>(),
+            std::any::type_name::<T>(),
             normalizer.obligations,
         );
         if normalizer.error {

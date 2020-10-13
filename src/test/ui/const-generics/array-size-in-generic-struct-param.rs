@@ -8,7 +8,7 @@
 #[allow(dead_code)]
 struct ArithArrayLen<const N: usize>([u32; 0 + N]);
 //[full]~^ ERROR constant expression depends on a generic parameter
-//[min]~^^ ERROR generic parameters must not be used inside of non-trivial constant values
+//[min]~^^ ERROR generic parameters may not be used in const operations
 
 #[derive(PartialEq, Eq)]
 struct Config {
@@ -19,7 +19,7 @@ struct B<const CFG: Config> {
     //[min]~^ ERROR `Config` is forbidden
     arr: [u8; CFG.arr_size],
     //[full]~^ ERROR constant expression depends on a generic parameter
-    //[min]~^^ ERROR generic parameters must not be used inside of non-trivial
+    //[min]~^^ ERROR generic parameters may not be used in const operations
 }
 
 const C: Config = Config { arr_size: 5 };

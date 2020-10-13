@@ -1,10 +1,10 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-61747.rs:8:30
    |
 LL |     fn successor() -> Const<{C + 1}> {
-   |                              ^ non-trivial anonymous constants must not depend on the parameter `C`
+   |                              ^ cannot perform const operation using `C`
    |
-   = help: it is currently only allowed to use either `C` or `{ C }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `C`
 
 error: aborting due to previous error
 

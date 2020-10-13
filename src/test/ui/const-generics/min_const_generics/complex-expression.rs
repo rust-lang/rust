@@ -7,19 +7,19 @@ fn ok<const M: usize>() -> [u8; M] {
 }
 
 struct Break0<const N: usize>([u8; { N + 1 }]);
-//~^ ERROR generic parameters must not be used inside of non-trivial constant values
+//~^ ERROR generic parameters may not be used in const operations
 
 struct Break1<const N: usize>([u8; { { N } }]);
-//~^ ERROR generic parameters must not be used inside of non-trivial constant values
+//~^ ERROR generic parameters may not be used in const operations
 
 fn break2<const N: usize>() {
     let _: [u8; N + 1];
-    //~^ ERROR generic parameters must not be used inside of non-trivial constant values
+    //~^ ERROR generic parameters may not be used in const operations
 }
 
 fn break3<const N: usize>() {
     let _ = [0; N + 1];
-    //~^ ERROR generic parameters must not be used inside of non-trivial constant values
+    //~^ ERROR generic parameters may not be used in const operations
 }
 
 trait Foo {

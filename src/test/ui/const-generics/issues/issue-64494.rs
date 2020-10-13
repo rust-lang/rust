@@ -15,10 +15,10 @@ impl True for Is<{true}> {}
 
 impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
 //[full]~^ ERROR constant expression depends on a generic parameter
-//[min]~^^ ERROR generic parameters must not be used inside of non-trivial constant values
+//[min]~^^ ERROR generic parameters may not be used in const operations
 impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
 //[full]~^ ERROR constant expression depends on a generic parameter
-//[min]~^^ ERROR generic parameters must not be used inside of non-trivial constant values
+//[min]~^^ ERROR generic parameters may not be used in const operations
 //[min]~| ERROR conflicting implementations of trait `MyTrait`
 
 fn main() {}
