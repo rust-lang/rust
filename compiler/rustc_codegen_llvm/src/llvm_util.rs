@@ -171,14 +171,15 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
 }
 
 pub fn print_version() {
-    // Can be called without initializing LLVM
-    unsafe {
-        println!("LLVM version: {}.{}", llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
-    }
+    let (major, minor, patch) = get_version();
+    println!("LLVM version: {}.{}.{}", major, minor, patch);
 }
 
-pub fn get_major_version() -> u32 {
-    unsafe { llvm::LLVMRustVersionMajor() }
+pub fn get_version() -> (u32, u32, u32) {
+    // Can be called without initializing LLVM
+    unsafe {
+        (llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor(), llvm::LLVMRustVersionPatch())
+    }
 }
 
 pub fn print_passes() {
