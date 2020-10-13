@@ -10,7 +10,6 @@ unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {} // no threads on this platform
 
 impl Mutex {
-    #[rustc_const_stable(feature = "const_sys_mutex_new", since = "1.0.0")]
     pub const fn new() -> Mutex {
         Mutex { locked: UnsafeCell::new(false) }
     }
