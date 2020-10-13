@@ -205,6 +205,8 @@ impl Cfg {
     /// Attempt to simplify this cfg by assuming that `assume` is already known to be true, will
     /// return `None` if simplification managed to completely eliminate any requirements from this
     /// `Cfg`.
+    ///
+    /// See `tests::test_simplify_with` for examples.
     pub(crate) fn simplify_with(&self, assume: &Cfg) -> Option<Cfg> {
         if self == assume {
             return None;
