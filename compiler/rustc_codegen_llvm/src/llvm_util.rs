@@ -202,11 +202,7 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
     }
 }
 
-pub fn target_cpu(sess: &Session) -> &str {
-    let name = match sess.opts.cg.target_cpu {
-        Some(ref s) => &**s,
-        None => &*sess.target.target.options.cpu,
-    };
+fn handle_native(name: &str) -> &str {
     if name != "native" {
         return name;
     }
@@ -215,5 +211,21 @@ pub fn target_cpu(sess: &Session) -> &str {
         let mut len = 0;
         let ptr = llvm::LLVMRustGetHostCPUName(&mut len);
         str::from_utf8(slice::from_raw_parts(ptr as *const u8, len)).unwrap()
+    }
+}
+
+pub fn target_cpu(sess: &Session) -> &str {
+    let name = match sess.opts.cg.target_cpu {
+        Some(ref s) => &**s,
+        None => &*sess.target.target.options.cpu,
+    };
+
+    handle_native(name)
+}
+
+pub fn tune_cpu(sess: &Session) -> Option<&str> {
+    match sess.opts.debugging_opts.tune_cpu {
+        Some(ref s) => Some(handle_native(&**s)),
+        None => None,
     }
 }

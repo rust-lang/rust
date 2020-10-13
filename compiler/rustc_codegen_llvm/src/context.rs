@@ -417,7 +417,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn apply_target_cpu_attr(&self, llfn: &'ll Value) {
-        attributes::apply_target_cpu_attr(self, llfn)
+        attributes::apply_target_cpu_attr(self, llfn);
+        attributes::apply_tune_cpu_attr(self, llfn);
     }
 
     fn create_used_variable(&self) {

@@ -194,6 +194,18 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     );
 }
 
+pub fn apply_tune_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+    if let Some(tune) = llvm_util::tune_cpu(cx.tcx.sess) {
+        let tune_cpu = SmallCStr::new(tune);
+        llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            const_cstr!("tune-cpu"),
+            tune_cpu.as_c_str(),
+        );
+    }
+}
+
 /// Sets the `NonLazyBind` LLVM attribute on a given function,
 /// assuming the codegen options allow skipping the PLT.
 pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
@@ -303,6 +315,9 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // Without this, ThinLTO won't inline Rust functions into Clang generated
     // functions (because Clang annotates functions this way too).
     apply_target_cpu_attr(cx, llfn);
+    // tune-cpu is only conveyed through the attribute for our purpose.
+    // The target doesn't care; the subtarget reads our attribute.
+    apply_tune_cpu_attr(cx, llfn);
 
     let features = llvm_target_features(cx.tcx.sess)
         .map(|s| s.to_string())
