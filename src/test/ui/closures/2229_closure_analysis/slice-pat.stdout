@@ -25,3 +25,32 @@ For closure=DefId(0:5 ~ slice_pat[317d]::main::{closure#0}): capture information
         ),
     },
 }
+For closure=DefId(0:5 ~ slice_pat[317d]::main::{closure#0}): min_captures={
+    HirId {
+        owner: DefId(0:3 ~ slice_pat[317d]::main),
+        local_id: 1,
+    }: [
+        CapturedPlace {
+            place: Place {
+                base_ty: [std::string::String; 5],
+                base: Upvar(
+                    UpvarId(HirId { owner: DefId(0:3 ~ slice_pat[317d]::main), local_id: 1 };`arr`;DefId(0:5 ~ slice_pat[317d]::main::{closure#0})),
+                ),
+                projections: [],
+            },
+            info: CaptureInfo {
+                expr_id: Some(
+                    HirId {
+                        owner: DefId(0:3 ~ slice_pat[317d]::main),
+                        local_id: 179,
+                    },
+                ),
+                capture_kind: ByValue(
+                    Some(
+                        $DIR/slice-pat.rs:21:33: 21:36 (#0),
+                    ),
+                ),
+            },
+        },
+    ],
+}

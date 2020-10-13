@@ -43,3 +43,30 @@ For closure=DefId(0:4 ~ simple_struct_min_capture[317d]::main::{closure#0}): cap
         ),
     },
 }
+For closure=DefId(0:4 ~ simple_struct_min_capture[317d]::main::{closure#0}): min_captures={
+    HirId {
+        owner: DefId(0:3 ~ simple_struct_min_capture[317d]::main),
+        local_id: 1,
+    }: [
+        CapturedPlace {
+            place: Place {
+                base_ty: Point,
+                base: Upvar(
+                    UpvarId(HirId { owner: DefId(0:3 ~ simple_struct_min_capture[317d]::main), local_id: 1 };`p`;DefId(0:4 ~ simple_struct_min_capture[317d]::main::{closure#0})),
+                ),
+                projections: [],
+            },
+            info: CaptureInfo {
+                expr_id: Some(
+                    HirId {
+                        owner: DefId(0:3 ~ simple_struct_min_capture[317d]::main),
+                        local_id: 15,
+                    },
+                ),
+                capture_kind: ByRef(
+                    UpvarBorrow(MutBorrow, '_#34r),
+                ),
+            },
+        },
+    ],
+}
