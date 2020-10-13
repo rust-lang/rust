@@ -1,10 +1,10 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/simple_fail.rs:7:33
    |
 LL | type Arr<const N: usize> = [u8; N - 1];
-   |                                 ^ non-trivial anonymous constants must not depend on the parameter `N`
+   |                                 ^ cannot perform const operation using `N`
    |
-   = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
 
 error: aborting due to previous error
 

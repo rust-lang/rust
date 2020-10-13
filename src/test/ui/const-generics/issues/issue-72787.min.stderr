@@ -1,34 +1,34 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:11:17
    |
 LL |     Condition<{ LHS <= RHS }>: True
-   |                 ^^^ non-trivial anonymous constants must not depend on the parameter `LHS`
+   |                 ^^^ cannot perform const operation using `LHS`
    |
-   = help: it is currently only allowed to use either `LHS` or `{ LHS }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `LHS`
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:11:24
    |
 LL |     Condition<{ LHS <= RHS }>: True
-   |                        ^^^ non-trivial anonymous constants must not depend on the parameter `RHS`
+   |                        ^^^ cannot perform const operation using `RHS`
    |
-   = help: it is currently only allowed to use either `RHS` or `{ RHS }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `RHS`
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:26:25
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
-   |                         ^ non-trivial anonymous constants must not depend on the parameter `I`
+   |                         ^ cannot perform const operation using `I`
    |
-   = help: it is currently only allowed to use either `I` or `{ I }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `I`
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:26:36
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
-   |                                    ^ non-trivial anonymous constants must not depend on the parameter `J`
+   |                                    ^ cannot perform const operation using `J`
    |
-   = help: it is currently only allowed to use either `J` or `{ J }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `J`
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72787.rs:22:26

@@ -1,18 +1,18 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/generic-sum-in-array-length.rs:7:53
    |
 LL | fn foo<const A: usize, const B: usize>(bar: [usize; A + B]) {}
-   |                                                     ^ non-trivial anonymous constants must not depend on the parameter `A`
+   |                                                     ^ cannot perform const operation using `A`
    |
-   = help: it is currently only allowed to use either `A` or `{ A }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `A`
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/generic-sum-in-array-length.rs:7:57
    |
 LL | fn foo<const A: usize, const B: usize>(bar: [usize; A + B]) {}
-   |                                                         ^ non-trivial anonymous constants must not depend on the parameter `B`
+   |                                                         ^ cannot perform const operation using `B`
    |
-   = help: it is currently only allowed to use either `B` or `{ B }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `B`
 
 error: aborting due to 2 previous errors
 

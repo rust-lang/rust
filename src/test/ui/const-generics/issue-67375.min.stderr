@@ -1,10 +1,10 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-67375.rs:9:25
    |
 LL |     inner: [(); { [|_: &T| {}; 0].len() }],
-   |                         ^ non-trivial anonymous constants must not depend on the parameter `T`
+   |                         ^ cannot perform const operation using `T`
    |
-   = note: type parameters are currently not permitted in anonymous constants
+   = note: type parameters may not be used in const expressions
 
 error[E0392]: parameter `T` is never used
   --> $DIR/issue-67375.rs:7:12

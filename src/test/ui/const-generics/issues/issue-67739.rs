@@ -11,7 +11,7 @@ pub trait Trait {
     fn associated_size(&self) -> usize {
         [0u8; mem::size_of::<Self::Associated>()];
         //[full]~^ ERROR constant expression depends on a generic parameter
-        //[min]~^^ ERROR generic parameters must not be used inside of non-trivial constant values
+        //[min]~^^ ERROR generic parameters may not be used in const operations
         0
     }
 }

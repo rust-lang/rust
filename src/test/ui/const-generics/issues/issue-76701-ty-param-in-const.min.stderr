@@ -1,18 +1,18 @@
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-76701-ty-param-in-const.rs:6:46
    |
 LL | fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
-   |                                              ^ non-trivial anonymous constants must not depend on the parameter `T`
+   |                                              ^ cannot perform const operation using `T`
    |
-   = note: type parameters are currently not permitted in anonymous constants
+   = note: type parameters may not be used in const expressions
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/issue-76701-ty-param-in-const.rs:12:42
    |
 LL | fn const_param<const N: usize>() -> [u8; N + 1] {
-   |                                          ^ non-trivial anonymous constants must not depend on the parameter `N`
+   |                                          ^ cannot perform const operation using `N`
    |
-   = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
 
 error: aborting due to 2 previous errors
 

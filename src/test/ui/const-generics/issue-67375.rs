@@ -7,7 +7,7 @@
 struct Bug<T> {
     //~^ ERROR parameter `T` is never used
     inner: [(); { [|_: &T| {}; 0].len() }],
-    //[min]~^ ERROR generic parameters must not be used inside of non-trivial constant values
+    //[min]~^ ERROR generic parameters may not be used in const operations
     //[full]~^^ WARN cannot use constants which depend on generic parameters in types
     //[full]~^^^ WARN this was previously accepted by the compiler
 }

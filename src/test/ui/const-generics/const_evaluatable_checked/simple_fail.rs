@@ -5,7 +5,7 @@
 #![allow(incomplete_features)]
 
 type Arr<const N: usize> = [u8; N - 1]; //[full]~ ERROR evaluation of constant
-//[min]~^ ERROR generic parameters must not be used inside of non-trivial constant values
+//[min]~^ ERROR generic parameters may not be used in const operations
 
 fn test<const N: usize>() -> Arr<N> where Arr<N>: Sized {
     todo!()
