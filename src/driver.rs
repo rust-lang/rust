@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(once_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
@@ -17,9 +18,9 @@ use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_tools_util::VersionInfo;
 
-use lazy_static::lazy_static;
 use std::borrow::Cow;
 use std::env;
+use std::lazy::SyncLazy;
 use std::ops::Deref;
 use std::panic;
 use std::path::{Path, PathBuf};
@@ -230,13 +231,11 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
 
-lazy_static! {
-    static ref ICE_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
-        let hook = panic::take_hook();
-        panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
-        hook
-    };
-}
+static ICE_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> = SyncLazy::new(|| {
+    let hook = panic::take_hook();
+    panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
+    hook
+});
 
 fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // Invoke our ICE handler, which prints the actual panic message and optionally a backtrace
@@ -295,7 +294,7 @@ fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<Pat
 
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
-    lazy_static::initialize(&ICE_HOOK);
+    SyncLazy::force(&ICE_HOOK);
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
 

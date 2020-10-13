@@ -281,6 +281,7 @@ mod path_buf_push_overwrite;
 mod pattern_type_mismatch;
 mod precedence;
 mod ptr;
+mod ptr_eq;
 mod ptr_offset_with_cast;
 mod question_mark;
 mod ranges;
@@ -581,6 +582,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &functions::MUST_USE_CANDIDATE,
         &functions::MUST_USE_UNIT,
         &functions::NOT_UNSAFE_PTR_ARG_DEREF,
+        &functions::RESULT_UNIT_ERR,
         &functions::TOO_MANY_ARGUMENTS,
         &functions::TOO_MANY_LINES,
         &future_not_send::FUTURE_NOT_SEND,
@@ -778,6 +780,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &ptr::CMP_NULL,
         &ptr::MUT_FROM_REF,
         &ptr::PTR_ARG,
+        &ptr_eq::PTR_EQ,
         &ptr_offset_with_cast::PTR_OFFSET_WITH_CAST,
         &question_mark::QUESTION_MARK,
         &ranges::RANGE_MINUS_ONE,
@@ -916,6 +919,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
     store.register_late_pass(move || box bit_mask::BitMask::new(verbose_bit_mask_threshold));
     store.register_late_pass(|| box ptr::Ptr);
+    store.register_late_pass(|| box ptr_eq::PtrEq);
     store.register_late_pass(|| box needless_bool::NeedlessBool);
     store.register_late_pass(|| box needless_bool::BoolComparison);
     store.register_late_pass(|| box approx_const::ApproxConstant);
@@ -1324,6 +1328,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&functions::DOUBLE_MUST_USE),
         LintId::of(&functions::MUST_USE_UNIT),
         LintId::of(&functions::NOT_UNSAFE_PTR_ARG_DEREF),
+        LintId::of(&functions::RESULT_UNIT_ERR),
         LintId::of(&functions::TOO_MANY_ARGUMENTS),
         LintId::of(&get_last_with_len::GET_LAST_WITH_LEN),
         LintId::of(&identity_op::IDENTITY_OP),
@@ -1457,6 +1462,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&ptr::CMP_NULL),
         LintId::of(&ptr::MUT_FROM_REF),
         LintId::of(&ptr::PTR_ARG),
+        LintId::of(&ptr_eq::PTR_EQ),
         LintId::of(&ptr_offset_with_cast::PTR_OFFSET_WITH_CAST),
         LintId::of(&question_mark::QUESTION_MARK),
         LintId::of(&ranges::RANGE_ZIP_WITH_LEN),
@@ -1554,6 +1560,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&formatting::SUSPICIOUS_UNARY_OP_FORMATTING),
         LintId::of(&functions::DOUBLE_MUST_USE),
         LintId::of(&functions::MUST_USE_UNIT),
+        LintId::of(&functions::RESULT_UNIT_ERR),
         LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
         LintId::of(&inherent_to_string::INHERENT_TO_STRING),
         LintId::of(&len_zero::LEN_WITHOUT_IS_EMPTY),
@@ -1611,6 +1618,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&panic_unimplemented::PANIC_PARAMS),
         LintId::of(&ptr::CMP_NULL),
         LintId::of(&ptr::PTR_ARG),
+        LintId::of(&ptr_eq::PTR_EQ),
         LintId::of(&question_mark::QUESTION_MARK),
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),

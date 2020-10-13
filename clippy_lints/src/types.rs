@@ -17,6 +17,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, InferTy, Ty, TyCtxt, TyS, TypeckResults};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -541,6 +542,7 @@ impl Types {
                                 _ => None,
                             });
                             let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
+                            if !ty_ty.has_escaping_bound_vars();
                             if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env);
                             if let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes());
                             if ty_ty_size <= self.vec_box_size_threshold;

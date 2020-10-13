@@ -11,6 +11,10 @@ env:
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
   NO_FMT_TEST: 1
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
@@ -20,7 +24,7 @@ jobs:
       with:
         github_token: "${{ secrets.github_token }}"
     - name: Checkout
-      uses: actions/checkout@v2.0.0
+      uses: actions/checkout@v2.3.3
       with:
         ref: ${{ github.ref }}
 
@@ -81,14 +85,14 @@ jobs:
       if: matrix.host == 'i686-unknown-linux-gnu'
 
     - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.3
+      uses: actions-rs/toolchain@v1.0.6
       with:
         toolchain: nightly
         target: ${{ matrix.host }}
         profile: minimal
 
     - name: Checkout
-      uses: actions/checkout@v2.0.0
+      uses: actions/checkout@v2.3.3
 
     - name: Run cargo update
       run: cargo update
@@ -105,14 +109,13 @@ jobs:
       run: bash setup-toolchain.sh
       env:
         HOST_TOOLCHAIN: ${{ matrix.host }}
-      shell: bash
 
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
       if: runner.os == 'Linux'
       run: |
         SYSROOT=$(rustc --print sysroot)
-        echo "::set-env name=LD_LIBRARY_PATH::${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}"
+        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
     - name: Link rustc dylib (MacOS)
       if: runner.os == 'macOS'
       run: |
@@ -122,41 +125,33 @@ jobs:
     - name: Set PATH (Windows)
       if: runner.os == 'Windows'
       run: |
-        $sysroot = rustc --print sysroot
-        $env:PATH += ';' + $sysroot + '\bin'
-        echo "::set-env name=PATH::$env:PATH"
+        SYSROOT=$(rustc --print sysroot)
+        echo "$SYSROOT/bin" >> $GITHUB_PATH
 
     - name: Build
       run: cargo build --features deny-warnings
-      shell: bash
 
     - name: Test
       run: cargo test --features deny-warnings
-      shell: bash
 
     - name: Test clippy_lints
       run: cargo test --features deny-warnings
-      shell: bash
       working-directory: clippy_lints
 
     - name: Test rustc_tools_util
       run: cargo test --features deny-warnings
-      shell: bash
       working-directory: rustc_tools_util
 
     - name: Test clippy_dev
       run: cargo test --features deny-warnings
-      shell: bash
       working-directory: clippy_dev
 
     - name: Test cargo-clippy
       run: ../target/debug/cargo-clippy
-      shell: bash
       working-directory: clippy_workspace_tests
 
     - name: Test clippy-driver
       run: bash .github/driver.sh
-      shell: bash
       env:
         OS: ${{ runner.os }}
 
@@ -165,7 +160,7 @@ jobs:
       run: |
         cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
         cargo cache
-      shell: bash
+
   integration_build:
     needs: changelog
     runs-on: ubuntu-latest
@@ -177,14 +172,14 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.3
+      uses: actions-rs/toolchain@v1.0.6
       with:
         toolchain: nightly
         target: x86_64-unknown-linux-gnu
         profile: minimal
 
     - name: Checkout
-      uses: actions/checkout@v2.0.0
+      uses: actions/checkout@v2.3.3
 
     - name: Run cargo update
       run: cargo update
@@ -258,14 +253,14 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.3
+      uses: actions-rs/toolchain@v1.0.6
       with:
         toolchain: nightly
         target: x86_64-unknown-linux-gnu
         profile: minimal
 
     - name: Checkout
-      uses: actions/checkout@v2.0.0
+      uses: actions/checkout@v2.3.3
 
     - name: Run cargo update
       run: cargo update

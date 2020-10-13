@@ -36,14 +36,14 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.3
+      uses: actions-rs/toolchain@v1.0.6
       with:
         toolchain: nightly
         target: x86_64-unknown-linux-gnu
         profile: minimal
 
     - name: Checkout
-      uses: actions/checkout@v2.0.0
+      uses: actions/checkout@v2.3.3
 
     - name: Run cargo update
       run: cargo update
@@ -63,7 +63,7 @@ jobs:
     - name: Set LD_LIBRARY_PATH (Linux)
       run: |
         SYSROOT=$(rustc --print sysroot)
-        echo "::set-env name=LD_LIBRARY_PATH::${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}"
+        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
 
     - name: Build
       run: cargo build --features deny-warnings

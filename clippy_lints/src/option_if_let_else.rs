@@ -13,14 +13,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:**
-    /// Lints usage of  `if let Some(v) = ... { y } else { x }` which is more
+    /// Lints usage of `if let Some(v) = ... { y } else { x }` which is more
     /// idiomatically done with `Option::map_or` (if the else bit is a pure
     /// expression) or `Option::map_or_else` (if the else bit is an impure
-    /// expresion).
+    /// expression).
     ///
     /// **Why is this bad?**
     /// Using the dedicated functions of the Option type is clearer and
-    /// more concise than an if let expression.
+    /// more concise than an `if let` expression.
     ///
     /// **Known problems:**
     /// This lint uses a deliberately conservative metric for checking
