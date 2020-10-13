@@ -442,8 +442,8 @@ export function openDocs(ctx: Ctx): Cmd {
 
 export function resolveCodeAction(ctx: Ctx): Cmd {
     const client = ctx.client;
-    return async () => {
-        const item: lc.WorkspaceEdit = await client.sendRequest(ra.resolveCodeAction, null);
+    return async (params: ra.ResolveCodeActionParams) => {
+        const item: lc.WorkspaceEdit = await client.sendRequest(ra.resolveCodeAction, params);
         if (!item) {
             return;
         }
