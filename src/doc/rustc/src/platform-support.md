@@ -57,7 +57,7 @@ Specifically, these platforms are required to have each of the following:
 
 target | std | host | notes
 -------|-----|------|-------
-`aarch64-apple-darwin` | ✓ |  | ARM64 macOS (11.0+, Big Sur+)
+`aarch64-apple-darwin` | ✓ | ✓ | ARM64 macOS (11.0+, Big Sur+)
 `aarch64-apple-ios` | ✓ |  | ARM64 iOS
 `aarch64-fuchsia` | ✓ |  | ARM64 Fuchsia
 `aarch64-linux-android` | ✓ |  | ARM64 Android
