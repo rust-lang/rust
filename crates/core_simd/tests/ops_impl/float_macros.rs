@@ -1,5 +1,5 @@
 macro_rules! float_tests {
-    { $vector:ident, $scalar:ident } => {
+    { $vector:ident, $scalar:ident, $int_vector:ident, $int_scalar:ident } => {
         #[cfg(test)]
         mod $vector {
             use super::*;
@@ -22,6 +22,18 @@ macro_rules! float_tests {
             fn slice_chunks(slice: &[$scalar]) -> impl Iterator<Item = core_simd::$vector> + '_ {
                 let lanes = core::mem::size_of::<core_simd::$vector>() / core::mem::size_of::<$scalar>();
                 slice.chunks_exact(lanes).map(from_slice)
+            }
+
+            fn from_slice_int(slice: &[$int_scalar]) -> core_simd::$int_vector {
+                let mut value = core_simd::$int_vector::default();
+                let value_slice: &mut [_] = value.as_mut();
+                value_slice.copy_from_slice(&slice[0..value_slice.len()]);
+                value
+            }
+
+            fn slice_chunks_int(slice: &[$int_scalar]) -> impl Iterator<Item = core_simd::$int_vector> + '_ {
+                let lanes = core::mem::size_of::<core_simd::$int_vector>() / core::mem::size_of::<$int_scalar>();
+                slice.chunks_exact(lanes).map(from_slice_int)
             }
 
             const A: [$scalar; 16] = [0.,   1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12., 13., 14., 15.];
@@ -320,6 +332,121 @@ macro_rules! float_tests {
                 for v in slice_chunks(&C) {
                     let expected = apply_unary_lanewise(v, <$scalar>::abs);
                     assert_biteq!(v.abs(), expected);
+                }
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn ceil_odd_floats() {
+                for v in slice_chunks(&C) {
+                    let expected = apply_unary_lanewise(v, <$scalar>::ceil);
+                    assert_biteq!(v.ceil(), expected);
+                }
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn floor_odd_floats() {
+                for v in slice_chunks(&C) {
+                    let expected = apply_unary_lanewise(v, <$scalar>::floor);
+                    assert_biteq!(v.floor(), expected);
+                }
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn round_odd_floats() {
+                for v in slice_chunks(&C) {
+                    let expected = apply_unary_lanewise(v, <$scalar>::round);
+                    assert_biteq!(v.round(), expected);
+                }
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn round_mode() {
+                assert_biteq!(core_simd::$vector::splat(1.5).round(), core_simd::$vector::splat(2.0));
+                assert_biteq!(core_simd::$vector::splat(2.5).round(), core_simd::$vector::splat(3.0));
+                assert_biteq!(core_simd::$vector::splat(-1.5).round(), core_simd::$vector::splat(-2.0));
+                assert_biteq!(core_simd::$vector::splat(-2.5).round(), core_simd::$vector::splat(-3.0));
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn trunc_odd_floats() {
+                for v in slice_chunks(&C) {
+                    let expected = apply_unary_lanewise(v, <$scalar>::trunc);
+                    assert_biteq!(v.trunc(), expected);
+                }
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn fract_odd_floats() {
+                for v in slice_chunks(&C) {
+                    let expected = apply_unary_lanewise(v, <$scalar>::fract);
+                    assert_biteq!(v.fract(), expected);
+                }
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn to_int_unchecked() {
+                // The maximum integer that can be represented by the equivalently sized float has
+                // all of the mantissa digits set to 1, pushed up to the MSB.
+                const ALL_MANTISSA_BITS: $int_scalar = ((1 << <$scalar>::MANTISSA_DIGITS) - 1);
+                const MAX_REPRESENTABLE_VALUE: $int_scalar =
+                    ALL_MANTISSA_BITS << (core::mem::size_of::<$scalar>() * 8 - <$scalar>::MANTISSA_DIGITS as usize - 1);
+                const VALUES: [$scalar; 16] = [
+                    -0.0,
+                    0.0,
+                    -1.0,
+                    1.0,
+                    ALL_MANTISSA_BITS as $scalar,
+                    -ALL_MANTISSA_BITS as $scalar,
+                    MAX_REPRESENTABLE_VALUE as $scalar,
+                    -MAX_REPRESENTABLE_VALUE as $scalar,
+                    (MAX_REPRESENTABLE_VALUE / 2) as $scalar,
+                    (-MAX_REPRESENTABLE_VALUE / 2) as $scalar,
+                    <$scalar>::MIN_POSITIVE,
+                    -<$scalar>::MIN_POSITIVE,
+                    <$scalar>::EPSILON,
+                    -<$scalar>::EPSILON,
+                    100.0 / 3.0,
+                    -100.0 / 3.0,
+                ];
+
+                for v in slice_chunks(&VALUES) {
+                    let expected = apply_unary_lanewise(v, |x| unsafe { x.to_int_unchecked() });
+                    assert_biteq!(unsafe { v.to_int_unchecked() }, expected);
+                }
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn round_from_int() {
+                const VALUES: [$int_scalar; 16] = [
+                    0,
+                    0,
+                    1,
+                    -1,
+                    100,
+                    -100,
+                    200,
+                    -200,
+                    413,
+                    -413,
+                    1017,
+                    -1017,
+                    1234567,
+                    -1234567,
+                    <$int_scalar>::MAX,
+                    <$int_scalar>::MIN,
+                ];
+
+                for v in slice_chunks_int(&VALUES) {
+                    let expected = apply_unary_lanewise(v, |x| x as $scalar);
+                    assert_biteq!(core_simd::$vector::round_from_int(v), expected);
                 }
             }
         }

@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, platform_intrinsics, link_llvm_intrinsics, simd_ffi)]
 #![warn(missing_docs)]
 //! Portable SIMD module.
 
@@ -56,3 +56,5 @@ mod vectors_mask128;
 pub use vectors_mask128::*;
 mod vectors_masksize;
 pub use vectors_masksize::*;
+
+mod round;

@@ -1,8 +1,13 @@
-pub fn apply_unary_lanewise<T: Copy, V: AsMut<[T]> + Default>(mut x: V, f: impl Fn(T) -> T) -> V {
-    for lane in x.as_mut() {
-        *lane = f(*lane)
+pub fn apply_unary_lanewise<T1: Copy, T2: Copy, V1: AsRef<[T1]>, V2: AsMut<[T2]> + Default>(
+    x: V1,
+    f: impl Fn(T1) -> T2,
+) -> V2 {
+    let mut y = V2::default();
+    assert_eq!(x.as_ref().len(), y.as_mut().len());
+    for (x, y) in x.as_ref().iter().zip(y.as_mut().iter_mut()) {
+        *y = f(*x);
     }
-    x
+    y
 }
 
 pub fn apply_binary_lanewise<T: Copy, V: AsRef<[T]> + AsMut<[T]> + Default>(

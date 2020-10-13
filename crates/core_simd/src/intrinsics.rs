@@ -36,4 +36,7 @@ extern "platform-intrinsic" {
 
     /// xor
     pub(crate) fn simd_xor<T>(x: T, y: T) -> T;
+
+    /// fptoui/fptosi/uitofp/sitofp
+    pub(crate) fn simd_cast<T, U>(x: T) -> U;
 }
