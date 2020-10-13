@@ -107,7 +107,7 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_i8(&mut self, v: i8) -> EncodeResult {
-        let as_u8: u8 = unsafe { ::std::mem::transmute(v) };
+        let as_u8: u8 = unsafe { std::mem::transmute(v) };
         self.emit_u8(as_u8)
     }
 
@@ -300,13 +300,13 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     #[inline]
     fn read_char(&mut self) -> Result<char, Self::Error> {
         let bits = self.read_u32()?;
-        Ok(::std::char::from_u32(bits).unwrap())
+        Ok(std::char::from_u32(bits).unwrap())
     }
 
     #[inline]
     fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error> {
         let len = self.read_usize()?;
-        let s = ::std::str::from_utf8(&self.data[self.position..self.position + len]).unwrap();
+        let s = std::str::from_utf8(&self.data[self.position..self.position + len]).unwrap();
         self.position += len;
         Ok(Cow::Borrowed(s))
     }

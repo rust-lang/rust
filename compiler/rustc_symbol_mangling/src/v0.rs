@@ -132,7 +132,7 @@ impl SymbolMangler<'tcx> {
             self.push("u");
 
             // FIXME(eddyb) we should probably roll our own punycode implementation.
-            let mut punycode_bytes = match ::punycode::encode(ident) {
+            let mut punycode_bytes = match punycode::encode(ident) {
                 Ok(s) => s.into_bytes(),
                 Err(()) => bug!("symbol_names: punycode encoding failed for ident {:?}", ident),
             };

@@ -23,7 +23,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         debug!(
             "normalize_erasing_regions::<{}>(value={:?}, param_env={:?})",
-            ::std::any::type_name::<T>(),
+            std::any::type_name::<T>(),
             value,
             param_env,
         );
