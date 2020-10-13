@@ -491,12 +491,9 @@ impl Printer {
     }
 
     fn get_top(&mut self) -> PrintStackElem {
-        match self.print_stack.last() {
-            Some(el) => *el,
-            None => {
-                PrintStackElem { offset: 0, pbreak: PrintStackBreak::Broken(Breaks::Inconsistent) }
-            }
-        }
+        *self.print_stack.last().unwrap_or({
+            &PrintStackElem { offset: 0, pbreak: PrintStackBreak::Broken(Breaks::Inconsistent) }
+        })
     }
 
     fn print_begin(&mut self, b: BeginToken, l: isize) {
