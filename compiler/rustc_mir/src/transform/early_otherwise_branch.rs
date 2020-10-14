@@ -99,8 +99,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 .info
                 .second_switch_infos
                 .iter()
-                .flat_map(|x| x.targets_with_values.iter())
-                .cloned();
+                .flat_map(|x| x.switch_targets.iter().map(|x| (x.0, x.1)));
 
             let targets = SwitchTargets::new(new_targets, first_switch_info.otherwise_bb);
 
@@ -174,8 +173,8 @@ struct SwitchDiscriminantInfo<'tcx> {
     discr_ty: Ty<'tcx>,
     /// The basic block that the otherwise branch points to
     otherwise_bb: BasicBlock,
-    /// Target along with the value being branched from. Otherwise is not included
-    targets_with_values: Vec<(u128, BasicBlock)>,
+    /// Targets and values for the switch
+    switch_targets: SwitchTargets,
     discr_source_info: SourceInfo,
     /// The place of the discriminant used in the switch
     discr_used_in_switch: Place<'tcx>,
@@ -212,8 +211,8 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         // go through each target, finding a discriminant read, and a switch
         let mut second_switch_infos = vec![];
 
-        for (value, target) in discr.targets_with_values.iter() {
-            let info = self.find_discriminant_switch_pairing(&discr, *target, *value)?;
+        for (value, target) in discr.switch_targets.iter() {
+            let info = self.find_discriminant_switch_pairing(&discr, target, value)?;
             second_switch_infos.push(info);
         }
 
@@ -249,8 +248,8 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
             // }
             //  ```
             // We check this by seeing that the value of the first discriminant is the only other discriminant value being used as a target in the second switch
-            if !(this_bb_discr_info.targets_with_values.len() == 1
-                && this_bb_discr_info.targets_with_values[0].0 == value)
+            if !(this_bb_discr_info.switch_targets.iter().len() == 1
+                && this_bb_discr_info.switch_targets.iter().next()?.0 == value)
             {
                 trace!(
                     "NO: The second switch did not have only 1 target (besides otherwise) that had the same value as the value from the first switch that got us here"
@@ -289,7 +288,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 let discr_decl = &self.body.local_decls()[discr_local];
                 let discr_ty = discr_decl.ty;
                 let otherwise_bb = targets.otherwise();
-                let targets_with_values = targets.iter().collect();
+                let targets_with_values = targets.clone();
 
                 // find the place of the adt where the discriminant is being read from
                 // assume this is the last statement of the block
@@ -306,7 +305,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                     discr_used_in_switch: discr.place()?,
                     discr_ty,
                     otherwise_bb,
-                    targets_with_values,
+                    switch_targets: targets_with_values,
                     discr_source_info: discr_decl.source_info,
                     place_of_adt_discr_read,
                     type_adt_matched_on,
