@@ -8,8 +8,8 @@ This feature allows you to specify a path to a dynamic library to use as rustc's
 code generation backend at runtime.
 
 Set the `-Zcodegen-backend=<path>` compiler flag to specify the location of the
-backend. The library must contain a function named `__rustc_codegen_backend`
-with a signature of `fn() -> Box<dyn rustc_codegen_ssa::traits::CodegenBackend>`.
+backend. The library must be of crate type `dylib` and must contain a function
+named `__rustc_codegen_backend` with a signature of `fn() -> Box<dyn rustc_codegen_ssa::traits::CodegenBackend>`.
 
 ## Example
 ```rust,ignore
