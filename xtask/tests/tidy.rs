@@ -45,6 +45,41 @@ fn smoke_test_docs_generation() {
 }
 
 #[test]
+fn check_lsp_extensions_docs() {
+    let expected_hash = {
+        let lsp_ext_rs =
+            fs2::read_to_string(project_root().join("crates/rust-analyzer/src/lsp_ext.rs"))
+                .unwrap();
+        stable_hash(lsp_ext_rs.as_str())
+    };
+
+    let actual_hash = {
+        let lsp_extensions_md =
+            fs2::read_to_string(project_root().join("docs/dev/lsp-extensions.md")).unwrap();
+        let text = lsp_extensions_md
+            .lines()
+            .find_map(|line| line.strip_prefix("lsp_ext.rs hash:"))
+            .unwrap()
+            .trim();
+        u64::from_str_radix(text, 16).unwrap()
+    };
+
+    if actual_hash != expected_hash {
+        panic!(
+            "
+lsp_ext.rs was changed without touching lsp-extensions.md.
+
+Expected hash: {:x}
+Actual hash:   {:x}
+
+Please adjust docs/dev/lsp-extensions.md.
+",
+            expected_hash, actual_hash
+        )
+    }
+}
+
+#[test]
 fn rust_files_are_tidy() {
     let mut tidy_docs = TidyDocs::default();
     for path in rust_files(&project_root().join("crates")) {
@@ -279,4 +314,14 @@ fn is_exclude_dir(p: &Path, dirs_to_exclude: &[&str]) -> bool {
         .skip(1)
         .filter_map(|it| it.as_os_str().to_str())
         .any(|it| dirs_to_exclude.contains(&it))
+}
+
+#[allow(deprecated)]
+fn stable_hash(text: &str) -> u64 {
+    use std::hash::{Hash, Hasher, SipHasher};
+
+    let text = text.replace('\r', "");
+    let mut hasher = SipHasher::default();
+    text.hash(&mut hasher);
+    hasher.finish()
 }
