@@ -150,6 +150,7 @@ mod handlers {
     mod merge_match_arms;
     mod move_bounds;
     mod move_guard;
+    mod qualify_path;
     mod raw_string;
     mod remove_dbg;
     mod remove_mut;
@@ -196,6 +197,7 @@ mod handlers {
             move_bounds::move_bounds_to_where_clause,
             move_guard::move_arm_cond_to_match_guard,
             move_guard::move_guard_to_arm_body,
+            qualify_path::qualify_path,
             raw_string::add_hash,
             raw_string::make_raw_string,
             raw_string::make_usual_string,
