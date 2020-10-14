@@ -50,9 +50,6 @@ enum QueryModifier {
     /// Don't hash the result, instead just mark a query red if it runs
     NoHash,
 
-    /// Generate a dep node based on the dependencies of the query
-    Anon,
-
     /// Always evaluate the query, ignoring its dependencies
     EvalAlways,
 }
@@ -116,8 +113,6 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::CycleDelayBug)
         } else if modifier == "no_hash" {
             Ok(QueryModifier::NoHash)
-        } else if modifier == "anon" {
-            Ok(QueryModifier::Anon)
         } else if modifier == "eval_always" {
             Ok(QueryModifier::EvalAlways)
         } else {
@@ -226,9 +221,6 @@ struct QueryModifiers {
     /// Don't hash the result, instead just mark a query red if it runs
     no_hash: bool,
 
-    /// Generate a dep node based on the dependencies of the query
-    anon: bool,
-
     // Always evaluate the query, ignoring its dependencies
     eval_always: bool,
 }
@@ -242,7 +234,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut fatal_cycle = false;
     let mut cycle_delay_bug = false;
     let mut no_hash = false;
-    let mut anon = false;
     let mut eval_always = false;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
@@ -288,12 +279,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 no_hash = true;
             }
-            QueryModifier::Anon => {
-                if anon {
-                    panic!("duplicate modifier `anon` for query `{}`", query.name);
-                }
-                anon = true;
-            }
             QueryModifier::EvalAlways => {
                 if eval_always {
                     panic!("duplicate modifier `eval_always` for query `{}`", query.name);
@@ -313,7 +298,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         fatal_cycle,
         cycle_delay_bug,
         no_hash,
-        anon,
         eval_always,
     }
 }
@@ -472,10 +456,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             // Pass on the no_hash modifier
             if modifiers.no_hash {
                 attributes.push(quote! { no_hash });
-            };
-            // Pass on the anon modifier
-            if modifiers.anon {
-                attributes.push(quote! { anon });
             };
             // Pass on the eval_always modifier
             if modifiers.eval_always {

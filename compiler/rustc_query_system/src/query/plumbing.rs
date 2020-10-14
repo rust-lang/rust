@@ -415,26 +415,6 @@ where
         return force_query_with_job(tcx, key, job, null_dep_node, query).0;
     }
 
-    if query.anon {
-        let prof_timer = tcx.profiler().query_provider();
-
-        let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-            tcx.start_query(job.id, diagnostics, |tcx| {
-                tcx.dep_graph().with_anon_task(query.dep_kind, || query.compute(tcx, key))
-            })
-        });
-
-        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-        tcx.dep_graph().read_index(dep_node_index);
-
-        if unlikely!(!diagnostics.is_empty()) {
-            tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
-        }
-
-        return job.complete(result, dep_node_index);
-    }
-
     let dep_node = query.to_dep_node(tcx, &key);
 
     if !query.eval_always {
@@ -662,9 +642,6 @@ fn ensure_query_impl<CTX, C>(
         let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
         return;
     }
-
-    // Ensuring an anonymous query makes no sense
-    assert!(!query.anon);
 
     let dep_node = query.to_dep_node(tcx, &key);
 

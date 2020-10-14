@@ -24,7 +24,6 @@ pub trait QueryConfig<CTX> {
 }
 
 pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
-    pub anon: bool,
     pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
 
@@ -71,7 +70,6 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
 }
 
 pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
-    const ANON: bool;
     const EVAL_ALWAYS: bool;
     const DEP_KIND: CTX::DepKind;
 
@@ -121,7 +119,6 @@ where
     Q: QueryDescription<CTX>,
 {
     const VTABLE: QueryVtable<CTX, Q::Key, Q::Value> = QueryVtable {
-        anon: Q::ANON,
         dep_kind: Q::DEP_KIND,
         eval_always: Q::EVAL_ALWAYS,
         compute: Q::compute,

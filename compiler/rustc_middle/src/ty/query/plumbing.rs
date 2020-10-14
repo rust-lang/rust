@@ -186,18 +186,6 @@ macro_rules! handle_cycle_error {
     };
 }
 
-macro_rules! is_anon {
-    ([]) => {{
-        false
-    }};
-    ([anon $($rest:tt)*]) => {{
-        true
-    }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
-        is_anon!([$($($modifiers)*)*])
-    };
-}
-
 macro_rules! is_eval_always {
     ([]) => {{
         false
@@ -358,7 +346,6 @@ macro_rules! define_queries_inner {
         }
 
         impl<$tcx> QueryAccessors<TyCtxt<$tcx>> for queries::$name<$tcx> {
-            const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
 

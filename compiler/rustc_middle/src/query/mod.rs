@@ -376,7 +376,7 @@ rustc_queries! {
             // no caller would be green **apart** from just these
             // queries). Making it anonymous avoids hashing the result, which
             // may save a bit of time.
-            anon
+            no_hash
             desc { "erasing regions from `{:?}`", ty }
         }
     }
