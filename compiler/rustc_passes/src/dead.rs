@@ -547,7 +547,7 @@ impl DeadVisitor<'tcx> {
         let def_id = self.tcx.hir().local_def_id(id);
         let inherent_impls = self.tcx.inherent_impls(def_id);
         for &impl_did in inherent_impls.iter() {
-            for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
+            for item_did in self.tcx.associated_item_def_ids(impl_did) {
                 if let Some(did) = item_did.as_local() {
                     let item_hir_id = self.tcx.hir().local_def_id_to_hir_id(did);
                     if self.live_symbols.contains(&item_hir_id) {
