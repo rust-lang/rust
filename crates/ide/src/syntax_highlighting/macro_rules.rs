@@ -3,21 +3,14 @@ use syntax::{SyntaxElement, SyntaxKind, SyntaxToken, TextRange, T};
 
 use crate::{HighlightTag, HighlightedRange};
 
+#[derive(Default)]
 pub(super) struct MacroRulesHighlighter {
     state: Option<MacroMatcherParseState>,
 }
 
 impl MacroRulesHighlighter {
-    pub(super) fn new() -> Self {
-        MacroRulesHighlighter { state: None }
-    }
-
     pub(super) fn init(&mut self) {
-        self.state = Some(MacroMatcherParseState::new());
-    }
-
-    pub(super) fn reset(&mut self) {
-        self.state = None;
+        self.state = Some(MacroMatcherParseState::default());
     }
 
     pub(super) fn advance(&mut self, token: &SyntaxToken) {
@@ -51,8 +44,8 @@ struct MacroMatcherParseState {
     in_invoc_body: bool,
 }
 
-impl MacroMatcherParseState {
-    fn new() -> Self {
+impl Default for MacroMatcherParseState {
+    fn default() -> Self {
         MacroMatcherParseState {
             paren_ty: None,
             paren_level: 0,

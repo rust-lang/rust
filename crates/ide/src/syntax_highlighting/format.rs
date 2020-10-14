@@ -12,10 +12,6 @@ pub(super) struct FormatStringHighlighter {
 }
 
 impl FormatStringHighlighter {
-    pub(super) fn reset(&mut self) {
-        self.format_string = None;
-    }
-
     pub(super) fn check_for_format_string(&mut self, parent: &SyntaxNode) {
         // Check if macro takes a format string and remember it for highlighting later.
         // The macros that accept a format string expand to a compiler builtin macros

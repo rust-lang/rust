@@ -74,7 +74,7 @@ pub(crate) fn highlight(
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
     let mut format_string_highlighter = FormatStringHighlighter::default();
-    let mut macro_rules_highlighter = MacroRulesHighlighter::new();
+    let mut macro_rules_highlighter = MacroRulesHighlighter::default();
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -125,8 +125,8 @@ pub(crate) fn highlight(
             WalkEvent::Leave(Some(mc)) => {
                 assert!(current_macro_call == Some(mc));
                 current_macro_call = None;
-                format_string_highlighter.reset();
-                macro_rules_highlighter.reset();
+                format_string_highlighter = FormatStringHighlighter::default();
+                macro_rules_highlighter = MacroRulesHighlighter::default();
             }
             _ => (),
         }
