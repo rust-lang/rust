@@ -74,50 +74,46 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
         // moving them back to their correct locations.
         krate.exported_macros.iter().for_each(|def| {
-            /// A return value of `None` signifies a fallback to the default behavior (locating
-            /// the macro at the root of the crate).
-            fn containing_mod_of_macro<'module, 'hir>(
-                def: &'_ rustc_hir::MacroDef<'_>,
-                tcx: TyCtxt<'_>,
-                top_level_module: &'module mut Module<'hir>,
-            ) -> Option<&'module mut Module<'hir>> {
-                // The `def` of a macro in `exported_macros` should correspond to either:
-                //  - a `#[macro-export] macro_rules!` macro,
-                //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,
-                //  - a `pub macro`.
-                // Only the last two need to be fixed, thus:
-                if def.ast.macro_rules {
-                    return None;
-                }
-                /* Because of #77828 we cannot do the simpler:
-                let macro_parent_module = tcx.def_path(tcx.parent_module(def.hir_id).to_def_id());
-                // and instead have to do: */
-                let macro_parent_module = tcx.def_path({
-                    use rustc_middle::ty::DefIdTree;
-                    tcx.parent(tcx.hir().local_def_id(def.hir_id).to_def_id())?
-                });
-                // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,
-                // lookup the module by its name, by looking at each path segment one at a time.
-                // WARNING: this will probably break in the presence of re-exports or shadowing.
-                let mut cur_mod = top_level_module;
-                for path_segment in macro_parent_module.data {
-                    let path_segment = path_segment.to_string();
-                    cur_mod = cur_mod.mods.iter_mut().find(|module| {
-                        matches!(
-                            module.name, Some(symbol)
-                            if symbol.with(|mod_name| mod_name == path_segment)
-                        )
-                    })?;
-                }
-                Some(cur_mod)
+            let visit_macro = || self.visit_local_macro(def, None);
+            // The `def` of a macro in `exported_macros` should correspond to either:
+            //  - a `#[macro-export] macro_rules!` macro,
+            //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,
+            //  - a `pub macro`.
+            // Only the last two need to be fixed, thus:
+            if def.ast.macro_rules {
+                top_level_module.macros.push(visit_macro());
+                return;
             }
-
-            if let Some(module) = containing_mod_of_macro(def, self.cx.tcx, &mut top_level_module) {
-                &mut module.macros
-            } else {
-                &mut top_level_module.macros
+            let tcx = self.cx.tcx;
+            /* Because of #77828 we cannot do the simpler:
+            let macro_parent_module = tcx.def_path(tcx.parent_module(def.hir_id).to_def_id());
+            // and instead have to do: */
+            let macro_parent_module = tcx.def_path({
+                use rustc_middle::ty::DefIdTree;
+                tcx.parent(tcx.hir().local_def_id(def.hir_id).to_def_id()).unwrap()
+            });
+            // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,
+            // lookup the module by its name, by looking at each path segment one at a time.
+            let mut cur_mod = &mut top_level_module;
+            for path_segment in macro_parent_module.data {
+                let path_segment_ty_ns = match path_segment.data {
+                    rustc_hir::definitions::DefPathData::TypeNs(symbol) => symbol,
+                    _ => {
+                        // If the path segment is not from the type namespace
+                        // (_e.g._, it can be from a value namespace in the case of `f::` in:
+                        // `fn f() { pub macro m() {} }`
+                        // then the item is not accessible, and should thus act as if it didn't
+                        // exist (unless "associated macros" (inside an `impl`) were a thing…).
+                        return;
+                    }
+                };
+                cur_mod = cur_mod
+                    .mods
+                    .iter_mut()
+                    .find(|module| module.name == Some(path_segment_ty_ns))
+                    .unwrap();
             }
-            .push(self.visit_local_macro(def, None));
+            cur_mod.macros.push(visit_macro());
         });
 
         self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
