@@ -11,17 +11,6 @@ LL | pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
    |
    = note: cannot satisfy `_: Send`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider specifying the type argument in the function call
-   |
-LL |     ($msg:expr) => ({ $crate::rt::begin_panic::<IoSlice<'a>>($msg) });
-   |                                              ^^^^^^^^^^^^^^^
-LL |     ($msg:expr) => ({ $crate::rt::begin_panic::<IoSliceMut<'a>>($msg) });
-   |                                              ^^^^^^^^^^^^^^^^^^
-LL |     ($msg:expr) => ({ $crate::rt::begin_panic::<ResumeTy>($msg) });
-   |                                              ^^^^^^^^^^^^
-LL |     ($msg:expr) => ({ $crate::rt::begin_panic::<Waker>($msg) });
-   |                                              ^^^^^^^^^
-     and 13 other candidates
 
 error: aborting due to previous error
 
