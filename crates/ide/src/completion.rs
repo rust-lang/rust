@@ -61,6 +61,8 @@ pub use crate::completion::{
 // - `expr.refm` -> `&mut expr`
 // - `expr.not` -> `!expr`
 // - `expr.dbg` -> `dbg!(expr)`
+// - `expr.dbgr` -> `dbg!(&expr)`
+// - `expr.call` -> `(expr)`
 //
 // There also snippet completions:
 //
