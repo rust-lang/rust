@@ -173,8 +173,15 @@ pub(crate) fn try_merge_trees(
     let rhs_path = rhs.path()?;
 
     let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-    let lhs = lhs.split_prefix(&lhs_prefix);
-    let rhs = rhs.split_prefix(&rhs_prefix);
+    let (lhs, rhs) = if is_simple_path(lhs)
+        && is_simple_path(rhs)
+        && lhs_path == lhs_prefix
+        && rhs_path == rhs_prefix
+    {
+        (lhs.clone(), rhs.clone())
+    } else {
+        (lhs.split_prefix(&lhs_prefix), rhs.split_prefix(&rhs_prefix))
+    };
     recursive_merge(&lhs, &rhs, merge)
 }
 
@@ -250,6 +257,10 @@ fn recursive_merge(
                         use_trees.insert(idx, make::glob_use_tree());
                         continue;
                     }
+
+                    if lhs_t.use_tree_list().is_none() && rhs_t.use_tree_list().is_none() {
+                        continue;
+                    }
                 }
                 let lhs = lhs_t.split_prefix(&lhs_prefix);
                 let rhs = rhs_t.split_prefix(&rhs_prefix);
@@ -293,6 +304,10 @@ fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast::Pa
             _ => break res,
         }
     }
+}
+
+fn is_simple_path(use_tree: &ast::UseTree) -> bool {
+    use_tree.use_tree_list().is_none() && use_tree.star_token().is_none()
 }
 
 fn path_is_self(path: &ast::Path) -> bool {
@@ -522,6 +537,11 @@ mod tests {
     use super::*;
 
     use test_utils::assert_eq_text;
+
+    #[test]
+    fn insert_existing() {
+        check_full("std::fs", "use std::fs;", "use std::fs;")
+    }
 
     #[test]
     fn insert_start() {

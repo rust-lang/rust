@@ -124,6 +124,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_replace_already_imported() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"use std::fs;
+
+fn main() {
+    std::f<|>s::Path
+}",
+            r"use std::fs;
+
+fn main() {
+    fs::Path
+}",
+        )
+    }
+
+    #[test]
     fn test_replace_add_use_no_anchor() {
         check_assist(
             replace_qualified_name_with_use,
