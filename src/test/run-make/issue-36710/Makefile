@@ -1,5 +1,7 @@
 include ../../run-make-fulldeps/tools.mk
 
+# ignore-wasm32
+
 all: foo
 	$(call RUN,foo)
 
