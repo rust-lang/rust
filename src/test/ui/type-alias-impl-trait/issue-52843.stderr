@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: Default` is not satisfied
+  --> $DIR/issue-52843.rs:3:15
+   |
+LL | type Foo<T> = impl Default;
+   |               ^^^^^^^^^^^^ the trait `Default` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | type Foo<T: Default> = impl Default;
+   |           ^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
