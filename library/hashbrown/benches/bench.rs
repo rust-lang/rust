@@ -43,7 +43,8 @@ impl Iterator for RandomKeys {
     }
 }
 
-// Just an arbitrary side effect to
+// Just an arbitrary side effect to make the maps not shortcircuit to the non-dropping path
+// when dropping maps/entries (most real world usages likely have drop in the key or value)
 lazy_static::lazy_static! {
     static ref SIDE_EFFECT: AtomicUsize = AtomicUsize::new(0);
 }
