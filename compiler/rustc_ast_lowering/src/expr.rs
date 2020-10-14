@@ -1367,14 +1367,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut used_input_regs = FxHashMap::default();
         let mut used_output_regs = FxHashMap::default();
+        let mut required_features: Vec<&str> = vec![];
         for (idx, op) in operands.iter().enumerate() {
             let op_sp = asm.operands[idx].1;
             if let Some(reg) = op.reg() {
+                // Make sure we don't accidentally carry features from the
+                // previous iteration.
+                required_features.clear();
+
                 // Validate register classes against currently enabled target
                 // features. We check that at least one type is available for
                 // the current target.
                 let reg_class = reg.reg_class();
-                let mut required_features: Vec<&str> = vec![];
                 for &(_, feature) in reg_class.supported_types(asm_arch) {
                     if let Some(feature) = feature {
                         if self.sess.target_features.contains(&Symbol::intern(feature)) {
