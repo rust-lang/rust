@@ -89,7 +89,7 @@ fn str_index_overflow_fail() -> ! {
 /// self`. Equivalent to `&self[0 .. len]` or `&mut self[0 .. len]`. Unlike
 /// other indexing operations, this can never panic.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// Prior to 1.20.0, these indexing operations were still supported by
 /// direct implementation of `Index` and `IndexMut`.
@@ -130,7 +130,7 @@ unsafe impl SliceIndex<str> for ops::RangeFull {
 /// Returns a slice of the given string from the byte range
 /// [`begin`, `end`).
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// Prior to 1.20.0, these indexing operations were still supported by
 /// direct implementation of `Index` and `IndexMut`.
@@ -237,7 +237,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
 /// Returns a slice of the given string from the byte range [`0`, `end`).
 /// Equivalent to `&self[0 .. end]` or `&mut self[0 .. end]`.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// Prior to 1.20.0, these indexing operations were still supported by
 /// direct implementation of `Index` and `IndexMut`.
@@ -308,7 +308,7 @@ unsafe impl SliceIndex<str> for ops::RangeTo<usize> {
 /// `len`). Equivalent to `&self[begin .. len]` or `&mut self[begin ..
 /// len]`.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// Prior to 1.20.0, these indexing operations were still supported by
 /// direct implementation of `Index` and `IndexMut`.
@@ -385,7 +385,7 @@ unsafe impl SliceIndex<str> for ops::RangeFrom<usize> {
 /// self[begin .. end + 1]`, except if `end` has the maximum value for
 /// `usize`.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// # Panics
 ///
@@ -441,7 +441,7 @@ unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
 /// Equivalent to `&self [0 .. end + 1]`, except if `end` has the maximum
 /// value for `usize`.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// # Panics
 ///

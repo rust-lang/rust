@@ -259,7 +259,7 @@ use crate::raw_vec::RawVec;
 /// `Vec` does not guarantee any particular growth strategy when reallocating
 /// when full, nor when [`reserve`] is called. The current strategy is basic
 /// and it may prove desirable to use a non-constant growth factor. Whatever
-/// strategy is used will of course guarantee `O(1)` amortized [`push`].
+/// strategy is used will of course guarantee *O*(1) amortized [`push`].
 ///
 /// `vec![x; n]`, `vec![a, b, c, d]`, and
 /// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
