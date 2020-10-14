@@ -1519,8 +1519,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     }
 }
 
-pub const CODEGEN_WORKER_ID: usize = usize::MAX;
-
 /// `FatalError` is explicitly not `Send`.
 #[must_use]
 pub struct WorkerFatalError;

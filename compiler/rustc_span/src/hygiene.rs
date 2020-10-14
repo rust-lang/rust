@@ -619,14 +619,6 @@ impl SyntaxContext {
         HygieneData::with(|data| data.outer_mark(self))
     }
 
-    #[inline]
-    pub fn outer_mark_with_data(self) -> (ExpnId, Transparency, ExpnData) {
-        HygieneData::with(|data| {
-            let (expn_id, transparency) = data.outer_mark(self);
-            (expn_id, transparency, data.expn_data(expn_id).clone())
-        })
-    }
-
     pub fn dollar_crate_name(self) -> Symbol {
         HygieneData::with(|data| data.syntax_context_data[self.0 as usize].dollar_crate_name)
     }

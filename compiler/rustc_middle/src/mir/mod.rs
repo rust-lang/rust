@@ -3,7 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
-use crate::mir::interpret::{Allocation, ConstValue, GlobalAlloc, Scalar};
+use crate::mir::interpret::{Allocation, GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -458,17 +458,6 @@ impl<'tcx> Body<'tcx> {
             assert_eq!(idx, stmts.len());
             &block.terminator().source_info
         }
-    }
-
-    /// Checks if `sub` is a sub scope of `sup`
-    pub fn is_sub_scope(&self, mut sub: SourceScope, sup: SourceScope) -> bool {
-        while sub != sup {
-            match self.source_scopes[sub].parent_scope {
-                None => return false,
-                Some(p) => sub = p,
-            }
-        }
-        true
     }
 
     /// Returns the return type; it always return first element from `local_decls` array.
@@ -1978,45 +1967,6 @@ impl<'tcx> Operand<'tcx> {
         })
     }
 
-    /// Convenience helper to make a `Scalar` from the given `Operand`, assuming that `Operand`
-    /// wraps a constant literal value. Panics if this is not the case.
-    pub fn scalar_from_const(operand: &Operand<'tcx>) -> Scalar {
-        match operand {
-            Operand::Constant(constant) => match constant.literal.val.try_to_scalar() {
-                Some(scalar) => scalar,
-                _ => panic!("{:?}: Scalar value expected", constant.literal.val),
-            },
-            _ => panic!("{:?}: Constant expected", operand),
-        }
-    }
-
-    /// Convenience helper to make a literal-like constant from a given `&str` slice.
-    /// Since this is used to synthesize MIR, assumes `user_ty` is None.
-    pub fn const_from_str(tcx: TyCtxt<'tcx>, val: &str, span: Span) -> Operand<'tcx> {
-        let tcx = tcx;
-        let allocation = Allocation::from_byte_aligned_bytes(val.as_bytes());
-        let allocation = tcx.intern_const_alloc(allocation);
-        let const_val = ConstValue::Slice { data: allocation, start: 0, end: val.len() };
-        let ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.types.str_);
-        Operand::Constant(box Constant {
-            span,
-            user_ty: None,
-            literal: ty::Const::from_value(tcx, const_val, ty),
-        })
-    }
-
-    /// Convenience helper to make a `ConstValue` from the given `Operand`, assuming that `Operand`
-    /// wraps a constant value (such as a `&str` slice). Panics if this is not the case.
-    pub fn value_from_const(operand: &Operand<'tcx>) -> ConstValue<'tcx> {
-        match operand {
-            Operand::Constant(constant) => match constant.literal.val.try_to_value() {
-                Some(const_value) => const_value,
-                _ => panic!("{:?}: ConstValue expected", constant.literal.val),
-            },
-            _ => panic!("{:?}: Constant expected", operand),
-        }
-    }
-
     pub fn to_copy(&self) -> Self {
         match *self {
             Operand::Copy(_) | Operand::Constant(_) => self.clone(),
@@ -2411,10 +2361,6 @@ impl<'tcx> UserTypeProjections {
 
     pub fn is_empty(&self) -> bool {
         self.contents.is_empty()
-    }
-
-    pub fn from_projections(projs: impl Iterator<Item = (UserTypeProjection, Span)>) -> Self {
-        UserTypeProjections { contents: projs.collect() }
     }
 
     pub fn projections_and_spans(

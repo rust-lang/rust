@@ -28,7 +28,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use std::fmt::Debug;
 
@@ -117,12 +116,6 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// Enables some optimizations if we do not expect inference variables
     /// in the RHS of the relation.
     fn forbid_inference_vars() -> bool;
-}
-
-#[derive(Clone, Debug)]
-struct ScopesAndKind<'tcx> {
-    scopes: Vec<BoundRegionScope<'tcx>>,
-    kind: GenericArg<'tcx>,
 }
 
 #[derive(Clone, Debug, Default)]

@@ -104,14 +104,6 @@ impl<'tcx> TyCtxt<'tcx> {
         // ```
         ty.uninhabited_from(self, param_env).contains(self, module)
     }
-
-    pub fn is_ty_uninhabited_from_any_module(
-        self,
-        ty: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> bool {
-        !ty.uninhabited_from(self, param_env).is_empty()
-    }
 }
 
 impl<'tcx> AdtDef {

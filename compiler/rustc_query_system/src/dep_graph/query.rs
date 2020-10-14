@@ -1,7 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::implementation::{
-    Direction, Graph, NodeIndex, INCOMING, OUTGOING,
-};
+use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
 
 use super::{DepKind, DepNode};
 
@@ -52,23 +50,8 @@ impl<K: DepKind> DepGraphQuery<K> {
         }
     }
 
-    /// All nodes reachable from `node`. In other words, things that
-    /// will have to be recomputed if `node` changes.
-    pub fn transitive_successors(&self, node: &DepNode<K>) -> Vec<&DepNode<K>> {
-        self.reachable_nodes(node, OUTGOING)
-    }
-
     /// All nodes that can reach `node`.
     pub fn transitive_predecessors(&self, node: &DepNode<K>) -> Vec<&DepNode<K>> {
         self.reachable_nodes(node, INCOMING)
-    }
-
-    /// Just the outgoing edges from `node`.
-    pub fn immediate_successors(&self, node: &DepNode<K>) -> Vec<&DepNode<K>> {
-        if let Some(&index) = self.indices.get(&node) {
-            self.graph.successor_nodes(index).map(|s| self.graph.node_data(s)).collect()
-        } else {
-            vec![]
-        }
     }
 }

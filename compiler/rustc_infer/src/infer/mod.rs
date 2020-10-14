@@ -113,13 +113,6 @@ impl Default for RegionckMode {
 }
 
 impl RegionckMode {
-    pub fn suppressed(self) -> bool {
-        match self {
-            Self::Solve => false,
-            Self::Erase { suppress_errors } => suppress_errors,
-        }
-    }
-
     /// Indicates that the MIR borrowck will repeat these region
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
@@ -420,15 +413,6 @@ pub enum SubregionOrigin<'tcx> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(SubregionOrigin<'_>, 32);
 
-/// Places that type/region parameters can appear.
-#[derive(Clone, Copy, Debug)]
-pub enum ParameterOrigin {
-    Path,               // foo::bar
-    MethodCall,         // foo.bar() <-- parameters on impl providing bar()
-    OverloadedOperator, // a + b when overloaded
-    OverloadedDeref,    // *a when overloaded
-}
-
 /// Times when we replace late-bound regions with variables:
 #[derive(Clone, Copy, Debug)]
 pub enum LateBoundRegionConversionTime {
@@ -506,21 +490,6 @@ pub enum NLLRegionVariableOrigin {
         /// rather than blaming the source of the constraint C.
         from_forall: bool,
     },
-}
-
-impl NLLRegionVariableOrigin {
-    pub fn is_universal(self) -> bool {
-        match self {
-            NLLRegionVariableOrigin::FreeRegion => true,
-            NLLRegionVariableOrigin::Placeholder(..) => true,
-            NLLRegionVariableOrigin::Existential { .. } => false,
-            NLLRegionVariableOrigin::RootEmptyRegion => false,
-        }
-    }
-
-    pub fn is_existential(self) -> bool {
-        !self.is_universal()
-    }
 }
 
 // FIXME(eddyb) investigate overlap between this and `TyOrConstInferVar`.

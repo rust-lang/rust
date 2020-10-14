@@ -101,11 +101,6 @@ impl NestedMetaItem {
         self.meta_item().is_some()
     }
 
-    /// Returns `true` if the variant is `Literal`.
-    pub fn is_literal(&self) -> bool {
-        self.literal().is_some()
-    }
-
     /// Returns `true` if `self` is a `MetaItem` and the meta item is a word.
     pub fn is_word(&self) -> bool {
         self.meta_item().map_or(false, |meta_item| meta_item.is_word())
@@ -231,10 +226,6 @@ impl MetaItem {
 
     pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
-    }
-
-    pub fn is_meta_item_list(&self) -> bool {
-        self.meta_item_list().is_some()
     }
 }
 
