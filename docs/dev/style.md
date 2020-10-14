@@ -186,6 +186,31 @@ impl Person {
 }
 ```
 
+## Constructors
+
+Prefer `Default` to zero-argument `new` function
+
+```rust
+// Good
+#[derive(Default)]
+struct Foo {
+    bar: Option<Bar>
+}
+
+// Not as good
+struct Foo {
+    bar: Option<Bar>
+}
+
+impl Foo {
+    fn new() -> Foo {
+        Foo { bar: None }
+    }
+}
+```
+
+Prefer `Default` even it has to be implemented manually.
+
 ## Avoid Monomorphization
 
 Rust uses monomorphization to compile generic code, meaning that for each instantiation of a generic functions with concrete types, the function is compiled afresh, *per crate*.
