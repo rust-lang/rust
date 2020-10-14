@@ -71,6 +71,9 @@ use iter::SplitInclusive;
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::next_code_point;
 
+#[unstable(feature = "str_internals", issue = "none")]
+pub use validations::utf8_char_width;
+
 use iter::MatchIndicesInternal;
 use iter::SplitInternal;
 use iter::{MatchesInternal, SplitNInternal};
