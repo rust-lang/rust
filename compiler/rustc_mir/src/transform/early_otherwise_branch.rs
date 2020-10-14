@@ -101,7 +101,8 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 .iter()
                 .flat_map(|x| x.switch_targets.iter().map(|x| (x.0, x.1)));
 
-            let targets = SwitchTargets::new(new_targets, first_switch_info.otherwise_bb);
+            let targets =
+                SwitchTargets::new(new_targets, first_switch_info.switch_targets.otherwise());
 
             // new block that jumps to the correct discriminant case. This block is switched to if the discriminants are equal
             let new_switch_data = BasicBlockData::new(Some(Terminator {
@@ -118,7 +119,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 
             // switch on the NotEqual. If true, then jump to the `otherwise` case.
             // If false, then jump to a basic block that then jumps to the correct disciminant case
-            let true_case = first_switch_info.otherwise_bb;
+            let true_case = first_switch_info.switch_targets.otherwise();
             let false_case = new_switch_bb;
             patch.patch_terminator(
                 opt_to_apply.basic_block_first_switch,
@@ -171,8 +172,6 @@ struct Helper<'a, 'tcx> {
 struct SwitchDiscriminantInfo<'tcx> {
     /// Type of the discriminant being switched on
     discr_ty: Ty<'tcx>,
-    /// The basic block that the otherwise branch points to
-    otherwise_bb: BasicBlock,
     /// Targets and values for the switch
     switch_targets: SwitchTargets,
     discr_source_info: SourceInfo,
@@ -232,7 +231,9 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
             let this_bb_discr_info = self.find_switch_discriminant_info(bb, terminator)?;
 
             // The otherwise branch of the two switches have to point to the same bb
-            if discr_info.otherwise_bb != this_bb_discr_info.otherwise_bb {
+            if discr_info.switch_targets.otherwise()
+                != this_bb_discr_info.switch_targets.otherwise()
+            {
                 trace!("NO: otherwise target is not the same");
                 return None;
             }
@@ -287,7 +288,6 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 // the declaration of the discriminant read. Place of this read is being used in the switch
                 let discr_decl = &self.body.local_decls()[discr_local];
                 let discr_ty = discr_decl.ty;
-                let otherwise_bb = targets.otherwise();
                 let targets_with_values = targets.clone();
 
                 // find the place of the adt where the discriminant is being read from
@@ -304,7 +304,6 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 Some(SwitchDiscriminantInfo {
                     discr_used_in_switch: discr.place()?,
                     discr_ty,
-                    otherwise_bb,
                     switch_targets: targets_with_values,
                     discr_source_info: discr_decl.source_info,
                     place_of_adt_discr_read,
