@@ -23,6 +23,7 @@ use std::time::Instant;
 
 static HOSTS: &[&str] = &[
     "aarch64-apple-darwin",
+    "aarch64-pc-windows-msvc",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
     "arm-unknown-linux-gnueabi",
