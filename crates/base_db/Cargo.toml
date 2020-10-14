@@ -10,7 +10,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-salsa = "0.15.2"
+salsa = "0.16.0"
 rustc-hash = "1.1.0"
 
 syntax = { path = "../syntax", version = "0.0.0" }
