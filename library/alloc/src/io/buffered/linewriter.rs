@@ -155,6 +155,24 @@ impl<W: Write> LineWriter<W> {
         self.inner.get_mut()
     }
 
+    /// Returns a reference to the internally buffered data.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::LineWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let buf_writer = LineWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // See how many bytes are currently buffered
+    /// let bytes_buffered = buf_writer.buffer().len();
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn buffer(&self) -> &[u8] {
+        &self.inner.buffer()
+    }
+
     /// Unwraps this `LineWriter`, returning the underlying writer.
     ///
     /// The internal buffer is written out before returning the writer.
