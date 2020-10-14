@@ -7,7 +7,7 @@
 //! intended to empower WebAssembly binaries with native capabilities such as
 //! filesystem access, network access, etc.
 //!
-//! You can see more about the proposal at https://wasi.dev
+//! You can see more about the proposal at <https://wasi.dev>.
 //!
 //! The Rust target definition here is interesting in a few ways. We want to
 //! serve two use cases here with this target:

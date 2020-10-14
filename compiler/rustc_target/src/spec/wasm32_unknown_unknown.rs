@@ -8,7 +8,7 @@
 //! (e.g. trying to create a TCP stream or something like that).
 //!
 //! This target is more or less managed by the Rust and WebAssembly Working
-//! Group nowadays at https://github.com/rustwasm.
+//! Group nowadays at <https://github.com/rustwasm>.
 
 use super::wasm32_base;
 use super::{LinkerFlavor, LldFlavor, Target};
