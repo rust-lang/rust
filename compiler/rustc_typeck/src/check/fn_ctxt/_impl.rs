@@ -16,7 +16,7 @@ use rustc_hir::{ExprKind, GenericArg, Node, QPath};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{InferOk, InferResult};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{
     self, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
@@ -301,6 +301,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .. // Any following adjustments are allowed.
                     ]) => {
                         // A reborrow has no effect before a dereference.
+                    }
+                    (&[Adjustment { kind: Adjust::Pointer(PointerCast::ReifyFnPointer), .. }],
+                     &[Adjustment { kind: Adjust::Pointer(PointerCast::NotConstFnPointer), .. }])  => {
+                        entry.get_mut().push(adj[0].clone());
+                        return;
                     }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
