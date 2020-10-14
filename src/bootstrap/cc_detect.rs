@@ -129,7 +129,8 @@ pub fn find(build: &mut Build) {
             set_compiler(&mut cfg, Language::CPlusPlus, target, config, build);
             true
         } else {
-            false
+            // Use an auto-detected compiler (or one configured via `CXX_target_triple` env vars).
+            cfg.try_get_compiler().is_ok()
         };
 
         // for VxWorks, record CXX compiler which will be used in lib.rs:linker()
