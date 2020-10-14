@@ -1,8 +1,13 @@
-error[E0282]: type annotations needed
-  --> $DIR/unknown_type_for_closure.rs:2:14
+error[E0282]: type annotations needed for the closure `fn(_) -> ()`
+  --> $DIR/unknown_type_for_closure.rs:2:13
    |
 LL |     let x = |_| {    };
-   |              ^ consider giving this closure parameter a type
+   |             ^^^^^^^^^^ cannot infer type for closure `[closure@$DIR/unknown_type_for_closure.rs:2:13: 2:23]`
+   |
+help: give this closure an explicit return type without `_` placeholders
+   |
+LL |     let x = |_| -> () {    };
+   |                 ^^^^^
 
 error: aborting due to previous error
 

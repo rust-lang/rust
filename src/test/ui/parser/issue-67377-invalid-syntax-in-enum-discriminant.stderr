@@ -17,7 +17,7 @@ LL |         V = [Vec::new; { [].len()  ].len() as isize,
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:25:36
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |             -          -           ^ mismatched closing delimiter
@@ -44,7 +44,7 @@ LL |         V = [Vec::new; { [].len()  ].len() as isize,
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:25:36
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |             -          -           ^ mismatched closing delimiter
@@ -71,7 +71,7 @@ LL |         V = [Vec::new; { [].len()  ].len() as isize,
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:25:36
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |             -          -           ^ mismatched closing delimiter
@@ -98,7 +98,7 @@ LL |         V = [Vec::new; { [].len()  ].len() as isize,
    |             closing delimiter possibly meant for this
 
 error: mismatched closing delimiter: `]`
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:36
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:25:36
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |             -          -           ^ mismatched closing delimiter
@@ -106,18 +106,5 @@ LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
-error[E0282]: type annotations needed
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:29
-   |
-LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |                             ^^^ cannot infer type for type parameter `T`
+error: aborting due to 12 previous errors
 
-error[E0282]: type annotations needed
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:14
-   |
-LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |              ^^^^^^^^ cannot infer type for type parameter `T`
-
-error: aborting due to 14 previous errors
-
-For more information about this error, try `rustc --explain E0282`.

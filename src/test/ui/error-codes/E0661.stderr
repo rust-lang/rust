@@ -4,18 +4,6 @@ error[E0661]: output operand constraint lacks '=' or '+'
 LL |     llvm_asm!("nop" : "r"(a));
    |                       ^^^
 
-error[E0282]: type annotations needed
-  --> $DIR/E0661.rs:6:9
-   |
-LL |     let a;
-   |         ^ cannot infer type
-   |
-help: consider giving this binding a type
-   |
-LL |     let a: Type;
-   |          ^^^^^^
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0282, E0661.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0661`.

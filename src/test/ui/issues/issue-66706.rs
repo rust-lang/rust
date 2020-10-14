@@ -1,7 +1,6 @@
 fn a() {
     [0; [|_: _ &_| ()].len()]
     //~^ ERROR expected `,`, found `&`
-    //~| ERROR type annotations needed
     //~| ERROR mismatched types
 }
 

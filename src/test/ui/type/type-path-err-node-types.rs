@@ -19,8 +19,4 @@ fn method() {
     nonexistent.nonexistent::<u8>(); //~ ERROR cannot find value `nonexistent`
 }
 
-fn closure() {
-    let _ = |a, b: _| -> _ { 0 }; //~ ERROR type annotations needed
-}
-
 fn main() {}

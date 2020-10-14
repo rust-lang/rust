@@ -222,19 +222,20 @@ LL |     let y: BinaryHeap<T> = x.into_iter().collect();
    |          ^^^^^^^^^^^^^^^
      and 6 other candidates
 
-error[E0282]: type annotations needed
-  --> $DIR/appropriate-type-param-turbofish.rs:90:15
+error[E0283]: type annotations needed
+  --> $DIR/appropriate-type-param-turbofish.rs:89:15
    |
 LL |     let _ = I.foo();
    |               ^^^ cannot infer type for type parameter `T` declared on the associated function `foo`
    |
-help: consider giving this binding a type
+   = note: cannot satisfy `_: Bar<_>`
+help: consider giving this binding the explicit type `K<i32>`
    |
-LL |     let _: Type = I.foo();
-   |          ^^^^^^
+LL |     let _: K<i32> = I.foo();
+   |          ^^^^^^^^
 
 error[E0283]: type annotations needed
-  --> $DIR/appropriate-type-param-turbofish.rs:95:5
+  --> $DIR/appropriate-type-param-turbofish.rs:96:5
    |
 LL | fn bak<T: Into<String>>() {}
    |           ------------ required by this bound in `bak`
@@ -250,5 +251,4 @@ LL |     bak::<T>();
 
 error: aborting due to 14 previous errors
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

@@ -1505,7 +1505,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(data.trait_ref.def_id) {
                     self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282, &[])
-                        .emit();
+                        .delay_as_bug();
                     return;
                 }
                 // Try to find possible types that would satisfy the bounds in the type param to

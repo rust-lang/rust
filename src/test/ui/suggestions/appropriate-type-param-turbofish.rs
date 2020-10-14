@@ -85,10 +85,11 @@ struct I;
 
 impl Foo for I {}
 
-// These two cases do not have good suggestions yet:
 fn bat() {
     let _ = I.foo(); //~ ERROR type annotations needed
 }
+
+// This case does not have a good suggestion yet:
 fn bak<T: Into<String>>() {}
 
 fn main() {

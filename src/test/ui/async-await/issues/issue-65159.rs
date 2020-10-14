@@ -5,7 +5,6 @@
 async fn copy() -> Result<()> //~ ERROR wrong number of type arguments
 {
     Ok(())
-    //~^ ERROR type annotations needed
 }
 
 fn main() { }
