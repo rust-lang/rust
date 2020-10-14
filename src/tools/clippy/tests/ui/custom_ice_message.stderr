@@ -10,4 +10,4 @@ note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy
 note: Clippy version: foo
 
 query stack during panic:
-we're just showing a limited slice of the query stack
+end of query stack
