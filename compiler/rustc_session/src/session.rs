@@ -1586,5 +1586,3 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
     handler.struct_warn(msg).emit();
 }
-
-pub type CompileResult = Result<(), ErrorReported>;

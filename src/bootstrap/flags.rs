@@ -125,6 +125,7 @@ Subcommands:
     dist        Build distribution artifacts
     install     Install distribution artifacts
     run, r      Run tools contained in this repository
+    setup       Create a config.toml (making it easier to use `x.py` itself)
 
 To learn more about a subcommand, run `./x.py <subcommand> -h`",
         );
@@ -472,15 +473,21 @@ Arguments:
                 );
             }
             "setup" => {
-                subcommand_help.push_str(
+                subcommand_help.push_str(&format!(
                     "\n
+x.py setup creates a `config.toml` which changes the defaults for x.py itself.
+
 Arguments:
     This subcommand accepts a 'profile' to use for builds. For example:
 
         ./x.py setup library
 
-    The profile is optional and you will be prompted interactively if it is not given.",
-                );
+    The profile is optional and you will be prompted interactively if it is not given.
+    The following profiles are available:
+
+{}",
+                    Profile::all_for_help("        ").trim_end()
+                ));
             }
             _ => {}
         };
@@ -551,9 +558,7 @@ Arguments:
                     profile_string.parse().unwrap_or_else(|err| {
                         eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
-                        for choice in Profile::all() {
-                            eprintln!("- {}", choice);
-                        }
+                        eprint!("{}", Profile::all_for_help("- "));
                         std::process::exit(1);
                     })
                 } else {

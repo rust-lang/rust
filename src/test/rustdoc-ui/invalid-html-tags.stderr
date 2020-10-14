@@ -76,5 +76,11 @@ error: unclosed HTML tag `div`
 LL | /// <div></div
    |     ^^^^^
 
-error: aborting due to 12 previous errors
+error: Unclosed HTML comment
+  --> $DIR/invalid-html-tags.rs:87:5
+   |
+LL | /// <!--
+   |     ^^^
+
+error: aborting due to 13 previous errors
 

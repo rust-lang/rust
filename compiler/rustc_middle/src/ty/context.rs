@@ -534,10 +534,6 @@ impl<'tcx> TypeckResults<'tcx> {
         self.node_type(pat.hir_id)
     }
 
-    pub fn pat_ty_opt(&self, pat: &hir::Pat<'_>) -> Option<Ty<'tcx>> {
-        self.node_type_opt(pat.hir_id)
-    }
-
     // Returns the type of an expression as a monotype.
     //
     // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in

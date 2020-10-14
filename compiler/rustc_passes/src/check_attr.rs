@@ -287,8 +287,9 @@ impl CheckAttrVisitor<'tcx> {
                             self.doc_alias_str_error(meta);
                             return false;
                         }
-                        if let Some(c) =
-                            doc_alias.chars().find(|&c| c == '"' || c == '\'' || c.is_whitespace())
+                        if let Some(c) = doc_alias
+                            .chars()
+                            .find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
                         {
                             self.tcx
                                 .sess
@@ -298,6 +299,16 @@ impl CheckAttrVisitor<'tcx> {
                                         "{:?} character isn't allowed in `#[doc(alias = \"...\")]`",
                                         c,
                                     ),
+                                )
+                                .emit();
+                            return false;
+                        }
+                        if doc_alias.starts_with(' ') || doc_alias.ends_with(' ') {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    "`#[doc(alias = \"...\")]` cannot start or end with ' '",
                                 )
                                 .emit();
                             return false;

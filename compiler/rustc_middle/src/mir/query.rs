@@ -414,18 +414,6 @@ pub struct CoverageInfo {
 /// at the docs for `WithOptConstParam` itself.
 impl<'tcx> TyCtxt<'tcx> {
     #[inline]
-    pub fn mir_borrowck_opt_const_arg(
-        self,
-        def: ty::WithOptConstParam<LocalDefId>,
-    ) -> &'tcx BorrowCheckResult<'tcx> {
-        if let Some(param_did) = def.const_param_did {
-            self.mir_borrowck_const_arg((def.did, param_did))
-        } else {
-            self.mir_borrowck(def.did)
-        }
-    }
-
-    #[inline]
     pub fn mir_const_qualif_opt_const_arg(
         self,
         def: ty::WithOptConstParam<LocalDefId>,

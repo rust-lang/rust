@@ -97,9 +97,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_infer_types_or_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_CT_INFER)
     }
-    fn has_infer_consts(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_CT_INFER)
-    }
     fn needs_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_INFER)
     }
@@ -112,9 +109,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
     fn needs_subst(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST)
-    }
-    fn has_re_placeholders(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER)
     }
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
@@ -719,21 +713,15 @@ impl<'tcx> TyCtxt<'tcx> {
 // vars. See comment on `shift_vars_through_binders` method in
 // `subst.rs` for more details.
 
-enum Direction {
-    In,
-    Out,
-}
-
 struct Shifter<'tcx> {
     tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
     amount: u32,
-    direction: Direction,
 }
 
 impl Shifter<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, amount: u32, direction: Direction) -> Self {
-        Shifter { tcx, current_index: ty::INNERMOST, amount, direction }
+    pub fn new(tcx: TyCtxt<'tcx>, amount: u32) -> Self {
+        Shifter { tcx, current_index: ty::INNERMOST, amount }
     }
 }
 
@@ -755,13 +743,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
                 if self.amount == 0 || debruijn < self.current_index {
                     r
                 } else {
-                    let debruijn = match self.direction {
-                        Direction::In => debruijn.shifted_in(self.amount),
-                        Direction::Out => {
-                            assert!(debruijn.as_u32() >= self.amount);
-                            debruijn.shifted_out(self.amount)
-                        }
-                    };
+                    let debruijn = debruijn.shifted_in(self.amount);
                     let shifted = ty::ReLateBound(debruijn, br);
                     self.tcx.mk_region(shifted)
                 }
@@ -776,13 +758,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
                 if self.amount == 0 || debruijn < self.current_index {
                     ty
                 } else {
-                    let debruijn = match self.direction {
-                        Direction::In => debruijn.shifted_in(self.amount),
-                        Direction::Out => {
-                            assert!(debruijn.as_u32() >= self.amount);
-                            debruijn.shifted_out(self.amount)
-                        }
-                    };
+                    let debruijn = debruijn.shifted_in(self.amount);
                     self.tcx.mk_ty(ty::Bound(debruijn, bound_ty))
                 }
             }
@@ -796,13 +772,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
-                let debruijn = match self.direction {
-                    Direction::In => debruijn.shifted_in(self.amount),
-                    Direction::Out => {
-                        assert!(debruijn.as_u32() >= self.amount);
-                        debruijn.shifted_out(self.amount)
-                    }
-                };
+                let debruijn = debruijn.shifted_in(self.amount);
                 self.tcx.mk_const(ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty })
             }
         } else {
@@ -830,16 +800,7 @@ where
 {
     debug!("shift_vars(value={:?}, amount={})", value, amount);
 
-    value.fold_with(&mut Shifter::new(tcx, amount, Direction::In))
-}
-
-pub fn shift_out_vars<'tcx, T>(tcx: TyCtxt<'tcx>, value: &T, amount: u32) -> T
-where
-    T: TypeFoldable<'tcx>,
-{
-    debug!("shift_out_vars(value={:?}, amount={})", value, amount);
-
-    value.fold_with(&mut Shifter::new(tcx, amount, Direction::Out))
+    value.fold_with(&mut Shifter::new(tcx, amount))
 }
 
 /// An "escaping var" is a bound var whose binder is not part of `t`. A bound var can be a

@@ -165,10 +165,6 @@ impl WorkProductId {
         cgu_name.hash(&mut hasher);
         WorkProductId { hash: hasher.finish() }
     }
-
-    pub fn from_fingerprint(fingerprint: Fingerprint) -> WorkProductId {
-        WorkProductId { hash: fingerprint }
-    }
 }
 
 impl<HCX> HashStable<HCX> for WorkProductId {

@@ -118,11 +118,6 @@ pub fn SetUnnamedAddress(global: &'a Value, unnamed: UnnamedAddr) {
     }
 }
 
-pub fn set_thread_local(global: &'a Value, is_thread_local: bool) {
-    unsafe {
-        LLVMSetThreadLocal(global, is_thread_local as Bool);
-    }
-}
 pub fn set_thread_local_mode(global: &'a Value, mode: ThreadLocalMode) {
     unsafe {
         LLVMSetThreadLocalMode(global, mode);
