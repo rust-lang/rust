@@ -12,7 +12,7 @@ backend. The library must contain a function named `__rustc_codegen_backend`
 with a signature of `fn() -> Box<dyn rustc_codegen_ssa::traits::CodegenBackend>`.
 
 ## Example
-```rust
+```rust,ignore
 use rustc_codegen_ssa::traits::CodegenBackend;
 
 struct MyBackend;
