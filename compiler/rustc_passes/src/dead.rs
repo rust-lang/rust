@@ -458,8 +458,8 @@ fn create_and_seed_worklist<'tcx>(
         .map
         .iter()
         .filter_map(
-            |(&id, level)| {
-                if level >= &privacy::AccessLevel::Reachable { Some(id) } else { None }
+            |(&id, &level)| {
+                if level >= privacy::AccessLevel::Reachable { Some(id) } else { None }
             },
         )
         .chain(
