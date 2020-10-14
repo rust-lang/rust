@@ -45,7 +45,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let group = import_group_message(import_assets.import_candidate());
     let scope = ImportScope::find_insert_use_container(import_assets.syntax_under_caret(), ctx)?;
     let syntax = scope.as_syntax_node();
-    for import in proposed_imports {
+    for (import, _) in proposed_imports {
         acc.add_group(
             &group,
             AssistId("auto_import", AssistKind::QuickFix),

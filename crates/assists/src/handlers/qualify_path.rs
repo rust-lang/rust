@@ -1,6 +1,12 @@
-use std::collections::BTreeSet;
+use std::iter;
 
-use syntax::{ast, AstNode, TextRange};
+use hir::AsName;
+use ide_db::RootDatabase;
+use syntax::{
+    ast,
+    ast::{make, ArgListOwner},
+    AstNode, TextRange,
+};
 use test_utils::mark;
 
 use crate::{
@@ -9,6 +15,8 @@ use crate::{
     utils::mod_path_to_ast,
     AssistId, AssistKind, GroupLabel,
 };
+
+const ASSIST_ID: AssistId = AssistId("qualify_path", AssistKind::QuickFix);
 
 // Assist: qualify_path
 //
@@ -53,30 +61,14 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         ImportCandidate::UnqualifiedName(candidate) => {
             qualify_path_unqualified_name(acc, proposed_imports, range, &candidate.name)
         }
-        ImportCandidate::TraitAssocItem(candidate) => {
+        ImportCandidate::TraitAssocItem(_) => {
             let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
             let (qualifier, segment) = (path.qualifier()?, path.segment()?);
-            qualify_path_trait_assoc_item(
-                acc,
-                proposed_imports,
-                range,
-                qualifier,
-                segment,
-                &candidate.name,
-            )
+            qualify_path_trait_assoc_item(acc, proposed_imports, range, qualifier, segment)
         }
-        ImportCandidate::TraitMethod(candidate) => {
+        ImportCandidate::TraitMethod(_) => {
             let mcall_expr = ast::MethodCallExpr::cast(import_assets.syntax_under_caret().clone())?;
-            let receiver = mcall_expr.receiver()?;
-            let name_ref = mcall_expr.name_ref()?;
-            qualify_path_trait_method(
-                acc,
-                proposed_imports,
-                range,
-                receiver,
-                name_ref,
-                &candidate.name,
-            )
+            qualify_path_trait_method(acc, ctx.sema.db, proposed_imports, range, mcall_expr)?;
         }
     };
     Some(())
@@ -85,17 +77,17 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 // a test that covers this -> `associated_struct_const`
 fn qualify_path_qualifier_start(
     acc: &mut Assists,
-    proposed_imports: BTreeSet<hir::ModPath>,
+    proposed_imports: Vec<(hir::ModPath, hir::ItemInNs)>,
     range: TextRange,
     segment: ast::PathSegment,
-    qualifier_start: &str,
+    qualifier_start: &ast::NameRef,
 ) {
     mark::hit!(qualify_path_qualifier_start);
     let group_label = GroupLabel(format!("Qualify {}", qualifier_start));
-    for import in proposed_imports {
+    for (import, _) in proposed_imports {
         acc.add_group(
             &group_label,
-            AssistId("qualify_path", AssistKind::QuickFix),
+            ASSIST_ID,
             format!("Qualify with `{}`", &import),
             range,
             |builder| {
@@ -109,16 +101,16 @@ fn qualify_path_qualifier_start(
 // a test that covers this -> `applicable_when_found_an_import_partial`
 fn qualify_path_unqualified_name(
     acc: &mut Assists,
-    proposed_imports: BTreeSet<hir::ModPath>,
+    proposed_imports: Vec<(hir::ModPath, hir::ItemInNs)>,
     range: TextRange,
-    name: &str,
+    name: &ast::NameRef,
 ) {
     mark::hit!(qualify_path_unqualified_name);
     let group_label = GroupLabel(format!("Qualify {}", name));
-    for import in proposed_imports {
+    for (import, _) in proposed_imports {
         acc.add_group(
             &group_label,
-            AssistId("qualify_path", AssistKind::QuickFix),
+            ASSIST_ID,
             format!("Qualify as `{}`", &import),
             range,
             |builder| builder.replace(range, mod_path_to_ast(&import).to_string()),
@@ -129,18 +121,17 @@ fn qualify_path_unqualified_name(
 // a test that covers this -> `associated_trait_const`
 fn qualify_path_trait_assoc_item(
     acc: &mut Assists,
-    proposed_imports: BTreeSet<hir::ModPath>,
+    proposed_imports: Vec<(hir::ModPath, hir::ItemInNs)>,
     range: TextRange,
     qualifier: ast::Path,
     segment: ast::PathSegment,
-    trait_assoc_item_name: &str,
 ) {
     mark::hit!(qualify_path_trait_assoc_item);
-    let group_label = GroupLabel(format!("Qualify {}", trait_assoc_item_name));
-    for import in proposed_imports {
+    let group_label = GroupLabel(format!("Qualify {}", &segment));
+    for (import, _) in proposed_imports {
         acc.add_group(
             &group_label,
-            AssistId("qualify_path", AssistKind::QuickFix),
+            ASSIST_ID,
             format!("Qualify with cast as `{}`", &import),
             range,
             |builder| {
@@ -154,33 +145,74 @@ fn qualify_path_trait_assoc_item(
 // a test that covers this -> `trait_method`
 fn qualify_path_trait_method(
     acc: &mut Assists,
-    proposed_imports: BTreeSet<hir::ModPath>,
+    db: &RootDatabase,
+    proposed_imports: Vec<(hir::ModPath, hir::ItemInNs)>,
     range: TextRange,
-    receiver: ast::Expr,
-    name_ref: ast::NameRef,
-    trait_method_name: &str,
-) {
+    mcall_expr: ast::MethodCallExpr,
+) -> Option<()> {
     mark::hit!(qualify_path_trait_method);
+
+    let receiver = mcall_expr.receiver()?;
+    let trait_method_name = mcall_expr.name_ref()?;
+    let arg_list = mcall_expr.arg_list().map(|arg_list| arg_list.args());
     let group_label = GroupLabel(format!("Qualify {}", trait_method_name));
-    for import in proposed_imports {
+    let find_method = |item: &hir::AssocItem| {
+        item.name(db).map(|name| name == trait_method_name.as_name()).unwrap_or(false)
+    };
+    for (import, trait_) in proposed_imports.into_iter().filter_map(filter_trait) {
         acc.add_group(
             &group_label,
-            AssistId("qualify_path", AssistKind::QuickFix), // < Does this still count as quickfix?
+            ASSIST_ID,
             format!("Qualify `{}`", &import),
             range,
             |builder| {
                 let import = mod_path_to_ast(&import);
-                // TODO: check the receiver self type and emit refs accordingly, don't discard other function parameters
-                builder.replace(range, format!("{}::{}(&{})", import, name_ref, receiver));
+                if let Some(hir::AssocItem::Function(method)) =
+                    trait_.items(db).into_iter().find(find_method)
+                {
+                    if let Some(self_access) = method.self_param(db).map(|sp| sp.access(db)) {
+                        let receiver = receiver.clone();
+                        let receiver = match self_access {
+                            hir::Access::Shared => make::expr_ref(receiver, false),
+                            hir::Access::Exclusive => make::expr_ref(receiver, true),
+                            hir::Access::Owned => receiver,
+                        };
+                        builder.replace(
+                            range,
+                            format!(
+                                "{}::{}{}",
+                                import,
+                                trait_method_name,
+                                match arg_list.clone() {
+                                    Some(args) => make::arg_list(iter::once(receiver).chain(args)),
+                                    None => make::arg_list(iter::once(receiver)),
+                                }
+                            ),
+                        );
+                    }
+                }
             },
         );
+    }
+    Some(())
+}
+
+fn filter_trait(
+    (import, trait_): (hir::ModPath, hir::ItemInNs),
+) -> Option<(hir::ModPath, hir::Trait)> {
+    if let hir::ModuleDef::Trait(trait_) = hir::ModuleDef::from(trait_.as_module_def_id()?) {
+        Some((import, trait_))
+    } else {
+        None
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+
+    use super::*;
+
     #[test]
     fn applicable_when_found_an_import_partial() {
         mark::check!(qualify_path_unqualified_name);
