@@ -54,6 +54,7 @@ endif
 	# when comparing the JSON `export`, the `show` output may be useful when
 	# debugging.
 	"$(LLVM_BIN_DIR)"/llvm-cov show \
+			--debug \
 			--Xdemangler="$(RUST_DEMANGLER)" \
 			--show-line-counts-or-regions \
 			--instr-profile="$(TMPDIR)"/$@.profdata \

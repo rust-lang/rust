@@ -16,15 +16,15 @@
               "percent": 100
             },
             "lines": {
-              "count": 18,
-              "covered": 16,
-              "percent": 88.88888888888889
+              "count": 17,
+              "covered": 15,
+              "percent": 88.23529411764706
             },
             "regions": {
-              "count": 9,
-              "covered": 7,
+              "count": 11,
+              "covered": 9,
               "notcovered": 2,
-              "percent": 77.77777777777779
+              "percent": 81.81818181818183
             }
           }
         }
@@ -41,15 +41,15 @@
           "percent": 100
         },
         "lines": {
-          "count": 18,
-          "covered": 16,
-          "percent": 88.88888888888889
+          "count": 17,
+          "covered": 15,
+          "percent": 88.23529411764706
         },
         "regions": {
-          "count": 9,
-          "covered": 7,
+          "count": 11,
+          "covered": 9,
           "notcovered": 2,
-          "percent": 77.77777777777779
+          "percent": 81.81818181818183
         }
       }
     }

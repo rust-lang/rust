@@ -3,7 +3,7 @@
     3|       |
     4|       |fn main() -> Result<(),u8> {
     5|      1|    let mut countdown = 10;
-    6|      7|    while
+    6|       |    while
     7|      7|        countdown
     8|      7|            >
     9|      7|        0

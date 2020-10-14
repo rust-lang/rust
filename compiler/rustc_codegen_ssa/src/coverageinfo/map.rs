@@ -38,6 +38,10 @@ pub struct FunctionCoverage {
 impl FunctionCoverage {
     pub fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
         let coverageinfo = tcx.coverageinfo(instance.def_id());
+        debug!(
+            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}",
+            instance, coverageinfo
+        );
         Self {
             source_hash: 0, // will be set with the first `add_counter()`
             counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
@@ -150,13 +154,41 @@ impl FunctionCoverage {
                     self.counters
                         .get(index)
                         .unwrap() // pre-validated
+                        // TODO(richkadel): is it really pre-validated?
+                        // What if I add some counters that never get added to the map, and they are
+                        // larger than the number of counters in the MIR (as seems to happen with expressions below?)
                         .as_ref()
                         .map(|_| Counter::counter_value_reference(index))
                 } else {
                     let index = self.expression_index(u32::from(id));
+                    // TODO(richkadel): remove this debug
+                    debug!(
+                        "id_to_counter expression id={:?}, self.expressions.get(index={:?}) = {:?}",
+                        id,
+                        index,
+                        self.expressions.get(index)
+                    );
                     self.expressions
                         .get(index)
+                        // TODO(richkadel): Now some tests generate segfault, and other tests hit this out of range error
+                        // Some expressions reference blocks that ended up not needing counters.
+                        // Can we assume the expression is no longer relevant? If not, then instrument_counters
+                        // transform pass will need to figure this out earlier (MAYBE IT SHOULD ANYWAY?)
+                        // and if the counter is needed for an expression that can no longer be resolved,
+                        // create a new make_counter() right there?
+                        //
+                        // MUST FIX!
+                        //
+                        // It looks like the segfault is at:
+                        //
+                        //   /usr/local/google/home/richkadel/rust/src/llvm-project/llvm/lib/ProfileData/Coverage/CoverageMappingWriter.cpp:93
+                        //   AdjustedExpressionIDs[ID] = 1;
+                        //
+                        // I think we have expressions with operand IDs that don't exist as either counters or expressions, and that's breaking
+                        // the LLVM code.
+                        // TODO(richkadel): replace expect() with unwrap_or()?
                         .expect("expression id is out of range")
+                        //                        .unwrap_or(&None)
                         .as_ref()
                         .map(|_| Counter::expression(new_indexes[index]))
                 }
@@ -198,6 +230,12 @@ impl FunctionCoverage {
                 if let Some(region) = optional_region {
                     expression_regions.push((Counter::expression(mapped_expression_index), region));
                 }
+            } else {
+                debug!(
+                    "Ignoring expression with one or more missing operands: \
+                    original_index={:?}, lhs={:?}, op={:?}, rhs={:?}, region={:?}",
+                    original_index, lhs, op, rhs, optional_region,
+                )
             }
         }
         (counter_expressions, expression_regions.into_iter())

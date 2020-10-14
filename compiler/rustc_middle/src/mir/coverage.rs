@@ -64,6 +64,13 @@ impl From<CounterValueReference> for ExpressionOperandId {
     }
 }
 
+impl From<&mut CounterValueReference> for ExpressionOperandId {
+    #[inline]
+    fn from(v: &mut CounterValueReference) -> ExpressionOperandId {
+        ExpressionOperandId::from(v.as_u32())
+    }
+}
+
 impl From<InjectedExpressionIndex> for ExpressionOperandId {
     #[inline]
     fn from(v: InjectedExpressionIndex) -> ExpressionOperandId {
@@ -71,7 +78,14 @@ impl From<InjectedExpressionIndex> for ExpressionOperandId {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+impl From<&mut InjectedExpressionIndex> for ExpressionOperandId {
+    #[inline]
+    fn from(v: &mut InjectedExpressionIndex) -> ExpressionOperandId {
+        ExpressionOperandId::from(v.as_u32())
+    }
+}
+
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub enum CoverageKind {
     Counter {
         function_source_hash: u64,
@@ -88,12 +102,49 @@ pub enum CoverageKind {
 
 impl CoverageKind {
     pub fn as_operand_id(&self) -> ExpressionOperandId {
+        use CoverageKind::*;
         match *self {
-            CoverageKind::Counter { id, .. } => ExpressionOperandId::from(id),
-            CoverageKind::Expression { id, .. } => ExpressionOperandId::from(id),
-            CoverageKind::Unreachable => {
+            Counter { id, .. } => ExpressionOperandId::from(id),
+            Expression { id, .. } => ExpressionOperandId::from(id),
+            Unreachable => {
                 bug!("Unreachable coverage cannot be part of an expression")
             }
+        }
+    }
+
+    pub fn is_counter(&self) -> bool {
+        match self {
+            Self::Counter { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_expression(&self) -> bool {
+        match self {
+            Self::Expression { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_unreachable(&self) -> bool {
+        *self == Self::Unreachable
+    }
+}
+
+impl Debug for CoverageKind {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        use CoverageKind::*;
+        match self {
+            Counter { id, .. } => write!(fmt, "Counter({:?})", id.index()),
+            Expression { id, lhs, op, rhs } => write!(
+                fmt,
+                "Expression({:?}) = {} {} {}",
+                id.index(),
+                lhs.index(),
+                if *op == Op::Add { "+" } else { "-" },
+                rhs.index(),
+            ),
+            Unreachable => write!(fmt, "Unreachable"),
         }
     }
 }
