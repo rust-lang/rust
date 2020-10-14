@@ -62,7 +62,7 @@ def check_subset(expected_main, actual_main):
             _check_subset(expected_index.get(expected, {}), actual_index.get(actual, {}), trace)
             _check_subset(expected_paths.get(expected, {}), actual_paths.get(actual, {}), trace)
 
-    _check_subset(expected_main, actual_main, [])
+    _check_subset(expected_main["root"], actual_main["root"], [])
 
 
 def rustdoc_object_hook(obj):

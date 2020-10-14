@@ -39,7 +39,7 @@ impl From<clean::Item> for Item {
             links: attrs
                 .links
                 .into_iter()
-                .filter_map(|(a, b, _)| b.map(|b| (a, b.into())))
+                .filter_map(|clean::ItemLink { link, did, .. }| did.map(|did| (link, did.into())))
                 .collect(),
             attrs: attrs
                 .other_attrs
@@ -173,7 +173,7 @@ impl From<clean::ItemEnum> for ItemEnum {
             ForeignStaticItem(s) => ItemEnum::StaticItem(s.into()),
             ForeignTypeItem => ItemEnum::ForeignTypeItem,
             TypedefItem(t, _) => ItemEnum::TypedefItem(t.into()),
-            OpaqueTyItem(t, _) => ItemEnum::OpaqueTyItem(t.into()),
+            OpaqueTyItem(t) => ItemEnum::OpaqueTyItem(t.into()),
             ConstantItem(c) => ItemEnum::ConstantItem(c.into()),
             MacroItem(m) => ItemEnum::MacroItem(m.source),
             ProcMacroItem(m) => ItemEnum::ProcMacroItem(m.into()),
@@ -502,18 +502,18 @@ impl From<clean::Variant> for Variant {
 
 impl From<clean::Import> for Import {
     fn from(import: clean::Import) -> Self {
-        use clean::Import::*;
-        match import {
-            Simple(s, i) => Import {
-                source: i.path.whole_name(),
+        use clean::ImportKind::*;
+        match import.kind {
+            Simple(s) => Import {
+                source: import.source.path.whole_name(),
                 name: s,
-                id: i.did.map(Into::into),
+                id: import.source.did.map(Into::into),
                 glob: false,
             },
-            Glob(i) => Import {
-                source: i.path.whole_name(),
-                name: i.path.last_name().to_string(),
-                id: i.did.map(Into::into),
+            Glob => Import {
+                source: import.source.path.whole_name(),
+                name: import.source.path.last_name().to_string(),
+                id: import.source.did.map(Into::into),
                 glob: true,
             },
         }

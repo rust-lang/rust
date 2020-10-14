@@ -302,7 +302,7 @@ impl ItemEnum {
             | ImportItem(_)
             | FunctionItem(_)
             | TypedefItem(_, _)
-            | OpaqueTyItem(_, _)
+            | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_)
             | TraitAliasItem(_)
