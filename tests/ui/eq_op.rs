@@ -137,4 +137,8 @@ fn check_assert_identical_args() {
     debug_assert_ne!(a, b);
     debug_assert_ne!(a, a + 1);
     debug_assert_ne!(a + 1, b + 1);
+
+    let my_vec = vec![1; 5];
+    let mut my_iter = my_vec.iter();
+    assert_ne!(my_iter.next(), my_iter.next());
 }
