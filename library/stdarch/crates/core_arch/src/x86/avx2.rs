@@ -3735,7 +3735,7 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 /// Extracts an 8-bit integer from `a`, selected with `imm8`. Returns a 32-bit
 /// integer containing the zero-extended integer data.
 ///
-/// See [LLVM commit D20468][https://reviews.llvm.org/D20468].
+/// See [LLVM commit D20468](https://reviews.llvm.org/D20468).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi8)
 #[inline]
@@ -3756,7 +3756,7 @@ pub unsafe fn _mm256_extract_epi8(a: __m256i, imm8: i32) -> i32 {
 /// Extracts a 16-bit integer from `a`, selected with `imm8`. Returns a 32-bit
 /// integer containing the zero-extended integer data.
 ///
-/// See [LLVM commit D20468][https://reviews.llvm.org/D20468].
+/// See [LLVM commit D20468](https://reviews.llvm.org/D20468).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi16)
 #[inline]

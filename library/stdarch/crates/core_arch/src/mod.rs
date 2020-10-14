@@ -1,5 +1,6 @@
 //! `core_arch`
 
+#![cfg_attr(not(bootstrap), allow(automatic_links))]
 #[macro_use]
 mod macros;
 

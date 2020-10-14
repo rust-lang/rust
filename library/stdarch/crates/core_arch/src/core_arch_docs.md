@@ -274,7 +274,7 @@ pub fn hex_encode(src: &[u8], dst: &mut [u8]) {
 }
 
 // translated from
-// https://github.com/Matherunner/bin2hex-sse/blob/master/base16_sse4.cpp
+// <https://github.com/Matherunner/bin2hex-sse/blob/master/base16_sse4.cpp>
 #[target_feature(enable = "sse4.1")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 unsafe fn hex_encode_sse41(mut src: &[u8], dst: &mut [u8]) {
