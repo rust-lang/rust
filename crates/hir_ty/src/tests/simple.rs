@@ -1,4 +1,5 @@
 use expect_test::expect;
+use test_utils::mark;
 
 use super::{check_infer, check_types};
 
@@ -2228,6 +2229,8 @@ fn generic_default_depending_on_other_type_arg_forward() {
 
 #[test]
 fn infer_operator_overload() {
+    mark::check!(infer_expr_inner_binary_operator_overload);
+
     check_infer(
         r#"
         struct V2([f32; 2]);
