@@ -21,13 +21,14 @@ fn unwrap_or() {
     };
 
     // multiline case
+    #[rustfmt::skip]
     match Some(1) {
         Some(i) => i,
         None => {
-            let a = 1 + 42;
-            let b = a + 42;
-            b + 42
-        },
+            42 + 42
+                + 42 + 42 + 42
+                + 42 + 42 + 42
+        }
     };
 
     // string case
@@ -55,6 +56,28 @@ fn unwrap_or() {
             None => break,
         };
     }
+
+    // cases where the none arm isn't a constant expression
+    // are not linted due to potential ownership issues
+
+    // ownership issue example, don't lint
+    struct NonCopyable;
+    let mut option: Option<NonCopyable> = None;
+    match option {
+        Some(x) => x,
+        None => {
+            option = Some(NonCopyable);
+            // some more code ...
+            option.unwrap()
+        },
+    };
+
+    // ownership issue example, don't lint
+    let option: Option<&str> = None;
+    match option {
+        Some(s) => s,
+        None => &format!("{} {}!", "hello", "world"),
+    };
 }
 
 fn main() {}

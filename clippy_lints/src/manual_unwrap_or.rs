@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// ```
     pub MANUAL_UNWRAP_OR,
     complexity,
-    "finds patterns that can be encoded more concisely with `Option::unwrap_or(_else)`"
+    "finds patterns that can be encoded more concisely with `Option::unwrap_or`"
 }
 
 declare_lint_pass!(ManualUnwrapOr => [MANUAL_UNWRAP_OR]);
@@ -83,26 +83,19 @@ fn lint_option_unwrap_or_case<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tc
         if let Some(scrutinee_snippet) = utils::snippet_opt(cx, scrutinee.span);
         if let Some(none_body_snippet) = utils::snippet_opt(cx, none_arm.body.span);
         if let Some(indent) = utils::indent_of(cx, expr.span);
+        if constant_simple(cx, cx.typeck_results(), none_arm.body).is_some();
         then {
             let reindented_none_body =
                 utils::reindent_multiline(none_body_snippet.into(), true, Some(indent));
-            let eager_eval = constant_simple(cx, cx.typeck_results(), none_arm.body).is_some();
-            let method = if eager_eval {
-                "unwrap_or"
-            } else {
-                "unwrap_or_else"
-            };
             utils::span_lint_and_sugg(
                 cx,
                 MANUAL_UNWRAP_OR, expr.span,
-                &format!("this pattern reimplements `Option::{}`", &method),
+                "this pattern reimplements `Option::unwrap_or`",
                 "replace with",
                 format!(
-                    "{}.{}({}{})",
+                    "{}.unwrap_or({})",
                     scrutinee_snippet,
-                    method,
-                    if eager_eval { "" } else { "|| " },
-                    reindented_none_body
+                    reindented_none_body,
                 ),
                 Applicability::MachineApplicable,
             );

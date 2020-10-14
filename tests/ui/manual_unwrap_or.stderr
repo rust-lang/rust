@@ -27,29 +27,29 @@ LL | |         None => 1 + 42,
 LL | |     };
    | |_____^ help: replace with: `Some(1).unwrap_or(1 + 42)`
 
-error: this pattern reimplements `Option::unwrap_or_else`
-  --> $DIR/manual_unwrap_or.rs:24:5
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:25:5
    |
 LL | /     match Some(1) {
 LL | |         Some(i) => i,
 LL | |         None => {
-LL | |             let a = 1 + 42;
+LL | |             42 + 42
 ...  |
-LL | |         },
+LL | |         }
 LL | |     };
    | |_____^
    |
 help: replace with
    |
-LL |     Some(1).unwrap_or_else(|| {
-LL |         let a = 1 + 42;
-LL |         let b = a + 42;
-LL |         b + 42
+LL |     Some(1).unwrap_or({
+LL |         42 + 42
+LL |             + 42 + 42 + 42
+LL |             + 42 + 42 + 42
 LL |     });
    |
 
 error: this pattern reimplements `Option::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:34:5
+  --> $DIR/manual_unwrap_or.rs:35:5
    |
 LL | /     match Some("Bob") {
 LL | |         Some(i) => i,
