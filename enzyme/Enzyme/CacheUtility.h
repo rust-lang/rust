@@ -132,7 +132,7 @@ public:
   /// This includes as the canonical induction variable or increment
   bool isInstructionUsedInLoopInduction(llvm::Instruction& I) {
     for (auto &context : loopContexts) {
-      if (context.second.var == &I || context.second.incvar == &I) {
+      if (context.second.var == &I || context.second.incvar == &I || context.second.limit == &I) {
         return true;
       }
     }

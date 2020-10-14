@@ -101,9 +101,6 @@ public:
 
     auto iload = gutils->getNewFromOriginal(&I);
 
-    // We still need this value used as increment/induction variable for a loop
-    used |= gutils->isInstructionUsedInLoopInduction(*iload);
-
     if (used && check)
       return;
 

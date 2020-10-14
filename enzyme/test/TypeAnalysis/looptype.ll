@@ -41,8 +41,9 @@ for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   ret i64 %add8: {}
 ; CHECK-NEXT: for.body
 ; CHECK-NEXT:   %indvars.iv = phi i64 [ 3, %entry ], [ %indvars.iv.next, %for.body ]: {[-1]:Integer}
+; TODO this should become integer
 ; CHECK-NEXT:   %index.addr.023 = phi i64 [ 0, %entry ], [ %sub, %for.body ]: {[-1]:Anything}
-; CHECK-NEXT:   %startInput.021 = phi i64 [ 0, %entry ], [ %add, %for.body ]: {[-1]:Anything}
+; CHECK-NEXT:   %startInput.021 = phi i64 [ 0, %entry ], [ %add, %for.body ]: {[-1]:Integer}
 ; CHECK-NEXT:   %0 = load i64, i64* %call, align 8, !tbaa !0: {[-1]:Integer}
 ; CHECK-NEXT:   %div = sdiv i64 %index.addr.023, %0: {[-1]:Anything}
 ; CHECK-NEXT:   %1 = load i64, i64* %call3, align 8, !tbaa !0: {[-1]:Integer}

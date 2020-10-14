@@ -41,7 +41,16 @@ CacheUtility::~CacheUtility(){}
 /// Erase this instruction both from LLVM modules and any local data-structures
 void CacheUtility::erase(Instruction* I) {
     assert(I);
-
+    for (auto & lim : LimitCache) {
+      assert(I != lim.first.first);
+      assert(I != lim.second);
+    }
+    for(auto & ctx : loopContexts) {
+      assert(ctx.second.var != I);
+      assert(ctx.second.incvar != I);
+      assert(ctx.second.antivaralloc != I);
+      assert(ctx.second.limit != I);
+    }
     for (const auto &pair : scopeMap) {
       if (pair.second.first == I) {
         llvm::errs() << *newFunc << "\n";
@@ -133,7 +142,6 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
                         MustExitScalarEvolution &SE, CacheUtility &gutils) {
   assert(Header);
   assert(CanonicalIV);
-
   SmallVector<Instruction *, 8> IVsToRemove;
 
   // This scope is necessary to ensure scevexpander cleans up before we erase
@@ -748,7 +756,6 @@ Value* CacheUtility::computeIndexOfChunk(bool inForwardPass, IRBuilder<> &v, con
     }
 
     indices.push_back(var);
-
     Value *lim = unwrapM(pair.second, v, available,
                           UnwrapMode::AttemptFullUnwrapWithLookup);
     assert(lim);

@@ -370,6 +370,50 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
           }
         }
 
+        // We still need this value if used as increment/induction variable for a loop
+        // TODO this really should be more simply replaced by doing the loop normalization
+        // on the original code as preprocessing
+
+        // Below we specifically check if the instructions or any of its newly-generated
+        // (e.g. not in original function) uses are used in the loop calculation
+        auto NewI = gutils->getNewFromOriginal(inst);
+        std::set<Instruction*> todo = {NewI};
+        {
+        std::deque<Instruction*> toAnalyze;
+        // Here we get the uses of inst from the original function
+        std::set<Instruction*> UsesFromOrig;
+        for(auto u : inst->users()) {
+          if (auto I = dyn_cast<Instruction>(u)) {
+            UsesFromOrig.insert(gutils->getNewFromOriginal(I));
+          }
+        }
+        // We only analyze uses that were not available in the original function
+        for(auto u : NewI->users()) {
+          if (auto I = dyn_cast<Instruction>(u)) {
+            if (UsesFromOrig.count(I) == 0)
+              toAnalyze.push_back(I);
+          }
+        }
+
+        while(toAnalyze.size()) {
+          auto Next = toAnalyze.front();
+          toAnalyze.pop_front();
+          if (todo.count(Next)) continue;
+          todo.insert(Next);
+          for(auto u : Next->users()) {
+            if (auto I = dyn_cast<Instruction>(u)) {
+              toAnalyze.push_back(I);
+            }
+          }
+        }
+        }
+
+        for(auto I : todo) {
+          if (gutils->isInstructionUsedInLoopInduction(*I)) {
+            return true;
+          }
+        }
+
         if (auto obj_op = dyn_cast<CallInst>(inst)) {
           Function *called = obj_op->getCalledFunction();
           #if LLVM_VERSION_MAJOR >= 11
@@ -452,6 +496,16 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
                is_value_needed_in_reverse<Primal>(TR, gutils, inst,
                                           /*topLevel*/ mode == DerivativeMode::Both);
       });
+      #if 0
+      llvm::errs() << "unnecessaryValues:\n";
+      for(auto a : unnecessaryValues) {
+        llvm::errs() << *a << "\n";
+      }
+      llvm::errs() << "unnecessaryInstructions:\n";
+      for(auto a : unnecessaryInstructions) {
+        llvm::errs() << *a << "\n";
+      }
+      #endif
 }
 
 void calculateUnusedStoresInFunction(Function& func, llvm::SmallPtrSetImpl<const Instruction*> &unnecessaryStores, const llvm::SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions,

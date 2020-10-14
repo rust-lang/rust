@@ -1267,7 +1267,6 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     default:
       break;
     }
-
     Result = AnalysisLHS;
     Result.binopIn(AnalysisRHS, I.getOpcode());
 

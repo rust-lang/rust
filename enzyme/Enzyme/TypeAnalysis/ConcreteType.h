@@ -380,6 +380,16 @@ public:
       return Changed;
     }
 
+    // Pointer - Unknown => Unknown
+    //   This is because Pointer - Pointer => Integer
+    //              and  Pointer - Integer => Pointer
+    if ( Op == BinaryOperator::Sub &&
+        SubTypeEnum == BaseType::Pointer && RHS.SubTypeEnum == BaseType::Unknown)  {
+      SubTypeEnum = BaseType::Unknown;
+      Changed = true;
+      return Changed;
+    }
+
     // Pointer op ? => {Pointer, Unknown}
     if ((SubTypeEnum == BaseType::Integer && RHS.SubTypeEnum == BaseType::Pointer) ||
         (SubTypeEnum == BaseType::Pointer && RHS.SubTypeEnum == BaseType::Integer) ||

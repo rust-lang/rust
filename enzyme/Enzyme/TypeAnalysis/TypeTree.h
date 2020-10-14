@@ -229,7 +229,7 @@ public:
       return;
     }
     for (auto Off : Seq) {
-      if (Off > 1000) {
+      if (Off > 500) {
         // TODO perhaps issue warning for too large an offset
         return;
       }
@@ -765,6 +765,16 @@ public:
     std::vector<std::vector<int>> toErase;
 
     for(auto& pair : mapping) {
+      // TODO propagate non-first level operands:
+      // Special handling is necessary here because a pointer to an int
+      // binop with something should not apply the binop rules to the
+      // underlying data but instead a different rule
+      if (pair.first.size() > 0) {
+        toErase.push_back(pair.first);
+        continue;
+      }
+
+
       ConcreteType CT(pair.second);
       ConcreteType RightCT(BaseType::Unknown);
 
@@ -784,6 +794,14 @@ public:
 
     // mapings just on the right
     for(auto& pair : RHS.mapping) {
+      // TODO propagate non-first level operands:
+      // Special handling is necessary here because a pointer to an int
+      // binop with something should not apply the binop rules to the
+      // underlying data but instead a different rule
+      if (pair.first.size() > 0) {
+        continue;
+      }
+
       if (mapping.find(pair.first) == RHS.mapping.end()) {
         ConcreteType CT = BaseType::Unknown;
         changed |= CT.binopIn(pair.second, Op);
