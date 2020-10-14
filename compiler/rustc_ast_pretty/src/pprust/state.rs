@@ -20,9 +20,6 @@ use rustc_span::{BytePos, FileName, Span};
 
 use std::borrow::Cow;
 
-#[cfg(test)]
-mod tests;
-
 pub enum MacHeader<'a> {
     Path(&'a ast::Path),
     Keyword(&'static str),
@@ -91,6 +88,13 @@ pub struct State<'a> {
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
     is_expanded: bool,
+    // If `true`, additional parenthesis (separate from `ExprKind::Paren`)
+    // are inserted to ensure that proper precedence is preserved
+    // in the pretty-printed output.
+    //
+    // This is usually `true`, except when performing the pretty-print/reparse
+    // check in `nt_to_tokenstream`
+    insert_extra_parens: bool,
 }
 
 crate const INDENT_UNIT: usize = 4;
@@ -112,6 +116,7 @@ pub fn print_crate<'a>(
         comments: Some(Comments::new(sm, filename, input)),
         ann,
         is_expanded,
+        insert_extra_parens: true,
     };
 
     if is_expanded && has_injected_crate {
@@ -140,13 +145,6 @@ pub fn print_crate<'a>(
     s.print_remaining_comments();
     s.ann.post(&mut s, AnnNode::Crate(krate));
     s.s.eof()
-}
-
-pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
-    let mut printer =
-        State { s: pp::mk_printer(), comments: None, ann: &NoAnn, is_expanded: false };
-    f(&mut printer);
-    printer.s.eof()
 }
 
 // This makes printed token streams look slightly nicer,
@@ -231,173 +229,8 @@ pub fn literal_to_string(lit: token::Lit) -> String {
     out
 }
 
-/// Print the token kind precisely, without converting `$crate` into its respective crate name.
-pub fn token_kind_to_string(tok: &TokenKind) -> String {
-    token_kind_to_string_ext(tok, None)
-}
-
-fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>) -> String {
-    match *tok {
-        token::Eq => "=".to_string(),
-        token::Lt => "<".to_string(),
-        token::Le => "<=".to_string(),
-        token::EqEq => "==".to_string(),
-        token::Ne => "!=".to_string(),
-        token::Ge => ">=".to_string(),
-        token::Gt => ">".to_string(),
-        token::Not => "!".to_string(),
-        token::Tilde => "~".to_string(),
-        token::OrOr => "||".to_string(),
-        token::AndAnd => "&&".to_string(),
-        token::BinOp(op) => binop_to_string(op).to_string(),
-        token::BinOpEq(op) => format!("{}=", binop_to_string(op)),
-
-        /* Structural symbols */
-        token::At => "@".to_string(),
-        token::Dot => ".".to_string(),
-        token::DotDot => "..".to_string(),
-        token::DotDotDot => "...".to_string(),
-        token::DotDotEq => "..=".to_string(),
-        token::Comma => ",".to_string(),
-        token::Semi => ";".to_string(),
-        token::Colon => ":".to_string(),
-        token::ModSep => "::".to_string(),
-        token::RArrow => "->".to_string(),
-        token::LArrow => "<-".to_string(),
-        token::FatArrow => "=>".to_string(),
-        token::OpenDelim(token::Paren) => "(".to_string(),
-        token::CloseDelim(token::Paren) => ")".to_string(),
-        token::OpenDelim(token::Bracket) => "[".to_string(),
-        token::CloseDelim(token::Bracket) => "]".to_string(),
-        token::OpenDelim(token::Brace) => "{".to_string(),
-        token::CloseDelim(token::Brace) => "}".to_string(),
-        token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => "".to_string(),
-        token::Pound => "#".to_string(),
-        token::Dollar => "$".to_string(),
-        token::Question => "?".to_string(),
-        token::SingleQuote => "'".to_string(),
-
-        /* Literals */
-        token::Literal(lit) => literal_to_string(lit),
-
-        /* Name components */
-        token::Ident(s, is_raw) => IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string(),
-        token::Lifetime(s) => s.to_string(),
-
-        /* Other */
-        token::DocComment(comment_kind, attr_style, data) => {
-            doc_comment_to_string(comment_kind, attr_style, data)
-        }
-        token::Eof => "<eof>".to_string(),
-
-        token::Interpolated(ref nt) => nonterminal_to_string(nt),
-    }
-}
-
-/// Print the token precisely, without converting `$crate` into its respective crate name.
-pub fn token_to_string(token: &Token) -> String {
-    token_to_string_ext(token, false)
-}
-
-fn token_to_string_ext(token: &Token, convert_dollar_crate: bool) -> String {
-    let convert_dollar_crate = convert_dollar_crate.then_some(token.span);
-    token_kind_to_string_ext(&token.kind, convert_dollar_crate)
-}
-
-pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
-    match *nt {
-        token::NtExpr(ref e) => expr_to_string(e),
-        token::NtMeta(ref e) => attr_item_to_string(e),
-        token::NtTy(ref e) => ty_to_string(e),
-        token::NtPath(ref e) => path_to_string(e),
-        token::NtItem(ref e) => item_to_string(e),
-        token::NtBlock(ref e) => block_to_string(e),
-        token::NtStmt(ref e) => stmt_to_string(e),
-        token::NtPat(ref e) => pat_to_string(e),
-        token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw).to_string(),
-        token::NtLifetime(e) => e.to_string(),
-        token::NtLiteral(ref e) => expr_to_string(e),
-        token::NtTT(ref tree) => tt_to_string(tree),
-        token::NtVis(ref e) => vis_to_string(e),
-    }
-}
-
-pub fn ty_to_string(ty: &ast::Ty) -> String {
-    to_string(|s| s.print_type(ty))
-}
-
-pub fn bounds_to_string(bounds: &[ast::GenericBound]) -> String {
-    to_string(|s| s.print_type_bounds("", bounds))
-}
-
-pub fn pat_to_string(pat: &ast::Pat) -> String {
-    to_string(|s| s.print_pat(pat))
-}
-
-pub fn expr_to_string(e: &ast::Expr) -> String {
-    to_string(|s| s.print_expr(e))
-}
-
-pub fn tt_to_string(tt: &TokenTree) -> String {
-    to_string(|s| s.print_tt(tt, false))
-}
-
-pub fn tts_to_string(tokens: &TokenStream) -> String {
-    to_string(|s| s.print_tts(tokens, false))
-}
-
-pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
-    to_string(|s| s.print_stmt(stmt))
-}
-
-pub fn item_to_string(i: &ast::Item) -> String {
-    to_string(|s| s.print_item(i))
-}
-
-pub fn generic_params_to_string(generic_params: &[ast::GenericParam]) -> String {
-    to_string(|s| s.print_generic_params(generic_params))
-}
-
-pub fn path_to_string(p: &ast::Path) -> String {
-    to_string(|s| s.print_path(p, false, 0))
-}
-
-pub fn path_segment_to_string(p: &ast::PathSegment) -> String {
-    to_string(|s| s.print_path_segment(p, false))
-}
-
-pub fn vis_to_string(v: &ast::Visibility) -> String {
-    to_string(|s| s.print_visibility(v))
-}
-
-fn block_to_string(blk: &ast::Block) -> String {
-    to_string(|s| {
-        // Containing cbox, will be closed by `print_block` at `}`.
-        s.cbox(INDENT_UNIT);
-        // Head-ibox, will be closed by `print_block` after `{`.
-        s.ibox(0);
-        s.print_block(blk)
-    })
-}
-
-pub fn meta_list_item_to_string(li: &ast::NestedMetaItem) -> String {
-    to_string(|s| s.print_meta_list_item(li))
-}
-
-fn attr_item_to_string(ai: &ast::AttrItem) -> String {
-    to_string(|s| s.print_attr_item(ai, ai.path.span))
-}
-
-pub fn attribute_to_string(attr: &ast::Attribute) -> String {
-    to_string(|s| s.print_attribute(attr))
-}
-
-pub fn param_to_string(arg: &ast::Param) -> String {
-    to_string(|s| s.print_param(arg, false))
-}
-
 fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
-    format!("{}{}", to_string(|s| s.print_visibility(vis)), s)
+    format!("{}{}", State::new().to_string(|s| s.print_visibility(vis)), s)
 }
 
 impl std::ops::Deref for State<'_> {
@@ -414,6 +247,7 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::DerefMut {
+    fn insert_extra_parens(&self) -> bool;
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
     fn print_ident(&mut self, ident: Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
@@ -679,7 +513,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
         match tt {
             TokenTree::Token(token) => {
-                self.word(token_to_string_ext(&token, convert_dollar_crate));
+                let token_str = self.token_to_string_ext(&token, convert_dollar_crate);
+                self.word(token_str);
                 if let token::DocComment(..) = token.kind {
                     self.hardbreak()
                 }
@@ -745,14 +580,20 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     self.space();
                 }
             }
-            _ => self.word(token_kind_to_string(&token::OpenDelim(delim))),
+            _ => {
+                let token_str = self.token_kind_to_string(&token::OpenDelim(delim));
+                self.word(token_str)
+            }
         }
         self.ibox(0);
         self.print_tts(tts, convert_dollar_crate);
         self.end();
         match delim {
             DelimToken::Brace => self.bclose(span),
-            _ => self.word(token_kind_to_string(&token::CloseDelim(delim))),
+            _ => {
+                let token_str = self.token_kind_to_string(&token::CloseDelim(delim));
+                self.word(token_str)
+            }
         }
     }
 
@@ -818,9 +659,190 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
         }
     }
+
+    fn nonterminal_to_string(&self, nt: &Nonterminal) -> String {
+        match *nt {
+            token::NtExpr(ref e) => self.expr_to_string(e),
+            token::NtMeta(ref e) => self.attr_item_to_string(e),
+            token::NtTy(ref e) => self.ty_to_string(e),
+            token::NtPath(ref e) => self.path_to_string(e),
+            token::NtItem(ref e) => self.item_to_string(e),
+            token::NtBlock(ref e) => self.block_to_string(e),
+            token::NtStmt(ref e) => self.stmt_to_string(e),
+            token::NtPat(ref e) => self.pat_to_string(e),
+            token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw).to_string(),
+            token::NtLifetime(e) => e.to_string(),
+            token::NtLiteral(ref e) => self.expr_to_string(e),
+            token::NtTT(ref tree) => self.tt_to_string(tree),
+            token::NtVis(ref e) => self.vis_to_string(e),
+        }
+    }
+
+    /// Print the token kind precisely, without converting `$crate` into its respective crate name.
+    fn token_kind_to_string(&self, tok: &TokenKind) -> String {
+        self.token_kind_to_string_ext(tok, None)
+    }
+
+    fn token_kind_to_string_ext(
+        &self,
+        tok: &TokenKind,
+        convert_dollar_crate: Option<Span>,
+    ) -> String {
+        match *tok {
+            token::Eq => "=".to_string(),
+            token::Lt => "<".to_string(),
+            token::Le => "<=".to_string(),
+            token::EqEq => "==".to_string(),
+            token::Ne => "!=".to_string(),
+            token::Ge => ">=".to_string(),
+            token::Gt => ">".to_string(),
+            token::Not => "!".to_string(),
+            token::Tilde => "~".to_string(),
+            token::OrOr => "||".to_string(),
+            token::AndAnd => "&&".to_string(),
+            token::BinOp(op) => binop_to_string(op).to_string(),
+            token::BinOpEq(op) => format!("{}=", binop_to_string(op)),
+
+            /* Structural symbols */
+            token::At => "@".to_string(),
+            token::Dot => ".".to_string(),
+            token::DotDot => "..".to_string(),
+            token::DotDotDot => "...".to_string(),
+            token::DotDotEq => "..=".to_string(),
+            token::Comma => ",".to_string(),
+            token::Semi => ";".to_string(),
+            token::Colon => ":".to_string(),
+            token::ModSep => "::".to_string(),
+            token::RArrow => "->".to_string(),
+            token::LArrow => "<-".to_string(),
+            token::FatArrow => "=>".to_string(),
+            token::OpenDelim(token::Paren) => "(".to_string(),
+            token::CloseDelim(token::Paren) => ")".to_string(),
+            token::OpenDelim(token::Bracket) => "[".to_string(),
+            token::CloseDelim(token::Bracket) => "]".to_string(),
+            token::OpenDelim(token::Brace) => "{".to_string(),
+            token::CloseDelim(token::Brace) => "}".to_string(),
+            token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => "".to_string(),
+            token::Pound => "#".to_string(),
+            token::Dollar => "$".to_string(),
+            token::Question => "?".to_string(),
+            token::SingleQuote => "'".to_string(),
+
+            /* Literals */
+            token::Literal(lit) => literal_to_string(lit),
+
+            /* Name components */
+            token::Ident(s, is_raw) => {
+                IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string()
+            }
+            token::Lifetime(s) => s.to_string(),
+
+            /* Other */
+            token::DocComment(comment_kind, attr_style, data) => {
+                doc_comment_to_string(comment_kind, attr_style, data)
+            }
+            token::Eof => "<eof>".to_string(),
+
+            token::Interpolated(ref nt) => self.nonterminal_to_string(nt),
+        }
+    }
+
+    /// Print the token precisely, without converting `$crate` into its respective crate name.
+    fn token_to_string(&self, token: &Token) -> String {
+        self.token_to_string_ext(token, false)
+    }
+
+    fn token_to_string_ext(&self, token: &Token, convert_dollar_crate: bool) -> String {
+        let convert_dollar_crate = convert_dollar_crate.then_some(token.span);
+        self.token_kind_to_string_ext(&token.kind, convert_dollar_crate)
+    }
+
+    fn ty_to_string(&self, ty: &ast::Ty) -> String {
+        self.to_string(|s| s.print_type(ty))
+    }
+
+    fn bounds_to_string(&self, bounds: &[ast::GenericBound]) -> String {
+        self.to_string(|s| s.print_type_bounds("", bounds))
+    }
+
+    fn pat_to_string(&self, pat: &ast::Pat) -> String {
+        self.to_string(|s| s.print_pat(pat))
+    }
+
+    fn expr_to_string(&self, e: &ast::Expr) -> String {
+        self.to_string(|s| s.print_expr(e))
+    }
+
+    fn tt_to_string(&self, tt: &TokenTree) -> String {
+        self.to_string(|s| s.print_tt(tt, false))
+    }
+
+    fn tts_to_string(&self, tokens: &TokenStream) -> String {
+        self.to_string(|s| s.print_tts(tokens, false))
+    }
+
+    fn stmt_to_string(&self, stmt: &ast::Stmt) -> String {
+        self.to_string(|s| s.print_stmt(stmt))
+    }
+
+    fn item_to_string(&self, i: &ast::Item) -> String {
+        self.to_string(|s| s.print_item(i))
+    }
+
+    fn generic_params_to_string(&self, generic_params: &[ast::GenericParam]) -> String {
+        self.to_string(|s| s.print_generic_params(generic_params))
+    }
+
+    fn path_to_string(&self, p: &ast::Path) -> String {
+        self.to_string(|s| s.print_path(p, false, 0))
+    }
+
+    fn path_segment_to_string(&self, p: &ast::PathSegment) -> String {
+        self.to_string(|s| s.print_path_segment(p, false))
+    }
+
+    fn vis_to_string(&self, v: &ast::Visibility) -> String {
+        self.to_string(|s| s.print_visibility(v))
+    }
+
+    fn block_to_string(&self, blk: &ast::Block) -> String {
+        self.to_string(|s| {
+            // Containing cbox, will be closed by `print_block` at `}`.
+            s.cbox(INDENT_UNIT);
+            // Head-ibox, will be closed by `print_block` after `{`.
+            s.ibox(0);
+            s.print_block(blk)
+        })
+    }
+
+    fn meta_list_item_to_string(&self, li: &ast::NestedMetaItem) -> String {
+        self.to_string(|s| s.print_meta_list_item(li))
+    }
+
+    fn attr_item_to_string(&self, ai: &ast::AttrItem) -> String {
+        self.to_string(|s| s.print_attr_item(ai, ai.path.span))
+    }
+
+    fn attribute_to_string(&self, attr: &ast::Attribute) -> String {
+        self.to_string(|s| s.print_attribute(attr))
+    }
+
+    fn param_to_string(&self, arg: &ast::Param) -> String {
+        self.to_string(|s| s.print_param(arg, false))
+    }
+
+    fn to_string(&self, f: impl FnOnce(&mut State<'_>)) -> String {
+        let mut printer = State::new();
+        printer.insert_extra_parens = self.insert_extra_parens();
+        f(&mut printer);
+        printer.s.eof()
+    }
 }
 
 impl<'a> PrintState<'a> for State<'a> {
+    fn insert_extra_parens(&self) -> bool {
+        self.insert_extra_parens
+    }
     fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
     }
@@ -856,6 +878,20 @@ impl<'a> PrintState<'a> for State<'a> {
 }
 
 impl<'a> State<'a> {
+    pub fn new() -> State<'a> {
+        State {
+            s: pp::mk_printer(),
+            comments: None,
+            ann: &NoAnn,
+            is_expanded: false,
+            insert_extra_parens: true,
+        }
+    }
+
+    pub(super) fn without_insert_extra_parens() -> State<'a> {
+        State { insert_extra_parens: false, ..State::new() }
+    }
+
     // Synthesizes a comment that was not textually present in the original source
     // file.
     pub fn synth_comment(&mut self, text: String) {
@@ -1139,7 +1175,7 @@ impl<'a> State<'a> {
                 self.print_fn_full(sig, item.ident, gen, &item.vis, def, body, &item.attrs);
             }
             ast::ItemKind::Mod(ref _mod) => {
-                self.head(to_string(|s| {
+                self.head(self.to_string(|s| {
                     s.print_visibility(&item.vis);
                     s.print_unsafety(_mod.unsafety);
                     s.word("mod");
@@ -1158,7 +1194,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::ForeignMod(ref nmod) => {
-                self.head(to_string(|s| {
+                self.head(self.to_string(|s| {
                     s.print_unsafety(nmod.unsafety);
                     s.word("extern");
                 }));
@@ -1366,7 +1402,7 @@ impl<'a> State<'a> {
                 ast::CrateSugar::JustCrate => self.word_nbsp("crate"),
             },
             ast::VisibilityKind::Restricted { ref path, .. } => {
-                let path = to_string(|s| s.print_path(path, false, 0));
+                let path = self.to_string(|s| s.print_path(path, false, 0));
                 if path == "self" || path == "super" {
                     self.word_nbsp(format!("pub({})", path))
                 } else {
@@ -1658,7 +1694,8 @@ impl<'a> State<'a> {
     }
 
     /// Prints `expr` or `(expr)` when `needs_par` holds.
-    fn print_expr_cond_paren(&mut self, expr: &ast::Expr, needs_par: bool) {
+    fn print_expr_cond_paren(&mut self, expr: &ast::Expr, mut needs_par: bool) {
+        needs_par &= self.insert_extra_parens;
         if needs_par {
             self.popen();
         }

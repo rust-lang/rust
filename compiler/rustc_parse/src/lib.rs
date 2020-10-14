@@ -7,7 +7,7 @@
 #![feature(or_patterns)]
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
@@ -297,7 +297,11 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     };
 
     // FIXME(#43081): Avoid this pretty-print + reparse hack
-    let source = pprust::nonterminal_to_string(nt);
+    // Pretty-print the AST struct without inserting any parenthesis
+    // beyond those explicitly written by the user (e.g. `ExpnKind::Paren`).
+    // The resulting stream may have incorrect precedence, but it's only
+    // ever used for a comparison against the capture tokenstream.
+    let source = pprust::nonterminal_to_string_no_extra_parens(nt);
     let filename = FileName::macro_expansion_source_code(&source);
     let reparsed_tokens = parse_stream_from_source_str(filename, source, sess, Some(span));
 
@@ -325,15 +329,43 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // modifications, including adding/removing typically non-semantic
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
-        if tokenstream_probably_equal_for_proc_macro(&tokens, &reparsed_tokens, sess) {
+        // Compare with a non-relaxed delim match to start.
+        if tokenstream_probably_equal_for_proc_macro(&tokens, &reparsed_tokens, sess, false) {
             return tokens;
         }
+
+        // The check failed. This time, we pretty-print the AST struct with parenthesis
+        // inserted to preserve precedence. This may cause `None`-delimiters in the captured
+        // token stream to match up with inserted parenthesis in the reparsed stream.
+        let source_with_parens = pprust::nonterminal_to_string(nt);
+        let filename_with_parens = FileName::macro_expansion_source_code(&source_with_parens);
+        let reparsed_tokens_with_parens = parse_stream_from_source_str(
+            filename_with_parens,
+            source_with_parens,
+            sess,
+            Some(span),
+        );
+
+        // Compare with a relaxed delim match - we want inserted parenthesis in the
+        // reparsed stream to match `None`-delimiters in the original stream.
+        if tokenstream_probably_equal_for_proc_macro(
+            &tokens,
+            &reparsed_tokens_with_parens,
+            sess,
+            true,
+        ) {
+            return tokens;
+        }
+
         info!(
             "cached tokens found, but they're not \"probably equal\", \
                 going with stringified version"
         );
-        info!("cached tokens: {:?}", tokens);
-        info!("reparsed tokens: {:?}", reparsed_tokens);
+        info!("cached   tokens: {}", pprust::tts_to_string(&tokens));
+        info!("reparsed tokens: {}", pprust::tts_to_string(&reparsed_tokens_with_parens));
+
+        info!("cached   tokens debug: {:?}", tokens);
+        info!("reparsed tokens debug: {:?}", reparsed_tokens_with_parens);
     }
     reparsed_tokens
 }
@@ -347,6 +379,7 @@ pub fn tokenstream_probably_equal_for_proc_macro(
     tokens: &TokenStream,
     reparsed_tokens: &TokenStream,
     sess: &ParseSess,
+    relaxed_delim_match: bool,
 ) -> bool {
     // When checking for `probably_eq`, we ignore certain tokens that aren't
     // preserved in the AST. Because they are not preserved, the pretty
@@ -472,7 +505,9 @@ pub fn tokenstream_probably_equal_for_proc_macro(
     let tokens = tokens.trees().flat_map(|t| expand_token(t, sess));
     let reparsed_tokens = reparsed_tokens.trees().flat_map(|t| expand_token(t, sess));
 
-    tokens.eq_by(reparsed_tokens, |t, rt| tokentree_probably_equal_for_proc_macro(&t, &rt, sess))
+    tokens.eq_by(reparsed_tokens, |t, rt| {
+        tokentree_probably_equal_for_proc_macro(&t, &rt, sess, relaxed_delim_match)
+    })
 }
 
 // See comments in `Nonterminal::to_tokenstream` for why we care about
@@ -484,6 +519,7 @@ pub fn tokentree_probably_equal_for_proc_macro(
     token: &TokenTree,
     reparsed_token: &TokenTree,
     sess: &ParseSess,
+    relaxed_delim_match: bool,
 ) -> bool {
     match (token, reparsed_token) {
         (TokenTree::Token(token), TokenTree::Token(reparsed_token)) => {
@@ -492,9 +528,33 @@ pub fn tokentree_probably_equal_for_proc_macro(
         (
             TokenTree::Delimited(_, delim, tokens),
             TokenTree::Delimited(_, reparsed_delim, reparsed_tokens),
-        ) => {
-            delim == reparsed_delim
-                && tokenstream_probably_equal_for_proc_macro(tokens, reparsed_tokens, sess)
+        ) if delim == reparsed_delim => tokenstream_probably_equal_for_proc_macro(
+            tokens,
+            reparsed_tokens,
+            sess,
+            relaxed_delim_match,
+        ),
+        (TokenTree::Delimited(_, DelimToken::NoDelim, tokens), reparsed_token) => {
+            if relaxed_delim_match {
+                if let TokenTree::Delimited(_, DelimToken::Paren, reparsed_tokens) = reparsed_token
+                {
+                    if tokenstream_probably_equal_for_proc_macro(
+                        tokens,
+                        reparsed_tokens,
+                        sess,
+                        relaxed_delim_match,
+                    ) {
+                        return true;
+                    }
+                }
+            }
+            tokens.len() == 1
+                && tokentree_probably_equal_for_proc_macro(
+                    &tokens.trees().next().unwrap(),
+                    reparsed_token,
+                    sess,
+                    relaxed_delim_match,
+                )
         }
         _ => false,
     }
