@@ -441,7 +441,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
             for required_region in required_region_bounds {
                 concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-                    infcx: self,
                     op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
                 });
             }
@@ -510,7 +509,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-            infcx: self,
             op: |r| self.sub_regions(infer::CallReturn(span), least_region, r),
         });
     }
@@ -545,7 +543,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         );
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-            infcx: self,
             op: |r| {
                 self.member_constraint(
                     opaque_type_def_id,
@@ -686,12 +683,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 //
 // We ignore any type parameters because impl trait values are assumed to
 // capture all the in-scope type parameters.
-struct ConstrainOpaqueTypeRegionVisitor<'cx, 'tcx, OP> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+struct ConstrainOpaqueTypeRegionVisitor<OP> {
     op: OP,
 }
 
-impl<'cx, 'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'cx, 'tcx, OP>
+impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
@@ -721,36 +717,28 @@ where
             ty::Closure(_, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
-                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
-                    // Not yet resolved.
-                    ty.super_visit_with(self);
-                } else {
-                    for upvar_ty in substs.as_closure().upvar_tys() {
-                        upvar_ty.visit_with(self);
-                    }
+                substs.as_closure().tupled_upvars_ty().visit_with(self);
 
-                    substs.as_closure().sig_as_fn_ptr_ty().visit_with(self);
+                for upvar_ty in substs.as_closure().upvar_tys() {
+                    upvar_ty.visit_with(self);
                 }
+
+                substs.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
             ty::Generator(_, ref substs, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                let ty = self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
-                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
-                    // Not yet resolved.
-                    ty.super_visit_with(self);
-                } else {
-                    for upvar_ty in substs.as_generator().upvar_tys() {
-                        upvar_ty.visit_with(self);
-                    }
+                substs.as_generator().tupled_upvars_ty().visit_with(self);
 
-                    substs.as_generator().return_ty().visit_with(self);
-                    substs.as_generator().yield_ty().visit_with(self);
-                    substs.as_generator().resume_ty().visit_with(self);
+                for upvar_ty in substs.as_generator().upvar_tys() {
+                    upvar_ty.visit_with(self);
                 }
+
+                substs.as_generator().return_ty().visit_with(self);
+                substs.as_generator().yield_ty().visit_with(self);
+                substs.as_generator().resume_ty().visit_with(self);
             }
             _ => {
                 ty.super_visit_with(self);
