@@ -14,6 +14,8 @@
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
+#![feature(min_specialization)]
+#![feature(trusted_len)]
 #![cfg_attr(test, feature(test))]
 
 use rustc_data_structures::cold_path;
@@ -22,6 +24,7 @@ use smallvec::SmallVec;
 use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
 use std::cmp;
+use std::iter::TrustedLen;
 use std::marker::{PhantomData, Send};
 use std::mem::{self, MaybeUninit};
 use std::ptr;
@@ -109,6 +112,53 @@ impl<T> Default for TypedArena<T> {
     }
 }
 
+trait IterExt<I, T> {
+    fn write_to_arena(iter: I, arena: &TypedArena<T>) -> &mut [T];
+}
+
+impl<T, I> IterExt<I, T> for I
+where
+    I: Iterator<Item = T>,
+{
+    #[inline]
+    default fn write_to_arena(iter: I, arena: &TypedArena<T>) -> &mut [T] {
+        arena.alloc_from_iter_gen(iter)
+    }
+}
+
+impl<T, I> IterExt<I, T> for I
+where
+    I: Iterator<Item = T> + TrustedLen,
+{
+    #[inline]
+    fn write_to_arena(mut iter: I, arena: &TypedArena<T>) -> &mut [T] {
+        let size_hint = iter.size_hint();
+
+        match size_hint {
+            (0, Some(_)) => &mut [],
+            (len, Some(_)) => {
+                // no need to check min == max because of TrustedLen
+
+                // SAFETY: TrustedLen implementors must ensure they return exactly as many
+                // elements as they tell via `size_hint()`.
+                unsafe {
+                    // We know the exact number of elements the iterator will produce here
+                    let start_addr = arena.alloc_raw_slice(len);
+                    let mut mem = start_addr;
+
+                    while let Some(value) = iter.next() {
+                        ptr::write(mem, value);
+                        mem = mem.add(1);
+                    }
+
+                    return slice::from_raw_parts_mut(start_addr, len);
+                }
+            }
+            _ => panic!("Trying to allocate from an iterator with more than usize::MAX elements"),
+        }
+    }
+}
+
 impl<T> TypedArena<T> {
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
@@ -183,10 +233,10 @@ impl<T> TypedArena<T> {
         }
     }
 
+    /// General case implementation for `alloc_from_iter()`.
     #[inline]
-    pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        assert!(mem::size_of::<T>() != 0);
-        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
+    fn alloc_from_iter_gen<I: Iterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        let mut vec: SmallVec<[_; 8]> = iter.collect();
         if vec.is_empty() {
             return &mut [];
         }
@@ -199,6 +249,14 @@ impl<T> TypedArena<T> {
             vec.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
         }
+    }
+
+    #[inline]
+    pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        let iter = iter.into_iter();
+        assert!(mem::size_of::<T>() != 0);
+
+        I::IntoIter::write_to_arena(iter, self)
     }
 
     /// Grows the arena.
