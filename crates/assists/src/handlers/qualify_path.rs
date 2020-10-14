@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use syntax::{ast, AstNode, TextRange};
+use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -89,6 +90,7 @@ fn qualify_path_qualifier_start(
     segment: ast::PathSegment,
     qualifier_start: &str,
 ) {
+    mark::hit!(qualify_path_qualifier_start);
     let group_label = GroupLabel(format!("Qualify {}", qualifier_start));
     for import in proposed_imports {
         acc.add_group(
@@ -111,6 +113,7 @@ fn qualify_path_unqualified_name(
     range: TextRange,
     name: &str,
 ) {
+    mark::hit!(qualify_path_unqualified_name);
     let group_label = GroupLabel(format!("Qualify {}", name));
     for import in proposed_imports {
         acc.add_group(
@@ -132,6 +135,7 @@ fn qualify_path_trait_assoc_item(
     segment: ast::PathSegment,
     trait_assoc_item_name: &str,
 ) {
+    mark::hit!(qualify_path_trait_assoc_item);
     let group_label = GroupLabel(format!("Qualify {}", trait_assoc_item_name));
     for import in proposed_imports {
         acc.add_group(
@@ -156,6 +160,7 @@ fn qualify_path_trait_method(
     name_ref: ast::NameRef,
     trait_method_name: &str,
 ) {
+    mark::hit!(qualify_path_trait_method);
     let group_label = GroupLabel(format!("Qualify {}", trait_method_name));
     for import in proposed_imports {
         acc.add_group(
@@ -178,6 +183,7 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
     #[test]
     fn applicable_when_found_an_import_partial() {
+        mark::check!(qualify_path_unqualified_name);
         check_assist(
             qualify_path,
             r"
@@ -469,6 +475,7 @@ fn main() {
 
     #[test]
     fn associated_struct_const() {
+        mark::check!(qualify_path_qualifier_start);
         check_assist(
             qualify_path,
             r"
@@ -569,6 +576,7 @@ fn main() {
 
     #[test]
     fn associated_trait_const() {
+        mark::check!(qualify_path_trait_assoc_item);
         check_assist(
             qualify_path,
             r"
@@ -638,6 +646,7 @@ fn main() {
 
     #[test]
     fn trait_method() {
+        mark::check!(qualify_path_trait_method);
         check_assist(
             qualify_path,
             r"
