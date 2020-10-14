@@ -1,5 +1,5 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
-use super::ty::{AllowPlus, RecoverQPath};
+use super::ty::{AllowPlus, RecoverFatArrow, RecoverQPath};
 use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
@@ -1648,7 +1648,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
             inputs: self.parse_fn_params(req_name)?,
-            output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?,
+            output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes, RecoverFatArrow::Yes)?,
         }))
     }
 

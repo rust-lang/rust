@@ -43,6 +43,12 @@ pub(super) enum RecoverQPath {
     No,
 }
 
+#[derive(PartialEq)]
+pub(super) enum RecoverFatArrow {
+    Yes,
+    No,
+}
+
 // Is `...` (`CVarArgs`) legal at this level of type parsing?
 #[derive(PartialEq)]
 enum AllowCVariadic {
@@ -87,9 +93,24 @@ impl<'a> Parser<'a> {
         &mut self,
         allow_plus: AllowPlus,
         recover_qpath: RecoverQPath,
+        recover_fat_arrow: RecoverFatArrow,
     ) -> PResult<'a, FnRetTy> {
         Ok(if self.eat(&token::RArrow) {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
+            let ty = self.parse_ty_common(allow_plus, recover_qpath, AllowCVariadic::No)?;
+            FnRetTy::Ty(ty)
+        } else if recover_fat_arrow == RecoverFatArrow::Yes && self.token == token::FatArrow {
+            // Don't `eat` to prevent `=>` from being added as an expected token which isn't
+            // actually expected and could only confuse users
+            self.bump();
+            self.struct_span_err(self.prev_token.span, "return types are denoted using `->`")
+                .span_suggestion_short(
+                    self.prev_token.span,
+                    "use `->` instead",
+                    "->".to_string(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
             let ty = self.parse_ty_common(allow_plus, recover_qpath, AllowCVariadic::No)?;
             FnRetTy::Ty(ty)
         } else {
