@@ -5,7 +5,6 @@ LL | fn will_ice(something: &u32) -> impl Iterator<Item = &u32> {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `()`
-   = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error
 

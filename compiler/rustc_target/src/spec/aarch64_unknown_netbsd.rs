@@ -1,11 +1,11 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::netbsd_base::opts();
     base.max_atomic_width = Some(128);
     base.unsupported_abis = super::arm_base::unsupported_abis();
 
-    Ok(Target {
+    Target {
         llvm_target: "aarch64-unknown-netbsd".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -17,5 +17,5 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "__mcount".to_string(), ..base },
-    })
+    }
 }

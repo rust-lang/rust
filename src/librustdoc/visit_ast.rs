@@ -399,6 +399,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.extern_crates.push(ExternCrate {
                     cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id).unwrap_or(LOCAL_CRATE),
                     name: ident.name,
+                    hir_id: item.hir_id,
                     path: orig_name.map(|x| x.to_string()),
                     vis: &item.vis,
                     attrs: &item.attrs,

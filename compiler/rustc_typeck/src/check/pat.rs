@@ -495,7 +495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.sess,
             span,
             E0029,
-            "only char and numeric types are allowed in range patterns"
+            "only `char` and numeric types are allowed in range patterns"
         );
         let msg = |ty| format!("this is of type `{}` but it should be `char` or numeric", ty);
         let mut one_side_err = |first_span, first_ty, second: Option<(bool, Ty<'tcx>, Span)>| {
@@ -1381,7 +1381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a diagnostic reporting a struct pattern which is missing an `..` due to
     /// inaccessible fields.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text
     /// error: pattern requires `..` due to inaccessible fields
     ///   --> src/main.rs:10:9
     ///    |
@@ -1431,7 +1431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Returns a diagnostic reporting a struct pattern which does not mention some fields.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text
     /// error[E0027]: pattern does not mention field `you_cant_use_this_field`
     ///   --> src/main.rs:15:9
     ///    |

@@ -24,6 +24,7 @@ pub fn opts() -> TargetOptions {
         pre_link_args: args,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
+        dwarf_version: Some(2),
         ..Default::default()
     }
 }

@@ -1137,12 +1137,9 @@ impl<'a> MethodDef<'a> {
     /// for each of the self-args, carried in precomputed variables.
 
     /// ```{.text}
-    /// let __self0_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&self) };
-    /// let __self1_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&arg1) };
-    /// let __self2_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&arg2) };
+    /// let __self0_vi = std::intrinsics::discriminant_value(&self);
+    /// let __self1_vi = std::intrinsics::discriminant_value(&arg1);
+    /// let __self2_vi = std::intrinsics::discriminant_value(&arg2);
     ///
     /// if __self0_vi == __self1_vi && __self0_vi == __self2_vi && ... {
     ///     match (...) {
@@ -1325,7 +1322,7 @@ impl<'a> MethodDef<'a> {
                 // Since we know that all the arguments will match if we reach
                 // the match expression we add the unreachable intrinsics as the
                 // result of the catch all which should help llvm in optimizing it
-                Some(deriving::call_intrinsic(cx, sp, sym::unreachable, vec![]))
+                Some(deriving::call_unreachable(cx, sp))
             }
             _ => None,
         };
@@ -1356,12 +1353,9 @@ impl<'a> MethodDef<'a> {
             // with three Self args, builds three statements:
             //
             // ```
-            // let __self0_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&self) };
-            // let __self1_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&arg1) };
-            // let __self2_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&arg2) };
+            // let __self0_vi = std::intrinsics::discriminant_value(&self);
+            // let __self1_vi = std::intrinsics::discriminant_value(&arg1);
+            // let __self2_vi = std::intrinsics::discriminant_value(&arg2);
             // ```
             let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(vi_idents.len() + 1);
 
@@ -1474,7 +1468,7 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            deriving::call_intrinsic(cx, sp, sym::unreachable, vec![])
+            deriving::call_unreachable(cx, sp)
         } else {
             // Final wrinkle: the self_args are expressions that deref
             // down to desired places, but we cannot actually deref

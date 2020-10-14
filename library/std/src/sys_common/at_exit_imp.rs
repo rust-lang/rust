@@ -4,7 +4,7 @@
 
 use crate::mem;
 use crate::ptr;
-use crate::sys_common::mutex::Mutex;
+use crate::sys_common::mutex::StaticMutex;
 
 type Queue = Vec<Box<dyn FnOnce()>>;
 
@@ -12,9 +12,8 @@ type Queue = Vec<Box<dyn FnOnce()>>;
 // on poisoning and this module needs to operate at a lower level than requiring
 // the thread infrastructure to be in place (useful on the borders of
 // initialization/destruction).
-// We never call `LOCK.init()`, so it is UB to attempt to
-// acquire this mutex reentrantly!
-static LOCK: Mutex = Mutex::new();
+// It is UB to attempt to acquire this mutex reentrantly!
+static LOCK: StaticMutex = StaticMutex::new();
 static mut QUEUE: *mut Queue = ptr::null_mut();
 
 const DONE: *mut Queue = 1_usize as *mut _;

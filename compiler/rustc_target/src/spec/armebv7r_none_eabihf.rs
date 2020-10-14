@@ -1,10 +1,10 @@
 // Targets the Cortex-R4F/R5F processor (ARMv7-R)
 
 use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
-use crate::spec::{Target, TargetOptions, TargetResult};
+use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "armebv7r-unknown-none-eabihf".to_string(),
         target_endian: "big".to_string(),
         target_pointer_width: "32".to_string(),
@@ -27,5 +27,5 @@ pub fn target() -> TargetResult {
             emit_debug_gdb_scripts: false,
             ..Default::default()
         },
-    })
+    }
 }

@@ -28,42 +28,43 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let (&normalized_output_ty, normalized_input_tys) =
             normalized_inputs_and_output.split_last().unwrap();
 
+        let mir_def_id = body.source.def_id().expect_local();
+
         // If the user explicitly annotated the input types, extract
         // those.
         //
         // e.g., `|x: FxHashMap<_, &'static u32>| ...`
         let user_provided_sig;
-        if !self.tcx().is_closure(self.mir_def_id.to_def_id()) {
+        if !self.tcx().is_closure(mir_def_id.to_def_id()) {
             user_provided_sig = None;
         } else {
-            let typeck_results = self.tcx().typeck(self.mir_def_id);
-            user_provided_sig =
-                match typeck_results.user_provided_sigs.get(&self.mir_def_id.to_def_id()) {
-                    None => None,
-                    Some(user_provided_poly_sig) => {
-                        // Instantiate the canonicalized variables from
-                        // user-provided signature (e.g., the `_` in the code
-                        // above) with fresh variables.
-                        let (poly_sig, _) =
-                            self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                                body.span,
-                                &user_provided_poly_sig,
-                            );
+            let typeck_results = self.tcx().typeck(mir_def_id);
+            user_provided_sig = match typeck_results.user_provided_sigs.get(&mir_def_id.to_def_id())
+            {
+                None => None,
+                Some(user_provided_poly_sig) => {
+                    // Instantiate the canonicalized variables from
+                    // user-provided signature (e.g., the `_` in the code
+                    // above) with fresh variables.
+                    let (poly_sig, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
+                        body.span,
+                        &user_provided_poly_sig,
+                    );
 
-                        // Replace the bound items in the fn sig with fresh
-                        // variables, so that they represent the view from
-                        // "inside" the closure.
-                        Some(
-                            self.infcx
-                                .replace_bound_vars_with_fresh_vars(
-                                    body.span,
-                                    LateBoundRegionConversionTime::FnCall,
-                                    &poly_sig,
-                                )
-                                .0,
-                        )
-                    }
+                    // Replace the bound items in the fn sig with fresh
+                    // variables, so that they represent the view from
+                    // "inside" the closure.
+                    Some(
+                        self.infcx
+                            .replace_bound_vars_with_fresh_vars(
+                                body.span,
+                                LateBoundRegionConversionTime::FnCall,
+                                &poly_sig,
+                            )
+                            .0,
+                    )
                 }
+            }
         };
 
         debug!(
@@ -122,7 +123,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(terr) = self.eq_opaque_type_and_type(
             mir_output_ty,
             normalized_output_ty,
-            self.mir_def_id,
+            mir_def_id,
             Locations::All(output_span),
             ConstraintCategory::BoringNoLocation,
         ) {
@@ -145,7 +146,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if let Err(err) = self.eq_opaque_type_and_type(
                 mir_output_ty,
                 user_provided_output_ty,
-                self.mir_def_id,
+                mir_def_id,
                 Locations::All(output_span),
                 ConstraintCategory::BoringNoLocation,
             ) {

@@ -1009,7 +1009,7 @@ impl FusedIterator for Ancestors<'_> {}
 /// [`set_extension`]: PathBuf::set_extension
 ///
 /// More details about the overall approach can be found in
-/// the [module documentation](index.html).
+/// the [module documentation](self).
 ///
 /// # Examples
 ///
@@ -1655,7 +1655,7 @@ impl AsRef<OsStr> for PathBuf {
 /// see [`PathBuf`].
 ///
 /// More details about the overall approach can be found in
-/// the [module documentation](index.html).
+/// the [module documentation](self).
 ///
 /// # Examples
 ///
@@ -1838,7 +1838,7 @@ impl Path {
             // FIXME: Allow Redox prefixes
             self.has_root() || has_redox_scheme(self.as_u8_slice())
         } else {
-            self.has_root() && (cfg!(unix) || self.prefix().is_some())
+            self.has_root() && (cfg!(any(unix, target_os = "wasi")) || self.prefix().is_some())
         }
     }
 

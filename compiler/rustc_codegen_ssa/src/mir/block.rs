@@ -12,9 +12,9 @@ use crate::MemFlags;
 use rustc_ast as ast;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::AssertKind;
+use rustc_middle::mir::{self, SwitchTargets};
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
@@ -23,8 +23,6 @@ use rustc_span::{sym, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::abi::{self, LayoutOf};
 use rustc_target::spec::abi::Abi;
-
-use std::borrow::Cow;
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
 /// e.g., creating a basic block, calling a function, etc.
@@ -198,42 +196,37 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mut bx: Bx,
         discr: &mir::Operand<'tcx>,
         switch_ty: Ty<'tcx>,
-        values: &Cow<'tcx, [u128]>,
-        targets: &Vec<mir::BasicBlock>,
+        targets: &SwitchTargets,
     ) {
         let discr = self.codegen_operand(&mut bx, &discr);
         // `switch_ty` is redundant, sanity-check that.
         assert_eq!(discr.layout.ty, switch_ty);
-        if targets.len() == 2 {
-            // If there are two targets, emit br instead of switch
-            let lltrue = helper.llblock(self, targets[0]);
-            let llfalse = helper.llblock(self, targets[1]);
+        helper.maybe_sideeffect(self.mir, &mut bx, targets.all_targets());
+
+        let mut target_iter = targets.iter();
+        if target_iter.len() == 1 {
+            // If there are two targets (one conditional, one fallback), emit br instead of switch
+            let (test_value, target) = target_iter.next().unwrap();
+            let lltrue = helper.llblock(self, target);
+            let llfalse = helper.llblock(self, targets.otherwise());
             if switch_ty == bx.tcx().types.bool {
-                helper.maybe_sideeffect(self.mir, &mut bx, targets.as_slice());
                 // Don't generate trivial icmps when switching on bool
-                if let [0] = values[..] {
-                    bx.cond_br(discr.immediate(), llfalse, lltrue);
-                } else {
-                    assert_eq!(&values[..], &[1]);
-                    bx.cond_br(discr.immediate(), lltrue, llfalse);
+                match test_value {
+                    0 => bx.cond_br(discr.immediate(), llfalse, lltrue),
+                    1 => bx.cond_br(discr.immediate(), lltrue, llfalse),
+                    _ => bug!(),
                 }
             } else {
                 let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
-                let llval = bx.const_uint_big(switch_llty, values[0]);
+                let llval = bx.const_uint_big(switch_llty, test_value);
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
-                helper.maybe_sideeffect(self.mir, &mut bx, targets.as_slice());
                 bx.cond_br(cmp, lltrue, llfalse);
             }
         } else {
-            helper.maybe_sideeffect(self.mir, &mut bx, targets.as_slice());
-            let (otherwise, targets) = targets.split_last().unwrap();
             bx.switch(
                 discr.immediate(),
-                helper.llblock(self, *otherwise),
-                values
-                    .iter()
-                    .zip(targets)
-                    .map(|(&value, target)| (value, helper.llblock(self, *target))),
+                helper.llblock(self, targets.otherwise()),
+                target_iter.map(|(value, target)| (value, helper.llblock(self, target))),
             );
         }
     }
@@ -975,8 +968,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.funclet_br(self, &mut bx, target);
             }
 
-            mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
-                self.codegen_switchint_terminator(helper, bx, discr, switch_ty, values, targets);
+            mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
+                self.codegen_switchint_terminator(helper, bx, discr, switch_ty, targets);
             }
 
             mir::TerminatorKind::Return => {

@@ -1,8 +1,8 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::struct_span_err;
-use rustc_hir::{self as hir, LangItem};
-use rustc_hir::{def_id::DefId, HirId};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -11,13 +11,14 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
 };
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, TraitEngine};
 
+use std::mem;
 use std::ops::Deref;
 
-use super::ops::{self, NonConstOp};
+use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, Qualif};
@@ -49,7 +50,7 @@ impl Qualifs<'mir, 'tcx> {
         location: Location,
     ) -> bool {
         let indirectly_mutable = self.indirectly_mutable.get_or_insert_with(|| {
-            let ConstCx { tcx, body, def_id, param_env, .. } = *ccx;
+            let ConstCx { tcx, body, param_env, .. } = *ccx;
 
             // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
             // allowed in a const.
@@ -58,7 +59,7 @@ impl Qualifs<'mir, 'tcx> {
             // without breaking stable code?
             MaybeMutBorrowedLocals::mut_borrows_only(tcx, &body, param_env)
                 .unsound_ignore_borrow_on_drop()
-                .into_engine(tcx, &body, def_id.to_def_id())
+                .into_engine(tcx, &body)
                 .pass_name("const_qualification")
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
@@ -83,10 +84,10 @@ impl Qualifs<'mir, 'tcx> {
         }
 
         let needs_drop = self.needs_drop.get_or_insert_with(|| {
-            let ConstCx { tcx, body, def_id, .. } = *ccx;
+            let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .into_engine(tcx, &body, def_id.to_def_id())
+                .into_engine(tcx, &body)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -110,10 +111,10 @@ impl Qualifs<'mir, 'tcx> {
         }
 
         let has_mut_interior = self.has_mut_interior.get_or_insert_with(|| {
-            let ConstCx { tcx, body, def_id, .. } = *ccx;
+            let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, &body, def_id.to_def_id())
+                .into_engine(tcx, &body)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -156,7 +157,7 @@ impl Qualifs<'mir, 'tcx> {
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, &ccx.body, ccx.def_id.to_def_id())
+                    .into_engine(ccx.tcx, &ccx.body)
                     .iterate_to_fixpoint()
                     .into_results_cursor(&ccx.body);
 
@@ -180,7 +181,8 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
-    const_checking_stopped: bool,
+    error_emitted: bool,
+    secondary_errors: Vec<Diagnostic>,
 }
 
 impl Deref for Validator<'mir, 'tcx> {
@@ -197,19 +199,28 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
-            const_checking_stopped: false,
+            error_emitted: false,
+            secondary_errors: Vec::new(),
         }
     }
 
     pub fn check_body(&mut self) {
-        let ConstCx { tcx, body, def_id, .. } = *self.ccx;
+        let ConstCx { tcx, body, .. } = *self.ccx;
+        let def_id = self.ccx.def_id();
+
+        // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
+        // no need to emit duplicate errors here.
+        if is_async_fn(self.ccx) || body.generator_kind.is_some() {
+            tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
+            return;
+        }
 
         // The local type and predicate checks are not free and only relevant for `const fn`s.
         if self.const_kind() == hir::ConstContext::ConstFn {
             // Prevent const trait methods from being annotated as `stable`.
             // FIXME: Do this as part of stability checking.
             if self.is_const_stable_const_fn() {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(self.def_id);
+                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                 if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
                     struct_span_err!(
                         self.ccx.tcx.sess,
@@ -223,20 +234,21 @@ impl Validator<'mir, 'tcx> {
 
             self.check_item_predicates();
 
-            for local in &body.local_decls {
-                if local.internal {
+            for (idx, local) in body.local_decls.iter_enumerated() {
+                // Handle the return place below.
+                if idx == RETURN_PLACE || local.internal {
                     continue;
                 }
 
                 self.span = local.source_info.span;
-                self.check_local_or_return_ty(local.ty);
+                self.check_local_or_return_ty(local.ty, idx);
             }
 
             // impl trait is gone in MIR, so check the return type of a const fn by its signature
             // instead of the type of the return place.
             self.span = body.local_decls[RETURN_PLACE].source_info.span;
             let return_ty = tcx.fn_sig(def_id).output();
-            self.check_local_or_return_ty(return_ty.skip_binder());
+            self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
         self.visit_body(&body);
@@ -249,6 +261,17 @@ impl Validator<'mir, 'tcx> {
         if should_check_for_sync {
             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
             check_return_ty_is_sync(tcx, &body, hir_id);
+        }
+
+        // If we got through const-checking without emitting any "primary" errors, emit any
+        // "secondary" errors if they occurred.
+        let secondary_errors = mem::take(&mut self.secondary_errors);
+        if !self.error_emitted {
+            for error in secondary_errors {
+                self.tcx.sess.diagnostic().emit_diagnostic(&error);
+            }
+        } else {
+            assert!(self.tcx.sess.has_errors());
         }
     }
 
@@ -264,15 +287,38 @@ impl Validator<'mir, 'tcx> {
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context.
     pub fn check_op_spanned<O: NonConstOp>(&mut self, op: O, span: Span) {
-        // HACK: This is for strict equivalence with the old `qualify_min_const_fn` pass, which
-        // only emitted one error per function. It should be removed and the test output updated.
-        if self.const_checking_stopped {
+        let gate = match op.status_in_item(self.ccx) {
+            Status::Allowed => return,
+
+            Status::Unstable(gate) if self.tcx.features().enabled(gate) => {
+                let unstable_in_stable = self.ccx.is_const_stable_const_fn()
+                    && !super::allow_internal_unstable(self.tcx, self.def_id().to_def_id(), gate);
+                if unstable_in_stable {
+                    emit_unstable_in_stable_error(self.ccx, span, gate);
+                }
+
+                return;
+            }
+
+            Status::Unstable(gate) => Some(gate),
+            Status::Forbidden => None,
+        };
+
+        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+            self.tcx.sess.miri_unleashed_feature(span, gate);
             return;
         }
 
-        let err_emitted = ops::non_const(self.ccx, op, span);
-        if err_emitted && O::STOPS_CONST_CHECKING {
-            self.const_checking_stopped = true;
+        let mut err = op.build_error(self.ccx, span);
+        assert!(err.is_error());
+
+        match op.importance() {
+            ops::DiagnosticImportance::Primary => {
+                self.error_emitted = true;
+                err.emit();
+            }
+
+            ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),
         }
     }
 
@@ -284,7 +330,9 @@ impl Validator<'mir, 'tcx> {
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
-    fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>) {
+    fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>, local: Local) {
+        let kind = self.body.local_kind(local);
+
         for ty in ty.walk() {
             let ty = match ty.unpack() {
                 GenericArgKind::Type(ty) => ty,
@@ -295,20 +343,20 @@ impl Validator<'mir, 'tcx> {
             };
 
             match *ty.kind() {
-                ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef),
+                ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
                 ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
-                ty::FnPtr(..) => self.check_op(ops::ty::FnPtr),
+                ty::FnPtr(..) => self.check_op(ops::ty::FnPtr(kind)),
 
                 ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::AutoTrait(_)
                             | ty::ExistentialPredicate::Projection(_) => {
-                                self.check_op(ops::ty::TraitBound)
+                                self.check_op(ops::ty::TraitBound(kind))
                             }
                             ty::ExistentialPredicate::Trait(trait_ref) => {
                                 if Some(trait_ref.def_id) != self.tcx.lang_items().sized_trait() {
-                                    self.check_op(ops::ty::TraitBound)
+                                    self.check_op(ops::ty::TraitBound(kind))
                                 }
                             }
                         }
@@ -320,9 +368,9 @@ impl Validator<'mir, 'tcx> {
     }
 
     fn check_item_predicates(&mut self) {
-        let ConstCx { tcx, def_id, .. } = *self.ccx;
+        let ConstCx { tcx, .. } = *self.ccx;
 
-        let mut current = def_id.to_def_id();
+        let mut current = self.def_id().to_def_id();
         loop {
             let predicates = tcx.predicates_of(current);
             for (predicate, _) in predicates.predicates {
@@ -353,15 +401,19 @@ impl Validator<'mir, 'tcx> {
                                 let def = generics.type_param(p, tcx);
                                 let span = tcx.def_span(def.def_id);
 
+                                // These are part of the function signature, so treat them like
+                                // arguments when determining importance.
+                                let kind = LocalKind::Arg;
+
                                 if constness == hir::Constness::Const {
-                                    self.check_op_spanned(ops::ty::TraitBound, span);
+                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
                                 } else if !tcx.features().const_fn
                                     || self.ccx.is_const_stable_const_fn()
                                 {
                                     // HACK: We shouldn't need the conditional above, but trait
                                     // bounds on containing impl blocks are wrongly being marked as
                                     // "not-const".
-                                    self.check_op_spanned(ops::ty::TraitBound, span);
+                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
                                 }
                             }
                             // other kinds of bounds are either tautologies
@@ -383,11 +435,13 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, block: &BasicBlockData<'tcx>) {
         trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
 
-        // Just as the old checker did, we skip const-checking basic blocks on the unwind path.
-        // These blocks often drop locals that would otherwise be returned from the function.
+        // We don't const-check basic blocks on the cleanup path since we never unwind during
+        // const-eval: a panic causes an immediate compile error. In other words, cleanup blocks
+        // are unreachable during const-eval.
         //
-        // FIXME: This shouldn't be unsound since a panic at compile time will cause a compiler
-        // error anyway, but maybe we should do more here?
+        // We can't be more conservative (e.g., by const-checking cleanup blocks anyways) because
+        // locals that would never be dropped during normal execution are sometimes dropped during
+        // unwinding, which means backwards-incompatible live-drop errors.
         if block.is_cleanup {
             return;
         }
@@ -683,8 +737,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
         match &terminator.kind {
             TerminatorKind::Call { func, .. } => {
-                let ConstCx { tcx, body, def_id: caller, param_env, .. } = *self.ccx;
-                let caller = caller.to_def_id();
+                let ConstCx { tcx, body, param_env, .. } = *self.ccx;
+                let caller = self.def_id().to_def_id();
 
                 let fn_ty = func.ty(body, tcx);
 
@@ -716,6 +770,14 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 if is_lang_panic_fn(tcx, callee) {
                     self.check_op(ops::Panic);
+                    return;
+                }
+
+                // `async` blocks get lowered to `std::future::from_generator(/* a closure */)`.
+                let is_async_block = Some(callee) == tcx.lang_items().from_generator_fn();
+                if is_async_block {
+                    let kind = hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block);
+                    self.check_op(ops::Generator(kind));
                     return;
                 }
 
@@ -815,10 +877,14 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             }
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
-            TerminatorKind::Abort => self.check_op(ops::Abort),
 
             TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
-                self.check_op(ops::Generator)
+                self.check_op(ops::Generator(hir::GeneratorKind::Gen))
+            }
+
+            TerminatorKind::Abort => {
+                // Cleanup blocks are skipped for const checking (see `visit_basic_block_data`).
+                span_bug!(self.span, "`Abort` terminator outside of cleanup block")
             }
 
             TerminatorKind::Assert { .. }
@@ -876,4 +942,32 @@ fn place_as_reborrow(
 
 fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char()
+}
+
+fn is_async_fn(ccx: &ConstCx<'_, '_>) -> bool {
+    ccx.fn_sig().map_or(false, |sig| sig.header.asyncness == hir::IsAsync::Async)
+}
+
+fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
+    let attr_span = ccx.fn_sig().map_or(ccx.body.span, |sig| sig.span.shrink_to_lo());
+
+    ccx.tcx
+        .sess
+        .struct_span_err(
+            span,
+            &format!("const-stable function cannot use `#[feature({})]`", gate.as_str()),
+        )
+        .span_suggestion(
+            attr_span,
+            "if it is not part of the public API, make this function unstably const",
+            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
+            Applicability::HasPlaceholders,
+        )
+        .span_suggestion(
+            attr_span,
+            "otherwise `#[allow_internal_unstable]` can be used to bypass stability checks",
+            format!("#[allow_internal_unstable({})]\n", gate),
+            Applicability::MaybeIncorrect,
+        )
+        .emit();
 }

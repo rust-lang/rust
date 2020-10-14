@@ -8,7 +8,7 @@
 
 use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Result<Target, String> {
+pub fn target() -> Target {
     let opts = TargetOptions {
         linker: Some("rust-lld".to_owned()),
         features: "+strict-align,+neon,+fp-armv8".to_string(),
@@ -21,7 +21,7 @@ pub fn target() -> Result<Target, String> {
         unsupported_abis: super::arm_base::unsupported_abis(),
         ..Default::default()
     };
-    Ok(Target {
+    Target {
         llvm_target: "aarch64-unknown-none".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -33,5 +33,5 @@ pub fn target() -> Result<Target, String> {
         arch: "aarch64".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: opts,
-    })
+    }
 }

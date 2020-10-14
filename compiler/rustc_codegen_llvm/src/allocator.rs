@@ -3,11 +3,17 @@ use libc::c_uint;
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::symbol::sym;
 
 use crate::llvm::{self, False, True};
 use crate::ModuleLlvm;
 
-pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut ModuleLlvm, kind: AllocatorKind) {
+pub(crate) unsafe fn codegen(
+    tcx: TyCtxt<'_>,
+    mods: &mut ModuleLlvm,
+    kind: AllocatorKind,
+    has_alloc_error_handler: bool,
+) {
     let llcx = &*mods.llcx;
     let llmod = mods.llmod();
     let usize = match &tcx.sess.target.target.target_pointer_width[..] {
@@ -82,4 +88,41 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut ModuleLlvm, kind: Alloc
         }
         llvm::LLVMDisposeBuilder(llbuilder);
     }
+
+    // rust alloc error handler
+    let args = [usize, usize]; // size, align
+
+    let ty = llvm::LLVMFunctionType(void, args.as_ptr(), args.len() as c_uint, False);
+    let name = format!("__rust_alloc_error_handler");
+    let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
+    // -> ! DIFlagNoReturn
+    llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
+
+    if tcx.sess.target.target.options.default_hidden_visibility {
+        llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+    }
+    if tcx.sess.must_emit_unwind_tables() {
+        attributes::emit_uwtable(llfn, true);
+    }
+
+    let kind = if has_alloc_error_handler { AllocatorKind::Global } else { AllocatorKind::Default };
+    let callee = kind.fn_name(sym::oom);
+    let callee = llvm::LLVMRustGetOrInsertFunction(llmod, callee.as_ptr().cast(), callee.len(), ty);
+    // -> ! DIFlagNoReturn
+    llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, callee);
+    llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
+
+    let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, "entry\0".as_ptr().cast());
+
+    let llbuilder = llvm::LLVMCreateBuilderInContext(llcx);
+    llvm::LLVMPositionBuilderAtEnd(llbuilder, llbb);
+    let args = args
+        .iter()
+        .enumerate()
+        .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
+        .collect::<Vec<_>>();
+    let ret = llvm::LLVMRustBuildCall(llbuilder, callee, args.as_ptr(), args.len() as c_uint, None);
+    llvm::LLVMSetTailCall(ret, True);
+    llvm::LLVMBuildRetVoid(llbuilder);
+    llvm::LLVMDisposeBuilder(llbuilder);
 }

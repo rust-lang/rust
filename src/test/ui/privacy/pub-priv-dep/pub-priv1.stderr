@@ -17,12 +17,10 @@ LL |     pub fn pub_fn(param: OtherType) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:33:1
+  --> $DIR/pub-priv1.rs:34:5
    |
-LL | / pub trait MyPubTrait {
-LL | |     type Foo: OtherTrait;
-LL | | }
-   | |_^
+LL |     type Foo: OtherTrait;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

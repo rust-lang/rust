@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::cloudabi_base::opts();
     base.cpu = "cortex-a8".to_string();
     base.max_atomic_width = Some(64);
@@ -8,7 +8,7 @@ pub fn target() -> TargetResult {
     base.unsupported_abis = super::arm_base::unsupported_abis();
     base.linker = Some("armv7-unknown-cloudabi-eabihf-cc".to_string());
 
-    Ok(Target {
+    Target {
         llvm_target: "armv7-unknown-cloudabi-eabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -20,5 +20,5 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "\u{1}mcount".to_string(), ..base },
-    })
+    }
 }

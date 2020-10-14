@@ -7,7 +7,7 @@ LL |     let bar: fn() -> u8 = || { b };
    |              expected due to this
    |
    = note: expected fn pointer `fn() -> u8`
-                 found closure `[closure@$DIR/closure-no-fn-2.rs:6:27: 6:35 b:_]`
+                 found closure `[closure@$DIR/closure-no-fn-2.rs:6:27: 6:35]`
 
 error: aborting due to previous error
 

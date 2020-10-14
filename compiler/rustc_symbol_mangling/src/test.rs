@@ -5,6 +5,7 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc_hir as hir;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
@@ -44,7 +45,7 @@ impl SymbolNamesTest<'tcx> {
                     tcx.sess.span_err(attr.span, &format!("demangling-alt({:#})", demangling));
                 }
             } else if tcx.sess.check_name(attr, DEF_PATH) {
-                let path = tcx.def_path_str(def_id.to_def_id());
+                let path = with_no_trimmed_paths(|| tcx.def_path_str(def_id.to_def_id()));
                 tcx.sess.span_err(attr.span, &format!("def-path({})", path));
             }
 

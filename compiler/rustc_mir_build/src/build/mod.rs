@@ -29,7 +29,13 @@ crate fn mir_built<'tcx>(
         return tcx.mir_built(def);
     }
 
-    tcx.alloc_steal_mir(mir_build(tcx, def))
+    let mut body = mir_build(tcx, def);
+    if def.const_param_did.is_some() {
+        assert!(matches!(body.source.instance, ty::InstanceDef::Item(_)));
+        body.source = MirSource::from_instance(ty::InstanceDef::Item(def.to_global()));
+    }
+
+    tcx.alloc_steal_mir(body)
 }
 
 /// Construct the MIR for a given `DefId`.
@@ -199,7 +205,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
-        lints::check(tcx, &body, def.did);
+        lints::check(tcx, &body);
 
         // The borrow checker will replace all the regions here with its own
         // inference variables. There's no point having non-erased regions here.
@@ -296,6 +302,7 @@ struct Builder<'a, 'tcx> {
     hir: Cx<'a, 'tcx>,
     cfg: CFG<'tcx>,
 
+    def_id: DefId,
     fn_span: Span,
     arg_count: usize,
     generator_kind: Option<GeneratorKind>,
@@ -345,11 +352,6 @@ struct Builder<'a, 'tcx> {
 
     var_debug_info: Vec<VarDebugInfo<'tcx>>,
 
-    /// Cached block with the `RESUME` terminator; this is created
-    /// when first set of cleanups are built.
-    cached_resume_block: Option<BasicBlock>,
-    /// Cached block with the `RETURN` terminator.
-    cached_return_block: Option<BasicBlock>,
     /// Cached block with the `UNREACHABLE` terminator.
     cached_unreachable_block: Option<BasicBlock>,
 }
@@ -597,6 +599,7 @@ where
 
     let mut builder = Builder::new(
         hir,
+        fn_def_id.to_def_id(),
         span_with_body,
         arguments.len(),
         safety,
@@ -609,50 +612,34 @@ where
         region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };
     let arg_scope =
         region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::Arguments };
-    let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
-    unpack!(
-        block = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
-            if should_abort_on_panic(tcx, fn_def_id, abi) {
-                builder.schedule_abort();
-            }
-
-            let arg_scope_s = (arg_scope, source_info);
-            // `return_block` is called when we evaluate a `return` expression, so
-            // we just use `START_BLOCK` here.
-            unpack!(
-                block = builder.in_breakable_scope(
-                    None,
-                    START_BLOCK,
-                    Place::return_place(),
-                    |builder| {
-                        builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-                            builder.args_and_body(
-                                block,
-                                fn_def_id.to_def_id(),
-                                &arguments,
-                                arg_scope,
-                                &body.value,
-                            )
-                        })
-                    },
-                )
-            );
-            // Attribute epilogue to function's closing brace
-            let fn_end = span_with_body.shrink_to_hi();
-            let source_info = builder.source_info(fn_end);
-            let return_block = builder.return_block();
-            builder.cfg.goto(block, source_info, return_block);
-            builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
-            // Attribute any unreachable codepaths to the function's closing brace
-            if let Some(unreachable_block) = builder.cached_unreachable_block {
-                builder.cfg.terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
-            }
-            return_block.unit()
-        })
-    );
-    assert_eq!(block, builder.return_block());
+    unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
+        let arg_scope_s = (arg_scope, source_info);
+        // Attribute epilogue to function's closing brace
+        let fn_end = span_with_body.shrink_to_hi();
+        let return_block =
+            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+                Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
+                    builder.args_and_body(
+                        START_BLOCK,
+                        fn_def_id.to_def_id(),
+                        &arguments,
+                        arg_scope,
+                        &body.value,
+                    )
+                }))
+            }));
+        let source_info = builder.source_info(fn_end);
+        builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
+        let should_abort = should_abort_on_panic(tcx, fn_def_id, abi);
+        builder.build_drop_trees(should_abort);
+        // Attribute any unreachable codepaths to the function's closing brace
+        if let Some(unreachable_block) = builder.cached_unreachable_block {
+            builder.cfg.terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
+        }
+        return_block.unit()
+    }));
 
     let spread_arg = if abi == Abi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
@@ -675,8 +662,9 @@ fn construct_const<'a, 'tcx>(
 ) -> Body<'tcx> {
     let tcx = hir.tcx();
     let owner_id = tcx.hir().body_owner(body_id);
+    let def_id = tcx.hir().local_def_id(owner_id);
     let span = tcx.hir().span(owner_id);
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, const_ty, const_ty_span, None);
+    let mut builder = Builder::new(hir, def_id.to_def_id(), span, 0, Safety::Safe, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
@@ -686,8 +674,7 @@ fn construct_const<'a, 'tcx>(
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
 
-    // Constants can't `return` so a return block should not be created.
-    assert_eq!(builder.cached_return_block, None);
+    builder.build_drop_trees(false);
 
     // Constants may be match expressions in which case an unreachable block may
     // be created, so terminate it properly.
@@ -705,6 +692,7 @@ fn construct_const<'a, 'tcx>(
 fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'tcx> {
     let tcx = hir.tcx();
     let owner_id = tcx.hir().body_owner(body_id);
+    let def_id = tcx.hir().local_def_id(owner_id);
     let span = tcx.hir().span(owner_id);
     let ty = tcx.ty_error();
     let num_params = match hir.body_owner_kind {
@@ -722,7 +710,7 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
         hir::BodyOwnerKind::Const => 0,
         hir::BodyOwnerKind::Static(_) => 0,
     };
-    let mut builder = Builder::new(hir, span, num_params, Safety::Safe, ty, span, None);
+    let mut builder = Builder::new(hir, def_id.to_def_id(), span, num_params, Safety::Safe, ty, span, None);
     let source_info = builder.source_info(span);
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
@@ -740,6 +728,7 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn new(
         hir: Cx<'a, 'tcx>,
+        def_id: DefId,
         span: Span,
         arg_count: usize,
         safety: Safety,
@@ -750,11 +739,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
             hir,
+            def_id,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
             arg_count,
             generator_kind,
-            scopes: Default::default(),
+            scopes: scope::Scopes::new(),
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
@@ -767,8 +757,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             var_indices: Default::default(),
             unit_temp: None,
             var_debug_info: vec![],
-            cached_resume_block: None,
-            cached_return_block: None,
             cached_unreachable_block: None,
         };
 
@@ -790,6 +778,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         Body::new(
+            MirSource::item(self.def_id),
             self.cfg.basic_blocks,
             self.source_scopes,
             self.local_decls,
@@ -1000,17 +989,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let tmp = self.temp(ty, fn_span);
                 self.unit_temp = Some(tmp);
                 tmp
-            }
-        }
-    }
-
-    fn return_block(&mut self) -> BasicBlock {
-        match self.cached_return_block {
-            Some(rb) => rb,
-            None => {
-                let rb = self.cfg.start_new_block();
-                self.cached_return_block = Some(rb);
-                rb
             }
         }
     }

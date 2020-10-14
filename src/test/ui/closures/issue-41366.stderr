@@ -9,6 +9,24 @@ LL |     (&|_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
    |
    = note: required for the cast to the object type `dyn for<'x> Fn(<u32 as T<'x>>::V)`
 
-error: aborting due to previous error
+error[E0277]: the size for values of type `<u32 as T<'_>>::V` cannot be known at compilation time
+  --> $DIR/issue-41366.rs:10:8
+   |
+LL |     (&|_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
+   |        ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `<u32 as T<'_>>::V`
+   = help: unsized locals are gated as an unstable feature
+help: consider further restricting the associated type
+   |
+LL | fn main() where <u32 as T<'_>>::V: Sized {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     (&|&_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
+   |        ^
 
-For more information about this error, try `rustc --explain E0631`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0631.
+For more information about an error, try `rustc --explain E0277`.

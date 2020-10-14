@@ -10,12 +10,11 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::{
-    self, AdtDef, CanonicalUserTypeAnnotations, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex,
-};
+use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{AdtDef, InstanceDef, Region, UserTypeAnnotationIndex};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
 use rustc_target::abi::VariantIdx;
 
@@ -112,6 +111,38 @@ impl MirPhase {
     }
 }
 
+/// Where a specific `mir::Body` comes from.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable)]
+pub struct MirSource<'tcx> {
+    pub instance: InstanceDef<'tcx>,
+
+    /// If `Some`, this is a promoted rvalue within the parent function.
+    pub promoted: Option<Promoted>,
+}
+
+impl<'tcx> MirSource<'tcx> {
+    pub fn item(def_id: DefId) -> Self {
+        MirSource {
+            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
+            promoted: None,
+        }
+    }
+
+    pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
+        MirSource { instance, promoted: None }
+    }
+
+    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
+        self.instance.with_opt_param()
+    }
+
+    #[inline]
+    pub fn def_id(&self) -> DefId {
+        self.instance.def_id()
+    }
+}
+
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
 pub struct Body<'tcx> {
@@ -125,6 +156,8 @@ pub struct Body<'tcx> {
     /// promoted items have already been optimized, whereas ours have not. This field allows
     /// us to see the difference and forego optimization on the inlined promoted items.
     pub phase: MirPhase,
+
+    pub source: MirSource<'tcx>,
 
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
@@ -151,7 +184,7 @@ pub struct Body<'tcx> {
     pub local_decls: LocalDecls<'tcx>,
 
     /// User type annotations.
-    pub user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
+    pub user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
 
     /// The number of arguments this function takes.
     ///
@@ -209,10 +242,11 @@ pub struct Body<'tcx> {
 
 impl<'tcx> Body<'tcx> {
     pub fn new(
+        source: MirSource<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
         local_decls: LocalDecls<'tcx>,
-        user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
+        user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
@@ -228,6 +262,7 @@ impl<'tcx> Body<'tcx> {
 
         let mut body = Body {
             phase: MirPhase::Build,
+            source,
             basic_blocks,
             source_scopes,
             yield_ty: None,
@@ -257,6 +292,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Build,
+            source: MirSource::item(DefId::local(CRATE_DEF_INDEX)),
             basic_blocks,
             source_scopes: IndexVec::new(),
             yield_ty: None,
@@ -670,7 +706,7 @@ impl Atom for Local {
 }
 
 /// Classifies locals into categories. See `Body::local_kind`.
-#[derive(PartialEq, Eq, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
 pub enum LocalKind {
     /// User-declared variable binding.
     Var,
@@ -739,7 +775,7 @@ mod binding_form_impl {
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
         fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
             use super::BindingForm::*;
-            ::std::mem::discriminant(self).hash_stable(hcx, hasher);
+            std::mem::discriminant(self).hash_stable(hcx, hasher);
 
             match self {
                 Var(binding) => binding.hash_stable(hcx, hasher),
@@ -777,7 +813,7 @@ pub struct BlockTailInfo {
 /// argument, or the return place.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct LocalDecl<'tcx> {
-    /// Whether this is a mutable minding (i.e., `let x` or `let mut x`).
+    /// Whether this is a mutable binding (i.e., `let x` or `let mut x`).
     ///
     /// Temporaries and the return place are always mutable.
     pub mutability: Mutability,
@@ -935,67 +971,59 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - `let x = ...`,
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(_),
-                opt_ty_info: _,
-                opt_match_place: _,
-                pat_span: _,
-            })))) => true,
-
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
-                ImplicitSelfKind::Imm,
-            )))) => true,
-
-            _ => false,
-        }
+        matches!(
+            self.local_info,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(
+                BindingForm::Var(VarBindingForm {
+                    binding_mode: ty::BindingMode::BindByValue(_),
+                    opt_ty_info: _,
+                    opt_match_place: _,
+                    pat_span: _,
+                })
+                | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
+            )))
+        )
     }
 
     /// Returns `true` if local is definitely not a `ref ident` or
     /// `ref mut ident` binding. (Such bindings cannot be made into
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(_),
-                opt_ty_info: _,
-                opt_match_place: _,
-                pat_span: _,
-            })))) => true,
-
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_)))) => true,
-
-            _ => false,
-        }
+        matches!(
+            self.local_info,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(
+                BindingForm::Var(VarBindingForm {
+                    binding_mode: ty::BindingMode::BindByValue(_),
+                    opt_ty_info: _,
+                    opt_match_place: _,
+                    pat_span: _,
+                })
+                | BindingForm::ImplicitSelf(_),
+            )))
+        )
     }
 
     /// Returns `true` if this variable is a named variable or function
     /// parameter declared by the user.
     #[inline]
     pub fn is_user_variable(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::User(_)) => true,
-            _ => false,
-        }
+        matches!(self.local_info, Some(box LocalInfo::User(_)))
     }
 
     /// Returns `true` if this is a reference to a variable bound in a `match`
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))) => true,
-            _ => false,
-        }
+        matches!(
+            self.local_info,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)))
+        )
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
     /// access that static
     pub fn is_ref_to_static(&self) -> bool {
-        match self.local_info {
-            Some(box LocalInfo::StaticRef { .. }) => true,
-            _ => false,
-        }
+        matches!(self.local_info, Some(box LocalInfo::StaticRef { .. }))
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
@@ -1300,49 +1328,49 @@ impl<O> AssertKind<O> {
         match self {
             BoundsCheck { ref len, ref index } => write!(
                 f,
-                "\"index out of bounds: the len is {{}} but the index is {{}}\", {:?}, {:?}",
+                "\"index out of bounds: the length is {{}} but the index is {{}}\", {:?}, {:?}",
                 len, index
             ),
 
             OverflowNeg(op) => {
-                write!(f, "\"attempt to negate {{}} which would overflow\", {:?}", op)
+                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {:?}", op)
             }
-            DivisionByZero(op) => write!(f, "\"attempt to divide {{}} by zero\", {:?}", op),
+            DivisionByZero(op) => write!(f, "\"attempt to divide `{{}}` by zero\", {:?}", op),
             RemainderByZero(op) => write!(
                 f,
-                "\"attempt to calculate the remainder of {{}} with a divisor of zero\", {:?}",
+                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {:?}",
                 op
             ),
             Overflow(BinOp::Add, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} + {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Sub, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} - {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Mul, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} * {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Div, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} / {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Rem, l, r) => write!(
                 f,
-                "\"attempt to compute the remainder of `{{}} % {{}}` which would overflow\", {:?}, {:?}",
+                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {:?}, {:?}",
                 l, r
             ),
             Overflow(BinOp::Shr, _, r) => {
-                write!(f, "\"attempt to shift right by {{}} which would overflow\", {:?}", r)
+                write!(f, "\"attempt to shift right by `{{}}`, which would overflow\", {:?}", r)
             }
             Overflow(BinOp::Shl, _, r) => {
-                write!(f, "\"attempt to shift left by {{}} which would overflow\", {:?}", r)
+                write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {:?}", r)
             }
             _ => write!(f, "\"{}\"", self.description()),
         }
@@ -1353,36 +1381,40 @@ impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AssertKind::*;
         match self {
-            BoundsCheck { ref len, ref index } => {
-                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
-            }
-            OverflowNeg(op) => write!(f, "attempt to negate {:#?} which would overflow", op),
-            DivisionByZero(op) => write!(f, "attempt to divide {:#?} by zero", op),
-            RemainderByZero(op) => {
-                write!(f, "attempt to calculate the remainder of {:#?} with a divisor of zero", op)
-            }
+            BoundsCheck { ref len, ref index } => write!(
+                f,
+                "index out of bounds: the length is {:?} but the index is {:?}",
+                len, index
+            ),
+            OverflowNeg(op) => write!(f, "attempt to negate `{:#?}`, which would overflow", op),
+            DivisionByZero(op) => write!(f, "attempt to divide `{:#?}` by zero", op),
+            RemainderByZero(op) => write!(
+                f,
+                "attempt to calculate the remainder of `{:#?}` with a divisor of zero",
+                op
+            ),
             Overflow(BinOp::Add, l, r) => {
-                write!(f, "attempt to compute `{:#?} + {:#?}` which would overflow", l, r)
+                write!(f, "attempt to compute `{:#?} + {:#?}`, which would overflow", l, r)
             }
             Overflow(BinOp::Sub, l, r) => {
-                write!(f, "attempt to compute `{:#?} - {:#?}` which would overflow", l, r)
+                write!(f, "attempt to compute `{:#?} - {:#?}`, which would overflow", l, r)
             }
             Overflow(BinOp::Mul, l, r) => {
-                write!(f, "attempt to compute `{:#?} * {:#?}` which would overflow", l, r)
+                write!(f, "attempt to compute `{:#?} * {:#?}`, which would overflow", l, r)
             }
             Overflow(BinOp::Div, l, r) => {
-                write!(f, "attempt to compute `{:#?} / {:#?}` which would overflow", l, r)
+                write!(f, "attempt to compute `{:#?} / {:#?}`, which would overflow", l, r)
             }
             Overflow(BinOp::Rem, l, r) => write!(
                 f,
-                "attempt to compute the remainder of `{:#?} % {:#?}` which would overflow",
+                "attempt to compute the remainder of `{:#?} % {:#?}`, which would overflow",
                 l, r
             ),
             Overflow(BinOp::Shr, _, r) => {
-                write!(f, "attempt to shift right by {:#?} which would overflow", r)
+                write!(f, "attempt to shift right by `{:#?}`, which would overflow", r)
             }
             Overflow(BinOp::Shl, _, r) => {
-                write!(f, "attempt to shift left by {:#?} which would overflow", r)
+                write!(f, "attempt to shift left by `{:#?}`, which would overflow", r)
             }
             _ => write!(f, "{}", self.description()),
         }
@@ -2124,10 +2156,7 @@ pub enum BinOp {
 impl BinOp {
     pub fn is_checkable(self) -> bool {
         use self::BinOp::*;
-        match self {
-            Add | Sub | Mul | Shl | Shr => true,
-            _ => false,
-        }
+        matches!(self, Add | Sub | Mul | Shl | Shr)
     }
 }
 

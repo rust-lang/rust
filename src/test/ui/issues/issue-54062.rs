@@ -7,7 +7,6 @@ struct Test {
 fn main() {}
 
 fn testing(test: Test) {
-    let _ = test.comps.inner.lock().unwrap();
+    let _ = test.comps.inner.try_lock();
     //~^ ERROR: field `inner` of struct `Mutex` is private
-    //~| ERROR: no method named `unwrap` found
 }

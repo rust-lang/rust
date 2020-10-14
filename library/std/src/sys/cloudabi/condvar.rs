@@ -15,6 +15,8 @@ pub struct Condvar {
     condvar: UnsafeCell<AtomicU32>,
 }
 
+pub type MovableCondvar = Condvar;
+
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 

@@ -6,7 +6,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::query::Providers;
@@ -18,7 +18,7 @@ use crate::attributes;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Attribute};
 use crate::llvm_util;
-pub use rustc_attr::{InlineAttr, OptimizeAttr};
+pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 
 use crate::context::CodegenCx;
 use crate::value::Value;
@@ -194,6 +194,18 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     );
 }
 
+pub fn apply_tune_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+    if let Some(tune) = llvm_util::tune_cpu(cx.tcx.sess) {
+        let tune_cpu = SmallCStr::new(tune);
+        llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            const_cstr!("tune-cpu"),
+            tune_cpu.as_c_str(),
+        );
+    }
+}
+
 /// Sets the `NonLazyBind` LLVM attribute on a given function,
 /// assuming the codegen options allow skipping the PLT.
 pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
@@ -294,18 +306,28 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
         Attribute::NoAlias.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
     }
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
+        llvm::AddFunctionAttrString(llfn, Function, const_cstr!("cmse_nonsecure_entry"));
+    }
     sanitize(cx, codegen_fn_attrs.no_sanitize, llfn);
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
     // functions (because Clang annotates functions this way too).
     apply_target_cpu_attr(cx, llfn);
+    // tune-cpu is only conveyed through the attribute for our purpose.
+    // The target doesn't care; the subtarget reads our attribute.
+    apply_tune_cpu_attr(cx, llfn);
 
     let features = llvm_target_features(cx.tcx.sess)
         .map(|s| s.to_string())
         .chain(codegen_fn_attrs.target_features.iter().map(|f| {
             let feature = &f.as_str();
             format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
+        }))
+        .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
+            InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
+            InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
         .collect::<Vec<String>>()
         .join(",");
@@ -345,25 +367,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     }
 }
 
-pub fn provide(providers: &mut Providers) {
-    providers.supported_target_features = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        if tcx.sess.opts.actually_rustdoc {
-            // rustdoc needs to be able to document functions that use all the features, so
-            // provide them all.
-            llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
-        } else {
-            llvm_util::supported_target_features(tcx.sess)
-                .iter()
-                .map(|&(a, b)| (a.to_string(), b))
-                .collect()
-        }
-    };
-
-    provide_extern(providers);
-}
-
-pub fn provide_extern(providers: &mut Providers) {
+pub fn provide_both(providers: &mut Providers) {
     providers.wasm_import_module_map = |tcx, cnum| {
         // Build up a map from DefId to a `NativeLib` structure, where
         // `NativeLib` internally contains information about

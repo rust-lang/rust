@@ -16,6 +16,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{BytePos, Pos};
 use std::mem;
 use tracing::debug;
 
@@ -839,9 +840,10 @@ impl<'a> Parser<'a> {
         }
         use FloatComponent::*;
 
+        let float_str = float.as_str();
         let mut components = Vec::new();
         let mut ident_like = String::new();
-        for c in float.as_str().chars() {
+        for c in float_str.chars() {
             if c == '_' || c.is_ascii_alphanumeric() {
                 ident_like.push(c);
             } else if matches!(c, '.' | '+' | '-') {
@@ -857,8 +859,13 @@ impl<'a> Parser<'a> {
             components.push(IdentLike(ident_like));
         }
 
-        // FIXME: Make the span more precise.
+        // With proc macros the span can refer to anything, the source may be too short,
+        // or too long, or non-ASCII. It only makes sense to break our span into components
+        // if its underlying text is identical to our float literal.
         let span = self.token.span;
+        let can_take_span_apart =
+            || self.span_to_snippet(span).as_deref() == Ok(float_str).as_deref();
+
         match &*components {
             // 1e2
             [IdentLike(i)] => {
@@ -866,21 +873,40 @@ impl<'a> Parser<'a> {
             }
             // 1.
             [IdentLike(i), Punct('.')] => {
+                let (ident_span, dot_span) = if can_take_span_apart() {
+                    let (span, ident_len) = (span.data(), BytePos::from_usize(i.len()));
+                    let ident_span = span.with_hi(span.lo + ident_len);
+                    let dot_span = span.with_lo(span.lo + ident_len);
+                    (ident_span, dot_span)
+                } else {
+                    (span, span)
+                };
                 assert!(suffix.is_none());
                 let symbol = Symbol::intern(&i);
-                self.token = Token::new(token::Ident(symbol, false), span);
-                let next_token = Token::new(token::Dot, span);
+                self.token = Token::new(token::Ident(symbol, false), ident_span);
+                let next_token = Token::new(token::Dot, dot_span);
                 self.parse_tuple_field_access_expr(lo, base, symbol, None, Some(next_token))
             }
             // 1.2 | 1.2e3
             [IdentLike(i1), Punct('.'), IdentLike(i2)] => {
+                let (ident1_span, dot_span, ident2_span) = if can_take_span_apart() {
+                    let (span, ident1_len) = (span.data(), BytePos::from_usize(i1.len()));
+                    let ident1_span = span.with_hi(span.lo + ident1_len);
+                    let dot_span = span
+                        .with_lo(span.lo + ident1_len)
+                        .with_hi(span.lo + ident1_len + BytePos(1));
+                    let ident2_span = self.token.span.with_lo(span.lo + ident1_len + BytePos(1));
+                    (ident1_span, dot_span, ident2_span)
+                } else {
+                    (span, span, span)
+                };
                 let symbol1 = Symbol::intern(&i1);
-                self.token = Token::new(token::Ident(symbol1, false), span);
-                let next_token1 = Token::new(token::Dot, span);
+                self.token = Token::new(token::Ident(symbol1, false), ident1_span);
+                let next_token1 = Token::new(token::Dot, dot_span);
                 let base1 =
                     self.parse_tuple_field_access_expr(lo, base, symbol1, None, Some(next_token1));
                 let symbol2 = Symbol::intern(&i2);
-                let next_token2 = Token::new(token::Ident(symbol2, false), span);
+                let next_token2 = Token::new(token::Ident(symbol2, false), ident2_span);
                 self.bump_with(next_token2); // `.`
                 self.parse_tuple_field_access_expr(lo, base1, symbol2, suffix, None)
             }
@@ -2015,9 +2041,12 @@ impl<'a> Parser<'a> {
     ) -> Option<PResult<'a, P<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
         if struct_allowed || self.is_certainly_not_a_block() {
-            // This is a struct literal, but we don't can't accept them here.
-            let expr = self.parse_struct_expr(path.clone(), attrs.clone());
+            if let Err(err) = self.expect(&token::OpenDelim(token::Brace)) {
+                return Some(Err(err));
+            }
+            let expr = self.parse_struct_expr(path.clone(), attrs.clone(), true);
             if let (Ok(expr), false) = (&expr, struct_allowed) {
+                // This is a struct literal, but we don't can't accept them here.
                 self.error_struct_lit_not_allowed_here(path.span, expr.span);
             }
             return Some(expr);
@@ -2035,12 +2064,13 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
+    /// Precondition: already parsed the '{'.
     pub(super) fn parse_struct_expr(
         &mut self,
         pth: ast::Path,
         mut attrs: AttrVec,
+        recover: bool,
     ) -> PResult<'a, P<Expr>> {
-        self.bump();
         let mut fields = Vec::new();
         let mut base = None;
         let mut recover_async = false;
@@ -2059,10 +2089,11 @@ impl<'a> Parser<'a> {
                 let exp_span = self.prev_token.span;
                 match self.parse_expr() {
                     Ok(e) => base = Some(e),
-                    Err(mut e) => {
+                    Err(mut e) if recover => {
                         e.emit();
                         self.recover_stmt();
                     }
+                    Err(e) => return Err(e),
                 }
                 self.recover_struct_comma_after_dotdot(exp_span);
                 break;
@@ -2113,6 +2144,9 @@ impl<'a> Parser<'a> {
                                 Applicability::MachineApplicable,
                             );
                         }
+                    }
+                    if !recover {
+                        return Err(e);
                     }
                     e.emit();
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);

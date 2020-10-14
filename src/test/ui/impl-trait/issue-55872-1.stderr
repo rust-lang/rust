@@ -14,7 +14,6 @@ LL |     type E = impl Copy;
    |              ^^^^^^^^^ within `(S, T)`, the trait `Copy` is not implemented for `S`
    |
    = note: required because it appears within the type `(S, T)`
-   = note: the return type of a function must have a statically known size
 help: consider further restricting this bound
    |
 LL | impl<S: Default + Copy> Bar for S {
@@ -27,7 +26,6 @@ LL |     type E = impl Copy;
    |              ^^^^^^^^^ within `(S, T)`, the trait `Copy` is not implemented for `T`
    |
    = note: required because it appears within the type `(S, T)`
-   = note: the return type of a function must have a statically known size
 help: consider further restricting this bound
    |
 LL |     fn foo<T: Default + Copy>() -> Self::E {

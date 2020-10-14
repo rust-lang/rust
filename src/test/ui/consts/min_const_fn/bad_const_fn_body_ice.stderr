@@ -6,15 +6,6 @@ LL |     vec![1, 2, 3]
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0019]: constant function contains unimplemented expression type
-  --> $DIR/bad_const_fn_body_ice.rs:2:5
-   |
-LL |     vec![1, 2, 3]
-   |     ^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
   --> $DIR/bad_const_fn_body_ice.rs:2:5
    |
@@ -23,7 +14,7 @@ LL |     vec![1, 2, 3]
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0010, E0015, E0019.
+Some errors have detailed explanations: E0010, E0015.
 For more information about an error, try `rustc --explain E0010`.

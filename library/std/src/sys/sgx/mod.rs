@@ -2,6 +2,7 @@
 //!
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Fortanix SGX.
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::io::ErrorKind;
 use crate::os::raw::c_char;
@@ -121,9 +122,9 @@ pub enum Void {}
 
 pub unsafe fn strlen(mut s: *const c_char) -> usize {
     let mut n = 0;
-    while *s != 0 {
+    while unsafe { *s } != 0 {
         n += 1;
-        s = s.offset(1);
+        s = unsafe { s.offset(1) };
     }
     return n;
 }

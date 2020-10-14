@@ -5,7 +5,7 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use crate::util as mir_util;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
@@ -18,7 +18,7 @@ impl<'tcx> MirPass<'tcx> for Marker {
         Cow::Borrowed(self.0)
     }
 
-    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body: &mut Body<'tcx>) {}
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _body: &mut Body<'tcx>) {}
 }
 
 pub struct Disambiguator {
@@ -36,17 +36,15 @@ pub fn on_mir_pass<'tcx>(
     tcx: TyCtxt<'tcx>,
     pass_num: &dyn fmt::Display,
     pass_name: &str,
-    source: MirSource<'tcx>,
     body: &Body<'tcx>,
     is_after: bool,
 ) {
-    if mir_util::dump_enabled(tcx, pass_name, source.def_id()) {
+    if mir_util::dump_enabled(tcx, pass_name, body.source.def_id()) {
         mir_util::dump_mir(
             tcx,
             Some(pass_num),
             pass_name,
             &Disambiguator { is_after },
-            source,
             body,
             |_, _| Ok(()),
         );

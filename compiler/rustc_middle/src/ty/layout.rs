@@ -1894,7 +1894,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
     }
 }
 
-pub type TyAndLayout<'tcx> = ::rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
+pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
 impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type Ty = Ty<'tcx>;
@@ -2610,10 +2610,7 @@ where
             target.target_os == "linux" && target.arch == "sparc64" && target_env_gnu_like;
         let linux_powerpc_gnu_like =
             target.target_os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
-        let rust_abi = match sig.abi {
-            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
-            _ => false,
-        };
+        let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
         // Handle safe Rust thin and fat pointers.
         let adjust_for_rust_scalar = |attrs: &mut ArgAttributes,
@@ -2787,8 +2784,9 @@ where
                     _ => return,
                 }
 
-                let max_by_val_size =
-                    if is_ret { call::max_ret_by_val(cx) } else { Pointer.size(cx) };
+                // Return structures up to 2 pointers in size by value, matching `ScalarPair`. LLVM
+                // will usually return these in 2 registers, which is more efficient than by-ref.
+                let max_by_val_size = if is_ret { Pointer.size(cx) * 2 } else { Pointer.size(cx) };
                 let size = arg.layout.size;
 
                 if arg.layout.is_unsized() || size > max_by_val_size {

@@ -1,0 +1,10 @@
+error: the type of the `self` parameter does not need to be arbitrary
+  --> $DIR/needless_arbitrary_self_type_unfixable.rs:41:31
+   |
+LL |         fn call_with_mut_self(self: &mut Self) {}
+   |                               ^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'_ mut self`
+   |
+   = note: `-D clippy::needless-arbitrary-self-type` implied by `-D warnings`
+
+error: aborting due to previous error
+

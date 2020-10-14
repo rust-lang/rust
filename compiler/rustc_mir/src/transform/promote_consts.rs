@@ -32,7 +32,7 @@ use std::{cmp, iter, mem};
 
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstCx};
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 
 /// A `MirPass` for promotion.
 ///
@@ -47,7 +47,7 @@ pub struct PromoteTemps<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
@@ -56,19 +56,17 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
             return;
         }
 
-        if src.promoted.is_some() {
+        if body.source.promoted.is_some() {
             return;
         }
 
-        let def = src.with_opt_param().expect_local();
-
         let mut rpo = traversal::reverse_postorder(body);
-        let ccx = ConstCx::new(tcx, def.did, body);
+        let ccx = ConstCx::new(tcx, body);
         let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
         let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);
 
-        let promoted = promote_candidates(def.to_global(), body, tcx, temps, promotable_candidates);
+        let promoted = promote_candidates(body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
     }
 }
@@ -137,7 +135,7 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
             LitKind::Int(a, _) => {
                 ret.push(a as usize);
             }
-            _ => return None,
+            _ => bug!("invalid arg index"),
         }
     }
     Some(ret)
@@ -758,7 +756,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             ty::FnDef(def_id, _) => {
                 is_const_fn(self.tcx, def_id)
                     || is_unstable_const_fn(self.tcx, def_id).is_some()
-                    || is_lang_panic_fn(self.tcx, self.def_id.to_def_id())
+                    || is_lang_panic_fn(self.tcx, def_id)
             }
             _ => false,
         };
@@ -970,10 +968,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(
         mut self,
-        def: ty::WithOptConstParam<DefId>,
         candidate: Candidate,
         next_promoted_id: usize,
     ) -> Option<Body<'tcx>> {
+        let def = self.source.source.with_opt_param();
         let mut rvalue = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
@@ -1133,7 +1131,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 }
 
 pub fn promote_candidates<'tcx>(
-    def: ty::WithOptConstParam<DefId>,
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
@@ -1167,6 +1164,7 @@ pub fn promote_candidates<'tcx>(
         let initial_locals = iter::once(LocalDecl::new(tcx.types.never, body.span)).collect();
 
         let mut promoted = Body::new(
+            body.source, // `promoted` gets filled in below
             IndexVec::new(),
             // FIXME: maybe try to filter this to avoid blowing up
             // memory usage?
@@ -1190,7 +1188,8 @@ pub fn promote_candidates<'tcx>(
         };
 
         //FIXME(oli-obk): having a `maybe_push()` method on `IndexVec` might be nice
-        if let Some(promoted) = promoter.promote_candidate(def, candidate, promotions.len()) {
+        if let Some(mut promoted) = promoter.promote_candidate(candidate, promotions.len()) {
+            promoted.source.promoted = Some(promotions.next_index());
             promotions.push(promoted);
         }
     }
@@ -1248,7 +1247,9 @@ crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
     debug!(
         "should_suggest_const_in_array_repeat_expressions_flag: def_id={:?} \
             should_promote={:?} feature_flag={:?}",
-        validator.ccx.def_id, should_promote, feature_flag
+        validator.ccx.def_id(),
+        should_promote,
+        feature_flag
     );
     should_promote && !feature_flag
 }

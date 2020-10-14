@@ -177,7 +177,12 @@ const LLVM_TOOLS: &[&str] = &[
     "llvm-size", // used to prints the size of the linker sections of a program
     "llvm-strip", // used to discard symbols from binary files to reduce their size
     "llvm-ar", // used for creating and modifying archive files
+    "llvm-dis", // used to disassemble LLVM bitcode
+    "llc",     // used to compile LLVM bytecode
+    "opt",     // used to optimize LLVM bytecode
 ];
+
+pub const VERSION: usize = 2;
 
 /// A structure representing a Rust compiler.
 ///
@@ -471,8 +476,8 @@ impl Build {
             return clean::clean(self, all);
         }
 
-        if let Subcommand::Setup { path: include_name } = &self.config.cmd {
-            return setup::setup(&self.config.src, include_name);
+        if let Subcommand::Setup { profile } = &self.config.cmd {
+            return setup::setup(&self.config.src, *profile);
         }
 
         {
@@ -1048,40 +1053,6 @@ impl Build {
 
     /// Returns the value of `package_vers` above for Rust itself.
     fn rust_package_vers(&self) -> String {
-        self.package_vers(&self.version)
-    }
-
-    /// Returns the value of `package_vers` above for Cargo
-    fn cargo_package_vers(&self) -> String {
-        self.package_vers(&self.release_num("cargo"))
-    }
-
-    /// Returns the value of `package_vers` above for rls
-    fn rls_package_vers(&self) -> String {
-        self.package_vers(&self.release_num("rls"))
-    }
-
-    /// Returns the value of `package_vers` above for rust-analyzer
-    fn rust_analyzer_package_vers(&self) -> String {
-        self.package_vers(&self.release_num("rust-analyzer/crates/rust-analyzer"))
-    }
-
-    /// Returns the value of `package_vers` above for clippy
-    fn clippy_package_vers(&self) -> String {
-        self.package_vers(&self.release_num("clippy"))
-    }
-
-    /// Returns the value of `package_vers` above for miri
-    fn miri_package_vers(&self) -> String {
-        self.package_vers(&self.release_num("miri"))
-    }
-
-    /// Returns the value of `package_vers` above for rustfmt
-    fn rustfmt_package_vers(&self) -> String {
-        self.package_vers(&self.release_num("rustfmt"))
-    }
-
-    fn llvm_tools_package_vers(&self) -> String {
         self.package_vers(&self.version)
     }
 

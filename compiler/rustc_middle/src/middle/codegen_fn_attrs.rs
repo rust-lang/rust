@@ -1,5 +1,5 @@
 use crate::mir::mono::Linkage;
-use rustc_attr::{InlineAttr, OptimizeAttr};
+use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_session::config::SanitizerSet;
 use rustc_span::symbol::Symbol;
 
@@ -34,6 +34,10 @@ pub struct CodegenFnAttrs {
     /// The `#[no_sanitize(...)]` attribute. Indicates sanitizers for which
     /// instrumentation should be disabled inside the annotated function.
     pub no_sanitize: SanitizerSet,
+    /// The `#[instruction_set(set)]` attribute. Indicates if the generated code should
+    /// be generated against a specific instruction set. Only usable on architectures which allow
+    /// switching between multiple instruction sets.
+    pub instruction_set: Option<InstructionSetAttr>,
 }
 
 bitflags! {
@@ -79,6 +83,9 @@ bitflags! {
         /// #[ffi_const]: applies clang's `const` attribute to a foreign function
         /// declaration.
         const FFI_CONST                 = 1 << 13;
+        /// #[cmse_nonsecure_entry]: with a TrustZone-M extension, declare a
+        /// function as an entry function from Non-Secure code.
+        const CMSE_NONSECURE_ENTRY      = 1 << 14;
     }
 }
 
@@ -95,6 +102,7 @@ impl CodegenFnAttrs {
             linkage: None,
             link_section: None,
             no_sanitize: SanitizerSet::empty(),
+            instruction_set: None,
         }
     }
 

@@ -133,7 +133,7 @@ impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
+impl<'tcx, Tag> std::ops::Deref for ImmTy<'tcx, Tag> {
     type Target = Immediate<Tag>;
     #[inline(always)]
     fn deref(&self) -> &Immediate<Tag> {
@@ -156,7 +156,7 @@ pub struct OpTy<'tcx, Tag = ()> {
     pub layout: TyAndLayout<'tcx>,
 }
 
-impl<'tcx, Tag> ::std::ops::Deref for OpTy<'tcx, Tag> {
+impl<'tcx, Tag> std::ops::Deref for OpTy<'tcx, Tag> {
     type Target = Operand<Tag>;
     #[inline(always)]
     fn deref(&self) -> &Operand<Tag> {
@@ -340,7 +340,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn read_str(&self, mplace: MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len))?;
-        let str = ::std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
+        let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
         Ok(str)
     }
 

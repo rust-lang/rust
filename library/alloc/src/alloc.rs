@@ -14,8 +14,9 @@ mod tests;
 
 extern "Rust" {
     // These are the magic symbols to call the global allocator.  rustc generates
-    // them from the `#[global_allocator]` attribute if there is one, or uses the
-    // default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
+    // them to call `__rg_alloc` etc. if there is a `#[global_allocator]` attribute
+    // (the code expanding that attribute macro generates those functions), or to call
+    // the default implementations in libstd (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
     // otherwise.
     #[rustc_allocator]
     #[rustc_allocator_nounwind]
@@ -35,7 +36,7 @@ extern "Rust" {
 /// if there is one, or the `std` crate’s default.
 ///
 /// Note: while this type is unstable, the functionality it provides can be
-/// accessed through the [free functions in `alloc`](index.html#functions).
+/// accessed through the [free functions in `alloc`](self#functions).
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
@@ -145,13 +146,13 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 
 impl Global {
     #[inline]
-    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = if zeroed { alloc_zeroed(layout) } else { alloc(layout) };
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 Ok(NonNull::slice_from_raw_parts(ptr, size))
             },
         }
@@ -165,7 +166,7 @@ impl Global {
         old_layout: Layout,
         new_layout: Layout,
         zeroed: bool,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
             "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
@@ -183,7 +184,7 @@ impl Global {
                 intrinsics::assume(new_size >= old_layout.size());
 
                 let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
                 }
@@ -208,12 +209,12 @@ impl Global {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for Global {
     #[inline]
-    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, false)
     }
 
     #[inline]
-    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, true)
     }
 
@@ -232,7 +233,7 @@ unsafe impl AllocRef for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: all conditions must be upheld by the caller
         unsafe { self.grow_impl(ptr, old_layout, new_layout, false) }
     }
@@ -243,7 +244,7 @@ unsafe impl AllocRef for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: all conditions must be upheld by the caller
         unsafe { self.grow_impl(ptr, old_layout, new_layout, true) }
     }
@@ -254,7 +255,7 @@ unsafe impl AllocRef for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(
             new_layout.size() <= old_layout.size(),
             "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
@@ -273,7 +274,7 @@ unsafe impl AllocRef for Global {
                 intrinsics::assume(new_size <= old_layout.size());
 
                 let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 Ok(NonNull::slice_from_raw_parts(ptr, new_size))
             },
 
@@ -321,6 +322,16 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     }
 }
 
+// # Allocation error handler
+
+extern "Rust" {
+    // This is the magic symbol to call the global alloc error handler.  rustc generates
+    // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
+    // default implementations below (`__rdl_oom`) otherwise.
+    #[rustc_allocator_nounwind]
+    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
+}
+
 /// Abort on memory allocation error or failure.
 ///
 /// Callers of memory allocation APIs wishing to abort computation
@@ -334,6 +345,24 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 /// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
 /// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
 #[stable(feature = "global_alloc", since = "1.28.0")]
+#[cfg(not(any(test, bootstrap)))]
+#[rustc_allocator_nounwind]
+pub fn handle_alloc_error(layout: Layout) -> ! {
+    unsafe {
+        __rust_alloc_error_handler(layout.size(), layout.align());
+    }
+}
+
+// For alloc test `std::alloc::handle_alloc_error` can be used directly.
+#[cfg(test)]
+pub use std::alloc::handle_alloc_error;
+
+// In stage0 (bootstrap) `__rust_alloc_error_handler`,
+// might not be generated yet, because an old compiler is used,
+// so use the old direct call.
+#[cfg(all(bootstrap, not(test)))]
+#[stable(feature = "global_alloc", since = "1.28.0")]
+#[doc(hidden)]
 #[rustc_allocator_nounwind]
 pub fn handle_alloc_error(layout: Layout) -> ! {
     extern "Rust" {
@@ -341,4 +370,31 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
         fn oom_impl(layout: Layout) -> !;
     }
     unsafe { oom_impl(layout) }
+}
+
+#[cfg(not(any(test, bootstrap)))]
+#[doc(hidden)]
+#[allow(unused_attributes)]
+#[unstable(feature = "alloc_internals", issue = "none")]
+pub mod __alloc_error_handler {
+    use crate::alloc::Layout;
+
+    // called via generated `__rust_alloc_error_handler`
+
+    // if there is no `#[alloc_error_handler]`
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_oom(size: usize, _align: usize) -> ! {
+        panic!("memory allocation of {} bytes failed", size)
+    }
+
+    // if there is a `#[alloc_error_handler]`
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> ! {
+        let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
+        extern "Rust" {
+            #[lang = "oom"]
+            fn oom_impl(layout: Layout) -> !;
+        }
+        unsafe { oom_impl(layout) }
+    }
 }

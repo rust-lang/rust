@@ -55,9 +55,9 @@ mod traits {
     pub trait Tr2<T: PrivTr> {} //~ ERROR private trait `traits::PrivTr` in public interface
         //~^ WARNING hard error
     pub trait Tr3 {
+        type Alias: PrivTr;
         //~^ ERROR private trait `traits::PrivTr` in public interface
         //~| WARNING hard error
-        type Alias: PrivTr;
         fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
         //~^ WARNING hard error
     }

@@ -9,9 +9,10 @@ trait Bar2 {
 struct Foo;
 struct Foo2;
 
-impl Bar for Foo {  //~ ERROR type mismatch resolving `<Foo2 as Bar2>::Ok == char`
+impl Bar for Foo {
     type Ok = ();
     type Sibling = Foo2;
+    //~^ ERROR type mismatch resolving `<Foo2 as Bar2>::Ok == char`
 }
 impl Bar2 for Foo2 {
     type Ok = u32;

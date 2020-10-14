@@ -60,6 +60,8 @@ use md5::Md5;
 use sha1::Digest;
 use sha1::Sha1;
 
+use tracing::debug;
+
 #[cfg(test)]
 mod tests;
 
@@ -1462,6 +1464,88 @@ impl SourceFile {
 
         BytePos::from_u32(pos.0 - self.start_pos.0 + diff)
     }
+
+    /// Converts an absolute `BytePos` to a `CharPos` relative to the `SourceFile`.
+    pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
+        // The number of extra bytes due to multibyte chars in the `SourceFile`.
+        let mut total_extra_bytes = 0;
+
+        for mbc in self.multibyte_chars.iter() {
+            debug!("{}-byte char at {:?}", mbc.bytes, mbc.pos);
+            if mbc.pos < bpos {
+                // Every character is at least one byte, so we only
+                // count the actual extra bytes.
+                total_extra_bytes += mbc.bytes as u32 - 1;
+                // We should never see a byte position in the middle of a
+                // character.
+                assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes as u32);
+            } else {
+                break;
+            }
+        }
+
+        assert!(self.start_pos.to_u32() + total_extra_bytes <= bpos.to_u32());
+        CharPos(bpos.to_usize() - self.start_pos.to_usize() - total_extra_bytes as usize)
+    }
+
+    /// Looks up the file's (1-based) line number and (0-based `CharPos`) column offset, for a
+    /// given `BytePos`.
+    pub fn lookup_file_pos(&self, pos: BytePos) -> (usize, CharPos) {
+        let chpos = self.bytepos_to_file_charpos(pos);
+        match self.lookup_line(pos) {
+            Some(a) => {
+                let line = a + 1; // Line numbers start at 1
+                let linebpos = self.lines[a];
+                let linechpos = self.bytepos_to_file_charpos(linebpos);
+                let col = chpos - linechpos;
+                debug!("byte pos {:?} is on the line at byte pos {:?}", pos, linebpos);
+                debug!("char pos {:?} is on the line at char pos {:?}", chpos, linechpos);
+                debug!("byte is on line: {}", line);
+                assert!(chpos >= linechpos);
+                (line, col)
+            }
+            None => (0, chpos),
+        }
+    }
+
+    /// Looks up the file's (1-based) line number, (0-based `CharPos`) column offset, and (0-based)
+    /// column offset when displayed, for a given `BytePos`.
+    pub fn lookup_file_pos_with_col_display(&self, pos: BytePos) -> (usize, CharPos, usize) {
+        let (line, col_or_chpos) = self.lookup_file_pos(pos);
+        if line > 0 {
+            let col = col_or_chpos;
+            let linebpos = self.lines[line - 1];
+            let col_display = {
+                let start_width_idx = self
+                    .non_narrow_chars
+                    .binary_search_by_key(&linebpos, |x| x.pos())
+                    .unwrap_or_else(|x| x);
+                let end_width_idx = self
+                    .non_narrow_chars
+                    .binary_search_by_key(&pos, |x| x.pos())
+                    .unwrap_or_else(|x| x);
+                let special_chars = end_width_idx - start_width_idx;
+                let non_narrow: usize = self.non_narrow_chars[start_width_idx..end_width_idx]
+                    .iter()
+                    .map(|x| x.width())
+                    .sum();
+                col.0 - special_chars + non_narrow
+            };
+            (line, col, col_display)
+        } else {
+            let chpos = col_or_chpos;
+            let col_display = {
+                let end_width_idx = self
+                    .non_narrow_chars
+                    .binary_search_by_key(&pos, |x| x.pos())
+                    .unwrap_or_else(|x| x);
+                let non_narrow: usize =
+                    self.non_narrow_chars[0..end_width_idx].iter().map(|x| x.width()).sum();
+                chpos.0 - end_width_idx + non_narrow
+            };
+            (0, chpos, col_display)
+        }
+    }
 }
 
 /// Normalizes the source code and records the normalizations.
@@ -1777,7 +1861,7 @@ where
         }
 
         if *self == DUMMY_SP {
-            std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            Hash::hash(&TAG_INVALID_SPAN, hasher);
             return;
         }
 
@@ -1788,28 +1872,28 @@ where
         let (file_lo, line_lo, col_lo) = match ctx.byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {
-                std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+                Hash::hash(&TAG_INVALID_SPAN, hasher);
                 span.ctxt.hash_stable(ctx, hasher);
                 return;
             }
         };
 
         if !file_lo.contains(span.hi) {
-            std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            Hash::hash(&TAG_INVALID_SPAN, hasher);
             span.ctxt.hash_stable(ctx, hasher);
             return;
         }
 
-        std::hash::Hash::hash(&TAG_VALID_SPAN, hasher);
+        Hash::hash(&TAG_VALID_SPAN, hasher);
         // We truncate the stable ID hash and line and column numbers. The chances
         // of causing a collision this way should be minimal.
-        std::hash::Hash::hash(&(file_lo.name_hash as u64), hasher);
+        Hash::hash(&(file_lo.name_hash as u64), hasher);
 
         let col = (col_lo.0 as u64) & 0xFF;
         let line = ((line_lo as u64) & 0xFF_FF_FF) << 8;
         let len = ((span.hi - span.lo).0 as u64) << 32;
         let line_col_len = col | line | len;
-        std::hash::Hash::hash(&line_col_len, hasher);
+        Hash::hash(&line_col_len, hasher);
         span.ctxt.hash_stable(ctx, hasher);
     }
 }

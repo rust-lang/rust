@@ -6,7 +6,6 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     let mut config = Config::parse(&[cmd.to_owned()]);
     // don't save toolstates
     config.save_toolstates = None;
-    config.skip_only_host_steps = false;
     config.dry_run = true;
     config.ninja_in_file = false;
     // try to avoid spurious failures in dist where we create/delete each others file
@@ -20,16 +19,8 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     t!(fs::create_dir_all(&dir));
     config.out = dir;
     config.build = TargetSelection::from_user("A");
-    config.hosts = vec![config.build]
-        .into_iter()
-        .chain(host.iter().map(|s| TargetSelection::from_user(s)))
-        .collect::<Vec<_>>();
-    config.targets = config
-        .hosts
-        .clone()
-        .into_iter()
-        .chain(target.iter().map(|s| TargetSelection::from_user(s)))
-        .collect::<Vec<_>>();
+    config.hosts = host.iter().map(|s| TargetSelection::from_user(s)).collect();
+    config.targets = target.iter().map(|s| TargetSelection::from_user(s)).collect();
     config
 }
 
@@ -45,7 +36,7 @@ mod defaults {
 
     #[test]
     fn build_default() {
-        let build = Build::new(configure("build", &[], &[]));
+        let build = Build::new(configure("build", &["A"], &["A"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
@@ -73,7 +64,7 @@ mod defaults {
 
     #[test]
     fn build_stage_0() {
-        let config = Config { stage: 0, ..configure("build", &[], &[]) };
+        let config = Config { stage: 0, ..configure("build", &["A"], &["A"]) };
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
@@ -95,7 +86,7 @@ mod defaults {
 
     #[test]
     fn build_cross_compile() {
-        let config = Config { stage: 1, ..configure("build", &["B"], &["B"]) };
+        let config = Config { stage: 1, ..configure("build", &["A", "B"], &["A", "B"]) };
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
@@ -143,7 +134,7 @@ mod defaults {
 
     #[test]
     fn doc_default() {
-        let mut config = configure("doc", &[], &[]);
+        let mut config = configure("doc", &["A"], &["A"]);
         config.compiler_docs = true;
         config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
         let build = Build::new(config);
@@ -182,7 +173,7 @@ mod dist {
 
     #[test]
     fn dist_baseline() {
-        let build = Build::new(configure(&[], &[]));
+        let build = Build::new(configure(&["A"], &["A"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
@@ -208,7 +199,7 @@ mod dist {
 
     #[test]
     fn dist_with_targets() {
-        let build = Build::new(configure(&[], &["B"]));
+        let build = Build::new(configure(&["A"], &["A", "B"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
@@ -239,7 +230,7 @@ mod dist {
 
     #[test]
     fn dist_with_hosts() {
-        let build = Build::new(configure(&["B"], &[]));
+        let build = Build::new(configure(&["A", "B"], &["A", "B"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
@@ -285,7 +276,7 @@ mod dist {
     fn dist_only_cross_host() {
         let a = TargetSelection::from_user("A");
         let b = TargetSelection::from_user("B");
-        let mut build = Build::new(configure(&["B"], &[]));
+        let mut build = Build::new(configure(&["A", "B"], &["A", "B"]));
         build.config.docs = false;
         build.config.extended = true;
         build.hosts = vec![b];
@@ -307,7 +298,7 @@ mod dist {
 
     #[test]
     fn dist_with_targets_and_hosts() {
-        let build = Build::new(configure(&["B"], &["C"]));
+        let build = Build::new(configure(&["A", "B"], &["A", "B", "C"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
@@ -342,40 +333,26 @@ mod dist {
     }
 
     #[test]
-    fn dist_with_target_flag() {
-        let mut config = configure(&["B"], &["C"]);
-        config.skip_only_host_steps = true; // as-if --target=C was passed
+    fn dist_with_empty_host() {
+        let config = configure(&[], &["C"]);
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
         let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
         let c = TargetSelection::from_user("C");
 
-        assert_eq!(
-            first(builder.cache.all::<dist::Docs>()),
-            &[dist::Docs { host: a }, dist::Docs { host: b }, dist::Docs { host: c },]
-        );
-        assert_eq!(
-            first(builder.cache.all::<dist::Mingw>()),
-            &[dist::Mingw { host: a }, dist::Mingw { host: b }, dist::Mingw { host: c },]
-        );
-        assert_eq!(first(builder.cache.all::<dist::Rustc>()), &[]);
+        assert_eq!(first(builder.cache.all::<dist::Docs>()), &[dist::Docs { host: c },]);
+        assert_eq!(first(builder.cache.all::<dist::Mingw>()), &[dist::Mingw { host: c },]);
         assert_eq!(
             first(builder.cache.all::<dist::Std>()),
-            &[
-                dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
-                dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
-                dist::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
-            ]
+            &[dist::Std { compiler: Compiler { host: a, stage: 2 }, target: c },]
         );
-        assert_eq!(first(builder.cache.all::<dist::Src>()), &[]);
     }
 
     #[test]
     fn dist_with_same_targets_and_hosts() {
-        let build = Build::new(configure(&["B"], &["B"]));
+        let build = Build::new(configure(&["A", "B"], &["A", "B"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
@@ -428,7 +405,7 @@ mod dist {
 
     #[test]
     fn build_all() {
-        let build = Build::new(configure(&["B"], &["C"]));
+        let build = Build::new(configure(&["A", "B"], &["A", "B", "C"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(
             &Builder::get_step_descriptions(Kind::Build),
@@ -464,15 +441,13 @@ mod dist {
     }
 
     #[test]
-    fn build_with_target_flag() {
-        let mut config = configure(&["B"], &["C"]);
-        config.skip_only_host_steps = true;
+    fn build_with_empty_host() {
+        let config = configure(&[], &["C"]);
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
         let a = TargetSelection::from_user("A");
-        let b = TargetSelection::from_user("B");
         let c = TargetSelection::from_user("C");
 
         assert_eq!(
@@ -480,9 +455,6 @@ mod dist {
             &[
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
-                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
-                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
-                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
             ]
         );
@@ -505,7 +477,7 @@ mod dist {
 
     #[test]
     fn test_with_no_doc_stage0() {
-        let mut config = configure(&[], &[]);
+        let mut config = configure(&["A"], &["A"]);
         config.stage = 0;
         config.cmd = Subcommand::Test {
             paths: vec!["library/std".into()],
@@ -545,7 +517,7 @@ mod dist {
 
     #[test]
     fn test_exclude() {
-        let mut config = configure(&[], &[]);
+        let mut config = configure(&["A"], &["A"]);
         config.exclude = vec!["src/tools/tidy".into()];
         config.cmd = Subcommand::Test {
             paths: Vec::new(),
@@ -572,7 +544,7 @@ mod dist {
 
     #[test]
     fn doc_ci() {
-        let mut config = configure(&[], &[]);
+        let mut config = configure(&["A"], &["A"]);
         config.compiler_docs = true;
         config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
         let build = Build::new(config);
@@ -601,7 +573,7 @@ mod dist {
     #[test]
     fn test_docs() {
         // Behavior of `x.py test` doing various documentation tests.
-        let mut config = configure(&[], &[]);
+        let mut config = configure(&["A"], &["A"]);
         config.cmd = Subcommand::Test {
             paths: vec![],
             test_args: vec![],

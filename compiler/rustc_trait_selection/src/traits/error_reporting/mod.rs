@@ -745,25 +745,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let violations = self.tcx.object_safety_violations(did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
-
             ConstEvalFailure(ErrorHandled::TooGeneric) => {
-                // In this instance, we have a const expression containing an unevaluated
-                // generic parameter. We have no idea whether this expression is valid or
-                // not (e.g. it might result in an error), but we don't want to just assume
-                // that it's okay, because that might result in post-monomorphisation time
-                // errors. The onus is really on the caller to provide values that it can
-                // prove are well-formed.
-                let mut err = self
-                    .tcx
-                    .sess
-                    .struct_span_err(span, "constant expression depends on a generic parameter");
-                // FIXME(const_generics): we should suggest to the user how they can resolve this
-                // issue. However, this is currently not actually possible
-                // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
-                err.note("this may fail depending on what value the parameter takes");
-                err
+                bug!("too generic should have been handled in `is_const_evaluatable`");
             }
-
             // Already reported in the query.
             ConstEvalFailure(ErrorHandled::Reported(ErrorReported)) => {
                 // FIXME(eddyb) remove this once `ErrorReported` becomes a proof token.
@@ -1400,17 +1384,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) {
         let get_trait_impl = |trait_def_id| {
-            let mut trait_impl = None;
-            self.tcx.for_each_relevant_impl(
+            self.tcx.find_map_relevant_impl(
                 trait_def_id,
                 trait_ref.skip_binder().self_ty(),
-                |impl_def_id| {
-                    if trait_impl.is_none() {
-                        trait_impl = Some(impl_def_id);
-                    }
-                },
-            );
-            trait_impl
+                |impl_def_id| Some(impl_def_id),
+            )
         };
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
         let all_traits = self.tcx.all_traits(LOCAL_CRATE);

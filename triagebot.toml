@@ -3,6 +3,7 @@ allow-unauthenticated = [
     "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*",
     "D-*",
     "requires-nightly",
+    "regression-*",
     # I-* without I-nominated
     "I-*", "!I-nominated",
     "AsyncAwait-OnDeck",
@@ -74,6 +75,7 @@ label = "I-prioritize"
 
 [autolabel."I-prioritize"]
 trigger_labels = [
+    "regression-untriaged",
     "regression-from-stable-to-stable",
     "regression-from-stable-to-beta",
     "regression-from-stable-to-nightly",

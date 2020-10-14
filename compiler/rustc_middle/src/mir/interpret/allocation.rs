@@ -40,7 +40,7 @@ pub struct Allocation<Tag = (), Extra = ()> {
     pub extra: Extra,
 }
 
-pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
+pub trait AllocationExtra<Tag>: std::fmt::Debug + Clone {
     // There is no constructor in here because the constructor's type depends
     // on `MemoryKind`, and making things sufficiently generic leads to painful
     // inference failure.

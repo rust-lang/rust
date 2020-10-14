@@ -8,10 +8,10 @@
 //
 // To opt into double precision hardware support, use the `-C target-feature=+fp64` flag.
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "thumbv7em-none-eabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -37,5 +37,5 @@ pub fn target() -> TargetResult {
             max_atomic_width: Some(32),
             ..super::thumb_base::opts()
         },
-    })
+    }
 }

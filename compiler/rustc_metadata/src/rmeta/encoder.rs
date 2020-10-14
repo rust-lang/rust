@@ -747,6 +747,7 @@ impl EncodeContext<'a, 'tcx> {
             ty::Visibility::from_hir(enum_vis, enum_id, self.tcx));
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id] <- &self.tcx.get_attrs(def_id)[..]);
+        record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         record!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
             f.did.index
@@ -883,6 +884,7 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.visibility[def_id] <- field.vis);
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id] <- variant_data.fields()[field_index].attrs);
+        record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         self.encode_ident_span(def_id, field.ident);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
@@ -924,6 +926,7 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
         record!(self.tables.visibility[def_id] <- ctor_vis);
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
+        record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -960,6 +963,14 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_super_predicates(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_super_predicates({:?})", def_id);
         record!(self.tables.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
+    }
+
+    fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
+        let bounds = self.tcx.explicit_item_bounds(def_id);
+        if !bounds.is_empty() {
+            record!(self.tables.explicit_item_bounds[def_id] <- bounds);
+        }
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) {
@@ -1014,7 +1025,10 @@ impl EncodeContext<'a, 'tcx> {
                     has_self: trait_item.fn_has_self_parameter,
                 }))
             }
-            ty::AssocKind::Type => EntryKind::AssocType(container),
+            ty::AssocKind::Type => {
+                self.encode_explicit_item_bounds(def_id);
+                EntryKind::AssocType(container)
+            }
         });
         record!(self.tables.visibility[def_id] <- trait_item.vis);
         record!(self.tables.span[def_id] <- ast_item.span);
@@ -1252,7 +1266,10 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::ForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemKind::TyAlias(..) => EntryKind::Type,
-            hir::ItemKind::OpaqueTy(..) => EntryKind::OpaqueTy,
+            hir::ItemKind::OpaqueTy(..) => {
+                self.encode_explicit_item_bounds(def_id);
+                EntryKind::OpaqueTy
+            }
             hir::ItemKind::Enum(..) => EntryKind::Enum(self.tcx.adt_def(def_id).repr),
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let adt_def = self.tcx.adt_def(def_id);
@@ -1339,6 +1356,7 @@ impl EncodeContext<'a, 'tcx> {
             ty::Visibility::from_hir(&item.vis, item.hir_id, tcx));
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id] <- item.attrs);
+        record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
             hir::ItemKind::ForeignMod(ref fm) => record!(self.tables.children[def_id] <-
@@ -1753,6 +1771,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
+        self.encode_inherent_implementations(def_id);
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);

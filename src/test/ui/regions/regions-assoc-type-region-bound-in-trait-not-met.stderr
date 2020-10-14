@@ -1,57 +1,23 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:10
+error[E0477]: the type `&'a i32` does not fulfill the required lifetime
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:15:5
    |
-LL | impl<'a> Foo<'static> for &'a i32 {
-   |          ^^^^^^^^^^^^
+LL |     type Value = &'a i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the impl at 14:6...
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:6
-   |
-LL | impl<'a> Foo<'static> for &'a i32 {
-   |      ^^
-note: ...so that the types are compatible
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:10
-   |
-LL | impl<'a> Foo<'static> for &'a i32 {
-   |          ^^^^^^^^^^^^
-   = note: expected `Foo<'static>`
-              found `Foo<'static>`
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that the type `&i32` will meet its required lifetime bounds
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:10
-   |
-LL | impl<'a> Foo<'static> for &'a i32 {
-   |          ^^^^^^^^^^^^
+   = note: type must satisfy the static lifetime
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:13
+error[E0477]: the type `&'a i32` does not fulfill the required lifetime
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:20:5
    |
-LL | impl<'a,'b> Foo<'b> for &'a i64 {
-   |             ^^^^^^^
+LL |     type Value = &'a i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the impl at 19:6...
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:6
+note: type must outlive the lifetime `'b` as defined on the impl at 19:10
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:10
    |
-LL | impl<'a,'b> Foo<'b> for &'a i64 {
-   |      ^^
-note: ...so that the types are compatible
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:13
-   |
-LL | impl<'a,'b> Foo<'b> for &'a i64 {
-   |             ^^^^^^^
-   = note: expected `Foo<'b>`
-              found `Foo<'_>`
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the impl at 19:9...
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:9
-   |
-LL | impl<'a,'b> Foo<'b> for &'a i64 {
-   |         ^^
-note: ...so that the type `&i32` will meet its required lifetime bounds
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:13
-   |
-LL | impl<'a,'b> Foo<'b> for &'a i64 {
-   |             ^^^^^^^
+LL | impl<'a, 'b> Foo<'b> for &'a i64 {
+   |          ^^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0477`.

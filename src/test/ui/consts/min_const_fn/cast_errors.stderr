@@ -7,17 +7,35 @@ LL | const fn closure() -> fn() { || {} }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
-error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/cast_errors.rs:7:5
+error[E0658]: function pointer casts are not allowed in constant functions
+  --> $DIR/cast_errors.rs:4:30
+   |
+LL | const fn closure() -> fn() { || {} }
+   |                              ^^^^^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
+
+error[E0658]: function pointer casts are not allowed in constant functions
+  --> $DIR/cast_errors.rs:8:5
    |
 LL |     (|| {}) as fn();
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
 error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/cast_errors.rs:10:28
+  --> $DIR/cast_errors.rs:11:16
+   |
+LL | const fn reify(f: fn()) -> unsafe fn() { f }
+   |                ^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
+
+error[E0658]: function pointers cannot appear in constant functions
+  --> $DIR/cast_errors.rs:11:28
    |
 LL | const fn reify(f: fn()) -> unsafe fn() { f }
    |                            ^^^^^^^^^^^
@@ -25,15 +43,33 @@ LL | const fn reify(f: fn()) -> unsafe fn() { f }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
-error[E0658]: function pointers cannot appear in constant functions
-  --> $DIR/cast_errors.rs:12:21
+error[E0658]: function pointer casts are not allowed in constant functions
+  --> $DIR/cast_errors.rs:11:42
    |
-LL | const fn reify2() { main as unsafe fn(); }
-   |                     ^^^^^^^^^^^^^^^^^^^
+LL | const fn reify(f: fn()) -> unsafe fn() { f }
+   |                                          ^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
-error: aborting due to 4 previous errors
+error[E0658]: function pointer casts are not allowed in constant functions
+  --> $DIR/cast_errors.rs:15:21
+   |
+LL | const fn reify2() { main as unsafe fn(); }
+   |                     ^^^^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
+
+error[E0658]: function pointer casts are not allowed in constant functions
+  --> $DIR/cast_errors.rs:15:21
+   |
+LL | const fn reify2() { main as unsafe fn(); }
+   |                     ^^^^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

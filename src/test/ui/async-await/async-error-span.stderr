@@ -3,12 +3,8 @@ error[E0277]: `()` is not a future
    |
 LL | fn get_future() -> impl Future<Output = ()> {
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not a future
-LL |
-LL |     panic!()
-   |     -------- this returned value is of type `!`
    |
    = help: the trait `Future` is not implemented for `()`
-   = note: the return type of a function must have a statically known size
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/async-error-span.rs:13:9

@@ -1,17 +1,8 @@
 error: future cannot be sent between threads safely
   --> $DIR/issue-64130-4-async-move.rs:15:17
    |
-LL |   pub fn foo() -> impl Future + Send {
-   |                   ^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
-...
-LL | /     async move {
-LL | |         match client.status() {
-LL | |             200 => {
-LL | |                 let _x = get().await;
-...  |
-LL | |         }
-LL | |     }
-   | |_____- this returned value is of type `impl Future`
+LL | pub fn foo() -> impl Future + Send {
+   |                 ^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `(dyn Any + Send + 'static)`
 note: future is not `Send` as this value is used across an await
@@ -30,7 +21,6 @@ help: consider moving this into a `let` binding to create a shorter lived borrow
    |
 LL |         match client.status() {
    |               ^^^^^^^^^^^^^^^
-   = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error
 

@@ -143,7 +143,9 @@ impl FunctionCoverage {
         let id_to_counter =
             |new_indexes: &IndexVec<InjectedExpressionIndex, MappedExpressionIndex>,
              id: ExpressionOperandId| {
-                if id.index() < self.counters.len() {
+                if id == ExpressionOperandId::ZERO {
+                    Some(Counter::zero())
+                } else if id.index() < self.counters.len() {
                     let index = CounterValueReference::from(id.index());
                     self.counters
                         .get(index)
@@ -179,14 +181,19 @@ impl FunctionCoverage {
                 // been assigned a `new_index`.
                 let mapped_expression_index =
                     MappedExpressionIndex::from(counter_expressions.len());
-                counter_expressions.push(CounterExpression::new(
+                let expression = CounterExpression::new(
                     lhs_counter,
                     match op {
                         Op::Add => ExprKind::Add,
                         Op::Subtract => ExprKind::Subtract,
                     },
                     rhs_counter,
-                ));
+                );
+                debug!(
+                    "Adding expression {:?} = {:?} at {:?}",
+                    mapped_expression_index, expression, region
+                );
+                counter_expressions.push(expression);
                 new_indexes[original_index] = mapped_expression_index;
                 expression_regions.push((Counter::expression(mapped_expression_index), region));
             }

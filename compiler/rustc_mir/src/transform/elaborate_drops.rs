@@ -5,12 +5,11 @@ use crate::dataflow::on_lookup_result_bits;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use crate::dataflow::{Analysis, ResultsCursor};
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use crate::util::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
 use crate::util::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
 use crate::util::patch::MirPatch;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
@@ -21,11 +20,11 @@ use std::fmt;
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        debug!("elaborate_drops({:?} @ {:?})", src, body.span);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
 
-        let def_id = src.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(src.def_id());
+        let def_id = body.source.def_id();
+        let param_env = tcx.param_env_reveal_all_normalized(def_id);
         let move_data = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err((move_data, _)) => {
@@ -39,10 +38,10 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         let elaborate_patch = {
             let body = &*body;
             let env = MoveDataParamEnv { move_data, param_env };
-            let dead_unwinds = find_dead_unwinds(tcx, body, def_id, &env);
+            let dead_unwinds = find_dead_unwinds(tcx, body, &env);
 
             let inits = MaybeInitializedPlaces::new(tcx, body, &env)
-                .into_engine(tcx, body, def_id)
+                .into_engine(tcx, body)
                 .dead_unwinds(&dead_unwinds)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
@@ -50,7 +49,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
                 .mark_inactive_variants_as_uninit()
-                .into_engine(tcx, body, def_id)
+                .into_engine(tcx, body)
                 .dead_unwinds(&dead_unwinds)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
@@ -76,7 +75,6 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 fn find_dead_unwinds<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    def_id: hir::def_id::DefId,
     env: &MoveDataParamEnv<'tcx>,
 ) -> BitSet<BasicBlock> {
     debug!("find_dead_unwinds({:?})", body.span);
@@ -84,7 +82,7 @@ fn find_dead_unwinds<'tcx>(
     // reach cleanup blocks, which can't have unwind edges themselves.
     let mut dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &env)
-        .into_engine(tcx, body, def_id)
+        .into_engine(tcx, body)
         .pass_name("find_dead_unwinds")
         .iterate_to_fixpoint()
         .into_results_cursor(body);

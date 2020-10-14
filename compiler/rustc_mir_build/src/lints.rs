@@ -1,7 +1,6 @@
 use rustc_data_structures::graph::iterate::{
     ControlFlow, NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::mir::{BasicBlock, Body, Operand, TerminatorKind};
@@ -10,7 +9,8 @@ use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 
-crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: LocalDefId) {
+crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+    let def_id = body.source.def_id().expect_local();
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(hir_id)) {
@@ -30,7 +30,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: LocalDefId) {
             _ => &[],
         };
 
-        let mut vis = Search { tcx, body, def_id, reachable_recursive_calls: vec![], trait_substs };
+        let mut vis = Search { tcx, body, reachable_recursive_calls: vec![], trait_substs };
         if let Some(NonRecursive) = TriColorDepthFirstSearch::new(&body).run_from_start(&mut vis) {
             return;
         }
@@ -57,7 +57,6 @@ struct NonRecursive;
 struct Search<'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'mir Body<'tcx>,
-    def_id: LocalDefId,
     trait_substs: &'tcx [GenericArg<'tcx>],
 
     reachable_recursive_calls: Vec<Span>,
@@ -66,16 +65,17 @@ struct Search<'mir, 'tcx> {
 impl<'mir, 'tcx> Search<'mir, 'tcx> {
     /// Returns `true` if `func` refers to the function we are searching in.
     fn is_recursive_call(&self, func: &Operand<'tcx>) -> bool {
-        let Search { tcx, body, def_id, trait_substs, .. } = *self;
-        let param_env = tcx.param_env(def_id);
+        let Search { tcx, body, trait_substs, .. } = *self;
+        let caller = body.source.def_id();
+        let param_env = tcx.param_env(caller);
 
         let func_ty = func.ty(body, tcx);
-        if let ty::FnDef(fn_def_id, substs) = *func_ty.kind() {
-            let (call_fn_id, call_substs) =
-                if let Ok(Some(instance)) = Instance::resolve(tcx, param_env, fn_def_id, substs) {
+        if let ty::FnDef(callee, substs) = *func_ty.kind() {
+            let (callee, call_substs) =
+                if let Ok(Some(instance)) = Instance::resolve(tcx, param_env, callee, substs) {
                     (instance.def_id(), instance.substs)
                 } else {
-                    (fn_def_id, substs)
+                    (callee, substs)
                 };
 
             // FIXME(#57965): Make this work across function boundaries
@@ -84,8 +84,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
             // calling into an entirely different method (for example, a call from the default
             // method in the trait to `<A as Trait<B>>::method`, where `A` and/or `B` are
             // specific types).
-            return call_fn_id == def_id.to_def_id()
-                && &call_substs[..trait_substs.len()] == trait_substs;
+            return callee == caller && &call_substs[..trait_substs.len()] == trait_substs;
         }
 
         false

@@ -1,10 +1,9 @@
-use crate::collections::BTreeSet;
+use super::super::DeterministicRng;
+use super::*;
 use crate::vec::Vec;
 use std::iter::FromIterator;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU32, Ordering};
-
-use super::super::DeterministicRng;
 
 #[test]
 fn test_clone_eq() {
@@ -528,11 +527,8 @@ fn test_recovery() {
     assert_eq!(s.iter().next(), None);
 }
 
-#[test]
 #[allow(dead_code)]
 fn test_variance() {
-    use std::collections::btree_set::{IntoIter, Iter, Range};
-
     fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> {
         v
     }
@@ -544,6 +540,85 @@ fn test_variance() {
     }
     fn range<'a, 'new>(v: Range<'a, &'static str>) -> Range<'a, &'new str> {
         v
+    }
+    // not applied to Difference, Intersection, SymmetricDifference, Union
+}
+
+#[allow(dead_code)]
+fn test_sync() {
+    fn set<T: Sync>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v
+    }
+
+    fn iter<T: Sync>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.iter()
+    }
+
+    fn into_iter<T: Sync>(v: BTreeSet<T>) -> impl Sync {
+        v.into_iter()
+    }
+
+    fn range<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.range(..)
+    }
+
+    fn drain_filter<T: Sync + Ord>(v: &mut BTreeSet<T>) -> impl Sync + '_ {
+        v.drain_filter(|_| false)
+    }
+
+    fn difference<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.difference(&v)
+    }
+
+    fn intersection<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.intersection(&v)
+    }
+
+    fn symmetric_difference<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.symmetric_difference(&v)
+    }
+
+    fn union<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.union(&v)
+    }
+}
+
+#[allow(dead_code)]
+fn test_send() {
+    fn set<T: Send>(v: BTreeSet<T>) -> impl Send {
+        v
+    }
+
+    fn iter<T: Send + Sync>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.iter()
+    }
+
+    fn into_iter<T: Send>(v: BTreeSet<T>) -> impl Send {
+        v.into_iter()
+    }
+
+    fn range<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.range(..)
+    }
+
+    fn drain_filter<T: Send + Ord>(v: &mut BTreeSet<T>) -> impl Send + '_ {
+        v.drain_filter(|_| false)
+    }
+
+    fn difference<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.difference(&v)
+    }
+
+    fn intersection<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.intersection(&v)
+    }
+
+    fn symmetric_difference<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.symmetric_difference(&v)
+    }
+
+    fn union<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.union(&v)
     }
 }
 

@@ -6,6 +6,17 @@ use crate::usize;
 ///
 /// This `struct` is created by [`Iterator::chain`]. See its documentation
 /// for more.
+///
+/// # Examples
+///
+/// ```
+/// use std::iter::Chain;
+/// use std::slice::Iter;
+///
+/// let a1 = [1, 2, 3];
+/// let a2 = [4, 5, 6];
+/// let iter: Chain<Iter<_>, Iter<_>> = a1.iter().chain(a2.iter());
+/// ```
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -115,16 +126,42 @@ where
     }
 
     #[inline]
-    fn nth(&mut self, mut n: usize) -> Option<A::Item> {
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let mut rem = n;
+
         if let Some(ref mut a) = self.a {
-            while let Some(x) = a.next() {
-                if n == 0 {
-                    return Some(x);
-                }
-                n -= 1;
+            match a.advance_by(rem) {
+                Ok(()) => return Ok(()),
+                Err(k) => rem -= k,
             }
             self.a = None;
         }
+
+        if let Some(ref mut b) = self.b {
+            match b.advance_by(rem) {
+                Ok(()) => return Ok(()),
+                Err(k) => rem -= k,
+            }
+            // we don't fuse the second iterator
+        }
+
+        if rem == 0 { Ok(()) } else { Err(n - rem) }
+    }
+
+    #[inline]
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
+        if let Some(ref mut a) = self.a {
+            match a.advance_by(n) {
+                Ok(()) => match a.next() {
+                    None => n = 0,
+                    x => return x,
+                },
+                Err(k) => n -= k,
+            }
+
+            self.a = None;
+        }
+
         maybe!(self.b.nth(n))
     }
 
@@ -191,16 +228,42 @@ where
     }
 
     #[inline]
-    fn nth_back(&mut self, mut n: usize) -> Option<A::Item> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let mut rem = n;
+
         if let Some(ref mut b) = self.b {
-            while let Some(x) = b.next_back() {
-                if n == 0 {
-                    return Some(x);
-                }
-                n -= 1;
+            match b.advance_back_by(rem) {
+                Ok(()) => return Ok(()),
+                Err(k) => rem -= k,
             }
             self.b = None;
         }
+
+        if let Some(ref mut a) = self.a {
+            match a.advance_back_by(rem) {
+                Ok(()) => return Ok(()),
+                Err(k) => rem -= k,
+            }
+            // we don't fuse the second iterator
+        }
+
+        if rem == 0 { Ok(()) } else { Err(n - rem) }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, mut n: usize) -> Option<Self::Item> {
+        if let Some(ref mut b) = self.b {
+            match b.advance_back_by(n) {
+                Ok(()) => match b.next_back() {
+                    None => n = 0,
+                    x => return x,
+                },
+                Err(k) => n -= k,
+            }
+
+            self.b = None;
+        }
+
         maybe!(self.a.nth_back(n))
     }
 

@@ -1,10 +1,10 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::linux_base::opts();
     base.max_atomic_width = Some(128);
 
-    Ok(Target {
+    Target {
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -20,5 +20,5 @@ pub fn target() -> TargetResult {
             target_mcount: "\u{1}_mcount".to_string(),
             ..base
         },
-    })
+    }
 }

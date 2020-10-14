@@ -2,19 +2,19 @@ error[E0609]: no field `1` on type `(((),),)`
   --> $DIR/index-invalid.rs:2:22
    |
 LL |     let _ = (((),),).1.0;
-   |                      ^^^
+   |                      ^
 
 error[E0609]: no field `1` on type `((),)`
-  --> $DIR/index-invalid.rs:4:22
+  --> $DIR/index-invalid.rs:4:24
    |
 LL |     let _ = (((),),).0.1;
-   |                      ^^^
+   |                        ^
 
 error[E0609]: no field `000` on type `(((),),)`
   --> $DIR/index-invalid.rs:6:22
    |
 LL |     let _ = (((),),).000.000;
-   |                      ^^^^^^^
+   |                      ^^^
 
 error: aborting due to 3 previous errors
 

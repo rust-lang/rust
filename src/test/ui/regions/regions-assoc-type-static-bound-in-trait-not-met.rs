@@ -3,12 +3,12 @@
 
 trait Foo {
     type Value: 'static;
-    fn dummy(&self) { }
+    fn dummy(&self) {}
 }
 
 impl<'a> Foo for &'a i32 {
-    //~^ ERROR cannot infer
     type Value = &'a i32;
+    //~^ ERROR the type `&'a i32` does not fulfill the required lifetime
 }
 
 impl<'a> Foo for i32 {
@@ -16,4 +16,4 @@ impl<'a> Foo for i32 {
     type Value = i32;
 }
 
-fn main() { }
+fn main() {}

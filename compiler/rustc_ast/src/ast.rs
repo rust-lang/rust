@@ -27,6 +27,7 @@ use crate::token::{self, CommentKind, DelimToken};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable_Generic;
@@ -1606,7 +1607,7 @@ pub enum LitKind {
     /// A string literal (`"foo"`).
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`).
-    ByteStr(Lrc<Vec<u8>>),
+    ByteStr(Lrc<[u8]>),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -1864,12 +1865,33 @@ pub enum AssocTyConstraintKind {
     Bound { bounds: GenericBounds },
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Encodable, Decodable, Debug)]
 pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
     pub tokens: Option<TokenStream>,
+}
+
+impl Clone for Ty {
+    fn clone(&self) -> Self {
+        ensure_sufficient_stack(|| Self {
+            id: self.id,
+            kind: self.kind.clone(),
+            span: self.span,
+            tokens: self.tokens.clone(),
+        })
+    }
+}
+
+impl Ty {
+    pub fn peel_refs(&self) -> &Self {
+        let mut final_ty = self;
+        while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
+            final_ty = &ty;
+        }
+        final_ty
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]

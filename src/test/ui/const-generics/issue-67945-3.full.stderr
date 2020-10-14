@@ -1,0 +1,16 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-67945-3.rs:8:8
+   |
+LL |       A: [(); {
+   |  ________^
+LL | |
+LL | |         let x: Option<Box<Self>> = None;
+LL | |
+LL | |         0
+LL | |     }],
+   | |______^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+

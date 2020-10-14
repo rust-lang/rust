@@ -5,9 +5,9 @@
 // The cdecl ABI is used. It differs from the stdcall or fastcall ABI.
 // "i686-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::uefi_msvc_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
@@ -76,7 +76,7 @@ pub fn target() -> TargetResult {
     // As a result, we choose -gnu for i686 version before those intrisics are implemented in
     // compiler-builtins. After compiler-builtins implements all required intrinsics, we may
     // remove -gnu and use the default one.
-    Ok(Target {
+    Target {
         llvm_target: "i686-unknown-windows-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -91,5 +91,5 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Link),
 
         options: base,
-    })
+    }
 }

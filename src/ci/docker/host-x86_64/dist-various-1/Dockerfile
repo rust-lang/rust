@@ -187,8 +187,8 @@ ENV RUST_CONFIGURE_ARGS \
       --disable-docs
 
 ENV SCRIPT \
-      python3 ../x.py --stage 2 test --target $RUN_MAKE_TARGETS src/test/run-make && \
-      python3 ../x.py dist --target $TARGETS
+      python3 ../x.py --stage 2 test --host='' --target $RUN_MAKE_TARGETS src/test/run-make && \
+      python3 ../x.py dist --host='' --target $TARGETS
 
 # sccache
 COPY scripts/sccache.sh /scripts/

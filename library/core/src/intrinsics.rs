@@ -1072,7 +1072,7 @@ extern "rust-intrinsic" {
     // NOTE: While this makes the intrinsic const stable, we have some custom code in const fn
     // checks that prevent its use within `const fn`.
     #[rustc_const_stable(feature = "const_transmute", since = "1.46.0")]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "transmute")]
+    #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop
@@ -1901,11 +1901,22 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 /// use std::ptr;
 ///
+/// /// # Safety
+/// ///
+/// /// * `ptr` must be correctly aligned for its type and non-zero.
+/// /// * `ptr` must be valid for reads of `elts` contiguous elements of type `T`.
+/// /// * Those elements must not be used after calling this function unless `T: Copy`.
 /// # #[allow(dead_code)]
 /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
 ///     let mut dst = Vec::with_capacity(elts);
-///     dst.set_len(elts);
+///
+///     // SAFETY: Our precondition ensures the source is aligned and valid,
+///     // and `Vec::with_capacity` ensures that we have usable space to write them.
 ///     ptr::copy(ptr, dst.as_mut_ptr(), elts);
+///
+///     // SAFETY: We created it with this much capacity earlier,
+///     // and the previous `copy` has initialized these elements.
+///     dst.set_len(elts);
 ///     dst
 /// }
 /// ```

@@ -11,6 +11,7 @@
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::marker::Copy;
 use crate::mem;
+use crate::num::NonZeroUsize;
 use crate::ops::{FnMut, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
@@ -458,8 +459,6 @@ impl<T> [T] {
     /// element of this slice:
     ///
     /// ```
-    /// #![feature(slice_ptr_range)]
-    ///
     /// let a = [1, 2, 3];
     /// let x = &a[1] as *const _;
     /// let y = &5 as *const _;
@@ -469,7 +468,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [`as_ptr`]: #method.as_ptr
-    #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[stable(feature = "slice_ptr_range", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
     pub const fn as_ptr_range(&self) -> Range<*const T> {
@@ -511,7 +510,7 @@ impl<T> [T] {
     /// common in C++.
     ///
     /// [`as_mut_ptr`]: #method.as_mut_ptr
-    #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[stable(feature = "slice_ptr_range", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
     pub const fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
@@ -730,7 +729,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        assert_ne!(size, 0);
+        let size = NonZeroUsize::new(size).expect("size is zero");
         Windows::new(self, size)
     }
 
@@ -1636,6 +1635,7 @@ impl<T> [T] {
     /// assert!(!v.iter().any(|e| e == "hi"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn contains(&self, x: &T) -> bool
     where
         T: PartialEq,
@@ -2035,6 +2035,50 @@ impl<T> [T] {
     }
 
     /// Reorder the slice such that the element at `index` is at its final sorted position.
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[rustc_deprecated(since = "1.49.0", reason = "use the select_nth_unstable() instead")]
+    #[inline]
+    pub fn partition_at_index(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
+    where
+        T: Ord,
+    {
+        self.select_nth_unstable(index)
+    }
+
+    /// Reorder the slice with a comparator function such that the element at `index` is at its
+    /// final sorted position.
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[rustc_deprecated(since = "1.49.0", reason = "use select_nth_unstable_by() instead")]
+    #[inline]
+    pub fn partition_at_index_by<F>(
+        &mut self,
+        index: usize,
+        compare: F,
+    ) -> (&mut [T], &mut T, &mut [T])
+    where
+        F: FnMut(&T, &T) -> Ordering,
+    {
+        self.select_nth_unstable_by(index, compare)
+    }
+
+    /// Reorder the slice with a key extraction function such that the element at `index` is at its
+    /// final sorted position.
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[rustc_deprecated(since = "1.49.0", reason = "use the select_nth_unstable_by_key() instead")]
+    #[inline]
+    pub fn partition_at_index_by_key<K, F>(
+        &mut self,
+        index: usize,
+        f: F,
+    ) -> (&mut [T], &mut T, &mut [T])
+    where
+        F: FnMut(&T) -> K,
+        K: Ord,
+    {
+        self.select_nth_unstable_by_key(index, f)
+    }
+
+    /// Reorder the slice such that the element at `index` is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
@@ -2058,12 +2102,10 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_partition_at_index)]
-    ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// // Find the median
-    /// v.partition_at_index(2);
+    /// v.select_nth_unstable(2);
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
@@ -2072,9 +2114,9 @@ impl<T> [T] {
     ///         v == [-3, -5, 1, 4, 2] ||
     ///         v == [-5, -3, 1, 4, 2]);
     /// ```
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
-    pub fn partition_at_index(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
+    pub fn select_nth_unstable(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
     where
         T: Ord,
     {
@@ -2108,12 +2150,10 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_partition_at_index)]
-    ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// // Find the median as if the slice were sorted in descending order.
-    /// v.partition_at_index_by(2, |a, b| b.cmp(a));
+    /// v.select_nth_unstable_by(2, |a, b| b.cmp(a));
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
@@ -2122,9 +2162,9 @@ impl<T> [T] {
     ///         v == [4, 2, 1, -5, -3] ||
     ///         v == [4, 2, 1, -3, -5]);
     /// ```
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
-    pub fn partition_at_index_by<F>(
+    pub fn select_nth_unstable_by<F>(
         &mut self,
         index: usize,
         mut compare: F,
@@ -2162,12 +2202,10 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_partition_at_index)]
-    ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// // Return the median as if the array were sorted according to absolute value.
-    /// v.partition_at_index_by_key(2, |a| a.abs());
+    /// v.select_nth_unstable_by_key(2, |a| a.abs());
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
@@ -2176,9 +2214,9 @@ impl<T> [T] {
     ///         v == [2, 1, -3, 4, -5] ||
     ///         v == [2, 1, -3, -5, 4]);
     /// ```
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
-    pub fn partition_at_index_by_key<K, F>(
+    pub fn select_nth_unstable_by_key<K, F>(
         &mut self,
         index: usize,
         mut f: F,

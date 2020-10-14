@@ -6,6 +6,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_target::abi::LayoutOf;
+use rustc_target::spec::abi::Abi;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 use crate::utils::span_lint;
@@ -60,12 +61,18 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
-        _: intravisit::FnKind<'tcx>,
+        fn_kind: intravisit::FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
         hir_id: HirId,
     ) {
+        if let Some(header) = fn_kind.header() {
+            if header.abi != Abi::Rust {
+                return;
+            }
+        }
+
         // If the method is an impl for a trait, don't warn.
         let parent_id = cx.tcx.hir().get_parent_item(hir_id);
         let parent_node = cx.tcx.hir().find(parent_id);

@@ -1,9 +1,9 @@
-use super::apple_sdk_base::{opts, AppleOS, Arch};
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use super::apple_sdk_base::{opts, Arch};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    let base = opts(Arch::Arm64, AppleOS::tvOS)?;
-    Ok(Target {
+pub fn target() -> Target {
+    let base = opts(Arch::Arm64);
+    Target {
         llvm_target: "arm64-apple-tvos".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -22,5 +22,5 @@ pub fn target() -> TargetResult {
             forces_embed_bitcode: true,
             ..base
         },
-    })
+    }
 }

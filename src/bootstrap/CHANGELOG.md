@@ -6,22 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Non-breaking changes since the last major version]
 
+- `x.py check` needs opt-in to check tests (--all-targets) [#77473](https://github.com/rust-lang/rust/pull/77473)
+- The default bootstrap profiles are now located at `bootstrap/defaults/config.$PROFILE.toml` (previously they were located at `bootstrap/defaults/config.toml.$PROFILE`) [#77558](https://github.com/rust-lang/rust/pull/77558)
+
+
+## [Version 2] - 2020-09-25
+
+- `host` now defaults to the value of `build` in all cases
+  + Previously `host` defaulted to an empty list when `target` was overridden, and to `build` otherwise
+
+### Non-breaking changes
+
 - Add `x.py setup` [#76631](https://github.com/rust-lang/rust/pull/76631)
 - Add a changelog for x.py [#76626](https://github.com/rust-lang/rust/pull/76626)
-- Optionally, download LLVM from CI on Linux and NixOS
+- Optionally, download LLVM from CI on Linux and NixOS. This can be enabled with `download-ci-llvm = true` under `[llvm]`.
   + [#76439](https://github.com/rust-lang/rust/pull/76349)
   + [#76667](https://github.com/rust-lang/rust/pull/76667)
   + [#76708](https://github.com/rust-lang/rust/pull/76708)
 - Distribute rustc sources as part of `rustc-dev` [#76856](https://github.com/rust-lang/rust/pull/76856)
-- Make the default stage for x.py configurable [#76625](https://github.com/rust-lang/rust/pull/76625)
-- Add a dedicated debug-logging option [#76588](https://github.com/rust-lang/rust/pull/76588)
+- Make the default stage for x.py configurable [#76625](https://github.com/rust-lang/rust/pull/76625). This can be enabled with `build-stage = N`, `doc-stage = N`, etc.
+- Add a dedicated debug-logging option [#76588](https://github.com/rust-lang/rust/pull/76588). Previously, `debug-logging` could only be set with `debug-assertions`, slowing down the compiler more than necessary.
 - Add sample defaults for x.py [#76628](https://github.com/rust-lang/rust/pull/76628)
 - Add `--keep-stage-std`, which behaves like `keep-stage` but allows the stage
   0 compiler artifacts (i.e., stage1/bin/rustc) to be rebuilt if changed
   [#77120](https://github.com/rust-lang/rust/pull/77120).
 
 
-## [Version 0] - 2020-09-11
+## [Version 1] - 2020-09-11
 
 This is the first changelog entry, and it does not attempt to be an exhaustive list of features in x.py.
 Instead, this documents the changes to bootstrap in the past 2 months.

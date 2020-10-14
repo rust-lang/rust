@@ -448,7 +448,7 @@ impl<T> NonNull<[T]> {
     /// // Note that calling `memory.as_mut()` is not allowed here as the content may be uninitialized.
     /// # #[allow(unused_variables)]
     /// let slice: &mut [MaybeUninit<u8>] = unsafe { memory.as_uninit_slice_mut() };
-    /// # Ok::<_, std::alloc::AllocErr>(())
+    /// # Ok::<_, std::alloc::AllocError>(())
     /// ```
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]

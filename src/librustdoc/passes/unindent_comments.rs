@@ -36,13 +36,7 @@ impl clean::Attributes {
 
 fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     for fragment in docs {
-        match *fragment {
-            DocFragment::SugaredDoc(_, _, ref mut doc_string)
-            | DocFragment::RawDoc(_, _, ref mut doc_string)
-            | DocFragment::Include(_, _, _, ref mut doc_string) => {
-                *doc_string = unindent(doc_string)
-            }
-        }
+        fragment.doc = unindent(&fragment.doc);
     }
 }
 

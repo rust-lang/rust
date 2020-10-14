@@ -810,10 +810,10 @@ impl Nonterminal {
             if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
                 let filename = source_map.span_to_filename(orig_span);
                 if let FileName::Real(RealFileName::Named(path)) = filename {
-                    let matches_prefix = |prefix| {
-                        // Check for a path that ends with 'prefix*/src/lib.rs'
+                    let matches_prefix = |prefix, filename| {
+                        // Check for a path that ends with 'prefix*/src/<filename>'
                         let mut iter = path.components().rev();
-                        iter.next().and_then(|p| p.as_os_str().to_str()) == Some("lib.rs")
+                        iter.next().and_then(|p| p.as_os_str().to_str()) == Some(filename)
                             && iter.next().and_then(|p| p.as_os_str().to_str()) == Some("src")
                             && iter
                                 .next()
@@ -821,11 +821,22 @@ impl Nonterminal {
                                 .map_or(false, |p| p.starts_with(prefix))
                     };
 
-                    if (macro_name == sym::impl_macros && matches_prefix("time-macros-impl"))
-                        || (macro_name == sym::arrays && matches_prefix("js-sys"))
+                    if (macro_name == sym::impl_macros
+                        && matches_prefix("time-macros-impl", "lib.rs"))
+                        || (macro_name == sym::arrays && matches_prefix("js-sys", "lib.rs"))
                     {
                         let snippet = source_map.span_to_snippet(orig_span);
                         if snippet.as_deref() == Ok("$name") {
+                            return Some((*ident, *is_raw));
+                        }
+                    }
+
+                    if macro_name == sym::tuple_from_req
+                        && (matches_prefix("actix-web", "extract.rs")
+                            || matches_prefix("actori-web", "extract.rs"))
+                    {
+                        let snippet = source_map.span_to_snippet(orig_span);
+                        if snippet.as_deref() == Ok("$T") {
                             return Some((*ident, *is_raw));
                         }
                     }

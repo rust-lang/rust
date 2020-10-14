@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL |     const BAR: usize = [5, 6, 7][T::BOO];
    |     -------------------^^^^^^^^^^^^^^^^^-
    |                        |
-   |                        index out of bounds: the len is 3 but the index is 42
+   |                        index out of bounds: the length is 3 but the index is 42
    |
    = note: `#[deny(const_err)]` on by default
 

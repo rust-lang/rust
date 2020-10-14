@@ -52,6 +52,25 @@ pub trait IntoRawFd {
     fn into_raw_fd(self) -> RawFd;
 }
 
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl AsRawFd for RawFd {
+    fn as_raw_fd(&self) -> RawFd {
+        *self
+    }
+}
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl IntoRawFd for RawFd {
+    fn into_raw_fd(self) -> RawFd {
+        self
+    }
+}
+#[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
+impl FromRawFd for RawFd {
+    unsafe fn from_raw_fd(fd: RawFd) -> RawFd {
+        fd
+    }
+}
+
 impl AsRawFd for net::TcpStream {
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().as_raw()
@@ -137,6 +156,24 @@ impl AsRawFd for io::Stdout {
 }
 
 impl AsRawFd for io::Stderr {
+    fn as_raw_fd(&self) -> RawFd {
+        sys::stdio::Stderr.as_raw_fd()
+    }
+}
+
+impl<'a> AsRawFd for io::StdinLock<'a> {
+    fn as_raw_fd(&self) -> RawFd {
+        sys::stdio::Stdin.as_raw_fd()
+    }
+}
+
+impl<'a> AsRawFd for io::StdoutLock<'a> {
+    fn as_raw_fd(&self) -> RawFd {
+        sys::stdio::Stdout.as_raw_fd()
+    }
+}
+
+impl<'a> AsRawFd for io::StderrLock<'a> {
     fn as_raw_fd(&self) -> RawFd {
         sys::stdio::Stderr.as_raw_fd()
     }

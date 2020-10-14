@@ -258,7 +258,7 @@ LL |     mac2!(0, 1);
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:20:12
    |
 LL |     if let true..Y = 0 {}
@@ -266,7 +266,7 @@ LL |     if let true..Y = 0 {}
    |            |
    |            this is of type `bool` but it should be `char` or numeric
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:21:15
    |
 LL |     if let X..true = 0 {}
@@ -291,7 +291,7 @@ LL |     if let X.. .0 = 0 {}
    |            |   expected integer, found floating-point number
    |            this is of type `u8`
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:33:12
    |
 LL |     if let true..=Y = 0 {}
@@ -299,7 +299,7 @@ LL |     if let true..=Y = 0 {}
    |            |
    |            this is of type `bool` but it should be `char` or numeric
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:34:16
    |
 LL |     if let X..=true = 0 {}
@@ -324,7 +324,7 @@ LL |     if let X..=.0 = 0 {}
    |            |   expected integer, found floating-point number
    |            this is of type `u8`
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:46:12
    |
 LL |     if let true...Y = 0 {}
@@ -332,7 +332,7 @@ LL |     if let true...Y = 0 {}
    |            |
    |            this is of type `bool` but it should be `char` or numeric
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:48:16
    |
 LL |     if let X...true = 0 {}
@@ -357,7 +357,7 @@ LL |     if let X... .0 = 0 {}
    |            |    expected integer, found floating-point number
    |            this is of type `u8`
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:61:12
    |
 LL |     if let true.. = 0 {}
@@ -369,7 +369,7 @@ error[E0308]: mismatched types
 LL |     if let .0.. = 0 {}
    |            ^^ expected integer, found floating-point number
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:71:12
    |
 LL |     if let true..= = 0 {}
@@ -381,7 +381,7 @@ error[E0308]: mismatched types
 LL |     if let .0..= = 0 {}
    |            ^^ expected integer, found floating-point number
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:81:12
    |
 LL |     if let true... = 0 {}
@@ -393,7 +393,7 @@ error[E0308]: mismatched types
 LL |     if let .0... = 0 {}
    |            ^^ expected integer, found floating-point number
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:91:14
    |
 LL |     if let ..true = 0 {}
@@ -405,7 +405,7 @@ error[E0308]: mismatched types
 LL |     if let .. .0 = 0 {}
    |               ^^ expected integer, found floating-point number
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:101:15
    |
 LL |     if let ..=true = 0 {}
@@ -417,7 +417,7 @@ error[E0308]: mismatched types
 LL |     if let ..=.0 = 0 {}
    |               ^^ expected integer, found floating-point number
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:113:15
    |
 LL |     if let ...true = 0 {}

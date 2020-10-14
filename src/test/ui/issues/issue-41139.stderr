@@ -1,9 +1,14 @@
-error[E0161]: cannot move a value of type dyn Trait: the size of dyn Trait cannot be statically determined
-  --> $DIR/issue-41139.rs:6:27
+error[E0618]: expected function, found `&dyn Fn() -> (dyn Trait + 'static)`
+  --> $DIR/issue-41139.rs:10:26
    |
-LL |     let t : &dyn Trait = &get_function()();
-   |                           ^^^^^^^^^^^^^^^^
+LL | fn get_function<'a>() -> &'a dyn Fn() -> dyn Trait {
+   | -------------------------------------------------- `get_function` defined here returns `&dyn Fn() -> (dyn Trait + 'static)`
+...
+LL |     let t: &dyn Trait = &get_function()();
+   |                          ^^^^^^^^^^^^^^--
+   |                          |
+   |                          call expression requires function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0161`.
+For more information about this error, try `rustc --explain E0618`.

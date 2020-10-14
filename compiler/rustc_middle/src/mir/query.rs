@@ -1,9 +1,10 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir::{Body, Promoted};
+use crate::mir::{abstract_const, Body, Promoted};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitMatrix;
@@ -407,7 +408,12 @@ pub struct CoverageInfo {
     pub num_expressions: u32,
 }
 
+/// Shims which make dealing with `WithOptConstParam` easier.
+///
+/// For more information on why this is needed, consider looking
+/// at the docs for `WithOptConstParam` itself.
 impl<'tcx> TyCtxt<'tcx> {
+    #[inline]
     pub fn mir_borrowck_opt_const_arg(
         self,
         def: ty::WithOptConstParam<LocalDefId>,
@@ -419,6 +425,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[inline]
     pub fn mir_const_qualif_opt_const_arg(
         self,
         def: ty::WithOptConstParam<LocalDefId>,
@@ -430,7 +437,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn promoted_mir_of_opt_const_arg(
+    #[inline]
+    pub fn promoted_mir_opt_const_arg(
         self,
         def: ty::WithOptConstParam<DefId>,
     ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
@@ -438,6 +446,30 @@ impl<'tcx> TyCtxt<'tcx> {
             self.promoted_mir_of_const_arg((did, param_did))
         } else {
             self.promoted_mir(def.did)
+        }
+    }
+
+    #[inline]
+    pub fn optimized_mir_opt_const_arg(
+        self,
+        def: ty::WithOptConstParam<DefId>,
+    ) -> &'tcx Body<'tcx> {
+        if let Some((did, param_did)) = def.as_const_arg() {
+            self.optimized_mir_of_const_arg((did, param_did))
+        } else {
+            self.optimized_mir(def.did)
+        }
+    }
+
+    #[inline]
+    pub fn mir_abstract_const_opt_const_arg(
+        self,
+        def: ty::WithOptConstParam<DefId>,
+    ) -> Result<Option<&'tcx [abstract_const::Node<'tcx>]>, ErrorReported> {
+        if let Some((did, param_did)) = def.as_const_arg() {
+            self.mir_abstract_const_of_const_arg((did, param_did))
+        } else {
+            self.mir_abstract_const(def.did)
         }
     }
 }

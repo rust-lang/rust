@@ -1,5 +1,5 @@
 use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
-use super::diagnostics::Error;
+use super::diagnostics::{AttemptLocalParseRecovery, Error};
 use super::expr::LhsExpr;
 use super::pat::GateOr;
 use super::path::PathStyle;
@@ -79,8 +79,8 @@ impl<'a> Parser<'a> {
             return self.parse_stmt_mac(lo, attrs.into(), path);
         }
 
-        let expr = if self.check(&token::OpenDelim(token::Brace)) {
-            self.parse_struct_expr(path, AttrVec::new())?
+        let expr = if self.eat(&token::OpenDelim(token::Brace)) {
+            self.parse_struct_expr(path, AttrVec::new(), true)?
         } else {
             let hi = self.prev_token.span;
             self.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
@@ -321,25 +321,37 @@ impl<'a> Parser<'a> {
             return self.error_block_no_opening_brace();
         }
 
-        Ok((self.parse_inner_attributes()?, self.parse_block_tail(lo, blk_mode)?))
+        let attrs = self.parse_inner_attributes()?;
+        let tail = if let Some(tail) = self.maybe_suggest_struct_literal(lo, blk_mode) {
+            tail?
+        } else {
+            self.parse_block_tail(lo, blk_mode, AttemptLocalParseRecovery::Yes)?
+        };
+        Ok((attrs, tail))
     }
 
     /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
-    fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
+    crate fn parse_block_tail(
+        &mut self,
+        lo: Span,
+        s: BlockCheckMode,
+        recover: AttemptLocalParseRecovery,
+    ) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
             if self.token == token::Eof {
                 break;
             }
-            let stmt = match self.parse_full_stmt() {
-                Err(mut err) => {
+            let stmt = match self.parse_full_stmt(recover) {
+                Err(mut err) if recover.yes() => {
                     self.maybe_annotate_with_ascription(&mut err, false);
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(self.mk_stmt_err(self.token.span))
                 }
                 Ok(stmt) => stmt,
+                Err(err) => return Err(err),
             };
             if let Some(stmt) = stmt {
                 stmts.push(stmt);
@@ -352,7 +364,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a statement, including the trailing semicolon.
-    pub fn parse_full_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
+    pub fn parse_full_stmt(
+        &mut self,
+        recover: AttemptLocalParseRecovery,
+    ) -> PResult<'a, Option<Stmt>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
         maybe_whole!(self, NtStmt, |x| Some(x));
 
@@ -391,6 +406,9 @@ impl<'a> Parser<'a> {
                     if let Err(mut e) =
                         self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
                     {
+                        if recover.no() {
+                            return Err(e);
+                        }
                         e.emit();
                         self.recover_stmt();
                     }
@@ -432,7 +450,7 @@ impl<'a> Parser<'a> {
         Stmt { id: DUMMY_NODE_ID, kind, span, tokens: None }
     }
 
-    fn mk_stmt_err(&self, span: Span) -> Stmt {
+    pub(super) fn mk_stmt_err(&self, span: Span) -> Stmt {
         self.mk_stmt(span, StmtKind::Expr(self.mk_expr_err(span)))
     }
 

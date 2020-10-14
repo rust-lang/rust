@@ -33,7 +33,7 @@ MAINTAINERS = {
     'rust-by-example': {'steveklabnik', 'marioidival'},
     'embedded-book': {'adamgreig', 'andre-richter', 'jamesmunns', 'therealprof'},
     'edition-guide': {'ehuss', 'steveklabnik'},
-    'rustc-dev-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
+    'rustc-dev-guide': {'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
 LABELS = {
@@ -157,9 +157,6 @@ def issue(
 
         cc @{}, do you think you would have time to do the follow-up work?
         If so, that would be great!
-
-        And nominating for compiler team prioritization.
-
         ''').format(
             relevant_pr_number, tool, status_description,
             REPOS.get(tool), relevant_pr_user

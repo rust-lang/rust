@@ -49,6 +49,7 @@ pub mod env;
 pub mod ext;
 pub mod fd;
 pub mod fs;
+pub mod futex;
 pub mod io;
 #[cfg(target_os = "l4re")]
 mod l4re;

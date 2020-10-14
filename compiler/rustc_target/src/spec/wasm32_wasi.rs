@@ -75,7 +75,7 @@
 use super::wasm32_base;
 use super::{crt_objects, LinkerFlavor, LldFlavor, Target};
 
-pub fn target() -> Result<Target, String> {
+pub fn target() -> Target {
     let mut options = wasm32_base::options();
 
     options
@@ -104,7 +104,7 @@ pub fn target() -> Result<Target, String> {
     // `args::args()` makes the WASI API calls itself.
     options.main_needs_argc_argv = false;
 
-    Ok(Target {
+    Target {
         llvm_target: "wasm32-wasi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -116,5 +116,5 @@ pub fn target() -> Result<Target, String> {
         arch: "wasm32".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Wasm),
         options,
-    })
+    }
 }

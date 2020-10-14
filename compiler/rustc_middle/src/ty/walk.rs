@@ -3,7 +3,7 @@
 
 use crate::ty;
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use rustc_data_structures::mini_set::MiniSet;
+use rustc_data_structures::sso::SsoHashSet;
 use smallvec::{self, SmallVec};
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
@@ -13,7 +13,7 @@ type TypeWalkerStack<'tcx> = SmallVec<[GenericArg<'tcx>; 8]>;
 pub struct TypeWalker<'tcx> {
     stack: TypeWalkerStack<'tcx>,
     last_subtree: usize,
-    visited: MiniSet<GenericArg<'tcx>>,
+    visited: SsoHashSet<GenericArg<'tcx>>,
 }
 
 /// An iterator for walking the type tree.
@@ -26,7 +26,7 @@ pub struct TypeWalker<'tcx> {
 /// skips any types that are already there.
 impl<'tcx> TypeWalker<'tcx> {
     pub fn new(root: GenericArg<'tcx>) -> Self {
-        Self { stack: smallvec![root], last_subtree: 1, visited: MiniSet::new() }
+        Self { stack: smallvec![root], last_subtree: 1, visited: SsoHashSet::new() }
     }
 
     /// Skips the subtree corresponding to the last type
@@ -87,7 +87,7 @@ impl GenericArg<'tcx> {
     /// and skips any types that are already there.
     pub fn walk_shallow(
         self,
-        visited: &mut MiniSet<GenericArg<'tcx>>,
+        visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> impl Iterator<Item = GenericArg<'tcx>> {
         let mut stack = SmallVec::new();
         push_inner(&mut stack, self);

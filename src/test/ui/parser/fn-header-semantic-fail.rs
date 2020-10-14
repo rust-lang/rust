@@ -12,7 +12,6 @@ fn main() {
     extern "C" fn ff4() {} // OK.
     const async unsafe extern "C" fn ff5() {} // OK.
     //~^ ERROR functions cannot be both `const` and `async`
-    //~| ERROR `from_generator` is not yet stable as a const fn
 
     trait X {
         async fn ft1(); //~ ERROR functions in traits cannot be declared `async`
@@ -35,7 +34,6 @@ fn main() {
         const async unsafe extern "C" fn ft5() {}
         //~^ ERROR functions in traits cannot be declared `async`
         //~| ERROR functions in traits cannot be declared const
-        //~| ERROR `from_generator` is not yet stable as a const fn
         //~| ERROR method `ft5` has an incompatible type for trait
         //~| ERROR functions cannot be both `const` and `async`
     }
@@ -47,7 +45,6 @@ fn main() {
         extern "C" fn fi4() {} // OK.
         const async unsafe extern "C" fn fi5() {}
         //~^ ERROR functions cannot be both `const` and `async`
-        //~| ERROR `from_generator` is not yet stable as a const fn
     }
 
     extern {

@@ -3199,8 +3199,18 @@ impl<'test> TestCx<'test> {
                     from_file = format!("{}.{}.mir", test_name, first_pass);
                     to_file = Some(second_file);
                 } else {
-                    expected_file =
-                        format!("{}{}.mir", test_name.trim_end_matches(".mir"), bit_width);
+                    let ext_re = Regex::new(r#"(\.(mir|dot|html))$"#).unwrap();
+                    let cap = ext_re
+                        .captures_iter(test_name)
+                        .next()
+                        .expect("test_name has an invalid extension");
+                    let extension = cap.get(1).unwrap().as_str();
+                    expected_file = format!(
+                        "{}{}{}",
+                        test_name.trim_end_matches(extension),
+                        bit_width,
+                        extension,
+                    );
                     from_file = test_name.to_string();
                     assert!(
                         test_names.next().is_none(),

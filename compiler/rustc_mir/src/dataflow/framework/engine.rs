@@ -2,7 +2,6 @@
 
 use std::borrow::BorrowMut;
 use std::ffi::OsString;
-use std::fs;
 use std::path::PathBuf;
 
 use rustc_ast as ast;
@@ -12,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, traversal, BasicBlock};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 
 use super::fmt::DebugWithContext;
@@ -21,7 +20,7 @@ use super::{
     visit_results, Analysis, Direction, GenKill, GenKillAnalysis, GenKillSet, JoinSemiLattice,
     ResultsCursor, ResultsVisitor,
 };
-use crate::util::pretty::dump_enabled;
+use crate::util::pretty::{create_dump_file, dump_enabled};
 
 /// A dataflow analysis that has converged to fixpoint.
 pub struct Results<'tcx, A>
@@ -81,7 +80,6 @@ where
 {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
-    def_id: DefId,
     dead_unwinds: Option<&'a BitSet<BasicBlock>>,
     entry_sets: IndexVec<BasicBlock, A::Domain>,
     pass_name: Option<&'static str>,
@@ -103,18 +101,13 @@ where
     T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
-    pub fn new_gen_kill(
-        tcx: TyCtxt<'tcx>,
-        body: &'a mir::Body<'tcx>,
-        def_id: DefId,
-        analysis: A,
-    ) -> Self {
+    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
         // If there are no back-edges in the control-flow graph, we only ever need to apply the
         // transfer function for each block exactly once (assuming that we process blocks in RPO).
         //
         // In this case, there's no need to compute the block transfer functions ahead of time.
         if !body.is_cfg_cyclic() {
-            return Self::new(tcx, body, def_id, analysis, None);
+            return Self::new(tcx, body, analysis, None);
         }
 
         // Otherwise, compute and store the cumulative transfer function for each block.
@@ -131,7 +124,7 @@ where
             trans_for_block[bb].apply(state.borrow_mut());
         });
 
-        Self::new(tcx, body, def_id, analysis, Some(apply_trans as Box<_>))
+        Self::new(tcx, body, analysis, Some(apply_trans as Box<_>))
     }
 }
 
@@ -145,19 +138,13 @@ where
     ///
     /// Gen-kill problems should use `new_gen_kill`, which will coalesce transfer functions for
     /// better performance.
-    pub fn new_generic(
-        tcx: TyCtxt<'tcx>,
-        body: &'a mir::Body<'tcx>,
-        def_id: DefId,
-        analysis: A,
-    ) -> Self {
-        Self::new(tcx, body, def_id, analysis, None)
+    pub fn new_generic(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
+        Self::new(tcx, body, analysis, None)
     }
 
     fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a mir::Body<'tcx>,
-        def_id: DefId,
         analysis: A,
         apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
@@ -173,7 +160,6 @@ where
             analysis,
             tcx,
             body,
-            def_id,
             dead_unwinds: None,
             pass_name: None,
             entry_sets,
@@ -209,7 +195,6 @@ where
             analysis,
             body,
             dead_unwinds,
-            def_id,
             mut entry_sets,
             tcx,
             apply_trans_for_block,
@@ -261,9 +246,9 @@ where
 
         let results = Results { analysis, entry_sets };
 
-        let res = write_graphviz_results(tcx, def_id, &body, &results, pass_name);
+        let res = write_graphviz_results(tcx, &body, &results, pass_name);
         if let Err(e) = res {
-            warn!("Failed to write graphviz dataflow results: {}", e);
+            error!("Failed to write graphviz dataflow results: {}", e);
         }
 
         results
@@ -276,7 +261,6 @@ where
 /// `rustc_mir` attributes.
 fn write_graphviz_results<A>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
     body: &mir::Body<'tcx>,
     results: &Results<'tcx, A>,
     pass_name: Option<&'static str>,
@@ -285,6 +269,10 @@ where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
+    use std::fs;
+    use std::io::{self, Write};
+
+    let def_id = body.source.def_id();
     let attrs = match RustcMirAttrs::parse(tcx, def_id) {
         Ok(attrs) => attrs,
 
@@ -292,27 +280,29 @@ where
         Err(()) => return Ok(()),
     };
 
-    let path = match attrs.output_path(A::NAME) {
-        Some(path) => path,
+    let mut file = match attrs.output_path(A::NAME) {
+        Some(path) => {
+            debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            io::BufWriter::new(fs::File::create(&path)?)
+        }
 
         None if tcx.sess.opts.debugging_opts.dump_mir_dataflow
             && dump_enabled(tcx, A::NAME, def_id) =>
         {
-            // FIXME: Use some variant of `pretty::dump_path` for this
-            let mut path = PathBuf::from(&tcx.sess.opts.debugging_opts.dump_mir_dir);
-
-            let crate_name = tcx.crate_name(def_id.krate);
-            let item_name = ty::print::with_forced_impl_filename_line(|| {
-                tcx.def_path(def_id).to_filename_friendly_no_crate()
-            });
-
-            let pass_name = pass_name.map(|s| format!(".{}", s)).unwrap_or_default();
-
-            path.push(format!("{}.{}.{}{}.dot", crate_name, item_name, A::NAME, pass_name));
-            path
+            create_dump_file(
+                tcx,
+                ".dot",
+                None,
+                A::NAME,
+                &pass_name.unwrap_or("-----"),
+                body.source,
+            )?
         }
 
-        None => return Ok(()),
+        _ => return Ok(()),
     };
 
     let style = match attrs.formatter {
@@ -320,10 +310,9 @@ where
         _ => graphviz::OutputStyle::AfterOnly,
     };
 
-    debug!("printing dataflow results for {:?} to {}", def_id, path.display());
     let mut buf = Vec::new();
 
-    let graphviz = graphviz::Formatter::new(body, def_id, results, style);
+    let graphviz = graphviz::Formatter::new(body, results, style);
     let mut render_opts =
         vec![dot::RenderOption::Fontname(tcx.sess.opts.debugging_opts.graphviz_font.clone())];
     if tcx.sess.opts.debugging_opts.graphviz_dark_mode {
@@ -331,10 +320,7 @@ where
     }
     dot::render_opts(&graphviz, &mut buf, &render_opts)?;
 
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, buf)?;
+    file.write_all(&buf)?;
 
     Ok(())
 }

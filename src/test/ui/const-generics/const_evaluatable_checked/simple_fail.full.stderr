@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/simple_fail.rs:7:33
    |
 LL | type Arr<const N: usize> = [u8; N - 1];
-   |                                 ^^^^^ attempt to compute `0_usize - 1_usize` which would overflow
+   |                                 ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
 
 error: aborting due to previous error
 

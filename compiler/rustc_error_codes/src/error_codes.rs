@@ -18,7 +18,6 @@ E0010: include_str!("./error_codes/E0010.md"),
 E0013: include_str!("./error_codes/E0013.md"),
 E0014: include_str!("./error_codes/E0014.md"),
 E0015: include_str!("./error_codes/E0015.md"),
-E0019: include_str!("./error_codes/E0019.md"),
 E0023: include_str!("./error_codes/E0023.md"),
 E0025: include_str!("./error_codes/E0025.md"),
 E0026: include_str!("./error_codes/E0026.md"),
@@ -458,9 +457,15 @@ E0770: include_str!("./error_codes/E0770.md"),
 E0771: include_str!("./error_codes/E0771.md"),
 E0773: include_str!("./error_codes/E0773.md"),
 E0774: include_str!("./error_codes/E0774.md"),
+E0775: include_str!("./error_codes/E0775.md"),
+E0776: include_str!("./error_codes/E0776.md"),
+E0777: include_str!("./error_codes/E0777.md"),
+E0778: include_str!("./error_codes/E0778.md"),
+E0779: include_str!("./error_codes/E0779.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
+//  E0019, merged into E0015
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089
 //  E0068,

@@ -1524,6 +1524,9 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_pre_link_args(cmd, sess, flavor);
 
+    // NO-OPT-OUT, OBJECT-FILES-NO
+    add_apple_sdk(cmd, sess, flavor);
+
     // NO-OPT-OUT
     add_link_script(cmd, sess, tmpdir, crate_type);
 
@@ -2081,5 +2084,88 @@ fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
             !sess.opts.cg.linker_plugin_lto.enabled()
         }
         config::Lto::No | config::Lto::ThinLocal => false,
+    }
+}
+
+fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    let arch = &sess.target.target.arch;
+    let os = &sess.target.target.target_os;
+    let llvm_target = &sess.target.target.llvm_target;
+    if sess.target.target.target_vendor != "apple"
+        || !matches!(os.as_str(), "ios" | "tvos")
+        || flavor != LinkerFlavor::Gcc
+    {
+        return;
+    }
+    let sdk_name = match (arch.as_str(), os.as_str()) {
+        ("aarch64", "tvos") => "appletvos",
+        ("x86_64", "tvos") => "appletvsimulator",
+        ("arm", "ios") => "iphoneos",
+        ("aarch64", "ios") => "iphoneos",
+        ("x86", "ios") => "iphonesimulator",
+        ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx10.15",
+        ("x86_64", "ios") => "iphonesimulator",
+        _ => {
+            sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));
+            return;
+        }
+    };
+    let sdk_root = match get_apple_sdk_root(sdk_name) {
+        Ok(s) => s,
+        Err(e) => {
+            sess.err(&e);
+            return;
+        }
+    };
+    let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
+    cmd.args(&["-arch", arch_name, "-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
+}
+
+fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
+    // Following what clang does
+    // (https://github.com/llvm/llvm-project/blob/
+    // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
+    // to allow the SDK path to be set. (For clang, xcrun sets
+    // SDKROOT; for rustc, the user or build system can set it, or we
+    // can fall back to checking for xcrun on PATH.)
+    if let Ok(sdkroot) = env::var("SDKROOT") {
+        let p = Path::new(&sdkroot);
+        match sdk_name {
+            // Ignore `SDKROOT` if it's clearly set for the wrong platform.
+            "appletvos"
+                if sdkroot.contains("TVSimulator.platform")
+                    || sdkroot.contains("MacOSX.platform") => {}
+            "appletvsimulator"
+                if sdkroot.contains("TVOS.platform") || sdkroot.contains("MacOSX.platform") => {}
+            "iphoneos"
+                if sdkroot.contains("iPhoneSimulator.platform")
+                    || sdkroot.contains("MacOSX.platform") => {}
+            "iphonesimulator"
+                if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") => {
+            }
+            "macosx10.15"
+                if sdkroot.contains("iPhoneOS.platform")
+                    || sdkroot.contains("iPhoneSimulator.platform") => {}
+            // Ignore `SDKROOT` if it's not a valid path.
+            _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
+            _ => return Ok(sdkroot),
+        }
+    }
+    let res =
+        Command::new("xcrun").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
+            |output| {
+                if output.status.success() {
+                    Ok(String::from_utf8(output.stdout).unwrap())
+                } else {
+                    let error = String::from_utf8(output.stderr);
+                    let error = format!("process exit with error: {}", error.unwrap());
+                    Err(io::Error::new(io::ErrorKind::Other, &error[..]))
+                }
+            },
+        );
+
+    match res {
+        Ok(output) => Ok(output.trim().to_string()),
+        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e)),
     }
 }

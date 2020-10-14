@@ -1799,7 +1799,7 @@ fn partialeq_vec_and_prim() {
 }
 
 macro_rules! assert_partial_eq_valid {
-    ($a2:ident, $a3:ident; $b2:ident, $b3: ident) => {
+    ($a2:expr, $a3:expr; $b2:expr, $b3: expr) => {
         assert!($a2 == $b2);
         assert!($a2 != $b3);
         assert!($a3 != $b2);
@@ -1831,6 +1831,7 @@ fn partialeq_vec_full() {
     assert_partial_eq_valid!(slicemut2,slicemut3; vec2,vec3);
     assert_partial_eq_valid!(vec2,vec3; array2,array3);
     assert_partial_eq_valid!(vec2,vec3; arrayref2,arrayref3);
+    assert_partial_eq_valid!(vec2,vec3; arrayref2[..],arrayref3[..]);
 }
 
 #[test]
