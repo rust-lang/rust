@@ -288,12 +288,10 @@ warning: 2 warnings emitted
 
 ## automatic_links
 
-This link is **allowed by default** and is **nightly-only**. It detects links
-which could use the "automatic" link syntax. For example:
+This lint is **nightly-only** and **warns by default**. It detects links which
+could use the "automatic" link syntax. For example:
 
 ```rust
-#![warn(automatic_links)]
-
 /// http://hello.rs
 /// [http://a.com](http://a.com)
 /// [http://b.com]
@@ -305,17 +303,12 @@ pub fn foo() {}
 Which will give:
 
 ```text
-warning: won't be a link as is
+warning: this URL is not a hyperlink
  --> foo.rs:3:5
   |
 3 | /// http://hello.rs
   |     ^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://hello.rs>`
   |
-note: the lint level is defined here
- --> foo.rs:1:9
-  |
-1 | #![warn(automatic_links)]
-  |         ^^^^^^^^^^^^^^^
 
 warning: unneeded long form for URL
  --> foo.rs:4:5
