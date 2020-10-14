@@ -1,21 +1,9 @@
-use std::collections::BTreeSet;
-
-use either::Either;
-use hir::{
-    AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
-    Type,
-};
-use ide_db::{imports_locator, RootDatabase};
-use insert_use::ImportScope;
-use rustc_hash::FxHashSet;
-use syntax::{
-    ast::{self, AstNode},
-    SyntaxNode,
-};
+use syntax::ast;
 
 use crate::{
-    utils::insert_use, utils::mod_path_to_ast, AssistContext, AssistId, AssistKind, Assists,
-    GroupLabel,
+    utils::import_assets::{ImportAssets, ImportCandidate},
+    utils::{insert_use, mod_path_to_ast, ImportScope},
+    AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 
 // Assist: auto_import
@@ -38,16 +26,24 @@ use crate::{
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let auto_import_assets = AutoImportAssets::new(ctx)?;
-    let proposed_imports = auto_import_assets.search_for_imports(ctx);
+    let import_assets =
+        if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
+            ImportAssets::for_regular_path(path_under_caret, &ctx.sema)
+        } else if let Some(method_under_caret) =
+            ctx.find_node_at_offset_with_descend::<ast::MethodCallExpr>()
+        {
+            ImportAssets::for_method_call(method_under_caret, &ctx.sema)
+        } else {
+            None
+        }?;
+    let proposed_imports = import_assets.search_for_imports(&ctx.sema, &ctx.config.insert_use);
     if proposed_imports.is_empty() {
         return None;
     }
 
-    let range = ctx.sema.original_range(&auto_import_assets.syntax_under_caret).range;
-    let group = auto_import_assets.get_import_group_message();
-    let scope =
-        ImportScope::find_insert_use_container(&auto_import_assets.syntax_under_caret, ctx)?;
+    let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
+    let group = import_group_message(import_assets.import_candidate());
+    let scope = ImportScope::find_insert_use_container(import_assets.syntax_under_caret(), ctx)?;
     let syntax = scope.as_syntax_node();
     for import in proposed_imports {
         acc.add_group(
@@ -65,227 +61,18 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     Some(())
 }
 
-#[derive(Debug)]
-struct AutoImportAssets {
-    import_candidate: ImportCandidate,
-    module_with_name_to_import: Module,
-    syntax_under_caret: SyntaxNode,
-}
-
-impl AutoImportAssets {
-    fn new(ctx: &AssistContext) -> Option<Self> {
-        if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
-            Self::for_regular_path(path_under_caret, &ctx)
-        } else {
-            Self::for_method_call(ctx.find_node_at_offset_with_descend()?, &ctx)
+fn import_group_message(import_candidate: &ImportCandidate) -> GroupLabel {
+    let name = match import_candidate {
+        ImportCandidate::UnqualifiedName(candidate)
+        | ImportCandidate::QualifierStart(candidate) => format!("Import {}", &candidate.name),
+        ImportCandidate::TraitAssocItem(candidate) => {
+            format!("Import a trait for item {}", &candidate.name)
         }
-    }
-
-    fn for_method_call(method_call: ast::MethodCallExpr, ctx: &AssistContext) -> Option<Self> {
-        let syntax_under_caret = method_call.syntax().to_owned();
-        let module_with_name_to_import = ctx.sema.scope(&syntax_under_caret).module()?;
-        Some(Self {
-            import_candidate: ImportCandidate::for_method_call(&ctx.sema, &method_call)?,
-            module_with_name_to_import,
-            syntax_under_caret,
-        })
-    }
-
-    fn for_regular_path(path_under_caret: ast::Path, ctx: &AssistContext) -> Option<Self> {
-        let syntax_under_caret = path_under_caret.syntax().to_owned();
-        if syntax_under_caret.ancestors().find_map(ast::Use::cast).is_some() {
-            return None;
+        ImportCandidate::TraitMethod(candidate) => {
+            format!("Import a trait for method {}", &candidate.name)
         }
-
-        let module_with_name_to_import = ctx.sema.scope(&syntax_under_caret).module()?;
-        Some(Self {
-            import_candidate: ImportCandidate::for_regular_path(&ctx.sema, &path_under_caret)?,
-            module_with_name_to_import,
-            syntax_under_caret,
-        })
-    }
-
-    fn get_search_query(&self) -> &str {
-        match &self.import_candidate {
-            ImportCandidate::UnqualifiedName(name) => name,
-            ImportCandidate::QualifierStart(qualifier_start) => qualifier_start,
-            ImportCandidate::TraitAssocItem(_, trait_assoc_item_name) => trait_assoc_item_name,
-            ImportCandidate::TraitMethod(_, trait_method_name) => trait_method_name,
-        }
-    }
-
-    fn get_import_group_message(&self) -> GroupLabel {
-        let name = match &self.import_candidate {
-            ImportCandidate::UnqualifiedName(name) => format!("Import {}", name),
-            ImportCandidate::QualifierStart(qualifier_start) => {
-                format!("Import {}", qualifier_start)
-            }
-            ImportCandidate::TraitAssocItem(_, trait_assoc_item_name) => {
-                format!("Import a trait for item {}", trait_assoc_item_name)
-            }
-            ImportCandidate::TraitMethod(_, trait_method_name) => {
-                format!("Import a trait for method {}", trait_method_name)
-            }
-        };
-        GroupLabel(name)
-    }
-
-    fn search_for_imports(&self, ctx: &AssistContext) -> BTreeSet<ModPath> {
-        let _p = profile::span("auto_import::search_for_imports");
-        let db = ctx.db();
-        let current_crate = self.module_with_name_to_import.krate();
-        imports_locator::find_imports(&ctx.sema, current_crate, &self.get_search_query())
-            .into_iter()
-            .filter_map(|candidate| match &self.import_candidate {
-                ImportCandidate::TraitAssocItem(assoc_item_type, _) => {
-                    let located_assoc_item = match candidate {
-                        Either::Left(ModuleDef::Function(located_function)) => located_function
-                            .as_assoc_item(db)
-                            .map(|assoc| assoc.container(db))
-                            .and_then(Self::assoc_to_trait),
-                        Either::Left(ModuleDef::Const(located_const)) => located_const
-                            .as_assoc_item(db)
-                            .map(|assoc| assoc.container(db))
-                            .and_then(Self::assoc_to_trait),
-                        _ => None,
-                    }?;
-
-                    let mut trait_candidates = FxHashSet::default();
-                    trait_candidates.insert(located_assoc_item.into());
-
-                    assoc_item_type
-                        .iterate_path_candidates(
-                            db,
-                            current_crate,
-                            &trait_candidates,
-                            None,
-                            |_, assoc| Self::assoc_to_trait(assoc.container(db)),
-                        )
-                        .map(ModuleDef::from)
-                        .map(Either::Left)
-                }
-                ImportCandidate::TraitMethod(function_callee, _) => {
-                    let located_assoc_item =
-                        if let Either::Left(ModuleDef::Function(located_function)) = candidate {
-                            located_function
-                                .as_assoc_item(db)
-                                .map(|assoc| assoc.container(db))
-                                .and_then(Self::assoc_to_trait)
-                        } else {
-                            None
-                        }?;
-
-                    let mut trait_candidates = FxHashSet::default();
-                    trait_candidates.insert(located_assoc_item.into());
-
-                    function_callee
-                        .iterate_method_candidates(
-                            db,
-                            current_crate,
-                            &trait_candidates,
-                            None,
-                            |_, function| {
-                                Self::assoc_to_trait(function.as_assoc_item(db)?.container(db))
-                            },
-                        )
-                        .map(ModuleDef::from)
-                        .map(Either::Left)
-                }
-                _ => Some(candidate),
-            })
-            .filter_map(|candidate| match candidate {
-                Either::Left(module_def) => self.module_with_name_to_import.find_use_path_prefixed(
-                    db,
-                    module_def,
-                    ctx.config.insert_use.prefix_kind,
-                ),
-                Either::Right(macro_def) => self.module_with_name_to_import.find_use_path_prefixed(
-                    db,
-                    macro_def,
-                    ctx.config.insert_use.prefix_kind,
-                ),
-            })
-            .filter(|use_path| !use_path.segments.is_empty())
-            .take(20)
-            .collect::<BTreeSet<_>>()
-    }
-
-    fn assoc_to_trait(assoc: AssocItemContainer) -> Option<Trait> {
-        if let AssocItemContainer::Trait(extracted_trait) = assoc {
-            Some(extracted_trait)
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug)]
-enum ImportCandidate {
-    /// Simple name like 'HashMap'
-    UnqualifiedName(String),
-    /// First part of the qualified name.
-    /// For 'std::collections::HashMap', that will be 'std'.
-    QualifierStart(String),
-    /// A trait associated function (with no self parameter) or associated constant.
-    /// For 'test_mod::TestEnum::test_function', `Type` is the `test_mod::TestEnum` expression type
-    /// and `String` is the `test_function`
-    TraitAssocItem(Type, String),
-    /// A trait method with self parameter.
-    /// For 'test_enum.test_method()', `Type` is the `test_enum` expression type
-    /// and `String` is the `test_method`
-    TraitMethod(Type, String),
-}
-
-impl ImportCandidate {
-    fn for_method_call(
-        sema: &Semantics<RootDatabase>,
-        method_call: &ast::MethodCallExpr,
-    ) -> Option<Self> {
-        if sema.resolve_method_call(method_call).is_some() {
-            return None;
-        }
-        Some(Self::TraitMethod(
-            sema.type_of_expr(&method_call.receiver()?)?,
-            method_call.name_ref()?.syntax().to_string(),
-        ))
-    }
-
-    fn for_regular_path(
-        sema: &Semantics<RootDatabase>,
-        path_under_caret: &ast::Path,
-    ) -> Option<Self> {
-        if sema.resolve_path(path_under_caret).is_some() {
-            return None;
-        }
-
-        let segment = path_under_caret.segment()?;
-        if let Some(qualifier) = path_under_caret.qualifier() {
-            let qualifier_start = qualifier.syntax().descendants().find_map(ast::NameRef::cast)?;
-            let qualifier_start_path =
-                qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
-            if let Some(qualifier_start_resolution) = sema.resolve_path(&qualifier_start_path) {
-                let qualifier_resolution = if qualifier_start_path == qualifier {
-                    qualifier_start_resolution
-                } else {
-                    sema.resolve_path(&qualifier)?
-                };
-                if let PathResolution::Def(ModuleDef::Adt(assoc_item_path)) = qualifier_resolution {
-                    Some(ImportCandidate::TraitAssocItem(
-                        assoc_item_path.ty(sema.db),
-                        segment.syntax().to_string(),
-                    ))
-                } else {
-                    None
-                }
-            } else {
-                Some(ImportCandidate::QualifierStart(qualifier_start.syntax().to_string()))
-            }
-        } else {
-            Some(ImportCandidate::UnqualifiedName(
-                segment.syntax().descendants().find_map(ast::NameRef::cast)?.syntax().to_string(),
-            ))
-        }
-    }
+    };
+    GroupLabel(name)
 }
 
 #[cfg(test)]

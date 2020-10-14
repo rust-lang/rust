@@ -1,5 +1,6 @@
 //! Assorted functions shared by several assists.
 pub(crate) mod insert_use;
+pub(crate) mod import_assets;
 
 use std::{iter, ops};
 

@@ -1,3 +1,13 @@
+<!---
+lsp_ext.rs hash: 286f8bbac885531a
+
+If you need to change the above hash to make the test pass, please check if you
+need to adjust this doc as well and ping this issue:
+
+  https://github.com/rust-analyzer/rust-analyzer/issues/4604
+
+--->
+
 # LSP Extensions
 
 This document describes LSP extensions used by rust-analyzer.
