@@ -562,7 +562,7 @@ fn force_query_with_job<CTX, K, V>(
     query: &QueryVtable<CTX, K, V>,
 ) -> (V, DepNodeIndex)
 where
-    K: Eq + Clone + Debug,
+    K: Debug,
     CTX: QueryContext,
 {
     // If the following assertion triggers, it can have two reasons:
