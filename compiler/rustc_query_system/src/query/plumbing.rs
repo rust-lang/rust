@@ -441,20 +441,17 @@ where
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         let loaded = tcx.start_query(job_id, None, |tcx| {
-            let marked = tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node);
-            marked.map(|(prev_dep_node_index, dep_node_index)| {
-                (
-                    load_from_disk_and_cache_in_memory(
-                        tcx,
-                        key.clone(),
-                        prev_dep_node_index,
-                        dep_node_index,
-                        &dep_node,
-                        query,
-                    ),
-                    dep_node_index,
-                )
-            })
+            let (prev_dep_node_index, dep_node_index) =
+                tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node)?;
+            let result = load_from_disk_and_cache_in_memory(
+                tcx,
+                key.clone(),
+                prev_dep_node_index,
+                dep_node_index,
+                &dep_node,
+                query,
+            );
+            Some((result, dep_node_index))
         });
         if let Some((result, dep_node_index)) = loaded {
             return (result, dep_node_index, false);
