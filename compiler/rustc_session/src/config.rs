@@ -742,7 +742,7 @@ pub const fn default_lib_output() -> CrateType {
 pub fn default_configuration(sess: &Session) -> CrateConfig {
     let end = &sess.target.target.target_endian;
     let arch = &sess.target.target.arch;
-    let wordsz = &sess.target.target.target_pointer_width;
+    let wordsz = sess.target.target.pointer_width.to_string();
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
     let vendor = &sess.target.target.target_vendor;
@@ -767,7 +767,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     }
     ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
     ret.insert((sym::target_endian, Some(Symbol::intern(end))));
-    ret.insert((sym::target_pointer_width, Some(Symbol::intern(wordsz))));
+    ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
     ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
     if sess.target.target.options.has_elf_tls {
@@ -792,7 +792,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
             };
             let s = i.to_string();
             insert_atomic(&s, align);
-            if &s == wordsz {
+            if s == wordsz {
                 insert_atomic("ptr", layout.pointer_align.abi);
             }
         }
@@ -844,19 +844,18 @@ pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> C
         )
     });
 
-    let ptr_width = match &target.target_pointer_width[..] {
-        "16" => 16,
-        "32" => 32,
-        "64" => 64,
-        w => early_error(
+    if !matches!(target.pointer_width, 16 | 32 | 64) {
+        early_error(
             opts.error_format,
             &format!(
                 "target specification was invalid: \
              unrecognized target-pointer-width {}",
-                w
+                target.pointer_width
             ),
-        ),
-    };
+        )
+    }
+
+    let ptr_width = target.pointer_width;
 
     Config { target, ptr_width }
 }

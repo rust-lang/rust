@@ -16,10 +16,10 @@ pub(crate) unsafe fn codegen(
 ) {
     let llcx = &*mods.llcx;
     let llmod = mods.llmod();
-    let usize = match &tcx.sess.target.target.target_pointer_width[..] {
-        "16" => llvm::LLVMInt16TypeInContext(llcx),
-        "32" => llvm::LLVMInt32TypeInContext(llcx),
-        "64" => llvm::LLVMInt64TypeInContext(llcx),
+    let usize = match tcx.sess.target.target.pointer_width {
+        16 => llvm::LLVMInt16TypeInContext(llcx),
+        32 => llvm::LLVMInt32TypeInContext(llcx),
+        64 => llvm::LLVMInt64TypeInContext(llcx),
         tws => bug!("Unsupported target word size for int: {}", tws),
     };
     let i8 = llvm::LLVMInt8TypeInContext(llcx);
