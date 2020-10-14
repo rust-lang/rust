@@ -21,6 +21,8 @@ pub fn render_with_highlighting(
     playground_button: Option<&str>,
     tooltip: Option<(&str, &str)>,
 ) -> String {
+    // This replace allows to fix how the code source with DOS backline characters is displayed.
+    let src = src.replace("\r\n", "\n");
     debug!("highlighting: ================\n{}\n==============", src);
     let mut out = String::with_capacity(src.len());
     if let Some((tooltip, class)) = tooltip {
