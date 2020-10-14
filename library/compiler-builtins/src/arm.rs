@@ -138,18 +138,20 @@ pub unsafe fn __aeabi_ldivmod() {
     intrinsics::unreachable();
 }
 
+// The following functions use weak linkage to allow users to override
+// with custom implementation.
 // FIXME: The `*4` and `*8` variants should be defined as aliases.
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize) {
     ::mem::memcpy(dest, src, n);
 }
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, mut n: usize) {
     // We are guaranteed 4-alignment, so accessing at u32 is okay.
     let mut dest = dest as *mut u32;
@@ -167,35 +169,35 @@ pub unsafe extern "aapcs" fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, mut 
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memcpy8(dest: *mut u8, src: *const u8, n: usize) {
     __aeabi_memcpy4(dest, src, n);
 }
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memmove(dest: *mut u8, src: *const u8, n: usize) {
     ::mem::memmove(dest, src, n);
 }
 
 #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memmove4(dest: *mut u8, src: *const u8, n: usize) {
     __aeabi_memmove(dest, src, n);
 }
 
 #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memmove8(dest: *mut u8, src: *const u8, n: usize) {
     __aeabi_memmove(dest, src, n);
 }
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
     // Note the different argument order
     ::mem::memset(dest, c, n);
@@ -203,7 +205,7 @@ pub unsafe extern "aapcs" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memset4(dest: *mut u8, mut n: usize, c: i32) {
     let mut dest = dest as *mut u32;
 
@@ -221,28 +223,28 @@ pub unsafe extern "aapcs" fn __aeabi_memset4(dest: *mut u8, mut n: usize, c: i32
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memset8(dest: *mut u8, n: usize, c: i32) {
     __aeabi_memset4(dest, n, c);
 }
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memclr(dest: *mut u8, n: usize) {
     __aeabi_memset(dest, n, 0);
 }
 
 #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memclr4(dest: *mut u8, n: usize) {
     __aeabi_memset4(dest, n, 0);
 }
 
 #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg_attr(thumb, linkage = "weak")]
+#[linkage = "weak"]
 pub unsafe extern "aapcs" fn __aeabi_memclr8(dest: *mut u8, n: usize) {
     __aeabi_memset4(dest, n, 0);
 }
