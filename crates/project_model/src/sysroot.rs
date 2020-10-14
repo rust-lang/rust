@@ -49,6 +49,7 @@ impl Sysroot {
     }
 
     pub fn discover(cargo_toml: &AbsPath) -> Result<Sysroot> {
+        log::debug!("Discovering sysroot for {}", cargo_toml.display());
         let current_dir = cargo_toml.parent().unwrap();
         let sysroot_src_dir = discover_sysroot_src_dir(current_dir)?;
         let res = Sysroot::load(&sysroot_src_dir)?;
@@ -115,12 +116,14 @@ fn discover_sysroot_src_dir(current_dir: &AbsPath) -> Result<AbsPathBuf> {
     if let Ok(path) = env::var("RUST_SRC_PATH") {
         let path = AbsPathBuf::try_from(path.as_str())
             .map_err(|path| format_err!("RUST_SRC_PATH must be absolute: {}", path.display()))?;
+        log::debug!("Discovered sysroot by RUST_SRC_PATH: {}", path.display());
         return Ok(path);
     }
 
     let sysroot_path = {
         let mut rustc = Command::new(toolchain::rustc());
         rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
+        log::debug!("Discovering sysroot by {:?}", rustc);
         let stdout = utf8_stdout(rustc)?;
         AbsPathBuf::assert(PathBuf::from(stdout))
     };
@@ -150,6 +153,7 @@ fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
     // FIXME: remove `src` when 1.47 comes out
     // https://github.com/rust-lang/rust/pull/73265
     let rust_src = sysroot_path.join("lib/rustlib/src/rust");
+    log::debug!("Checking sysroot (looking for `library` and `src` dirs): {}", rust_src.display());
     ["library", "src"].iter().map(|it| rust_src.join(it)).find(|it| it.exists())
 }
 
