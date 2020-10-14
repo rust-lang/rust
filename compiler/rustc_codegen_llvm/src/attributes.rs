@@ -174,7 +174,6 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
         .split(',')
         .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
     sess.target
-        .target
         .options
         .features
         .split(',')

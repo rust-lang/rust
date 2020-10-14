@@ -102,7 +102,7 @@ impl Mul<usize> for Limit {
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {
-    pub target: config::Config,
+    pub target: Target,
     pub host: Target,
     pub opts: config::Options,
     pub host_tlib_path: SearchPath,
@@ -1258,7 +1258,7 @@ pub fn build_session(
 
     let loader = file_loader.unwrap_or(Box::new(RealFileLoader));
     let hash_kind = sopts.debugging_opts.src_hash_algorithm.unwrap_or_else(|| {
-        if target_cfg.target.options.is_like_msvc {
+        if target_cfg.options.is_like_msvc {
             SourceFileHashAlgorithm::Sha1
         } else {
             SourceFileHashAlgorithm::Md5
@@ -1368,8 +1368,8 @@ pub fn build_session(
         if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
     };
 
-    let asm_arch = if target_cfg.target.options.allow_asm {
-        InlineAsmArch::from_str(&target_cfg.target.arch).ok()
+    let asm_arch = if target_cfg.options.allow_asm {
+        InlineAsmArch::from_str(&target_cfg.arch).ok()
     } else {
         None
     };

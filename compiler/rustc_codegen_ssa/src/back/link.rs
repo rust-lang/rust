@@ -15,7 +15,7 @@ use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
-use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel};
+use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target};
 
 use super::archive::ArchiveBuilder;
 use super::command::Command;
@@ -1842,12 +1842,8 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     }
 
     // Converts a library file-stem into a cc -l argument
-    fn unlib<'a>(config: &config::Config, stem: &'a str) -> &'a str {
-        if stem.starts_with("lib") && !config.target.options.is_like_windows {
-            &stem[3..]
-        } else {
-            stem
-        }
+    fn unlib<'a>(target: &Target, stem: &'a str) -> &'a str {
+        if stem.starts_with("lib") && !target.options.is_like_windows { &stem[3..] } else { stem }
     }
 
     // Adds the static "rlib" versions of all crates to the command line.

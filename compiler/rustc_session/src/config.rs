@@ -34,11 +34,6 @@ use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 
-pub struct Config {
-    pub target: Target,
-    pub ptr_width: u32,
-}
-
 bitflags! {
     #[derive(Default, Encodable, Decodable)]
     pub struct SanitizerSet: u8 {
@@ -831,7 +826,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
     user_cfg
 }
 
-pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> Config {
+pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> Target {
     let target_result = target_override.map_or_else(|| Target::search(&opts.target_triple), Ok);
     let target = target_result.unwrap_or_else(|e| {
         early_error(
@@ -855,9 +850,7 @@ pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> C
         )
     }
 
-    let ptr_width = target.pointer_width;
-
-    Config { target, ptr_width }
+    target
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
