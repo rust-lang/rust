@@ -614,6 +614,8 @@ where
 /// This function is particularly useful when executing passes for their
 /// side-effects -- e.g., in order to report errors for erroneous programs.
 ///
+/// Return `true` if the query has already been executed.
+///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
 fn ensure_query_impl<CTX, K, V>(tcx: CTX, key: &K, query: &QueryVtable<CTX, K, V>) -> bool
