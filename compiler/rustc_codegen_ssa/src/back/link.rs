@@ -279,12 +279,12 @@ pub fn emit_metadata(sess: &Session, metadata: &EncodedMetadata, tmpdir: &MaybeT
     out_filename
 }
 
-// Create an 'rlib'
-//
-// An rlib in its current incarnation is essentially a renamed .a file. The
-// rlib primarily contains the object file of the crate, but it also contains
-// all of the object files from native libraries. This is done by unzipping
-// native libraries and inserting all of the contents into this archive.
+/// Create an 'rlib'.
+///
+/// An rlib in its current incarnation is essentially a renamed .a file. The rlib primarily contains
+/// the object file of the crate, but it also contains all of the object files from native
+/// libraries. This is done by unzipping native libraries and inserting all of the contents into
+/// this archive.
 fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
@@ -379,18 +379,17 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     ab
 }
 
-// Create a static archive
-//
-// This is essentially the same thing as an rlib, but it also involves adding
-// all of the upstream crates' objects into the archive. This will slurp in
-// all of the native libraries of upstream dependencies as well.
-//
-// Additionally, there's no way for us to link dynamic libraries, so we warn
-// about all dynamic library dependencies that they're not linked in.
-//
-// There's no need to include metadata in a static archive, so ensure to not
-// link in the metadata object file (and also don't prepare the archive with a
-// metadata file).
+/// Create a static archive.
+///
+/// This is essentially the same thing as an rlib, but it also involves adding all of the upstream
+/// crates' objects into the archive. This will slurp in all of the native libraries of upstream
+/// dependencies as well.
+///
+/// Additionally, there's no way for us to link dynamic libraries, so we warn about all dynamic
+/// library dependencies that they're not linked in.
+///
+/// There's no need to include metadata in a static archive, so ensure to not link in the metadata
+/// object file (and also don't prepare the archive with a metadata file).
 fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
@@ -447,10 +446,10 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     }
 }
 
-// Create a dynamic library or executable
-//
-// This will invoke the system linker/cc to create the resulting file. This
-// links to all upstream files as well.
+/// Create a dynamic library or executable.
+///
+/// This will invoke the system linker/cc to create the resulting file. This links to all upstream
+/// files as well.
 fn link_natively<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     crate_type: CrateType,
@@ -1677,17 +1676,15 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     cmd.take_cmd()
 }
 
-// # Native library linking
-//
-// User-supplied library search paths (-L on the command line). These are
-// the same paths used to find Rust crates, so some of them may have been
-// added already by the previous crate linking code. This only allows them
-// to be found at compile time so it is still entirely up to outside
-// forces to make sure that library can be found at runtime.
-//
-// Also note that the native libraries linked here are only the ones located
-// in the current crate. Upstream crates with native library dependencies
-// may have their native library pulled in above.
+/// # Native library linking
+///
+/// User-supplied library search paths (-L on the command line). These are the same paths used to
+/// find Rust crates, so some of them may have been added already by the previous crate linking
+/// code. This only allows them to be found at compile time so it is still entirely up to outside
+/// forces to make sure that library can be found at runtime.
+///
+/// Also note that the native libraries linked here are only the ones located in the current crate.
+/// Upstream crates with native library dependencies may have their native library pulled in above.
 fn add_local_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
@@ -1727,11 +1724,10 @@ fn add_local_native_libraries(
     }
 }
 
-// # Rust Crate linking
-//
-// Rust crates are not considered at all when creating an rlib output. All
-// dependencies will be linked when producing the final output (instead of
-// the intermediate rlib version)
+/// # Rust Crate linking
+///
+/// Rust crates are not considered at all when creating an rlib output. All dependencies will be
+/// linked when producing the final output (instead of the intermediate rlib version).
 fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     cmd: &mut dyn Linker,
     sess: &'a Session,
@@ -1996,24 +1992,21 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     }
 }
 
-// Link in all of our upstream crates' native dependencies. Remember that
-// all of these upstream native dependencies are all non-static
-// dependencies. We've got two cases then:
-//
-// 1. The upstream crate is an rlib. In this case we *must* link in the
-// native dependency because the rlib is just an archive.
-//
-// 2. The upstream crate is a dylib. In order to use the dylib, we have to
-// have the dependency present on the system somewhere. Thus, we don't
-// gain a whole lot from not linking in the dynamic dependency to this
-// crate as well.
-//
-// The use case for this is a little subtle. In theory the native
-// dependencies of a crate are purely an implementation detail of the crate
-// itself, but the problem arises with generic and inlined functions. If a
-// generic function calls a native function, then the generic function must
-// be instantiated in the target crate, meaning that the native symbol must
-// also be resolved in the target crate.
+/// Link in all of our upstream crates' native dependencies. Remember that all of these upstream
+/// native dependencies are all non-static dependencies. We've got two cases then:
+///
+/// 1. The upstream crate is an rlib. In this case we *must* link in the native dependency because
+/// the rlib is just an archive.
+///
+/// 2. The upstream crate is a dylib. In order to use the dylib, we have to have the dependency
+/// present on the system somewhere. Thus, we don't gain a whole lot from not linking in the
+/// dynamic dependency to this crate as well.
+///
+/// The use case for this is a little subtle. In theory the native dependencies of a crate are
+/// purely an implementation detail of the crate itself, but the problem arises with generic and
+/// inlined functions. If a generic function calls a native function, then the generic function
+/// must be instantiated in the target crate, meaning that the native symbol must also be resolved
+/// in the target crate.
 fn add_upstream_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
