@@ -226,7 +226,7 @@ use crate::ptr;
 /// assert_eq!(my_struct.special_field.get(), new_value);
 /// ```
 ///
-/// See the [module-level documentation](index.html) for more.
+/// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 pub struct Cell<T: ?Sized> {
@@ -566,7 +566,7 @@ impl<T> Cell<[T]> {
 
 /// A mutable memory location with dynamically checked borrow rules
 ///
-/// See the [module-level documentation](index.html) for more.
+/// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T: ?Sized> {
     borrow: Cell<BorrowFlag>,
@@ -1203,7 +1203,7 @@ impl Clone for BorrowRef<'_> {
 /// Wraps a borrowed reference to a value in a `RefCell` box.
 /// A wrapper type for an immutably borrowed value from a `RefCell<T>`.
 ///
-/// See the [module-level documentation](index.html) for more.
+/// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ref<'b, T: ?Sized + 'b> {
     value: &'b T,
@@ -1493,7 +1493,7 @@ impl<'b> BorrowRefMut<'b> {
 
 /// A wrapper type for a mutably borrowed value from a `RefCell<T>`.
 ///
-/// See the [module-level documentation](index.html) for more.
+/// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefMut<'b, T: ?Sized + 'b> {
     value: &'b mut T,

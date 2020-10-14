@@ -233,7 +233,7 @@ use crate::{convert, fmt};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
-/// See the [`std::result`](index.html) module documentation for details.
+/// See the [module documentation](self) for details.
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[rustc_diagnostic_item = "result_type"]
