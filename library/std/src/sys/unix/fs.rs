@@ -1214,7 +1214,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 /// if one of the files' cursor +`max_len` would exceed u64::MAX (`EOVERFLOW`).
 /// If the initial file offset was 0 then `Fallback` will only contain `0`.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub(crate) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
+pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
     use crate::cmp;
     use crate::sync::atomic::{AtomicBool, Ordering};
 
@@ -1302,12 +1302,12 @@ pub(crate) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
 }
 
 #[derive(PartialEq)]
-pub(crate) enum SpliceMode {
+pub(super) enum SpliceMode {
     Sendfile,
     Splice,
 }
 
-pub(crate) enum CopyResult {
+pub(super) enum CopyResult {
     Ended(io::Result<u64>),
     Fallback(u64),
 }
@@ -1315,7 +1315,7 @@ pub(crate) enum CopyResult {
 /// performs splice or sendfile between file descriptors
 /// Does _not_ fall back to a generic copy loop.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub(crate) fn sendfile_splice(
+pub(super) fn sendfile_splice(
     mode: SpliceMode,
     reader: RawFd,
     writer: RawFd,

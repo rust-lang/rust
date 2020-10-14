@@ -58,6 +58,9 @@ use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::sys::fs::{copy_regular_files, sendfile_splice, CopyResult, SpliceMode};
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) fn copy_spec<R: Read + ?Sized, W: Write + ?Sized>(
     read: &mut R,
     write: &mut W,

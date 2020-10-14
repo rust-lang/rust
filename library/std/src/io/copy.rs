@@ -1,9 +1,6 @@
 use crate::io::{self, ErrorKind, Read, Write};
 use crate::mem::MaybeUninit;
 
-#[cfg(all(test, unix))]
-mod tests;
-
 /// Copies the entire contents of a reader into a writer.
 ///
 /// This function will continuously read data from `reader` and then
