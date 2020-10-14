@@ -9,7 +9,7 @@
 //! This includes changes in the stability of the constness.
 //!
 //! In order to make an intrinsic usable at compile-time, one needs to copy the implementation
-//! from https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs to
+//! from <https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs> to
 //! `compiler/rustc_mir/src/interpret/intrinsics.rs` and add a
 //! `#[rustc_const_unstable(feature = "foo", issue = "01234")]` to the intrinsic.
 //!
