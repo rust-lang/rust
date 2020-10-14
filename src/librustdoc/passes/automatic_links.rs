@@ -13,11 +13,15 @@ use rustc_session::lint;
 pub const CHECK_AUTOMATIC_LINKS: Pass = Pass {
     name: "check-automatic-links",
     run: check_automatic_links,
-    description: "detects URLS/email addresses that could be written using angle brackets",
+    description: "detects URLS that could be written using angle brackets",
 };
 
-const URL_REGEX: &str =
-    r"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)";
+const URL_REGEX: &str = concat!(
+    r"https?://",                          // url scheme
+    r"([-a-zA-Z0-9@:%._\+~#=]{2,256}\.)+", // one or more subdomains
+    r"[a-zA-Z]{2,4}",                      // root domain
+    r"\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)"     // optional query or url fragments
+);
 
 struct AutomaticLinksLinter<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
@@ -35,22 +39,16 @@ impl<'a, 'tcx> AutomaticLinksLinter<'a, 'tcx> {
         range: Range<usize>,
         f: &impl Fn(&DocContext<'_>, &str, &str, Range<usize>),
     ) {
-        for (pos, c) in text.char_indices() {
-            // For now, we only check "full" URLs.
-            if c == 'h' {
-                let text = &text[pos..];
-                if text.starts_with("http://") || text.starts_with("https://") {
-                    if let Some(m) = self.regex.find(text) {
-                        let url = &text[..m.end()];
-                        f(
-                            self.cx,
-                            "won't be a link as is",
-                            url,
-                            Range { start: range.start + pos, end: range.start + pos + m.end() },
-                        )
-                    }
-                }
-            }
+        // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
+        for match_ in self.regex.find_iter(&text) {
+            let url = match_.as_str();
+            let url_range = match_.range();
+            f(
+                self.cx,
+                "this URL is not a hyperlink",
+                url,
+                Range { start: range.start + url_range.start, end: range.start + url_range.end },
+            );
         }
     }
 }
@@ -106,6 +104,7 @@ impl<'a, 'tcx> DocFolder for AutomaticLinksLinter<'a, 'tcx> {
                     }
                     Event::End(Tag::Link(_, url, _)) => {
                         in_link = false;
+                        // NOTE: links cannot be nested, so we don't need to check `kind`
                         if url.as_ref() == title && !ignore {
                             report_diag(self.cx, "unneeded long form for URL", &url, range);
                         }
