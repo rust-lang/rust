@@ -1,0 +1,136 @@
+//! Syntax highlighting for macro_rules!.
+use syntax::{SyntaxElement, SyntaxKind, SyntaxToken, TextRange, T};
+
+use crate::{HighlightTag, HighlightedRange};
+
+pub(super) struct MacroRulesHighlighter {
+    state: Option<MacroMatcherParseState>,
+}
+
+impl MacroRulesHighlighter {
+    pub(super) fn new() -> Self {
+        MacroRulesHighlighter { state: None }
+    }
+
+    pub(super) fn init(&mut self) {
+        self.state = Some(MacroMatcherParseState::new());
+    }
+
+    pub(super) fn reset(&mut self) {
+        self.state = None;
+    }
+
+    pub(super) fn advance(&mut self, token: &SyntaxToken) {
+        if let Some(state) = self.state.as_mut() {
+            update_macro_rules_state(state, token);
+        }
+    }
+
+    pub(super) fn highlight(&self, element: SyntaxElement) -> Option<HighlightedRange> {
+        if let Some(state) = self.state.as_ref() {
+            if matches!(state.rule_state, RuleState::Matcher | RuleState::Expander) {
+                if let Some(range) = is_metavariable(element) {
+                    return Some(HighlightedRange {
+                        range,
+                        highlight: HighlightTag::UnresolvedReference.into(),
+                        binding_hash: None,
+                    });
+                }
+            }
+        }
+        None
+    }
+}
+
+struct MacroMatcherParseState {
+    /// Opening and corresponding closing bracket of the matcher or expander of the current rule
+    paren_ty: Option<(SyntaxKind, SyntaxKind)>,
+    paren_level: usize,
+    rule_state: RuleState,
+    /// Whether we are inside the outer `{` `}` macro block that holds the rules
+    in_invoc_body: bool,
+}
+
+impl MacroMatcherParseState {
+    fn new() -> Self {
+        MacroMatcherParseState {
+            paren_ty: None,
+            paren_level: 0,
+            in_invoc_body: false,
+            rule_state: RuleState::None,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum RuleState {
+    Matcher,
+    Expander,
+    Between,
+    None,
+}
+
+impl RuleState {
+    fn transition(&mut self) {
+        *self = match self {
+            RuleState::Matcher => RuleState::Between,
+            RuleState::Expander => RuleState::None,
+            RuleState::Between => RuleState::Expander,
+            RuleState::None => RuleState::Matcher,
+        };
+    }
+}
+
+fn update_macro_rules_state(state: &mut MacroMatcherParseState, tok: &SyntaxToken) {
+    if !state.in_invoc_body {
+        if tok.kind() == T!['{'] {
+            state.in_invoc_body = true;
+        }
+        return;
+    }
+
+    match state.paren_ty {
+        Some((open, close)) => {
+            if tok.kind() == open {
+                state.paren_level += 1;
+            } else if tok.kind() == close {
+                state.paren_level -= 1;
+                if state.paren_level == 0 {
+                    state.rule_state.transition();
+                    state.paren_ty = None;
+                }
+            }
+        }
+        None => {
+            match tok.kind() {
+                T!['('] => {
+                    state.paren_ty = Some((T!['('], T![')']));
+                }
+                T!['{'] => {
+                    state.paren_ty = Some((T!['{'], T!['}']));
+                }
+                T!['['] => {
+                    state.paren_ty = Some((T!['['], T![']']));
+                }
+                _ => (),
+            }
+            if state.paren_ty.is_some() {
+                state.paren_level = 1;
+                state.rule_state.transition();
+            }
+        }
+    }
+}
+
+fn is_metavariable(element: SyntaxElement) -> Option<TextRange> {
+    let tok = element.as_token()?;
+    match tok.kind() {
+        kind if kind == SyntaxKind::IDENT || kind.is_keyword() => {
+            if let Some(_dollar) = tok.prev_token().filter(|t| t.kind() == SyntaxKind::DOLLAR) {
+                return Some(tok.text_range());
+            }
+        }
+        _ => (),
+    };
+    None
+}

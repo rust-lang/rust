@@ -1,6 +1,7 @@
 mod format;
 mod html;
 mod injection;
+mod macro_rules;
 mod tags;
 #[cfg(test)]
 mod tests;
@@ -18,7 +19,10 @@ use syntax::{
     SyntaxNode, SyntaxToken, TextRange, WalkEvent, T,
 };
 
-use crate::{syntax_highlighting::format::FormatStringHighlighter, FileId};
+use crate::{
+    syntax_highlighting::{format::FormatStringHighlighter, macro_rules::MacroRulesHighlighter},
+    FileId,
+};
 
 pub(crate) use html::highlight_as_html;
 pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
@@ -68,8 +72,9 @@ pub(crate) fn highlight(
     // When we leave a node, the we use it to flatten the highlighted ranges.
     let mut stack = HighlightedRangeStack::new();
 
-    let mut current_macro_call: Option<(ast::MacroCall, Option<MacroMatcherParseState>)> = None;
+    let mut current_macro_call: Option<ast::MacroCall> = None;
     let mut format_string_highlighter = FormatStringHighlighter::default();
+    let mut macro_rules_highlighter = MacroRulesHighlighter::new();
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -99,9 +104,8 @@ pub(crate) fn highlight(
                         binding_hash: None,
                     });
                 }
-                let mut is_macro_rules = None;
                 if let Some(name) = mc.is_macro_rules() {
-                    is_macro_rules = Some(MacroMatcherParseState::new());
+                    macro_rules_highlighter.init();
                     if let Some((highlight, binding_hash)) = highlight_element(
                         &sema,
                         &mut bindings_shadow_count,
@@ -115,13 +119,14 @@ pub(crate) fn highlight(
                         });
                     }
                 }
-                current_macro_call = Some((mc.clone(), is_macro_rules));
+                current_macro_call = Some(mc.clone());
                 continue;
             }
             WalkEvent::Leave(Some(mc)) => {
-                assert!(current_macro_call.map(|it| it.0) == Some(mc));
+                assert!(current_macro_call == Some(mc));
                 current_macro_call = None;
                 format_string_highlighter.reset();
+                macro_rules_highlighter.reset();
             }
             _ => (),
         }
@@ -148,20 +153,6 @@ pub(crate) fn highlight(
             WalkEvent::Leave(_) => continue,
         };
 
-        // check if in matcher part of a macro_rules rule
-        if let Some((_, Some(ref mut state))) = current_macro_call {
-            if let Some(tok) = element.as_token() {
-                if matches!(
-                    update_macro_rules_state(tok, state),
-                    RuleState::Matcher | RuleState::Expander
-                ) {
-                    if skip_metavariables(element.clone()) {
-                        continue;
-                    }
-                }
-            }
-        }
-
         let range = element.text_range();
 
         let element_to_highlight = if current_macro_call.is_some() && element.kind() != COMMENT {
@@ -174,6 +165,9 @@ pub(crate) fn highlight(
             let parent = token.parent();
 
             format_string_highlighter.check_for_format_string(&parent);
+            if let Some(tok) = element.as_token() {
+                macro_rules_highlighter.advance(tok);
+            }
 
             // We only care Name and Name_ref
             match (token.kind(), parent.kind()) {
@@ -197,7 +191,10 @@ pub(crate) fn highlight(
             syntactic_name_ref_highlighting,
             element_to_highlight.clone(),
         ) {
-            stack.add(HighlightedRange { range, highlight, binding_hash });
+            if macro_rules_highlighter.highlight(element_to_highlight.clone()).is_none() {
+                stack.add(HighlightedRange { range, highlight, binding_hash });
+            }
+
             if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::String::cast)
             {
@@ -865,101 +862,5 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
             }
         }
         _ => default.into(),
-    }
-}
-
-struct MacroMatcherParseState {
-    /// Opening and corresponding closing bracket of the matcher or expander of the current rule
-    paren_ty: Option<(SyntaxKind, SyntaxKind)>,
-    paren_level: usize,
-    rule_state: RuleState,
-    /// Whether we are inside the outer `{` `}` macro block that holds the rules
-    in_invoc_body: bool,
-}
-
-impl MacroMatcherParseState {
-    fn new() -> Self {
-        MacroMatcherParseState {
-            paren_ty: None,
-            paren_level: 0,
-            in_invoc_body: false,
-            rule_state: RuleState::None,
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq)]
-enum RuleState {
-    Matcher,
-    Expander,
-    Between,
-    None,
-}
-
-impl RuleState {
-    fn transition(&mut self) {
-        *self = match self {
-            RuleState::Matcher => RuleState::Between,
-            RuleState::Expander => RuleState::None,
-            RuleState::Between => RuleState::Expander,
-            RuleState::None => RuleState::Matcher,
-        };
-    }
-}
-
-fn update_macro_rules_state(tok: &SyntaxToken, state: &mut MacroMatcherParseState) -> RuleState {
-    if !state.in_invoc_body {
-        if tok.kind() == T!['{'] {
-            state.in_invoc_body = true;
-        }
-        return state.rule_state;
-    }
-
-    match state.paren_ty {
-        Some((open, close)) => {
-            if tok.kind() == open {
-                state.paren_level += 1;
-            } else if tok.kind() == close {
-                state.paren_level -= 1;
-                if state.paren_level == 0 {
-                    let res = state.rule_state;
-                    state.rule_state.transition();
-                    state.paren_ty = None;
-                    return res;
-                }
-            }
-        }
-        None => {
-            match tok.kind() {
-                T!['('] => {
-                    state.paren_ty = Some((T!['('], T![')']));
-                }
-                T!['{'] => {
-                    state.paren_ty = Some((T!['{'], T!['}']));
-                }
-                T!['['] => {
-                    state.paren_ty = Some((T!['['], T![']']));
-                }
-                _ => (),
-            }
-            if state.paren_ty.is_some() {
-                state.paren_level = 1;
-                state.rule_state.transition();
-            }
-        }
-    }
-    state.rule_state
-}
-
-fn skip_metavariables(element: SyntaxElement) -> bool {
-    let tok = match element.as_token() {
-        Some(tok) => tok,
-        None => return false,
-    };
-    let is_fragment = || tok.prev_token().map(|tok| tok.kind()) == Some(T![$]);
-    match tok.kind() {
-        IDENT if is_fragment() => true,
-        kind if kind.is_keyword() && is_fragment() => true,
-        _ => false,
     }
 }
