@@ -1,9 +1,10 @@
 //! Resolves and rewrites links in markdown documentation.
 
+use std::convert::TryFrom;
 use std::iter::once;
 
 use itertools::Itertools;
-use pulldown_cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
+use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
 use url::Url;
 
@@ -24,11 +25,13 @@ pub type DocumentationLink = String;
 
 /// Rewrite documentation links in markdown to point to an online host (e.g. docs.rs)
 pub fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> String {
-    let doc = Parser::new_with_broken_link_callback(
-        markdown,
-        Options::empty(),
-        Some(&|label, _| Some((/*url*/ label.to_string(), /*title*/ label.to_string()))),
-    );
+    let mut cb = |link: BrokenLink| {
+        Some((
+            /*url*/ link.reference.to_owned().into(),
+            /*title*/ link.reference.to_owned().into(),
+        ))
+    };
+    let doc = Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(&mut cb));
 
     let doc = map_links(doc, |target, title: &str| {
         // This check is imperfect, there's some overlap between valid intra-doc links
@@ -66,11 +69,11 @@ pub fn remove_links(markdown: &str) -> String {
     let mut opts = Options::empty();
     opts.insert(Options::ENABLE_FOOTNOTES);
 
-    let doc = Parser::new_with_broken_link_callback(
-        markdown,
-        opts,
-        Some(&|_, _| Some((String::new(), String::new()))),
-    );
+    let mut cb = |_: BrokenLink| {
+        let empty = InlineStr::try_from("").unwrap();
+        Some((CowStr::Inlined(empty.clone()), CowStr::Inlined(empty)))
+    };
+    let doc = Parser::new_with_broken_link_callback(markdown, opts, Some(&mut cb));
     let doc = doc.filter_map(move |evt| match evt {
         Event::Start(Tag::Link(link_type, ref target, ref title)) => {
             if link_type == LinkType::Inline && target.contains("://") {
