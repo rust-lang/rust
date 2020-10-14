@@ -108,7 +108,7 @@ pub(crate) fn hover(
     let definition = match_ast! {
         match node {
             ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition(sema.db)),
-            ast::Name(name) => classify_name(&sema, &name).map(|d| d.definition(sema.db)),
+            ast::Name(name) => classify_name(&sema, &name).and_then(|d| d.into_definition(sema.db)),
             _ => None,
         }
     };
@@ -3231,5 +3231,28 @@ fn main() { let foo_test = name_with_dashes::wrapper::Thing::new<|>(); }
             ```
             "#]],
         )
+    }
+
+    #[test]
+    fn hover_field_pat_shorthand_ref_match_ergonomics() {
+        check(
+            r#"
+struct S {
+    f: i32,
+}
+
+fn main() {
+    let s = S { f: 0 };
+    let S { f<|> } = &s;
+}
+"#,
+            expect![[r#"
+                *f*
+
+                ```rust
+                &i32
+                ```
+            "#]],
+        );
     }
 }
