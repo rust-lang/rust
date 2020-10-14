@@ -234,14 +234,14 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
-        " compiler-builtins-c".to_string()
+        " compiler-builtins-c"
     } else {
-        String::new()
+        ""
     };
 
     if builder.no_std(target) == Some(true) {
         let mut features = "compiler-builtins-mem".to_string();
-        features.push_str(&compiler_builtins_c_feature);
+        features.push_str(compiler_builtins_c_feature);
 
         // for no-std targets we only compile a few no_std crates
         cargo
@@ -249,10 +249,10 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
             .arg("--manifest-path")
             .arg(builder.src.join("library/alloc/Cargo.toml"))
             .arg("--features")
-            .arg("compiler-builtins-mem compiler-builtins-c");
+            .arg(features);
     } else {
         let mut features = builder.std_features();
-        features.push_str(&compiler_builtins_c_feature);
+        features.push_str(compiler_builtins_c_feature);
 
         cargo
             .arg("--features")

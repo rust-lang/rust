@@ -69,7 +69,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`&OsStr`]: OsStr
 /// [`&str`]: str
 /// [`CStr`]: crate::ffi::CStr
-/// [conversions]: index.html#conversions
+/// [conversions]: super#conversions
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
@@ -88,7 +88,7 @@ pub struct OsString {
 /// the traits which `OsStr` implements for [conversions] from/to native representations.
 ///
 /// [`&str`]: str
-/// [conversions]: index.html#conversions
+/// [conversions]: super#conversions
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `OsStr::from_inner` current implementation relies

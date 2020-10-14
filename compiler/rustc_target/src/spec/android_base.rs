@@ -9,6 +9,7 @@ pub fn opts() -> TargetOptions {
         .unwrap()
         .push("-Wl,--allow-multiple-definition".to_string());
     base.is_like_android = true;
+    base.dwarf_version = Some(2);
     base.position_independent_executables = true;
     base.has_elf_tls = false;
     base.requires_uwtable = true;

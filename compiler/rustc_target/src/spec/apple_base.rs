@@ -23,6 +23,7 @@ pub fn opts() -> TargetOptions {
         executables: true,
         target_family: Some("unix".to_string()),
         is_like_osx: true,
+        dwarf_version: Some(2),
         has_rpath: true,
         dll_prefix: "lib".to_string(),
         dll_suffix: ".dylib".to_string(),

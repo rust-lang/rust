@@ -4,7 +4,6 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::lazy::SyncOnceCell as OnceCell;
-use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
@@ -13,6 +12,7 @@ use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_ast::{FloatTy, IntTy, UintTy};
+use rustc_attr::{Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -20,11 +20,10 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
-use rustc_middle::middle::stability;
 use rustc_middle::ty::{AssocKind, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol, SymbolStr};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
@@ -197,7 +196,7 @@ impl Item {
         self.stability.as_ref().and_then(|ref s| {
             let mut classes = Vec::with_capacity(2);
 
-            if s.level == stability::Unstable {
+            if s.level.is_unstable() {
                 classes.push("unstable");
             }
 
@@ -210,8 +209,11 @@ impl Item {
         })
     }
 
-    pub fn stable_since(&self) -> Option<&str> {
-        self.stability.as_ref().map(|s| &s.since[..])
+    pub fn stable_since(&self) -> Option<SymbolStr> {
+        match self.stability?.level {
+            StabilityLevel::Stable { since, .. } => Some(since.as_str()),
+            StabilityLevel::Unstable { .. } => None,
+        }
     }
 
     pub fn is_non_exhaustive(&self) -> bool {
@@ -1696,15 +1698,6 @@ pub struct Macro {
 pub struct ProcMacro {
     pub kind: MacroKind,
     pub helpers: Vec<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct Stability {
-    pub level: stability::StabilityLevel,
-    pub feature: String,
-    pub since: String,
-    pub unstable_reason: Option<String>,
-    pub issue: Option<NonZeroU32>,
 }
 
 #[derive(Clone, Debug)]

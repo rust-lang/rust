@@ -49,6 +49,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use rustc_ast_pretty::pprust;
+use rustc_attr::StabilityLevel;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
@@ -1983,10 +1984,12 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
         }
         let s1 = i1.stability.as_ref().map(|s| s.level);
         let s2 = i2.stability.as_ref().map(|s| s.level);
-        match (s1, s2) {
-            (Some(stability::Unstable), Some(stability::Stable)) => return Ordering::Greater,
-            (Some(stability::Stable), Some(stability::Unstable)) => return Ordering::Less,
-            _ => {}
+        if let (Some(a), Some(b)) = (s1, s2) {
+            match (a.is_stable(), b.is_stable()) {
+                (true, true) | (false, false) => {}
+                (false, true) => return Ordering::Less,
+                (true, false) => return Ordering::Greater,
+            }
         }
         let lhs = i1.name.as_ref().map_or("", |s| &**s);
         let rhs = i2.name.as_ref().map_or("", |s| &**s);
@@ -2150,10 +2153,7 @@ fn stability_tags(item: &clean::Item) -> String {
 
     // The "rustc_private" crates are permanently unstable so it makes no sense
     // to render "unstable" everywhere.
-    if item
-        .stability
-        .as_ref()
-        .map(|s| s.level == stability::Unstable && s.feature != "rustc_private")
+    if item.stability.as_ref().map(|s| s.level.is_unstable() && s.feature != sym::rustc_private)
         == Some(true)
     {
         tags += &tag_html("unstable", "", "Experimental");
@@ -2204,16 +2204,17 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some(stab) = item
+    if let Some((StabilityLevel::Unstable { reason, issue, .. }, feature)) = item
         .stability
         .as_ref()
-        .filter(|stab| stab.level == stability::Unstable && stab.feature != "rustc_private")
+        .filter(|stab| stab.feature != sym::rustc_private)
+        .map(|stab| (stab.level, stab.feature))
     {
         let mut message =
             "<span class='emoji'>🔬</span> This is a nightly-only experimental API.".to_owned();
 
-        let mut feature = format!("<code>{}</code>", Escape(&stab.feature));
-        if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
+        let mut feature = format!("<code>{}</code>", Escape(&feature.as_str()));
+        if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
             feature.push_str(&format!(
                 "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
                 url = url,
@@ -2223,13 +2224,13 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
         message.push_str(&format!(" ({})", feature));
 
-        if let Some(unstable_reason) = &stab.unstable_reason {
+        if let Some(unstable_reason) = reason {
             let mut ids = cx.id_map.borrow_mut();
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
                 message,
                 MarkdownHtml(
-                    &unstable_reason,
+                    &unstable_reason.as_str(),
                     &mut ids,
                     error_codes,
                     cx.shared.edition,
@@ -2355,7 +2356,7 @@ fn render_implementor(
         implementor,
         AssocItemLink::Anchor(None),
         RenderMode::Normal,
-        implementor.impl_item.stable_since(),
+        implementor.impl_item.stable_since().as_deref(),
         false,
         Some(use_absolute),
         false,
@@ -2384,7 +2385,7 @@ fn render_impls(
                 i,
                 assoc_link,
                 RenderMode::Normal,
-                containing_item.stable_since(),
+                containing_item.stable_since().as_deref(),
                 true,
                 None,
                 false,
@@ -2629,7 +2630,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                     &implementor,
                     assoc_link,
                     RenderMode::Normal,
-                    implementor.impl_item.stable_since(),
+                    implementor.impl_item.stable_since().as_deref(),
                     false,
                     None,
                     true,
@@ -2780,7 +2781,11 @@ fn render_stability_since_raw(w: &mut Buffer, ver: Option<&str>, containing_ver:
 }
 
 fn render_stability_since(w: &mut Buffer, item: &clean::Item, containing_item: &clean::Item) {
-    render_stability_since_raw(w, item.stable_since(), containing_item.stable_since())
+    render_stability_since_raw(
+        w,
+        item.stable_since().as_deref(),
+        containing_item.stable_since().as_deref(),
+    )
 }
 
 fn render_assoc_item(
@@ -3324,7 +3329,7 @@ fn render_assoc_items(
                 i,
                 AssocItemLink::Anchor(None),
                 render_mode,
-                containing_item.stable_since(),
+                containing_item.stable_since().as_deref(),
                 true,
                 None,
                 false,
@@ -3564,8 +3569,11 @@ fn render_impl(
             );
         }
         write!(w, "<a href='#{}' class='anchor'></a>", id);
-        let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
-        render_stability_since_raw(w, since, outer_version);
+        let since = i.impl_item.stability.as_ref().and_then(|s| match s.level {
+            StabilityLevel::Stable { since } => Some(since.as_str()),
+            StabilityLevel::Unstable { .. } => None,
+        });
+        render_stability_since_raw(w, since.as_deref(), outer_version);
         if let Some(l) = cx.src_href(&i.impl_item, cache) {
             write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>", l, "goto source code");
         }
@@ -3626,7 +3634,7 @@ fn render_impl(
                     write!(w, "<code>");
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
-                    render_stability_since_raw(w, item.stable_since(), outer_version);
+                    render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
                     if let Some(l) = cx.src_href(item, cache) {
                         write!(
                             w,
@@ -3648,7 +3656,7 @@ fn render_impl(
                 write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code>");
-                render_stability_since_raw(w, item.stable_since(), outer_version);
+                render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
                 if let Some(l) = cx.src_href(item, cache) {
                     write!(
                         w,

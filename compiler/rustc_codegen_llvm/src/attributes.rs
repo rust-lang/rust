@@ -6,7 +6,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::query::Providers;
@@ -367,23 +367,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     }
 }
 
-pub fn provide(providers: &mut Providers) {
-    use rustc_codegen_ssa::target_features::{all_known_features, supported_target_features};
-    providers.supported_target_features = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        if tcx.sess.opts.actually_rustdoc {
-            // rustdoc needs to be able to document functions that use all the features, so
-            // provide them all.
-            all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
-        } else {
-            supported_target_features(tcx.sess).iter().map(|&(a, b)| (a.to_string(), b)).collect()
-        }
-    };
-
-    provide_extern(providers);
-}
-
-pub fn provide_extern(providers: &mut Providers) {
+pub fn provide_both(providers: &mut Providers) {
     providers.wasm_import_module_map = |tcx, cnum| {
         // Build up a map from DefId to a `NativeLib` structure, where
         // `NativeLib` internally contains information about

@@ -1,10 +1,11 @@
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
-use crate::ModuleCodegen;
+use crate::{CodegenResults, ModuleCodegen};
 
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorReported;
-use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::query::Providers;
@@ -80,8 +81,7 @@ pub trait CodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        dep_graph: &DepGraph,
-    ) -> Result<Box<dyn Any>, ErrorReported>;
+    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported>;
 
     /// This is called on the returned `Box<dyn Any>` from `join_codegen`
     ///
@@ -91,7 +91,7 @@ pub trait CodegenBackend {
     fn link(
         &self,
         sess: &Session,
-        codegen_results: Box<dyn Any>,
+        codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported>;
 }
