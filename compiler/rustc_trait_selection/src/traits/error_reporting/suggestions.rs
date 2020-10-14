@@ -369,10 +369,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .into_iter()
                     .chain(obligations),
                 ) {
-                    debug!("get_turbofish_suggestions result {:?}", eval_result);
-                    if eval_result.must_apply_modulo_regions()
-                        && !matches!(trait_ref.self_ty().kind(), ty::Infer(_))
-                    {
+                    if eval_result.must_apply_modulo_regions() {
                         turbofish_suggestions.insert(trait_ref.self_ty());
                     }
                 };
