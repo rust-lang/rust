@@ -8,7 +8,7 @@ use super::MirPass;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, Rvalue,
-    Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
+    SourceScope, Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
 };
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
@@ -229,9 +229,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn visit_var_debug_info(&mut self, _var_debug_info: &VarDebugInfo<'tcx>) {
+    fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
         // Debuginfo can contain field projections, which count as a use of the base local. Skip
         // debuginfo so that we avoid the storage liveness assertion in that case.
+        self.visit_source_info(&var_debug_info.source_info);
     }
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
@@ -430,6 +431,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop => {}
+        }
+    }
+
+    fn visit_source_scope(&mut self, scope: &SourceScope) {
+        if self.body.source_scopes.get(*scope).is_none() {
+            self.tcx.sess.diagnostic().delay_span_bug(
+                self.body.span,
+                &format!(
+                    "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
+                    self.body.source.instance, self.when, scope,
+                ),
+            );
         }
     }
 }
