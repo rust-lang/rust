@@ -150,6 +150,7 @@ struct ProbeSeq {
 }
 
 impl ProbeSeq {
+    #[inline]
     fn move_next(&mut self, bucket_mask: usize) {
         // We should have found an empty bucket by now and ended the probe.
         debug_assert!(
@@ -621,11 +622,10 @@ impl<T> RawTable<T> {
     fn find_insert_slot(&self, hash: u64) -> usize {
         let mut probe_seq = self.probe_seq(hash);
         loop {
-            let pos = probe_seq.pos;
             unsafe {
-                let group = Group::load(self.ctrl(pos));
+                let group = Group::load(self.ctrl(probe_seq.pos));
                 if let Some(bit) = group.match_empty_or_deleted().lowest_set_bit() {
-                    let result = (pos + bit) & self.bucket_mask;
+                    let result = (probe_seq.pos + bit) & self.bucket_mask;
 
                     // In tables smaller than the group width, trailing control
                     // bytes outside the range of the table are filled with
@@ -638,7 +638,7 @@ impl<T> RawTable<T> {
                     // control bytes (containing EMPTY).
                     if unlikely(is_full(*self.ctrl(result))) {
                         debug_assert!(self.bucket_mask < Group::WIDTH);
-                        debug_assert_ne!(pos, 0);
+                        debug_assert_ne!(probe_seq.pos, 0);
                         return Group::load_aligned(self.ctrl(0))
                             .match_empty_or_deleted()
                             .lowest_set_bit_nonzero();
