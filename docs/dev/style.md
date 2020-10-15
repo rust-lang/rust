@@ -248,6 +248,8 @@ fn frbonicate(f: impl AsRef<Path>) {
 
 # Premature Pessimization
 
+## Avoid Allocations
+
 Avoid writing code which is slower than it needs to be.
 Don't allocate a `Vec` where an iterator would do, don't allocate strings needlessly.
 
@@ -267,6 +269,8 @@ if words.len() != 2 {
 }
 ```
 
+## Push Allocations to the Call Site
+
 If allocation is inevitable, let the caller allocate the resource:
 
 ```rust
@@ -281,6 +285,9 @@ fn frobnicate(s: &str) {
     ...
 }
 ```
+
+This is better because it reveals the costs.
+It is also more efficient when the caller already owns the allocation.
 
 ## Collection types
 
