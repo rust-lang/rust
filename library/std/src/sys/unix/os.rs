@@ -470,7 +470,7 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     &mut environ
 }
 
-pub unsafe fn env_lock() -> StaticMutexGuard<'static> {
+pub unsafe fn env_lock() -> StaticMutexGuard {
     // It is UB to attempt to acquire this mutex reentrantly!
     static ENV_LOCK: StaticMutex = StaticMutex::new();
     ENV_LOCK.lock()
