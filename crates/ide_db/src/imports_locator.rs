@@ -5,7 +5,7 @@ use hir::{Crate, MacroDef, ModuleDef, Semantics};
 use syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
-    defs::{classify_name, Definition},
+    defs::{Definition, NameClass},
     symbol_index::{self, FileSymbol, Query},
     RootDatabase,
 };
@@ -60,5 +60,5 @@ fn get_name_definition<'a>(
         candidate_node
     };
     let name = ast::Name::cast(candidate_name_node)?;
-    classify_name(sema, &name)?.definition(sema.db)
+    NameClass::classify(sema, &name)?.definition(sema.db)
 }

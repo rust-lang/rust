@@ -3,7 +3,7 @@
 use base_db::SourceDatabaseExt;
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
 use ide_db::{
-    defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
+    defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
 
@@ -88,13 +88,13 @@ fn find_module_at_offset(
     let module = match_ast! {
         match (ident.parent()) {
             ast::NameRef(name_ref) => {
-                match classify_name_ref(sema, &name_ref)? {
+                match NameRefClass::classify(sema, &name_ref)? {
                     NameRefClass::Definition(Definition::ModuleDef(ModuleDef::Module(module))) => module,
                     _ => return None,
                 }
             },
             ast::Name(name) => {
-                match classify_name(&sema, &name)? {
+                match NameClass::classify(&sema, &name)? {
                     NameClass::Definition(Definition::ModuleDef(ModuleDef::Module(module))) => module,
                     _ => return None,
                 }

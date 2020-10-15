@@ -1,4 +1,4 @@
-use ide_db::defs::{classify_name_ref, Definition, NameRefClass};
+use ide_db::defs::{Definition, NameRefClass};
 use syntax::{ast, AstNode, SyntaxKind, T};
 use test_utils::mark;
 
@@ -39,7 +39,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         return None;
     }
     let name_ref = ast::NameRef::cast(ident.parent())?;
-    let def = match classify_name_ref(&ctx.sema, &name_ref)? {
+    let def = match NameRefClass::classify(&ctx.sema, &name_ref)? {
         NameRefClass::Definition(def) => def,
         NameRefClass::ExternCrate(_) | NameRefClass::FieldShorthand { .. } => return None,
     };

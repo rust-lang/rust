@@ -8,7 +8,7 @@ mod tests;
 
 use hir::{Local, Name, Semantics, VariantDef};
 use ide_db::{
-    defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
+    defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
 use rustc_hash::FxHashMap;
@@ -443,7 +443,7 @@ fn highlight_element(
         // Highlight definitions depending on the "type" of the definition.
         NAME => {
             let name = element.into_node().and_then(ast::Name::cast).unwrap();
-            let name_kind = classify_name(sema, &name);
+            let name_kind = NameClass::classify(sema, &name);
 
             if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
                 if let Some(name) = local.name(db) {
@@ -480,7 +480,7 @@ fn highlight_element(
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             highlight_func_by_name_ref(sema, &name_ref).unwrap_or_else(|| {
-                match classify_name_ref(sema, &name_ref) {
+                match NameRefClass::classify(sema, &name_ref) {
                     Some(name_kind) => match name_kind {
                         NameRefClass::ExternCrate(_) => HighlightTag::Module.into(),
                         NameRefClass::Definition(def) => {
