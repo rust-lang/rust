@@ -1,22 +1,70 @@
 error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
-  --> $DIR/ref_option_ref.rs:4:22
+  --> $DIR/ref_option_ref.rs:5:23
    |
-LL | type OptRefU32<'a> = &'a Option<&'a u32>;
-   |                      ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+LL | static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
+   |                       ^^^^^^^^^^^^^ help: try: `Option<&i32>`
    |
    = note: `-D clippy::ref-option-ref` implied by `-D warnings`
 
 error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
-  --> $DIR/ref_option_ref.rs:5:22
+  --> $DIR/ref_option_ref.rs:7:18
    |
-LL | type OptRef<'a, T> = &'a Option<&'a T>;
-   |                      ^^^^^^^^^^^^^^^^^ help: try: `Option<&'a T>`
+LL | const REF_CONST: &Option<&i32> = &Some(&CONST_THRESHOLD);
+   |                  ^^^^^^^^^^^^^ help: try: `Option<&i32>`
 
 error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
-  --> $DIR/ref_option_ref.rs:8:12
+  --> $DIR/ref_option_ref.rs:9:25
+   |
+LL | type RefOptRefU32<'a> = &'a Option<&'a u32>;
+   |                         ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:10:25
+   |
+LL | type RefOptRef<'a, T> = &'a Option<&'a T>;
+   |                         ^^^^^^^^^^^^^^^^^ help: try: `Option<&'a T>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:12:14
+   |
+LL | fn foo(data: &Option<&u32>) {}
+   |              ^^^^^^^^^^^^^ help: try: `Option<&u32>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:14:23
+   |
+LL | fn bar(data: &u32) -> &Option<&u32> {
+   |                       ^^^^^^^^^^^^^ help: try: `Option<&u32>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:19:11
+   |
+LL |     data: &'a Option<&'a u32>,
+   |           ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:22:32
+   |
+LL | struct StructTupleRef<'a>(u32, &'a Option<&'a u32>);
+   |                                ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:26:14
+   |
+LL |     Variant2(&'a Option<&'a u32>),
+   |              ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:35:14
+   |
+LL |     type A = &'static Option<&'static Self>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'static Self>`
+
+error: since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>
+  --> $DIR/ref_option_ref.rs:41:12
    |
 LL |     let x: &Option<&u32> = &None;
    |            ^^^^^^^^^^^^^ help: try: `Option<&u32>`
 
-error: aborting due to 3 previous errors
+error: aborting due to 11 previous errors
 
