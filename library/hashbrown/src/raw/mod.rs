@@ -145,27 +145,22 @@ fn h2(hash: u64) -> u8 {
 /// Proof that the probe will visit every group in the table:
 /// <https://fgiesen.wordpress.com/2015/02/22/triangular-numbers-mod-2n/>
 struct ProbeSeq {
-    bucket_mask: usize,
     pos: usize,
     stride: usize,
 }
 
-impl Iterator for ProbeSeq {
-    type Item = usize;
-
+impl ProbeSeq {
     #[inline]
-    fn next(&mut self) -> Option<usize> {
+    fn move_next(&mut self, bucket_mask: usize) {
         // We should have found an empty bucket by now and ended the probe.
         debug_assert!(
-            self.stride <= self.bucket_mask,
+            self.stride <= bucket_mask,
             "Went past end of probe sequence"
         );
 
-        let result = self.pos;
         self.stride += Group::WIDTH;
         self.pos += self.stride;
-        self.pos &= self.bucket_mask;
-        Some(result)
+        self.pos &= bucket_mask;
     }
 }
 
@@ -578,7 +573,7 @@ impl<T> RawTable<T> {
         }
     }
 
-    /// Returns an iterator for a probe sequence on the table.
+    /// Returns an iterator-like object for a probe sequence on the table.
     ///
     /// This iterator never terminates, but is guaranteed to visit each bucket
     /// group exactly once. The loop using `probe_seq` must terminate upon
@@ -586,7 +581,6 @@ impl<T> RawTable<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn probe_seq(&self, hash: u64) -> ProbeSeq {
         ProbeSeq {
-            bucket_mask: self.bucket_mask,
             pos: h1(hash) & self.bucket_mask,
             stride: 0,
         }
@@ -626,11 +620,12 @@ impl<T> RawTable<T> {
     /// There must be at least 1 empty bucket in the table.
     #[cfg_attr(feature = "inline-more", inline)]
     fn find_insert_slot(&self, hash: u64) -> usize {
-        for pos in self.probe_seq(hash) {
+        let mut probe_seq = self.probe_seq(hash);
+        loop {
             unsafe {
-                let group = Group::load(self.ctrl(pos));
+                let group = Group::load(self.ctrl(probe_seq.pos));
                 if let Some(bit) = group.match_empty_or_deleted().lowest_set_bit() {
-                    let result = (pos + bit) & self.bucket_mask;
+                    let result = (probe_seq.pos + bit) & self.bucket_mask;
 
                     // In tables smaller than the group width, trailing control
                     // bytes outside the range of the table are filled with
@@ -643,7 +638,7 @@ impl<T> RawTable<T> {
                     // control bytes (containing EMPTY).
                     if unlikely(is_full(*self.ctrl(result))) {
                         debug_assert!(self.bucket_mask < Group::WIDTH);
-                        debug_assert_ne!(pos, 0);
+                        debug_assert_ne!(probe_seq.pos, 0);
                         return Group::load_aligned(self.ctrl(0))
                             .match_empty_or_deleted()
                             .lowest_set_bit_nonzero();
@@ -652,10 +647,8 @@ impl<T> RawTable<T> {
                     }
                 }
             }
+            probe_seq.move_next(self.bucket_mask);
         }
-
-        // probe_seq never returns.
-        unreachable!();
     }
 
     /// Marks all table buckets as empty without dropping their contents.
@@ -1872,8 +1865,6 @@ pub struct RawIterHash<'a, T> {
     // The sequence of groups to probe in the search.
     probe_seq: ProbeSeq,
 
-    // The current group and its position.
-    pos: usize,
     group: Group,
 
     // The elements within the group with a matching h2-hash.
@@ -1884,16 +1875,14 @@ impl<'a, T> RawIterHash<'a, T> {
     fn new(table: &'a RawTable<T>, hash: u64) -> Self {
         unsafe {
             let h2_hash = h2(hash);
-            let mut probe_seq = table.probe_seq(hash);
-            let pos = probe_seq.next().unwrap();
-            let group = Group::load(table.ctrl(pos));
+            let probe_seq = table.probe_seq(hash);
+            let group = Group::load(table.ctrl(probe_seq.pos));
             let bitmask = group.match_byte(h2_hash).into_iter();
 
             RawIterHash {
                 table,
                 h2_hash,
                 probe_seq,
-                pos,
                 group,
                 bitmask,
             }
@@ -1908,15 +1897,15 @@ impl<'a, T> Iterator for RawIterHash<'a, T> {
         unsafe {
             loop {
                 if let Some(bit) = self.bitmask.next() {
-                    let index = (self.pos + bit) & self.table.bucket_mask;
+                    let index = (self.probe_seq.pos + bit) & self.table.bucket_mask;
                     let bucket = self.table.bucket(index);
                     return Some(bucket);
                 }
                 if likely(self.group.match_empty().any_bit_set()) {
                     return None;
                 }
-                self.pos = self.probe_seq.next().unwrap();
-                self.group = Group::load(self.table.ctrl(self.pos));
+                self.probe_seq.move_next(self.table.bucket_mask);
+                self.group = Group::load(self.table.ctrl(self.probe_seq.pos));
                 self.bitmask = self.group.match_byte(self.h2_hash).into_iter();
             }
         }
