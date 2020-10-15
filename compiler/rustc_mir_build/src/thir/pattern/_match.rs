@@ -834,6 +834,9 @@ enum Constructor<'tcx> {
     Slice(Slice),
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
     NonExhaustive,
+    /// Constants of types or values that may not be used in exhaustiveness.
+    /// This will by itself be ok, but it will always require a wildcard pattern somewhere later.
+    Opaque(&'tcx ty::Const<'tcx>),
 }
 
 impl<'tcx> Constructor<'tcx> {
@@ -935,6 +938,7 @@ impl<'tcx> Constructor<'tcx> {
             }
             // This constructor is never covered by anything else
             NonExhaustive => vec![NonExhaustive],
+            Opaque(val) => vec![Opaque(val)],
         }
     }
 
@@ -1016,6 +1020,7 @@ impl<'tcx> Constructor<'tcx> {
             &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(cx.tcx),
+            Opaque(value) => PatKind::Constant { value },
             NonExhaustive => PatKind::Wild,
         };
 
@@ -1168,7 +1173,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            Str(_) | FloatRange(..) | IntRange(..) | NonExhaustive => Fields::empty(),
+            Str(_) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque(_) => Fields::empty(),
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -2109,7 +2114,7 @@ fn pat_constructor<'tcx>(
                     ty::Ref(_, t, _) if t.is_str() => Some(Str(value)),
                     ty::Float(_) => Some(FloatRange(value, value, RangeEnd::Included)),
                     // Non structural-match values are opaque.
-                    _ => None,
+                    _ => Some(Opaque(value)),
                 }
             }
         }
@@ -2493,6 +2498,9 @@ fn specialize_one_pattern<'p, 'tcx>(
         if !pat.is_wildcard() {
             return None;
         }
+        return Some(Fields::empty());
+    }
+    if let Opaque(_) = constructor {
         return Some(Fields::empty());
     }
 

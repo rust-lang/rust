@@ -1,0 +1,8 @@
+error: expected item, found keyword `match`
+  --> $DIR/ice-regression.rs:8:1
+   |
+LL | match FOO {
+   | ^^^^^ expected item
+
+error: aborting due to previous error
+
