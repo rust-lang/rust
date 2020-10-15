@@ -161,6 +161,14 @@ enum BodyElement<'a> {
     ForeignItem(&'a ast::ForeignItem),
 }
 
+impl BodyElement<'_> {
+    pub(crate) fn span(&self) -> Span {
+        match self {
+            BodyElement::ForeignItem(fi) => fi.span(),
+        }
+    }
+}
+
 /// Represents a fn's signature.
 pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
@@ -268,19 +276,19 @@ impl<'a> FmtVisitor<'a> {
             self.last_pos = item.span.lo() + BytePos(brace_pos as u32 + 1);
             self.block_indent = self.block_indent.block_indent(self.config);
 
-            if item.body.is_empty() {
-                self.format_missing_no_indent(item.span.hi() - BytePos(1));
-                self.block_indent = self.block_indent.block_unindent(self.config);
-                let indent_str = self.block_indent.to_string(self.config);
-                self.push_str(&indent_str);
-            } else {
+            if !item.body.is_empty() {
+                // Advance to first item (statement or inner attribute)
+                // within the block.
+                self.last_pos = item.body[0].span().lo();
                 for item in &item.body {
                     self.format_body_element(item);
                 }
-
-                self.block_indent = self.block_indent.block_unindent(self.config);
-                self.format_missing_with_indent(item.span.hi() - BytePos(1));
             }
+
+            self.format_missing_no_indent(item.span.hi() - BytePos(1));
+            self.block_indent = self.block_indent.block_unindent(self.config);
+            let indent_str = self.block_indent.to_string(self.config);
+            self.push_str(&indent_str);
         }
 
         self.push_str("}");

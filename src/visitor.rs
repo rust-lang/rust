@@ -5,7 +5,7 @@ use rustc_ast::{ast, attr::HasAttrs, token::DelimToken, visit};
 use rustc_span::{symbol, BytePos, Pos, Span, DUMMY_SP};
 
 use crate::attr::*;
-use crate::comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
+use crate::comment::{contains_comment, rewrite_comment, CodeCharKind, CommentCodeSlices};
 use crate::config::Version;
 use crate::config::{BraceStyle, Config};
 use crate::coverage::transform_missing_snippet;
@@ -261,14 +261,23 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             trimmed.is_empty() || trimmed.chars().all(|c| c == ';')
         };
 
-        for (kind, offset, sub_slice) in CommentCodeSlices::new(self.snippet(span)) {
+        let comment_snippet = self.snippet(span);
+
+        let align_to_right = if unindent_comment && contains_comment(&comment_snippet) {
+            let first_lines = comment_snippet.splitn(2, '/').next().unwrap_or("");
+            last_line_width(first_lines) > last_line_width(&comment_snippet)
+        } else {
+            false
+        };
+
+        for (kind, offset, sub_slice) in CommentCodeSlices::new(comment_snippet) {
             let sub_slice = transform_missing_snippet(config, sub_slice);
 
             debug!("close_block: {:?} {:?} {:?}", kind, offset, sub_slice);
 
             match kind {
                 CodeCharKind::Comment => {
-                    if !unindented && unindent_comment {
+                    if !unindented && unindent_comment && !align_to_right {
                         unindented = true;
                         self.block_indent = self.block_indent.block_unindent(config);
                     }
