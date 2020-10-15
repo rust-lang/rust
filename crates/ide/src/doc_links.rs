@@ -14,7 +14,7 @@ use hir::{
     ModuleDef,
 };
 use ide_db::{
-    defs::{classify_name, classify_name_ref, Definition},
+    defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
@@ -232,8 +232,8 @@ pub(crate) fn external_docs(
     let node = token.parent();
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition(sema.db)),
-            ast::Name(name) => classify_name(&sema, &name).map(|d| d.definition(sema.db)),
+            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
+            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.referenced_or_defined(sema.db)),
             _ => None,
         }
     };

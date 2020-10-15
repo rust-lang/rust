@@ -1,6 +1,6 @@
 use hir::Semantics;
 use ide_db::{
-    defs::{classify_name, classify_name_ref},
+    defs::{NameClass, NameRefClass},
     symbol_index, RootDatabase,
 };
 use syntax::{
@@ -40,7 +40,7 @@ pub(crate) fn goto_definition(
                 reference_definition(&sema, &name_ref).to_vec()
             },
             ast::Name(name) => {
-                let def = classify_name(&sema, &name)?.definition(sema.db);
+                let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
                 let nav = def.try_to_nav(sema.db)?;
                 vec![nav]
             },
@@ -81,9 +81,9 @@ pub(crate) fn reference_definition(
     sema: &Semantics<RootDatabase>,
     name_ref: &ast::NameRef,
 ) -> ReferenceResult {
-    let name_kind = classify_name_ref(sema, name_ref);
+    let name_kind = NameRefClass::classify(sema, name_ref);
     if let Some(def) = name_kind {
-        let def = def.definition(sema.db);
+        let def = def.referenced(sema.db);
         return match def.try_to_nav(sema.db) {
             Some(nav) => ReferenceResult::Exact(nav),
             None => ReferenceResult::Approximate(Vec::new()),

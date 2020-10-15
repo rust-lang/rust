@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{AssocItem, MacroDef, Module, ModuleDef, Name, PathResolution, ScopeDef};
 use ide_db::{
-    defs::{classify_name_ref, Definition, NameRefClass},
+    defs::{Definition, NameRefClass},
     search::SearchScope,
 };
 use syntax::{
@@ -217,7 +217,7 @@ fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>
             .flatten()
             .filter_map(|n| Some(n.descendants().filter_map(ast::NameRef::cast)))
             .flatten()
-            .filter_map(|r| match classify_name_ref(&ctx.sema, &r)? {
+            .filter_map(|r| match NameRefClass::classify(&ctx.sema, &r)? {
                 NameRefClass::Definition(Definition::ModuleDef(def)) => Some(Def::ModuleDef(def)),
                 NameRefClass::Definition(Definition::Macro(def)) => Some(Def::MacroDef(def)),
                 _ => None,

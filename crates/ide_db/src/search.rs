@@ -14,7 +14,7 @@ use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 
 use crate::defs::NameClass;
 use crate::{
-    defs::{classify_name, classify_name_ref, Definition, NameRefClass},
+    defs::{Definition, NameRefClass},
     RootDatabase,
 };
 
@@ -276,7 +276,7 @@ impl<'a> FindUsages<'a> {
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(Reference) -> bool,
     ) -> bool {
-        match classify_name_ref(self.sema, &name_ref) {
+        match NameRefClass::classify(self.sema, &name_ref) {
             Some(NameRefClass::Definition(def)) if &def == self.def => {
                 let kind = if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref)
                 {
@@ -292,7 +292,7 @@ impl<'a> FindUsages<'a> {
                 };
                 sink(reference)
             }
-            Some(NameRefClass::FieldShorthand { local, field }) => {
+            Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
                 let reference = match self.def {
                     Definition::Field(_) if &field == self.def => Reference {
                         file_range: self.sema.original_range(name_ref.syntax()),
@@ -313,10 +313,10 @@ impl<'a> FindUsages<'a> {
     }
 
     fn found_name(&self, name: &ast::Name, sink: &mut dyn FnMut(Reference) -> bool) -> bool {
-        match classify_name(self.sema, name) {
-            Some(NameClass::FieldShorthand { local: _, field }) => {
+        match NameClass::classify(self.sema, name) {
+            Some(NameClass::PatFieldShorthand { local_def: _, field_ref }) => {
                 let reference = match self.def {
-                    Definition::Field(_) if &field == self.def => Reference {
+                    Definition::Field(_) if &field_ref == self.def => Reference {
                         file_range: self.sema.original_range(name.syntax()),
                         kind: ReferenceKind::FieldShorthandForField,
                         // FIXME: mutable patterns should have `Write` access
