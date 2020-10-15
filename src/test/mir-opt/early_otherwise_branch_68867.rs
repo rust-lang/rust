@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // compile-flags: -Z mir-opt-level=3 -Zunsound-mir-opts
 
 // example from #68867

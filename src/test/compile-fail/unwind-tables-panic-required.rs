@@ -2,7 +2,6 @@
 // when they are required.
 //
 // compile-flags: -C panic=unwind -C force-unwind-tables=no
-// ignore-tidy-linelength
 //
 // error-pattern: panic=unwind requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`.
 

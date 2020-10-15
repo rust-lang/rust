@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // edition:2018
 
 #![feature(impl_trait_in_bindings)]

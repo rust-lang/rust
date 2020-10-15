@@ -1,5 +1,5 @@
 error[E0658]: the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable
-  --> $DIR/feature-gate-rustc-attrs-1.rs:5:1
+  --> $DIR/feature-gate-rustc-attrs-1.rs:3:1
    |
 LL | #[rustc_variance]
    | ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[rustc_variance]
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error[E0658]: the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
-  --> $DIR/feature-gate-rustc-attrs-1.rs:6:1
+  --> $DIR/feature-gate-rustc-attrs-1.rs:4:1
    |
 LL | #[rustc_error]
    | ^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | #[rustc_error]
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error[E0658]: the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable niche optimizations in libcore and will never be stable
-  --> $DIR/feature-gate-rustc-attrs-1.rs:7:1
+  --> $DIR/feature-gate-rustc-attrs-1.rs:5:1
    |
 LL | #[rustc_nonnull_optimization_guaranteed]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

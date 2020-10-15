@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // compile-flags: --document-private-items
 
 #![feature(crate_visibility_modifier)]
