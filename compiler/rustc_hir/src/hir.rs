@@ -2742,4 +2742,32 @@ impl<'hir> Node<'hir> {
             _ => None,
         }
     }
+
+    pub fn hir_id(&self) -> Option<HirId> {
+        match self {
+            Node::Item(Item { hir_id, .. })
+            | Node::ForeignItem(ForeignItem { hir_id, .. })
+            | Node::TraitItem(TraitItem { hir_id, .. })
+            | Node::ImplItem(ImplItem { hir_id, .. })
+            | Node::Field(StructField { hir_id, .. })
+            | Node::AnonConst(AnonConst { hir_id, .. })
+            | Node::Expr(Expr { hir_id, .. })
+            | Node::Stmt(Stmt { hir_id, .. })
+            | Node::Ty(Ty { hir_id, .. })
+            | Node::Binding(Pat { hir_id, .. })
+            | Node::Pat(Pat { hir_id, .. })
+            | Node::Arm(Arm { hir_id, .. })
+            | Node::Block(Block { hir_id, .. })
+            | Node::Local(Local { hir_id, .. })
+            | Node::MacroDef(MacroDef { hir_id, .. })
+            | Node::Lifetime(Lifetime { hir_id, .. })
+            | Node::Param(Param { hir_id, .. })
+            | Node::GenericParam(GenericParam { hir_id, .. }) => Some(*hir_id),
+            Node::TraitRef(TraitRef { hir_ref_id, .. }) => Some(*hir_ref_id),
+            Node::PathSegment(PathSegment { hir_id, .. }) => *hir_id,
+            Node::Variant(Variant { id, .. }) => Some(*id),
+            Node::Ctor(variant) => variant.ctor_hir_id(),
+            Node::Crate(_) | Node::Visibility(_) => None,
+        }
+    }
 }

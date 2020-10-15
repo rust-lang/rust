@@ -285,10 +285,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let (fn_sig, def_span) = match *callee_ty.kind() {
-            ty::FnDef(def_id, _) => {
-                (callee_ty.fn_sig(self.tcx), self.tcx.hir().span_if_local(def_id))
-            }
+        let (fn_sig, def_id) = match *callee_ty.kind() {
+            ty::FnDef(def_id, _) => (callee_ty.fn_sig(self.tcx), Some(def_id)),
             ty::FnPtr(sig) => (sig, None),
             ref t => {
                 let mut unit_variant = None;
@@ -427,7 +425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::DontTupleArguments,
-            def_span,
+            def_id,
         );
 
         fn_sig.output()
