@@ -447,7 +447,8 @@ class RustBuild(object):
 
     def downloading_llvm(self):
         opt = self.get_toml('download-ci-llvm', 'llvm')
-        return opt == "true"
+        return opt == "true" \
+            or (opt == "if-available" and self.build == "x86_64-unknown-linux-gnu")
 
     def _download_stage0_helper(self, filename, pattern, tarball_suffix, date=None):
         if date is None:
@@ -892,7 +893,7 @@ class RustBuild(object):
         submodules_names = []
         for module in submodules:
             if module.endswith("llvm-project"):
-                if self.get_toml('llvm-config') or self.get_toml('download-ci-llvm') == 'true':
+                if self.get_toml('llvm-config') or self.downloading_llvm():
                     if self.get_toml('lld') != 'true':
                         continue
             check = self.check_submodule(module, slow_submodules)
@@ -1002,6 +1003,16 @@ def bootstrap(help_triggered):
 
         with open(toml_path) as config:
             build.config_toml = config.read()
+
+    profile = build.get_toml('profile')
+    if profile is not None:
+        include_file = 'config.{}.toml'.format(profile)
+        include_dir = os.path.join(build.rust_root, 'src', 'bootstrap', 'defaults')
+        include_path = os.path.join(include_dir, include_file)
+        # HACK: This works because `build.get_toml()` returns the first match it finds for a
+        # specific key, so appending our defaults at the end allows the user to override them
+        with open(include_path) as included_toml:
+            build.config_toml += os.linesep + included_toml.read()
 
     config_verbose = build.get_toml('verbose', 'build')
     if config_verbose is not None:

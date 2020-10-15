@@ -391,7 +391,7 @@ struct Llvm {
     use_libcxx: Option<bool>,
     use_linker: Option<String>,
     allow_old_toolchain: Option<bool>,
-    download_ci_llvm: Option<bool>,
+    download_ci_llvm: Option<StringOrBool>,
 }
 
 #[derive(Deserialize, Default, Clone, Merge)]
@@ -735,7 +735,14 @@ impl Config {
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain;
-            config.llvm_from_ci = llvm.download_ci_llvm.unwrap_or(false);
+            config.llvm_from_ci = match llvm.download_ci_llvm {
+                Some(StringOrBool::String(s)) => {
+                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
+                    config.build.triple == "x86_64-unknown-linux-gnu"
+                }
+                Some(StringOrBool::Bool(b)) => b,
+                None => false,
+            };
 
             if config.llvm_from_ci {
                 // None of the LLVM options, except assertions, are supported
