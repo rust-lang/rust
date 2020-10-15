@@ -89,12 +89,10 @@ impl fmt::Display for AllocError {
 pub unsafe trait AllocRef {
     /// Attempts to allocate a block of memory.
     ///
-    /// On success, returns a [`NonNull<[u8]>`] meeting the size and alignment guarantees of `layout`.
+    /// On success, returns a [`NonNull<[u8]>`][NonNull] meeting the size and alignment guarantees of `layout`.
     ///
     /// The returned block may have a larger size than specified by `layout.size()`, and may or may
     /// not have its contents initialized.
-    ///
-    /// [`NonNull<[u8]>`]: NonNull
     ///
     /// # Errors
     ///
@@ -146,7 +144,7 @@ pub unsafe trait AllocRef {
 
     /// Attempts to extend the memory block.
     ///
-    /// Returns a new [`NonNull<[u8]>`] containing a pointer and the actual size of the allocated
+    /// Returns a new [`NonNull<[u8]>`][NonNull] containing a pointer and the actual size of the allocated
     /// memory. The pointer is suitable for holding data described by `new_layout`. To accomplish
     /// this, the allocator may extend the allocation referenced by `ptr` to fit the new layout.
     ///
@@ -157,8 +155,6 @@ pub unsafe trait AllocRef {
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
-    ///
-    /// [`NonNull<[u8]>`]: NonNull
     ///
     /// # Safety
     ///
@@ -271,7 +267,7 @@ pub unsafe trait AllocRef {
 
     /// Attempts to shrink the memory block.
     ///
-    /// Returns a new [`NonNull<[u8]>`] containing a pointer and the actual size of the allocated
+    /// Returns a new [`NonNull<[u8]>`][NonNull] containing a pointer and the actual size of the allocated
     /// memory. The pointer is suitable for holding data described by `new_layout`. To accomplish
     /// this, the allocator may shrink the allocation referenced by `ptr` to fit the new layout.
     ///
@@ -282,8 +278,6 @@ pub unsafe trait AllocRef {
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
-    ///
-    /// [`NonNull<[u8]>`]: NonNull
     ///
     /// # Safety
     ///

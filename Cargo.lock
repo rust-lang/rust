@@ -1744,6 +1744,10 @@ dependencies = [
 [[package]]
 name = "linkchecker"
 version = "0.1.0"
+dependencies = [
+ "once_cell",
+ "regex",
+]
 
 [[package]]
 name = "linked-hash-map"

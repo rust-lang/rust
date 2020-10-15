@@ -289,12 +289,12 @@ pub trait Iterator {
     /// This method will eagerly skip `n` elements by calling [`next`] up to `n`
     /// times until [`None`] is encountered.
     ///
-    /// `advance_by(n)` will return [`Ok(())`] if the iterator successfully advances by
-    /// `n` elements, or [`Err(k)`] if [`None`] is encountered, where `k` is the number
+    /// `advance_by(n)` will return [`Ok(())`][Ok] if the iterator successfully advances by
+    /// `n` elements, or [`Err(k)`][Err] if [`None`] is encountered, where `k` is the number
     /// of elements the iterator is advanced by before running out of elements (i.e. the
     /// length of the iterator). Note that `k` is always less than `n`.
     ///
-    /// Calling `advance_by(0)` does not consume any elements and always returns [`Ok(())`].
+    /// Calling `advance_by(0)` does not consume any elements and always returns [`Ok(())`][Ok].
     ///
     /// [`next`]: Iterator::next
     ///

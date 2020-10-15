@@ -134,6 +134,7 @@ pub const fn identity<T>(x: T) -> T {
 /// want to accept all references that can be converted to [`&str`] as an argument.
 /// Since both [`String`] and [`&str`] implement `AsRef<str>` we can accept both as input argument.
 ///
+/// [`&str`]: primitive@str
 /// [`Option<T>`]: Option
 /// [`Result<T, E>`]: Result
 /// [`Borrow`]: crate::borrow::Borrow
