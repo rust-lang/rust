@@ -1,0 +1,115 @@
+- // MIR for `main` before ConstDebugInfo
++ // MIR for `main` after ConstDebugInfo
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/const_debuginfo.rs:8:11: 8:11
+      let _1: u8;                          // in scope 0 at $DIR/const_debuginfo.rs:9:9: 9:10
+      let mut _5: u8;                      // in scope 0 at $DIR/const_debuginfo.rs:12:15: 12:20
+      let mut _6: u8;                      // in scope 0 at $DIR/const_debuginfo.rs:12:15: 12:16
+      let mut _7: u8;                      // in scope 0 at $DIR/const_debuginfo.rs:12:19: 12:20
+      let mut _8: u8;                      // in scope 0 at $DIR/const_debuginfo.rs:12:23: 12:24
+      let mut _14: u32;                    // in scope 0 at $DIR/const_debuginfo.rs:21:13: 21:16
+      let mut _15: u32;                    // in scope 0 at $DIR/const_debuginfo.rs:21:19: 21:22
+      scope 1 {
+-         debug x => _1;                   // in scope 1 at $DIR/const_debuginfo.rs:9:9: 9:10
++         debug x => const 1_u8;           // in scope 1 at $DIR/const_debuginfo.rs:9:9: 9:10
+          let _2: u8;                      // in scope 1 at $DIR/const_debuginfo.rs:10:9: 10:10
+          scope 2 {
+-             debug y => _2;               // in scope 2 at $DIR/const_debuginfo.rs:10:9: 10:10
++             debug y => const 2_u8;       // in scope 2 at $DIR/const_debuginfo.rs:10:9: 10:10
+              let _3: u8;                  // in scope 2 at $DIR/const_debuginfo.rs:11:9: 11:10
+              scope 3 {
+-                 debug z => _3;           // in scope 3 at $DIR/const_debuginfo.rs:11:9: 11:10
++                 debug z => const 3_u8;   // in scope 3 at $DIR/const_debuginfo.rs:11:9: 11:10
+                  let _4: u8;              // in scope 3 at $DIR/const_debuginfo.rs:12:9: 12:12
+                  scope 4 {
+-                     debug sum => _4;     // in scope 4 at $DIR/const_debuginfo.rs:12:9: 12:12
++                     debug sum => const 6_u8; // in scope 4 at $DIR/const_debuginfo.rs:12:9: 12:12
+                      let _9: &str;        // in scope 4 at $DIR/const_debuginfo.rs:14:9: 14:10
+                      scope 5 {
+-                         debug s => _9;   // in scope 5 at $DIR/const_debuginfo.rs:14:9: 14:10
++                         debug s => const "hello, world!"; // in scope 5 at $DIR/const_debuginfo.rs:14:9: 14:10
+                          let _10: (bool, bool, u32); // in scope 5 at $DIR/const_debuginfo.rs:16:9: 16:10
+                          scope 6 {
+                              debug f => _10; // in scope 6 at $DIR/const_debuginfo.rs:16:9: 16:10
+                              let _11: std::option::Option<u16>; // in scope 6 at $DIR/const_debuginfo.rs:18:9: 18:10
+                              scope 7 {
+                                  debug o => _11; // in scope 7 at $DIR/const_debuginfo.rs:18:9: 18:10
+                                  let _12: Point; // in scope 7 at $DIR/const_debuginfo.rs:20:9: 20:10
+                                  scope 8 {
+                                      debug p => _12; // in scope 8 at $DIR/const_debuginfo.rs:20:9: 20:10
+                                      let _13: u32; // in scope 8 at $DIR/const_debuginfo.rs:21:9: 21:10
+                                      scope 9 {
+-                                         debug a => _13; // in scope 9 at $DIR/const_debuginfo.rs:21:9: 21:10
++                                         debug a => const 64_u32; // in scope 9 at $DIR/const_debuginfo.rs:21:9: 21:10
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/const_debuginfo.rs:9:9: 9:10
+          _1 = const 1_u8;                 // scope 0 at $DIR/const_debuginfo.rs:9:13: 9:16
+          StorageLive(_2);                 // scope 1 at $DIR/const_debuginfo.rs:10:9: 10:10
+          _2 = const 2_u8;                 // scope 1 at $DIR/const_debuginfo.rs:10:13: 10:16
+          StorageLive(_3);                 // scope 2 at $DIR/const_debuginfo.rs:11:9: 11:10
+          _3 = const 3_u8;                 // scope 2 at $DIR/const_debuginfo.rs:11:13: 11:16
+          StorageLive(_4);                 // scope 3 at $DIR/const_debuginfo.rs:12:9: 12:12
+          StorageLive(_5);                 // scope 3 at $DIR/const_debuginfo.rs:12:15: 12:20
+          StorageLive(_6);                 // scope 3 at $DIR/const_debuginfo.rs:12:15: 12:16
+          _6 = const 1_u8;                 // scope 3 at $DIR/const_debuginfo.rs:12:15: 12:16
+          StorageLive(_7);                 // scope 3 at $DIR/const_debuginfo.rs:12:19: 12:20
+          _7 = const 2_u8;                 // scope 3 at $DIR/const_debuginfo.rs:12:19: 12:20
+          _5 = const 3_u8;                 // scope 3 at $DIR/const_debuginfo.rs:12:15: 12:20
+          StorageDead(_7);                 // scope 3 at $DIR/const_debuginfo.rs:12:19: 12:20
+          StorageDead(_6);                 // scope 3 at $DIR/const_debuginfo.rs:12:19: 12:20
+          StorageLive(_8);                 // scope 3 at $DIR/const_debuginfo.rs:12:23: 12:24
+          _8 = const 3_u8;                 // scope 3 at $DIR/const_debuginfo.rs:12:23: 12:24
+          _4 = const 6_u8;                 // scope 3 at $DIR/const_debuginfo.rs:12:15: 12:24
+          StorageDead(_8);                 // scope 3 at $DIR/const_debuginfo.rs:12:23: 12:24
+          StorageDead(_5);                 // scope 3 at $DIR/const_debuginfo.rs:12:23: 12:24
+          StorageLive(_9);                 // scope 4 at $DIR/const_debuginfo.rs:14:9: 14:10
+          _9 = const "hello, world!";      // scope 4 at $DIR/const_debuginfo.rs:14:13: 14:28
+                                           // ty::Const
+                                           // + ty: &str
+                                           // + val: Value(Slice { data: Allocation { bytes: [104, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [8191], len: Size { raw: 13 } }, size: Size { raw: 13 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 13 })
+                                           // mir::Constant
+                                           // + span: $DIR/const_debuginfo.rs:14:13: 14:28
+                                           // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [104, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [8191], len: Size { raw: 13 } }, size: Size { raw: 13 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 13 }) }
+          StorageLive(_10);                // scope 5 at $DIR/const_debuginfo.rs:16:9: 16:10
+          (_10.0: bool) = const true;      // scope 5 at $DIR/const_debuginfo.rs:16:13: 16:34
+          (_10.1: bool) = const false;     // scope 5 at $DIR/const_debuginfo.rs:16:13: 16:34
+          (_10.2: u32) = const 123_u32;    // scope 5 at $DIR/const_debuginfo.rs:16:13: 16:34
+          StorageLive(_11);                // scope 6 at $DIR/const_debuginfo.rs:18:9: 18:10
+          ((_11 as Some).0: u16) = const 99_u16; // scope 6 at $DIR/const_debuginfo.rs:18:13: 18:24
+          discriminant(_11) = 1;           // scope 6 at $DIR/const_debuginfo.rs:18:13: 18:24
+          StorageLive(_12);                // scope 7 at $DIR/const_debuginfo.rs:20:9: 20:10
+          (_12.0: u32) = const 32_u32;     // scope 7 at $DIR/const_debuginfo.rs:20:13: 20:35
+          (_12.1: u32) = const 32_u32;     // scope 7 at $DIR/const_debuginfo.rs:20:13: 20:35
+          StorageLive(_13);                // scope 8 at $DIR/const_debuginfo.rs:21:9: 21:10
+          StorageLive(_14);                // scope 8 at $DIR/const_debuginfo.rs:21:13: 21:16
+          _14 = const 32_u32;              // scope 8 at $DIR/const_debuginfo.rs:21:13: 21:16
+          StorageLive(_15);                // scope 8 at $DIR/const_debuginfo.rs:21:19: 21:22
+          _15 = const 32_u32;              // scope 8 at $DIR/const_debuginfo.rs:21:19: 21:22
+          _13 = const 64_u32;              // scope 8 at $DIR/const_debuginfo.rs:21:13: 21:22
+          StorageDead(_15);                // scope 8 at $DIR/const_debuginfo.rs:21:21: 21:22
+          StorageDead(_14);                // scope 8 at $DIR/const_debuginfo.rs:21:21: 21:22
+          _0 = const ();                   // scope 0 at $DIR/const_debuginfo.rs:8:11: 22:2
+          StorageDead(_13);                // scope 8 at $DIR/const_debuginfo.rs:22:1: 22:2
+          StorageDead(_12);                // scope 7 at $DIR/const_debuginfo.rs:22:1: 22:2
+          StorageDead(_11);                // scope 6 at $DIR/const_debuginfo.rs:22:1: 22:2
+          StorageDead(_10);                // scope 5 at $DIR/const_debuginfo.rs:22:1: 22:2
+          StorageDead(_9);                 // scope 4 at $DIR/const_debuginfo.rs:22:1: 22:2
+          StorageDead(_4);                 // scope 3 at $DIR/const_debuginfo.rs:22:1: 22:2
+          StorageDead(_3);                 // scope 2 at $DIR/const_debuginfo.rs:22:1: 22:2
+          StorageDead(_2);                 // scope 1 at $DIR/const_debuginfo.rs:22:1: 22:2
+          StorageDead(_1);                 // scope 0 at $DIR/const_debuginfo.rs:22:1: 22:2
+          return;                          // scope 0 at $DIR/const_debuginfo.rs:22:2: 22:2
+      }
+  }
+  

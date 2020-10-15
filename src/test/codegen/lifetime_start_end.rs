@@ -8,7 +8,7 @@ pub fn test() {
     let a = 0;
     &a; // keep variable in an alloca
 
-// CHECK: [[S_a:%[0-9]+]] = bitcast i32* %a to i8*
+// CHECK: [[S_a:%[0-9]+]] = bitcast i32* %_1 to i8*
 // CHECK: call void @llvm.lifetime.start{{.*}}(i{{[0-9 ]+}}, i8* [[S_a]])
 
     {
@@ -31,12 +31,12 @@ pub fn test() {
     let c = 1;
     &c; // keep variable in an alloca
 
-// CHECK: [[S_c:%[0-9]+]] = bitcast i32* %c to i8*
+// CHECK: [[S_c:%[0-9]+]] = bitcast i32* %_7 to i8*
 // CHECK: call void @llvm.lifetime.start{{.*}}(i{{[0-9 ]+}}, i8* [[S_c]])
 
-// CHECK: [[E_c:%[0-9]+]] = bitcast i32* %c to i8*
+// CHECK: [[E_c:%[0-9]+]] = bitcast i32* %_7 to i8*
 // CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, i8* [[E_c]])
 
-// CHECK: [[E_a:%[0-9]+]] = bitcast i32* %a to i8*
+// CHECK: [[E_a:%[0-9]+]] = bitcast i32* %_1 to i8*
 // CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, i8* [[E_a]])
 }
