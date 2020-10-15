@@ -49,14 +49,16 @@ use crate::convert::TryInto;
 use crate::fs::{File, Metadata};
 use crate::io::copy::generic_copy;
 use crate::io::{
-    BufRead, BufReader, BufWriter, Read, Result, StderrLock, StdinLock, StdoutLock, Take, Write,
+    BufRead, BufReader, BufWriter, Error, Read, Result, StderrLock, StdinLock, StdoutLock, Take,
+    Write,
 };
 use crate::mem::ManuallyDrop;
 use crate::net::TcpStream;
 use crate::os::unix::fs::FileTypeExt;
 use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
-use crate::sys::fs::{copy_regular_files, sendfile_splice, CopyResult, SpliceMode};
+use crate::ptr;
+use crate::sys::cvt;
 
 #[cfg(test)]
 mod tests;
@@ -422,4 +424,146 @@ fn fd_to_meta<T: AsRawFd>(fd: &T) -> FdMeta {
         Ok(meta) => FdMeta::Metadata(meta),
         Err(_) => FdMeta::NoneObtained,
     }
+}
+
+pub(super) enum CopyResult {
+    Ended(Result<u64>),
+    Fallback(u64),
+}
+
+/// linux-specific implementation that will attempt to use copy_file_range for copy offloading
+/// as the name says, it only works on regular files
+///
+/// Callers must handle fallback to a generic copy loop.
+/// `Fallback` may indicate non-zero number of bytes already written
+/// if one of the files' cursor +`max_len` would exceed u64::MAX (`EOVERFLOW`).
+/// If the initial file offset was 0 then `Fallback` will only contain `0`.
+pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
+    use crate::cmp;
+    use crate::sync::atomic::{AtomicBool, Ordering};
+
+    // Kernel prior to 4.5 don't have copy_file_range
+    // We store the availability in a global to avoid unnecessary syscalls
+    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
+
+    unsafe fn copy_file_range(
+        fd_in: libc::c_int,
+        off_in: *mut libc::loff_t,
+        fd_out: libc::c_int,
+        off_out: *mut libc::loff_t,
+        len: libc::size_t,
+        flags: libc::c_uint,
+    ) -> libc::c_long {
+        libc::syscall(libc::SYS_copy_file_range, fd_in, off_in, fd_out, off_out, len, flags)
+    }
+
+    let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
+    let mut written = 0u64;
+    while written < max_len {
+        let copy_result = if has_copy_file_range {
+            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
+            // cap to 2GB chunks in case u64::MAX is passed in as file size and the file has a non-zero offset
+            // this allows us to copy large chunks without hitting the limit,
+            // unless someone sets a file offset close to u64::MAX - 2GB, in which case the fallback would kick in
+            let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x8000_0000usize);
+            let copy_result = unsafe {
+                // We actually don't have to adjust the offsets,
+                // because copy_file_range adjusts the file offset automatically
+                cvt(copy_file_range(
+                    reader,
+                    ptr::null_mut(),
+                    writer,
+                    ptr::null_mut(),
+                    bytes_to_copy,
+                    0,
+                ))
+            };
+            if let Err(ref copy_err) = copy_result {
+                match copy_err.raw_os_error() {
+                    Some(libc::ENOSYS | libc::EPERM | libc::EOPNOTSUPP) => {
+                        HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
+                    }
+                    _ => {}
+                }
+            }
+            copy_result
+        } else {
+            Err(Error::from_raw_os_error(libc::ENOSYS))
+        };
+        match copy_result {
+            Ok(0) if written == 0 => {
+                // fallback to work around several kernel bugs where copy_file_range will fail to
+                // copy any bytes and return 0 instead of an error if
+                // - reading virtual files from the proc filesystem which appear to have 0 size
+                //   but are not empty. noted in coreutils to affect kernels at least up to 5.6.19.
+                // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
+                return CopyResult::Fallback(0);
+            }
+            Ok(0) => return CopyResult::Ended(Ok(written)), // reached EOF
+            Ok(ret) => written += ret as u64,
+            Err(err) => {
+                return match err.raw_os_error() {
+                    // when file offset + max_length > u64::MAX
+                    Some(libc::EOVERFLOW) => CopyResult::Fallback(written),
+                    Some(
+                        libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
+                    ) => {
+                        // Try fallback io::copy if either:
+                        // - Kernel version is < 4.5 (ENOSYS)
+                        // - Files are mounted on different fs (EXDEV)
+                        // - copy_file_range is broken in various ways on RHEL/CentOS 7 (EOPNOTSUPP)
+                        // - copy_file_range is disallowed, for example by seccomp (EPERM)
+                        // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
+                        assert_eq!(written, 0);
+                        CopyResult::Fallback(0)
+                    }
+                    _ => CopyResult::Ended(Err(err)),
+                };
+            }
+        }
+    }
+    CopyResult::Ended(Ok(written))
+}
+
+#[derive(PartialEq)]
+enum SpliceMode {
+    Sendfile,
+    Splice,
+}
+
+/// performs splice or sendfile between file descriptors
+/// Does _not_ fall back to a generic copy loop.
+fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> CopyResult {
+    let mut written = 0u64;
+    while written < len {
+        let chunk_size = crate::cmp::min(len - written, 0x7ffff000_u64) as usize;
+
+        let result = match mode {
+            SpliceMode::Sendfile => {
+                cvt(unsafe { libc::sendfile(writer, reader, ptr::null_mut(), chunk_size) })
+            }
+            SpliceMode::Splice => cvt(unsafe {
+                libc::splice(reader, ptr::null_mut(), writer, ptr::null_mut(), chunk_size, 0)
+            }),
+        };
+
+        match result {
+            Ok(0) => break, // EOF
+            Ok(ret) => written += ret as u64,
+            Err(err) => {
+                return match err.raw_os_error() {
+                    Some(os_err) if os_err == libc::EINVAL => {
+                        // splice/sendfile do not support this particular file descritor (EINVAL)
+                        assert_eq!(written, 0);
+                        CopyResult::Fallback(0)
+                    }
+                    Some(os_err) if mode == SpliceMode::Sendfile && os_err == libc::EOVERFLOW => {
+                        CopyResult::Fallback(written)
+                    }
+                    _ => CopyResult::Ended(Err(err)),
+                };
+            }
+        }
+    }
+    CopyResult::Ended(Ok(written))
 }
