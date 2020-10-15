@@ -163,7 +163,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 target <= self.bb
                     && target.start_location().is_predecessor_of(self.bb.start_location(), mir)
             }) {
-                bx.sideeffect();
+                bx.sideeffect(false);
             }
         }
     }
@@ -964,7 +964,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Goto { target } => {
-                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
+                if bb == target {
+                    // This is an unconditional branch back to this same basic
+                    // block. That means we have something like a `loop {}`
+                    // statement. Currently LLVM miscompiles this because it
+                    // assumes forward progress. We want to prevent this in all
+                    // cases, but that has a fairly high cost to compile times
+                    // currently. Instead, try to handle this specific case
+                    // which comes up commonly in practice (e.g., in embedded
+                    // code).
+                    //
+                    // The `true` here means we insert side effects regardless
+                    // of -Zinsert-sideeffect being passed on unconditional
+                    // branching to the same basic block.
+                    bx.sideeffect(true);
+                } else {
+                    helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
+                }
                 helper.funclet_br(self, &mut bx, target);
             }
 
