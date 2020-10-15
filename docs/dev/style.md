@@ -403,6 +403,18 @@ Default names:
 * `n_foo` -- number of foos
 * `foo_idx` -- index of `foo`
 
+Many names in rust-analyzer conflict with keywords.
+We use mangled names instead of `r#ident` syntax:
+
+```
+struct -> strukt
+crate  -> krate
+impl   -> imp
+trait  -> trait_
+fn     -> func
+enum   -> enum_
+mod    -> module
+```
 
 ## Early Returns
 
