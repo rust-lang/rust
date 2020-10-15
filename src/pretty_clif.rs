@@ -226,14 +226,21 @@ pub(crate) fn write_clif_file<'tcx>(
             .expect("value location ranges")
     });
 
-    let symbol_name = tcx.symbol_name(instance).name;
-    let clif_file_name = format!(
-        "{}/{}__{}.{}.clif",
-        concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif"),
-        tcx.crate_name(LOCAL_CRATE),
-        symbol_name,
-        postfix,
-    );
+    let clif_output_dir = tcx
+        .output_filenames(LOCAL_CRATE)
+        .with_extension("clif");
+
+    match std::fs::create_dir(&clif_output_dir) {
+        Ok(()) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {}
+        res @ Err(_) => res.unwrap(),
+    }
+
+    let clif_file_name = clif_output_dir.join(format!(
+        "{}.{}.clif",
+        tcx.symbol_name(instance).name,
+        postfix
+    ));
 
     let mut clif = String::new();
     cranelift_codegen::write::decorate_function(

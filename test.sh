@@ -18,7 +18,6 @@ RUSTC=$RUSTC" "$RUSTFLAGS" -L crate=target/out --out-dir target/out -Cdebuginfo=
 
 # Cleanup
 rm -r target/out || true
-mkdir -p target/out/clif
 
 # Perform all tests
 echo "[BUILD] mini_core"
