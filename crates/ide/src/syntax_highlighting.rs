@@ -459,9 +459,9 @@ fn highlight_element(
                     highlight_def(db, def) | HighlightModifier::Definition
                 }
                 Some(NameClass::ConstReference(def)) => highlight_def(db, def),
-                Some(NameClass::PatFieldShorthand { field, .. }) => {
+                Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
                     let mut h = HighlightTag::Field.into();
-                    if let Definition::Field(field) = field {
+                    if let Definition::Field(field) = field_ref {
                         if let VariantDef::Union(_) = field.parent_def(db) {
                             h |= HighlightModifier::Unsafe;
                         }

@@ -81,12 +81,12 @@ impl Definition {
 pub enum NameClass {
     ExternCrate(Crate),
     Definition(Definition),
-    /// `None` in `if let None = Some(82) {}`
+    /// `None` in `if let None = Some(82) {}`.
     ConstReference(Definition),
-    /// `field` in `if let Foo { field } = todo!() {}`
+    /// `field` in `if let Foo { field } = foo`.
     PatFieldShorthand {
-        local: Local,
-        field: Definition,
+        local_def: Local,
+        field_ref: Definition,
     },
 }
 
@@ -96,18 +96,18 @@ impl NameClass {
             NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) => it,
             NameClass::ConstReference(_) => return None,
-            /// Both `local` and `field` are definitions here, but only `local`
-            /// is the definition which is introduced by this name.
-            NameClass::PatFieldShorthand { local, field: _ } => Definition::Local(local),
+            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                Definition::Local(local_def)
+            }
         };
         Some(res)
     }
 
-    pub fn definition_or_reference(self, db: &dyn HirDatabase) -> Definition {
+    pub fn reference_or_definition(self, db: &dyn HirDatabase) -> Definition {
         match self {
             NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-            NameClass::PatFieldShorthand { local: _, field } => field,
+            NameClass::PatFieldShorthand { local_def: _, field_ref } => field_ref,
         }
     }
 }
@@ -165,7 +165,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                     if record_pat_field.name_ref().is_none() {
                         if let Some(field) = sema.resolve_record_pat_field(&record_pat_field) {
                             let field = Definition::Field(field);
-                            return Some(NameClass::PatFieldShorthand { local, field });
+                            return Some(NameClass::PatFieldShorthand { local_def: local, field_ref: field });
                         }
                     }
                 }

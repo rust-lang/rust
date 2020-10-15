@@ -314,9 +314,9 @@ impl<'a> FindUsages<'a> {
 
     fn found_name(&self, name: &ast::Name, sink: &mut dyn FnMut(Reference) -> bool) -> bool {
         match classify_name(self.sema, name) {
-            Some(NameClass::PatFieldShorthand { local: _, field }) => {
+            Some(NameClass::PatFieldShorthand { local_def: _, field_ref }) => {
                 let reference = match self.def {
-                    Definition::Field(_) if &field == self.def => Reference {
+                    Definition::Field(_) if &field_ref == self.def => Reference {
                         file_range: self.sema.original_range(name.syntax()),
                         kind: ReferenceKind::FieldShorthandForField,
                         // FIXME: mutable patterns should have `Write` access

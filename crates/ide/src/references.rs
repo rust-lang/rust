@@ -132,7 +132,7 @@ fn find_name(
     opt_name: Option<ast::Name>,
 ) -> Option<RangeInfo<Definition>> {
     if let Some(name) = opt_name {
-        let def = classify_name(sema, &name)?.definition_or_reference(sema.db);
+        let def = classify_name(sema, &name)?.reference_or_definition(sema.db);
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, def));
     }
