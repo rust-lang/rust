@@ -22,7 +22,7 @@ use arena::map::ArenaMap;
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
-    expr::{BindingAnnotation, ExprId, PatId},
+    expr::{ArithOp, BinaryOp, BindingAnnotation, ExprId, PatId},
     lang_item::LangItemTarget,
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
@@ -584,6 +584,28 @@ impl<'a> InferenceContext<'a> {
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
         let trait_ = self.resolve_lang_item("future_trait")?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+    }
+
+    fn resolve_binary_op_output(&self, bop: &BinaryOp) -> Option<TypeAliasId> {
+        let lang_item = match bop {
+            BinaryOp::ArithOp(aop) => match aop {
+                ArithOp::Add => "add",
+                ArithOp::Sub => "sub",
+                ArithOp::Mul => "mul",
+                ArithOp::Div => "div",
+                ArithOp::Shl => "shl",
+                ArithOp::Shr => "shr",
+                ArithOp::Rem => "rem",
+                ArithOp::BitXor => "bitxor",
+                ArithOp::BitOr => "bitor",
+                ArithOp::BitAnd => "bitand",
+            },
+            _ => return None,
+        };
+
+        let trait_ = self.resolve_lang_item(lang_item)?.as_trait();
+
+        self.db.trait_data(trait_?).associated_type_by_name(&name![Output])
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {

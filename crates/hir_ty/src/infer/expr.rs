@@ -12,6 +12,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 use syntax::ast::RangeOp;
+use test_utils::mark;
 
 use crate::{
     autoderef, method_resolution, op,
@@ -531,13 +532,22 @@ impl<'a> InferenceContext<'a> {
                         _ => Expectation::none(),
                     };
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
-                    // FIXME: find implementation of trait corresponding to operation
-                    // symbol and resolve associated `Output` type
                     let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty.clone());
                     let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation));
 
-                    // FIXME: similar as above, return ty is often associated trait type
-                    op::binary_op_return_ty(*op, lhs_ty, rhs_ty)
+                    let ret = op::binary_op_return_ty(*op, lhs_ty.clone(), rhs_ty.clone());
+
+                    if ret == Ty::Unknown {
+                        mark::hit!(infer_expr_inner_binary_operator_overload);
+
+                        self.resolve_associated_type_with_params(
+                            lhs_ty,
+                            self.resolve_binary_op_output(op),
+                            &[rhs_ty],
+                        )
+                    } else {
+                        ret
+                    }
                 }
                 _ => Ty::Unknown,
             },
