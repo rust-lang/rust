@@ -16,5 +16,18 @@ LL | |         println!("foo");
 LL | |     }
    | |_____^
 
-error: aborting due to 2 previous errors
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> $DIR/item_after_statement.rs:32:13
+   |
+LL | /             fn say_something() {
+LL | |                 println!("something");
+LL | |             }
+   | |_____________^
+...
+LL |       b!();
+   |       ----- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
 
