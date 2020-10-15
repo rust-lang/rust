@@ -299,19 +299,19 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
             TerminatorKind::SwitchInt {
                 discr,
                 switch_ty,
-                values,
                 targets,
             } => {
                 let discr = trans_operand(fx, discr).load_scalar(fx);
 
                 if switch_ty.kind() == fx.tcx.types.bool.kind() {
-                    assert_eq!(targets.len(), 2);
-                    let then_block = fx.get_block(targets[0]);
-                    let else_block = fx.get_block(targets[1]);
-                    let test_zero = match **values {
-                        [0] => true,
-                        [1] => false,
-                        _ => unreachable!("{:?}", values),
+                    assert_eq!(targets.iter().count(), 1);
+                    let (then_value, then_block) = targets.iter().next().unwrap();
+                    let then_block = fx.get_block(then_block);
+                    let else_block = fx.get_block(targets.otherwise());
+                    let test_zero = match then_value {
+                        0 => true,
+                        1 => false,
+                        _ => unreachable!("{:?}", targets),
                     };
 
                     let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
@@ -330,11 +330,11 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
                     }
                 } else {
                     let mut switch = ::cranelift_frontend::Switch::new();
-                    for (i, value) in values.iter().enumerate() {
-                        let block = fx.get_block(targets[i]);
-                        switch.set_entry(*value, block);
+                    for (value, block) in targets.iter() {
+                        let block = fx.get_block(block);
+                        switch.set_entry(value, block);
                     }
-                    let otherwise_block = fx.get_block(targets[targets.len() - 1]);
+                    let otherwise_block = fx.get_block(targets.otherwise());
                     switch.emit(&mut fx.bcx, discr, otherwise_block);
                 }
             }

@@ -112,7 +112,7 @@ index 6609bc3..241b497 100644
  #[cfg(not(target_arch = "wasm32"))]
  fn sort_unstable() {
 @@ -1394,6 +1395,7 @@ fn partition_at_index() {
-     v.partition_at_index(0);
+     v.select_nth_unstable(0);
      assert!(v == [0xDEADBEEF]);
  }
 +*/

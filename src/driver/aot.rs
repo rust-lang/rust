@@ -302,7 +302,6 @@ pub(super) fn run_aot(
             modules,
             allocator_module,
             metadata_module,
-            crate_hash: tcx.crate_hash(LOCAL_CRATE),
             metadata,
             windows_subsystem: None, // Windows is not yet supported
             linker_info: LinkerInfo::new(tcx),

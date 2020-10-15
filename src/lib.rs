@@ -37,7 +37,7 @@ use std::any::Any;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_errors::ErrorReported;
-use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_middle::ty::query::Providers;
 use rustc_session::config::OutputFilenames;
@@ -190,23 +190,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         Box::new(crate::metadata::CraneliftMetadataLoader)
     }
 
-    fn provide(&self, providers: &mut Providers) {
-        providers.supported_target_features = |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            if tcx.sess.opts.actually_rustdoc {
-                // rustdoc needs to be able to document functions that use all the features, so
-                // whitelist them all
-                rustc_codegen_ssa::target_features::all_known_features()
-                    .map(|(a, b)| (a.to_string(), b))
-                    .collect()
-            } else {
-                rustc_codegen_ssa::target_features::supported_target_features(tcx.sess)
-                    .iter()
-                    .map(|&(a, b)| (a.to_string(), b))
-                    .collect()
-            }
-        };
-    }
+    fn provide(&self, _providers: &mut Providers) {}
     fn provide_extern(&self, _providers: &mut Providers) {}
 
     fn target_features(&self, _sess: &Session) -> Vec<rustc_span::Symbol> {
@@ -229,33 +213,20 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        sess: &Session,
-        dep_graph: &DepGraph,
-    ) -> Result<Box<dyn Any>, ErrorReported> {
-        let (codegen_results, work_products) = *ongoing_codegen
+        _sess: &Session,
+    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
+        Ok(*ongoing_codegen
             .downcast::<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)>()
-            .unwrap();
-
-        sess.time("serialize_work_products", move || {
-            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
-        });
-
-        Ok(Box::new(codegen_results))
+            .unwrap())
     }
 
     fn link(
         &self,
         sess: &Session,
-        res: Box<dyn Any>,
+        codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
-
-        sess.abort_if_errors();
-
-        let codegen_results = *res
-            .downcast::<CodegenResults>()
-            .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
         let _timer = sess.prof.generic_activity("link_crate");
 
@@ -269,8 +240,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 &target_cpu,
             );
         });
-
-        rustc_incremental::finalize_session_directory(sess, codegen_results.crate_hash);
 
         Ok(())
     }
