@@ -201,35 +201,42 @@ fn check_expr_field_shorthand(
     acc: &mut Vec<Diagnostic>,
     file_id: FileId,
     record_lit: ast::RecordExpr,
-) -> Option<()> {
-    let record_field_list = record_lit.record_expr_field_list()?;
+) {
+    let record_field_list = match record_lit.record_expr_field_list() {
+        Some(it) => it,
+        None => (),
+    };
     for record_field in record_field_list.fields() {
-        if let (Some(name_ref), Some(expr)) = (record_field.name_ref(), record_field.expr()) {
-            let field_name = name_ref.syntax().text().to_string();
-            let field_expr = expr.syntax().text().to_string();
-            let field_name_is_tup_index = name_ref.as_tuple_field().is_some();
-            if field_name == field_expr && !field_name_is_tup_index {
-                let mut edit_builder = TextEdit::builder();
-                edit_builder.delete(record_field.syntax().text_range());
-                edit_builder.insert(record_field.syntax().text_range().start(), field_name);
-                let edit = edit_builder.finish();
+        let (name_ref, expr) = match record_field.name_ref().zip(record_field.expr()) {
+            Some(it) => it,
+            None => continue,
+        };
 
-                let field_range = record_field.syntax().text_range();
-                acc.push(Diagnostic {
-                    // name: None,
-                    range: field_range,
-                    message: "Shorthand struct initialization".to_string(),
-                    severity: Severity::WeakWarning,
-                    fix: Some(Fix::new(
-                        "Use struct shorthand initialization",
-                        SourceFileEdit { file_id, edit }.into(),
-                        field_range,
-                    )),
-                });
-            }
+        let field_name = name_ref.syntax().text().to_string();
+        let field_expr = expr.syntax().text().to_string();
+        let field_name_is_tup_index = name_ref.as_tuple_field().is_some();
+        if field_name != field_expr || field_name_is_tup_index {
+            continue;
         }
+
+        let mut edit_builder = TextEdit::builder();
+        edit_builder.delete(record_field.syntax().text_range());
+        edit_builder.insert(record_field.syntax().text_range().start(), field_name);
+        let edit = edit_builder.finish();
+
+        let field_range = record_field.syntax().text_range();
+        acc.push(Diagnostic {
+            // name: None,
+            range: field_range,
+            message: "Shorthand struct initialization".to_string(),
+            severity: Severity::WeakWarning,
+            fix: Some(Fix::new(
+                "Use struct shorthand initialization",
+                SourceFileEdit { file_id, edit }.into(),
+                field_range,
+            )),
+        });
     }
-    Some(())
 }
 
 #[cfg(test)]
