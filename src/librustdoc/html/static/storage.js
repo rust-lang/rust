@@ -1,8 +1,10 @@
 // From rust:
 /* global resourcesSuffix */
 
+var darkThemes = ["dark", "ayu"];
 var currentTheme = document.getElementById("themeStyle");
 var mainTheme = document.getElementById("mainThemeStyle");
+var localStoredTheme = getCurrentValue("rustdoc-theme");
 
 var savedHref = [];
 
@@ -179,6 +181,14 @@ var updateSystemTheme = (function() {
 })();
 
 if (getCurrentValue("rustdoc-use-system-theme") !== "false" && window.matchMedia) {
+    // update the preferred dark theme if the user is already using a dark theme
+    // See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
+    if (getCurrentValue("rustdoc-use-system-theme") === null
+        && getCurrentValue("rustdoc-preferred-dark-theme") === null
+        && darkThemes.indexOf(localStoredTheme) >= 0) {
+        updateLocalStorage("rustdoc-preferred-dark-theme", localStoredTheme);
+    }
+
     // call the function to initialize the theme at least once!
     updateSystemTheme();
 } else {
