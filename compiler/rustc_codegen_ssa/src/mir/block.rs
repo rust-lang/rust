@@ -872,7 +872,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let string = match ty.kind() {
                             ty::Uint(_) => value.to_string(),
                             ty::Int(int_ty) => {
-                                match int_ty.normalize(bx.tcx().sess.target.ptr_width) {
+                                match int_ty.normalize(bx.tcx().sess.target.pointer_width) {
                                     ast::IntTy::I8 => (value as i8).to_string(),
                                     ast::IntTy::I16 => (value as i16).to_string(),
                                     ast::IntTy::I32 => (value as i32).to_string(),

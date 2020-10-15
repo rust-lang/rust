@@ -6,7 +6,7 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".to_string(),
         llvm_target: "riscv32".to_string(),
         target_endian: "little".to_string(),
-        target_pointer_width: "32".to_string(),
+        pointer_width: 32,
         target_c_int_width: "32".to_string(),
         target_os: "none".to_string(),
         target_env: String::new(),

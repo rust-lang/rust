@@ -29,7 +29,7 @@ pub fn check_wf_new(tcx: TyCtxt<'_>) {
 }
 
 pub(super) fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
-    if !tcx.sess.target.target.is_abi_supported(abi) {
+    if !tcx.sess.target.is_abi_supported(abi) {
         struct_span_err!(
             tcx.sess,
             span,

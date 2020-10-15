@@ -31,7 +31,7 @@ fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
         Hint => Attribute::InlineHint.apply_llfn(Function, val),
         Always => Attribute::AlwaysInline.apply_llfn(Function, val),
         Never => {
-            if cx.tcx().sess.target.target.arch != "amdgpu" {
+            if cx.tcx().sess.target.arch != "amdgpu" {
                 Attribute::NoInline.apply_llfn(Function, val);
             }
         }
@@ -91,8 +91,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
         let mcount_name =
-            CString::new(cx.sess().target.target.options.target_mcount.as_str().as_bytes())
-                .unwrap();
+            CString::new(cx.sess().target.options.target_mcount.as_str().as_bytes()).unwrap();
 
         llvm::AddFunctionAttrStringValue(
             llfn,
@@ -106,7 +105,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
-    if !cx.sess().target.target.options.stack_probes {
+    if !cx.sess().target.options.stack_probes {
         return;
     }
 
@@ -175,7 +174,6 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
         .split(',')
         .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
     sess.target
-        .target
         .options
         .features
         .split(',')
@@ -345,7 +343,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // Note that currently the `wasm-import-module` doesn't do anything, but
     // eventually LLVM 7 should read this and ferry the appropriate import
     // module to the output file.
-    if cx.tcx.sess.target.target.arch == "wasm32" {
+    if cx.tcx.sess.target.arch == "wasm32" {
         if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
             llvm::AddFunctionAttrStringValue(
                 llfn,

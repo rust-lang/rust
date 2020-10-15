@@ -16,10 +16,10 @@ pub(crate) unsafe fn codegen(
 ) {
     let llcx = &*mods.llcx;
     let llmod = mods.llmod();
-    let usize = match &tcx.sess.target.target.target_pointer_width[..] {
-        "16" => llvm::LLVMInt16TypeInContext(llcx),
-        "32" => llvm::LLVMInt32TypeInContext(llcx),
-        "64" => llvm::LLVMInt64TypeInContext(llcx),
+    let usize = match tcx.sess.target.pointer_width {
+        16 => llvm::LLVMInt16TypeInContext(llcx),
+        32 => llvm::LLVMInt32TypeInContext(llcx),
+        64 => llvm::LLVMInt64TypeInContext(llcx),
         tws => bug!("Unsupported target word size for int: {}", tws),
     };
     let i8 = llvm::LLVMInt8TypeInContext(llcx);
@@ -57,7 +57,7 @@ pub(crate) unsafe fn codegen(
         let name = format!("__rust_{}", method.name);
         let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
 
-        if tcx.sess.target.target.options.default_hidden_visibility {
+        if tcx.sess.target.options.default_hidden_visibility {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
         if tcx.sess.must_emit_unwind_tables() {
@@ -98,7 +98,7 @@ pub(crate) unsafe fn codegen(
     // -> ! DIFlagNoReturn
     llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
 
-    if tcx.sess.target.target.options.default_hidden_visibility {
+    if tcx.sess.target.options.default_hidden_visibility {
         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
     }
     if tcx.sess.must_emit_unwind_tables() {

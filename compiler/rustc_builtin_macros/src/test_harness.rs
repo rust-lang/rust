@@ -37,7 +37,7 @@ struct TestCtxt<'a> {
 pub fn inject(sess: &Session, resolver: &mut dyn ResolverExpand, krate: &mut ast::Crate) {
     let span_diagnostic = sess.diagnostic();
     let panic_strategy = sess.panic_strategy();
-    let platform_panic_strategy = sess.target.target.options.panic_strategy;
+    let platform_panic_strategy = sess.target.options.panic_strategy;
 
     // Check for #![reexport_test_harness_main = "some_name"] which gives the
     // main test function the name `some_name` without hygiene. This needs to be

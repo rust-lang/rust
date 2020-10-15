@@ -77,7 +77,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-elf".into(),
         target_endian: "little".into(),
-        target_pointer_width: "64".into(),
+        pointer_width: 64,
         target_c_int_width: "32".into(),
         target_os: "unknown".into(),
         target_env: "sgx".into(),

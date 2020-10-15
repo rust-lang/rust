@@ -143,7 +143,7 @@ impl ExprVisitor<'tcx> {
     ) -> Option<InlineAsmType> {
         // Check the type against the allowed types for inline asm.
         let ty = self.typeck_results.expr_ty_adjusted(expr);
-        let asm_ty_isize = match self.tcx.sess.target.ptr_width {
+        let asm_ty_isize = match self.tcx.sess.target.pointer_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
             64 => InlineAsmType::I64,
@@ -184,7 +184,7 @@ impl ExprVisitor<'tcx> {
                         Some(InlineAsmType::VecI128(fields.len() as u64))
                     }
                     ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => {
-                        Some(match self.tcx.sess.target.ptr_width {
+                        Some(match self.tcx.sess.target.pointer_width {
                             16 => InlineAsmType::VecI16(fields.len() as u64),
                             32 => InlineAsmType::VecI32(fields.len() as u64),
                             64 => InlineAsmType::VecI64(fields.len() as u64),

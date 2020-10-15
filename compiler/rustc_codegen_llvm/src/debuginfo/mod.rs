@@ -120,12 +120,12 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         // for macOS to understand. For more info see #11352
         // This can be overridden using --llvm-opts -dwarf-version,N.
         // Android has the same issue (#22398)
-        if let Some(version) = cx.sess().target.target.options.dwarf_version {
+        if let Some(version) = cx.sess().target.options.dwarf_version {
             llvm::LLVMRustAddModuleFlag(cx.llmod, "Dwarf Version\0".as_ptr().cast(), version)
         }
 
         // Indicate that we want CodeView debug information on MSVC
-        if cx.sess().target.target.options.is_like_msvc {
+        if cx.sess().target.options.is_like_msvc {
             llvm::LLVMRustAddModuleFlag(cx.llmod, "CodeView\0".as_ptr().cast(), 1)
         }
 
@@ -346,7 +346,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             });
 
             // Arguments types
-            if cx.sess().target.target.options.is_like_msvc {
+            if cx.sess().target.options.is_like_msvc {
                 // FIXME(#42800):
                 // There is a bug in MSDIA that leads to a crash when it encounters
                 // a fixed-size array of `u8` or something zero-sized in a

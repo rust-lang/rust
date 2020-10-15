@@ -2555,7 +2555,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 )
                 .emit();
             }
-            if !tcx.sess.target.target.llvm_target.contains("thumbv8m") {
+            if !tcx.sess.target.llvm_target.contains("thumbv8m") {
                 struct_span_err!(tcx.sess, attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
                     .emit();
             }
@@ -2655,7 +2655,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                             set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
                         match segments.as_slice() {
                             [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
-                                if !tcx.sess.target.target.options.has_thumb_interworking {
+                                if !tcx.sess.target.options.has_thumb_interworking {
                                     struct_span_err!(
                                         tcx.sess.diagnostic(),
                                         attr.span,

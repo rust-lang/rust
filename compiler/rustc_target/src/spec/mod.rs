@@ -665,8 +665,8 @@ pub struct Target {
     pub llvm_target: String,
     /// String to use as the `target_endian` `cfg` variable.
     pub target_endian: String,
-    /// String to use as the `target_pointer_width` `cfg` variable.
-    pub target_pointer_width: String,
+    /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
+    pub pointer_width: u32,
     /// Width of c_int type
     pub target_c_int_width: String,
     /// OS name to use for conditional compilation.
@@ -1111,7 +1111,7 @@ impl Target {
     /// Maximum integer size in bits that this target can perform atomic
     /// operations on.
     pub fn max_atomic_width(&self) -> u64 {
-        self.options.max_atomic_width.unwrap_or_else(|| self.target_pointer_width.parse().unwrap())
+        self.options.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
     }
 
     pub fn is_abi_supported(&self, abi: Abi) -> bool {
@@ -1144,7 +1144,9 @@ impl Target {
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?,
             target_endian: get_req_field("target-endian")?,
-            target_pointer_width: get_req_field("target-pointer-width")?,
+            pointer_width: get_req_field("target-pointer-width")?
+                .parse::<u32>()
+                .map_err(|_| "target-pointer-width must be an integer".to_string())?,
             target_c_int_width: get_req_field("target-c-int-width")?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
@@ -1617,7 +1619,7 @@ impl ToJson for Target {
 
         target_val!(llvm_target);
         target_val!(target_endian);
-        target_val!(target_pointer_width);
+        d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(target_c_int_width);
         target_val!(arch);
         target_val!(target_os, "os");
