@@ -128,40 +128,40 @@ pub fn target_machine_factory(
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
     let use_softfp = sess.opts.cg.soft_float;
 
-    let ffunction_sections = sess.target.target.options.function_sections;
+    let ffunction_sections = sess.target.options.function_sections;
     let fdata_sections = ffunction_sections;
 
     let code_model = to_llvm_code_model(sess.code_model());
 
     let features = attributes::llvm_target_features(sess).collect::<Vec<_>>();
-    let mut singlethread = sess.target.target.options.singlethread;
+    let mut singlethread = sess.target.options.singlethread;
 
     // On the wasm target once the `atomics` feature is enabled that means that
     // we're no longer single-threaded, or otherwise we don't want LLVM to
     // lower atomic operations to single-threaded operations.
     if singlethread
-        && sess.target.target.llvm_target.contains("wasm32")
+        && sess.target.llvm_target.contains("wasm32")
         && sess.target_features.contains(&sym::atomics)
     {
         singlethread = false;
     }
 
-    let triple = SmallCStr::new(&sess.target.target.llvm_target);
+    let triple = SmallCStr::new(&sess.target.llvm_target);
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = features.join(",");
     let features = CString::new(features).unwrap();
-    let abi = SmallCStr::new(&sess.target.target.options.llvm_abiname);
-    let trap_unreachable = sess.target.target.options.trap_unreachable;
+    let abi = SmallCStr::new(&sess.target.options.llvm_abiname);
+    let trap_unreachable = sess.target.options.trap_unreachable;
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
-    let relax_elf_relocations = sess.target.target.options.relax_elf_relocations;
+    let relax_elf_relocations = sess.target.options.relax_elf_relocations;
 
     let use_init_array = !sess
         .opts
         .debugging_opts
         .use_ctors_section
-        .unwrap_or(sess.target.target.options.use_ctors_section);
+        .unwrap_or(sess.target.options.use_ctors_section);
 
     Arc::new(move || {
         let tm = unsafe {

@@ -1619,10 +1619,7 @@ impl ToJson for Target {
 
         target_val!(llvm_target);
         target_val!(target_endian);
-        d.insert(
-            "target-pointer-width".to_string(),
-            self.pointer_width.to_string().to_json(),
-        );
+        d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(target_c_int_width);
         target_val!(arch);
         target_val!(target_os, "os");

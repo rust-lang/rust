@@ -1079,7 +1079,7 @@ impl<'tcx> TyCtxt<'tcx> {
         crate_name: &str,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
-        let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
+        let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(arena);
@@ -1522,7 +1522,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Determines whether identifiers in the assembly have strict naming rules.
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(self) -> bool {
-        self.sess.target.target.arch.contains("nvptx")
+        self.sess.target.arch.contains("nvptx")
     }
 
     /// Returns `&'static core::panic::Location<'static>`.

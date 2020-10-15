@@ -670,7 +670,7 @@ impl RustcDefaultCalls {
                 Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    locator::list_file_metadata(&sess.target.target, path, metadata_loader, &mut v)
+                    locator::list_file_metadata(&sess.target, path, metadata_loader, &mut v)
                         .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
@@ -724,7 +724,7 @@ impl RustcDefaultCalls {
                     "{}",
                     sess.target_tlib_path.as_ref().unwrap_or(&sess.host_tlib_path).dir.display()
                 ),
-                TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
+                TargetSpec => println!("{}", sess.target.to_json().pretty()),
                 FileNames | CrateName => {
                     let input = input.unwrap_or_else(|| {
                         early_error(ErrorOutputType::default(), "no input file provided")

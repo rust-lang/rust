@@ -138,7 +138,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
 }
 
 pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
-    match &*sess.target.target.arch {
+    match &*sess.target.arch {
         "arm" => ARM_ALLOWED_FEATURES,
         "aarch64" => AARCH64_ALLOWED_FEATURES,
         "x86" | "x86_64" => X86_ALLOWED_FEATURES,

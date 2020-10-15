@@ -985,7 +985,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             asm::InlineAsmReg::parse(
                                 sess.asm_arch?,
                                 |feature| sess.target_features.contains(&Symbol::intern(feature)),
-                                &sess.target.target,
+                                &sess.target,
                                 s,
                             )
                             .map_err(|e| {

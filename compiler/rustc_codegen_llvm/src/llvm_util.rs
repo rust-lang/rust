@@ -46,7 +46,7 @@ fn require_inited() {
 }
 
 unsafe fn configure_llvm(sess: &Session) {
-    let n_args = sess.opts.cg.llvm_args.len() + sess.target.target.options.llvm_args.len();
+    let n_args = sess.opts.cg.llvm_args.len() + sess.target.options.llvm_args.len();
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
@@ -57,7 +57,7 @@ unsafe fn configure_llvm(sess: &Session) {
     }
 
     let cg_opts = sess.opts.cg.llvm_args.iter();
-    let tg_opts = sess.target.target.options.llvm_args.iter();
+    let tg_opts = sess.target.options.llvm_args.iter();
     let sess_args = cg_opts.chain(tg_opts);
 
     let user_specified_args: FxHashSet<_> =
@@ -88,7 +88,7 @@ unsafe fn configure_llvm(sess: &Session) {
             .opts
             .debugging_opts
             .merge_functions
-            .unwrap_or(sess.target.target.options.merge_functions)
+            .unwrap_or(sess.target.options.merge_functions)
         {
             MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
             MergeFunctions::Aliases => {
@@ -96,9 +96,7 @@ unsafe fn configure_llvm(sess: &Session) {
             }
         }
 
-        if sess.target.target.target_os == "emscripten"
-            && sess.panic_strategy() == PanicStrategy::Unwind
-        {
+        if sess.target.target_os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
             add("-enable-emscripten-cxx-exceptions", false);
         }
 
@@ -140,7 +138,7 @@ pub fn time_trace_profiler_finish(file_name: &str) {
 // to LLVM or the feature detection code will walk past the end of the feature
 // array, leading to crashes.
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
-    let arch = if sess.target.target.arch == "x86_64" { "x86" } else { &*sess.target.target.arch };
+    let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
     match (arch, s) {
         ("x86", "pclmulqdq") => "pclmul",
         ("x86", "rdrand") => "rdrnd",
@@ -217,7 +215,7 @@ fn handle_native(name: &str) -> &str {
 pub fn target_cpu(sess: &Session) -> &str {
     let name = match sess.opts.cg.target_cpu {
         Some(ref s) => &**s,
-        None => &*sess.target.target.options.cpu,
+        None => &*sess.target.options.cpu,
     };
 
     handle_native(name)
