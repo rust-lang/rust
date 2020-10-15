@@ -35,7 +35,7 @@ use crate::sys;
 ///
 /// The hashing algorithm can be replaced on a per-`HashMap` basis using the
 /// [`default`], [`with_hasher`], and [`with_capacity_and_hasher`] methods. Many
-/// alternative algorithms are available on crates.io, such as the [`fnv`] crate.
+/// alternative algorithms are available on crates.io, such as the [`aHash`] crate.
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
@@ -154,7 +154,7 @@ use crate::sys;
 /// [`default`]: Default::default
 /// [`with_hasher`]: Self::with_hasher
 /// [`with_capacity_and_hasher`]: Self::with_capacity_and_hasher
-/// [`fnv`]: https://crates.io/crates/fnv
+/// [`aHash`]: https://crates.io/crates/ahash
 ///
 /// ```
 /// use std::collections::HashMap;
