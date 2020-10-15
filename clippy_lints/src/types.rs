@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 
 use if_chain::if_chain;
 use rustc_ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
@@ -1608,18 +1609,23 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     let to_nbits = fp_ty_mantissa_nbits(cast_to);
                     if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal();
                     then {
-                        span_lint_and_sugg(
-                            cx,
-                            UNNECESSARY_CAST,
-                            expr.span,
-                            &format!("casting integer literal to `{}` is unnecessary", cast_to),
-                            "try",
-                            format!("{}_{}", n, cast_to),
-                            Applicability::MachineApplicable,
-                        );
+                        show_unnecessary_cast(cx, expr, n , cast_from, cast_to);
                         return;
                     }
                 }
+
+                match lit.node {
+                    LitKind::Int(num, LitIntType::Unsuffixed) if cast_to.is_integral() => {
+                        show_unnecessary_cast(cx, expr, num, cast_from, cast_to);
+                        return;
+                    },
+                    LitKind::Float(num, LitFloatType::Unsuffixed) if cast_to.is_floating_point() => {
+                        show_unnecessary_cast(cx, expr, num, cast_from, cast_to);
+                        return;
+                    },
+                    _ => (),
+                };
+
                 match lit.node {
                     LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
                     _ => {
@@ -1644,6 +1650,25 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
         }
     }
+}
+
+fn show_unnecessary_cast<Num: Display>(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    num: Num,
+    cast_from: Ty<'_>,
+    cast_to: Ty<'_>,
+) {
+    let literal_kind_name = if cast_from.is_integral() { "integer" } else { "float" };
+    span_lint_and_sugg(
+        cx,
+        UNNECESSARY_CAST,
+        expr.span,
+        &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
+        "try",
+        format!("{}_{}", num, cast_to),
+        Applicability::MachineApplicable,
+    );
 }
 
 fn lint_numeric_casts<'tcx>(

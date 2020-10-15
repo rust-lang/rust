@@ -12,12 +12,19 @@ fn main() {
     #[rustfmt::skip]
     let v = vec!(1);
     &v as &[i32];
-    1.0 as f64;
-    1 as u64;
     0x10 as f32;
     0o10 as f32;
     0b10 as f32;
     0x11 as f64;
     0o11 as f64;
     0b11 as f64;
+
+    1 as u32;
+    0x10 as i32;
+    0b10 as usize;
+
+    1.0 as f64;
+    0.5 as f32;
+
+    1.0 as u16;
 }
