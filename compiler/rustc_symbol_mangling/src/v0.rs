@@ -259,7 +259,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
     }
 
     fn print_impl_path(
-        self,
+        mut self,
         impl_def_id: DefId,
         substs: &'tcx [GenericArg<'tcx>],
         mut self_ty: Ty<'tcx>,
@@ -284,12 +284,37 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             }
         }
 
-        self.path_append_impl(
-            |cx| cx.print_def_path(parent_def_id, &[]),
-            &key.disambiguated_data,
-            self_ty,
-            impl_trait_ref,
-        )
+        self.push(match impl_trait_ref {
+            Some(_) => "X",
+            None => "M",
+        });
+
+        // Encode impl generic params if the substitutions contain parameters (implying
+        // polymorphization is enabled) and this isn't an inherent impl.
+        if impl_trait_ref.is_some() && substs.iter().any(|a| a.has_param_types_or_consts()) {
+            self = self.path_generic_args(
+                |this| {
+                    this.path_append_ns(
+                        |cx| cx.print_def_path(parent_def_id, &[]),
+                        'I',
+                        key.disambiguated_data.disambiguator as u64,
+                        "",
+                    )
+                },
+                substs,
+            )?;
+        } else {
+            self.push_disambiguator(key.disambiguated_data.disambiguator as u64);
+            self = self.print_def_path(parent_def_id, &[])?;
+        }
+
+        self = self_ty.print(self)?;
+
+        if let Some(trait_ref) = impl_trait_ref {
+            self = self.print_def_path(trait_ref.def_id, trait_ref.substs)?;
+        }
+
+        Ok(self)
     }
 
     fn print_region(mut self, region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
@@ -538,6 +563,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         self.push_ident(&name);
         Ok(self)
     }
+
     fn path_qualified(
         mut self,
         self_ty: Ty<'tcx>,
@@ -552,24 +578,16 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
     }
 
     fn path_append_impl(
-        mut self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        disambiguated_data: &DisambiguatedDefPathData,
-        self_ty: Ty<'tcx>,
-        trait_ref: Option<ty::TraitRef<'tcx>>,
+        self,
+        _: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        _: &DisambiguatedDefPathData,
+        _: Ty<'tcx>,
+        _: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.push(match trait_ref {
-            Some(_) => "X",
-            None => "M",
-        });
-        self.push_disambiguator(disambiguated_data.disambiguator as u64);
-        self = print_prefix(self)?;
-        self = self_ty.print(self)?;
-        if let Some(trait_ref) = trait_ref {
-            self = self.print_def_path(trait_ref.def_id, trait_ref.substs)?;
-        }
-        Ok(self)
+        // Inlined into `print_impl_path`
+        unreachable!()
     }
+
     fn path_append(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
@@ -603,6 +621,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             name.as_ref().map_or("", |s| &s[..]),
         )
     }
+
     fn path_generic_args(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
