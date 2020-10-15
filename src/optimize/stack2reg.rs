@@ -182,10 +182,7 @@ impl<'a> OptimizeContext<'a> {
     }
 }
 
-pub(super) fn optimize_function(
-    ctx: &mut Context,
-    clif_comments: &mut crate::pretty_clif::CommentWriter,
-) {
+pub(super) fn optimize_function(ctx: &mut Context) {
     combine_stack_addr_with_load_store(&mut ctx.func);
 
     let mut opt_ctx = OptimizeContext::for_context(ctx);
