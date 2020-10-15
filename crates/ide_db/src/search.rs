@@ -314,7 +314,7 @@ impl<'a> FindUsages<'a> {
 
     fn found_name(&self, name: &ast::Name, sink: &mut dyn FnMut(Reference) -> bool) -> bool {
         match classify_name(self.sema, name) {
-            Some(NameClass::FieldShorthand { local: _, field }) => {
+            Some(NameClass::PatFieldShorthand { local: _, field }) => {
                 let reference = match self.def {
                     Definition::Field(_) if &field == self.def => Reference {
                         file_range: self.sema.original_range(name.syntax()),

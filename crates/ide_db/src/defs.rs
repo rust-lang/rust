@@ -83,7 +83,8 @@ pub enum NameClass {
     Definition(Definition),
     /// `None` in `if let None = Some(82) {}`
     ConstReference(Definition),
-    FieldShorthand {
+    /// `field` in `if let Foo { field } = todo!() {}`
+    PatFieldShorthand {
         local: Local,
         field: Definition,
     },
@@ -91,19 +92,22 @@ pub enum NameClass {
 
 impl NameClass {
     pub fn definition(self, db: &dyn HirDatabase) -> Option<Definition> {
-        Some(match self {
+        let res = match self {
             NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) => it,
             NameClass::ConstReference(_) => return None,
-            NameClass::FieldShorthand { local, field: _ } => Definition::Local(local),
-        })
+            /// Both `local` and `field` are definitions here, but only `local`
+            /// is the definition which is introduced by this name.
+            NameClass::PatFieldShorthand { local, field: _ } => Definition::Local(local),
+        };
+        Some(res)
     }
 
     pub fn definition_or_reference(self, db: &dyn HirDatabase) -> Definition {
         match self {
             NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-            NameClass::FieldShorthand { local: _, field } => field,
+            NameClass::PatFieldShorthand { local: _, field } => field,
         }
     }
 }
@@ -161,7 +165,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                     if record_pat_field.name_ref().is_none() {
                         if let Some(field) = sema.resolve_record_pat_field(&record_pat_field) {
                             let field = Definition::Field(field);
-                            return Some(NameClass::FieldShorthand { local, field });
+                            return Some(NameClass::PatFieldShorthand { local, field });
                         }
                     }
                 }
