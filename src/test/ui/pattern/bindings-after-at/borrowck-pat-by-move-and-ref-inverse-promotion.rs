@@ -2,7 +2,6 @@
 // Currently this logic exists in THIR match checking as opposed to borrowck.
 
 #![feature(bindings_after_at)]
-#![feature(move_ref_pattern)]
 
 fn main() {
     struct U;

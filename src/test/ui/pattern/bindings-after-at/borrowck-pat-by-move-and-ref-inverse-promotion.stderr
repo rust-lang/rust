@@ -1,5 +1,5 @@
 error: borrow of moved value
-  --> $DIR/borrowck-pat-by-move-and-ref-inverse-promotion.rs:9:9
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse-promotion.rs:8:9
    |
 LL |     let a @ ref b = U;
    |         -^^^-----
