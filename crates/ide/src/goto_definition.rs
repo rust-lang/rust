@@ -40,7 +40,7 @@ pub(crate) fn goto_definition(
                 reference_definition(&sema, &name_ref).to_vec()
             },
             ast::Name(name) => {
-                let def = NameClass::classify(&sema, &name)?.reference_or_definition(sema.db);
+                let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
                 let nav = def.try_to_nav(sema.db)?;
                 vec![nav]
             },
@@ -83,7 +83,7 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     let name_kind = NameRefClass::classify(sema, name_ref);
     if let Some(def) = name_kind {
-        let def = def.definition(sema.db);
+        let def = def.referenced(sema.db);
         return match def.try_to_nav(sema.db) {
             Some(nav) => ReferenceResult::Exact(nav),
             None => ReferenceResult::Approximate(Vec::new()),

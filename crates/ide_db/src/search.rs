@@ -292,7 +292,7 @@ impl<'a> FindUsages<'a> {
                 };
                 sink(reference)
             }
-            Some(NameRefClass::FieldShorthand { local, field }) => {
+            Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
                 let reference = match self.def {
                     Definition::Field(_) if &field == self.def => Reference {
                         file_range: self.sema.original_range(name_ref.syntax()),

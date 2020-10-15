@@ -91,7 +91,8 @@ pub enum NameClass {
 }
 
 impl NameClass {
-    pub fn definition(self, db: &dyn HirDatabase) -> Option<Definition> {
+    /// `Definition` defined by this name.
+    pub fn defined(self, db: &dyn HirDatabase) -> Option<Definition> {
         let res = match self {
             NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) => it,
@@ -103,7 +104,8 @@ impl NameClass {
         Some(res)
     }
 
-    pub fn reference_or_definition(self, db: &dyn HirDatabase) -> Definition {
+    /// `Definition` referenced or defined by this name.
+    pub fn referenced_or_defined(self, db: &dyn HirDatabase) -> Definition {
         match self {
             NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
@@ -150,7 +152,7 @@ impl NameClass {
                             })
                             .and_then(|name_ref| NameRefClass::classify(sema, &name_ref))?;
 
-                        Some(NameClass::Definition(name_ref_class.definition(sema.db)))
+                        Some(NameClass::Definition(name_ref_class.referenced(sema.db)))
                     } else {
                         let extern_crate = it.syntax().parent().and_then(ast::ExternCrate::cast)?;
                         let resolved = sema.resolve_extern_crate(&extern_crate)?;
@@ -233,15 +235,20 @@ impl NameClass {
 pub enum NameRefClass {
     ExternCrate(Crate),
     Definition(Definition),
-    FieldShorthand { local: Local, field: Definition },
+    FieldShorthand { local_ref: Local, field_ref: Definition },
 }
 
 impl NameRefClass {
-    pub fn definition(self, db: &dyn HirDatabase) -> Definition {
+    /// `Definition`, which this name refers to.
+    pub fn referenced(self, db: &dyn HirDatabase) -> Definition {
         match self {
             NameRefClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameRefClass::Definition(def) => def,
-            NameRefClass::FieldShorthand { local, field: _ } => Definition::Local(local),
+            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                // FIXME: this is inherently ambiguous -- this name refers to
+                // two different defs....
+                Definition::Local(local_ref)
+            }
         }
     }
 
@@ -272,7 +279,9 @@ impl NameRefClass {
                 let field = Definition::Field(field);
                 let res = match local {
                     None => NameRefClass::Definition(field),
-                    Some(local) => NameRefClass::FieldShorthand { field, local },
+                    Some(local) => {
+                        NameRefClass::FieldShorthand { field_ref: field, local_ref: local }
+                    }
                 };
                 return Some(res);
             }

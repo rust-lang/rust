@@ -232,8 +232,8 @@ pub(crate) fn external_docs(
     let node = token.parent();
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.definition(sema.db)),
-            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.reference_or_definition(sema.db)),
+            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
+            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.referenced_or_defined(sema.db)),
             _ => None,
         }
     };
