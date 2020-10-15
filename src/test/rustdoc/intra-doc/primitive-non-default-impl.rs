@@ -1,7 +1,5 @@
 #![deny(broken_intra_doc_links)]
 
-// ignore-tidy-linelength
-
 // @has primitive_non_default_impl/fn.str_methods.html
 /// [`str::trim`]
 // @has - '//*[@href="https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim"]' 'str::trim'

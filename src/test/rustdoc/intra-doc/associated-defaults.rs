@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![deny(intra_doc_link_resolution_failure)]
 #![feature(associated_type_defaults)]
 

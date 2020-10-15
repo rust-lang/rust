@@ -2,7 +2,6 @@
 // build-aux-docs
 // ignore-cross-compile
 // ignore-windows
-// ignore-tidy-linelength
 
 #![deny(broken_intra_doc_links)]
 #![feature(no_core, lang_items)]

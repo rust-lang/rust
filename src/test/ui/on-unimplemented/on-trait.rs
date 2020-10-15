@@ -1,5 +1,4 @@
 // ignore-tidy-linelength
-
 #![feature(rustc_attrs)]
 
 pub mod Bar {
@@ -25,7 +24,8 @@ fn collect<A, I: Iterator<Item=A>, B: MyFromIterator<A>>(it: I) -> B {
 
 pub fn main() {
     let x = vec![1u8, 2, 3, 4];
-    let y: Option<Vec<u8>> = collect(x.iter()); // this should give approximately the same error for x.iter().collect()
+    // this should give approximately the same error for x.iter().collect()
+    let y: Option<Vec<u8>> = collect(x.iter());
     //~^ ERROR
 
     let x: String = foobar(); //~ ERROR

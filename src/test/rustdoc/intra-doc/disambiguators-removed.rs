@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![deny(intra_doc_link_resolution_failure)]
 // first try backticks
 /// Trait: [`trait@Name`], fn: [`fn@Name`], [`Name`][`macro@Name`]

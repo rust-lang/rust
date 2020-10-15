@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(associated_type_bounds)]
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_bindings)] //~ WARN the feature `impl_trait_in_bindings` is incomplete

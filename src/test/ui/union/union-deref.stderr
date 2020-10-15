@@ -1,5 +1,5 @@
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:15:14
+  --> $DIR/union-deref.rs:14:14
    |
 LL |     unsafe { u.f.0 = Vec::new() };
    |              ^^^
@@ -8,7 +8,7 @@ LL |     unsafe { u.f.0 = Vec::new() };
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:17:19
+  --> $DIR/union-deref.rs:16:19
    |
 LL |     unsafe { &mut u.f.0 };
    |                   ^^^
@@ -17,7 +17,7 @@ LL |     unsafe { &mut u.f.0 };
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:19:14
+  --> $DIR/union-deref.rs:18:14
    |
 LL |     unsafe { u.f.0.push(0) };
    |              ^^^
@@ -26,7 +26,7 @@ LL |     unsafe { u.f.0.push(0) };
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:23:14
+  --> $DIR/union-deref.rs:22:14
    |
 LL |     unsafe { u.f.0.0 = Vec::new() };
    |              ^^^^^
@@ -35,7 +35,7 @@ LL |     unsafe { u.f.0.0 = Vec::new() };
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:25:19
+  --> $DIR/union-deref.rs:24:19
    |
 LL |     unsafe { &mut u.f.0.0 };
    |                   ^^^^^
@@ -44,7 +44,7 @@ LL |     unsafe { &mut u.f.0.0 };
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:27:14
+  --> $DIR/union-deref.rs:26:14
    |
 LL |     unsafe { u.f.0.0.push(0) };
    |              ^^^^^

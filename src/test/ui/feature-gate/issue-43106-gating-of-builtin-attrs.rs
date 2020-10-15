@@ -34,8 +34,6 @@
 // occurrences in the source text.
 
 // check-pass
-// ignore-tidy-linelength
-
 #![feature(test, plugin_registrar)]
 #![warn(unused_attributes, unknown_lints)]
 //~^ NOTE the lint level is defined here

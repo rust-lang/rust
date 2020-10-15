@@ -1,7 +1,6 @@
-// ignore-tidy-linelength
-
 // Check that we normalize super predicates for object candidates.
 
+// ignore-tidy-linelength
 // check-pass
 
 use std::ops::Index;

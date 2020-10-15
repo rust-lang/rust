@@ -1,8 +1,7 @@
 Def site: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5)
-Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:24:37: 24:43 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:24:43: 24:45 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:43: 24:45 (#4) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:24:45: 24:50 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:50: 24:51 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:24:51: 24:53 (#4) }]
+Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:23:37: 23:43 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:23:43: 23:45 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:23:43: 23:45 (#4) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:23:45: 23:50 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:23:50: 23:51 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:23:51: 23:53 (#4) }]
 Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }]
 #![feature /* 0#0 */(prelude_import)]
-// ignore-tidy-linelength
 // aux-build:make-macro.rs
 // aux-build:meta-macro.rs
 // edition:2018

@@ -1,7 +1,5 @@
 #![crate_name = "foo"]
 
-// ignore-tidy-linelength
-
 pub struct MyStruct;
 
 impl MyTrait for MyStruct {

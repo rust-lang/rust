@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // ignore-windows failing on win32 bot
 // ignore-freebsd: gdb package too new
 // ignore-android: FIXME(#10381)

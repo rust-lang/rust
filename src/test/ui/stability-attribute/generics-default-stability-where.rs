@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // aux-build:unstable_generic_param.rs
 
 extern crate unstable_generic_param;

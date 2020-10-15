@@ -1,17 +1,17 @@
 error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-32829-2.rs:12:9
+  --> $DIR/issue-32829-2.rs:10:9
    |
 LL |         invalid();
    |         ^^^^^^^^^
 
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-32829-2.rs:34:9
+  --> $DIR/issue-32829-2.rs:32:9
    |
 LL |         invalid();
    |         ^^^^^^^^^
 
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-32829-2.rs:56:9
+  --> $DIR/issue-32829-2.rs:54:9
    |
 LL |         invalid();
    |         ^^^^^^^^^

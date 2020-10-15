@@ -1,5 +1,5 @@
 error: unknown start of token: \u{201c}
-  --> $DIR/unicode-quote-chars.rs:4:14
+  --> $DIR/unicode-quote-chars.rs:2:14
    |
 LL |     println!(“hello world”);
    |              ^
@@ -10,7 +10,7 @@ LL |     println!("hello world");
    |              ^^^^^^^^^^^^^
 
 error: unknown start of token: \u{201d}
-  --> $DIR/unicode-quote-chars.rs:4:26
+  --> $DIR/unicode-quote-chars.rs:2:26
    |
 LL |     println!(“hello world”);
    |                          ^
@@ -21,7 +21,7 @@ LL |     println!(“hello world");
    |                          ^
 
 error: expected `,`, found `world`
-  --> $DIR/unicode-quote-chars.rs:4:21
+  --> $DIR/unicode-quote-chars.rs:2:21
    |
 LL |     println!(“hello world”);
    |                     ^^^^^ expected `,`

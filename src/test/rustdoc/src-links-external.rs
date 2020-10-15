@@ -1,7 +1,6 @@
 // aux-build:src-links-external.rs
 // build-aux-docs
 // ignore-cross-compile
-// ignore-tidy-linelength
 
 #![crate_name = "foo"]
 

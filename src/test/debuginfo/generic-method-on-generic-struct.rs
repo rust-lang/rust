@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // compile-flags:-g
 
 // Some versions of the non-rust-enabled LLDB print the wrong generic
