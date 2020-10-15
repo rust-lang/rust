@@ -44,10 +44,12 @@ const paramHints = createHintStyle("parameter");
 const chainingHints = createHintStyle("chaining");
 
 function createHintStyle(hintKind: "type" | "parameter" | "chaining") {
+    // U+200C is a zero-width non-joiner to prevent the editor from forming a ligature
+    // between code and type hints
     const [pos, render] = ({
-        type: ["after", (label: string) => `: ${label}`],
+        type: ["after", (label: string) => `\u{200c}: ${label}`],
         parameter: ["before", (label: string) => `${label}: `],
-        chaining: ["after", (label: string) => `: ${label}`],
+        chaining: ["after", (label: string) => `\u{200c}: ${label}`],
     } as const)[hintKind];
 
     const fg = new vscode.ThemeColor(`rust_analyzer.inlayHints.foreground.${hintKind}Hints`);
