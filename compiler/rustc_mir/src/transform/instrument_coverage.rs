@@ -198,8 +198,8 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 ///     a `Goto`, and merged with its successor into the same BCB.
 ///
 /// Each BCB with at least one computed `CoverageSpan` will have no more than one `Counter`.
-/// In some cases, a BCB's execution count can be computed by `CounterExpression`. Additional
-/// disjoint `CoverageSpan`s in a BCB can also be counted by `CounterExpression` (by adding `ZERO`
+/// In some cases, a BCB's execution count can be computed by `Expression`. Additional
+/// disjoint `CoverageSpan`s in a BCB can also be counted by `Expression` (by adding `ZERO`
 /// to the BCB's primary counter or expression).
 ///
 /// The BCB CFG is critical to simplifying the coverage analysis by ensuring graph path-based
@@ -903,7 +903,7 @@ struct Instrumentor<'a, 'tcx> {
     function_source_hash: Option<u64>,
     next_counter_id: u32,
     num_expressions: u32,
-    expressions_cache: FxHashMap<ExpressionOperandId, CoverageKind>,
+    debug_expressions_cache: Option<FxHashMap<ExpressionOperandId, CoverageKind>>,
     debug_counters: DebugCounters,
 }
 
@@ -922,7 +922,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             function_source_hash: None,
             next_counter_id: CounterValueReference::START.as_u32(),
             num_expressions: 0,
-            expressions_cache: FxHashMap::default(),
+            debug_expressions_cache: None,
             debug_counters: DebugCounters::new(),
         }
     }
@@ -935,8 +935,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         CounterValueReference::from(next)
     }
 
-    /// Expression IDs start from u32::MAX and go down because a CounterExpression can reference
-    /// (add or subtract counts) of both Counter regions and CounterExpression regions. The counter
+    /// Expression IDs start from u32::MAX and go down because a Expression can reference
+    /// (add or subtract counts) of both Counter regions and Expression regions. The counter
     /// expression operand IDs must be unique across both types.
     fn next_expression(&mut self) -> InjectedExpressionIndex {
         assert!(self.next_counter_id < u32::MAX - self.num_expressions);
@@ -975,13 +975,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
 
         let coverage_spans = self.coverage_spans();
-
         let span_viewables =
             if dump_spanview { Some(self.span_viewables(&coverage_spans)) } else { None };
-
         let mut collect_intermediate_expressions = Vec::with_capacity(self.basic_coverage_blocks.num_nodes());
 
-        self.make_bcb_counters(&mut collect_intermediate_expressions);
+        // When debugging with BCB graphviz output, initialize additional data structures.
 
         let mut debug_bcb_to_coverage_spans_with_counters = None;
         let mut debug_bcb_to_dependency_counter = None;
@@ -990,12 +988,22 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             debug_bcb_to_coverage_spans_with_counters = Some(FxHashMap::default());
             debug_bcb_to_dependency_counter = Some(FxHashMap::default());
             debug_edge_to_counter = Some(FxHashMap::default());
+
+            self.debug_expressions_cache.replace(FxHashMap::default());
         }
 
         let mut debug_used_expression_operands = None;
         if level_enabled!(tracing::Level::DEBUG) {
             debug_used_expression_operands = Some(FxHashMap::default());
         }
+
+        // Analyze the coverage graph (aka, BCB control flow graph), and inject expression-optimized
+        // counters.
+
+        self.make_bcb_counters(&mut collect_intermediate_expressions);
+
+        // If debugging, add any intermediate expressions (which are not associated with any BCB) to
+        // the `debug_used_expression_operands` map.
 
         if let Some(used_expression_operands) = debug_used_expression_operands.as_mut() {
             for intermediate_expression in &collect_intermediate_expressions {
@@ -1009,8 +1017,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // Inject a counter for each `CoverageSpan`. There can be multiple `CoverageSpan`s for a
         // given BCB, but only one actual counter needs to be incremented per BCB. `bb_counters`
         // maps each `bcb` to its `Counter`, when injected. Subsequent `CoverageSpan`s
-        // for a BCB that already has a `Counter` will inject a `CounterExpression` instead, and
+        // for a BCB that already has a `Counter` will inject an `Expression` instead, and
         // compute its value by adding `ZERO` to the BCB `Counter` value.
+        //
+        // If debugging, add every BCB `Expression` associated with a `CoverageSpan`s to the
+        // `debug_used_expression_operands` map.
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for covspan in coverage_spans {
             let bcb = covspan.bcb;
@@ -1027,7 +1038,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 }
                 counter_kind
             } else {
-                bug!("Every BasicCoverageBlock should have a Counter or CounterExpression");
+                bug!("Every BasicCoverageBlock should have a Counter or Expression");
             };
             // TODO(richkadel): uncomment debug!
             // debug!(
@@ -1039,7 +1050,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             if let Some(bcb_to_coverage_spans_with_counters) = debug_bcb_to_coverage_spans_with_counters.as_mut() {
                 bcb_to_coverage_spans_with_counters.entry(bcb).or_insert_with(|| Vec::new()).push((covspan.clone(), counter_kind.clone()));
             }
-            self.inject_statement(counter_kind, self.bcb_last_bb(bcb), make_code_region(file_name, &source_file, span));
+            self.inject_statement(counter_kind, self.bcb_last_bb(bcb), make_code_region(file_name, &source_file, span, body_span));
         }
 
         // The previous step looped through the `CoverageSpan`s and injected the counter from the
@@ -1048,7 +1059,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         //
         // Any other counter associated with a `BasicCoverageBlock`, or its incoming edge, but not
         // associated with a `CoverageSpan`, should only exist if the counter is a
-        // `CounterExpression` dependency (one of the expression operands). Collect them, and inject
+        // `Expression` dependency (one of the expression operands). Collect them, and inject
         // the additional counters into the MIR, without a reportable coverage span.
         let mut bcb_counters_without_direct_coverage_spans = Vec::new();
         for (target_bcb, target_bcb_data) in self.basic_coverage_blocks.iter_enumerated_mut() {
@@ -1084,6 +1095,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             }
         }
 
+//        let (last_line, last_col) = source_file.lookup_file_pos(body_span.hi());
         for (edge_counter_from_bcb, target_bcb, counter_kind) in bcb_counters_without_direct_coverage_spans {
             if let Some(used_expression_operands) = debug_used_expression_operands.as_ref() {
                 if !used_expression_operands.contains_key(&counter_kind.as_operand_id()) {
@@ -1091,71 +1103,91 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                     // simplification. For example, expression: x + (y - x) becomes just "y", and the
                     // expression: y - x may no longer be a dependency. Similarly, expression:
                     // x + (y + 0) becomes just x + y.
-                    if let Some(from_bcb) = edge_counter_from_bcb.as_ref() {
-                        debug!(
+                    let unused_counter_message = if let Some(from_bcb) = edge_counter_from_bcb.as_ref() {
+                        format!(
                             "non-coverage edge counter found without a dependent expression, in {:?}->{:?}; counter={}",
                             from_bcb,
                             target_bcb,
                             self.format_counter(&counter_kind),
-                        );
+                        )
                     } else {
-                        debug!(
+                        format!(
                             "non-coverage counter found without a dependent expression, in {:?}; counter={}",
                             target_bcb,
                             self.format_counter(&counter_kind),
-                        );
+                        )
+                    };
+                    if self.debug_expressions_cache.is_some() {
+                        // Expect some unused counters when simplifying expressions to optimize out
+                        // some redundant arithmetic.
+                        debug!("{}", unused_counter_message);
+                    } else {
+                        bug!("{}", unused_counter_message);
                     }
                 }
             }
 
-            let inject_to_bb = if let Some(from_bcb) = edge_counter_from_bcb {
-                // The MIR edge starts `from_bb` (the outgoing / last BasicBlock in `from_bcb`) and
-                // ends at `to_bb` (the incoming / first BasicBlock in the `target_bcb`; also called
-                // the `leader_bb`).
-                let from_bb = self.bcb_last_bb(from_bcb);
-                let to_bb = self.bcb_leader_bb(target_bcb);
+            match counter_kind {
+                CoverageKind::Counter { .. } => {
+                    let inject_to_bb = if let Some(from_bcb) = edge_counter_from_bcb {
+                        // The MIR edge starts `from_bb` (the outgoing / last BasicBlock in `from_bcb`) and
+                        // ends at `to_bb` (the incoming / first BasicBlock in the `target_bcb`; also called
+                        // the `leader_bb`).
+                        let from_bb = self.bcb_last_bb(from_bcb);
+                        let to_bb = self.bcb_leader_bb(target_bcb);
 
-                debug!(
-                    "Edge {:?} (last {:?}) -> {:?} (leader {:?}) requires a new MIR BasicBlock, for unclaimed edge counter {}",
-                    edge_counter_from_bcb, from_bb, target_bcb, to_bb, self.format_counter(&counter_kind),
-                );
-                debug!(
-                    "  from_bb {:?} has successors: {:?}",
-                    from_bb, self.mir_body[from_bb].terminator().successors(),
-                );
-                let span = self.mir_body[from_bb].terminator().source_info.span.shrink_to_hi();
-                let new_bb = self.mir_body.basic_blocks_mut().push(BasicBlockData {
-                    statements: vec![], // counter will be injected here
-                    terminator: Some(Terminator {
-                        source_info: SourceInfo::outermost(span),
-                        kind: TerminatorKind::Goto { target: to_bb },
-                    }),
-                    is_cleanup: false,
-                });
-                let edge_ref = self.mir_body[from_bb].terminator_mut().successors_mut().find(|successor| **successor == to_bb).expect("from_bb should have a successor for to_bb");
-                *edge_ref = new_bb;
+                        debug!(
+                            "Edge {:?} (last {:?}) -> {:?} (leader {:?}) requires a new MIR BasicBlock, for unclaimed edge counter {}",
+                            edge_counter_from_bcb, from_bb, target_bcb, to_bb, self.format_counter(&counter_kind),
+                        );
+                        debug!(
+                            "  from_bb {:?} has successors: {:?}",
+                            from_bb, self.mir_body[from_bb].terminator().successors(),
+                        );
+                        let span = self.mir_body[from_bb].terminator().source_info.span.shrink_to_hi();
+                        let new_bb = self.mir_body.basic_blocks_mut().push(BasicBlockData {
+                            statements: vec![], // counter will be injected here
+                            terminator: Some(Terminator {
+                                source_info: SourceInfo::outermost(span),
+                                kind: TerminatorKind::Goto { target: to_bb },
+                            }),
+                            is_cleanup: false,
+                        });
+                        let edge_ref = self.mir_body[from_bb].terminator_mut().successors_mut().find(|successor| **successor == to_bb).expect("from_bb should have a successor for to_bb");
+                        *edge_ref = new_bb;
 
-                if let Some(edge_to_counter) = debug_edge_to_counter.as_mut() {
-                    debug!("from_bcb={:?} to new_bb={:?} has edge_counter={}",
-                             from_bcb, new_bb, self.format_counter(&counter_kind));
-                    edge_to_counter.insert((from_bcb, new_bb), counter_kind.clone()).expect_none("invalid attempt to insert more than one edge counter for the same edge");
+                        if let Some(edge_to_counter) = debug_edge_to_counter.as_mut() {
+                            debug!("from_bcb={:?} to new_bb={:?} has edge_counter={}",
+                                    from_bcb, new_bb, self.format_counter(&counter_kind),
+                            );
+                            edge_to_counter.insert((from_bcb, new_bb), counter_kind.clone()).expect_none("invalid attempt to insert more than one edge counter for the same edge");
+                        }
+
+                        new_bb
+                    } else {
+                        if let Some(bcb_to_dependency_counter) = debug_bcb_to_dependency_counter.as_mut() {
+                            bcb_to_dependency_counter.entry(target_bcb).or_insert_with(|| Vec::new()).push(counter_kind.clone());
+                        }
+                        let target_bb = self.bcb_last_bb(target_bcb);
+                        debug!(
+                            "{:?} ({:?}) gets a new Coverage statement for unclaimed counter {}",
+                            target_bcb,
+                            target_bb,
+                            self.format_counter(&counter_kind),
+                        );
+                        target_bb
+                    };
+//                    debug!("make_non_reportable_code_region for {:?} at last_line={:?}, last_col={:?}, counter={}",
+//                                    inject_to_bb, last_line, last_col, self.format_counter(&counter_kind));
+//                    self.inject_statement(counter_kind, inject_to_bb, make_non_reportable_code_region(file_name, last_line, last_col));
+                    let span = self.mir_body[inject_to_bb].terminator().source_info.span;
+                    debug!("make_non_reportable_code_region for {:?} at span={:?}, counter={}",
+                                    inject_to_bb, span, self.format_counter(&counter_kind));
+                    self.inject_statement(counter_kind, inject_to_bb, make_non_reportable_code_region(file_name, &source_file, span));
                 }
-
-                new_bb
-            } else {
-                if let Some(bcb_to_dependency_counter) = debug_bcb_to_dependency_counter.as_mut() {
-                    bcb_to_dependency_counter.entry(target_bcb).or_insert_with(|| Vec::new()).push(counter_kind.clone());
-                }
-                let target_bb = self.bcb_last_bb(target_bcb);
-                debug!(
-                    "{:?} ({:?}) gets a new Coverage statement for unclaimed counter {}",
-                    target_bcb,
-                    target_bb,
-                    self.format_counter(&counter_kind),
-                );
-                target_bb
-            };
-            self.inject_statement(counter_kind, inject_to_bb, make_non_reportable_code_region(file_name, &source_file));
+                CoverageKind::Expression { .. } => self.inject_intermediate_expression(counter_kind),
+                _ => bug!("CoverageKind should be a counter"),
+            }
         }
 
         if dump_graphviz {
@@ -1251,13 +1283,13 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
     }
 
-    /// Traverse the BCB CFG and add either a `Counter` or `CounterExpression` to ever BCB, to be
-    /// injected with `CoverageSpan`s. `CounterExpressions` have no runtime overhead, so if a viable
+    /// Traverse the BCB CFG and add either a `Counter` or `Expression` to ever BCB, to be
+    /// injected with `CoverageSpan`s. `Expressions` have no runtime overhead, so if a viable
     /// expression (adding or subtracting two other counters or expressions) can compute the same
-    /// result as an embedded counter, a `CounterExpression` should be used.
+    /// result as an embedded counter, an `Expression` should be used.
     ///
     /// If two `BasicCoverageBlocks` branch from another `BasicCoverageBlock`, one of the branches
-    /// can be counted by `CounterExpression` by subtracting the other branch from the branching
+    /// can be counted by `Expression` by subtracting the other branch from the branching
     /// block. Otherwise, the `BasicCoverageBlock` executed the least should have the `Counter`.
     /// One way to predict which branch executes the least is by considering loops. A loop is exited
     /// at a branch, so the branch that jumps to a `BasicCoverageBlock` outside the loop is almost
@@ -1405,11 +1437,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         );
                         if !found_loop_exit {
                             // No branches exit a loop, so there is no specific recommended branch for
-                            // an `ExpressionCounter`.
+                            // an `Expression`.
                             break;
                         }
                         if some_reloop_branch.is_some() {
-                            // A recommended branch for an `ExpressionCounter` was found.
+                            // A recommended branch for an `Expression` was found.
                             break;
                         }
                         // else all branches exited this loop context, so run the same checks with
@@ -1436,8 +1468,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                     branch_without_counter
                 };
 
-                // Assign a Counter or CounterExpression to each branch, plus additional
-                // `CounterExpression`s, as needed, to sum up intermediate results.
+                // Assign a Counter or Expression to each branch, plus additional
+                // `Expression`s, as needed, to sum up intermediate results.
                 let mut some_sumup_counter_operand = None;
                 for branch in branches {
                     if branch != expression_branch {
@@ -1497,8 +1529,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 //
 // Does this mean that we should assert that a bcb ONLY has either a single bcb counter, or 2 or more edge counters, but not both?
 // WELL... not exactly.
-// 1. A BCB with edge counters always has an ExpressionCounter
-// 2. A BCB with multiple predecessors always gets an ExpressionCounter.
+// 1. A BCB with edge counters always has an Expression
+// 2. A BCB with multiple predecessors always gets an Expression.
 //
 // ???
 // 3. If NO predecessor comes from a branching BCB, then the BCB Expression can be the sum of all predecessor BCB counters
@@ -1673,7 +1705,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     // is a branch that jumps outside the loop, and should get an actual Counter, most likely
     //
     // Or perhaps conversely, a branching BCB is dominated by H with a branch that has a target that
-    // ALSO is dominated by H should get a CounterExpression.
+    // ALSO is dominated by H should get a Expression.
     //
     //
     // So I need to identify all of the "H"'s, by identifying all of the backedges.
@@ -1706,37 +1738,41 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     ) -> CoverageKind
         where F: Fn() -> String
     {
-        if let Some(CoverageKind::Expression { lhs: lhs_lhs, op, rhs: lhs_rhs, .. } ) = self.expressions_cache.get(&lhs) {
-            if *lhs_rhs == ExpressionOperandId::ZERO {
-                lhs = *lhs_lhs;
-            } else if *op == Op::Subtract && *lhs_rhs == rhs {
-                if let Some(lhs_expression) = self.expressions_cache.get(lhs_lhs) {
-                    let expression = lhs_expression.clone();
-                    return self.as_duplicate_expression(expression);
-                } else {
-                    let counter = *lhs_lhs;
-                    return self.make_identity_counter(counter);
+        if let Some(expressions_cache) = self.debug_expressions_cache.as_ref() {
+            if let Some(CoverageKind::Expression { lhs: lhs_lhs, op, rhs: lhs_rhs, .. } ) = expressions_cache.get(&lhs) {
+                if *lhs_rhs == ExpressionOperandId::ZERO {
+                    lhs = *lhs_lhs;
+                } else if *op == Op::Subtract && *lhs_rhs == rhs {
+                    if let Some(lhs_expression) = expressions_cache.get(lhs_lhs) {
+                        let expression = lhs_expression.clone();
+                        return self.as_duplicate_expression(expression);
+                    } else {
+                        let counter = *lhs_lhs;
+                        return self.make_identity_counter(counter);
+                    }
                 }
             }
-        }
 
-        if let Some(CoverageKind::Expression { lhs: rhs_lhs, op, rhs: rhs_rhs, .. } ) = self.expressions_cache.get(&rhs) {
-            if *rhs_rhs == ExpressionOperandId::ZERO {
-                rhs = *rhs_rhs;
-            } else if *op == Op::Subtract && *rhs_rhs == lhs {
-                if let Some(rhs_expression) = self.expressions_cache.get(rhs_lhs) {
-                    let expression = rhs_expression.clone();
-                    return self.as_duplicate_expression(expression);
-                } else {
-                    let counter = *rhs_lhs;
-                    return self.make_identity_counter(counter);
+            if let Some(CoverageKind::Expression { lhs: rhs_lhs, op, rhs: rhs_rhs, .. } ) = expressions_cache.get(&rhs) {
+                if *rhs_rhs == ExpressionOperandId::ZERO {
+                    rhs = *rhs_rhs;
+                } else if *op == Op::Subtract && *rhs_rhs == lhs {
+                    if let Some(rhs_expression) = expressions_cache.get(rhs_lhs) {
+                        let expression = rhs_expression.clone();
+                        return self.as_duplicate_expression(expression);
+                    } else {
+                        let counter = *rhs_lhs;
+                        return self.make_identity_counter(counter);
+                    }
                 }
             }
         }
 
         let id = self.next_expression();
         let expression = CoverageKind::Expression { id, lhs, op, rhs };
-        self.expressions_cache.insert(id.into(), expression.clone());
+        if let Some(expressions_cache) = self.debug_expressions_cache.as_mut() {
+            expressions_cache.insert(id.into(), expression.clone());
+        }
         if self.debug_counters.is_enabled() {
             self.debug_counters.add_expression(&expression, (debug_string_fn)());
         }
@@ -1744,10 +1780,16 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     fn as_duplicate_expression(&mut self, mut expression: CoverageKind) -> CoverageKind {
+        let next_expression_id = if self.debug_expressions_cache.is_some() {
+            Some(self.next_expression())
+        } else {
+            None
+        };
+        let expressions_cache = self.debug_expressions_cache.as_mut().expect("`as_duplicate_expression()` requires the debug_expressions_cache");
         match expression {
             CoverageKind::Expression { ref mut id, .. } => {
-                *id = self.next_expression();
-                self.expressions_cache.insert(id.into(), expression.clone());
+                *id = next_expression_id.expect("next_expression_id should be Some if there is a debug_expressions_cache");
+                expressions_cache.insert(id.into(), expression.clone());
             }
             _ => bug!("make_duplicate_expression called with non-expression type: {:?}", expression),
         }
@@ -1755,7 +1797,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     fn make_identity_counter(&mut self, counter_operand: ExpressionOperandId) -> CoverageKind {
-        if let Some(expression) = self.expressions_cache.get(&counter_operand) {
+        if let Some(expression) = self.debug_expressions_cache.as_ref().map_or(None, |c| c.get(&counter_operand)) {
             let new_expression = expression.clone();
             self.as_duplicate_expression(new_expression)
         } else {
@@ -1916,7 +1958,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             .unwrap()
         });
 
-        let refinery = CoverageSpanRefinery::from_sorted_spans(initial_spans, &self.bcb_dominators);
+        let refinery = CoverageSpanRefinery::from_sorted_spans(initial_spans, &self.mir_body, &self.basic_coverage_blocks, &self.bcb_dominators);
         refinery.to_refined_spans()
     }
 }
@@ -1928,11 +1970,17 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 ///  * Merge spans that represent continuous (both in source code and control flow), non-branching
 ///    execution
 ///  * Carve out (leave uncovered) any span that will be counted by another MIR (notably, closures)
-struct CoverageSpanRefinery<'a> {
+struct CoverageSpanRefinery<'a, 'tcx> {
 
     /// The initial set of `CoverageSpan`s, sorted by `Span` (`lo` and `hi`) and by relative
     /// dominance between the `BasicCoverageBlock`s of equal `Span`s.
     sorted_spans_iter: std::vec::IntoIter<CoverageSpan>,
+
+    /// The MIR, used to look up `BasicBlockData`.
+    mir_body: &'a mir::Body<'tcx>,
+
+    /// The BasicCoverageBlock Control Flow Graph (BCB CFG).
+    basic_coverage_blocks: &'a BasicCoverageBlocks,
 
     /// The BCB CFG's dominators tree, used to compute the dominance relationships, if any.
     bcb_dominators: &'a Dominators<BasicCoverageBlock>,
@@ -1963,14 +2011,16 @@ struct CoverageSpanRefinery<'a> {
     /// `prev` with a matching `Span`)
     pending_dups: Vec<CoverageSpan>,
 
-    /// The final `CoverageSpan`s to add to the coverage map. A `Counter` or `CounterExpression`
+    /// The final `CoverageSpan`s to add to the coverage map. A `Counter` or `Expression`
     /// will also be injected into the MIR for each `CoverageSpan`.
     refined_spans: Vec<CoverageSpan>,
 }
 
-impl<'a> CoverageSpanRefinery<'a> {
+impl<'a, 'tcx> CoverageSpanRefinery<'a, 'tcx> {
     fn from_sorted_spans(
         sorted_spans: Vec<CoverageSpan>,
+        mir_body: &'a mir::Body<'tcx>,
+        basic_coverage_blocks: &'a BasicCoverageBlocks,
         bcb_dominators: &'a Dominators<BasicCoverageBlock>,
     ) -> Self {
         let refined_spans = Vec::with_capacity(sorted_spans.len());
@@ -1979,6 +2029,8 @@ impl<'a> CoverageSpanRefinery<'a> {
         let prev_original_span = prev.span;
         Self {
             sorted_spans_iter,
+            mir_body,
+            basic_coverage_blocks,
             bcb_dominators,
             refined_spans,
             some_curr: None,
@@ -2028,12 +2080,28 @@ impl<'a> CoverageSpanRefinery<'a> {
 
         debug!("    AT END, adding last prev={:?}", self.prev());
         let prev = self.take_prev();
-        let CoverageSpanRefinery { pending_dups, mut refined_spans, .. } = self;
+        let CoverageSpanRefinery { mir_body, basic_coverage_blocks, pending_dups, mut refined_spans, .. } = self;
         for dup in pending_dups {
             debug!("    ...adding at least one pending dup={:?}", dup);
             refined_spans.push(dup);
         }
         refined_spans.push(prev);
+
+        // Remove `CoverageSpan`s with empty spans ONLY if the empty `CoverageSpan`s BCB also has at
+        // least one other non-empty `CoverageSpan`.
+        let mut has_coverage = BitSet::new_empty(basic_coverage_blocks.num_nodes());
+        for covspan in &refined_spans {
+            if ! covspan.span.is_empty() {
+                has_coverage.insert(covspan.bcb);
+            }
+        }
+        refined_spans.retain(|covspan| {
+            !(
+                covspan.span.is_empty()
+                && is_goto(&basic_coverage_blocks[covspan.bcb].terminator(mir_body).kind)
+                && has_coverage.contains(covspan.bcb)
+            )
+        });
 
         // Remove `CoverageSpan`s derived from closures, originally added to ensure the coverage
         // regions for the current function leave room for the closure's own coverage regions
@@ -2350,7 +2418,7 @@ fn filtered_statement_span(statement: &'a Statement<'tcx>, body_span: Span) -> O
         | StatementKind::LlvmInlineAsm(_)
         | StatementKind::Retag(_, _)
         | StatementKind::AscribeUserType(_, _) => {
-            Some(source_info_span(&statement.source_info, body_span))
+            Some(function_source_span(statement.source_info.span, body_span))
         }
     }
 }
@@ -2367,9 +2435,43 @@ fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -
         | TerminatorKind::Drop { .. }
         | TerminatorKind::DropAndReplace { .. }
         | TerminatorKind::SwitchInt { .. }
-        | TerminatorKind::Goto { .. }
+// TODO(richkadel): Should Goto still be here? Delete if not
+//        | TerminatorKind::Goto { .. }
         // For `FalseEdge`, only the `real` branch is taken, so it is similar to a `Goto`.
         | TerminatorKind::FalseEdge { .. } => None,
+
+// TODO(richkadel): Add a comment if this works. Any `Goto` still in the BCB CFG is probably
+// required, as an intermediate target for some conditional branches (typically, `SwitchInt`
+// targets). Some of these `Goto` branch blocks (BCB and BB) have multiple incoming edges (that is,
+// not just a single incoming edge from a SwitchInt), so they are often required to accurately
+// represent the control flow.
+//
+// Since these retained `Goto` terminators generally impact control flow, they often generate their
+// own `BasicCoverageBlock`, but their `source_info.span` typically covers the source code for an
+// entire branch (that might or might not be executed, depending on the condition that may (or may
+// not) lead to the `Goto` branch. This source span is far too broad. For `Goto` terminators that
+// are part of a BCB with other statements/terminators with usable `Span`s, ignoring the `Goto`
+// `Span` is OK, because the other statements/terminators in the BCB generate `CoverageSpans`
+// that represent the code executed leading up to (and including) that `Goto`.
+//
+// But for `Goto` terminators without other statements/terminators, there needs to be some visible
+// region to count, that doesn't include code that was not executed. So in this case, we set the
+// `Span` to the 0-length span from and to `source_info.span.hi()`.
+//
+// At least one character will be covered--the character immediately following the `Span` position.
+// (`make_code_region()` ensures all zero-length spans are extended to at least one character.)
+//
+// Note that, if we did not select some non-zero length `Span` at this location, but the `Goto`s
+// BCB still needed to be counted (other `CoverageSpan`-dependent `Expression`s may depend on the
+// execution count for this `Goto`), we have at least two other less-appealing choices:
+//   1. Insert a truly zero-length span on some line. In this case, there may be no visible
+//      coverage region, but its line is still counted, which is more confusing.
+//   2. Insert a span for a line beyond the end of the file. This works well for `llvm-cov show`
+//      reports, but `llvm-cov export` reports still count the lines and regions outside the
+//      file's line range.
+        TerminatorKind::Goto { .. } => {
+            Some(function_source_span(terminator.source_info.span.shrink_to_hi(), body_span))
+        }
 
         // Retain spans from all other terminators
         TerminatorKind::Resume
@@ -2380,17 +2482,23 @@ fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -
         | TerminatorKind::GeneratorDrop
         | TerminatorKind::FalseUnwind { .. }
         | TerminatorKind::InlineAsm { .. } => {
-            Some(source_info_span(&terminator.source_info, body_span))
+            Some(function_source_span(terminator.source_info.span, body_span))
         }
     }
 }
 
 #[inline(always)]
-fn source_info_span(source_info: &SourceInfo, body_span: Span) -> Span {
-    let span = original_sp(source_info.span, body_span).with_ctxt(SyntaxContext::root());
+fn function_source_span(span: Span, body_span: Span) -> Span {
+    let span = original_sp(span, body_span).with_ctxt(SyntaxContext::root());
     if body_span.contains(span) { span } else { body_span }
 }
 
+// TODO(richkadel): Update this function comment.
+// It only works to use an empty span on an actual source line if the line already has
+// a coverage code region. It works because
+//   compiler/rustc_codegen_llvm/src/coverageinfo/mapgen.rs
+// knows to look for empty spans, and generate a `GapRegion` instead of a `CodeRegion`.
+//
 /// Make a non-reportable code region
 /// Count empty spans, but don't make them reportable as coverage. Set the source
 /// position out of range. (Note that `llvm-cov` fails to report coverage if any
@@ -2398,15 +2506,34 @@ fn source_info_span(source_info: &SourceInfo, body_span: Span) -> Span {
 /// the last line of the file.)
 fn make_non_reportable_code_region(
     file_name: Symbol,
+//    last_line: usize,
+//    last_col: CharPos,
     source_file: &Lrc<SourceFile>,
+    span: Span,
 ) -> CodeRegion {
-    let line_past_end_of_file = (source_file.lines.len() + 1) as u32;
+    // let line_past_end_of_file = (source_file.lines.len() + 1) as u32;
+    // CodeRegion {
+    //     file_name,
+    //     start_line: line_past_end_of_file,
+    //     start_col: 1,
+    //     end_line: line_past_end_of_file,
+    //     end_col: 1,
+    // }
+    // CodeRegion {
+    //     file_name,
+    //     start_line: last_line as u32,
+    //     start_col: last_col.to_u32() + 1,
+    //     end_line: last_line as u32,
+    //     end_col: last_col.to_u32() + 1,
+    // }
+    let (start_line, start_col) = source_file.lookup_file_pos(span.hi());
+    let (end_line, end_col) = (start_line, start_col);
     CodeRegion {
         file_name,
-        start_line: line_past_end_of_file,
-        start_col: 1,
-        end_line: line_past_end_of_file,
-        end_col: 1,
+        start_line: start_line as u32,
+        start_col: start_col.to_u32() + 1,
+        end_line: end_line as u32,
+        end_col: end_col.to_u32() + 1,
     }
 }
 
@@ -2415,13 +2542,14 @@ fn make_code_region(
     file_name: Symbol,
     source_file: &Lrc<SourceFile>,
     span: Span,
+    body_span: Span,
 ) -> CodeRegion {
     let (start_line, mut start_col) = source_file.lookup_file_pos(span.lo());
     let (end_line, end_col) = if span.hi() == span.lo() {
         let (end_line, mut end_col) = (start_line, start_col);
         // Extend an empty span by one character so the region will be counted.
         let CharPos(char_pos) = start_col;
-        if char_pos > 0 {
+        if span.hi() == body_span.hi() {
             start_col = CharPos(char_pos - 1);
         } else {
             end_col = CharPos(char_pos + 1);
@@ -2436,6 +2564,14 @@ fn make_code_region(
         start_col: start_col.to_u32() + 1,
         end_line: end_line as u32,
         end_col: end_col.to_u32() + 1,
+    }
+}
+
+#[inline(always)]
+fn is_goto(term_kind: &TerminatorKind<'tcx>) -> bool {
+    match term_kind {
+        TerminatorKind::Goto { .. } => true,
+        _ => false,
     }
 }
 
@@ -2543,7 +2679,7 @@ impl<'a: 'tcx, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>>
 // Injecting unreachable code regions will probably require computing the set difference between the
 // basic blocks found without filtering out unreachable blocks, and the basic blocks found with a
 // filter (similar to or as an extension of the `filter_unwind_paths` filter); then computing the
-// `CoverageSpans` without the filter; and then injecting `Counter`s or `CounterExpression`s for
+// `CoverageSpans` without the filter; and then injecting `Counter`s or `Expression`s for
 // blocks that are not unreachable, or injecting `Unreachable` code regions otherwise. This seems
 // straightforward, but not trivial.
 //
