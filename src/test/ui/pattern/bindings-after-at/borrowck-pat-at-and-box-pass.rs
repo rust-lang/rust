@@ -3,7 +3,6 @@
 // Test `@` patterns combined with `box` patterns.
 
 #![feature(bindings_after_at)]
-#![feature(move_ref_pattern)]
 #![feature(box_patterns)]
 
 #[derive(Copy, Clone)]

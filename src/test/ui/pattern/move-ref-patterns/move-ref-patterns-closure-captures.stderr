@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `FnMut` trait, but this closure only implements `FnOnce`
-  --> $DIR/move-ref-patterns-closure-captures.rs:11:14
+  --> $DIR/move-ref-patterns-closure-captures.rs:9:14
    |
 LL |     let c1 = || {
    |              ^^ this closure implements `FnOnce`, not `FnMut`
@@ -11,7 +11,7 @@ LL |     accept_fn_mut(&c1);
    |     ------------- the requirement to implement `FnMut` derives from here
 
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
-  --> $DIR/move-ref-patterns-closure-captures.rs:11:14
+  --> $DIR/move-ref-patterns-closure-captures.rs:9:14
    |
 LL |     let c1 = || {
    |              ^^ this closure implements `FnOnce`, not `Fn`
@@ -23,7 +23,7 @@ LL |     accept_fn(&c1);
    |     --------- the requirement to implement `Fn` derives from here
 
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
-  --> $DIR/move-ref-patterns-closure-captures.rs:22:14
+  --> $DIR/move-ref-patterns-closure-captures.rs:20:14
    |
 LL |     let c2 = || {
    |              ^^ this closure implements `FnMut`, not `Fn`
