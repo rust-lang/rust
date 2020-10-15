@@ -488,7 +488,7 @@ nzint_impl_try_from_int! { isize, NonZeroIsize, #[stable(feature = "nzint_try_fr
 
 macro_rules! nzint_impl_try_from_nzint {
     ($From:ty => $To:ty, $doc: expr) => {
-        #[stable(feature = "nzint_try_from_nzint_conv", since = "1.48.0")]
+        #[stable(feature = "nzint_try_from_nzint_conv", since = "1.49.0")]
         #[doc = $doc]
         impl TryFrom<$From> for $To {
             type Error = TryFromIntError;
