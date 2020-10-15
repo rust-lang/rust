@@ -795,7 +795,7 @@ impl<T: ?Sized> Pin<&'static T> {
     }
 }
 
-impl<T: ?Sized> Pin<&'static T> {
+impl<T: ?Sized> Pin<&'static mut T> {
     /// Get a pinned mutable reference from a static mutable reference.
     ///
     /// This is safe, because `T` is borrowed for the `'static` lifetime, which
