@@ -10,8 +10,8 @@ LL |     let &v: &T = new();
    |           ^^^^
 help: consider specifying the type arguments in the function call
    |
-LL |     let &v = new::<'r, T>();
-   |                 ^^^^^^^^^
+LL |     let &v = new::<T>();
+   |                 ^^^^^
 
 error: aborting due to previous error
 

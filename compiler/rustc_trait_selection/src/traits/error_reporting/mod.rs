@@ -1571,6 +1571,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     generics
                                         .params
                                         .iter()
+                                        // Do not suggest `foo::<'a, T>()`
+                                        .filter(|p| !matches!(
+                                            p.kind,
+                                            ty::GenericParamDefKind::Lifetime
+                                        ))
                                         .map(|p| p.name.to_string())
                                         .collect::<Vec<String>>()
                                         .join(", ")
