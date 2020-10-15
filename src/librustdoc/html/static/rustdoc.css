@@ -1540,6 +1540,14 @@ h4 > .notable-traits {
 		left: 0;
 		top: 100%;
 	}
+
+	/* We don't display the help button on mobile devices. */
+	.help-button {
+		display: none;
+	}
+	.search-container > div {
+		width: calc(100% - 32px);
+	}
 }
 
 @media print {
