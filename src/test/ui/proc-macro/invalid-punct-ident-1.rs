@@ -9,6 +9,9 @@
 // normalize-stderr-test "note: we would appreciate a bug report.*\n\n" -> ""
 // normalize-stderr-test "note: compiler flags.*\n\n" -> ""
 // normalize-stderr-test "note: rustc.*running on.*\n\n" -> ""
+// normalize-stderr-test "query stack during panic:\n" -> ""
+// normalize-stderr-test "we're just showing a limited slice of the query stack\n" -> ""
+// normalize-stderr-test "end of query stack\n" -> ""
 
 #[macro_use]
 extern crate invalid_punct_ident;
