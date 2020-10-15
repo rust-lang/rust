@@ -158,9 +158,12 @@ crate enum PatKind<'tcx> {
         subpattern: Pat<'tcx>,
     },
 
-    /// Opaque constant. This will be treated as a single, but unknown value.
-    /// Except for `&str`, which will be handled as a string pattern and thus exhaustiveness
-    /// checking will detect if you use the same string twice in different patterns.
+    /// One of the following:
+    /// * `&str`, which will be handled as a string pattern and thus exhaustiveness
+    ///   checking will detect if you use the same string twice in different patterns.
+    /// * integer, bool, char or float, which will be handled by exhaustivenes to cover exactly
+    ///   its own value, similar to `&str`, but these values are much simpler.
+    /// * Opaque constants. So anything that does not derive `PartialEq` and `Eq`.
     Constant {
         value: &'tcx ty::Const<'tcx>,
     },
