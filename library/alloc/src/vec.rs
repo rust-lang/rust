@@ -207,8 +207,10 @@ use crate::raw_vec::RawVec;
 ///        +--------+--------+--------+--------+
 /// ```
 ///
-/// - **uninit** represents memory that is not initialized, see [`MaybeUninit`]
-/// - Note, ABI is not stable so the layout is not guaranteed to be the same
+/// - **uninit** represents memory that is not initialized, see [`MaybeUninit`].
+/// - Note: the ABI is not stable and `Vec` makes no guarantees about its memory 
+///   layout (including the order of fields). See [the section about 
+///   guarantees](#guarantees).
 ///
 /// # Guarantees
 ///
