@@ -15,7 +15,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, AstNode},
-    SyntaxNode, TextRange, T,
+    match_ast, SyntaxNode, TextRange, T,
 };
 use text_edit::TextEdit;
 
@@ -80,7 +80,7 @@ pub(crate) fn diagnostics(
 
     for node in parse.tree().syntax().descendants() {
         check_unnecessary_braces_in_use_statement(&mut res, file_id, &node);
-        check_struct_shorthand_initialization(&mut res, file_id, &node);
+        check_field_shorthand(&mut res, file_id, &node);
     }
     let res = RefCell::new(res);
     let sink_builder = DiagnosticSinkBuilder::new()
@@ -188,12 +188,20 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
     None
 }
 
-fn check_struct_shorthand_initialization(
+fn check_field_shorthand(acc: &mut Vec<Diagnostic>, file_id: FileId, node: &SyntaxNode) {
+    match_ast! {
+        match node {
+            ast::RecordExpr(it) => check_expr_field_shorthand(acc, file_id, it),
+            _ => None
+        }
+    };
+}
+
+fn check_expr_field_shorthand(
     acc: &mut Vec<Diagnostic>,
     file_id: FileId,
-    node: &SyntaxNode,
+    record_lit: ast::RecordExpr,
 ) -> Option<()> {
-    let record_lit = ast::RecordExpr::cast(node.clone())?;
     let record_field_list = record_lit.record_expr_field_list()?;
     for record_field in record_field_list.fields() {
         if let (Some(name_ref), Some(expr)) = (record_field.name_ref(), record_field.expr()) {
