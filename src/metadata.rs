@@ -5,8 +5,9 @@ use std::fs::File;
 use std::path::Path;
 
 use rustc_codegen_ssa::METADATA_FILENAME;
-use rustc_data_structures::owning_ref::{self, OwningRef};
+use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
+use rustc_data_structures::sync::MetadataRef;
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config;
@@ -17,11 +18,7 @@ use crate::backend::WriteMetadata;
 pub(crate) struct CraneliftMetadataLoader;
 
 impl MetadataLoader for CraneliftMetadataLoader {
-    fn get_rlib_metadata(
-        &self,
-        _target: &Target,
-        path: &Path,
-    ) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
+    fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
         let mut archive = ar::Archive::new(File::open(path).map_err(|e| format!("{:?}", e))?);
         // Iterate over all entries in the archive:
         while let Some(entry_result) = archive.next_entry() {
@@ -38,14 +35,9 @@ impl MetadataLoader for CraneliftMetadataLoader {
         }
 
         Err("couldn't find metadata entry".to_string())
-        //self.get_dylib_metadata(target, path)
     }
 
-    fn get_dylib_metadata(
-        &self,
-        _target: &Target,
-        path: &Path,
-    ) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
+    fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
         use object::{Object, ObjectSection};
         let file = std::fs::read(path).map_err(|e| format!("read:{:?}", e))?;
         let file = object::File::parse(&file).map_err(|e| format!("parse: {:?}", e))?;
