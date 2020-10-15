@@ -784,6 +784,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
+        let attrs: Vec<_> = self.get_item_attrs(id, sess).collect();
         SyntaxExtension::new(
             sess,
             kind,
@@ -791,7 +792,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             helper_attrs,
             self.root.edition,
             Symbol::intern(name),
-            &self.get_item_attrs(id, sess),
+            &attrs,
         )
     }
 
@@ -1157,7 +1158,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 // within the crate. We only need this for fictive constructors,
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
-                                let attrs = self.get_item_attrs(def_id.index, sess);
+                                let attrs: Vec<_> =
+                                    self.get_item_attrs(def_id.index, sess).collect();
                                 if sess.contains_name(&attrs, sym::non_exhaustive) {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
@@ -1283,8 +1285,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_variances(&self, id: DefIndex) -> Vec<ty::Variance> {
-        self.root.tables.variances.get(self, id).unwrap_or_else(Lazy::empty).decode(self).collect()
+    fn get_item_variances(&'a self, id: DefIndex) -> impl Iterator<Item = ty::Variance> + 'a {
+        self.root.tables.variances.get(self, id).unwrap_or_else(Lazy::empty).decode(self)
     }
 
     fn get_ctor_kind(&self, node_id: DefIndex) -> CtorKind {
@@ -1308,7 +1310,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Vec<ast::Attribute> {
+    fn get_item_attrs(
+        &'a self,
+        node_id: DefIndex,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = ast::Attribute> + 'a {
         // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
@@ -1325,7 +1331,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .get(self, item_id)
             .unwrap_or_else(Lazy::empty)
             .decode((self, sess))
-            .collect::<Vec<_>>()
     }
 
     fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<Symbol>> {
