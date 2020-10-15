@@ -2,15 +2,19 @@ use crate::consts::{constant, Constant};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
+use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Spanned;
+use rustc_span::source_map::{Span, Spanned};
+use rustc_span::symbol::Ident;
 use std::cmp::Ordering;
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{get_parent_expr, is_integer_const, snippet, snippet_opt, span_lint, span_lint_and_then};
+use crate::utils::{
+    get_parent_expr, is_integer_const, single_segment_path, snippet, snippet_opt, snippet_with_applicability,
+    span_lint, span_lint_and_sugg, span_lint_and_then,
+};
 use crate::utils::{higher, SpanlessEq};
 
 declare_clippy_lint! {
@@ -128,48 +132,198 @@ declare_clippy_lint! {
     "reversing the limits of range expressions, resulting in empty ranges"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for expressions like `x >= 3 && x < 8` that could
+    /// be more readably expressed as `(3..8).contains(x)`.
+    ///
+    /// **Why is this bad?** `contains` expresses the intent better and has less
+    /// failure modes (such as fencepost errors or using `||` instead of `&&`).
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // given
+    /// let x = 6;
+    ///
+    /// assert!(x >= 3 && x < 8);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    ///# let x = 6;
+    /// assert!((3..8).contains(&x));
+    /// ```
+    pub MANUAL_RANGE_CONTAINS,
+    style,
+    "manually reimplementing {`Range`, `RangeInclusive`}`::contains`"
+}
+
 declare_lint_pass!(Ranges => [
     RANGE_ZIP_WITH_LEN,
     RANGE_PLUS_ONE,
     RANGE_MINUS_ONE,
     REVERSED_EMPTY_RANGES,
+    MANUAL_RANGE_CONTAINS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind {
-            let name = path.ident.as_str();
-            if name == "zip" && args.len() == 2 {
-                let iter = &args[0].kind;
-                let zip_arg = &args[1];
-                if_chain! {
-                    // `.iter()` call
-                    if let ExprKind::MethodCall(ref iter_path, _, ref iter_args , _) = *iter;
-                    if iter_path.ident.name == sym!(iter);
-                    // range expression in `.zip()` call: `0..x.len()`
-                    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
-                    if is_integer_const(cx, start, 0);
-                    // `.len()` call
-                    if let ExprKind::MethodCall(ref len_path, _, ref len_args, _) = end.kind;
-                    if len_path.ident.name == sym!(len) && len_args.len() == 1;
-                    // `.iter()` and `.len()` called on same `Path`
-                    if let ExprKind::Path(QPath::Resolved(_, ref iter_path)) = iter_args[0].kind;
-                    if let ExprKind::Path(QPath::Resolved(_, ref len_path)) = len_args[0].kind;
-                    if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
-                     then {
-                         span_lint(cx,
-                                   RANGE_ZIP_WITH_LEN,
-                                   expr.span,
-                                   &format!("it is more idiomatic to use `{}.iter().enumerate()`",
-                                            snippet(cx, iter_args[0].span, "_")));
-                    }
-                }
-            }
+        match expr.kind {
+            ExprKind::MethodCall(ref path, _, ref args, _) => {
+                check_range_zip_with_len(cx, path, args, expr.span);
+            },
+            ExprKind::Binary(ref op, ref l, ref r) => {
+                check_possible_range_contains(cx, op.node, l, r, expr.span);
+            },
+            _ => {},
         }
 
         check_exclusive_range_plus_one(cx, expr);
         check_inclusive_range_minus_one(cx, expr);
         check_reversed_empty_range(cx, expr);
+    }
+}
+
+fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'_>, r: &Expr<'_>, span: Span) {
+    let combine_and = match op {
+        BinOpKind::And | BinOpKind::BitAnd => true,
+        BinOpKind::Or | BinOpKind::BitOr => false,
+        _ => return,
+    };
+    // value, name, order (higher/lower), inclusiveness
+    if let (Some((lval, lname, name_span, lval_span, lord, linc)), Some((rval, rname, _, rval_span, rord, rinc))) =
+        (check_range_bounds(cx, l), check_range_bounds(cx, r))
+    {
+        // we only lint comparisons on the same name and with different
+        // direction
+        if lname != rname || lord == rord {
+            return;
+        }
+        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l), &lval, &rval);
+        if combine_and && ord == Some(rord) {
+            // order lower bound and upper bound
+            let (l_span, u_span, l_inc, u_inc) = if rord == Ordering::Less {
+                (lval_span, rval_span, linc, rinc)
+            } else {
+                (rval_span, lval_span, rinc, linc)
+            };
+            // we only lint inclusive lower bounds
+            if !l_inc {
+                return;
+            }
+            let (range_type, range_op) = if u_inc {
+                ("RangeInclusive", "..=")
+            } else {
+                ("Range", "..")
+            };
+            let mut applicability = Applicability::MachineApplicable;
+            let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
+            let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
+            let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
+            span_lint_and_sugg(
+                cx,
+                MANUAL_RANGE_CONTAINS,
+                span,
+                &format!("manual `{}::contains` implementation", range_type),
+                "use",
+                format!("({}{}{}).contains(&{})", lo, range_op, hi, name),
+                applicability,
+            );
+        } else if !combine_and && ord == Some(lord) {
+            // `!_.contains(_)`
+            // order lower bound and upper bound
+            let (l_span, u_span, l_inc, u_inc) = if lord == Ordering::Less {
+                (lval_span, rval_span, linc, rinc)
+            } else {
+                (rval_span, lval_span, rinc, linc)
+            };
+            if l_inc {
+                return;
+            }
+            let (range_type, range_op) = if u_inc {
+                ("Range", "..")
+            } else {
+                ("RangeInclusive", "..=")
+            };
+            let mut applicability = Applicability::MachineApplicable;
+            let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
+            let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
+            let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
+            span_lint_and_sugg(
+                cx,
+                MANUAL_RANGE_CONTAINS,
+                span,
+                &format!("manual `!{}::contains` implementation", range_type),
+                "use",
+                format!("!({}{}{}).contains(&{})", lo, range_op, hi, name),
+                applicability,
+            );
+        }
+    }
+}
+
+fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, Ident, Span, Span, Ordering, bool)> {
+    if let ExprKind::Binary(ref op, ref l, ref r) = ex.kind {
+        let (inclusive, ordering) = match op.node {
+            BinOpKind::Gt => (false, Ordering::Greater),
+            BinOpKind::Ge => (true, Ordering::Greater),
+            BinOpKind::Lt => (false, Ordering::Less),
+            BinOpKind::Le => (true, Ordering::Less),
+            _ => return None,
+        };
+        if let Some(id) = match_ident(l) {
+            if let Some((c, _)) = constant(cx, cx.typeck_results(), r) {
+                return Some((c, id, l.span, r.span, ordering, inclusive));
+            }
+        } else if let Some(id) = match_ident(r) {
+            if let Some((c, _)) = constant(cx, cx.typeck_results(), l) {
+                return Some((c, id, r.span, l.span, ordering.reverse(), inclusive));
+            }
+        }
+    }
+    None
+}
+
+fn match_ident(e: &Expr<'_>) -> Option<Ident> {
+    if let ExprKind::Path(ref qpath) = e.kind {
+        if let Some(seg) = single_segment_path(qpath) {
+            if seg.args.is_none() {
+                return Some(seg.ident);
+            }
+        }
+    }
+    None
+}
+
+fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: &[Expr<'_>], span: Span) {
+    let name = path.ident.as_str();
+    if name == "zip" && args.len() == 2 {
+        let iter = &args[0].kind;
+        let zip_arg = &args[1];
+        if_chain! {
+            // `.iter()` call
+            if let ExprKind::MethodCall(ref iter_path, _, ref iter_args, _) = *iter;
+            if iter_path.ident.name == sym!(iter);
+            // range expression in `.zip()` call: `0..x.len()`
+            if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
+            if is_integer_const(cx, start, 0);
+            // `.len()` call
+            if let ExprKind::MethodCall(ref len_path, _, ref len_args, _) = end.kind;
+            if len_path.ident.name == sym!(len) && len_args.len() == 1;
+            // `.iter()` and `.len()` called on same `Path`
+            if let ExprKind::Path(QPath::Resolved(_, ref iter_path)) = iter_args[0].kind;
+            if let ExprKind::Path(QPath::Resolved(_, ref len_path)) = len_args[0].kind;
+            if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
+            then {
+                span_lint(cx,
+                    RANGE_ZIP_WITH_LEN,
+                    span,
+                    &format!("it is more idiomatic to use `{}.iter().enumerate()`",
+                        snippet(cx, iter_args[0].span, "_"))
+                );
+            }
+        }
     }
 }
 

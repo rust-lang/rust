@@ -1160,6 +1160,13 @@ vec![
         module: "manual_non_exhaustive",
     },
     Lint {
+        name: "manual_range_contains",
+        group: "style",
+        desc: "manually reimplementing {`Range`, `RangeInclusive`}`::contains`",
+        deprecation: None,
+        module: "ranges",
+    },
+    Lint {
         name: "manual_saturating_arithmetic",
         group: "style",
         desc: "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`",
