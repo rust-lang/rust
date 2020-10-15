@@ -77,7 +77,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
   auto FT = cast<Function>(fn)->getFunctionType();
   assert(fn);
 
-  if (enzyme_print)
+  if (EnzymePrint)
     llvm::errs() << "prefn:\n" << *fn << "\n";
 
   std::vector<DIFFE_TYPE> constants;
@@ -125,7 +125,6 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
         ++i;
         res = CI->getArgOperand(i);
       } else if (MS == "enzyme_out") {
-        llvm::errs() << "saw metadata for diffe_out\n";
         ty = DIFFE_TYPE::OUT_DIFF;
         ++i;
         res = CI->getArgOperand(i);
@@ -279,7 +278,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
     args.push_back(ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
   assert(newFunc);
 
-  if (enzyme_print)
+  if (EnzymePrint)
     llvm::errs() << "postfn:\n" << *newFunc << "\n";
   Builder.setFastMathFlags(getFast());
 

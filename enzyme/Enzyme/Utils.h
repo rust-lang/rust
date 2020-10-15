@@ -44,13 +44,6 @@
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #endif
-#define PTX 1
-//#else
-//#define PTX 0
-//#endif
-
-//#if PTX
-//#endif
 
 #include <set>
 

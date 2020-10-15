@@ -59,7 +59,7 @@
 using namespace llvm;
 
 llvm::cl::opt<bool>
-    enzyme_print("enzyme-print", cl::init(false), cl::Hidden,
+    EnzymePrint("enzyme-print", cl::init(false), cl::Hidden,
                  cl::desc("Print before and after fns for autodiff"));
 
 cl::opt<bool> looseTypeAnalysis("enzyme-loose-types", cl::init(false),
@@ -1686,7 +1686,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   gutils->newFunc->eraseFromParent();
 
   delete gutils;
-  if (enzyme_print)
+  if (EnzymePrint)
     llvm::errs() << *NewF << "\n";
   return cachedfunctions.find(tup)->second;
 }

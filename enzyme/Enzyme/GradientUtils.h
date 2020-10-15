@@ -1179,7 +1179,6 @@ if (AtomicAdd) {
   }
   if (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() == Triple::nvptx ||
       llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() == Triple::nvptx64) {
-  #if PTX
   if (dif->getType()->isFloatTy()) {
     //auto atomicAdd = 
     cast<CallInst>(
@@ -1193,22 +1192,23 @@ if (AtomicAdd) {
                                             Intrinsic::nvvm_atomic_add_gen_f_sys, {dif->getType(), ptr->getType()}),
                   {ptr, dif}));
   } else
-  #endif
   {
     llvm::errs() << "unhandled atomic add: " << *ptr << " " << *dif << "\n";
     llvm_unreachable("unhandled atomic add");
   }
   } else {
     #if LLVM_VERSION_MAJOR >= 9
-    AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
-    AtomicRMWInst* rmw = BuilderM.CreateAtomicRMW (op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
-    #if LLVM_VERSION_MAJOR >= 11
-    if (align)
-      rmw->setAlignment(align.getValue());
-    #endif
+      AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
+      #if LLVM_VERSION_MAJOR >= 11
+        AtomicRMWInst* rmw = BuilderM.CreateAtomicRMW (op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+        if (align)
+          rmw->setAlignment(align.getValue());
+      #else
+        BuilderM.CreateAtomicRMW (op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+      #endif
     #else 
-    llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " " << *dif << "\n";
-    llvm_unreachable("unhandled atomic fadd");
+      llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " " << *dif << "\n";
+      llvm_unreachable("unhandled atomic fadd");
     #endif
   }
   return;

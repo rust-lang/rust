@@ -46,7 +46,7 @@
 #include "TypeAnalysis/TypeAnalysis.h"
 #include "Utils.h"
 
-extern llvm::cl::opt<bool> enzyme_print;
+extern llvm::cl::opt<bool> EnzymePrint;
 
 enum class AugmentedStruct { Tape, Return, DifferentialReturn };
 

@@ -56,12 +56,6 @@ llvm::Function *CloneFunctionWithReturns(
 
 class GradientUtils;
 
-llvm::PHINode *canonicalizeIVs(llvm::fake::SCEVExpander &exp, llvm::Type *Ty,
-                               llvm::Loop *L, llvm::DominatorTree &DT,
-                               GradientUtils *gutils);
-
-void forceRecursiveInlining(llvm::Function *NewF, const llvm::Function *F);
-
 void optimizeIntermediate(GradientUtils *gutils, bool topLevel,
                           llvm::Function *F);
 
