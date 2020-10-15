@@ -3650,6 +3650,8 @@ impl<'test> TestCx<'test> {
 
         // Remove test annotations like `//~ ERROR text` from the output,
         // since they duplicate actual errors and make the output hard to read.
+        // This mirrors the regex in src/tools/tidy/src/style.rs, please update
+        // both if either are changed.
         normalized =
             Regex::new("\\s*//(\\[.*\\])?~.*").unwrap().replace_all(&normalized, "").into_owned();
 
