@@ -43,10 +43,21 @@ pub(super) enum RecoverQPath {
     No,
 }
 
-#[derive(PartialEq)]
-pub(super) enum RecoverFatArrow {
+#[derive(Copy, Clone, PartialEq)]
+pub(super) enum RecoverReturnSign {
     Yes,
+    OnlyFatArrow,
     No,
+}
+
+impl RecoverReturnSign {
+    fn can_recover(self, token: &TokenKind) -> bool {
+        match self {
+            Self::Yes => matches!(token, token::FatArrow | token::Colon),
+            Self::OnlyFatArrow => matches!(token, token::FatArrow),
+            Self::No => false,
+        }
+    }
 }
 
 // Is `...` (`CVarArgs`) legal at this level of type parsing?
@@ -68,14 +79,24 @@ fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
 impl<'a> Parser<'a> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(AllowPlus::Yes, RecoverQPath::Yes, AllowCVariadic::No)
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            RecoverQPath::Yes,
+            AllowCVariadic::No,
+            RecoverReturnSign::Yes,
+        )
     }
 
     /// Parse a type suitable for a function or function pointer parameter.
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the type.
     pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(AllowPlus::Yes, RecoverQPath::Yes, AllowCVariadic::Yes)
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            RecoverQPath::Yes,
+            AllowCVariadic::Yes,
+            RecoverReturnSign::Yes,
+        )
     }
 
     /// Parses a type in restricted contexts where `+` is not permitted.
@@ -85,7 +106,22 @@ impl<'a> Parser<'a> {
     /// Example 2: `value1 as TYPE + value2`
     ///     `+` is prohibited to avoid interactions with expression grammar.
     pub(super) fn parse_ty_no_plus(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(AllowPlus::No, RecoverQPath::Yes, AllowCVariadic::No)
+        self.parse_ty_common(
+            AllowPlus::No,
+            RecoverQPath::Yes,
+            AllowCVariadic::No,
+            RecoverReturnSign::Yes,
+        )
+    }
+
+    /// Parse a type without recovering `:` as `->` to avoid breaking code such as `where fn() : for<'a>`
+    pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            RecoverQPath::Yes,
+            AllowCVariadic::Yes,
+            RecoverReturnSign::OnlyFatArrow,
+        )
     }
 
     /// Parses an optional return type `[ -> TY ]` in a function declaration.
@@ -93,13 +129,18 @@ impl<'a> Parser<'a> {
         &mut self,
         allow_plus: AllowPlus,
         recover_qpath: RecoverQPath,
-        recover_fat_arrow: RecoverFatArrow,
+        recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, FnRetTy> {
         Ok(if self.eat(&token::RArrow) {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
-            let ty = self.parse_ty_common(allow_plus, recover_qpath, AllowCVariadic::No)?;
+            let ty = self.parse_ty_common(
+                allow_plus,
+                recover_qpath,
+                AllowCVariadic::No,
+                recover_return_sign,
+            )?;
             FnRetTy::Ty(ty)
-        } else if recover_fat_arrow == RecoverFatArrow::Yes && self.token == token::FatArrow {
+        } else if recover_return_sign.can_recover(&self.token.kind) {
             // Don't `eat` to prevent `=>` from being added as an expected token which isn't
             // actually expected and could only confuse users
             self.bump();
@@ -111,7 +152,12 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 )
                 .emit();
-            let ty = self.parse_ty_common(allow_plus, recover_qpath, AllowCVariadic::No)?;
+            let ty = self.parse_ty_common(
+                allow_plus,
+                recover_qpath,
+                AllowCVariadic::No,
+                recover_return_sign,
+            )?;
             FnRetTy::Ty(ty)
         } else {
             FnRetTy::Default(self.token.span.shrink_to_lo())
@@ -123,6 +169,7 @@ impl<'a> Parser<'a> {
         allow_plus: AllowPlus,
         recover_qpath: RecoverQPath,
         allow_c_variadic: AllowCVariadic,
+        recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
@@ -150,14 +197,14 @@ impl<'a> Parser<'a> {
             TyKind::Infer
         } else if self.check_fn_front_matter() {
             // Function pointer type
-            self.parse_ty_bare_fn(lo, Vec::new())?
+            self.parse_ty_bare_fn(lo, Vec::new(), recover_return_sign)?
         } else if self.check_keyword(kw::For) {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
             if self.check_fn_front_matter() {
-                self.parse_ty_bare_fn(lo, lifetime_defs)?
+                self.parse_ty_bare_fn(lo, lifetime_defs, recover_return_sign)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
                 let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
@@ -359,9 +406,14 @@ impl<'a> Parser<'a> {
     /// Function Style    ABI  Parameter types
     /// ```
     /// We actually parse `FnHeader FnDecl`, but we error on `const` and `async` qualifiers.
-    fn parse_ty_bare_fn(&mut self, lo: Span, params: Vec<GenericParam>) -> PResult<'a, TyKind> {
+    fn parse_ty_bare_fn(
+        &mut self,
+        lo: Span,
+        params: Vec<GenericParam>,
+        recover_return_sign: RecoverReturnSign,
+    ) -> PResult<'a, TyKind> {
         let ast::FnHeader { ext, unsafety, constness, asyncness } = self.parse_fn_front_matter()?;
-        let decl = self.parse_fn_decl(|_| false, AllowPlus::No)?;
+        let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
         if let ast::Const::Yes(span) = constness {
             self.error_fn_ptr_bad_qualifier(whole_span, span, "const");
