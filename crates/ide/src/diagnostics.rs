@@ -5,6 +5,7 @@
 //! original files. So we need to map the ranges.
 
 mod fixes;
+mod field_shorthand;
 
 use std::cell::RefCell;
 
@@ -80,7 +81,7 @@ pub(crate) fn diagnostics(
 
     for node in parse.tree().syntax().descendants() {
         check_unnecessary_braces_in_use_statement(&mut res, file_id, &node);
-        check_struct_shorthand_initialization(&mut res, file_id, &node);
+        field_shorthand::check(&mut res, file_id, &node);
     }
     let res = RefCell::new(res);
     let sink_builder = DiagnosticSinkBuilder::new()
@@ -188,42 +189,6 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
     None
 }
 
-fn check_struct_shorthand_initialization(
-    acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<()> {
-    let record_lit = ast::RecordExpr::cast(node.clone())?;
-    let record_field_list = record_lit.record_expr_field_list()?;
-    for record_field in record_field_list.fields() {
-        if let (Some(name_ref), Some(expr)) = (record_field.name_ref(), record_field.expr()) {
-            let field_name = name_ref.syntax().text().to_string();
-            let field_expr = expr.syntax().text().to_string();
-            let field_name_is_tup_index = name_ref.as_tuple_field().is_some();
-            if field_name == field_expr && !field_name_is_tup_index {
-                let mut edit_builder = TextEdit::builder();
-                edit_builder.delete(record_field.syntax().text_range());
-                edit_builder.insert(record_field.syntax().text_range().start(), field_name);
-                let edit = edit_builder.finish();
-
-                let field_range = record_field.syntax().text_range();
-                acc.push(Diagnostic {
-                    // name: None,
-                    range: field_range,
-                    message: "Shorthand struct initialization".to_string(),
-                    severity: Severity::WeakWarning,
-                    fix: Some(Fix::new(
-                        "Use struct shorthand initialization",
-                        SourceFileEdit { file_id, edit }.into(),
-                        field_range,
-                    )),
-                });
-            }
-        }
-    }
-    Some(())
-}
-
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
@@ -237,7 +202,7 @@ mod tests {
     ///  * a diagnostic is produced
     ///  * this diagnostic fix trigger range touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
-    fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
+    pub(super) fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
         let after = trim_indent(ra_fixture_after);
 
         let (analysis, file_position) = fixture::position(ra_fixture_before);
@@ -319,7 +284,7 @@ mod tests {
 
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
     /// apply to the file containing the cursor.
-    fn check_no_diagnostics(ra_fixture: &str) {
+    pub(crate) fn check_no_diagnostics(ra_fixture: &str) {
         let (analysis, files) = fixture::files(ra_fixture);
         let diagnostics = files
             .into_iter()
@@ -716,58 +681,6 @@ mod a {
             mod a { mod c {} mod d { mod e {} } }
             use a::{c, d::e};
             ",
-        );
-    }
-
-    #[test]
-    fn test_check_struct_shorthand_initialization() {
-        check_no_diagnostics(
-            r#"
-struct A { a: &'static str }
-fn main() { A { a: "hello" } }
-"#,
-        );
-        check_no_diagnostics(
-            r#"
-struct A(usize);
-fn main() { A { 0: 0 } }
-"#,
-        );
-
-        check_fix(
-            r#"
-struct A { a: &'static str }
-fn main() {
-    let a = "haha";
-    A { a<|>: a }
-}
-"#,
-            r#"
-struct A { a: &'static str }
-fn main() {
-    let a = "haha";
-    A { a }
-}
-"#,
-        );
-
-        check_fix(
-            r#"
-struct A { a: &'static str, b: &'static str }
-fn main() {
-    let a = "haha";
-    let b = "bb";
-    A { a<|>: a, b }
-}
-"#,
-            r#"
-struct A { a: &'static str, b: &'static str }
-fn main() {
-    let a = "haha";
-    let b = "bb";
-    A { a, b }
-}
-"#,
         );
     }
 
