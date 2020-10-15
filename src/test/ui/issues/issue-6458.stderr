@@ -3,6 +3,11 @@ error[E0282]: type annotations needed
    |
 LL |    foo(TypeWithState(marker::PhantomData));
    |    ^^^ cannot infer type for type parameter `State` declared on the function `foo`
+   |
+help: consider specifying the type argument in the function call
+   |
+LL |    foo::<State>(TypeWithState(marker::PhantomData));
+   |       ^^^^^^^^^
 
 error: aborting due to previous error
 

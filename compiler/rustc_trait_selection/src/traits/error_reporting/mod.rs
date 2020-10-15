@@ -1503,11 +1503,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self.tcx.lang_items().sized_trait() == Some(data.trait_ref.def_id) {
-                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282, &[])
-                        .delay_as_bug();
-                    return;
-                }
+                let is_sized = self.tcx.lang_items().sized_trait() == Some(data.trait_ref.def_id);
+
                 // Try to find possible types that would satisfy the bounds in the type param to
                 // give an appropriate turbofish suggestion.
                 let turbofish_suggestions =
@@ -1516,11 +1513,12 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     body_id,
                     span,
                     subst,
-                    ErrorCode::E0283,
+                    if is_sized { ErrorCode::E0282 } else { ErrorCode::E0283 },
                     &turbofish_suggestions,
                 );
-                err.note(&format!("cannot satisfy `{}`", predicate));
-
+                if !is_sized {
+                    err.note(&format!("cannot satisfy `{}`", predicate));
+                }
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
                     self.suggest_fully_qualified_path(
                         &mut err,
@@ -1599,6 +1597,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             }
                         }
                     }
+                }
+                if is_sized {
+                    err.emit();
+                    return;
                 }
                 err
             }

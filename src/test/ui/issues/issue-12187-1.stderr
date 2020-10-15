@@ -8,6 +8,10 @@ help: consider giving this binding the explicit type `&T`, where the type parame
    |
 LL |     let &v: &T = new();
    |           ^^^^
+help: consider specifying the type argument in the function call
+   |
+LL |     let &v = new::<T>();
+   |                 ^^^^^
 
 error: aborting due to previous error
 

@@ -8,6 +8,10 @@ help: consider giving this binding the explicit type `fn() -> A`, where the type
    |
 LL |     let _: fn() -> A = f;
    |          ^^^^^^^^^^^
+help: consider specifying the type argument in the function call
+   |
+LL |     let _ = f::<A>;
+   |              ^^^^^
 
 error: aborting due to previous error
 

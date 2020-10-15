@@ -3,6 +3,11 @@ error[E0282]: type annotations needed
    |
 LL |     foo();
    |     ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+   |
+help: consider specifying the type argument in the function call
+   |
+LL |     foo::<T>();
+   |        ^^^^^
 
 error: aborting due to previous error
 

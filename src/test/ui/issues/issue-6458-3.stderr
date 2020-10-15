@@ -3,6 +3,11 @@ error[E0282]: type annotations needed
    |
 LL |     mem::transmute(0);
    |     ^^^^^^^^^^^^^^ cannot infer type for type parameter `U` declared on the function `transmute`
+   |
+help: consider specifying the type arguments in the function call
+   |
+LL |     mem::transmute::<T, U>(0);
+   |                   ^^^^^^^^
 
 error: aborting due to previous error
 

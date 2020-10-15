@@ -17,6 +17,7 @@ mod b {
         //~| ERROR mismatched closing delimiter: `]`
         //~| ERROR mismatched closing delimiter: `]`
         //~| ERROR mismatched closing delimiter: `]`
+        //~| ERROR type annotations needed
     }
 }
 
@@ -27,6 +28,7 @@ mod c {
         //~| ERROR mismatched closing delimiter: `]`
         //~| ERROR mismatched closing delimiter: `]`
         //~| ERROR mismatched closing delimiter: `]`
+        //~| ERROR type annotations needed
     }
 }
 

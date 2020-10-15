@@ -127,6 +127,7 @@ pub fn main() {
 
     fn fn_test11(_: _) -> (_, _) { panic!() }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    //~| ERROR type annotations needed
 
     fn fn_test12(x: i32) -> (_, _) { (x, x) }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures

@@ -5,7 +5,7 @@ LL |     for i in Vec::new() { }
    |              ^^^^^^^^--
    |              |
    |              the element type for this iterator is not specified
-   |              cannot infer type for type parameter `T` declared on the struct `Vec`
+   |              cannot infer type for type parameter `T`
 
 error: aborting due to previous error
 

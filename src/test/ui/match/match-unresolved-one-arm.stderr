@@ -8,6 +8,10 @@ help: consider giving this binding a type
    |
 LL |     let x: Type = match () {
    |          ^^^^^^
+help: consider specifying the type argument in the function call
+   |
+LL |         () => foo::<T>()
+   |                  ^^^^^
 
 error: aborting due to previous error
 

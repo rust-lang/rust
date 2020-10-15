@@ -1,13 +1,8 @@
-error[E0282]: type annotations needed for the closure `fn(_, _) -> i32`
-  --> $DIR/type-path-err-node-types-2.rs:7:13
+error[E0282]: type annotations needed
+  --> $DIR/type-path-err-node-types-2.rs:7:14
    |
 LL |     let _ = |a, b: _| -> _ { 0 };
-   |             ^^^^^^^^^^^^^^^^^^^^ cannot infer type for closure `[closure@$DIR/type-path-err-node-types-2.rs:7:13: 7:33]`
-   |
-help: give this closure an explicit return type without `_` placeholders
-   |
-LL |     let _ = |a, b: _| -> i32 { 0 };
-   |                          ^^^
+   |              ^ consider giving this closure parameter a type
 
 error: aborting due to previous error
 
