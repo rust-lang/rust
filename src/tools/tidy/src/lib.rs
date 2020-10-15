@@ -50,6 +50,7 @@ pub mod unstable_book;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
+        "compiler/rustc_codegen_cranelift",
         "src/llvm-project",
         "library/backtrace",
         "library/stdarch",

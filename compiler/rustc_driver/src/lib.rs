@@ -22,7 +22,7 @@ use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_feature::{find_gated_cfg, UnstableFeatures};
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_interface::util::{collect_crate_types, get_builtin_codegen_backend};
+use rustc_interface::util::{self, collect_crate_types, get_builtin_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
@@ -793,37 +793,24 @@ impl RustcDefaultCalls {
     }
 }
 
-/// Returns a version string such as "0.12.0-dev".
-fn release_str() -> Option<&'static str> {
-    option_env!("CFG_RELEASE")
-}
-
-/// Returns the full SHA1 hash of HEAD of the Git repo from which rustc was built.
-fn commit_hash_str() -> Option<&'static str> {
-    option_env!("CFG_VER_HASH")
-}
-
-/// Returns the "commit date" of HEAD of the Git repo from which rustc was built as a static string.
-fn commit_date_str() -> Option<&'static str> {
-    option_env!("CFG_VER_DATE")
-}
-
 /// Prints version information
 pub fn version(binary: &str, matches: &getopts::Matches) {
     let verbose = matches.opt_present("verbose");
 
-    println!("{} {}", binary, option_env!("CFG_VERSION").unwrap_or("unknown version"));
+    println!("{} {}", binary, util::version_str().unwrap_or("unknown version"));
 
     if verbose {
         fn unw(x: Option<&str>) -> &str {
             x.unwrap_or("unknown")
         }
         println!("binary: {}", binary);
-        println!("commit-hash: {}", unw(commit_hash_str()));
-        println!("commit-date: {}", unw(commit_date_str()));
+        println!("commit-hash: {}", unw(util::commit_hash_str()));
+        println!("commit-date: {}", unw(util::commit_date_str()));
         println!("host: {}", config::host_triple());
-        println!("release: {}", unw(release_str()));
-        get_builtin_codegen_backend("llvm")().print_version();
+        println!("release: {}", unw(util::release_str()));
+        if cfg!(llvm) {
+            get_builtin_codegen_backend("llvm")().print_version();
+        }
     }
 }
 
@@ -1109,7 +1096,9 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
-        get_builtin_codegen_backend("llvm")().print_passes();
+        if cfg!(llvm) {
+            get_builtin_codegen_backend("llvm")().print_passes();
+        }
         return None;
     }
 
@@ -1237,7 +1226,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         format!("we would appreciate a bug report: {}", bug_report_url).into(),
         format!(
             "rustc {} running on {}",
-            option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+            util::version_str().unwrap_or("unknown_version"),
             config::host_triple()
         )
         .into(),

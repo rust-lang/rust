@@ -31,6 +31,7 @@ members = [
 ]
 exclude = [
   "build",
+  "compiler/rustc_codegen_cranelift",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
 ]

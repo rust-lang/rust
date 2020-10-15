@@ -16,6 +16,7 @@ ignore = [
     # do not format submodules
     "library/backtrace",
     "library/stdarch",
+    "compiler/rustc_codegen_cranelift",
     "src/doc/book",
     "src/doc/edition-guide",
     "src/doc/embedded-book",
