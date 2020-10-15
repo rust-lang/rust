@@ -717,6 +717,8 @@ where
             ty::Closure(_, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
+                substs.as_closure().tupled_upvars_ty().visit_with(self);
+
                 for upvar_ty in substs.as_closure().upvar_tys() {
                     upvar_ty.visit_with(self);
                 }
@@ -727,6 +729,8 @@ where
             ty::Generator(_, ref substs, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
+
+                substs.as_generator().tupled_upvars_ty().visit_with(self);
 
                 for upvar_ty in substs.as_generator().upvar_tys() {
                     upvar_ty.visit_with(self);

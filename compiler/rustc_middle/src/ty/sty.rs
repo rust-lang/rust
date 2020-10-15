@@ -656,6 +656,14 @@ impl<'tcx> UpvarSubsts<'tcx> {
         };
         tupled_upvars_ty.expect_ty().tuple_fields()
     }
+
+    #[inline]
+    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
+        match self {
+            UpvarSubsts::Closure(substs) => substs.as_closure().tupled_upvars_ty(),
+            UpvarSubsts::Generator(substs) => substs.as_generator().tupled_upvars_ty(),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, TyEncodable, TyDecodable)]

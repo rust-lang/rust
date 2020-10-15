@@ -1600,7 +1600,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Closure(_, substs) => {
                 // (*) binder moved here
-                Where(ty::Binder::bind(substs.as_closure().upvar_tys().collect()))
+                let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
+                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
+                    // Not yet resolved.
+                    Ambiguous
+                } else {
+                    Where(ty::Binder::bind(substs.as_closure().upvar_tys().collect()))
+                }
             }
 
             ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {
@@ -1669,11 +1675,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 tys.iter().map(|k| k.expect_ty()).collect()
             }
 
-            ty::Closure(_, ref substs) => substs.as_closure().upvar_tys().collect(),
+            ty::Closure(_, ref substs) => {
+                let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
+                vec![ty]
+            }
 
             ty::Generator(_, ref substs, _) => {
+                let ty = self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
                 let witness = substs.as_generator().witness();
-                substs.as_generator().upvar_tys().chain(iter::once(witness)).collect()
+                vec![ty].into_iter().chain(iter::once(witness)).collect()
             }
 
             ty::GeneratorWitness(types) => {

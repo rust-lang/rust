@@ -1308,6 +1308,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut generator = None;
         let mut outer_generator = None;
         let mut next_code = Some(&obligation.cause.code);
+
+        let mut seen_upvar_tys_infer_tuple = false;
+
         while let Some(code) = next_code {
             debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
             match code {
@@ -1328,6 +1331,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             outer_generator = Some(did);
                         }
                         ty::GeneratorWitness(..) => {}
+                        ty::Tuple(_) if !seen_upvar_tys_infer_tuple => {
+                            // By introducing a tuple of upvar types into the chain of obligations
+                            // of a generator, the first non-generator item is now the tuple itself,
+                            // we shall ignore this.
+
+                            seen_upvar_tys_infer_tuple = true;
+                        }
                         _ if generator.is_none() => {
                             trait_ref = Some(derived_obligation.parent_trait_ref.skip_binder());
                             target_ty = Some(ty);
@@ -1913,7 +1923,29 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                err.note(&format!("required because it appears within the type `{}`", ty));
+                // If the obligation for a tuple is set directly by a Generator or Closure,
+                // then the tuple must be the one containing capture types.
+                let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
+                    false
+                } else {
+                    if let ObligationCauseCode::BuiltinDerivedObligation(ref data) =
+                        *data.parent_code
+                    {
+                        let parent_trait_ref =
+                            self.resolve_vars_if_possible(&data.parent_trait_ref);
+                        let ty = parent_trait_ref.skip_binder().self_ty();
+                        matches!(ty.kind(), ty::Generator(..))
+                            || matches!(ty.kind(), ty::Closure(..))
+                    } else {
+                        false
+                    }
+                };
+
+                // Don't print the tuple of capture types
+                if !is_upvar_tys_infer_tuple {
+                    err.note(&format!("required because it appears within the type `{}`", ty));
+                }
+
                 obligated_types.push(ty);
 
                 let parent_predicate = parent_trait_ref.without_const().to_predicate(tcx);
