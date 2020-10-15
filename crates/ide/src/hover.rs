@@ -108,7 +108,7 @@ pub(crate) fn hover(
     let definition = match_ast! {
         match node {
             ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition(sema.db)),
-            ast::Name(name) => classify_name(&sema, &name).and_then(|d| d.into_definition(sema.db)),
+            ast::Name(name) => classify_name(&sema, &name).and_then(|d| d.definition(sema.db)),
             _ => None,
         }
     };

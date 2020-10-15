@@ -90,7 +90,7 @@ pub enum NameClass {
 }
 
 impl NameClass {
-    pub fn into_definition(self, db: &dyn HirDatabase) -> Option<Definition> {
+    pub fn definition(self, db: &dyn HirDatabase) -> Option<Definition> {
         Some(match self {
             NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) => it,
@@ -99,7 +99,7 @@ impl NameClass {
         })
     }
 
-    pub fn definition(self, db: &dyn HirDatabase) -> Definition {
+    pub fn definition_or_reference(self, db: &dyn HirDatabase) -> Definition {
         match self {
             NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
