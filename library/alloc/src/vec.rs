@@ -2979,16 +2979,18 @@ impl<T> IntoIter<T> {
     /// # Safety
     ///
     /// When a non-zero offset is passed the resulting Vec will have an uninitialized prefix
-    /// that needs to be filled before the Vec is valid again.
+    /// that needs to be filled before the Vec is valid again. Conversely this means
+    /// that passing `offset = 0` results in a Vec that's immediately valid.
     ///
     /// * `offset + self.len()` must not exceed `self.cap`
-    /// * `offset == 0` is always valid
-    /// * `offset` must be positive
+    /// * `offset >= 0`
     unsafe fn into_vec_with_uninit_prefix(self, offset: isize) -> Vec<T> {
-        debug_assert!(offset > 0);
+        debug_assert!(offset >= 0);
         debug_assert!(offset as usize + self.len() <= self.cap);
         let dst = unsafe { self.buf.as_ptr().offset(offset) };
         if self.ptr != dst as *const _ {
+            // Move the remaining items to the offset. Even when offset == 0 it can still be necessary
+            // to move the data if the iterator was partially consumed.
             unsafe { ptr::copy(self.ptr, dst, self.len()) }
         }
 
