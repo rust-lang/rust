@@ -1118,6 +1118,8 @@ mod prim_ref {}
 /// For more information and a list of supported ABIs, see [the nomicon's
 /// section on foreign calling conventions][nomicon-abi].
 ///
+/// [nomicon-abi]: ../nomicon/ffi.html#foreign-calling-conventions
+///
 /// ### Variadic functions
 ///
 /// Extern function declarations with the "C" or "cdecl" ABIs can also be *variadic*, allowing them
