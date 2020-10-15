@@ -1,4 +1,3 @@
-use crate::cell::UnsafeCell;
 use crate::mem;
 use crate::mem::MaybeUninit;
 use crate::sync::atomic::{AtomicU32, Ordering};
@@ -13,28 +12,25 @@ extern "C" {
 static mut RDLOCKS_ACQUIRED: u32 = 0;
 
 pub struct RWLock {
-    lock: UnsafeCell<AtomicU32>,
+    lock: AtomicU32,
 }
 
-pub unsafe fn raw(r: &RWLock) -> *mut AtomicU32 {
-    r.lock.get()
+pub unsafe fn raw(r: &RWLock) -> &AtomicU32 {
+    &r.lock
 }
 
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
-const NEW: RWLock = RWLock { lock: UnsafeCell::new(AtomicU32::new(abi::LOCK_UNLOCKED.0)) };
-
 impl RWLock {
     pub const fn new() -> RWLock {
-        NEW
+        RWLock { lock: AtomicU32::new(abi::LOCK_UNLOCKED.0) }
     }
 
     pub unsafe fn try_read(&self) -> bool {
-        let lock = self.lock.get();
         let mut old = abi::LOCK_UNLOCKED.0;
         while let Err(cur) =
-            (*lock).compare_exchange_weak(old, old + 1, Ordering::Acquire, Ordering::Relaxed)
+            self.lock.compare_exchange_weak(old, old + 1, Ordering::Acquire, Ordering::Relaxed)
         {
             if (cur & abi::LOCK_WRLOCKED.0) != 0 {
                 // Another thread already has a write lock.
@@ -61,12 +57,11 @@ impl RWLock {
     pub unsafe fn read(&self) {
         if !self.try_read() {
             // Call into the kernel to acquire a read lock.
-            let lock = self.lock.get();
             let subscription = abi::subscription {
                 type_: abi::eventtype::LOCK_RDLOCK,
                 union: abi::subscription_union {
                     lock: abi::subscription_lock {
-                        lock: lock as *mut abi::lock,
+                        lock: &self.lock as *const AtomicU32 as *mut abi::lock,
                         lock_scope: abi::scope::PRIVATE,
                     },
                 },
@@ -96,11 +91,10 @@ impl RWLock {
         assert!(RDLOCKS_ACQUIRED > 0, "Bad lock count");
         let mut old = 1;
         loop {
-            let lock = self.lock.get();
             if old == 1 | abi::LOCK_KERNEL_MANAGED.0 {
                 // Last read lock while threads are waiting. Attempt to upgrade
                 // to a write lock before calling into the kernel to unlock.
-                if let Err(cur) = (*lock).compare_exchange_weak(
+                if let Err(cur) = self.lock.compare_exchange_weak(
                     old,
                     __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0 | abi::LOCK_KERNEL_MANAGED.0,
                     Ordering::Acquire,
@@ -109,7 +103,10 @@ impl RWLock {
                     old = cur;
                 } else {
                     // Call into the kernel to unlock.
-                    let ret = abi::lock_unlock(lock as *mut abi::lock, abi::scope::PRIVATE);
+                    let ret = abi::lock_unlock(
+                        &self.lock as *const AtomicU32 as *mut abi::lock,
+                        abi::scope::PRIVATE,
+                    );
                     assert_eq!(ret, abi::errno::SUCCESS, "Failed to write unlock a rwlock");
                     break;
                 }
@@ -122,7 +119,7 @@ impl RWLock {
                     0,
                     "Attempted to read-unlock a write-locked rwlock"
                 );
-                if let Err(cur) = (*lock).compare_exchange_weak(
+                if let Err(cur) = self.lock.compare_exchange_weak(
                     old,
                     old - 1,
                     Ordering::Acquire,
@@ -140,8 +137,7 @@ impl RWLock {
 
     pub unsafe fn try_write(&self) -> bool {
         // Attempt to acquire the lock.
-        let lock = self.lock.get();
-        if let Err(old) = (*lock).compare_exchange(
+        if let Err(old) = self.lock.compare_exchange(
             abi::LOCK_UNLOCKED.0,
             __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
             Ordering::Acquire,
@@ -163,12 +159,11 @@ impl RWLock {
     pub unsafe fn write(&self) {
         if !self.try_write() {
             // Call into the kernel to acquire a write lock.
-            let lock = self.lock.get();
             let subscription = abi::subscription {
                 type_: abi::eventtype::LOCK_WRLOCK,
                 union: abi::subscription_union {
                     lock: abi::subscription_lock {
-                        lock: lock as *mut abi::lock,
+                        lock: &self.lock as *const AtomicU32 as *mut abi::lock,
                         lock_scope: abi::scope::PRIVATE,
                     },
                 },
@@ -184,14 +179,14 @@ impl RWLock {
     }
 
     pub unsafe fn write_unlock(&self) {
-        let lock = self.lock.get();
         assert_eq!(
-            (*lock).load(Ordering::Relaxed) & !abi::LOCK_KERNEL_MANAGED.0,
+            self.lock.load(Ordering::Relaxed) & !abi::LOCK_KERNEL_MANAGED.0,
             __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
             "This rwlock is not write-locked by this thread"
         );
 
-        if !(*lock)
+        if !self
+            .lock
             .compare_exchange(
                 __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
                 abi::LOCK_UNLOCKED.0,
@@ -202,15 +197,17 @@ impl RWLock {
         {
             // Lock is managed by kernelspace. Call into the kernel
             // to unblock waiting threads.
-            let ret = abi::lock_unlock(lock as *mut abi::lock, abi::scope::PRIVATE);
+            let ret = abi::lock_unlock(
+                &self.lock as *const AtomicU32 as *mut abi::lock,
+                abi::scope::PRIVATE,
+            );
             assert_eq!(ret, abi::errno::SUCCESS, "Failed to write unlock a rwlock");
         }
     }
 
     pub unsafe fn destroy(&self) {
-        let lock = self.lock.get();
         assert_eq!(
-            (*lock).load(Ordering::Relaxed),
+            self.lock.load(Ordering::Relaxed),
             abi::LOCK_UNLOCKED.0,
             "Attempted to destroy locked rwlock"
         );
