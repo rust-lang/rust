@@ -736,7 +736,7 @@ impl<'a, P: Pattern<'a>> Split<'a, P> {
     /// assert_eq!(split.as_str(), "");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "none")]
+    #[unstable(feature = "str_split_as_str", issue = "77998")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
@@ -757,7 +757,7 @@ impl<'a, P: Pattern<'a>> RSplit<'a, P> {
     /// assert_eq!(split.as_str(), "");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "none")]
+    #[unstable(feature = "str_split_as_str", issue = "77998")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
@@ -796,7 +796,7 @@ impl<'a, P: Pattern<'a>> SplitTerminator<'a, P> {
     /// assert_eq!(split.as_str(), "");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "none")]
+    #[unstable(feature = "str_split_as_str", issue = "77998")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
@@ -817,7 +817,7 @@ impl<'a, P: Pattern<'a>> RSplitTerminator<'a, P> {
     /// assert_eq!(split.as_str(), "");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "none")]
+    #[unstable(feature = "str_split_as_str", issue = "77998")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
@@ -919,7 +919,7 @@ impl<'a, P: Pattern<'a>> SplitN<'a, P> {
     /// assert_eq!(split.as_str(), "");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "none")]
+    #[unstable(feature = "str_split_as_str", issue = "77998")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
@@ -940,7 +940,7 @@ impl<'a, P: Pattern<'a>> RSplitN<'a, P> {
     /// assert_eq!(split.as_str(), "");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "none")]
+    #[unstable(feature = "str_split_as_str", issue = "77998")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
@@ -1292,7 +1292,7 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
     /// assert_eq!(split.as_str(), "");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_inclusive_as_str", issue = "none")]
+    #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
     pub fn as_str(&self) -> &'a str {
         self.0.as_str()
     }
