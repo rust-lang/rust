@@ -106,7 +106,7 @@ Caused by:
 ```
 it's not anything you did wrong. There is a workaround at [#77620].
 
-[#77620](https://github.com/rust-lang/rust/issues/77620#issuecomment-705228229)
+[#77620]: https://github.com/rust-lang/rust/issues/77620#issuecomment-705228229
 
 ## Conflicts
 
