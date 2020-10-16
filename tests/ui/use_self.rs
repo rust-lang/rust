@@ -3,7 +3,7 @@
 
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
-#![allow(clippy::should_implement_trait, clippy::upper_case_acronyms)]
+#![allow(clippy::should_implement_trait, clippy::upper_case_acronyms, clippy::from_over_into)]
 
 fn main() {}
 
@@ -15,15 +15,12 @@ mod use_self {
             Foo {}
         }
         fn test() -> Foo {
-            // FIXME: applicable here
             Foo::new()
         }
     }
 
     impl Default for Foo {
-        // FIXME: applicable here
         fn default() -> Foo {
-            // FIXME: applicable here
             Foo::new()
         }
     }
@@ -74,13 +71,12 @@ mod lifetimes {
 
 mod issue2894 {
     trait IntoBytes {
-        #[allow(clippy::wrong_self_convention)]
-        fn into_bytes(&self) -> Vec<u8>;
+        fn to_bytes(&self) -> Vec<u8>;
     }
 
     // This should not be linted
     impl IntoBytes for u8 {
-        fn into_bytes(&self) -> Vec<u8> {
+        fn to_bytes(&self) -> Vec<u8> {
             vec![*self]
         }
     }
@@ -90,10 +86,6 @@ mod existential {
     struct Foo;
 
     impl Foo {
-        // FIXME:
-        // TyKind::Def (used for `impl Trait` types) does not include type parameters yet.
-        // See documentation in rustc_hir::hir::TyKind.
-        // The hir tree walk stops at `impl Iterator` level and does not inspect &Foo.
         fn bad(foos: &[Foo]) -> impl Iterator<Item = &Foo> {
             foos.iter()
         }
@@ -215,9 +207,7 @@ mod rustfix {
         fn fun_1() {}
 
         fn fun_2() {
-            // FIXME: applicable here
             nested::A::fun_1();
-            // FIXME: applicable here
             nested::A::A;
 
             nested::A {};
@@ -239,7 +229,6 @@ mod issue3567 {
 
     impl Test for TestStruct {
         fn test() -> TestStruct {
-            // FIXME: applicable here
             TestStruct::from_something()
         }
     }
@@ -254,13 +243,11 @@ mod paths_created_by_lowering {
         const A: usize = 0;
         const B: usize = 1;
 
-        // FIXME: applicable here
         async fn g() -> S {
             S {}
         }
 
         fn f<'a>(&self, p: &'a [u8]) -> &'a [u8] {
-            // FIXME: applicable here twice
             &p[S::A..S::B]
         }
     }
@@ -381,7 +368,6 @@ mod issue4305 {
 
     impl<T: Foo> From<T> for Box<dyn Foo> {
         fn from(t: T) -> Self {
-            // FIXME: applicable here
             Box::new(t)
         }
     }
@@ -461,7 +447,6 @@ mod nested_paths {
 
     impl A<submod::C> {
         fn test() -> Self {
-            // FIXME: applicable here
             A::new::<submod::B>(submod::B {})
         }
     }

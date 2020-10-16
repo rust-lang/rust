@@ -18,35 +18,36 @@ trait SelfTrait {
 struct Bad;
 
 impl SelfTrait for Bad {
-    fn refs(p1: &Bad) -> &Bad {
+    fn refs(p1: &Self) -> &Self {
         p1
     }
 
-    fn ref_refs<'a>(p1: &'a &'a Bad) -> &'a &'a Bad {
+    fn ref_refs<'a>(p1: &'a &'a Self) -> &'a &'a Self {
         p1
     }
 
-    fn mut_refs(p1: &mut Bad) -> &mut Bad {
+    fn mut_refs(p1: &mut Self) -> &mut Self {
         p1
     }
 
-    fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
+    fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {}
 
-    fn vals(_: Bad) -> Bad {
-        Bad::default()
+    fn vals(_: Self) -> Self {
+        Self::default()
     }
 }
 
 impl Mul for Bad {
     type Output = Self;
 
-    fn mul(self, rhs: Bad) -> Bad {
+    fn mul(self, rhs: Self) -> Self {
         rhs
     }
 }
 
 impl Clone for Bad {
     fn clone(&self) -> Self {
+        // FIXME: applicable here
         Bad
     }
 }
