@@ -2288,11 +2288,19 @@ impl EarlyLintPass for IncompleteFeatures {
                             n, n,
                         ));
                     }
+                    if HAS_MIN_FEATURES.contains(&name) {
+                        builder.help(&format!(
+                            "consider using `min_{}` instead, which is more stable and complete",
+                            name,
+                        ));
+                    }
                     builder.emit();
                 })
             });
     }
 }
+
+const HAS_MIN_FEATURES: &[Symbol] = &[sym::const_generics, sym::specialization];
 
 declare_lint! {
     /// The `invalid_value` lint detects creating a value that is not valid,
