@@ -1701,10 +1701,13 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// The `dst` path will be a link pointing to the `src` path. Note that systems
 /// often require these two paths to both be located on the same filesystem.
 ///
+/// If `src` names a symbolic link, it is not followed. The created hard link
+/// points to the symbolic link itself.
+///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `link` function on Unix
-/// and the `CreateHardLink` function on Windows.
+/// This function currently corresponds to the `linkat` function with no flags
+/// on Unix and the `CreateHardLink` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior

@@ -1067,7 +1067,10 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     let src = cstr(src)?;
     let dst = cstr(dst)?;
-    cvt(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })?;
+    // Use `linkat` with `AT_FDCWD` instead of `link` as `link` leaves it
+    // implmentation-defined whether it follows symlinks. Pass 0 as the
+    // `linkat` flags argument so that we don't follow symlinks.
+    cvt(unsafe { libc::linkat(libc::AT_FDCWD, src.as_ptr(), libc::AT_FDCWD, dst.as_ptr(), 0) })?;
     Ok(())
 }
 
