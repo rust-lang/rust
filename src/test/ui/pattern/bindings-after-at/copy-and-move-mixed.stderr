@@ -1,5 +1,5 @@
 error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:12:19
+  --> $DIR/copy-and-move-mixed.rs:11:19
    |
 LL |     let a @ NC(b, c) = NC(C, C);
    |         ----------^-   -------- move occurs because value has type `NC<C, C>`, which does not implement the `Copy` trait
@@ -8,7 +8,7 @@ LL |     let a @ NC(b, c) = NC(C, C);
    |         value moved here
 
 error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:15:19
+  --> $DIR/copy-and-move-mixed.rs:14:19
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |         ----------^^^^^^^^^^^^-   --------------- move occurs because value has type `NC<C, NC<C, C>>`, which does not implement the `Copy` trait
@@ -17,7 +17,7 @@ LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |         value moved here
 
 error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:15:29
+  --> $DIR/copy-and-move-mixed.rs:14:29
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |                   ----------^-

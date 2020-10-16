@@ -1,5 +1,5 @@
 error[E0382]: use of moved value
-  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:10:12
+  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:9:12
    |
 LL | fn f(a @ A(u): A) -> Box<u8> {
    |      ------^-
