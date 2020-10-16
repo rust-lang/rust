@@ -260,16 +260,7 @@ If you get an error saying `No such file or directory: 'rust-analyzer'`, see the
 
 === GNOME Builder
 
-Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
-
-Gnome Builder currently has support for RLS, and there's no way to configure the language server executable. A future version might support `rust-analyzer` out of the box.
-
-1. Rename, symlink or copy the `rust-analyzer` binary to `rls` and place it somewhere Builder can find (in `PATH`, or under `~/.cargo/bin`).
-2. Enable the Rust Builder plugin.
-
-==== GNOME Builder (Nightly)
-
-https://nightly.gnome.org/repo/appstream/org.gnome.Builder.flatpakref[GNOME Builder (Nightly)] has now native support for `rust-analyzer` out of the box. If the `rust-analyzer` binary is not available, GNOME Builder can install it when opening a Rust source file.
+GNOME Builder 3.37.1 and newer has native `rust-analyzer` support. If the LSP binary is not available, GNOME Builder can install it when opening a Rust file.
 
 == Non-Cargo Based Projects
 
