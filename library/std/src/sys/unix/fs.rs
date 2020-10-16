@@ -787,11 +787,25 @@ impl File {
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
-        #[cfg(target_os = "linux")]
+        #[cfg(any(
+            target_os = "freebsd",
+            target_os = "linux",
+            target_os = "android",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fdatasync(fd)
         }
-        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "linux")))]
+        #[cfg(not(any(
+            target_os = "android",
+            target_os = "freebsd",
+            target_os = "ios",
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
