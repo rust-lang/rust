@@ -48,6 +48,7 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
+   = help: consider using `min_const_generics` instead, which is more stable and complete
 
 error: aborting due to 5 previous errors; 1 warning emitted
 
