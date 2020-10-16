@@ -68,7 +68,6 @@ enum N<F> where F: Fn() -> _ {
 
 union O<F> where F: Fn() -> _ {
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-//~| ERROR unions with non-`Copy` fields are unstable
     foo: F,
 }
 

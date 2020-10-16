@@ -1,5 +1,3 @@
-#![feature(untagged_unions)]
-
 #[derive(Eq)] // OK
 union U1 {
     a: u8,
@@ -7,7 +5,7 @@ union U1 {
 
 impl PartialEq for U1 { fn eq(&self, rhs: &Self) -> bool { true } }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 struct PartialEqNotEq;
 
 #[derive(Eq)]
