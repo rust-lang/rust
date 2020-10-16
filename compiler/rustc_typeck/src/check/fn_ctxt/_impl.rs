@@ -702,7 +702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fallback_has_occurred: bool,
         mutate_fullfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
-        let result = self.fulfillment_cx.borrow_mut().select_all_where_possible(self);
+        let result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
         if let Err(mut errors) = result {
             mutate_fullfillment_errors(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);

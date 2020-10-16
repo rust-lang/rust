@@ -11,6 +11,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemKind, Node};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
@@ -616,7 +617,7 @@ fn check_opaque_meets_bounds<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors, None, false);
         }
 

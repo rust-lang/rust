@@ -218,22 +218,16 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
-        let result = (|| {
-            self.select_where_possible(infcx)?;
+        self.select_where_possible(infcx)?;
 
-            let errors: Vec<_> = self
-                .predicates
-                .to_errors(CodeAmbiguity)
-                .into_iter()
-                .map(to_fulfillment_error)
-                .collect();
+        let errors: Vec<_> = self
+            .predicates
+            .to_errors(CodeAmbiguity)
+            .into_iter()
+            .map(to_fulfillment_error)
+            .collect();
 
-            if errors.is_empty() { Ok(()) } else { Err(errors) }
-        })();
-        if let Some(offset) = self.predicates.take_watcher_offset() {
-            infcx.deregister_unify_watcher(offset);
-        }
-        result
+        if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
 
     fn select_where_possible(
@@ -543,9 +537,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                                     stalled_on.extend(
                                         substs
                                             .types()
-                                            .filter_map(|arg| {
-                                                TyOrConstInferVar::maybe_from_generic_arg(arg)
-                                            })
+                                            .filter_map(|ty| TyOrConstInferVar::maybe_from_ty(ty))
                                             .map(|ty| infcx.root_ty_or_const(ty)),
                                     );
                                     Err(ErrorHandled::TooGeneric)
