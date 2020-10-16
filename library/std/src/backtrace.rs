@@ -303,7 +303,8 @@ impl Backtrace {
     // Capture a backtrace which start just before the function addressed by
     // `ip`
     fn create(ip: usize) -> Backtrace {
-        let _lock = lock();
+        // SAFETY: We don't attempt to lock this reentrantly.
+        let _lock = unsafe { lock() };
         let mut frames = Vec::new();
         let mut actual_start = None;
         unsafe {
@@ -408,7 +409,8 @@ impl Capture {
         // Use the global backtrace lock to synchronize this as it's a
         // requirement of the `backtrace` crate, and then actually resolve
         // everything.
-        let _lock = lock();
+        // SAFETY: We don't attempt to lock this reentrantly.
+        let _lock = unsafe { lock() };
         for frame in self.frames.iter_mut() {
             let symbols = &mut frame.symbols;
             let frame = match &frame.frame {
