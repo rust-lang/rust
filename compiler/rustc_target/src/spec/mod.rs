@@ -430,48 +430,23 @@ impl fmt::Display for LinkOutputKind {
     }
 }
 
-pub enum LoadTargetError {
-    BuiltinTargetNotFound(String),
-    Other(String),
-}
-
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
-pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
     ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
         $(mod $module;)+
 
         /// List of supported targets
-        const TARGETS: &[&str] = &[$($($triple),+),+];
+        pub const TARGETS: &[&str] = &[$($($triple),+),+];
 
-        fn load_specific(target: &str) -> Result<Target, LoadTargetError> {
-            match target {
-                $(
-                    $($triple)|+ => {
-                        let mut t = $module::target()
-                            .map_err(LoadTargetError::Other)?;
-                        t.options.is_builtin = true;
-
-                        // round-trip through the JSON parser to ensure at
-                        // run-time that the parser works correctly
-                        t = Target::from_json(t.to_json())
-                            .map_err(LoadTargetError::Other)?;
-                        debug!("got builtin target: {:?}", t);
-                        Ok(t)
-                    },
-                )+
-                    _ => Err(LoadTargetError::BuiltinTargetNotFound(
-                        format!("Unable to find target: {}", target)))
-            }
-        }
-
-        pub fn get_targets() -> impl Iterator<Item = String> {
-            TARGETS.iter().filter_map(|t| -> Option<String> {
-                load_specific(t)
-                    .and(Ok(t.to_string()))
-                    .ok()
-            })
+        fn load_builtin(target: &str) -> Option<Target> {
+            let mut t = match target {
+                $( $($triple)|+ => $module::target(), )+
+                _ => return None,
+            };
+            t.options.is_builtin = true;
+            debug!("got builtin target: {:?}", t);
+            Some(t)
         }
 
         #[cfg(test)]
@@ -690,8 +665,8 @@ pub struct Target {
     pub llvm_target: String,
     /// String to use as the `target_endian` `cfg` variable.
     pub target_endian: String,
-    /// String to use as the `target_pointer_width` `cfg` variable.
-    pub target_pointer_width: String,
+    /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
+    pub pointer_width: u32,
     /// Width of c_int type
     pub target_c_int_width: String,
     /// OS name to use for conditional compilation.
@@ -841,6 +816,9 @@ pub struct TargetOptions {
     pub is_like_emscripten: bool,
     /// Whether the target toolchain is like Fuchsia's.
     pub is_like_fuchsia: bool,
+    /// Version of DWARF to use if not using the default.
+    /// Useful because some platforms (osx, bsd) only want up to DWARF2.
+    pub dwarf_version: Option<u32>,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
@@ -994,6 +972,10 @@ pub struct TargetOptions {
     /// used to locate unwinding information is passed
     /// (only has effect if the linker is `ld`-like).
     pub eh_frame_header: bool,
+
+    /// Is true if the target is an ARM architecture using thumb v1 which allows for
+    /// thumb and arm interworking.
+    pub has_thumb_interworking: bool,
 }
 
 impl Default for TargetOptions {
@@ -1033,6 +1015,7 @@ impl Default for TargetOptions {
             is_like_emscripten: false,
             is_like_msvc: false,
             is_like_fuchsia: false,
+            dwarf_version: None,
             linker_is_gnu: false,
             allows_weak_linkage: true,
             has_rpath: false,
@@ -1086,6 +1069,7 @@ impl Default for TargetOptions {
             llvm_args: vec![],
             use_ctors_section: false,
             eh_frame_header: true,
+            has_thumb_interworking: false,
         }
     }
 }
@@ -1127,7 +1111,7 @@ impl Target {
     /// Maximum integer size in bits that this target can perform atomic
     /// operations on.
     pub fn max_atomic_width(&self) -> u64 {
-        self.options.max_atomic_width.unwrap_or_else(|| self.target_pointer_width.parse().unwrap())
+        self.options.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
     }
 
     pub fn is_abi_supported(&self, abi: Abi) -> bool {
@@ -1135,7 +1119,7 @@ impl Target {
     }
 
     /// Loads a target descriptor from a JSON object.
-    pub fn from_json(obj: Json) -> TargetResult {
+    pub fn from_json(obj: Json) -> Result<Target, String> {
         // While ugly, this code must remain this way to retain
         // compatibility with existing JSON fields and the internal
         // expected naming of the Target and TargetOptions structs.
@@ -1160,7 +1144,9 @@ impl Target {
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?,
             target_endian: get_req_field("target-endian")?,
-            target_pointer_width: get_req_field("target-pointer-width")?,
+            pointer_width: get_req_field("target-pointer-width")?
+                .parse::<u32>()
+                .map_err(|_| "target-pointer-width must be an integer".to_string())?,
             target_c_int_width: get_req_field("target-c-int-width")?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
@@ -1183,6 +1169,15 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.find(&name).and_then(Json::as_boolean) {
                     base.options.$key_name = s;
+                }
+            } );
+            ($key_name:ident, Option<u32>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(s) = obj.find(&name).and_then(Json::as_u64) {
+                    if s < 1 || s > 5 {
+                        return Err("Not a valid DWARF version number".to_string());
+                    }
+                    base.options.$key_name = Some(s as u32);
                 }
             } );
             ($key_name:ident, Option<u64>) => ( {
@@ -1437,6 +1432,7 @@ impl Target {
         key!(is_like_emscripten, bool);
         key!(is_like_android, bool);
         key!(is_like_fuchsia, bool);
+        key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
@@ -1479,6 +1475,7 @@ impl Target {
         key!(llvm_args, list);
         key!(use_ctors_section, bool);
         key!(eh_frame_header, bool);
+        key!(has_thumb_interworking, bool);
 
         // NB: The old name is deprecated, but support for it is retained for
         // compatibility.
@@ -1531,11 +1528,9 @@ impl Target {
 
         match *target_triple {
             TargetTriple::TargetTriple(ref target_triple) => {
-                // check if triple is in list of supported targets
-                match load_specific(target_triple) {
-                    Ok(t) => return Ok(t),
-                    Err(LoadTargetError::BuiltinTargetNotFound(_)) => (),
-                    Err(LoadTargetError::Other(e)) => return Err(e),
+                // check if triple is in list of built-in targets
+                if let Some(t) = load_builtin(target_triple) {
+                    return Ok(t);
                 }
 
                 // search for a file named `target_triple`.json in RUST_TARGET_PATH
@@ -1624,7 +1619,7 @@ impl ToJson for Target {
 
         target_val!(llvm_target);
         target_val!(target_endian);
-        target_val!(target_pointer_width);
+        d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
         target_val!(target_c_int_width);
         target_val!(arch);
         target_val!(target_os, "os");
@@ -1675,6 +1670,7 @@ impl ToJson for Target {
         target_option_val!(is_like_emscripten);
         target_option_val!(is_like_android);
         target_option_val!(is_like_fuchsia);
+        target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
@@ -1717,6 +1713,7 @@ impl ToJson for Target {
         target_option_val!(llvm_args);
         target_option_val!(use_ctors_section);
         target_option_val!(eh_frame_header);
+        target_option_val!(has_thumb_interworking);
 
         if default.unsupported_abis != self.options.unsupported_abis {
             d.insert(

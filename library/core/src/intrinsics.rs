@@ -1072,7 +1072,7 @@ extern "rust-intrinsic" {
     // NOTE: While this makes the intrinsic const stable, we have some custom code in const fn
     // checks that prevent its use within `const fn`.
     #[rustc_const_stable(feature = "const_transmute", since = "1.46.0")]
-    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "transmute")]
+    #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop
@@ -1082,7 +1082,7 @@ extern "rust-intrinsic" {
     /// If the actual type neither requires drop glue nor implements
     /// `Copy`, then the return value of this function is unspecified.
     ///
-    /// The stabilized version of this intrinsic is [`needs_drop`].
+    /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
     pub fn needs_drop<T>() -> bool;
 

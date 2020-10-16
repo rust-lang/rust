@@ -9,9 +9,7 @@ pub fn find_library(name: Symbol, search_paths: &[PathBuf], sess: &Session) -> P
     // times show up as foo.lib
     let oslibname = format!(
         "{}{}{}",
-        sess.target.target.options.staticlib_prefix,
-        name,
-        sess.target.target.options.staticlib_suffix
+        sess.target.options.staticlib_prefix, name, sess.target.options.staticlib_suffix
     );
     let unixlibname = format!("lib{}.a", name);
 

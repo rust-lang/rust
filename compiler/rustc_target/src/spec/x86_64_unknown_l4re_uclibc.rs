@@ -1,14 +1,14 @@
-use crate::spec::{LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::l4re_base::opts();
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
 
-    Ok(Target {
+    Target {
         llvm_target: "x86_64-unknown-l4re-uclibc".to_string(),
         target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
+        pointer_width: 64,
         target_c_int_width: "32".to_string(),
         data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
             .to_string(),
@@ -18,5 +18,5 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Ld,
         options: base,
-    })
+    }
 }

@@ -102,7 +102,7 @@ impl Mul<usize> for Limit {
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {
-    pub target: config::Config,
+    pub target: Target,
     pub host: Target,
     pub opts: config::Options,
     pub host_tlib_path: SearchPath,
@@ -614,7 +614,7 @@ impl Session {
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
         // If our target has codegen requirements ignore the command line
-        if self.target.target.options.requires_lto {
+        if self.target.options.requires_lto {
             return config::Lto::Fat;
         }
 
@@ -682,7 +682,7 @@ impl Session {
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
     pub fn panic_strategy(&self) -> PanicStrategy {
-        self.opts.cg.panic.unwrap_or(self.target.target.options.panic_strategy)
+        self.opts.cg.panic.unwrap_or(self.target.options.panic_strategy)
     }
     pub fn fewer_names(&self) -> bool {
         let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
@@ -706,9 +706,9 @@ impl Session {
 
     /// Check whether this compile session and crate type use static crt.
     pub fn crt_static(&self, crate_type: Option<CrateType>) -> bool {
-        if !self.target.target.options.crt_static_respected {
+        if !self.target.options.crt_static_respected {
             // If the target does not opt in to crt-static support, use its default.
-            return self.target.target.options.crt_static_default;
+            return self.target.options.crt_static_default;
         }
 
         let requested_features = self.opts.cg.target_feature.split(',');
@@ -725,20 +725,20 @@ impl Session {
             // We can't check `#![crate_type = "proc-macro"]` here.
             false
         } else {
-            self.target.target.options.crt_static_default
+            self.target.options.crt_static_default
         }
     }
 
     pub fn relocation_model(&self) -> RelocModel {
-        self.opts.cg.relocation_model.unwrap_or(self.target.target.options.relocation_model)
+        self.opts.cg.relocation_model.unwrap_or(self.target.options.relocation_model)
     }
 
     pub fn code_model(&self) -> Option<CodeModel> {
-        self.opts.cg.code_model.or(self.target.target.options.code_model)
+        self.opts.cg.code_model.or(self.target.options.code_model)
     }
 
     pub fn tls_model(&self) -> TlsModel {
-        self.opts.debugging_opts.tls_model.unwrap_or(self.target.target.options.tls_model)
+        self.opts.debugging_opts.tls_model.unwrap_or(self.target.options.tls_model)
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
@@ -749,7 +749,7 @@ impl Session {
         } else if let Some(x) = self.opts.cg.force_frame_pointers {
             x
         } else {
-            !self.target.target.options.eliminate_frame_pointer
+            !self.target.options.eliminate_frame_pointer
         }
     }
 
@@ -773,7 +773,7 @@ impl Session {
         // value, if it is provided, or disable them, if not.
         if self.panic_strategy() == PanicStrategy::Unwind {
             true
-        } else if self.target.target.options.requires_uwtable {
+        } else if self.target.options.requires_uwtable {
             true
         } else {
             self.opts.cg.force_unwind_tables.unwrap_or(false)
@@ -944,7 +944,7 @@ impl Session {
         if let Some(n) = self.opts.cli_forced_codegen_units {
             return n;
         }
-        if let Some(n) = self.target.target.options.default_codegen_units {
+        if let Some(n) = self.target.options.default_codegen_units {
             return n as usize;
         }
 
@@ -1029,11 +1029,11 @@ impl Session {
     pub fn needs_plt(&self) -> bool {
         // Check if the current target usually needs PLT to be enabled.
         // The user can use the command line flag to override it.
-        let needs_plt = self.target.target.options.needs_plt;
+        let needs_plt = self.target.options.needs_plt;
 
         let dbg_opts = &self.opts.debugging_opts;
 
-        let relro_level = dbg_opts.relro_level.unwrap_or(self.target.target.options.relro_level);
+        let relro_level = dbg_opts.relro_level.unwrap_or(self.target.options.relro_level);
 
         // Only enable this optimization by default if full relro is also enabled.
         // In this case, lazy binding was already unavailable, so nothing is lost.
@@ -1057,8 +1057,7 @@ impl Session {
         match self.opts.cg.link_dead_code {
             Some(explicitly_set) => explicitly_set,
             None => {
-                self.opts.debugging_opts.instrument_coverage
-                    && !self.target.target.options.is_like_msvc
+                self.opts.debugging_opts.instrument_coverage && !self.target.options.is_like_msvc
                 // Issue #76038: (rustc `-Clink-dead-code` causes MSVC linker to produce invalid
                 // binaries when LLVM InstrProf counters are enabled). As described by this issue,
                 // the "link dead code" option produces incorrect binaries when compiled and linked
@@ -1259,7 +1258,7 @@ pub fn build_session(
 
     let loader = file_loader.unwrap_or(Box::new(RealFileLoader));
     let hash_kind = sopts.debugging_opts.src_hash_algorithm.unwrap_or_else(|| {
-        if target_cfg.target.options.is_like_msvc {
+        if target_cfg.options.is_like_msvc {
             SourceFileHashAlgorithm::Sha1
         } else {
             SourceFileHashAlgorithm::Md5
@@ -1369,8 +1368,8 @@ pub fn build_session(
         if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
     };
 
-    let asm_arch = if target_cfg.target.options.allow_asm {
-        InlineAsmArch::from_str(&target_cfg.target.arch).ok()
+    let asm_arch = if target_cfg.options.allow_asm {
+        InlineAsmArch::from_str(&target_cfg.arch).ok()
     } else {
         None
     };
@@ -1438,7 +1437,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // the `dllimport` attributes and `__imp_` symbols in that case.
     if sess.opts.cg.linker_plugin_lto.enabled()
         && sess.opts.cg.prefer_dynamic
-        && sess.target.target.options.is_like_windows
+        && sess.target.options.is_like_windows
     {
         sess.err(
             "Linker plugin based LTO is not supported together with \
@@ -1466,7 +1465,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             );
         }
 
-        if sess.target.target.options.requires_uwtable && !include_uwtables {
+        if sess.target.options.requires_uwtable && !include_uwtables {
             sess.err(
                 "target requires unwind tables, they cannot be disabled with \
                      `-C force-unwind-tables=no`.",
@@ -1481,7 +1480,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // We should only display this error if we're actually going to run PGO.
     // If we're just supposed to print out some data, don't show the error (#61002).
     if sess.opts.cg.profile_generate.enabled()
-        && sess.target.target.options.is_like_msvc
+        && sess.target.options.is_like_msvc
         && sess.panic_strategy() == PanicStrategy::Unwind
         && sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs)
     {
@@ -1586,5 +1585,3 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
     handler.struct_warn(msg).emit();
 }
-
-pub type CompileResult = Result<(), ErrorReported>;

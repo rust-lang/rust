@@ -120,8 +120,7 @@ fn parse_assert<'a>(
         };
 
     if parser.token != token::Eof {
-        parser.expect_one_of(&[], &[])?;
-        unreachable!();
+        return parser.unexpected();
     }
 
     Ok(Assert { cond_expr, custom_message })

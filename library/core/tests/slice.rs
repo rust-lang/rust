@@ -1571,7 +1571,7 @@ fn sort_unstable() {
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(miri, ignore)] // Miri is too slow
-fn partition_at_index() {
+fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
@@ -1597,7 +1597,7 @@ fn partition_at_index() {
                 // Sort in default order.
                 for pivot in 0..len {
                     let mut v = orig.clone();
-                    v.partition_at_index(pivot);
+                    v.select_nth_unstable(pivot);
 
                     assert_eq!(v_sorted[pivot], v[pivot]);
                     for i in 0..pivot {
@@ -1610,7 +1610,7 @@ fn partition_at_index() {
                 // Sort in ascending order.
                 for pivot in 0..len {
                     let mut v = orig.clone();
-                    let (left, pivot, right) = v.partition_at_index_by(pivot, |a, b| a.cmp(b));
+                    let (left, pivot, right) = v.select_nth_unstable_by(pivot, |a, b| a.cmp(b));
 
                     assert_eq!(left.len() + right.len(), len - 1);
 
@@ -1633,7 +1633,7 @@ fn partition_at_index() {
 
                 for pivot in 0..len {
                     let mut v = orig.clone();
-                    v.partition_at_index_by(pivot, sort_descending_comparator);
+                    v.select_nth_unstable_by(pivot, sort_descending_comparator);
 
                     assert_eq!(v_sorted_descending[pivot], v[pivot]);
                     for i in 0..pivot {
@@ -1654,7 +1654,7 @@ fn partition_at_index() {
     }
 
     for pivot in 0..v.len() {
-        v.partition_at_index_by(pivot, |_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+        v.select_nth_unstable_by(pivot, |_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
         v.sort();
         for i in 0..v.len() {
             assert_eq!(v[i], i as i32);
@@ -1662,28 +1662,28 @@ fn partition_at_index() {
     }
 
     // Should not panic.
-    [(); 10].partition_at_index(0);
-    [(); 10].partition_at_index(5);
-    [(); 10].partition_at_index(9);
-    [(); 100].partition_at_index(0);
-    [(); 100].partition_at_index(50);
-    [(); 100].partition_at_index(99);
+    [(); 10].select_nth_unstable(0);
+    [(); 10].select_nth_unstable(5);
+    [(); 10].select_nth_unstable(9);
+    [(); 100].select_nth_unstable(0);
+    [(); 100].select_nth_unstable(50);
+    [(); 100].select_nth_unstable(99);
 
     let mut v = [0xDEADBEEFu64];
-    v.partition_at_index(0);
+    v.select_nth_unstable(0);
     assert!(v == [0xDEADBEEF]);
 }
 
 #[test]
 #[should_panic(expected = "index 0 greater than length of slice")]
-fn partition_at_index_zero_length() {
-    [0i32; 0].partition_at_index(0);
+fn select_nth_unstable_zero_length() {
+    [0i32; 0].select_nth_unstable(0);
 }
 
 #[test]
 #[should_panic(expected = "index 20 greater than length of slice")]
-fn partition_at_index_past_length() {
-    [0i32; 10].partition_at_index(20);
+fn select_nth_unstable_past_length() {
+    [0i32; 10].select_nth_unstable(20);
 }
 
 pub mod memchr {

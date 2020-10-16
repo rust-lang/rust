@@ -6,7 +6,7 @@
 pub struct Vector<T, const N: usize>([T; N]);
 
 pub type TruncatedVector<T, const N: usize> = Vector<T, { N - 1 }>;
-//[min]~^ ERROR generic parameters must not be used inside of non-trivial constant values
+//[min]~^ ERROR generic parameters may not be used in const operations
 
 impl<T, const N: usize> Vector<T, { N }> {
     /// Drop the last component and return the vector with one fewer dimension.

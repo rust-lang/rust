@@ -21,7 +21,6 @@ extern crate tracing;
 extern crate rustc_middle;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::LangItem;
@@ -134,7 +133,6 @@ pub struct CodegenResults {
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
     pub metadata_module: Option<CompiledModule>,
-    pub crate_hash: Svh,
     pub metadata: rustc_middle::middle::cstore::EncodedMetadata,
     pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo,
@@ -144,6 +142,7 @@ pub struct CodegenResults {
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide_both(providers);
+    crate::target_features::provide(providers);
 }
 
 pub fn provide_extern(providers: &mut Providers) {

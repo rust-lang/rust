@@ -588,8 +588,10 @@ where
                 kind: TerminatorKind::SwitchInt {
                     discr: Operand::Move(discr),
                     switch_ty: discr_ty,
-                    values: From::from(values.to_owned()),
-                    targets: blocks,
+                    targets: SwitchTargets::new(
+                        values.iter().copied().zip(blocks.iter().copied()),
+                        *blocks.last().unwrap(),
+                    ),
                 },
             }),
             is_cleanup: unwind.is_cleanup(),
@@ -758,8 +760,6 @@ where
         let elem_size = Place::from(self.new_temp(tcx.types.usize));
         let len = Place::from(self.new_temp(tcx.types.usize));
 
-        static USIZE_SWITCH_ZERO: &[u128] = &[0];
-
         let base_block = BasicBlockData {
             statements: vec![
                 self.assign(elem_size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
@@ -771,11 +771,11 @@ where
                 kind: TerminatorKind::SwitchInt {
                     discr: move_(elem_size),
                     switch_ty: tcx.types.usize,
-                    values: From::from(USIZE_SWITCH_ZERO),
-                    targets: vec![
+                    targets: SwitchTargets::static_if(
+                        0,
                         self.drop_loop_pair(ety, false, len),
                         self.drop_loop_pair(ety, true, len),
-                    ],
+                    ),
                 },
             }),
         };

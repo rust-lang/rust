@@ -313,27 +313,6 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
         Ok(ty)
     }
 
-    fn cached_predicate_for_shorthand<F>(
-        &mut self,
-        shorthand: usize,
-        or_insert_with: F,
-    ) -> Result<ty::Predicate<'tcx>, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<ty::Predicate<'tcx>, Self::Error>,
-    {
-        let tcx = self.tcx();
-
-        let key = ty::CReaderCacheKey { cnum: self.cdata().cnum, pos: shorthand };
-
-        if let Some(&pred) = tcx.pred_rcache.borrow().get(&key) {
-            return Ok(pred);
-        }
-
-        let pred = or_insert_with(self)?;
-        tcx.pred_rcache.borrow_mut().insert(key, pred);
-        Ok(pred)
-    }
-
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,

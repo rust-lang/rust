@@ -218,7 +218,7 @@ enum ResolutionError<'a> {
     ParamInTyOfConstParam(Symbol),
     /// constant values inside of type parameter defaults must not depend on generic parameters.
     ParamInAnonConstInTyDefault(Symbol),
-    /// generic parameters must not be used inside of non-trivial constant values.
+    /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
     ParamInNonTrivialAnonConst { name: Symbol, is_type: bool },

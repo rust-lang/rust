@@ -276,7 +276,7 @@ impl<T: ?Sized> Mutex<T> {
     /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return failure if the mutex would otherwise be
+    /// this call will return an error if the mutex would otherwise be
     /// acquired.
     ///
     /// # Examples

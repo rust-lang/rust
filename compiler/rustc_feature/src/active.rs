@@ -526,10 +526,6 @@ declare_features! (
     /// For example, you can write `x @ Some(y)`.
     (active, bindings_after_at, "1.41.0", Some(65490), None),
 
-    /// Allows patterns with concurrent by-move and by-ref bindings.
-    /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
-    (active, move_ref_pattern, "1.42.0", Some(68354), None),
-
     /// Allows `impl const Trait for T` syntax.
     (active, const_trait_impl, "1.42.0", Some(67792), None),
 
@@ -595,6 +591,12 @@ declare_features! (
 
     /// Allows rustc to inject a default alloc_error_handler
     (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
+
+    /// Allows argument and return position `impl Trait` in a `const fn`.
+    (active, const_impl_trait, "1.48.0", Some(77463), None),
+
+    /// Allows `#[instruction_set(_)]` attribute
+    (active, isa_attribute, "1.48.0", Some(74727), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

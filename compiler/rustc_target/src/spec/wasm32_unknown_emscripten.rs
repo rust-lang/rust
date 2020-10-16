@@ -1,7 +1,7 @@
 use super::wasm32_base;
 use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
-pub fn target() -> Result<Target, String> {
+pub fn target() -> Target {
     let mut post_link_args = LinkArgs::new();
     post_link_args.insert(
         LinkerFlavor::Em,
@@ -28,10 +28,10 @@ pub fn target() -> Result<Target, String> {
         target_family: Some("unix".to_string()),
         ..wasm32_base::options()
     };
-    Ok(Target {
+    Target {
         llvm_target: "wasm32-unknown-emscripten".to_string(),
         target_endian: "little".to_string(),
-        target_pointer_width: "32".to_string(),
+        pointer_width: 32,
         target_c_int_width: "32".to_string(),
         target_os: "emscripten".to_string(),
         target_env: String::new(),
@@ -40,5 +40,5 @@ pub fn target() -> Result<Target, String> {
         arch: "wasm32".to_string(),
         linker_flavor: LinkerFlavor::Em,
         options: opts,
-    })
+    }
 }

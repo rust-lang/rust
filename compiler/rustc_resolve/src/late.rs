@@ -384,6 +384,13 @@ struct DiagnosticMetadata<'ast> {
 
     /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
     in_if_condition: Option<&'ast Expr>,
+
+    /// If we are currently in a trait object definition. Used to point at the bounds when
+    /// encountering a struct or enum.
+    current_trait_object: Option<&'ast [ast::GenericBound]>,
+
+    /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
+    current_where_predicate: Option<&'ast WherePredicate>,
 }
 
 struct LateResolutionVisitor<'a, 'b, 'ast> {
@@ -453,6 +460,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.diagnostic_metadata.current_let_binding = original;
     }
     fn visit_ty(&mut self, ty: &'ast Ty) {
+        let prev = self.diagnostic_metadata.current_trait_object;
         match ty.kind {
             TyKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
@@ -464,9 +472,13 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     .map_or(Res::Err, |d| d.res());
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
             }
+            TyKind::TraitObject(ref bounds, ..) => {
+                self.diagnostic_metadata.current_trait_object = Some(&bounds[..]);
+            }
             _ => (),
         }
         visit::walk_ty(self, ty);
+        self.diagnostic_metadata.current_trait_object = prev;
     }
     fn visit_poly_trait_ref(&mut self, tref: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
         self.smart_resolve_path(
@@ -659,6 +671,14 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             GenericArg::Const(ct) => self.visit_anon_const(ct),
         }
         self.diagnostic_metadata.currently_processing_generics = prev;
+    }
+
+    fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
+        debug!("visit_where_predicate {:?}", p);
+        let previous_value =
+            replace(&mut self.diagnostic_metadata.current_where_predicate, Some(p));
+        visit::walk_where_predicate(self, p);
+        self.diagnostic_metadata.current_where_predicate = previous_value;
     }
 }
 

@@ -1,10 +1,8 @@
 use crate::spec::abi::Abi;
-use crate::spec::{
-    LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOptions, TargetResult,
-};
+use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         arch: "nvptx64".to_string(),
         data_layout: "e-i64:64-i128:128-v16:16-v32:32-n16:32:64".to_string(),
         llvm_target: "nvptx64-nvidia-cuda".to_string(),
@@ -16,7 +14,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::PtxLinker,
 
         target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
+        pointer_width: 64,
         target_c_int_width: "32".to_string(),
 
         options: TargetOptions {
@@ -71,5 +69,5 @@ pub fn target() -> TargetResult {
 
             ..Default::default()
         },
-    })
+    }
 }

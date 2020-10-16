@@ -2,6 +2,7 @@
 
 use super::method::MethodCallee;
 use super::FnCtxt;
+use rustc_ast as ast;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -13,6 +14,7 @@ use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, 
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable, TypeVisitor,
 };
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -673,6 +675,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match actual.kind() {
                         Uint(_) if op == hir::UnOp::UnNeg => {
                             err.note("unsigned values cannot be negated");
+
+                            if let hir::ExprKind::Unary(
+                                _,
+                                hir::Expr {
+                                    kind:
+                                        hir::ExprKind::Lit(Spanned {
+                                            node: ast::LitKind::Int(1, _),
+                                            ..
+                                        }),
+                                    ..
+                                },
+                            ) = ex.kind
+                            {
+                                err.span_suggestion(
+                                    ex.span,
+                                    &format!(
+                                        "you may have meant the maximum value of `{}`",
+                                        actual
+                                    ),
+                                    format!("{}::MAX", actual),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         }
                         Str | Never | Char | Tuple(_) | Array(_, _) => {}
                         Ref(_, ref lty, _) if *lty.kind() == Str => {}

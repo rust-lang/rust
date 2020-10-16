@@ -8,7 +8,6 @@
 // this would create problems for the generalization aforementioned.
 
 #![feature(bindings_after_at)]
-#![feature(move_ref_pattern)]
 
 fn main() {
     struct NotCopy;

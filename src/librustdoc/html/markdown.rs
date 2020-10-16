@@ -43,7 +43,7 @@ use pulldown_cmark::{html, BrokenLink, CodeBlockKind, CowStr, Event, Options, Pa
 #[cfg(test)]
 mod tests;
 
-fn opts() -> Options {
+pub(crate) fn opts() -> Options {
     Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES | Options::ENABLE_STRIKETHROUGH
 }
 

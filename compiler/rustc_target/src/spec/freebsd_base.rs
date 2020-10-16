@@ -26,6 +26,7 @@ pub fn opts() -> TargetOptions {
         eliminate_frame_pointer: false, // FIXME 43575
         relro_level: RelroLevel::Full,
         abi_return_struct_as_int: true,
+        dwarf_version: Some(2),
         ..Default::default()
     }
 }

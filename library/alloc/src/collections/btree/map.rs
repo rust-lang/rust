@@ -1783,6 +1783,10 @@ impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
 
     /// Implementation of a typical `DrainFilter::size_hint` method.
     pub(super) fn size_hint(&self) -> (usize, Option<usize>) {
+        // In most of the btree iterators, `self.length` is the number of elements
+        // yet to be visited. Here, it includes elements that were visited and that
+        // the predicate decided not to drain. Making this upper bound more accurate
+        // requires maintaining an extra field and is not worth while.
         (0, Some(*self.length))
     }
 }

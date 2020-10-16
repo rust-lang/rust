@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(const_fn, generators, generator_trait, type_alias_impl_trait)]
+#![feature(const_impl_trait, generators, generator_trait, type_alias_impl_trait)]
 
 use std::ops::Generator;
 

@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `arr[..]` because it is borrowed
-  --> $DIR/borrowck-move-ref-pattern.rs:10:24
+  --> $DIR/borrowck-move-ref-pattern.rs:8:24
    |
 LL |     let hold_all = &arr;
    |                    ---- borrow of `arr` occurs here
@@ -10,7 +10,7 @@ LL |     drop(hold_all);
    |          -------- borrow later used here
 
 error[E0384]: cannot assign twice to immutable variable `_x1`
-  --> $DIR/borrowck-move-ref-pattern.rs:11:5
+  --> $DIR/borrowck-move-ref-pattern.rs:9:5
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
    |                        ---
@@ -21,7 +21,7 @@ LL |     _x1 = U;
    |     ^^^^^^^ cannot assign twice to immutable variable
 
 error[E0505]: cannot move out of `arr[..]` because it is borrowed
-  --> $DIR/borrowck-move-ref-pattern.rs:13:10
+  --> $DIR/borrowck-move-ref-pattern.rs:11:10
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
    |          ------------ borrow of `arr[..]` occurs here
@@ -32,7 +32,7 @@ LL |     drop(_x0_hold);
    |          -------- borrow later used here
 
 error[E0502]: cannot borrow `arr[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-move-ref-pattern.rs:15:16
+  --> $DIR/borrowck-move-ref-pattern.rs:13:16
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
    |                             ---------------- immutable borrow occurs here
@@ -44,7 +44,7 @@ LL |     drop(xs_hold);
    |          ------- immutable borrow later used here
 
 error[E0505]: cannot move out of `arr[..]` because it is borrowed
-  --> $DIR/borrowck-move-ref-pattern.rs:15:29
+  --> $DIR/borrowck-move-ref-pattern.rs:13:29
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
    |                             ---------------- borrow of `arr[..]` occurs here
@@ -56,7 +56,7 @@ LL |     drop(xs_hold);
    |          ------- borrow later used here
 
 error[E0505]: cannot move out of `arr[..]` because it is borrowed
-  --> $DIR/borrowck-move-ref-pattern.rs:15:34
+  --> $DIR/borrowck-move-ref-pattern.rs:13:34
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
    |                             ---------------- borrow of `arr[..]` occurs here
@@ -68,7 +68,7 @@ LL |     drop(xs_hold);
    |          ------- borrow later used here
 
 error[E0384]: cannot assign twice to immutable variable `_x1`
-  --> $DIR/borrowck-move-ref-pattern.rs:25:5
+  --> $DIR/borrowck-move-ref-pattern.rs:23:5
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
    |                   ---
@@ -79,7 +79,7 @@ LL |     _x1 = U;
    |     ^^^^^^^ cannot assign twice to immutable variable
 
 error[E0502]: cannot borrow `tup.0` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-move-ref-pattern.rs:26:20
+  --> $DIR/borrowck-move-ref-pattern.rs:24:20
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
    |          ------- immutable borrow occurs here
@@ -91,7 +91,7 @@ LL |     *_x0 = U;
    |     -------- immutable borrow later used here
 
 error[E0502]: cannot borrow `tup.0` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-move-ref-pattern.rs:27:10
+  --> $DIR/borrowck-move-ref-pattern.rs:25:10
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
    |          ------- immutable borrow occurs here
@@ -102,7 +102,7 @@ LL |     *_x0 = U;
    |     -------- immutable borrow later used here
 
 error[E0594]: cannot assign to `*_x0` which is behind a `&` reference
-  --> $DIR/borrowck-move-ref-pattern.rs:28:5
+  --> $DIR/borrowck-move-ref-pattern.rs:26:5
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
    |          ------- help: consider changing this to be a mutable reference: `ref mut _x0`
@@ -111,7 +111,7 @@ LL |     *_x0 = U;
    |     ^^^^^^^^ `_x0` is a `&` reference, so the data it refers to cannot be written
 
 error[E0594]: cannot assign to `*_x2` which is behind a `&` reference
-  --> $DIR/borrowck-move-ref-pattern.rs:29:5
+  --> $DIR/borrowck-move-ref-pattern.rs:27:5
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
    |                        ------- help: consider changing this to be a mutable reference: `ref mut _x2`
@@ -120,7 +120,7 @@ LL |     *_x2 = U;
    |     ^^^^^^^^ `_x2` is a `&` reference, so the data it refers to cannot be written
 
 error[E0382]: use of moved value: `tup.1`
-  --> $DIR/borrowck-move-ref-pattern.rs:30:10
+  --> $DIR/borrowck-move-ref-pattern.rs:28:10
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
    |                   --- value moved here
@@ -131,7 +131,7 @@ LL |     drop(tup.1);
    = note: move occurs because `tup.1` has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `tup.1`
-  --> $DIR/borrowck-move-ref-pattern.rs:31:20
+  --> $DIR/borrowck-move-ref-pattern.rs:29:20
    |
 LL |     drop(tup.1);
    |          ----- value moved here
@@ -141,7 +141,7 @@ LL |     let _x1_hold = &tup.1;
    = note: move occurs because `tup.1` has type `U`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `tup.3` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-move-ref-pattern.rs:33:20
+  --> $DIR/borrowck-move-ref-pattern.rs:31:20
    |
 LL |     let (.., ref mut _x3) = tup;
    |              ----------- mutable borrow occurs here
@@ -152,7 +152,7 @@ LL |     drop(_x3);
    |          --- mutable borrow later used here
 
 error[E0499]: cannot borrow `tup.3` as mutable more than once at a time
-  --> $DIR/borrowck-move-ref-pattern.rs:34:20
+  --> $DIR/borrowck-move-ref-pattern.rs:32:20
    |
 LL |     let (.., ref mut _x3) = tup;
    |              ----------- first mutable borrow occurs here
@@ -164,7 +164,7 @@ LL |     drop(_x3);
    |          --- first borrow later used here
 
 error[E0499]: cannot borrow `tup.3` as mutable more than once at a time
-  --> $DIR/borrowck-move-ref-pattern.rs:35:14
+  --> $DIR/borrowck-move-ref-pattern.rs:33:14
    |
 LL |     let (.., ref mut _x3) = tup;
    |              ----------- first mutable borrow occurs here
@@ -176,7 +176,7 @@ LL |     drop(_x3);
    |          --- first borrow later used here
 
 error[E0502]: cannot borrow `tup.3` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-move-ref-pattern.rs:36:14
+  --> $DIR/borrowck-move-ref-pattern.rs:34:14
    |
 LL |     let (.., ref mut _x3) = tup;
    |              ----------- mutable borrow occurs here
@@ -187,7 +187,7 @@ LL |     drop(_x3);
    |          --- mutable borrow later used here
 
 error[E0382]: use of moved value: `tup`
-  --> $DIR/borrowck-move-ref-pattern.rs:45:14
+  --> $DIR/borrowck-move-ref-pattern.rs:43:14
    |
 LL |     let mut tup = (U, U, U);
    |         ------- move occurs because `tup` has type `(U, U, U)`, which does not implement the `Copy` trait

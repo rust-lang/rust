@@ -453,7 +453,6 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::SwitchInt {
                         discr,
                         switch_ty,
-                        values: _,
                         targets: _
                     } => {
                         self.visit_operand(discr, location);
@@ -1185,16 +1184,6 @@ impl PlaceContext {
             self,
             PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead)
         )
-    }
-
-    /// Returns `true` if this place context represents a storage live marker.
-    pub fn is_storage_live_marker(&self) -> bool {
-        matches!(self, PlaceContext::NonUse(NonUseContext::StorageLive))
-    }
-
-    /// Returns `true` if this place context represents a storage dead marker.
-    pub fn is_storage_dead_marker(&self) -> bool {
-        matches!(self, PlaceContext::NonUse(NonUseContext::StorageDead))
     }
 
     /// Returns `true` if this place context represents a use that potentially changes the value.

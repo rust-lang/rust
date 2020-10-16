@@ -3,8 +3,7 @@ use crate::sys::mutex as imp;
 /// An OS-based mutual exclusion lock, meant for use in static variables.
 ///
 /// This mutex has a const constructor ([`StaticMutex::new`]), does not
-/// implement `Drop` to cleanup resources, and causes UB when moved or used
-/// reentrantly.
+/// implement `Drop` to cleanup resources, and causes UB when used reentrantly.
 ///
 /// This mutex does not implement poisoning.
 ///
@@ -16,12 +15,6 @@ unsafe impl Sync for StaticMutex {}
 
 impl StaticMutex {
     /// Creates a new mutex for use.
-    ///
-    /// Behavior is undefined if the mutex is moved after it is
-    /// first used with any of the functions below.
-    /// Also, the behavior is undefined if this mutex is ever used reentrantly,
-    /// i.e., `lock` is called by the thread currently holding the lock.
-    #[rustc_const_stable(feature = "const_sys_mutex_new", since = "1.0.0")]
     pub const fn new() -> Self {
         Self(imp::Mutex::new())
     }
@@ -29,19 +22,19 @@ impl StaticMutex {
     /// Calls raw_lock() and then returns an RAII guard to guarantee the mutex
     /// will be unlocked.
     ///
-    /// It is undefined behaviour to call this function while locked, or if the
-    /// mutex has been moved since the last time this was called.
+    /// It is undefined behaviour to call this function while locked by the
+    /// same thread.
     #[inline]
-    pub unsafe fn lock(&self) -> StaticMutexGuard<'_> {
+    pub unsafe fn lock(&'static self) -> StaticMutexGuard {
         self.0.lock();
         StaticMutexGuard(&self.0)
     }
 }
 
 #[must_use]
-pub struct StaticMutexGuard<'a>(&'a imp::Mutex);
+pub struct StaticMutexGuard(&'static imp::Mutex);
 
-impl Drop for StaticMutexGuard<'_> {
+impl Drop for StaticMutexGuard {
     #[inline]
     fn drop(&mut self) {
         unsafe {

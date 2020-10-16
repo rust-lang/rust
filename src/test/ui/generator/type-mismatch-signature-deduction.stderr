@@ -7,7 +7,7 @@ LL |         5
    = note: expected type `std::result::Result<{integer}, _>`
               found type `{integer}`
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:6:5: 14:6 _] as Generator>::Return == i32`
+error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:6:5: 14:6] as Generator>::Return == i32`
   --> $DIR/type-mismatch-signature-deduction.rs:5:13
    |
 LL | fn foo() -> impl Generator<Return = i32> {

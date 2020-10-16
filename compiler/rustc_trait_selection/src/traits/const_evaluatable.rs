@@ -147,11 +147,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     if concrete.is_ok() && substs.has_param_types_or_consts() {
         match infcx.tcx.def_kind(def.did) {
             DefKind::AnonConst => {
-                let mir_body = if let Some(def) = def.as_const_arg() {
-                    infcx.tcx.optimized_mir_of_const_arg(def)
-                } else {
-                    infcx.tcx.optimized_mir(def.did)
-                };
+                let mir_body = infcx.tcx.optimized_mir_opt_const_arg(def);
 
                 if mir_body.is_polymorphic {
                     future_compat_lint();
@@ -212,13 +208,7 @@ impl AbstractConst<'tcx> {
         def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
-        let inner = match (def.did.as_local(), def.const_param_did) {
-            (Some(did), Some(param_did)) => {
-                tcx.mir_abstract_const_of_const_arg((did, param_did))?
-            }
-            _ => tcx.mir_abstract_const(def.did)?,
-        };
-
+        let inner = tcx.mir_abstract_const_opt_const_arg(def)?;
         Ok(inner.map(|inner| AbstractConst { inner, substs }))
     }
 

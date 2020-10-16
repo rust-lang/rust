@@ -771,7 +771,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 *target = self.update_target(*target);
             }
             TerminatorKind::SwitchInt { ref mut targets, .. } => {
-                for tgt in targets {
+                for tgt in targets.all_targets_mut() {
                     *tgt = self.update_target(*tgt);
                 }
             }

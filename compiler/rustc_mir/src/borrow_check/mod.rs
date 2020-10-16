@@ -671,7 +671,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
         self.check_activations(loc, span, flow_state);
 
         match term.kind {
-            TerminatorKind::SwitchInt { ref discr, switch_ty: _, values: _, targets: _ } => {
+            TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
             TerminatorKind::Drop { place: ref drop_place, target: _, unwind: _ } => {

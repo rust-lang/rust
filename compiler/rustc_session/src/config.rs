@@ -34,11 +34,6 @@ use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 
-pub struct Config {
-    pub target: Target,
-    pub ptr_width: u32,
-}
-
 bitflags! {
     #[derive(Default, Encodable, Decodable)]
     pub struct SanitizerSet: u8 {
@@ -740,16 +735,16 @@ pub const fn default_lib_output() -> CrateType {
 }
 
 pub fn default_configuration(sess: &Session) -> CrateConfig {
-    let end = &sess.target.target.target_endian;
-    let arch = &sess.target.target.arch;
-    let wordsz = &sess.target.target.target_pointer_width;
-    let os = &sess.target.target.target_os;
-    let env = &sess.target.target.target_env;
-    let vendor = &sess.target.target.target_vendor;
-    let min_atomic_width = sess.target.target.min_atomic_width();
-    let max_atomic_width = sess.target.target.max_atomic_width();
-    let atomic_cas = sess.target.target.options.atomic_cas;
-    let layout = TargetDataLayout::parse(&sess.target.target).unwrap_or_else(|err| {
+    let end = &sess.target.target_endian;
+    let arch = &sess.target.arch;
+    let wordsz = sess.target.pointer_width.to_string();
+    let os = &sess.target.target_os;
+    let env = &sess.target.target_env;
+    let vendor = &sess.target.target_vendor;
+    let min_atomic_width = sess.target.min_atomic_width();
+    let max_atomic_width = sess.target.max_atomic_width();
+    let atomic_cas = sess.target.options.atomic_cas;
+    let layout = TargetDataLayout::parse(&sess.target).unwrap_or_else(|err| {
         sess.fatal(&err);
     });
 
@@ -757,7 +752,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     ret.reserve(6); // the minimum number of insertions
     // Target bindings.
     ret.insert((sym::target_os, Some(Symbol::intern(os))));
-    if let Some(ref fam) = sess.target.target.options.target_family {
+    if let Some(ref fam) = sess.target.options.target_family {
         ret.insert((sym::target_family, Some(Symbol::intern(fam))));
         if fam == "windows" {
             ret.insert((sym::windows, None));
@@ -767,10 +762,10 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     }
     ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
     ret.insert((sym::target_endian, Some(Symbol::intern(end))));
-    ret.insert((sym::target_pointer_width, Some(Symbol::intern(wordsz))));
+    ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
     ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
-    if sess.target.target.options.has_elf_tls {
+    if sess.target.options.has_elf_tls {
         ret.insert((sym::target_thread_local, None));
     }
     for &(i, align) in &[
@@ -792,7 +787,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
             };
             let s = i.to_string();
             insert_atomic(&s, align);
-            if &s == wordsz {
+            if s == wordsz {
                 insert_atomic("ptr", layout.pointer_align.abi);
             }
         }
@@ -831,7 +826,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
     user_cfg
 }
 
-pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> Config {
+pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> Target {
     let target_result = target_override.map_or_else(|| Target::search(&opts.target_triple), Ok);
     let target = target_result.unwrap_or_else(|e| {
         early_error(
@@ -844,21 +839,18 @@ pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> C
         )
     });
 
-    let ptr_width = match &target.target_pointer_width[..] {
-        "16" => 16,
-        "32" => 32,
-        "64" => 64,
-        w => early_error(
+    if !matches!(target.pointer_width, 16 | 32 | 64) {
+        early_error(
             opts.error_format,
             &format!(
                 "target specification was invalid: \
              unrecognized target-pointer-width {}",
-                w
+                target.pointer_width
             ),
-        ),
-    };
+        )
+    }
 
-    Config { target, ptr_width }
+    target
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

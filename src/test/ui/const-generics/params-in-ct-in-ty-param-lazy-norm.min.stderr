@@ -6,13 +6,13 @@ LL | struct Bar<T = [u8; N], const N: usize>(T);
    |
    = note: using type defaults and const parameters in the same parameter list is currently not permitted
 
-error: generic parameters must not be used inside of non-trivial constant values
+error: generic parameters may not be used in const operations
   --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:7:44
    |
 LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
-   |                                            ^ non-trivial anonymous constants must not depend on the parameter `T`
+   |                                            ^ cannot perform const operation using `T`
    |
-   = note: type parameters are currently not permitted in anonymous constants
+   = note: type parameters may not be used in const expressions
 
 error: constant values inside of type parameter defaults must not depend on generic parameters
   --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:12:21

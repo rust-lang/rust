@@ -4,18 +4,18 @@
 can use them like any other lints by doing this:
 
 ```rust,ignore
-#![allow(missing_docs)] // allowing the lint, no message
-#![warn(missing_docs)] // warn if there is missing docs
-#![deny(missing_docs)] // rustdoc will fail if there is missing docs
+#![allow(missing_docs)] // allows the lint, no diagnostics will be reported
+#![warn(missing_docs)] // warn if there are missing docs
+#![deny(missing_docs)] // error if there are missing docs
 ```
 
 Here is the list of the lints provided by `rustdoc`:
 
 ## broken_intra_doc_links
 
-This lint **warns by default**. This lint detects when an [intra-doc link] fails to get resolved. For example:
+This lint **warns by default**. This lint detects when an [intra-doc link] fails to be resolved. For example:
 
- [intra-doc link]: linking-to-items-by-name.html
+[intra-doc link]: linking-to-items-by-name.md
 
 ```rust
 /// I want to link to [`Nonexistent`] but it doesn't exist!
@@ -250,3 +250,38 @@ warning: unknown attribute `should-panic`. Did you mean `should_panic`?
 
 In the example above, the correct form is `should_panic`. This helps detect
 typo mistakes for some common attributes.
+
+## invalid_html_tags
+
+This lint is **allowed by default** and is **nightly-only**. It detects unclosed
+or invalid HTML tags. For example:
+
+```rust
+#![warn(invalid_html_tags)]
+
+/// <h1>
+/// </script>
+pub fn foo() {}
+```
+
+Which will give:
+
+```text
+warning: unopened HTML tag `script`
+ --> foo.rs:1:1
+  |
+1 | / /// <h1>
+2 | | /// </script>
+  | |_____________^
+  |
+  = note: `#[warn(invalid_html_tags)]` on by default
+
+warning: unclosed HTML tag `h1`
+ --> foo.rs:1:1
+  |
+1 | / /// <h1>
+2 | | /// </script>
+  | |_____________^
+
+warning: 2 warnings emitted
+```

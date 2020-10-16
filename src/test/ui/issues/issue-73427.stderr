@@ -1,0 +1,72 @@
+error[E0423]: expected value, found enum `A`
+  --> $DIR/issue-73427.rs:29:5
+   |
+LL |     A.foo();
+   |     ^
+   |
+   = help: you might have meant to use one of the enum's other variants that have fields
+help: try using one of the enum's variants
+   |
+LL |     (A::Struct {}).foo();
+   |     ^^^^^^^^^^^^^^
+LL |     (A::Tuple()).foo();
+   |     ^^^^^^^^^^^^
+LL |     A::Unit.foo();
+   |     ^^^^^^^
+
+error[E0423]: expected value, found enum `B`
+  --> $DIR/issue-73427.rs:31:5
+   |
+LL |     B.foo();
+   |     ^
+   |
+   = help: you might have meant to use one of the enum's variants
+
+error[E0423]: expected value, found enum `C`
+  --> $DIR/issue-73427.rs:33:5
+   |
+LL |     C.foo();
+   |     ^ help: try using one of the enum's variants: `C::Unit`
+   |
+   = help: you might have meant to use one of the enum's other variants that have fields
+
+error[E0423]: expected value, found enum `D`
+  --> $DIR/issue-73427.rs:35:5
+   |
+LL |     D.foo();
+   |     ^ help: try using one of the enum's variants: `D::Unit`
+   |
+   = help: you might have meant to use the enum's other variant that has fields
+
+error[E0423]: expected function, tuple struct or tuple variant, found enum `A`
+  --> $DIR/issue-73427.rs:40:13
+   |
+LL |     let x = A(3);
+   |             ^
+   |
+   = help: you might have meant to construct one of the enum's non-tuple variants
+help: try using one of the enum's variants
+   |
+LL |     let x = A::TupleWithFields(3);
+   |             ^^^^^^^^^^^^^^^^^^
+LL |     let x = A::Tuple(3);
+   |             ^^^^^^^^
+
+error[E0532]: expected tuple struct or tuple variant, found enum `A`
+  --> $DIR/issue-73427.rs:42:12
+   |
+LL |     if let A(3) = x { }
+   |            ^
+   |
+   = help: you might have meant to match against one of the enum's non-tuple variants
+help: try using one of the enum's variants
+   |
+LL |     if let A::TupleWithFields(3) = x { }
+   |            ^^^^^^^^^^^^^^^^^^
+LL |     if let A::Tuple(3) = x { }
+   |            ^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0423, E0532.
+For more information about an error, try `rustc --explain E0423`.

@@ -1,6 +1,6 @@
 //! Checks for uses of const which the type is not `Freeze` (`Cell`-free).
 //!
-//! This lint is **deny** by default.
+//! This lint is **warn** by default.
 
 use std::ptr;
 
@@ -17,6 +17,8 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::utils::{in_constant, qpath_res, span_lint_and_then};
 use if_chain::if_chain;
 
+// FIXME: this is a correctness problem but there's no suitable
+// warn-by-default category.
 declare_clippy_lint! {
     /// **What it does:** Checks for declaration of `const` items which is interior
     /// mutable (e.g., contains a `Cell`, `Mutex`, `AtomicXxxx`, etc.).
@@ -34,6 +36,15 @@ declare_clippy_lint! {
     /// `std::sync::ONCE_INIT` constant). In this case the use of `const` is legit,
     /// and this lint should be suppressed.
     ///
+    /// When an enum has variants with interior mutability, use of its non interior mutable
+    /// variants can generate false positives. See issue
+    /// [#3962](https://github.com/rust-lang/rust-clippy/issues/3962)
+    ///
+    /// Types that have underlying or potential interior mutability trigger the lint whether
+    /// the interior mutable field is used or not. See issues
+    /// [#5812](https://github.com/rust-lang/rust-clippy/issues/5812) and
+    /// [#3825](https://github.com/rust-lang/rust-clippy/issues/3825)
+    ///
     /// **Example:**
     /// ```rust
     /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
@@ -49,10 +60,12 @@ declare_clippy_lint! {
     /// assert_eq!(STATIC_ATOM.load(SeqCst), 9); // use a `static` item to refer to the same instance
     /// ```
     pub DECLARE_INTERIOR_MUTABLE_CONST,
-    correctness,
+    style,
     "declaring `const` with interior mutability"
 }
 
+// FIXME: this is a correctness problem but there's no suitable
+// warn-by-default category.
 declare_clippy_lint! {
     /// **What it does:** Checks if `const` items which is interior mutable (e.g.,
     /// contains a `Cell`, `Mutex`, `AtomicXxxx`, etc.) has been borrowed directly.
@@ -64,7 +77,14 @@ declare_clippy_lint! {
     ///
     /// The `const` value should be stored inside a `static` item.
     ///
-    /// **Known problems:** None
+    /// **Known problems:** When an enum has variants with interior mutability, use of its non
+    /// interior mutable variants can generate false positives. See issue
+    /// [#3962](https://github.com/rust-lang/rust-clippy/issues/3962)
+    ///
+    /// Types that have underlying or potential interior mutability trigger the lint whether
+    /// the interior mutable field is used or not. See issues
+    /// [#5812](https://github.com/rust-lang/rust-clippy/issues/5812) and
+    /// [#3825](https://github.com/rust-lang/rust-clippy/issues/3825)
     ///
     /// **Example:**
     /// ```rust
@@ -81,7 +101,7 @@ declare_clippy_lint! {
     /// assert_eq!(STATIC_ATOM.load(SeqCst), 9); // use a `static` item to refer to the same instance
     /// ```
     pub BORROW_INTERIOR_MUTABLE_CONST,
-    correctness,
+    style,
     "referencing `const` with interior mutability"
 }
 

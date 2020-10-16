@@ -8,3 +8,8 @@ bench-stage = 0
 [rust]
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
 incremental = true
+
+[llvm]
+# Will download LLVM from CI if available on your platform (Linux only for now)
+# https://github.com/rust-lang/rust/issues/77084 tracks support for more platforms
+download-ci-llvm = "if-available"

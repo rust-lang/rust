@@ -1,6 +1,6 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::apple_base::opts();
     base.cpu = "apple-a12".to_string();
     base.max_atomic_width = Some(128);
@@ -14,10 +14,10 @@ pub fn target() -> TargetResult {
     let arch = "aarch64";
     let llvm_target = super::apple_base::macos_llvm_target(&arch);
 
-    Ok(Target {
+    Target {
         llvm_target,
         target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
+        pointer_width: 64,
         target_c_int_width: "32".to_string(),
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
         arch: arch.to_string(),
@@ -26,5 +26,5 @@ pub fn target() -> TargetResult {
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "\u{1}mcount".to_string(), ..base },
-    })
+    }
 }

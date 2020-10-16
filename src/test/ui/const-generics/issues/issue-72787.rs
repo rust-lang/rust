@@ -10,8 +10,8 @@ pub trait True {}
 impl<const LHS: u32, const RHS: u32> True for IsLessOrEqual<LHS, RHS> where
     Condition<{ LHS <= RHS }>: True
 //[full]~^ Error constant expression depends on a generic parameter
-//[min]~^^ Error generic parameters must not be used inside of non-trivial constant values
-//[min]~| Error generic parameters must not be used inside of non-trivial constant values
+//[min]~^^ Error generic parameters may not be used in const operations
+//[min]~| Error generic parameters may not be used in const operations
 {
 }
 impl True for Condition<true> {}
@@ -28,8 +28,8 @@ where
 //[full]~| constant expression depends on a generic parameter
 //[full]~| constant expression depends on a generic parameter
 //[full]~| constant expression depends on a generic parameter
-//[min]~^^^^^ Error generic parameters must not be used inside of non-trivial constant values
-//[min]~| Error generic parameters must not be used inside of non-trivial constant values
+//[min]~^^^^^ Error generic parameters may not be used in const operations
+//[min]~| Error generic parameters may not be used in const operations
     // Condition<{ 8 - I <= 8 - J }>: True,
 {
     fn print() {

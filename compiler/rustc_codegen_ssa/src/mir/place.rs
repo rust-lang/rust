@@ -346,8 +346,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 ..
             } => {
                 if variant_index != dataful_variant {
-                    if bx.cx().sess().target.target.arch == "arm"
-                        || bx.cx().sess().target.target.arch == "aarch64"
+                    if bx.cx().sess().target.arch == "arm"
+                        || bx.cx().sess().target.arch == "aarch64"
                     {
                         // FIXME(#34427): as workaround for LLVM bug on ARM,
                         // use memset of 0 before assigning niche value.

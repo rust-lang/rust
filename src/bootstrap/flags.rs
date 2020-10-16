@@ -30,6 +30,7 @@ pub struct Flags {
     pub cmd: Subcommand,
     pub incremental: bool,
     pub exclude: Vec<PathBuf>,
+    pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub dry_run: bool,
@@ -124,6 +125,7 @@ Subcommands:
     dist        Build distribution artifacts
     install     Install distribution artifacts
     run, r      Run tools contained in this repository
+    setup       Create a config.toml (making it easier to use `x.py` itself)
 
 To learn more about a subcommand, run `./x.py <subcommand> -h`",
         );
@@ -137,6 +139,11 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optmulti("", "host", "host targets to build", "HOST");
         opts.optmulti("", "target", "target targets to build", "TARGET");
         opts.optmulti("", "exclude", "build paths to exclude", "PATH");
+        opts.optflag(
+            "",
+            "include-default-paths",
+            "include default paths in addition to the provided ones",
+        );
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
         opts.optflag("", "dry-run", "dry run; don't build anything");
         opts.optopt(
@@ -466,15 +473,21 @@ Arguments:
                 );
             }
             "setup" => {
-                subcommand_help.push_str(
+                subcommand_help.push_str(&format!(
                     "\n
+x.py setup creates a `config.toml` which changes the defaults for x.py itself.
+
 Arguments:
     This subcommand accepts a 'profile' to use for builds. For example:
 
         ./x.py setup library
 
-    The profile is optional and you will be prompted interactively if it is not given.",
-                );
+    The profile is optional and you will be prompted interactively if it is not given.
+    The following profiles are available:
+
+{}",
+                    Profile::all_for_help("        ").trim_end()
+                ));
             }
             _ => {}
         };
@@ -545,9 +558,7 @@ Arguments:
                     profile_string.parse().unwrap_or_else(|err| {
                         eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
-                        for choice in Profile::all() {
-                            eprintln!("- {}", choice);
-                        }
+                        eprint!("{}", Profile::all_for_help("- "));
                         std::process::exit(1);
                     })
                 } else {
@@ -618,6 +629,7 @@ Arguments:
                 .into_iter()
                 .map(|p| p.into())
                 .collect::<Vec<_>>(),
+            include_default_paths: matches.opt_present("include-default-paths"),
             deny_warnings: parse_deny_warnings(&matches),
             llvm_skip_rebuild: matches.opt_str("llvm-skip-rebuild").map(|s| s.to_lowercase()).map(
                 |s| s.parse::<bool>().expect("`llvm-skip-rebuild` should be either true or false"),

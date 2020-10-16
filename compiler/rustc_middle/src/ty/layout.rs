@@ -106,7 +106,7 @@ impl IntegerExt for Integer {
         }
 
         if repr.c() {
-            match &tcx.sess.target.target.arch[..] {
+            match &tcx.sess.target.arch[..] {
                 // WARNING: the ARM EABI has two variants; the one corresponding
                 // to `at_least == I32` appears to be used on Linux and NetBSD,
                 // but some systems may use the variant corresponding to no
@@ -1894,7 +1894,7 @@ impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
     }
 }
 
-pub type TyAndLayout<'tcx> = ::rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
+pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
 impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type Ty = Ty<'tcx>;
@@ -2548,7 +2548,7 @@ where
         let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
         use rustc_target::spec::abi::Abi::*;
-        let conv = match cx.tcx().sess.target.target.adjust_abi(sig.abi) {
+        let conv = match cx.tcx().sess.target.adjust_abi(sig.abi) {
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
             // It's the ABI's job to select this, not ours.
@@ -2600,7 +2600,7 @@ where
             extra_args.to_vec()
         };
 
-        let target = &cx.tcx().sess.target.target;
+        let target = &cx.tcx().sess.target;
         let target_env_gnu_like = matches!(&target.target_env[..], "gnu" | "musl");
         let win_x64_gnu =
             target.target_os == "windows" && target.arch == "x86_64" && target.target_env == "gnu";
@@ -2775,7 +2775,7 @@ where
                     // anyway, we control all calls to it in libstd.
                     Abi::Vector { .. }
                         if abi != SpecAbi::PlatformIntrinsic
-                            && cx.tcx().sess.target.target.options.simd_types_indirect =>
+                            && cx.tcx().sess.target.options.simd_types_indirect =>
                     {
                         arg.make_indirect();
                         return;

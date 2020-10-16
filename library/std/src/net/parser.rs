@@ -32,7 +32,7 @@ macro_rules! impl_helper {
     })*)
 }
 
-impl_helper! { u8 u16 }
+impl_helper! { u8 u16 u32 }
 
 struct Parser<'a> {
     // parsing as ASCII, so can use byte array
@@ -75,9 +75,12 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Read the next character from the input if it matches the target
-    fn read_given_char(&mut self, target: char) -> Option<char> {
-        self.read_atomically(|p| p.read_char().filter(|&c| c == target))
+    #[must_use]
+    /// Read the next character from the input if it matches the target.
+    fn read_given_char(&mut self, target: char) -> Option<()> {
+        self.read_atomically(|p| {
+            p.read_char().and_then(|c| if c == target { Some(()) } else { None })
+        })
     }
 
     /// Helper for reading separators in an indexed loop. Reads the separator
@@ -90,7 +93,7 @@ impl<'a> Parser<'a> {
     {
         self.read_atomically(move |p| {
             if index > 0 {
-                let _ = p.read_given_char(sep)?;
+                p.read_given_char(sep)?;
             }
             inner(p)
         })
@@ -187,8 +190,8 @@ impl<'a> Parser<'a> {
 
             // read `::` if previous code parsed less than 8 groups
             // `::` indicates one or more groups of 16 bits of zeros
-            let _ = p.read_given_char(':')?;
-            let _ = p.read_given_char(':')?;
+            p.read_given_char(':')?;
+            p.read_given_char(':')?;
 
             // Read the back part of the address. The :: must contain at least one
             // set of zeroes, so our max length is 7.
@@ -211,7 +214,15 @@ impl<'a> Parser<'a> {
     /// Read a : followed by a port in base 10.
     fn read_port(&mut self) -> Option<u16> {
         self.read_atomically(|p| {
-            let _ = p.read_given_char(':')?;
+            p.read_given_char(':')?;
+            p.read_number(10, None)
+        })
+    }
+
+    /// Read a % followed by a scope id in base 10.
+    fn read_scope_id(&mut self) -> Option<u32> {
+        self.read_atomically(|p| {
+            p.read_given_char('%')?;
             p.read_number(10, None)
         })
     }
@@ -228,12 +239,13 @@ impl<'a> Parser<'a> {
     /// Read an IPV6 address with a port
     fn read_socket_addr_v6(&mut self) -> Option<SocketAddrV6> {
         self.read_atomically(|p| {
-            let _ = p.read_given_char('[')?;
+            p.read_given_char('[')?;
             let ip = p.read_ipv6_addr()?;
-            let _ = p.read_given_char(']')?;
+            let scope_id = p.read_scope_id().unwrap_or(0);
+            p.read_given_char(']')?;
 
             let port = p.read_port()?;
-            Some(SocketAddrV6::new(ip, port, 0, 0))
+            Some(SocketAddrV6::new(ip, port, 0, scope_id))
         })
     }
 

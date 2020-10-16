@@ -68,7 +68,14 @@ fn call_intrinsic(
 ) -> P<ast::Expr> {
     let span = cx.with_def_site_ctxt(span);
     let path = cx.std_path(&[sym::intrinsics, intrinsic]);
-    let call = cx.expr_call_global(span, path, args);
+    cx.expr_call_global(span, path, args)
+}
+
+/// Constructs an expression that calls the `unreachable` intrinsic.
+fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
+    let span = cx.with_def_site_ctxt(span);
+    let path = cx.std_path(&[sym::intrinsics, sym::unreachable]);
+    let call = cx.expr_call_global(span, path, vec![]);
 
     cx.expr_block(P(ast::Block {
         stmts: vec![cx.stmt_expr(call)],

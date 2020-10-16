@@ -23,18 +23,17 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{ErrorReported, FatalError, Handler};
-use rustc_middle::dep_graph::{DepGraph, WorkProduct};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_serialize::json;
-use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
+use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
 use std::any::Any;
 use std::ffi::CStr;
-use std::fs;
 use std::sync::Arc;
 
 mod back {
@@ -115,6 +114,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
         llvm_util::target_cpu(sess)
+    }
+    fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str> {
+        llvm_util::tune_cpu(sess)
     }
 }
 
@@ -249,11 +251,11 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn provide(&self, providers: &mut ty::query::Providers) {
-        attributes::provide(providers);
+        attributes::provide_both(providers);
     }
 
     fn provide_extern(&self, providers: &mut ty::query::Providers) {
-        attributes::provide_extern(providers);
+        attributes::provide_both(providers);
     }
 
     fn codegen_crate<'tcx>(
@@ -274,47 +276,27 @@ impl CodegenBackend for LlvmCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        dep_graph: &DepGraph,
-    ) -> Result<Box<dyn Any>, ErrorReported> {
+    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
             .join(sess);
-        if sess.opts.debugging_opts.incremental_info {
-            rustc_codegen_ssa::back::write::dump_incremental_data(&codegen_results);
-        }
 
-        sess.time("serialize_work_products", move || {
-            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
+        sess.time("llvm_dump_timing_file", || {
+            if sess.opts.debugging_opts.llvm_time_trace {
+                llvm_util::time_trace_profiler_finish("llvm_timings.json");
+            }
         });
 
-        sess.compile_status()?;
-
-        Ok(Box::new(codegen_results))
+        Ok((codegen_results, work_products))
     }
 
     fn link(
         &self,
         sess: &Session,
-        codegen_results: Box<dyn Any>,
+        codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
-        let codegen_results = codegen_results
-            .downcast::<CodegenResults>()
-            .expect("Expected CodegenResults, found Box<Any>");
-
-        if sess.opts.debugging_opts.no_link {
-            // FIXME: use a binary format to encode the `.rlink` file
-            let rlink_data = json::encode(&codegen_results).map_err(|err| {
-                sess.fatal(&format!("failed to encode rlink: {}", err));
-            })?;
-            let rlink_file = outputs.with_extension(config::RLINK_EXT);
-            fs::write(&rlink_file, rlink_data).map_err(|err| {
-                sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
-            })?;
-            return Ok(());
-        }
-
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
         sess.time("link_crate", || {
@@ -329,16 +311,6 @@ impl CodegenBackend for LlvmCodegenBackend {
                 &codegen_results.crate_name.as_str(),
                 target_cpu,
             );
-        });
-
-        // Now that we won't touch anything in the incremental compilation directory
-        // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(sess, codegen_results.crate_hash);
-
-        sess.time("llvm_dump_timing_file", || {
-            if sess.opts.debugging_opts.llvm_time_trace {
-                llvm_util::time_trace_profiler_finish("llvm_timings.json");
-            }
         });
 
         Ok(())

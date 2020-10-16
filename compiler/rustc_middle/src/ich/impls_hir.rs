@@ -221,6 +221,12 @@ impl<'hir> HashStable<StableHashingContext<'hir>> for attr::InlineAttr {
     }
 }
 
+impl<'hir> HashStable<StableHashingContext<'hir>> for attr::InstructionSetAttr {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'hir>, hasher: &mut StableHasher) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+    }
+}
+
 impl<'hir> HashStable<StableHashingContext<'hir>> for attr::OptimizeAttr {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'hir>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);

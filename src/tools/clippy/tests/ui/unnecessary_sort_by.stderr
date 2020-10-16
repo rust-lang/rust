@@ -16,31 +16,61 @@ error: use Vec::sort_by_key here instead
   --> $DIR/unnecessary_sort_by.rs:16:5
    |
 LL |     vec.sort_by(|a, b| (a + 5).abs().cmp(&(b + 5).abs()));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&a| (a + 5).abs())`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| (a + 5).abs())`
 
 error: use Vec::sort_by_key here instead
   --> $DIR/unnecessary_sort_by.rs:17:5
    |
 LL |     vec.sort_unstable_by(|a, b| id(-a).cmp(&id(-b)));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|&a| id(-a))`
-
-error: use Vec::sort_by_key here instead
-  --> $DIR/unnecessary_sort_by.rs:19:5
-   |
-LL |     vec.sort_by(|a, b| b.cmp(a));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse(b))`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|a| id(-a))`
 
 error: use Vec::sort_by_key here instead
   --> $DIR/unnecessary_sort_by.rs:20:5
    |
 LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse((b + 5).abs()))`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|b| Reverse((b + 5).abs()))`
 
 error: use Vec::sort_by_key here instead
   --> $DIR/unnecessary_sort_by.rs:21:5
    |
 LL |     vec.sort_unstable_by(|a, b| id(-b).cmp(&id(-a)));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|&b| Reverse(id(-b)))`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|b| Reverse(id(-b)))`
 
-error: aborting due to 7 previous errors
+error: use Vec::sort_by_key here instead
+  --> $DIR/unnecessary_sort_by.rs:31:5
+   |
+LL |     vec.sort_by(|a, b| (***a).abs().cmp(&(***b).abs()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| (***a).abs())`
+
+error: use Vec::sort_by_key here instead
+  --> $DIR/unnecessary_sort_by.rs:32:5
+   |
+LL |     vec.sort_unstable_by(|a, b| (***a).abs().cmp(&(***b).abs()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|a| (***a).abs())`
+
+error: use Vec::sort_by_key here instead
+  --> $DIR/unnecessary_sort_by.rs:88:9
+   |
+LL |         args.sort_by(|a, b| a.name().cmp(&b.name()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_by_key(|a| a.name())`
+
+error: use Vec::sort_by_key here instead
+  --> $DIR/unnecessary_sort_by.rs:89:9
+   |
+LL |         args.sort_unstable_by(|a, b| a.name().cmp(&b.name()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_unstable_by_key(|a| a.name())`
+
+error: use Vec::sort_by_key here instead
+  --> $DIR/unnecessary_sort_by.rs:91:9
+   |
+LL |         args.sort_by(|a, b| b.name().cmp(&a.name()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_by_key(|b| Reverse(b.name()))`
+
+error: use Vec::sort_by_key here instead
+  --> $DIR/unnecessary_sort_by.rs:92:9
+   |
+LL |         args.sort_unstable_by(|a, b| b.name().cmp(&a.name()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_unstable_by_key(|b| Reverse(b.name()))`
+
+error: aborting due to 12 previous errors
 

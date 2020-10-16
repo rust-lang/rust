@@ -1777,7 +1777,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.assert_iscleanup(body, block_data, target, is_cleanup)
             }
             TerminatorKind::SwitchInt { ref targets, .. } => {
-                for target in targets {
+                for target in targets.all_targets() {
                     self.assert_iscleanup(body, block_data, *target, is_cleanup);
                 }
             }

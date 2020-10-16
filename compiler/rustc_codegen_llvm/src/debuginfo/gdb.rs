@@ -67,5 +67,5 @@ pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
 
     !omit_gdb_pretty_printer_section
         && cx.sess().opts.debuginfo != DebugInfo::None
-        && cx.sess().target.target.options.emit_debug_gdb_scripts
+        && cx.sess().target.options.emit_debug_gdb_scripts
 }

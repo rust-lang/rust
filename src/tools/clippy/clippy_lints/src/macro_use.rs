@@ -18,9 +18,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// #[macro_use]
-    /// use lazy_static;
+    /// use some_macro;
     /// ```
     pub MACRO_USE_IMPORTS,
     pedantic,

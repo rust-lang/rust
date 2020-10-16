@@ -56,15 +56,6 @@ impl<'tcx> ConstValue<'tcx> {
         }
     }
 
-    pub fn try_to_str_slice(&self) -> Option<&'tcx str> {
-        if let ConstValue::Slice { data, start, end } = *self {
-            ::std::str::from_utf8(data.inspect_with_uninit_and_ptr_outside_interpreter(start..end))
-                .ok()
-        } else {
-            None
-        }
-    }
-
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
         self.try_to_scalar()?.to_bits(size).ok()
     }
@@ -465,7 +456,7 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     pub fn to_char(self) -> InterpResult<'tcx, char> {
         let val = self.to_u32()?;
-        match ::std::char::from_u32(val) {
+        match std::char::from_u32(val) {
             Some(c) => Ok(c),
             None => throw_ub!(InvalidChar(val)),
         }

@@ -1,6 +1,7 @@
 use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use smallvec::{smallvec, SmallVec};
 
 use super::{
     AssertMessage, BasicBlock, InlineAsmOperand, Operand, Place, SourceInfo, Successors,
@@ -15,6 +16,87 @@ use std::iter;
 use std::slice;
 
 pub use super::query::*;
+
+#[derive(Debug, Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
+pub struct SwitchTargets {
+    /// Possible values. The locations to branch to in each case
+    /// are found in the corresponding indices from the `targets` vector.
+    values: SmallVec<[u128; 1]>,
+
+    /// Possible branch sites. The last element of this vector is used
+    /// for the otherwise branch, so targets.len() == values.len() + 1
+    /// should hold.
+    //
+    // This invariant is quite non-obvious and also could be improved.
+    // One way to make this invariant is to have something like this instead:
+    //
+    // branches: Vec<(ConstInt, BasicBlock)>,
+    // otherwise: Option<BasicBlock> // exhaustive if None
+    //
+    // However we’ve decided to keep this as-is until we figure a case
+    // where some other approach seems to be strictly better than other.
+    targets: SmallVec<[BasicBlock; 2]>,
+}
+
+impl SwitchTargets {
+    /// Creates switch targets from an iterator of values and target blocks.
+    ///
+    /// The iterator may be empty, in which case the `SwitchInt` instruction is equivalent to
+    /// `goto otherwise;`.
+    pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
+        let (values, mut targets): (SmallVec<_>, SmallVec<_>) = targets.unzip();
+        targets.push(otherwise);
+        Self { values: values.into(), targets }
+    }
+
+    /// Builds a switch targets definition that jumps to `then` if the tested value equals `value`,
+    /// and to `else_` if not.
+    pub fn static_if(value: u128, then: BasicBlock, else_: BasicBlock) -> Self {
+        Self { values: smallvec![value], targets: smallvec![then, else_] }
+    }
+
+    /// Returns the fallback target that is jumped to when none of the values match the operand.
+    pub fn otherwise(&self) -> BasicBlock {
+        *self.targets.last().unwrap()
+    }
+
+    /// Returns an iterator over the switch targets.
+    ///
+    /// The iterator will yield tuples containing the value and corresponding target to jump to, not
+    /// including the `otherwise` fallback target.
+    ///
+    /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
+    pub fn iter(&self) -> SwitchTargetsIter<'_> {
+        SwitchTargetsIter { inner: self.values.iter().zip(self.targets.iter()) }
+    }
+
+    /// Returns a slice with all possible jump targets (including the fallback target).
+    pub fn all_targets(&self) -> &[BasicBlock] {
+        &self.targets
+    }
+
+    pub fn all_targets_mut(&mut self) -> &mut [BasicBlock] {
+        &mut self.targets
+    }
+}
+
+pub struct SwitchTargetsIter<'a> {
+    inner: iter::Zip<slice::Iter<'a, u128>, slice::Iter<'a, BasicBlock>>,
+}
+
+impl<'a> Iterator for SwitchTargetsIter<'a> {
+    type Item = (u128, BasicBlock);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(val, bb)| (*val, *bb))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<'a> ExactSizeIterator for SwitchTargetsIter<'a> {}
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
 pub enum TerminatorKind<'tcx> {
@@ -32,23 +114,7 @@ pub enum TerminatorKind<'tcx> {
         /// FIXME: remove this redundant information. Currently, it is relied on by pretty-printing.
         switch_ty: Ty<'tcx>,
 
-        /// Possible values. The locations to branch to in each case
-        /// are found in the corresponding indices from the `targets` vector.
-        values: Cow<'tcx, [u128]>,
-
-        /// Possible branch sites. The last element of this vector is used
-        /// for the otherwise branch, so targets.len() == values.len() + 1
-        /// should hold.
-        //
-        // This invariant is quite non-obvious and also could be improved.
-        // One way to make this invariant is to have something like this instead:
-        //
-        // branches: Vec<(ConstInt, BasicBlock)>,
-        // otherwise: Option<BasicBlock> // exhaustive if None
-        //
-        // However we’ve decided to keep this as-is until we figure a case
-        // where some other approach seems to be strictly better than other.
-        targets: Vec<BasicBlock>,
+        targets: SwitchTargets,
     },
 
     /// Indicates that the landing pad is finished and unwinding should
@@ -227,12 +293,10 @@ impl<'tcx> TerminatorKind<'tcx> {
         t: BasicBlock,
         f: BasicBlock,
     ) -> TerminatorKind<'tcx> {
-        static BOOL_SWITCH_FALSE: &[u128] = &[0];
         TerminatorKind::SwitchInt {
             discr: cond,
             switch_ty: tcx.types.bool,
-            values: From::from(BOOL_SWITCH_FALSE),
-            targets: vec![f, t],
+            targets: SwitchTargets::static_if(0, f, t),
         }
     }
 
@@ -263,7 +327,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | FalseUnwind { real_target: ref t, unwind: Some(ref u) } => {
                 Some(t).into_iter().chain(slice::from_ref(u))
             }
-            SwitchInt { ref targets, .. } => None.into_iter().chain(&targets[..]),
+            SwitchInt { ref targets, .. } => None.into_iter().chain(&targets.targets[..]),
             FalseEdge { ref real_target, ref imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_ref(imaginary_target))
             }
@@ -297,7 +361,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) } => {
                 Some(t).into_iter().chain(slice::from_mut(u))
             }
-            SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets[..]),
+            SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets.targets[..]),
             FalseEdge { ref mut real_target, ref mut imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_mut(imaginary_target))
             }
@@ -469,11 +533,12 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
-            SwitchInt { ref values, switch_ty, .. } => ty::tls::with(|tcx| {
+            SwitchInt { ref targets, switch_ty, .. } => ty::tls::with(|tcx| {
                 let param_env = ty::ParamEnv::empty();
                 let switch_ty = tcx.lift(&switch_ty).unwrap();
                 let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
-                values
+                targets
+                    .values
                     .iter()
                     .map(|&u| {
                         ty::Const::from_scalar(tcx, Scalar::from_uint(u, size), switch_ty)

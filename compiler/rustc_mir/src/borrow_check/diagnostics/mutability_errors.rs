@@ -1,11 +1,11 @@
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::{self, ClearCrossCrate, Local, LocalInfo, Location};
+use rustc_middle::mir::{self, ClearCrossCrate, Local, LocalDecl, LocalInfo, Location};
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::source_map::DesugaringKind;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
 use crate::borrow_check::diagnostics::BorrowedContentSource;
@@ -211,36 +211,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             // Suggest removing a `&mut` from the use of a mutable reference.
             PlaceRef { local, projection: [] }
-                if {
-                    self.body
-                        .local_decls
-                        .get(local)
-                        .map(|local_decl| {
-                            if let Some(box LocalInfo::User(ClearCrossCrate::Set(
-                                mir::BindingForm::ImplicitSelf(kind),
-                            ))) = local_decl.local_info
-                            {
-                                // Check if the user variable is a `&mut self` and we can therefore
-                                // suggest removing the `&mut`.
-                                //
-                                // Deliberately fall into this case for all implicit self types,
-                                // so that we don't fall in to the next case with them.
-                                kind == mir::ImplicitSelfKind::MutRef
-                            } else if Some(kw::SelfLower) == self.local_names[local] {
-                                // Otherwise, check if the name is the self kewyord - in which case
-                                // we have an explicit self. Do the same thing in this case and check
-                                // for a `self: &mut Self` to suggest removing the `&mut`.
-                                if let ty::Ref(_, _, hir::Mutability::Mut) = local_decl.ty.kind() {
-                                    true
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
-                        })
-                        .unwrap_or(false)
-                } =>
+                if self
+                    .body
+                    .local_decls
+                    .get(local)
+                    .map(|l| mut_borrow_of_mutable_ref(l, self.local_names[local]))
+                    .unwrap_or(false) =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_label(span, "try removing `&mut` here");
@@ -578,6 +554,34 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 _ => {}
             }
         }
+    }
+}
+
+fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symbol>) -> bool {
+    debug!("local_info: {:?}, ty.kind(): {:?}", local_decl.local_info, local_decl.ty.kind());
+
+    match local_decl.local_info.as_deref() {
+        // Check if mutably borrowing a mutable reference.
+        Some(LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
+            mir::VarBindingForm {
+                binding_mode: ty::BindingMode::BindByValue(Mutability::Not), ..
+            },
+        )))) => matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut)),
+        Some(LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(kind)))) => {
+            // Check if the user variable is a `&mut self` and we can therefore
+            // suggest removing the `&mut`.
+            //
+            // Deliberately fall into this case for all implicit self types,
+            // so that we don't fall in to the next case with them.
+            *kind == mir::ImplicitSelfKind::MutRef
+        }
+        _ if Some(kw::SelfLower) == local_name => {
+            // Otherwise, check if the name is the `self` keyword - in which case
+            // we have an explicit self. Do the same thing in this case and check
+            // for a `self: &mut Self` to suggest removing the `&mut`.
+            matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut))
+        }
+        _ => false,
     }
 }
 

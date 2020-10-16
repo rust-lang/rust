@@ -1080,7 +1080,7 @@ impl From<Cow<'_, str>> for Box<str> {
 
 #[stable(feature = "boxed_str_conv", since = "1.19.0")]
 impl<A: AllocRef> From<Box<str, A>> for Box<[u8], A> {
-    /// Converts a `Box<str>>` into a `Box<[u8]>`
+    /// Converts a `Box<str>` into a `Box<[u8]>`
     ///
     /// This conversion does not allocate on the heap and happens in place.
     ///

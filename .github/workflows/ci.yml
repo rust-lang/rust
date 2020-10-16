@@ -89,6 +89,9 @@ jobs:
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
         if: success() && !env.SKIP_JOB
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
+        if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         if: success() && !env.SKIP_JOB
@@ -300,6 +303,20 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
             os: macos-latest
+          - name: dist-aarch64-apple
+            env:
+              SCRIPT: "./x.py dist --stage 2"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_12.2.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+              JEMALLOC_SYS_WITH_LG_PAGE: 14
+            os: macos-latest
           - name: x86_64-msvc-1
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
@@ -369,7 +386,7 @@ jobs:
             os: windows-latest-xl
           - name: dist-x86_64-msvc
             env:
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc --enable-full-tools --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler"
               SCRIPT: python x.py dist
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-latest-xl
@@ -378,6 +395,12 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc --host=i686-pc-windows-msvc --target=i686-pc-windows-msvc,i586-pc-windows-msvc --enable-full-tools --enable-profiler"
               SCRIPT: python x.py dist
               DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-latest-xl
+          - name: dist-aarch64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=aarch64-pc-windows-msvc --enable-full-tools --enable-profiler"
+              SCRIPT: python x.py dist
+              DIST_REQUIRE_ALL_TOOLS: 0
             os: windows-latest-xl
           - name: dist-i686-mingw
             env:
@@ -436,6 +459,9 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
+        if: success() && !env.SKIP_JOB
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
@@ -544,6 +570,9 @@ jobs:
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
         if: success() && !env.SKIP_JOB
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
+        if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         if: success() && !env.SKIP_JOB
@@ -647,6 +676,9 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
+        if: success() && !env.SKIP_JOB
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh

@@ -592,10 +592,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // anyway, except via auto trait matching (which
                     // only inspects the upvar types).
                     walker.skip_current_subtree(); // subtree handled below
-                    for upvar_ty in substs.as_closure().upvar_tys() {
-                        // FIXME(eddyb) add the type to `walker` instead of recursing.
-                        self.compute(upvar_ty.into());
-                    }
+                    // FIXME(eddyb) add the type to `walker` instead of recursing.
+                    self.compute(substs.as_closure().tupled_upvars_ty().into());
                 }
 
                 ty::FnPtr(_) => {

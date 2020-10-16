@@ -325,7 +325,7 @@ impl<'a> CrateLocator<'a> {
             hash,
             host_hash,
             extra_filename,
-            target: if is_host { &sess.host } else { &sess.target.target },
+            target: if is_host { &sess.host } else { &sess.target },
             triple: if is_host {
                 TargetTriple::from_triple(config::host_triple())
             } else {

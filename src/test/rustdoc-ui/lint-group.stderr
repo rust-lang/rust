@@ -28,6 +28,12 @@ LL | #![deny(rustdoc)]
    |         ^^^^^^^
    = note: `#[deny(private_doc_tests)]` implied by `#[deny(rustdoc)]`
 
+error: missing code example in this documentation
+  --> $DIR/lint-group.rs:26:1
+   |
+LL | /// <unknown>
+   | ^^^^^^^^^^^^^
+
 error: unresolved link to `error`
   --> $DIR/lint-group.rs:9:29
    |
@@ -42,5 +48,18 @@ LL | #![deny(rustdoc)]
    = note: `#[deny(broken_intra_doc_links)]` implied by `#[deny(rustdoc)]`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
-error: aborting due to 3 previous errors
+error: unclosed HTML tag `unknown`
+  --> $DIR/lint-group.rs:26:5
+   |
+LL | /// <unknown>
+   |     ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-group.rs:7:9
+   |
+LL | #![deny(rustdoc)]
+   |         ^^^^^^^
+   = note: `#[deny(invalid_html_tags)]` implied by `#[deny(rustdoc)]`
+
+error: aborting due to 5 previous errors
 

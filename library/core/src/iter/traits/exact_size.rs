@@ -26,10 +26,10 @@
 /// assert_eq!(5, five.len());
 /// ```
 ///
-/// In the [module level docs][moddocs], we implemented an [`Iterator`],
-/// `Counter`. Let's implement `ExactSizeIterator` for it as well:
+/// In the [module-level docs], we implemented an [`Iterator`], `Counter`.
+/// Let's implement `ExactSizeIterator` for it as well:
 ///
-/// [moddocs]: index.html
+/// [module-level docs]: crate::iter
 ///
 /// ```
 /// # struct Counter {

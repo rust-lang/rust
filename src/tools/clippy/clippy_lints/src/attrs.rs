@@ -137,17 +137,17 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// // Good (as inner attribute)
-    /// #![inline(always)]
+    /// #![allow(dead_code)]
     ///
     /// fn this_is_fine() { }
     ///
     /// // Bad
-    /// #[inline(always)]
+    /// #[allow(dead_code)]
     ///
     /// fn not_quite_good_code() { }
     ///
     /// // Good (as outer attribute)
-    /// #[inline(always)]
+    /// #[allow(dead_code)]
     /// fn this_is_fine_too() { }
     /// ```
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
