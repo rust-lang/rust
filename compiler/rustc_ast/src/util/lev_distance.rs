@@ -54,7 +54,7 @@ where
     T: Iterator<Item = &'a Symbol>,
 {
     let lookup = &lookup.as_str();
-    let max_dist = dist.map_or_else(|| cmp::max(lookup.len(), 3) / 3, |d| d);
+    let max_dist = dist.unwrap_or_else(|| cmp::max(lookup.len(), 3) / 3);
     let name_vec: Vec<&Symbol> = iter_names.collect();
 
     let (case_insensitive_match, levenshtein_match) = name_vec
