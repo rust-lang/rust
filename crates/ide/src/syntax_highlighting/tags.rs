@@ -64,6 +64,7 @@ pub enum HighlightModifier {
     Mutable,
     Consuming,
     Unsafe,
+    Callable,
 }
 
 impl HighlightTag {
@@ -122,6 +123,7 @@ impl HighlightModifier {
         HighlightModifier::Mutable,
         HighlightModifier::Consuming,
         HighlightModifier::Unsafe,
+        HighlightModifier::Callable,
     ];
 
     fn as_str(self) -> &'static str {
@@ -134,6 +136,7 @@ impl HighlightModifier {
             HighlightModifier::Mutable => "mutable",
             HighlightModifier::Consuming => "consuming",
             HighlightModifier::Unsafe => "unsafe",
+            HighlightModifier::Callable => "callable",
         }
     }
 

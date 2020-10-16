@@ -77,6 +77,7 @@ define_semantic_token_modifiers![
     (CONSUMING, "consuming"),
     (UNSAFE, "unsafe"),
     (ATTRIBUTE_MODIFIER, "attribute"),
+    (CALLABLE, "callable"),
 ];
 
 #[derive(Default)]
