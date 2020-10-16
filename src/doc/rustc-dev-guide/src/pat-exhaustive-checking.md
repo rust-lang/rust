@@ -37,7 +37,8 @@ match x {
 
 Thus usefulness is used for two purposes:
 detecting unreachable code (which is useful to the user),
-and ensuring that matches are exhaustive (which is important for soundness).
+and ensuring that matches are exhaustive (which is important for soundness,
+because a match expression can return a value).
 
 ## Where it happens
 
