@@ -5,7 +5,7 @@ use ide_db::RootDatabase;
 use syntax::{
     ast,
     ast::{make, ArgListOwner},
-    AstNode, TextRange,
+    AstNode,
 };
 use test_utils::mark;
 
@@ -15,8 +15,6 @@ use crate::{
     utils::mod_path_to_ast,
     AssistId, AssistKind, GroupLabel,
 };
-
-const ASSIST_ID: AssistId = AssistId("qualify_path", AssistKind::QuickFix);
 
 // Assist: qualify_path
 //
@@ -51,159 +49,148 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         return None;
     }
 
+    let candidate = import_assets.import_candidate();
     let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
-    match import_assets.import_candidate() {
-        ImportCandidate::QualifierStart(candidate) => {
+
+    let qualify_candidate = match candidate {
+        ImportCandidate::QualifierStart(_) => {
+            mark::hit!(qualify_path_qualifier_start);
             let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
             let segment = path.segment()?;
-            qualify_path_qualifier_start(acc, proposed_imports, range, segment, &candidate.name)
+            QualifyCandidate::QualifierStart(segment)
         }
-        ImportCandidate::UnqualifiedName(candidate) => {
-            qualify_path_unqualified_name(acc, proposed_imports, range, &candidate.name)
+        ImportCandidate::UnqualifiedName(_) => {
+            mark::hit!(qualify_path_unqualified_name);
+            QualifyCandidate::UnqualifiedName
         }
         ImportCandidate::TraitAssocItem(_) => {
+            mark::hit!(qualify_path_trait_assoc_item);
             let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
             let (qualifier, segment) = (path.qualifier()?, path.segment()?);
-            qualify_path_trait_assoc_item(acc, proposed_imports, range, qualifier, segment)
+            QualifyCandidate::TraitAssocItem(qualifier, segment)
         }
         ImportCandidate::TraitMethod(_) => {
+            mark::hit!(qualify_path_trait_method);
             let mcall_expr = ast::MethodCallExpr::cast(import_assets.syntax_under_caret().clone())?;
-            qualify_path_trait_method(acc, ctx.sema.db, proposed_imports, range, mcall_expr)?;
+            QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
         }
     };
+
+    let group_label = group_label(candidate);
+    for (import, item) in proposed_imports {
+        acc.add_group(
+            &group_label,
+            AssistId("qualify_path", AssistKind::QuickFix),
+            label(candidate, &import),
+            range,
+            |builder| {
+                qualify_candidate.qualify(
+                    |replace_with: String| builder.replace(range, replace_with),
+                    import,
+                    item,
+                )
+            },
+        );
+    }
     Some(())
 }
 
-// a test that covers this -> `associated_struct_const`
-fn qualify_path_qualifier_start(
-    acc: &mut Assists,
-    proposed_imports: Vec<(hir::ModPath, hir::ItemInNs)>,
-    range: TextRange,
-    segment: ast::PathSegment,
-    qualifier_start: &ast::NameRef,
-) {
-    mark::hit!(qualify_path_qualifier_start);
-    let group_label = GroupLabel(format!("Qualify {}", qualifier_start));
-    for (import, _) in proposed_imports {
-        acc.add_group(
-            &group_label,
-            ASSIST_ID,
-            format!("Qualify with `{}`", &import),
-            range,
-            |builder| {
-                let import = mod_path_to_ast(&import);
-                builder.replace(range, format!("{}::{}", import, segment));
-            },
-        );
-    }
+enum QualifyCandidate<'db> {
+    QualifierStart(ast::PathSegment),
+    UnqualifiedName,
+    TraitAssocItem(ast::Path, ast::PathSegment),
+    TraitMethod(&'db RootDatabase, ast::MethodCallExpr),
 }
 
-// a test that covers this -> `applicable_when_found_an_import_partial`
-fn qualify_path_unqualified_name(
-    acc: &mut Assists,
-    proposed_imports: Vec<(hir::ModPath, hir::ItemInNs)>,
-    range: TextRange,
-    name: &ast::NameRef,
-) {
-    mark::hit!(qualify_path_unqualified_name);
-    let group_label = GroupLabel(format!("Qualify {}", name));
-    for (import, _) in proposed_imports {
-        acc.add_group(
-            &group_label,
-            ASSIST_ID,
-            format!("Qualify as `{}`", &import),
-            range,
-            |builder| builder.replace(range, mod_path_to_ast(&import).to_string()),
-        );
-    }
-}
-
-// a test that covers this -> `associated_trait_const`
-fn qualify_path_trait_assoc_item(
-    acc: &mut Assists,
-    proposed_imports: Vec<(hir::ModPath, hir::ItemInNs)>,
-    range: TextRange,
-    qualifier: ast::Path,
-    segment: ast::PathSegment,
-) {
-    mark::hit!(qualify_path_trait_assoc_item);
-    let group_label = GroupLabel(format!("Qualify {}", &segment));
-    for (import, _) in proposed_imports {
-        acc.add_group(
-            &group_label,
-            ASSIST_ID,
-            format!("Qualify with cast as `{}`", &import),
-            range,
-            |builder| {
+impl QualifyCandidate<'_> {
+    fn qualify(&self, mut replacer: impl FnMut(String), import: hir::ModPath, item: hir::ItemInNs) {
+        match self {
+            QualifyCandidate::QualifierStart(segment) => {
                 let import = mod_path_to_ast(&import);
-                builder.replace(range, format!("<{} as {}>::{}", qualifier, import, segment));
-            },
-        );
-    }
-}
-
-// a test that covers this -> `trait_method`
-fn qualify_path_trait_method(
-    acc: &mut Assists,
-    db: &RootDatabase,
-    proposed_imports: Vec<(hir::ModPath, hir::ItemInNs)>,
-    range: TextRange,
-    mcall_expr: ast::MethodCallExpr,
-) -> Option<()> {
-    mark::hit!(qualify_path_trait_method);
-
-    let receiver = mcall_expr.receiver()?;
-    let trait_method_name = mcall_expr.name_ref()?;
-    let arg_list = mcall_expr.arg_list().map(|arg_list| arg_list.args());
-    let group_label = GroupLabel(format!("Qualify {}", trait_method_name));
-    let find_method = |item: &hir::AssocItem| {
-        item.name(db).map(|name| name == trait_method_name.as_name()).unwrap_or(false)
-    };
-    for (import, trait_) in proposed_imports.into_iter().filter_map(filter_trait) {
-        acc.add_group(
-            &group_label,
-            ASSIST_ID,
-            format!("Qualify `{}`", &import),
-            range,
-            |builder| {
+                replacer(format!("{}::{}", import, segment));
+            }
+            QualifyCandidate::UnqualifiedName => replacer(mod_path_to_ast(&import).to_string()),
+            QualifyCandidate::TraitAssocItem(qualifier, segment) => {
                 let import = mod_path_to_ast(&import);
-                if let Some(hir::AssocItem::Function(method)) =
-                    trait_.items(db).into_iter().find(find_method)
-                {
-                    if let Some(self_access) = method.self_param(db).map(|sp| sp.access(db)) {
-                        let receiver = receiver.clone();
-                        let receiver = match self_access {
-                            hir::Access::Shared => make::expr_ref(receiver, false),
-                            hir::Access::Exclusive => make::expr_ref(receiver, true),
-                            hir::Access::Owned => receiver,
-                        };
-                        builder.replace(
-                            range,
-                            format!(
-                                "{}::{}{}",
-                                import,
-                                trait_method_name,
-                                match arg_list.clone() {
-                                    Some(args) => make::arg_list(iter::once(receiver).chain(args)),
-                                    None => make::arg_list(iter::once(receiver)),
-                                }
-                            ),
-                        );
-                    }
+                replacer(format!("<{} as {}>::{}", qualifier, import, segment));
+            }
+            &QualifyCandidate::TraitMethod(db, ref mcall_expr) => {
+                Self::qualify_trait_method(db, mcall_expr, replacer, import, item);
+            }
+        }
+    }
+
+    fn qualify_trait_method(
+        db: &RootDatabase,
+        mcall_expr: &ast::MethodCallExpr,
+        mut replacer: impl FnMut(String),
+        import: hir::ModPath,
+        item: hir::ItemInNs,
+    ) -> Option<()> {
+        let receiver = mcall_expr.receiver()?;
+        let trait_method_name = mcall_expr.name_ref()?;
+        let arg_list = mcall_expr.arg_list().map(|arg_list| arg_list.args());
+        let trait_ = item_as_trait(item)?;
+        let method = find_trait_method(db, trait_, &trait_method_name)?;
+        if let Some(self_access) = method.self_param(db).map(|sp| sp.access(db)) {
+            let import = mod_path_to_ast(&import);
+            let receiver = match self_access {
+                hir::Access::Shared => make::expr_ref(receiver, false),
+                hir::Access::Exclusive => make::expr_ref(receiver, true),
+                hir::Access::Owned => receiver,
+            };
+            replacer(format!(
+                "{}::{}{}",
+                import,
+                trait_method_name,
+                match arg_list.clone() {
+                    Some(args) => make::arg_list(iter::once(receiver).chain(args)),
+                    None => make::arg_list(iter::once(receiver)),
                 }
-            },
-        );
+            ));
+        }
+        Some(())
     }
-    Some(())
 }
 
-fn filter_trait(
-    (import, trait_): (hir::ModPath, hir::ItemInNs),
-) -> Option<(hir::ModPath, hir::Trait)> {
-    if let hir::ModuleDef::Trait(trait_) = hir::ModuleDef::from(trait_.as_module_def_id()?) {
-        Some((import, trait_))
+fn find_trait_method(
+    db: &RootDatabase,
+    trait_: hir::Trait,
+    trait_method_name: &ast::NameRef,
+) -> Option<hir::Function> {
+    if let Some(hir::AssocItem::Function(method)) =
+        trait_.items(db).into_iter().find(|item: &hir::AssocItem| {
+            item.name(db).map(|name| name == trait_method_name.as_name()).unwrap_or(false)
+        })
+    {
+        Some(method)
     } else {
         None
+    }
+}
+
+fn item_as_trait(item: hir::ItemInNs) -> Option<hir::Trait> {
+    if let hir::ModuleDef::Trait(trait_) = hir::ModuleDef::from(item.as_module_def_id()?) {
+        Some(trait_)
+    } else {
+        None
+    }
+}
+
+fn group_label(candidate: &ImportCandidate) -> GroupLabel {
+    let name = match candidate {
+        ImportCandidate::UnqualifiedName(it) | ImportCandidate::QualifierStart(it) => &it.name,
+        ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => &it.name,
+    };
+    GroupLabel(format!("Qualify {}", name))
+}
+
+fn label(candidate: &ImportCandidate, import: &hir::ModPath) -> String {
+    match candidate {
+        ImportCandidate::UnqualifiedName(_) => format!("Qualify as `{}`", &import),
+        ImportCandidate::QualifierStart(_) => format!("Qualify with `{}`", &import),
+        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", &import),
+        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", &import),
     }
 }
 
