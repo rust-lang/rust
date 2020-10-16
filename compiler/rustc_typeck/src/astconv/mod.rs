@@ -1095,7 +1095,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     obligation.predicate
                 );
 
-                let bound_predicate = obligation.predicate.bound_atom(tcx);
+                let bound_predicate = obligation.predicate.bound_atom();
                 match bound_predicate.skip_binder() {
                     ty::PredicateAtom::Trait(pred, _) => {
                         let pred = bound_predicate.rebind(pred);

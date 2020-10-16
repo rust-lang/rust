@@ -192,7 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     obligation.predicate
                 );
 
-                let bound_predicate = obligation.predicate.bound_atom(self.tcx);
+                let bound_predicate = obligation.predicate.bound_atom();
                 if let ty::PredicateAtom::Projection(proj_predicate) =
                     obligation.predicate.skip_binders()
                 {

@@ -623,7 +623,7 @@ fn prune_cache_value_obligations<'a, 'tcx>(
         .obligations
         .iter()
         .filter(|obligation| {
-            let bound_predicate = obligation.predicate.bound_atom(infcx.tcx);
+            let bound_predicate = obligation.predicate.bound_atom();
             match bound_predicate.skip_binder() {
                 // We found a `T: Foo<X = U>` predicate, let's check
                 // if `U` references any unresolved type
@@ -908,7 +908,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!(?predicate);
-        let bound_predicate = predicate.bound_atom(infcx.tcx);
+        let bound_predicate = predicate.bound_atom();
         if let ty::PredicateAtom::Projection(data) = predicate.skip_binders() {
             let data = bound_predicate.rebind(data);
             let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;

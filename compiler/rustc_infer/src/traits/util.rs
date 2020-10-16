@@ -126,7 +126,7 @@ impl Elaborator<'tcx> {
     fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
         let tcx = self.visited.tcx;
 
-        let bound_predicate = obligation.predicate.bound_atom(tcx);
+        let bound_predicate = obligation.predicate.bound_atom();
         match bound_predicate.skip_binder() {
             ty::PredicateAtom::Trait(data, _) => {
                 // Get predicates declared on the trait.

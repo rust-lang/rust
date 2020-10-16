@@ -449,8 +449,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let result = ensure_sufficient_stack(|| {
-            let bound_predicate =
-                obligation.predicate.bound_atom_with_opt_escaping(self.infcx().tcx);
+            let bound_predicate = obligation.predicate.bound_atom();
             match bound_predicate.skip_binder() {
                 ty::PredicateAtom::Trait(t, _) => {
                     let t = bound_predicate.rebind(t);
@@ -1176,7 +1175,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .iter()
             .enumerate()
             .filter_map(|(idx, bound)| {
-                let bound_predicate = bound.bound_atom(self.infcx.tcx);
+                let bound_predicate = bound.bound_atom();
                 if let ty::PredicateAtom::Trait(pred, _) = bound_predicate.skip_binder() {
                     let bound = bound_predicate.rebind(pred.trait_ref);
                     if self.infcx.probe(|_| {
@@ -1568,7 +1567,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
-        match self_ty.kind() {
+        match *self_ty.kind() {
             ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
             | ty::FnDef(..)
@@ -1597,7 +1596,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Array(element_ty, _) => {
                 // (*) binder moved here
-                Where(obligation.predicate.rebind(vec![*element_ty]))
+                Where(obligation.predicate.rebind(vec![element_ty]))
             }
 
             ty::Tuple(tys) => {

@@ -642,7 +642,7 @@ impl AutoTraitFinder<'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
 
-            let bound_predicate = predicate.bound_atom(select.infcx().tcx);
+            let bound_predicate = predicate.bound_atom();
             match bound_predicate.skip_binder() {
                 ty::PredicateAtom::Trait(p, _) => {
                     if self.is_param_no_infer(p.trait_ref.substs)

@@ -1058,11 +1058,11 @@ impl<'tcx> Predicate<'tcx> {
 
     /// Converts this to a `Binder<PredicateAtom<'tcx>>`. If the value was an
     /// `Atom`, then it is not allowed to contain escaping bound vars.
-    pub fn bound_atom(self, _tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
+    pub fn bound_atom(self) -> Binder<PredicateAtom<'tcx>> {
         match self.kind() {
             &PredicateKind::ForAll(binder) => binder,
             &PredicateKind::Atom(atom) => {
-                assert!(!atom.has_escaping_bound_vars());
+                debug_assert!(!atom.has_escaping_bound_vars());
                 Binder::dummy(atom)
             }
         }

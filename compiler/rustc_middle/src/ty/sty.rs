@@ -1006,6 +1006,11 @@ impl<T> Binder<T> {
     /// current `Binder`. This should not be used if the new value *changes*
     /// the bound variables. Note: the (old or new) value itself does not
     /// necessarily need to *name* all the bound variables.
+    ///
+    /// This currently doesn't do anything different than `bind`, because we
+    /// don't actually track bound vars. However, semantically, it is different
+    /// because bound vars aren't allowed to change here, whereas they are
+    /// in `bind`. This may be (debug) asserted in the future.
     pub fn rebind<U>(&self, value: U) -> Binder<U> {
         Binder(value)
     }

@@ -637,7 +637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
                     let mut format_pred = |pred: ty::Predicate<'tcx>| {
-                        let bound_predicate = pred.bound_atom(tcx);
+                        let bound_predicate = pred.bound_atom();
                         match bound_predicate.skip_binder() {
                             ty::PredicateAtom::Projection(pred) => {
                                 let pred = bound_predicate.rebind(pred);

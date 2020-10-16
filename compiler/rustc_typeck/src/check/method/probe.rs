@@ -796,13 +796,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // FIXME: do we want to commit to this behavior for param bounds?
         debug!("assemble_inherent_candidates_from_param(param_ty={:?})", param_ty);
 
-        let tcx = self.tcx;
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
-            let bound_predicate = predicate.bound_atom(tcx);
+            let bound_predicate = predicate.bound_atom();
             match bound_predicate.skip_binder() {
                 ty::PredicateAtom::Trait(trait_predicate, _) => {
-                    match trait_predicate.trait_ref.self_ty().kind() {
-                        ty::Param(ref p) if *p == param_ty => {
+                    match *trait_predicate.trait_ref.self_ty().kind() {
+                        ty::Param(p) if p == param_ty => {
                             Some(bound_predicate.rebind(trait_predicate.trait_ref))
                         }
                         _ => None,
