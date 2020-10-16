@@ -121,12 +121,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {
-                fx.tcx.sess.span_warn(
-                    fx.mir.span,
-                    "`#[rustc_arg_required_const(..)]` is not yet supported. Calling this function will panic.",
+                fx.tcx.sess.span_fatal(
+                    span,
+                    "Index argument for `simd_insert` is not a constant",
                 );
-                crate::trap::trap_unimplemented(fx, "`#[rustc_arg_required_const(..)]` is not yet supported.");
-                return;
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
@@ -145,13 +143,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {
-                fx.tcx.sess.span_warn(
-                    fx.mir.span,
-                    "`#[rustc_arg_required_const(..)]` is not yet supported. Calling this function will panic.",
+                fx.tcx.sess.span_fatal(
+                    span,
+                    "Index argument for `simd_extract` is not a constant",
                 );
-                let val = crate::trap::trap_unimplemented_ret_value(fx, ret.layout(), "`#[rustc_arg_required_const(..)]` is not yet supported.");
-                ret.write_cvalue(fx, val);
-                return;
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
