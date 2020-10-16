@@ -61,10 +61,13 @@ fn generate_tokens(grammar: &AstSrc) -> Result<String> {
         }
     });
 
-    let pretty = reformat(quote! {
-        use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
-        #(#tokens)*
-    })?
+    let pretty = reformat(
+        &quote! {
+            use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
+            #(#tokens)*
+        }
+        .to_string(),
+    )?
     .replace("#[derive", "\n#[derive");
     Ok(pretty)
 }
@@ -261,7 +264,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
         }
     }
 
-    let pretty = reformat(res)?;
+    let pretty = reformat(&res)?;
     Ok(pretty)
 }
 
@@ -383,7 +386,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
         }
     };
 
-    reformat(ast)
+    reformat(&ast.to_string())
 }
 
 fn to_upper_snake_case(s: &str) -> String {

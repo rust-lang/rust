@@ -46,5 +46,5 @@ fn generate_descriptor(src_dir: PathBuf) -> Result<String> {
             #(#definitions),*
         ];
     };
-    reformat(ts)
+    reformat(&ts.to_string())
 }
