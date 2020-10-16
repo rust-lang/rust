@@ -45,7 +45,7 @@ impl Read for Empty {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        unsafe { Initializer::nop() }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -135,7 +135,7 @@ impl Read for Repeat {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        unsafe { Initializer::nop() }
     }
 }
 
