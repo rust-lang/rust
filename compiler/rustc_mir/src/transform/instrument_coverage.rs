@@ -381,7 +381,7 @@ impl BasicCoverageBlocks {
         let successors = IndexVec::from_fn_n(
             |bcb| {
                 let bcb_data = &bcbs[bcb];
-                let bcb_successors = bcb_filtered_successors(&bcb_data.terminator(mir_body).kind)
+                let bcb_successors = bcb_filtered_successors(&mir_body, &bcb_data.terminator(mir_body).kind)
 // TODO(richkadel):
 // MAKE SURE WE ONLY RETURN THE SAME SUCCESSORS USED WHEN CREATING THE BCB (THE FIRST SUCCESSOR ONLY,
 // UNLESS ITS A SWITCHINT).)
@@ -425,7 +425,7 @@ impl BasicCoverageBlocks {
         // each block terminator's `successors()`. Coverage spans must map to actual source code,
         // so compiler generated blocks and paths can be ignored. To that end, the CFG traversal
         // intentionally omits unwind paths.
-        let mir_cfg_without_unwind = ShortCircuitPreorder::new(mir_body, bcb_filtered_successors);
+        let mir_cfg_without_unwind = ShortCircuitPreorder::new(&mir_body, bcb_filtered_successors);
 
         let mut basic_blocks = Vec::new();
         for (bb, data) in mir_cfg_without_unwind {
@@ -1078,7 +1078,17 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             if let Some(bcb_to_coverage_spans_with_counters) = debug_bcb_to_coverage_spans_with_counters.as_mut() {
                 bcb_to_coverage_spans_with_counters.entry(bcb).or_insert_with(|| Vec::new()).push((covspan.clone(), counter_kind.clone()));
             }
-            self.inject_statement(counter_kind, self.bcb_last_bb(bcb), make_code_region(file_name, &source_file, span, body_span));
+            let mut code_region = None;
+            if span.hi() == body_span.hi() {
+                // TODO(richkadel): add a comment if this works
+                if let TerminatorKind::Goto { .. } = self.bcb_terminator(bcb).kind {
+                    code_region = Some(make_non_reportable_code_region(file_name, &source_file, span));
+                }
+            }
+            if code_region.is_none() {
+                code_region = Some(make_code_region(file_name, &source_file, span, body_span));
+            };
+            self.inject_statement(counter_kind, self.bcb_last_bb(bcb), code_region.unwrap());
         }
 
         // The previous step looped through the `CoverageSpan`s and injected the counter from the
@@ -1218,7 +1228,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             };
             let edge_labels = |from_bcb| {
                 let from_terminator = self.bcb_terminator(from_bcb);
-                let edge_labels = from_terminator.kind.fmt_successor_labels();
+                let mut edge_labels = from_terminator.kind.fmt_successor_labels();
+                edge_labels.retain(|label| label.to_string() != "unreachable");
                 let edge_counters = from_terminator.successors().map(|&successor| {
                     edge_to_counter.get(&(from_bcb, successor))
                 });
@@ -2663,34 +2674,34 @@ fn hash(
     stable_hasher.finish()
 }
 
-fn bcb_filtered_successors<'tcx>(term_kind: &'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx> {
+fn bcb_filtered_successors<'a, 'tcx>(body: &'tcx &'a mir::Body<'tcx>, term_kind: &'tcx TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a> {
     let mut successors = term_kind.successors();
-    match &term_kind {
+    box match &term_kind {
         // SwitchInt successors are never unwind, and all of them should be traversed.
         TerminatorKind::SwitchInt { .. } => successors,
         // For all other kinds, return only the first successor, if any, and ignore unwinds.
         // NOTE: `chain(&[])` is required to coerce the `option::iter` (from
         // `next().into_iter()`) into the `mir::Successors` aliased type.
         _ => successors.next().into_iter().chain(&[]),
-    }
+    }.filter(move |&&successor| body[successor].terminator().kind != TerminatorKind::Unreachable)
 }
 
 pub struct ShortCircuitPreorder<
     'a,
     'tcx,
-    F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>,
+    F: Fn(&'tcx &'a mir::Body<'tcx>, &'tcx TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a>,
 > {
-    body: &'a mir::Body<'tcx>,
+    body: &'tcx &'a mir::Body<'tcx>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
     filtered_successors: F,
 }
 
-impl<'a, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>>
+impl<'a, 'tcx, F: Fn(&'tcx &'a mir::Body<'tcx>, &'tcx TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a>>
     ShortCircuitPreorder<'a, 'tcx, F>
 {
     pub fn new(
-        body: &'a mir::Body<'tcx>,
+        body: &'tcx &'a mir::Body<'tcx>,
         filtered_successors: F,
     ) -> ShortCircuitPreorder<'a, 'tcx, F> {
         let worklist = vec![mir::START_BLOCK];
@@ -2704,7 +2715,7 @@ impl<'a, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>>
     }
 }
 
-impl<'a: 'tcx, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>> Iterator
+impl<'a: 'tcx, 'tcx, F: Fn(&'tcx &'a mir::Body<'tcx>, &'tcx TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a>> Iterator
     for ShortCircuitPreorder<'a, 'tcx, F>
 {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
@@ -2718,7 +2729,7 @@ impl<'a: 'tcx, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>>
             let data = &self.body[idx];
 
             if let Some(ref term) = data.terminator {
-                self.worklist.extend((self.filtered_successors)(&term.kind));
+                self.worklist.extend((self.filtered_successors)(&self.body, &term.kind));
             }
 
             return Some((idx, data));
@@ -2733,49 +2744,10 @@ impl<'a: 'tcx, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>>
     }
 }
 
-// NOTE: Regarding past efforts and revelations when trying to identify `Unreachable` coverage spans
-// from the MIR:
+// TODO(richkadel): try_error_result.rs
+// When executing the Result as Try>::from_error() returns to one or more
+// Goto that then targets Return.
+// Both the Goto (after error) and the Return have coverage at the last
+// bytepos, 0-length Span.
 //
-// TerminatorKind::FalseEdge targets from SwitchInt don't appear to be helpful in identifying
-// unreachable code. I did test the theory, but the following changes were not beneficial. (I
-// assumed that replacing some constants with non-deterministic variables might effect which blocks
-// were targeted by a `FalseEdge` `imaginary_target`. It did not.)
-//
-// Also note that, if there is a way to identify BasicBlocks that are part of the MIR CFG, but not
-// actually reachable, here are some other things to consider:
-//
-// Injecting unreachable code regions will probably require computing the set difference between the
-// basic blocks found without filtering out unreachable blocks, and the basic blocks found with a
-// filter (similar to or as an extension of the `filter_unwind_paths` filter); then computing the
-// `CoverageSpans` without the filter; and then injecting `Counter`s or `Expression`s for
-// blocks that are not unreachable, or injecting `Unreachable` code regions otherwise. This seems
-// straightforward, but not trivial.
-//
-// Alternatively, we might instead want to leave the unreachable blocks in (bypass the filter here),
-// and inject the counters. This will result in counter values of zero (0) for unreachable code
-// (and, notably, the code will be displayed with a red background by `llvm-cov show`).
-//
-// ```rust
-//     TerminatorKind::SwitchInt { .. } => {
-//         let some_imaginary_target = successors.clone().find_map(|&successor| {
-//             let term = mir_body[successor].terminator();
-//             if let TerminatorKind::FalseEdge { imaginary_target, .. } = term.kind {
-//                 if mir_body.predecessors()[imaginary_target].len() == 1 {
-//                     return Some(imaginary_target);
-//                 }
-//             }
-//             None
-//         });
-//         if let Some(imaginary_target) = some_imaginary_target {
-//             box successors.filter(move |&&successor| successor != imaginary_target)
-//         } else {
-//             box successors
-//         }
-//     }
-// ```
-//
-// Note this also required changing the closure signature for the `ShortCurcuitPreorder` to:
-//
-// ```rust
-//     F: Fn(&'tcx TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = &BasicBlock> + 'a>,
-// ```
+// How should I eliminate one, and which one, to avoid counting both.

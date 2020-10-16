@@ -88,7 +88,7 @@ Counter in file 0 62:10 -> 62:11, (((#38 + #39) + ((((#35 + #36) + (((((#25 + #2
 Counter in file 0 63:9 -> 63:23, #10
 Counter in file 0 65:9 -> 65:15, #6
 Counter in file 0 67:1 -> 67:2, ((#9 + #10) + (((#6 + #7) + #8) + (((#2 + 0) - #3) - #5)))
-Counter in file 0 67:1 -> 67:2, (((#6 + #7) + #8) + (((#2 + 0) - #3) - #5))
+Counter in file 0 67:2 -> 67:2, (((#6 + #7) + #8) + (((#2 + 0) - #3) - #5))
 Emitting segments for file: ../coverage/various_conditions.rs
 Combined regions:
   4:9 -> 4:26 (count=1)
@@ -163,7 +163,8 @@ Combined regions:
   62:10 -> 62:11 (count=0)
   63:9 -> 63:23 (count=0)
   65:9 -> 65:15 (count=0)
-  67:1 -> 67:2 (count=2)
+  67:1 -> 67:2 (count=1)
+  67:2 -> 67:2 (count=1)
 Segment at 4:9 (count = 1), RegionEntry
 Segment at 4:26 (count = 0), Skipped
 Segment at 5:8 (count = 1), RegionEntry
@@ -269,5 +270,5 @@ Segment at 63:9 (count = 0), RegionEntry
 Segment at 63:23 (count = 0), Skipped
 Segment at 65:9 (count = 0), RegionEntry
 Segment at 65:15 (count = 0), Skipped
-Segment at 67:1 (count = 2), RegionEntry
+Segment at 67:1 (count = 1), RegionEntry
 Segment at 67:2 (count = 0), Skipped

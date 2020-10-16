@@ -3,13 +3,12 @@ Counter in file 0 7:9 -> 9:26, #1
 Counter in file 0 10:8 -> 10:15, (#1 + 0)
 Counter in file 0 10:16 -> 12:6, #2
 Counter in file 0 12:6 -> 12:7, (#1 - #2)
-Counter in file 0 15:9 -> 15:10, (((#2 + (#1 - #2)) + (#3 + #4)) - (#6 + #5))
+Counter in file 0 15:9 -> 15:10, (((#2 + (#1 - #2)) + (#3 + #4)) - #5)
 Counter in file 0 17:9 -> 17:13, ((#2 + (#1 - #2)) + (#3 + #4))
-Counter in file 0 17:13 -> 17:13, #6
-Counter in file 0 22:13 -> 22:22, ((((#2 + (#1 - #2)) + (#3 + #4)) - (#6 + #5)) + 0)
+Counter in file 0 22:13 -> 22:22, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) + 0)
 Counter in file 0 24:13 -> 24:14, #3
-Counter in file 0 26:17 -> 28:18, ((((#2 + (#1 - #2)) + (#3 + #4)) - (#6 + #5)) + 0)
-Counter in file 0 28:18 -> 28:19, ((((#2 + (#1 - #2)) + (#3 + #4)) - (#6 + #5)) - #3)
+Counter in file 0 26:17 -> 28:18, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) + 0)
+Counter in file 0 28:18 -> 28:19, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) - #3)
 Counter in file 0 30:13 -> 37:14, (#3 + 0)
 Counter in file 0 40:13 -> 40:15, #4
 Counter in file 0 42:6 -> 42:7, (#2 + (#1 - #2))
@@ -23,7 +22,6 @@ Combined regions:
   12:6 -> 12:7 (count=0)
   15:9 -> 15:10 (count=2)
   17:9 -> 17:13 (count=3)
-  17:13 -> 17:13 (count=0)
   22:13 -> 22:22 (count=2)
   24:13 -> 24:14 (count=1)
   26:17 -> 28:18 (count=2)
@@ -42,7 +40,7 @@ Segment at 12:7 (count = 0), Skipped
 Segment at 15:9 (count = 2), RegionEntry
 Segment at 15:10 (count = 0), Skipped
 Segment at 17:9 (count = 3), RegionEntry
-Segment at 17:13 (count = 0), Gap
+Segment at 17:13 (count = 0), Skipped
 Segment at 22:13 (count = 2), RegionEntry
 Segment at 22:22 (count = 0), Skipped
 Segment at 24:13 (count = 1), RegionEntry

@@ -7,8 +7,8 @@ Counter in file 0 22:21 -> 22:27, #4
 Counter in file 0 26:21 -> 26:27, #5
 Counter in file 0 30:9 -> 32:10, #2
 Counter in file 0 35:5 -> 35:11, #3
-Counter in file 0 36:1 -> 36:2, (#4 + #5)
 Counter in file 0 36:1 -> 36:2, ((#4 + #5) + #3)
+Counter in file 0 36:2 -> 36:2, (#4 + #5)
 Emitting segments for file: ../coverage/while_early_return.rs
 Combined regions:
   5:9 -> 5:27 (count=1)
@@ -19,7 +19,8 @@ Combined regions:
   26:21 -> 26:27 (count=1)
   30:9 -> 32:10 (count=6)
   35:5 -> 35:11 (count=0)
-  36:1 -> 36:2 (count=2)
+  36:1 -> 36:2 (count=1)
+  36:2 -> 36:2 (count=1)
 Segment at 5:9 (count = 1), RegionEntry
 Segment at 5:27 (count = 0), Skipped
 Segment at 7:9 (count = 7), RegionEntry
@@ -36,5 +37,5 @@ Segment at 30:9 (count = 6), RegionEntry
 Segment at 32:10 (count = 0), Skipped
 Segment at 35:5 (count = 0), RegionEntry
 Segment at 35:11 (count = 0), Skipped
-Segment at 36:1 (count = 2), RegionEntry
+Segment at 36:1 (count = 1), RegionEntry
 Segment at 36:2 (count = 0), Skipped
