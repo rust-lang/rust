@@ -159,6 +159,7 @@ mod handlers {
     mod replace_impl_trait_with_generic;
     mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
+    mod replace_string_with_char;
     mod replace_unwrap_with_match;
     mod split_import;
     mod unwrap_block;
@@ -208,6 +209,7 @@ mod handlers {
             replace_impl_trait_with_generic::replace_impl_trait_with_generic,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
+            replace_string_with_char::replace_string_with_char,
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
             unwrap_block::unwrap_block,
