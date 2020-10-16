@@ -19,7 +19,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{self, Span};
+use rustc_span::{self, MultiSpan, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 use std::mem::replace;
@@ -83,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             args_no_rcvr,
             method.sig.c_variadic,
             tuple_arguments,
-            self.tcx.hir().span_if_local(method.def_id),
+            Some(method.def_id),
         );
         method.sig.output()
     }
@@ -99,7 +99,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: &'tcx [hir::Expr<'tcx>],
         c_variadic: bool,
         tuple_arguments: TupleArgumentsFlag,
-        def_span: Option<Span>,
+        def_id: Option<DefId>,
     ) {
         let tcx = self.tcx;
         // Grab the argument types, supplying fresh type variables
@@ -172,9 +172,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
 
-            if let Some(def_s) = def_span.map(|sp| tcx.sess.source_map().guess_head_span(sp)) {
-                err.span_label(def_s, "defined here");
+            if let Some(def_id) = def_id {
+                if let Some(node) = tcx.hir().get_if_local(def_id) {
+                    let mut spans: MultiSpan = node
+                        .ident()
+                        .map(|ident| ident.span)
+                        .unwrap_or_else(|| tcx.hir().span(node.hir_id().unwrap()))
+                        .into();
+
+                    if let Some(id) = node.body_id() {
+                        let body = tcx.hir().body(id);
+                        for param in body.params {
+                            spans.push_span_label(param.span, String::new());
+                        }
+                    }
+
+                    let def_kind = tcx.def_kind(def_id);
+                    err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+                }
             }
+
             if sugg_unit {
                 let sugg_span = tcx.sess.source_map().end_point(expr.span);
                 // remove closing `)` from the span
