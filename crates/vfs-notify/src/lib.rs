@@ -165,14 +165,15 @@ impl NotifyActor {
                 let mut res = Vec::new();
 
                 for root in dirs.include.iter() {
-                    let walkdir = WalkDir::new(root).into_iter().filter_entry(|entry| {
-                        if !entry.file_type().is_dir() {
-                            return true;
-                        }
-                        let path = AbsPath::assert(entry.path());
-                        root == path
-                            || dirs.exclude.iter().chain(&dirs.include).all(|it| it != path)
-                    });
+                    let walkdir =
+                        WalkDir::new(root).follow_links(true).into_iter().filter_entry(|entry| {
+                            if !entry.file_type().is_dir() {
+                                return true;
+                            }
+                            let path = AbsPath::assert(entry.path());
+                            root == path
+                                || dirs.exclude.iter().chain(&dirs.include).all(|it| it != path)
+                        });
 
                     let files = walkdir.filter_map(|it| it.ok()).filter_map(|entry| {
                         let is_dir = entry.file_type().is_dir();
