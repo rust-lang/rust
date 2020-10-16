@@ -22,9 +22,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::original_sp;
-use rustc_span::{
-    BytePos, CharPos, FileName, Pos, RealFileName, SourceFile, Span, Symbol, SyntaxContext,
-};
+use rustc_span::{BytePos, CharPos, Pos, SourceFile, Span, Symbol, SyntaxContext};
 
 use std::cmp::Ordering;
 
@@ -549,13 +547,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mir_body = &self.mir_body;
         let body_span = self.body_span();
         let source_file = source_map.lookup_source_file(body_span.lo());
-        let file_name = match &source_file.name {
-            FileName::Real(RealFileName::Named(path)) => Symbol::intern(&path.to_string_lossy()),
-            _ => bug!(
-                "source_file.name should be a RealFileName, but it was: {:?}",
-                source_file.name
-            ),
-        };
+        let file_name = Symbol::intern(&source_file.name.to_string());
 
         debug!("instrumenting {:?}, span: {}", def_id, source_map.span_to_string(body_span));
 
