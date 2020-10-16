@@ -205,25 +205,25 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %min.iters.check = icmp ult i32 %size, 4: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %min.iters.check, label %for.body.preheader20, label %vector.ph: {}
 ; CHECK-NEXT: for.body.preheader20
-; CHECK-NEXT:   %indvars.iv.ph = phi i64 [ 0, %for.body.preheader ], [ %n.vec, %middle.block ]: {[-1]:Anything}
+; CHECK-NEXT:   %indvars.iv.ph = phi i64 [ 0, %for.body.preheader ], [ %n.vec, %middle.block ]: {[-1]:Integer}
 ; CHECK-NEXT:   %ret.013.ph = phi double [ 0xFFF0000000000000, %for.body.preheader ], [ %28, %middle.block ]: {[-1]:Float@double}
 ; CHECK-NEXT:   br label %for.body: {}
 ; CHECK-NEXT: vector.ph
-; CHECK-NEXT:   %n.vec = and i64 %wide.trip.count, 4294967292: {[-1]:Anything}
-; CHECK-NEXT:   %0 = add nsw i64 %n.vec, -4: {[-1]:Anything}
-; CHECK-NEXT:   %1 = lshr exact i64 %0, 2: {[-1]:Anything}
-; CHECK-NEXT:   %2 = add nuw nsw i64 %1, 1: {[-1]:Anything}
+; CHECK-NEXT:   %n.vec = and i64 %wide.trip.count, 4294967292: {[-1]:Integer}
+; CHECK-NEXT:   %0 = add nsw i64 %n.vec, -4: {[-1]:Integer}
+; CHECK-NEXT:   %1 = lshr exact i64 %0, 2: {[-1]:Integer}
+; CHECK-NEXT:   %2 = add nuw nsw i64 %1, 1: {[-1]:Integer}
 ; CHECK-NEXT:   %xtraiter = and i64 %2, 1: {[-1]:Integer}
 ; CHECK-NEXT:   %3 = icmp eq i64 %0, 0: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %3, label %middle.block.unr-lcssa, label %vector.ph.new: {}
 ; CHECK-NEXT: vector.ph.new
-; CHECK-NEXT:   %unroll_iter = sub nsw i64 %2, %xtraiter: {[-1]:Anything}
+; CHECK-NEXT:   %unroll_iter = sub nsw i64 %2, %xtraiter: {[-1]:Integer}
 ; CHECK-NEXT:   br label %vector.body: {}
 ; CHECK-NEXT: vector.body
-; CHECK-NEXT:   %index = phi i64 [ 0, %vector.ph.new ], [ %index.next.1, %vector.body ]: {[-1]:Anything}
+; CHECK-NEXT:   %index = phi i64 [ 0, %vector.ph.new ], [ %index.next.1, %vector.body ]: {[-1]:Integer}
 ; CHECK-NEXT:   %vec.phi = phi <2 x double> [ <double 0xFFF0000000000000, double 0xFFF0000000000000>, %vector.ph.new ], [ %18, %vector.body ]: {[-1]:Float@double}
 ; CHECK-NEXT:   %vec.phi16 = phi <2 x double> [ <double 0xFFF0000000000000, double 0xFFF0000000000000>, %vector.ph.new ], [ %19, %vector.body ]: {[-1]:Float@double}
-; CHECK-NEXT:   %niter = phi i64 [ %unroll_iter, %vector.ph.new ], [ %niter.nsub.1, %vector.body ]: {[-1]:Anything}
+; CHECK-NEXT:   %niter = phi i64 [ %unroll_iter, %vector.ph.new ], [ %niter.nsub.1, %vector.body ]: {[-1]:Integer}
 ; CHECK-NEXT:   %4 = getelementptr inbounds double, double* %vec, i64 %index: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT:   %5 = bitcast double* %4 to <2 x double>*: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT:   %wide.load = load <2 x double>, <2 x double>* %5, align 8, !tbaa !2: {[-1]:Float@double}
@@ -234,7 +234,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %9 = fcmp fast ogt <2 x double> %vec.phi16, %wide.load17: {[-1]:Integer}
 ; CHECK-NEXT:   %10 = select <2 x i1> %8, <2 x double> %vec.phi, <2 x double> %wide.load: {[-1]:Float@double}
 ; CHECK-NEXT:   %11 = select <2 x i1> %9, <2 x double> %vec.phi16, <2 x double> %wide.load17: {[-1]:Float@double}
-; CHECK-NEXT:   %index.next = or i64 %index, 4: {[-1]:Anything}
+; CHECK-NEXT:   %index.next = or i64 %index, 4: {[-1]:Integer}
 ; CHECK-NEXT:   %12 = getelementptr inbounds double, double* %vec, i64 %index.next: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT:   %13 = bitcast double* %12 to <2 x double>*: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT:   %wide.load.1 = load <2 x double>, <2 x double>* %13, align 8, !tbaa !2: {[-1]:Float@double}
@@ -245,14 +245,14 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %17 = fcmp fast ogt <2 x double> %11, %wide.load17.1: {[-1]:Integer}
 ; CHECK-NEXT:   %18 = select <2 x i1> %16, <2 x double> %10, <2 x double> %wide.load.1: {[-1]:Float@double}
 ; CHECK-NEXT:   %19 = select <2 x i1> %17, <2 x double> %11, <2 x double> %wide.load17.1: {[-1]:Float@double}
-; CHECK-NEXT:   %index.next.1 = add i64 %index, 8: {[-1]:Anything}
-; CHECK-NEXT:   %niter.nsub.1 = add i64 %niter, -2: {[-1]:Anything}
+; CHECK-NEXT:   %index.next.1 = add i64 %index, 8: {[-1]:Integer}
+; CHECK-NEXT:   %niter.nsub.1 = add i64 %niter, -2: {[-1]:Integer}
 ; CHECK-NEXT:   %niter.ncmp.1 = icmp eq i64 %niter.nsub.1, 0: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %niter.ncmp.1, label %middle.block.unr-lcssa, label %vector.body, !llvm.loop !6: {}
 ; CHECK-NEXT: middle.block.unr-lcssa
 ; CHECK-NEXT:   %.lcssa21.ph = phi <2 x double> [ undef, %vector.ph ], [ %18, %vector.body ]: {[-1]:Float@double}
 ; CHECK-NEXT:   %.lcssa.ph = phi <2 x double> [ undef, %vector.ph ], [ %19, %vector.body ]: {[-1]:Float@double}
-; CHECK-NEXT:   %index.unr = phi i64 [ 0, %vector.ph ], [ %index.next.1, %vector.body ]: {[-1]:Anything}
+; CHECK-NEXT:   %index.unr = phi i64 [ 0, %vector.ph ], [ %index.next.1, %vector.body ]: {[-1]:Integer}
 ; CHECK-NEXT:   %vec.phi.unr = phi <2 x double> [ <double 0xFFF0000000000000, double 0xFFF0000000000000>, %vector.ph ], [ %18, %vector.body ]: {[-1]:Float@double}
 ; CHECK-NEXT:   %vec.phi16.unr = phi <2 x double> [ <double 0xFFF0000000000000, double 0xFFF0000000000000>, %vector.ph ], [ %19, %vector.body ]: {[-1]:Float@double}
 ; CHECK-NEXT:   %lcmp.mod = icmp eq i64 %xtraiter, 0: {[-1]:Integer}
@@ -284,12 +284,12 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %ret.0.lcssa = phi double [ 0xFFF0000000000000, %entry ], [ %28, %middle.block ], [ %ret.0., %for.body ]: {[-1]:Float@double}
 ; CHECK-NEXT:   ret double %ret.0.lcssa: {}
 ; CHECK-NEXT: for.body
-; CHECK-NEXT:   %indvars.iv = phi i64 [ %indvars.iv.next, %for.body ], [ %indvars.iv.ph, %for.body.preheader20 ]: {[-1]:Anything}
+; CHECK-NEXT:   %indvars.iv = phi i64 [ %indvars.iv.next, %for.body ], [ %indvars.iv.ph, %for.body.preheader20 ]: {[-1]:Integer}
 ; CHECK-NEXT:   %ret.013 = phi double [ %ret.0., %for.body ], [ %ret.013.ph, %for.body.preheader20 ]: {[-1]:Float@double}
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %vec, i64 %indvars.iv: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT:   %29 = load double, double* %arrayidx, align 8, !tbaa !2: {[-1]:Float@double}
 ; CHECK-NEXT:   %cmp1 = fcmp fast ogt double %ret.013, %29: {[-1]:Integer}
 ; CHECK-NEXT:   %ret.0. = select i1 %cmp1, double %ret.013, double %29: {[-1]:Float@double}
-; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1: {[-1]:Anything}
+; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1: {[-1]:Integer}
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %indvars.iv.next, %wide.trip.count: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %exitcond, label %for.cond.cleanup, label %for.body, !llvm.loop !8: {}

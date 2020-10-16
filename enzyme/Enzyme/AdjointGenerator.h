@@ -193,7 +193,7 @@ public:
     //! Store inverted pointer loads that need to be cached for use in reverse
     //! pass
     if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() &&
-        TR.query(&LI).Data0()[{}].isPossiblePointer()) {
+        TR.query(&LI).Inner0().isPossiblePointer()) {
       PHINode *placeholder = cast<PHINode>(gutils->invertedPointers[&LI]);
       assert(placeholder->getType() == type);
       gutils->invertedPointers.erase(&LI);
@@ -918,7 +918,6 @@ public:
                          Value *orig_src, Value *length, Value *isVolatile,
                          llvm::MemTransferInst &MTI) {
     // TODO offset
-
     if (secretty) {
       // no change to forward pass if represents floats
       if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
@@ -1056,7 +1055,7 @@ public:
   }
 
   void visitMemTransferInst(llvm::MemTransferInst &MTI) {
-    if (gutils->isConstantInstruction(&MTI)) {
+    if (gutils->isConstantValue(MTI.getOperand(0))) {
       eraseIfUnused(MTI);
       return;
     }
@@ -1078,7 +1077,7 @@ public:
     // copying into nullptr is invalid (not sure why it exists here), but we
     // shouldn't do it in reverse pass or shadow
     if (isa<ConstantPointerNull>(orig_op0) ||
-        TR.query(orig_op0).Data0()[{}] == BaseType::Anything) {
+        TR.query(orig_op0).Inner0() == BaseType::Anything) {
       eraseIfUnused(MTI);
       return;
     }
@@ -1177,7 +1176,6 @@ public:
           srcalign = 1;
         }
       }
-
       subTransferHelper(dt.isFloat(), MTI.getParent(), MTI.getIntrinsicID(),
                         subdstalign, subsrcalign, /*offset*/ start, orig_op0,
                         orig_op1, /*length*/ length, /*volatile*/ isVolatile, MTI);
@@ -1667,8 +1665,8 @@ public:
     #endif
       if (castinst->isCast())
         if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          if (isAllocationFunction(*called, gutils->TLI) ||
-              isDeallocationFunction(*called, gutils->TLI)) {
+          if (isAllocationFunction(*fn, gutils->TLI) ||
+              isDeallocationFunction(*fn, gutils->TLI)) {
             called = fn;
           }
         }
@@ -1887,7 +1885,7 @@ public:
       auto argType = argi->getType();
 
       if (!argType->isFPOrFPVectorTy() &&
-          TR.query(orig->getArgOperand(i)).Data0()[{}].isPossiblePointer()) {
+          TR.query(orig->getArgOperand(i)).Inner0().isPossiblePointer()) {
         DIFFE_TYPE ty = DIFFE_TYPE::DUP_ARG;
         if (argType->isPointerTy()) {
           #if LLVM_VERSION_MAJOR >= 12
@@ -1929,7 +1927,7 @@ public:
     if (gutils->isConstantValue(orig)) {
       subretType = DIFFE_TYPE::CONSTANT;
     } else if (!orig->getType()->isFPOrFPVectorTy() &&
-               TR.query(orig).Data0()[{}].isPossiblePointer()) {
+               TR.query(orig).Inner0().isPossiblePointer()) {
       subretType = DIFFE_TYPE::DUP_ARG;
       // TODO interprocedural dup_noneed
     } else {
@@ -2139,7 +2137,7 @@ public:
           if (!gutils->isConstantValue(orig)) {
             gutils->originalToNewFn[orig] = dcall;
             if (!orig->getType()->isFPOrFPVectorTy() &&
-                TR.query(orig).Data0()[{}].isPossiblePointer()) {
+                TR.query(orig).Inner0().isPossiblePointer()) {
             } else if (Mode != DerivativeMode::Forward) {
               ((DiffeGradientUtils *)gutils)->differentials[dcall] =
                   ((DiffeGradientUtils *)gutils)->differentials[op];
@@ -2518,7 +2516,7 @@ public:
         if (!gutils->isConstantValue(orig)) {
           gutils->originalToNewFn[orig] = dcall;
           if (!orig->getType()->isFPOrFPVectorTy() &&
-              TR.query(orig).Data0()[{}].isPossiblePointer()) {
+              TR.query(orig).Inner0().isPossiblePointer()) {
           } else {
             ((DiffeGradientUtils *)gutils)->differentials[dcall] =
                 ((DiffeGradientUtils *)gutils)->differentials[op];

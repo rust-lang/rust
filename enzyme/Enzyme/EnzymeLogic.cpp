@@ -355,10 +355,11 @@ compute_uncacheable_args_for_callsites(
 
 void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const Value*> &unnecessaryValues, llvm::SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions,
                                       bool returnValue, DerivativeMode mode, TypeResults& TR, GradientUtils* gutils, TargetLibraryInfo& TLI, const std::vector<DIFFE_TYPE> &constant_args) {
+  std::map<std::pair<const Value *, bool>, bool> PrimalSeen;
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        return is_value_needed_in_reverse<Primal>(TR, gutils, val, /*topLevel*/mode == DerivativeMode::Both);
+        return is_value_needed_in_reverse<Primal>(TR, gutils, val, /*topLevel*/mode == DerivativeMode::Both, PrimalSeen);
       },
       [&](const Instruction *inst) {
         if (auto II = dyn_cast<IntrinsicInst>(inst)) {
@@ -494,7 +495,7 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
         }
         return ( (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) && inst->mayWriteToMemory()) ||
                is_value_needed_in_reverse<Primal>(TR, gutils, inst,
-                                          /*topLevel*/ mode == DerivativeMode::Both);
+                                          /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen);
       });
       #if 0
       llvm::errs() << "unnecessaryValues:\n";
@@ -643,7 +644,7 @@ bool shouldAugmentCall(CallInst *op, const GradientUtils *gutils,
   }
 
   if (!op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(op) &&
-      TR.query(op).Data0()[{}].isPossiblePointer()) {
+      TR.query(op).Inner0().isPossiblePointer()) {
     modifyPrimal = true;
 
 #ifdef PRINT_AUGCALL
@@ -671,7 +672,7 @@ bool shouldAugmentCall(CallInst *op, const GradientUtils *gutils,
 
     if (!argType->isFPOrFPVectorTy() &&
         !gutils->isConstantValue(op->getArgOperand(i)) &&
-        TR.query(op->getArgOperand(i)).Data0()[{}].isPossiblePointer()) {
+        TR.query(op->getArgOperand(i)).Inner0().isPossiblePointer()) {
       if (called && !(called->hasParamAttribute(i, Attribute::ReadOnly) ||
                       called->hasParamAttribute(i, Attribute::ReadNone))) {
         modifyPrimal = true;

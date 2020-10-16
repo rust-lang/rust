@@ -34,7 +34,7 @@ enum ValueType {
 template<ValueType VT>
 bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    bool topLevel, std::map<std::pair<const Value *, bool>, bool> seen = {}) {
+    bool topLevel, std::map<std::pair<const Value *, bool>, bool> &seen) {
   auto idx = std::make_pair(inst, topLevel);
   if (seen.find(idx) != seen.end())
     return seen[idx];
@@ -96,7 +96,7 @@ bool is_value_needed_in_reverse(
     //   Moreover, we only need this pointer in the reverse pass if all of its
     //   non-store users are not already cached for the reverse pass
     if (!inst->getType()->isFPOrFPVectorTy() &&
-        TR.query(const_cast<Value *>(inst)).Data0()[{}].isPossiblePointer()) {
+        TR.query(const_cast<Value *>(inst)).Inner0().isPossiblePointer()) {
       // continue;
       bool unknown = true;
       for (auto zu : inst->users()) {
@@ -263,4 +263,12 @@ bool is_value_needed_in_reverse(
     return seen[idx] = true;
   }
   return false;
+}
+
+template<ValueType VT>
+bool is_value_needed_in_reverse(
+    TypeResults &TR, const GradientUtils *gutils, const Value *inst,
+    bool topLevel) {
+      std::map<std::pair<const Value *, bool>, bool> seen;
+      return is_value_needed_in_reverse<VT>(TR, gutils, inst, topLevel, seen);
 }

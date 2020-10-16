@@ -36,11 +36,11 @@ for.end.i.i:                                      ; preds = %for.body.i.i
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   br label %for.body.i.i: {}
 ; CHECK-NEXT: for.body.i.i
-; CHECK-NEXT:   %indvars.iv.i.i = phi i64 [ %indvars.iv.next.i.i, %for.body.i.i ], [ 0, %entry ]: {[-1]:Anything}
+; CHECK-NEXT:   %indvars.iv.i.i = phi i64 [ %indvars.iv.next.i.i, %for.body.i.i ], [ 0, %entry ]: {[-1]:Integer}
 ; CHECK-NEXT:   %size.015.i.i = phi i64 [ %mul.i.i, %for.body.i.i ], [ 1, %entry ]: {[-1]:Integer}
 ; CHECK-NEXT:   %ld = load i64, i64* %arrayidx{{(, align 4)?}}, !tbaa !2: {[-1]:Integer}
 ; CHECK-NEXT:   %mul.i.i = mul nsw i64 %ld, %size.015.i.i: {[-1]:Integer}
-; CHECK-NEXT:   %indvars.iv.next.i.i = add nuw nsw i64 %indvars.iv.i.i, 1: {[-1]:Anything}
+; CHECK-NEXT:   %indvars.iv.next.i.i = add nuw nsw i64 %indvars.iv.i.i, 1: {[-1]:Integer}
 ; CHECK-NEXT:   call void @f(i64 %mul.i.i)
 ; CHECK-NEXT:   %exitcond.i.i = icmp eq i64 %indvars.iv.next.i.i, 4: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %exitcond.i.i, label %for.end.i.i, label %for.body.i.i: {}

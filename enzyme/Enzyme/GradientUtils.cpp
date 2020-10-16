@@ -1448,13 +1448,14 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
       IRBuilder<> bb(NewV);
       // Note if the original phi node get's scev'd in NewF, it may
       // no longer be a phi and we need a new place to insert this phi
+      // Note that if scev'd this can still be a phi with 0 incoming indicating
+      // an unnecessary value to be replaced
       // TODO consider allowing the inverted pointer to become a scev
-      if (!isa<PHINode>(NewV)) {
+      if (!isa<PHINode>(NewV) || cast<PHINode>(NewV)->getNumIncomingValues() == 0) {
         bb.SetInsertPoint(bb.GetInsertBlock()->getFirstNonPHI());
       }
       auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
       invertedPointers[phi] = which;
-
       for (unsigned int i = 0; i < phi->getNumIncomingValues(); ++i) {
         IRBuilder<> pre(
             cast<BasicBlock>(getNewFromOriginal(phi->getIncomingBlock(i)))

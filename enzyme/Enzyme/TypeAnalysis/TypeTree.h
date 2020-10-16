@@ -327,6 +327,14 @@ public:
     return Result;
   }
 
+  /// Optimized version of Data0()[{}]
+  ConcreteType Inner0() const {
+    ConcreteType CT = operator[]({-1});
+    CT |= operator[]({0});
+    return CT;
+  }
+
+
   /// Remove any mappings in the range [start, end) or [len, inf)
   /// This function has special handling for -1's
   TypeTree Clear(size_t start, size_t end, size_t len) const {

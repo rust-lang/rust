@@ -241,14 +241,14 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %for.body
 
 ; CHECK: for.body:
-; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %_realloccache, %for.body ], [ null, %entry ]
+; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %[[realloccache:.+]], %for.body ], [ null, %entry ]
 ; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[cur:.+]] = phi %class.node* [ %"'ipl", %for.body ], [ %"node'", %entry ]
 ; CHECK-NEXT:   %val.08 = phi %class.node* [ %[[loadst:.+]], %for.body ], [ %node, %entry ]
 ; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %[[nextrealloc:.+]] = shl nuw nsw i64 %[[postidx]], 3
-; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[rawcache]], i64 %[[nextrealloc]])
-; CHECK-NEXT:   %[[reallocbc:.+]] = bitcast i8* %_realloccache to %class.node**
+; CHECK-NEXT:   %[[realloccache]] = call i8* @realloc(i8* %[[rawcache]], i64 %[[nextrealloc]])
+; CHECK-NEXT:   %[[reallocbc:.+]] = bitcast i8* %[[realloccache]] to %class.node**
 ; CHECK-NEXT:   %[[geptostore:.+]] = getelementptr inbounds %class.node*, %class.node** %[[reallocbc]], i64 %[[preidx]]
 ; CHECK-NEXT:   store %class.node* %[[cur]], %class.node** %[[geptostore]]
 ; CHECK-NEXT:   %[[nextipg:.+]] = getelementptr inbounds %class.node, %class.node* %[[cur]], i64 0, i32 1
@@ -262,7 +262,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body.preheader:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[realloccache]])
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: [[antiloop]]:

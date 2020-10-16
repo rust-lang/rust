@@ -135,13 +135,13 @@ attributes #9 = { nounwind }
 ; CHECK-NEXT:   %2 = add nuw{{( nsw)?}} i64 %1, 1
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %2, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double**
+; CHECK-NEXT:   %[[malloccache:.+]] = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   br label %for.cond13
 
 ; CHECK: for.cond13:                                       ; preds = %for.cond13, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond13 ], [ 0, %entry ]
 ; CHECK-NEXT:   %3 = phi double* [ %"incdec.ptr.i445'ipg", %for.cond13 ], [ %"vec'", %entry ]
-; CHECK-NEXT:   %4 = getelementptr inbounds double*, double** %_malloccache, i64 %iv
+; CHECK-NEXT:   %4 = getelementptr inbounds double*, double** %[[malloccache]], i64 %iv
 ; CHECK-NEXT:   store double* %3, double** %4, align 8, !invariant.group !6
 ; CHECK-NEXT:   %scevgep = getelementptr double, double* %vec, i64 %iv
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1

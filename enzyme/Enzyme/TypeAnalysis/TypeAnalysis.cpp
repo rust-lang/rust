@@ -343,7 +343,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
   // If this is a deinite ptr type and we find instead this is an integer, error early
   // This is unlikely to occur in real codes and a very good way to identify
   // TypeAnalysis bugs
-  if (pointerUse && Data.Data0()[{}] == BaseType::Integer) {
+  if (pointerUse && Data.Inner0() == BaseType::Integer) {
       if (direction != BOTH) {
         Invalid = true;
         return;
@@ -677,6 +677,10 @@ void TypeAnalyzer::visitConstantExpr(ConstantExpr &CE) {
 void TypeAnalyzer::visitCmpInst(CmpInst &cmp) {
   // No directionality check needed as always true
   updateAnalysis(&cmp, TypeTree(BaseType::Integer).Only(-1), &cmp);
+  if (direction & UP) {
+    updateAnalysis(cmp.getOperand(0), TypeTree(getAnalysis(cmp.getOperand(1)).Data0().PurgeAnything()[{}]).Only(-1), &cmp);
+    updateAnalysis(cmp.getOperand(1), TypeTree(getAnalysis(cmp.getOperand(0)).Data0().PurgeAnything()[{}]).Only(-1), &cmp);
+  }
 }
 
 void TypeAnalyzer::visitAllocaInst(AllocaInst &I) {
@@ -757,10 +761,10 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
   // If one of these is known to be a pointer, propagate it
   if (direction & DOWN)
-    updateAnalysis(&gep, TypeTree(pointerAnalysis.Data0()[{}]).Only(-1), &gep);
+    updateAnalysis(&gep, TypeTree(pointerAnalysis.Inner0()).Only(-1), &gep);
   if (direction & UP)
     updateAnalysis(gep.getPointerOperand(),
-                   TypeTree(getAnalysis(&gep).Data0()[{}]).Only(-1), &gep);
+                   TypeTree(getAnalysis(&gep).Inner0()).Only(-1), &gep);
 
   if (isa<UndefValue>(gep.getPointerOperand())) {
     return;
@@ -909,6 +913,11 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
       if (auto BO = dyn_cast<BinaryOperator>(UniqueValues[i])) {
         if (BO->getOpcode() == BinaryOperator::Add || BO->getOpcode() == BinaryOperator::Mul) {
           TypeTree otherData = getAnalysis(UniqueValues[1-i]);
+          // If we are adding/muling to a constant to derive this, we can assume
+          // it to be an integer rather than Anything
+          if (isa<ConstantInt>(UniqueValues[1-i])) {
+            otherData = TypeTree(BaseType::Integer).Only(-1);
+          }
           if (BO->getOperand(0) == &phi) {
             set = true;
             PhiTypes = otherData;
@@ -923,6 +932,11 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
         } else if (BO->getOpcode() == BinaryOperator::Sub) {
           // Repeated subtraction from a type X yields the type X back
           TypeTree otherData = getAnalysis(UniqueValues[1-i]);
+          // If we are subtracting from a constant to derive this, we can assume
+          // it to be an integer rather than Anything
+          if (isa<ConstantInt>(UniqueValues[1-i])) {
+            otherData = TypeTree(BaseType::Integer).Only(-1);
+          }
           if (BO->getOperand(0) == &phi) {
             set = true;
             PhiTypes = otherData;
@@ -940,6 +954,13 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
   }
 
   assert(set);
+  // If we are only add / sub / etc to derive a value based off 0
+  // we can start by assuming the type of 0 is integer rather
+  // than assuming it could be anything (per null)
+  if (bos.size() > 0 && UniqueValues.size() == 1 &&
+      isa<ConstantInt>(UniqueValues[0]) && cast<ConstantInt>(UniqueValues[0])->isZero()) {
+    PhiTypes = TypeTree(BaseType::Integer).Only(-1);
+  }
   for (BinaryOperator *bo : bos) {
     TypeTree vd1 = isa<ConstantInt>(bo->getOperand(0))
                         ? getAnalysis(bo->getOperand(0)).Data0()
@@ -1281,6 +1302,10 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
             // in this case we can say that this is the same as the other operand
             Result = getAnalysis(I.getOperand(1-i)).Data0();
           }
+        }
+        // If we and a constant against an integer, the result remains an integer
+        if (isa<ConstantInt>(I.getOperand(i)) && getAnalysis(I.getOperand(1-i)).Inner0() == BaseType::Integer) {
+          Result = TypeTree(BaseType::Integer);
         }
       }
     } else if (I.getOpcode() == BinaryOperator::Add || I.getOpcode() == BinaryOperator::Sub) {
@@ -1947,7 +1972,29 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
       intseen[val].insert(v);
     }
   };
-
+  if (auto LI = dyn_cast<LoadInst>(val)) {
+    if (auto AI = dyn_cast<AllocaInst>(LI->getPointerOperand())) {
+      StoreInst* SI = nullptr;
+      bool failed = false;
+      for (auto u : AI->users()) {
+        if (auto SIu = dyn_cast<StoreInst>(u)) {
+          if (SI) {
+            failed = true;
+            break;
+          }
+          SI = SIu;
+        } else if (!isa<LoadInst>(u)) {
+          failed = true;
+          break;
+        }
+      }
+      if (SI && !failed && DT.dominates(SI, LI)) {
+        for (auto val: knownIntegralValues(SI->getValueOperand(), DT, intseen)) {
+          insert(val);
+        }
+      }
+    }
+  }
   if (auto pn = dyn_cast<PHINode>(val)) {
     for (unsigned i = 0; i < pn->getNumIncomingValues(); ++i) {
       auto a = pn->getIncomingValue(i);

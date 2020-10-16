@@ -641,7 +641,7 @@ private:
           continue; //! op->getType()->isPointerTy() &&
                     //! !op->getType()->isIntegerTy()) {
 
-        if (!TR.query(inst).Data0()[{}].isPossiblePointer())
+        if (!TR.query(inst).Inner0().isPossiblePointer())
           continue;
 
         Instruction *newi = getNewFromOriginal(inst);

@@ -23,21 +23,21 @@ for.cond.cleanup:                                 ; preds = %for.body
   ret void
 }
 
-; CHECK: f - {} |
+; CHECK: f - {[-1]:Integer} |
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %all = alloca i64, align 8: {[-1]:Pointer}
+; CHECK-NEXT:   %all = alloca i64, align 8: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT:   store i64 0, i64* %all, align 8: {}
-; CHECK-NEXT:   %res = load i64, i64* %all, align 8: {}
+; CHECK-NEXT:   %res = load i64, i64* %all, align 8: {[-1]:Integer}
 ; CHECK-NEXT:   ret i64 %res: {}
 
 ; CHECK: caller - {} |{}:{} 
 ; CHECK-NEXT: i64* %p: {}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %sub = call i64 @f(): {}
+; CHECK-NEXT:   %sub = call i64 @f(): {[-1]:Integer}
 ; CHECK-NEXT:   br label %for.body: {}
 ; CHECK-NEXT: for.body
-; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %next, %for.body ]: {}
-; CHECK-NEXT:   %next = add nsw i64 %iv, %sub: {}
+; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %next, %for.body ]: {[-1]:Integer}
+; CHECK-NEXT:   %next = add nsw i64 %iv, %sub: {[-1]:Integer}
 ; CHECK-NEXT:   %cmp = icmp ugt i64 %iv, 10: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %for.cond.cleanup: {}
 ; CHECK-NEXT: for.cond.cleanup

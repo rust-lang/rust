@@ -37,21 +37,21 @@ for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   br label %for.body: {}
 ; CHECK-NEXT: for.cond.cleanup
-; CHECK-NEXT:   %add8 = add nsw i64 %sub, %add: {[-1]:Anything}
+; CHECK-NEXT:   %add8 = add nsw i64 %sub, %add: {[-1]:Integer}
 ; CHECK-NEXT:   ret i64 %add8: {}
 ; CHECK-NEXT: for.body
 ; CHECK-NEXT:   %indvars.iv = phi i64 [ 3, %entry ], [ %indvars.iv.next, %for.body ]: {[-1]:Integer}
 ; TODO this should become integer
-; CHECK-NEXT:   %index.addr.023 = phi i64 [ 0, %entry ], [ %sub, %for.body ]: {[-1]:Anything}
+; CHECK-NEXT:   %index.addr.023 = phi i64 [ 0, %entry ], [ %sub, %for.body ]: {[-1]:Integer}
 ; CHECK-NEXT:   %startInput.021 = phi i64 [ 0, %entry ], [ %add, %for.body ]: {[-1]:Integer}
 ; CHECK-NEXT:   %0 = load i64, i64* %call, align 8, !tbaa !0: {[-1]:Integer}
-; CHECK-NEXT:   %div = sdiv i64 %index.addr.023, %0: {[-1]:Anything}
+; CHECK-NEXT:   %div = sdiv i64 %index.addr.023, %0: {[-1]:Integer}
 ; CHECK-NEXT:   %1 = load i64, i64* %call3, align 8, !tbaa !0: {[-1]:Integer}
-; CHECK-NEXT:   %mul = mul nsw i64 %1, %div: {[-1]:Anything}
-; CHECK-NEXT:   %add = add nsw i64 %mul, %startInput.021: {[-1]:Anything}
+; CHECK-NEXT:   %mul = mul nsw i64 %1, %div: {[-1]:Integer}
+; CHECK-NEXT:   %add = add nsw i64 %mul, %startInput.021: {[-1]:Integer}
 ; CHECK-NEXT:   %2 = load i64, i64* %call6, align 8, !tbaa !0: {[-1]:Integer}
-; CHECK-NEXT:   %mul7 = mul nsw i64 %2, %div: {[-1]:Anything}
-; CHECK-NEXT:   %sub = sub nsw i64 %index.addr.023, %mul7: {[-1]:Anything}
+; CHECK-NEXT:   %mul7 = mul nsw i64 %2, %div: {[-1]:Integer}
+; CHECK-NEXT:   %sub = sub nsw i64 %index.addr.023, %mul7: {[-1]:Integer}
 ; CHECK-NEXT:   %indvars.iv.next = add nsw i64 %indvars.iv, -1: {[-1]:Integer}
 ; CHECK-NEXT:   %cmp = icmp ugt i64 %indvars.iv, 1: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %for.cond.cleanup: {}

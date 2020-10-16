@@ -597,6 +597,17 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // If we know that our origin is inactive from its arguments,
     // we are definitionally inactive
     if (directions & UP) {
+      // If we are derived from an argument our activity is equal to the activity
+      // of the argument by definition
+      if (isa<Argument>(TmpOrig)) {
+        bool res = isConstantValue(TR, TmpOrig);
+        if (res) {
+          ConstantValues.insert(Val);
+        } else {
+          ActiveValues.insert(Val);
+        }
+        return res;
+      }
 
       UpHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
       UpHypothesis->ConstantValues.insert(Val);
@@ -623,16 +634,18 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       // assess
       // TODO here we would need to potentially consider loading an active global
       // as we again assume that active memory is passed explicitly as an argument
-      if (directions == UP && !isa<PHINode>(TmpOrig)) {
-        if (TmpOrig != Val && isConstantValue(TR, TmpOrig)) {
-          ConstantValues.insert(Val);
-          return true;
-        }
-      } else {
-        if (TmpOrig != Val && UpHypothesis->isConstantValue(TR, TmpOrig)) {
-          ConstantValues.insert(Val);
-          insertConstantsFrom(*UpHypothesis);
-          return true;
+      if (TmpOrig != Val) {
+        if (directions == UP && !isa<PHINode>(TmpOrig)) {
+          if (isConstantValue(TR, TmpOrig)) {
+            ConstantValues.insert(Val);
+            return true;
+          }
+        } else {
+          if (UpHypothesis->isConstantValue(TR, TmpOrig)) {
+            ConstantValues.insert(Val);
+            insertConstantsFrom(*UpHypothesis);
+            return true;
+          }
         }
       }
     }
@@ -777,9 +790,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         if (!potentialStore && isModSet(AARes)) {
           if (printconst)
           llvm::errs() << "potential active store: " << I << "\n";
-          if (isa<StoreInst>(&I)) {
-            // Stores don't need to be active to cause activity if an active load exists
-            potentialStore = true;
+          if (auto SI = dyn_cast<StoreInst>(&I)) {
+            potentialStore = !Hypothesis->isConstantValue(TR, SI->getValueOperand());//true;
           } else {
             // Otherwise fallback and check if the instruction is active
             // TODO: note that this can be optimized (especially for function calls)
@@ -994,6 +1006,26 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
     if (printconst)
       llvm::errs() << " constant instruction as memset " << *inst << "\n";
     return true;
+  }
+
+  if (auto SI = dyn_cast<StoreInst>(inst)) {
+    // if either src or dst is inactive, there cannot be a transfer of active values
+    // and thus the store is inactive
+    if (isConstantValue(TR, SI->getValueOperand()) || isConstantValue(TR, SI->getPointerOperand())) {
+      if (printconst)
+        llvm::errs() << " constant instruction as memset " << *inst << "\n";
+      return true;
+    }
+  }
+
+  if (auto MTI = dyn_cast<MemTransferInst>(inst)) {
+    // if either src or dst is inactive, there cannot be a transfer of active values
+    // and thus the store is inactive
+    if (isConstantValue(TR, MTI->getArgOperand(0)) || isConstantValue(TR, MTI->getArgOperand(1))) {
+      if (printconst)
+        llvm::errs() << " constant instruction as memset " << *inst << "\n";
+      return true;
+    }
   }
 
   // Calls to print/assert/cxa guard are definitionally inactive
