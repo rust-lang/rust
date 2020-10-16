@@ -2413,6 +2413,13 @@ vec![
         module: "trait_bounds",
     },
     Lint {
+        name: "undropped_manually_drops",
+        group: "correctness",
+        desc: "use of safe `std::mem::drop` function to drop a std::mem::ManuallyDrop, which will not drop the inner value",
+        deprecation: None,
+        module: "undropped_manually_drops",
+    },
+    Lint {
         name: "unicode_not_nfc",
         group: "pedantic",
         desc: "using a Unicode literal not in NFC normal form (see [Unicode tr15](http://www.unicode.org/reports/tr15/) for further information)",

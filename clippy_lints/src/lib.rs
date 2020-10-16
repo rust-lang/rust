@@ -314,6 +314,7 @@ mod transmuting_null;
 mod trivially_copy_pass_by_ref;
 mod try_err;
 mod types;
+mod undropped_manually_drops;
 mod unicode;
 mod unit_return_expecting_ord;
 mod unnamed_address;
@@ -862,6 +863,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &types::UNIT_CMP,
         &types::UNNECESSARY_CAST,
         &types::VEC_BOX,
+        &undropped_manually_drops::UNDROPPED_MANUALLY_DROPS,
         &unicode::INVISIBLE_CHARACTERS,
         &unicode::NON_ASCII_LITERAL,
         &unicode::UNICODE_NOT_NFC,
@@ -1137,6 +1139,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
     store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
     store.register_early_pass(|| box asm_syntax::InlineAsmX86IntelSyntax);
+    store.register_late_pass(|| box undropped_manually_drops::UndroppedManuallyDrops);
 
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
@@ -1790,6 +1793,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&types::CAST_REF_TO_MUT),
         LintId::of(&types::UNIT_CMP),
+        LintId::of(&undropped_manually_drops::UNDROPPED_MANUALLY_DROPS),
         LintId::of(&unicode::INVISIBLE_CHARACTERS),
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
