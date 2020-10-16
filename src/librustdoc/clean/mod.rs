@@ -1563,7 +1563,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Str => Primitive(PrimitiveType::Str),
             ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
-                let mut n = cx.tcx.lift(&n).expect("array lift failed");
+                let mut n = cx.tcx.lift(n).expect("array lift failed");
                 n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
                 let n = print_const(cx, n);
                 Array(box ty.clean(cx), n)
@@ -1573,7 +1573,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: box ty.clean(cx) }
             }
             ty::FnDef(..) | ty::FnPtr(_) => {
-                let ty = cx.tcx.lift(self).expect("FnPtr lift failed");
+                let ty = cx.tcx.lift(*self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
                 let def_id = DefId::local(CRATE_DEF_INDEX);
                 BareFunction(box BareFunctionDecl {
@@ -1675,7 +1675,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Opaque(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the bounds associated with the def_id.
-                let substs = cx.tcx.lift(&substs).expect("Opaque lift failed");
+                let substs = cx.tcx.lift(substs).expect("Opaque lift failed");
                 let bounds = cx
                     .tcx
                     .explicit_item_bounds(def_id)

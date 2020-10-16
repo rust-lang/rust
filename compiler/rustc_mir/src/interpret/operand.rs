@@ -117,7 +117,7 @@ impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
         ty::tls::with(|tcx| {
             match self.imm {
                 Immediate::Scalar(s) => {
-                    if let Some(ty) = tcx.lift(&self.layout.ty) {
+                    if let Some(ty) = tcx.lift(self.layout.ty) {
                         let cx = FmtPrinter::new(tcx, f, Namespace::ValueNS);
                         p(cx, s, ty)?;
                         return Ok(());
