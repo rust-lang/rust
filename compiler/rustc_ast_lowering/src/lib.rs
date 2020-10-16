@@ -2312,29 +2312,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_block_noalloc(&mut self, b: &Block, targeted_by_break: bool) -> hir::Block<'hir> {
-        let mut stmts = vec![];
         let mut expr: Option<&'hir _> = None;
 
-        for (index, stmt) in b.stmts.iter().enumerate() {
-            if index == b.stmts.len() - 1 {
-                if let StmtKind::Expr(ref e) = stmt.kind {
-                    expr = Some(self.lower_expr(e));
-                } else {
-                    stmts.extend(self.lower_stmt(stmt));
-                }
-            } else {
-                stmts.extend(self.lower_stmt(stmt));
-            }
-        }
+        let stmts = self.arena.alloc_from_iter(
+            b.stmts
+                .iter()
+                .enumerate()
+                .filter_map(|(index, stmt)| {
+                    if index == b.stmts.len() - 1 {
+                        if let StmtKind::Expr(ref e) = stmt.kind {
+                            expr = Some(self.lower_expr(e));
+                            None
+                        } else {
+                            Some(self.lower_stmt(stmt))
+                        }
+                    } else {
+                        Some(self.lower_stmt(stmt))
+                    }
+                })
+                .flatten(),
+        );
+        let rules = self.lower_block_check_mode(&b.rules);
+        let hir_id = self.lower_node_id(b.id);
 
-        hir::Block {
-            hir_id: self.lower_node_id(b.id),
-            stmts: self.arena.alloc_from_iter(stmts),
-            expr,
-            rules: self.lower_block_check_mode(&b.rules),
-            span: b.span,
-            targeted_by_break,
-        }
+        hir::Block { hir_id, stmts, expr, rules, span: b.span, targeted_by_break }
     }
 
     /// Lowers a block directly to an expression, presuming that it
