@@ -632,6 +632,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::specialization,
     sym::inline_const,
     sym::repr128,
+    sym::unsized_locals,
 ];
 
 /// Some features are not allowed to be used together at the same time, if

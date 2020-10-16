@@ -5,6 +5,7 @@
 // Tightening the bound now could be a breaking change. Although no crater
 // regression were observed (https://github.com/rust-lang/rust/pull/59527),
 // let's be conservative and just add a test for this.
+#![allow(incomplete_features)]
 #![feature(unsized_locals, unsized_fn_params)]
 
 use std::ops;

@@ -1,5 +1,14 @@
+warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-50940-with-feature.rs:1:12
+   |
+LL | #![feature(unsized_locals, unsized_fn_params)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/issue-50940-with-feature.rs:5:5
+  --> $DIR/issue-50940-with-feature.rs:6:5
    |
 LL |     A as fn(str) -> A<str>;
    |     ^ doesn't have a size known at compile-time
@@ -8,6 +17,6 @@ LL |     A as fn(str) -> A<str>;
    = note: required because it appears within the type `A<str>`
    = note: the return type of a function must have a statically known size
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.
