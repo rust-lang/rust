@@ -2471,7 +2471,7 @@ impl<T> VecDeque<T> {
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
-    #[unstable(feature = "vecdeque_binary_search", issue = "1")]
+    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
     #[inline]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
     where
@@ -2511,7 +2511,7 @@ impl<T> VecDeque<T> {
     /// let r = deque.binary_search_by(|x| x.cmp(&1));
     /// assert!(matches!(r, Ok(1..=4)));
     /// ```
-    #[unstable(feature = "vecdeque_binary_search", issue = "1")]
+    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
     pub fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
     where
         F: FnMut(&'a T) -> Ordering,
@@ -2569,7 +2569,7 @@ impl<T> VecDeque<T> {
     /// let r = deque.binary_search_by_key(&1, |&(a,b)| b);
     /// assert!(matches!(r, Ok(1..=4)));
     /// ```
-    #[unstable(feature = "vecdeque_binary_search", issue = "1")]
+    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
     #[inline]
     pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>
     where
