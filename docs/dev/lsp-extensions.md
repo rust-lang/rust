@@ -392,7 +392,10 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 {
     workspaceRoot?: string;
     cargoArgs: string[];
+    cargoExtraArgs: string[];
     executableArgs: string[];
+    expectTest?: boolean;
+    overrideCargo?: string;
 }
 ```
 
