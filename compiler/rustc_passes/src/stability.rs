@@ -13,15 +13,13 @@ use rustc_hir::{Generics, HirId, Item, StructField, TraitRef, Ty, TyKind, Varian
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{DeprecationEntry, Index};
-use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, query::Providers, TyCtxt};
 use rustc_session::lint;
 use rustc_session::lint::builtin::INEFFECTIVE_UNSTABLE_TRAIT_IMPL;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
-use rustc_trait_selection::traits::misc::can_type_implement_copy;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
 use std::mem::replace;
@@ -711,27 +709,35 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // so semi-randomly perform it here in stability.rs
             hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
                 let def_id = self.tcx.hir().local_def_id(item.hir_id);
-                let adt_def = self.tcx.adt_def(def_id);
                 let ty = self.tcx.type_of(def_id);
+                let (adt_def, substs) = match ty.kind() {
+                    ty::Adt(adt_def, substs) => (adt_def, substs),
+                    _ => bug!(),
+                };
 
-                if adt_def.has_dtor(self.tcx) {
-                    feature_err(
-                        &self.tcx.sess.parse_sess,
-                        sym::untagged_unions,
-                        item.span,
-                        "unions with `Drop` implementations are unstable",
-                    )
-                    .emit();
-                } else {
-                    let param_env = self.tcx.param_env(def_id);
-                    if can_type_implement_copy(self.tcx, param_env, ty).is_err() {
-                        feature_err(
-                            &self.tcx.sess.parse_sess,
-                            sym::untagged_unions,
-                            item.span,
-                            "unions with non-`Copy` fields are unstable",
-                        )
-                        .emit();
+                // Non-`Copy` fields are unstable, except for `ManuallyDrop`.
+                let param_env = self.tcx.param_env(def_id);
+                for field in &adt_def.non_enum_variant().fields {
+                    let field_ty = field.ty(self.tcx, substs);
+                    if !field_ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())
+                        && !field_ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), param_env)
+                    {
+                        if field_ty.needs_drop(self.tcx, param_env) {
+                            // Avoid duplicate error: This will error later anyway because fields
+                            // that need drop are not allowed.
+                            self.tcx.sess.delay_span_bug(
+                                item.span,
+                                "union should have been rejected due to potentially dropping field",
+                            );
+                        } else {
+                            feature_err(
+                                &self.tcx.sess.parse_sess,
+                                sym::untagged_unions,
+                                self.tcx.def_span(field.did),
+                                "unions with non-`Copy` fields other than `ManuallyDrop<T>` are unstable",
+                            )
+                            .emit();
+                        }
                     }
                 }
             }
