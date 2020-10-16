@@ -278,6 +278,49 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     /// This is always inlined, despite its size, because it has a single
     /// callsite and it is called *very* frequently.
     #[inline(always)]
+    fn checked_process_obligation(
+        &mut self,
+        pending_obligation: &mut Self::Obligation,
+    ) -> ProcessResult<Self::Obligation, Self::Error> {
+        // If we were stalled on some unresolved variables, first check whether
+        // any of them have been resolved; if not, don't bother doing more work
+        // yet.
+        let change = match pending_obligation.stalled_on.len() {
+            // Match arms are in order of frequency, which matters because this
+            // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
+            1 => {
+                let infer_var = pending_obligation.stalled_on[0];
+                self.selcx.infcx().ty_or_const_infer_var_changed(infer_var)
+            }
+            0 => {
+                // In this case we haven't changed, but wish to make a change.
+                true
+            }
+            _ => {
+                // This `for` loop was once a call to `all()`, but this lower-level
+                // form was a perf win. See #64545 for details.
+                (|| {
+                    for &infer_var in &pending_obligation.stalled_on {
+                        if self.selcx.infcx().ty_or_const_infer_var_changed(infer_var) {
+                            return true;
+                        }
+                    }
+                    false
+                })()
+            }
+        };
+        if !change {
+            debug!(
+                "process_predicate: pending obligation {:?} still stalled on {:?}",
+                self.selcx.infcx().resolve_vars_if_possible(&pending_obligation.obligation),
+                pending_obligation.stalled_on
+            );
+            return ProcessResult::Unchanged;
+        }
+
+        self.process_obligation(pending_obligation)
+    }
+
     fn process_obligation(
         &mut self,
         pending_obligation: &mut Self::Obligation,

@@ -104,6 +104,11 @@ pub trait ObligationProcessor {
     type Obligation: ForestObligation;
     type Error: Debug;
 
+    fn checked_process_obligation(
+        &mut self,
+        obligation: &mut Self::Obligation,
+    ) -> ProcessResult<Self::Obligation, Self::Error>;
+
     fn process_obligation(
         &mut self,
         obligation: &mut Self::Obligation,
@@ -383,49 +388,18 @@ enum NodeState {
     Error,
 }
 
-/// This trait allows us to have two different Outcome types:
-///  - the normal one that does as little as possible
-///  - one for tests that does some additional work and checking
-pub trait OutcomeTrait {
-    type Error;
-    type Obligation;
-
-    fn new() -> Self;
-    fn mark_not_stalled(&mut self);
-    fn is_stalled(&self) -> bool;
-    fn record_completed(&mut self, outcome: &Self::Obligation);
-    fn record_error(&mut self, error: Self::Error);
-}
-
 #[derive(Debug)]
 pub struct Outcome<O, E> {
     /// Backtrace of obligations that were found to be in error.
     pub errors: Vec<Error<O, E>>,
 }
 
-impl<O, E> OutcomeTrait for Outcome<O, E> {
-    type Error = Error<O, E>;
-    type Obligation = O;
-
-    fn new() -> Self {
-        Self { stalled: true, errors: vec![] }
-    }
-
-    fn mark_not_stalled(&mut self) {
-        self.stalled = false;
-    }
-
-    fn is_stalled(&self) -> bool {
-        self.stalled
-    }
-
-    fn record_completed(&mut self, _outcome: &Self::Obligation) {
-        // do nothing
-    }
-
-    fn record_error(&mut self, error: Self::Error) {
-        self.errors.push(error)
-    }
+/// Should `process_obligations` compute the `Outcome::completed` field of its
+/// result?
+#[derive(PartialEq, Copy, Clone)]
+pub enum DoCompleted {
+    No,
+    Yes,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -602,14 +576,18 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// be called in a loop until `outcome.stalled` is false.
     ///
     /// This _cannot_ be unrolled (presently, at least).
-    pub fn process_obligations<P, OUT>(&mut self, processor: &mut P) -> OUT
+    pub fn process_obligations<P>(&mut self, processor: &mut P) -> Outcome<O, P::Error>
     where
         P: ObligationProcessor<Obligation = O>,
-        OUT: OutcomeTrait<Obligation = O, Error = Error<O, P::Error>>,
     {
         if self.watcher_offset.is_none() {
             assert!(!self.done);
-            self.watcher_offset = Some(processor.register_variable_watcher());
+            if self.nodes.len() > 100 {
+                self.watcher_offset = Some(processor.register_variable_watcher());
+            }
+            if let Some(outcome) = self.process_obligations_simple(processor, do_completed) {
+                return outcome;
+            }
         }
         let mut errors = vec![];
         let mut stalled = true;
@@ -713,6 +691,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                         }
                     }
                     ProcessResult::Error(err) => {
+                        made_progress_this_iteration = true;
                         stalled = false;
                         errors.push(Error { error: err, backtrace: self.error_at(index) });
                     }
@@ -732,8 +711,125 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.mark_successes();
         self.process_cycles(processor);
         let completed = self.compress(do_completed);
-
         Outcome { completed, errors }
+    }
+
+    fn process_obligations_simple<P>(
+        &mut self,
+        processor: &mut P,
+        do_completed: DoCompleted,
+    ) -> Option<Outcome<O, P::Error>>
+    where
+        P: ObligationProcessor<Obligation = O>,
+    {
+        let mut errors = vec![];
+        let mut stalled = true;
+
+        // Note that the loop body can append new nodes, and those new nodes
+        // will then be processed by subsequent iterations of the loop.
+        //
+        // We can't use an iterator for the loop because `self.nodes` is
+        // appended to and the borrow checker would complain. We also can't use
+        // `for index in 0..self.nodes.len() { ... }` because the range would
+        // be computed with the initial length, and we would miss the appended
+        // nodes. Therefore we use a `while` loop.
+        loop {
+            let mut i = 0;
+            let mut made_progress_this_iteration = false;
+            while let Some(&index) = self.pending_nodes.get(i) {
+                let node = &mut self.nodes[index];
+                // `processor.process_obligation` can modify the predicate within
+                // `node.obligation`, and that predicate is the key used for
+                // `self.active_cache`. This means that `self.active_cache` can get
+                // out of sync with `nodes`. It's not very common, but it does
+                // happen, and code in `compress` has to allow for it.
+                if node.state.get() != NodeState::Pending {
+                    i += 1;
+                    continue;
+                }
+
+                // `processor.process_obligation` can modify the predicate within
+                // `node.obligation`, and that predicate is the key used for
+                // `self.active_cache`. This means that `self.active_cache` can get
+                // out of sync with `nodes`. It's not very common, but it does
+                // happen, and code in `compress` has to allow for it.
+                let before = node.obligation.as_cache_key();
+                let result = processor.checked_process_obligation(&mut node.obligation);
+                let after = node.obligation.as_cache_key();
+                if before != after {
+                    node.alternative_predicates.push(before);
+                }
+
+                match result {
+                    ProcessResult::Unchanged => {
+                        // No change in state.
+                        if self.watcher_offset.is_some() {
+                            let stalled_on = node.obligation.stalled_on();
+                            if stalled_on.is_empty() {
+                                // We stalled but the variables that caused it are unknown so we run
+                                // `index` again at the next opportunity
+                                self.stalled_on_unknown.push(index);
+                            } else {
+                                // Register every variable that we stalled on
+                                for var in stalled_on {
+                                    self.stalled_on
+                                        .entry(var.clone())
+                                        .or_insert_with(|| {
+                                            processor.watch_variable(var.clone());
+                                            Vec::new()
+                                        })
+                                        .push(index);
+                                }
+                            }
+                        }
+                    }
+                    ProcessResult::Changed(children) => {
+                        // We are not (yet) stalled.
+                        stalled = false;
+                        node.state.set(NodeState::Success);
+                        made_progress_this_iteration = true;
+                        self.success_or_waiting_nodes.push(index);
+
+                        for child in children {
+                            let st = self.register_obligation_at(child, Some(index));
+                            if let Err(()) = st {
+                                // Error already reported - propagate it
+                                // to our node.
+                                self.error_at(index);
+                            }
+                        }
+                    }
+                    ProcessResult::Error(err) => {
+                        stalled = false;
+                        errors.push(Error { error: err, backtrace: self.error_at(index) });
+                    }
+                }
+                i += 1;
+            }
+
+            if stalled {
+                // There's no need to perform marking, cycle processing and compression when nothing
+                // changed.
+                return Some(Outcome {
+                    completed: if do_completed == DoCompleted::Yes { Some(vec![]) } else { None },
+                    errors,
+                });
+            }
+
+            if !made_progress_this_iteration {
+                break;
+            }
+
+            if self.watcher_offset.is_some() {
+                return None;
+            }
+
+            self.mark_successes();
+            self.process_cycles(processor);
+            self.compress(do_completed);
+        }
+
+        Some(Outcome { completed: None, errors })
     }
 
     /// Checks which nodes have been unblocked since the last time this was called. All nodes that
