@@ -1082,7 +1082,7 @@ extern "rust-intrinsic" {
     /// If the actual type neither requires drop glue nor implements
     /// `Copy`, then the return value of this function is unspecified.
     ///
-    /// The stabilized version of this intrinsic is [`needs_drop`].
+    /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
     pub fn needs_drop<T>() -> bool;
 

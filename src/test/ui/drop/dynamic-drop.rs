@@ -2,7 +2,6 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(generators, generator_trait, untagged_unions)]
-#![feature(move_ref_pattern)]
 #![feature(bindings_after_at)]
 
 #![allow(unused_assignments)]

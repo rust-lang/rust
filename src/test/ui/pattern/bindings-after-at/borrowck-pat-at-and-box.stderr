@@ -1,5 +1,5 @@
 error: cannot move out of value because it is borrowed
-  --> $DIR/borrowck-pat-at-and-box.rs:37:9
+  --> $DIR/borrowck-pat-at-and-box.rs:36:9
    |
 LL |     let ref a @ box b = Box::new(NC);
    |         -----^^^^^^^-
@@ -8,7 +8,7 @@ LL |     let ref a @ box b = Box::new(NC);
    |         value borrowed, by `a`, here
 
 error: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-at-and-box.rs:39:9
+  --> $DIR/borrowck-pat-at-and-box.rs:38:9
    |
 LL |     let ref a @ box ref mut b = Box::new(nc());
    |         -----^^^^^^^---------
@@ -17,7 +17,7 @@ LL |     let ref a @ box ref mut b = Box::new(nc());
    |         immutable borrow, by `a`, occurs here
 
 error: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-at-and-box.rs:41:9
+  --> $DIR/borrowck-pat-at-and-box.rs:40:9
    |
 LL |     let ref a @ box ref mut b = Box::new(NC);
    |         -----^^^^^^^---------
@@ -26,7 +26,7 @@ LL |     let ref a @ box ref mut b = Box::new(NC);
    |         immutable borrow, by `a`, occurs here
 
 error: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-at-and-box.rs:43:9
+  --> $DIR/borrowck-pat-at-and-box.rs:42:9
    |
 LL |     let ref a @ box ref mut b = Box::new(NC);
    |         -----^^^^^^^---------
@@ -35,7 +35,7 @@ LL |     let ref a @ box ref mut b = Box::new(NC);
    |         immutable borrow, by `a`, occurs here
 
 error: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-at-and-box.rs:46:9
+  --> $DIR/borrowck-pat-at-and-box.rs:45:9
    |
 LL |     let ref a @ box ref mut b = Box::new(NC);
    |         -----^^^^^^^---------
@@ -44,7 +44,7 @@ LL |     let ref a @ box ref mut b = Box::new(NC);
    |         immutable borrow, by `a`, occurs here
 
 error: cannot borrow value as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-at-and-box.rs:52:9
+  --> $DIR/borrowck-pat-at-and-box.rs:51:9
    |
 LL |     let ref mut a @ box ref b = Box::new(NC);
    |         ---------^^^^^^^-----
@@ -53,7 +53,7 @@ LL |     let ref mut a @ box ref b = Box::new(NC);
    |         mutable borrow, by `a`, occurs here
 
 error: cannot borrow value as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-at-and-box.rs:66:9
+  --> $DIR/borrowck-pat-at-and-box.rs:65:9
    |
 LL |         ref mut a @ box ref b => {
    |         ---------^^^^^^^-----
@@ -62,7 +62,7 @@ LL |         ref mut a @ box ref b => {
    |         mutable borrow, by `a`, occurs here
 
 error: cannot borrow value as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-at-and-box.rs:58:11
+  --> $DIR/borrowck-pat-at-and-box.rs:57:11
    |
 LL |     fn f5(ref mut a @ box ref b: Box<NC>) {
    |           ---------^^^^^^^-----
@@ -71,7 +71,7 @@ LL |     fn f5(ref mut a @ box ref b: Box<NC>) {
    |           mutable borrow, by `a`, occurs here
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-pat-at-and-box.rs:21:18
+  --> $DIR/borrowck-pat-at-and-box.rs:20:18
    |
 LL |     let a @ box &b = Box::new(&C);
    |         ---------^   ------------ move occurs because value has type `Box<&C>`, which does not implement the `Copy` trait
@@ -80,7 +80,7 @@ LL |     let a @ box &b = Box::new(&C);
    |         value moved here
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-pat-at-and-box.rs:24:17
+  --> $DIR/borrowck-pat-at-and-box.rs:23:17
    |
 LL |     let a @ box b = Box::new(C);
    |         --------^   ----------- move occurs because value has type `Box<C>`, which does not implement the `Copy` trait
@@ -89,7 +89,7 @@ LL |     let a @ box b = Box::new(C);
    |         value moved here
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-pat-at-and-box.rs:34:17
+  --> $DIR/borrowck-pat-at-and-box.rs:33:17
    |
 LL |     match Box::new(C) {
    |           ----------- move occurs because value has type `Box<C>`, which does not implement the `Copy` trait
@@ -100,7 +100,7 @@ LL |         a @ box b => {}
    |         value moved here
 
 error[E0502]: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-at-and-box.rs:46:21
+  --> $DIR/borrowck-pat-at-and-box.rs:45:21
    |
 LL |     let ref a @ box ref mut b = Box::new(NC);
    |         ------------^^^^^^^^^
@@ -112,7 +112,7 @@ LL |     drop(a);
    |          - immutable borrow later used here
 
 error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-at-and-box.rs:52:25
+  --> $DIR/borrowck-pat-at-and-box.rs:51:25
    |
 LL |     let ref mut a @ box ref b = Box::new(NC);
    |         ----------------^^^^^
@@ -124,7 +124,7 @@ LL |     *a = Box::new(NC);
    |     -- mutable borrow later used here
 
 error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-at-and-box.rs:66:25
+  --> $DIR/borrowck-pat-at-and-box.rs:65:25
    |
 LL |         ref mut a @ box ref b => {
    |         ----------------^^^^^
@@ -136,7 +136,7 @@ LL |             *a = Box::new(NC);
    |             -- mutable borrow later used here
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-pat-at-and-box.rs:27:20
+  --> $DIR/borrowck-pat-at-and-box.rs:26:20
    |
 LL |     fn f1(a @ box &b: Box<&C>) {}
    |           ---------^
@@ -146,7 +146,7 @@ LL |     fn f1(a @ box &b: Box<&C>) {}
    |           move occurs because value has type `Box<&C>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-pat-at-and-box.rs:30:19
+  --> $DIR/borrowck-pat-at-and-box.rs:29:19
    |
 LL |     fn f2(a @ box b: Box<C>) {}
    |           --------^
@@ -156,7 +156,7 @@ LL |     fn f2(a @ box b: Box<C>) {}
    |           move occurs because value has type `Box<C>`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-at-and-box.rs:58:27
+  --> $DIR/borrowck-pat-at-and-box.rs:57:27
    |
 LL |     fn f5(ref mut a @ box ref b: Box<NC>) {
    |           ----------------^^^^^

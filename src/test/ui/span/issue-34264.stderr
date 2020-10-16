@@ -53,13 +53,16 @@ LL | fn bar(_: x, y: usize) {}
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/issue-34264.rs:7:5
    |
-LL | fn foo(Option<i32>, String) {}
-   | --------------------------- defined here
-...
 LL |     foo(Some(42), 2, "");
    |     ^^^ --------  -  -- supplied 3 arguments
    |     |
    |     expected 2 arguments
+   |
+note: function defined here
+  --> $DIR/issue-34264.rs:1:4
+   |
+LL | fn foo(Option<i32>, String) {}
+   |    ^^^ -----------  ------
 
 error[E0308]: mismatched types
   --> $DIR/issue-34264.rs:8:13
@@ -70,13 +73,16 @@ LL |     bar("", "");
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/issue-34264.rs:10:5
    |
-LL | fn bar(x, y: usize) {}
-   | ------------------- defined here
-...
 LL |     bar(1, 2, 3);
    |     ^^^ -  -  - supplied 3 arguments
    |     |
    |     expected 2 arguments
+   |
+note: function defined here
+  --> $DIR/issue-34264.rs:3:4
+   |
+LL | fn bar(x, y: usize) {}
+   |    ^^^ -  --------
 
 error: aborting due to 6 previous errors
 
