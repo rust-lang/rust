@@ -9,6 +9,7 @@ use core::iter::{FromIterator, FusedIterator, Peekable};
 use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
 
 use super::map::{BTreeMap, Keys};
+use super::merge_iter::MergeIterInner;
 use super::Recover;
 
 // FIXME(conventions): implement bounded iterators
@@ -112,77 +113,6 @@ pub struct IntoIter<T> {
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
     iter: super::map::Range<'a, T, ()>,
-}
-
-/// Core of SymmetricDifference and Union.
-/// More efficient than btree.map.MergeIter,
-/// and crucially for SymmetricDifference, nexts() reports on both sides.
-#[derive(Clone)]
-struct MergeIterInner<I>
-where
-    I: Iterator,
-    I::Item: Copy,
-{
-    a: I,
-    b: I,
-    peeked: Option<MergeIterPeeked<I>>,
-}
-
-#[derive(Copy, Clone, Debug)]
-enum MergeIterPeeked<I: Iterator> {
-    A(I::Item),
-    B(I::Item),
-}
-
-impl<I> MergeIterInner<I>
-where
-    I: ExactSizeIterator + FusedIterator,
-    I::Item: Copy + Ord,
-{
-    fn new(a: I, b: I) -> Self {
-        MergeIterInner { a, b, peeked: None }
-    }
-
-    fn nexts(&mut self) -> (Option<I::Item>, Option<I::Item>) {
-        let mut a_next = match self.peeked {
-            Some(MergeIterPeeked::A(next)) => Some(next),
-            _ => self.a.next(),
-        };
-        let mut b_next = match self.peeked {
-            Some(MergeIterPeeked::B(next)) => Some(next),
-            _ => self.b.next(),
-        };
-        let ord = match (a_next, b_next) {
-            (None, None) => Equal,
-            (_, None) => Less,
-            (None, _) => Greater,
-            (Some(a1), Some(b1)) => a1.cmp(&b1),
-        };
-        self.peeked = match ord {
-            Less => b_next.take().map(MergeIterPeeked::B),
-            Equal => None,
-            Greater => a_next.take().map(MergeIterPeeked::A),
-        };
-        (a_next, b_next)
-    }
-
-    fn lens(&self) -> (usize, usize) {
-        match self.peeked {
-            Some(MergeIterPeeked::A(_)) => (1 + self.a.len(), self.b.len()),
-            Some(MergeIterPeeked::B(_)) => (self.a.len(), 1 + self.b.len()),
-            _ => (self.a.len(), self.b.len()),
-        }
-    }
-}
-
-impl<I> Debug for MergeIterInner<I>
-where
-    I: Iterator + Debug,
-    I::Item: Copy + Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("MergeIterInner").field(&self.a).field(&self.b).finish()
-    }
 }
 
 /// A lazy iterator producing elements in the difference of `BTreeSet`s.
@@ -1461,7 +1391,7 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
 
     fn next(&mut self) -> Option<&'a T> {
         loop {
-            let (a_next, b_next) = self.0.nexts();
+            let (a_next, b_next) = self.0.nexts(Self::Item::cmp);
             if a_next.and(b_next).is_none() {
                 return a_next.or(b_next);
             }
@@ -1555,7 +1485,7 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        let (a_next, b_next) = self.0.nexts();
+        let (a_next, b_next) = self.0.nexts(Self::Item::cmp);
         a_next.or(b_next)
     }
 
