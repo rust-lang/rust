@@ -234,6 +234,7 @@ mod main_recursion;
 mod manual_async_fn;
 mod manual_non_exhaustive;
 mod manual_strip;
+mod manual_unwrap_or;
 mod map_clone;
 mod map_err_ignore;
 mod map_identity;
@@ -640,6 +641,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &manual_async_fn::MANUAL_ASYNC_FN,
         &manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
         &manual_strip::MANUAL_STRIP,
+        &manual_unwrap_or::MANUAL_UNWRAP_OR,
         &map_clone::MAP_CLONE,
         &map_err_ignore::MAP_ERR_IGNORE,
         &map_identity::MAP_IDENTITY,
@@ -1126,6 +1128,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box repeat_once::RepeatOnce);
     store.register_late_pass(|| box unwrap_in_result::UnwrapInResult);
     store.register_late_pass(|| box self_assignment::SelfAssignment);
+    store.register_late_pass(|| box manual_unwrap_or::ManualUnwrapOr);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
     store.register_late_pass(|| box manual_strip::ManualStrip);
@@ -1367,6 +1370,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
         LintId::of(&manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
         LintId::of(&manual_strip::MANUAL_STRIP),
+        LintId::of(&manual_unwrap_or::MANUAL_UNWRAP_OR),
         LintId::of(&map_clone::MAP_CLONE),
         LintId::of(&map_identity::MAP_IDENTITY),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
@@ -1662,6 +1666,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::MUT_RANGE_BOUND),
         LintId::of(&loops::WHILE_LET_LOOP),
         LintId::of(&manual_strip::MANUAL_STRIP),
+        LintId::of(&manual_unwrap_or::MANUAL_UNWRAP_OR),
         LintId::of(&map_identity::MAP_IDENTITY),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(&map_unit_fn::RESULT_MAP_UNIT_FN),

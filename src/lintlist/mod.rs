@@ -1181,6 +1181,13 @@ vec![
         module: "swap",
     },
     Lint {
+        name: "manual_unwrap_or",
+        group: "complexity",
+        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or`",
+        deprecation: None,
+        module: "manual_unwrap_or",
+    },
+    Lint {
         name: "many_single_char_names",
         group: "style",
         desc: "too many single character bindings",
