@@ -24,6 +24,8 @@ cfg_if::cfg_if! {
         // fuchsia doesn't have /dev/null
     } else if #[cfg(target_os = "redox")] {
         const DEV_NULL: &str = "null:\0";
+    } else if #[cfg(target_os = "vxworks")] {
+        const DEV_NULL: &str = "/null\0";
     } else {
         const DEV_NULL: &str = "/dev/null\0";
     }
@@ -48,7 +50,7 @@ cfg_if::cfg_if! {
             raw[bit / 8] |= 1 << (bit % 8);
             return 0;
         }
-    } else {
+    } else if #[cfg(not(target_os = "vxworks"))] {
         pub use libc::{sigemptyset, sigaddset};
     }
 }

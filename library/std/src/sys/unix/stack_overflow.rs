@@ -219,7 +219,7 @@ mod imp {
     target_os = "solaris",
     target_os = "illumos",
     all(target_os = "netbsd", not(target_vendor = "rumprun")),
-    target_os = "openbsd"
+    target_os = "openbsd",
 )))]
 mod imp {
     pub unsafe fn init() {}
