@@ -5,7 +5,7 @@ LL | fn _test(ref _p: str) {}
    |          ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn _test(ref _p: &str) {}

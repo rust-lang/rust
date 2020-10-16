@@ -607,6 +607,9 @@ declare_features! (
     /// Allow anonymous constants from an inline `const` block
     (active, inline_const, "1.49.0", Some(76001), None),
 
+    /// Allows unsized fn parameters.
+    (active, unsized_fn_params, "1.49.0", Some(48055), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

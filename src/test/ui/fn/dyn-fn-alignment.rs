@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(unsized_locals)]
+#![feature(unsized_fn_params)]
 #![allow(dead_code)]
 #[repr(align(256))]
 struct A {

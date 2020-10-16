@@ -6,7 +6,7 @@ LL |     let _x: fn(_) -> Test = Test;
    |
    = help: the trait `Sized` is not implemented for `[i32]`
    = note: all function arguments must have a statically known size
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to previous error
 

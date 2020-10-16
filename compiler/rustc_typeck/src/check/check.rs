@@ -105,7 +105,7 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let outer_def_id = tcx.closure_base_def_id(hir.local_def_id(fn_id).to_def_id()).expect_local();
     let outer_hir_id = hir.local_def_id_to_hir_id(outer_def_id);
-    GatherLocalsVisitor::new(&fcx, outer_hir_id).visit_body(body);
+    GatherLocalsVisitor::new(&fcx, outer_hir_id, false).visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
@@ -131,7 +131,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if param.pat.simple_ident().is_none() && !tcx.features().unsized_locals {
+        if param.pat.simple_ident().is_none() && !tcx.features().unsized_fn_params {
             fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType(ty_span));
         }
 

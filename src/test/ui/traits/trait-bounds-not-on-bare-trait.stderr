@@ -13,11 +13,11 @@ LL | fn foo(_x: Foo + Send) {
    |        ^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Foo + Send + 'static)`
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL | fn foo(_x: &Foo + Send) {
-   |            ^
+LL | fn foo(&_x: Foo + Send) {
+   |        ^
 
 error: aborting due to previous error; 1 warning emitted
 

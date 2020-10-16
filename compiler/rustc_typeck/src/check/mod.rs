@@ -553,7 +553,7 @@ fn typeck_with_fallback<'tcx>(
             };
 
             // Gather locals in statics (because of block expressions).
-            GatherLocalsVisitor::new(&fcx, id).visit_body(body);
+            GatherLocalsVisitor::new(&fcx, id, false).visit_body(body);
 
             fcx.check_expr_coercable_to_type(&body.value, revealed_ty, None);
 

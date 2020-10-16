@@ -165,7 +165,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let tcx = this.hir.tcx();
 
-        if tcx.features().unsized_locals {
+        if tcx.features().unsized_fn_params {
             let ty = expr.ty;
             let span = expr.span;
             let param_env = this.hir.param_env;

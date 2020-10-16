@@ -476,7 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let ty::FnDef(..) = ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
-            if !tcx.features().unsized_locals {
+            if !tcx.features().unsized_fn_params {
                 // We want to remove some Sized bounds from std functions,
                 // but don't want to expose the removal to stable Rust.
                 // i.e., we don't want to allow
