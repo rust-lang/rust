@@ -12,7 +12,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::FxHashMap;
 use rustc_llvm::RustString;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionIndex, Op,
+    CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionId, Op,
 };
 use rustc_middle::ty::Instance;
 
@@ -80,7 +80,7 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn add_coverage_counter_expression(
         &mut self,
         instance: Instance<'tcx>,
-        id: InjectedExpressionIndex,
+        id: InjectedExpressionId,
         lhs: ExpressionOperandId,
         op: Op,
         rhs: ExpressionOperandId,

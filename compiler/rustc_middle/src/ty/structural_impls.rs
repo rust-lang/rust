@@ -299,6 +299,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::rustc_target::spec::abi::Abi,
     crate::mir::coverage::ExpressionOperandId,
     crate::mir::coverage::CounterValueReference,
+    crate::mir::coverage::InjectedExpressionId,
     crate::mir::coverage::InjectedExpressionIndex,
     crate::mir::coverage::MappedExpressionIndex,
     crate::mir::Local,

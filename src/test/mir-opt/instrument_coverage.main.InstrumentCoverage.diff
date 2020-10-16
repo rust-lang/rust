@@ -32,14 +32,15 @@
       bb4: {
           _1 = const ();                   // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
           StorageDead(_2);                 // scope 0 at /the/src/instrument_coverage.rs:15:5: 15:6
-+         Coverage::Expression(4294967295) = 1 - 2 for /the/src/instrument_coverage.rs:37:1 - 37:1; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
++         Coverage::Expression(4294967295) = 1 - 2 for /the/src/instrument_coverage.rs:15:6 - 15:7; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
           goto -> bb0;                     // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
       }
   
       bb5: {
           _0 = const ();                   // scope 0 at /the/src/instrument_coverage.rs:13:13: 13:18
           StorageDead(_2);                 // scope 0 at /the/src/instrument_coverage.rs:15:5: 15:6
-+         Coverage::Counter(2) for /the/src/instrument_coverage.rs:13:13 - 16:2; // scope 0 at /the/src/instrument_coverage.rs:16:2: 16:2
++         Coverage::Counter(2) for /the/src/instrument_coverage.rs:13:13 - 13:18; // scope 0 at /the/src/instrument_coverage.rs:16:2: 16:2
++         Coverage::Expression(4294967294) = 2 + 0 for /the/src/instrument_coverage.rs:16:1 - 16:2; // scope 0 at /the/src/instrument_coverage.rs:16:2: 16:2
           return;                          // scope 0 at /the/src/instrument_coverage.rs:16:2: 16:2
       }
   

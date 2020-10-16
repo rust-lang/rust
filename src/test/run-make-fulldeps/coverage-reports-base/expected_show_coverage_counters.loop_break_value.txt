@@ -1,0 +1,7 @@
+Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/build/bin/llvm-cov show --debug --Xdemangler=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/stage0-tools-bin/rust-demangler --show-line-counts-or-regions --instr-profile=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/loop_break_value.profdata /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/loop_break_value 
+Counter in file 0 3:11 -> 13:2, #1
+Emitting segments for file: ../coverage/loop_break_value.rs
+Combined regions:
+  3:11 -> 13:2 (count=1)
+Segment at 3:11 (count = 1), RegionEntry
+Segment at 13:2 (count = 0), Skipped

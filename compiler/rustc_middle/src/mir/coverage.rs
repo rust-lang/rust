@@ -7,6 +7,10 @@ use std::cmp::Ord;
 use std::fmt::{self, Debug, Formatter};
 
 rustc_index::newtype_index! {
+    /// An ExpressionOperandId value is assigned directly from either a
+    /// CounterValueReference.as_u32() (which ascend from 1) or an ExpressionOperandId.as_u32()
+    /// (which _*descend*_ from u32::MAX). Id value `0` (zero) represents a virtual counter with a
+    /// constant value of `0`.
     pub struct ExpressionOperandId {
         derive [HashStable]
         DEBUG_FORMAT = "ExpressionOperandId({})",
@@ -42,6 +46,20 @@ impl CounterValueReference {
 }
 
 rustc_index::newtype_index! {
+    /// InjectedExpressionId.as_u32() converts to ExpressionOperandId.as_u32()
+    ///
+    /// Values descend from u32::MAX.
+    pub struct InjectedExpressionId {
+        derive [HashStable]
+        DEBUG_FORMAT = "InjectedExpressionId({})",
+        MAX = 0xFFFF_FFFF,
+    }
+}
+
+rustc_index::newtype_index! {
+    /// InjectedExpressionIndex.as_u32() translates to u32::MAX - ExpressionOperandId.as_u32()
+    ///
+    /// Values ascend from 0.
     pub struct InjectedExpressionIndex {
         derive [HashStable]
         DEBUG_FORMAT = "InjectedExpressionIndex({})",
@@ -50,6 +68,9 @@ rustc_index::newtype_index! {
 }
 
 rustc_index::newtype_index! {
+    /// MappedExpressionIndex values ascend from zero, and are recalculated indexes based on their
+    /// array position in the LLVM coverage map "Expressions" array, which is assembled during the
+    /// "mapgen" process. They cannot be computed algorithmically, from the other `newtype_index`s.
     pub struct MappedExpressionIndex {
         derive [HashStable]
         DEBUG_FORMAT = "MappedExpressionIndex({})",
@@ -71,16 +92,16 @@ impl From<&mut CounterValueReference> for ExpressionOperandId {
     }
 }
 
-impl From<InjectedExpressionIndex> for ExpressionOperandId {
+impl From<InjectedExpressionId> for ExpressionOperandId {
     #[inline]
-    fn from(v: InjectedExpressionIndex) -> ExpressionOperandId {
+    fn from(v: InjectedExpressionId) -> ExpressionOperandId {
         ExpressionOperandId::from(v.as_u32())
     }
 }
 
-impl From<&mut InjectedExpressionIndex> for ExpressionOperandId {
+impl From<&mut InjectedExpressionId> for ExpressionOperandId {
     #[inline]
-    fn from(v: &mut InjectedExpressionIndex) -> ExpressionOperandId {
+    fn from(v: &mut InjectedExpressionId) -> ExpressionOperandId {
         ExpressionOperandId::from(v.as_u32())
     }
 }
@@ -92,7 +113,7 @@ pub enum CoverageKind {
         id: CounterValueReference,
     },
     Expression {
-        id: InjectedExpressionIndex,
+        id: InjectedExpressionId,
         lhs: ExpressionOperandId,
         op: Op,
         rhs: ExpressionOperandId,

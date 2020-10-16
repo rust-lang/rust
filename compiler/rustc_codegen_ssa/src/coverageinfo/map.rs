@@ -2,8 +2,8 @@ pub use super::ffi::*;
 
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionIndex,
-    MappedExpressionIndex, Op,
+    CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionId,
+    InjectedExpressionIndex, MappedExpressionIndex, Op,
 };
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
@@ -78,12 +78,13 @@ impl FunctionCoverage {
     /// counters and expressions have been added.
     pub fn add_counter_expression(
         &mut self,
-        expression_id: InjectedExpressionIndex,
+        expression_id: InjectedExpressionId,
         lhs: ExpressionOperandId,
         op: Op,
         rhs: ExpressionOperandId,
         region: Option<CodeRegion>,
     ) {
+        debug!("add_counter_expression({:?}, lhs={:?}, op={:?}, rhs={:?} at {:?}", expression_id, lhs, op, rhs, region);
         let expression_index = self.expression_index(u32::from(expression_id));
         self.expressions[expression_index]
             .replace(Expression { lhs, op, rhs, region })
@@ -134,18 +135,14 @@ impl FunctionCoverage {
         let mut counter_expressions = Vec::with_capacity(self.expressions.len());
         let mut expression_regions = Vec::with_capacity(self.expressions.len());
         let mut new_indexes =
-            IndexVec::from_elem_n(MappedExpressionIndex::from(u32::MAX), self.expressions.len());
-        // Note, the initial value shouldn't matter since every index in use in `self.expressions`
-        // will be set, and after that, `new_indexes` will only be accessed using those same
-        // indexes.
-
+            IndexVec::from_elem_n(None, self.expressions.len());
         // Note that an `Expression`s at any given index can include other expressions as
         // operands, but expression operands can only come from the subset of expressions having
         // `expression_index`s lower than the referencing `Expression`. Therefore, it is
         // reasonable to look up the new index of an expression operand while the `new_indexes`
         // vector is only complete up to the current `ExpressionIndex`.
         let id_to_counter =
-            |new_indexes: &IndexVec<InjectedExpressionIndex, MappedExpressionIndex>,
+            |new_indexes: &IndexVec<InjectedExpressionIndex, Option<MappedExpressionIndex>>,
              id: ExpressionOperandId| {
                 if id == ExpressionOperandId::ZERO {
                     Some(Counter::zero())
@@ -153,44 +150,21 @@ impl FunctionCoverage {
                     let index = CounterValueReference::from(id.index());
                     self.counters
                         .get(index)
-                        .unwrap() // pre-validated
-                        // TODO(richkadel): is it really pre-validated?
-                        // What if I add some counters that never get added to the map, and they are
-                        // larger than the number of counters in the MIR (as seems to happen with expressions below?)
+                        .expect("counter id is out of range")
                         .as_ref()
                         .map(|_| Counter::counter_value_reference(index))
                 } else {
                     let index = self.expression_index(u32::from(id));
-                    // TODO(richkadel): remove this debug
-                    debug!(
-                        "id_to_counter expression id={:?}, self.expressions.get(index={:?}) = {:?}",
-                        id,
-                        index,
-                        self.expressions.get(index)
-                    );
                     self.expressions
                         .get(index)
-                        // TODO(richkadel): Now some tests generate segfault, and other tests hit this out of range error
-                        // Some expressions reference blocks that ended up not needing counters.
-                        // Can we assume the expression is no longer relevant? If not, then instrument_counters
-                        // transform pass will need to figure this out earlier (MAYBE IT SHOULD ANYWAY?)
-                        // and if the counter is needed for an expression that can no longer be resolved,
-                        // create a new make_counter() right there?
-                        //
-                        // MUST FIX!
-                        //
-                        // It looks like the segfault is at:
-                        //
-                        //   /usr/local/google/home/richkadel/rust/src/llvm-project/llvm/lib/ProfileData/Coverage/CoverageMappingWriter.cpp:93
-                        //   AdjustedExpressionIDs[ID] = 1;
-                        //
-                        // I think we have expressions with operand IDs that don't exist as either counters or expressions, and that's breaking
-                        // the LLVM code.
-                        // TODO(richkadel): replace expect() with unwrap_or()?
                         .expect("expression id is out of range")
-                        //                        .unwrap_or(&None)
                         .as_ref()
-                        .map(|_| Counter::expression(new_indexes[index]))
+                        // If an expression was optimized out, assume it would have produced a count
+                        // of zero. This ensures that expressions dependent on optimized-out
+                        // expressions are still valid.
+                        .map_or(Some(Counter::zero()), |_| {
+                            new_indexes[index].map(|new_index| Counter::expression(new_index))
+                        })
                 }
             };
 
@@ -201,6 +175,8 @@ impl FunctionCoverage {
                 entry.as_ref().map(|expression| (original_index, expression))
             })
         {
+            // TODO(richkadel): remove this debug:
+            debug!("Attempting to add {:?} = {:?}", original_index, expression);
             let optional_region = &expression.region;
             let Expression { lhs, op, rhs, .. } = *expression;
 
@@ -209,6 +185,8 @@ impl FunctionCoverage {
                     id_to_counter(&new_indexes, rhs).map(|rhs_counter| (lhs_counter, rhs_counter))
                 })
             {
+                debug_assert!((lhs_counter.id as usize) < usize::max(self.counters.len(), self.expressions.len()));
+                debug_assert!((rhs_counter.id as usize) < usize::max(self.counters.len(), self.expressions.len()));
                 // Both operands exist. `Expression` operands exist in `self.expressions` and have
                 // been assigned a `new_index`.
                 let mapped_expression_index =
@@ -226,7 +204,7 @@ impl FunctionCoverage {
                     mapped_expression_index, expression, optional_region
                 );
                 counter_expressions.push(expression);
-                new_indexes[original_index] = mapped_expression_index;
+                new_indexes[original_index] = Some(mapped_expression_index);
                 if let Some(region) = optional_region {
                     expression_regions.push((Counter::expression(mapped_expression_index), region));
                 }

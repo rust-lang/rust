@@ -20,7 +20,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
     fn add_coverage_counter_expression(
         &mut self,
         instance: Instance<'tcx>,
-        id: InjectedExpressionIndex,
+        id: InjectedExpressionId,
         lhs: ExpressionOperandId,
         op: Op,
         rhs: ExpressionOperandId,

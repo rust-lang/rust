@@ -166,7 +166,7 @@ EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Ve
     {
         let lines = label.split("\n").map(|s| dot::escape_html(s)).collect::<Vec<_>>();
         let escaped_label = lines.join(r#"<br align="left"/>"#);
-        write!(w, "    label=<{}>;", escaped_label)
+        writeln!(w, r#"    label=<<br/><br/>{}<br align="left"/><br/><br/><br/>>;"#, escaped_label)
     }
 
     fn node(&self, node: G::Node) -> String {

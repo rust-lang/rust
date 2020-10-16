@@ -864,9 +864,14 @@ impl DebugCounters {
     }
 
     fn format_expression(&self, expression: &CoverageKind) -> String {
-        if let CoverageKind::Expression { lhs, op, rhs, .. } = *expression {
+        if let CoverageKind::Expression { id, lhs, op, rhs } = *expression {
             format!(
-                "{} {} {}",
+                "{}{} {} {}",
+                if self.some_expressions.is_some() {
+                    String::new()
+                } else {
+                    format!("#{} = ", id.index() )
+                },
                 self.format_operand(lhs),
                 if op == Op::Add { "+" } else { "-" },
                 self.format_operand(rhs),
@@ -938,11 +943,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     /// Expression IDs start from u32::MAX and go down because a Expression can reference
     /// (add or subtract counts) of both Counter regions and Expression regions. The counter
     /// expression operand IDs must be unique across both types.
-    fn next_expression(&mut self) -> InjectedExpressionIndex {
+    fn next_expression(&mut self) -> InjectedExpressionId {
         assert!(self.next_counter_id < u32::MAX - self.num_expressions);
         let next = u32::MAX - self.num_expressions;
         self.num_expressions += 1;
-        InjectedExpressionIndex::from(next)
+        InjectedExpressionId::from(next)
     }
 
     fn function_source_hash(&mut self) -> u64 {
@@ -979,8 +984,38 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             if dump_spanview { Some(self.span_viewables(&coverage_spans)) } else { None };
         let mut collect_intermediate_expressions = Vec::with_capacity(self.basic_coverage_blocks.num_nodes());
 
-        // When debugging with BCB graphviz output, initialize additional data structures.
+        // When debug logging, or generating the coverage graphviz output, initialize the following
+        // data structures:
+        let mut debug_used_expression_operands = None;
+        let mut debug_unused_expressions = None;
+        if level_enabled!(tracing::Level::DEBUG) || dump_graphviz {
+            debug_used_expression_operands = Some(FxHashMap::default());
+            debug_unused_expressions = Some(Vec::new());
 
+            const SIMPLIFY_EXPRESSIONS: bool = false;
+            if SIMPLIFY_EXPRESSIONS {
+                self.debug_expressions_cache.replace(FxHashMap::default());
+            }
+            // CAUTION! The `SIMPLIFY_EXPRESSIONS` option is only helpful for some debugging
+            // situations and it can change the generated MIR `Coverage` statements (resulting in
+            // differences in behavior when enabled, under `DEBUG`, compared to normal operation and
+            // testing).
+            //
+            // For debugging purposes, it is sometimes helpful to simplify some expression equations:
+            //
+            //   * `x + (y - x)` becomes just `y`
+            //   * `x + (y + 0)` becomes just x + y.
+            //
+            // Expression dependencies can deeply nested expressions, which can look quite long in
+            // printed debug messages and in graphs produced by `-Zdump-graphviz`. In reality, each
+            // referenced/nested expression is only present because that value is necessary to
+            // compute a counter value for another part of the coverage report. Simplifying expressions
+            // Does not result in less `Coverage` statements, so there is very little, if any, benefit
+            // to binary size or runtime to simplifying expressions, and adds additional compile-time
+            // complexity. Only enable this temporarily, if helpful to parse the debug output.
+        }
+
+        // When debugging with BCB graphviz output, initialize additional data structures.
         let mut debug_bcb_to_coverage_spans_with_counters = None;
         let mut debug_bcb_to_dependency_counter = None;
         let mut debug_edge_to_counter = None;
@@ -988,13 +1023,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             debug_bcb_to_coverage_spans_with_counters = Some(FxHashMap::default());
             debug_bcb_to_dependency_counter = Some(FxHashMap::default());
             debug_edge_to_counter = Some(FxHashMap::default());
-
-            self.debug_expressions_cache.replace(FxHashMap::default());
-        }
-
-        let mut debug_used_expression_operands = None;
-        if level_enabled!(tracing::Level::DEBUG) {
-            debug_used_expression_operands = Some(FxHashMap::default());
         }
 
         // Analyze the coverage graph (aka, BCB control flow graph), and inject expression-optimized
@@ -1097,33 +1125,15 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
 //        let (last_line, last_col) = source_file.lookup_file_pos(body_span.hi());
         for (edge_counter_from_bcb, target_bcb, counter_kind) in bcb_counters_without_direct_coverage_spans {
-            if let Some(used_expression_operands) = debug_used_expression_operands.as_ref() {
+            if let (
+                Some(used_expression_operands),
+                Some(unused_expressions),
+            ) = (
+                debug_used_expression_operands.as_ref(),
+                debug_unused_expressions.as_mut(),
+            ) {
                 if !used_expression_operands.contains_key(&counter_kind.as_operand_id()) {
-                    // These unused counters may happen for expressions replaced during expression
-                    // simplification. For example, expression: x + (y - x) becomes just "y", and the
-                    // expression: y - x may no longer be a dependency. Similarly, expression:
-                    // x + (y + 0) becomes just x + y.
-                    let unused_counter_message = if let Some(from_bcb) = edge_counter_from_bcb.as_ref() {
-                        format!(
-                            "non-coverage edge counter found without a dependent expression, in {:?}->{:?}; counter={}",
-                            from_bcb,
-                            target_bcb,
-                            self.format_counter(&counter_kind),
-                        )
-                    } else {
-                        format!(
-                            "non-coverage counter found without a dependent expression, in {:?}; counter={}",
-                            target_bcb,
-                            self.format_counter(&counter_kind),
-                        )
-                    };
-                    if self.debug_expressions_cache.is_some() {
-                        // Expect some unused counters when simplifying expressions to optimize out
-                        // some redundant arithmetic.
-                        debug!("{}", unused_counter_message);
-                    } else {
-                        bug!("{}", unused_counter_message);
-                    }
+                    unused_expressions.push((counter_kind.clone(), edge_counter_from_bcb, target_bcb));
                 }
             }
 
@@ -1162,7 +1172,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                             );
                             edge_to_counter.insert((from_bcb, new_bb), counter_kind.clone()).expect_none("invalid attempt to insert more than one edge counter for the same edge");
                         }
-
                         new_bb
                     } else {
                         if let Some(bcb_to_dependency_counter) = debug_bcb_to_dependency_counter.as_mut() {
@@ -1221,21 +1230,80 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                     }
                 }).collect::<Vec<_>>()
             };
-            let graphviz_writer = GraphvizWriter::new(
+            let mut graphviz_writer = GraphvizWriter::new(
                 &self.basic_coverage_blocks,
                 &graphviz_name,
                 node_content,
                 edge_labels,
             );
-            // If there is any additional information to show, not related to a specific node or
-            // edge, add it with:
-            //   graphviz_writer.set_graph_label("");
+            if let Some(unused_expressions) = debug_unused_expressions.as_ref() {
+                if unused_expressions.len() > 0 {
+                    graphviz_writer.set_graph_label(&format!(
+                        "Unused expressions:\n  {}",
+                        unused_expressions.as_slice().iter().map(|(counter_kind, edge_counter_from_bcb, target_bcb)| {
+                            if let Some(from_bcb) = edge_counter_from_bcb.as_ref() {
+                                format!(
+                                    "{:?}->{:?}: {}",
+                                    from_bcb,
+                                    target_bcb,
+                                    self.format_counter(&counter_kind),
+                                )
+                            } else {
+                                format!(
+                                    "{:?}: {}",
+                                    target_bcb,
+                                    self.format_counter(&counter_kind),
+                                )
+                            }
+                        }).collect::<Vec<_>>().join("\n  ")
+                    ));
+                }
+            }
             let mut file =
                 pretty::create_dump_file(tcx, "dot", None, self.pass_name, &0, mir_source)
                     .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
             graphviz_writer
                 .write_graphviz(tcx, &mut file)
                 .expect("Unexpected error writing BasicCoverageBlock graphviz DOT file");
+        }
+
+        if let Some(unused_expressions) = debug_unused_expressions.as_ref() {
+            for (counter_kind, edge_counter_from_bcb, target_bcb) in unused_expressions {
+                let unused_counter_message = if let Some(from_bcb) = edge_counter_from_bcb.as_ref() {
+                    format!(
+                        "non-coverage edge counter found without a dependent expression, in {:?}->{:?}; counter={}",
+                        from_bcb,
+                        target_bcb,
+                        self.format_counter(&counter_kind),
+                    )
+                } else {
+                    format!(
+                        "non-coverage counter found without a dependent expression, in {:?}; counter={}",
+                        target_bcb,
+                        self.format_counter(&counter_kind),
+                    )
+                };
+
+                // FIXME(richkadel): Determine if unused expressions can and should be prevented, and
+                // if so, it would be a `bug!` if encountered in the future. At the present time,
+                // however we do sometimes encounter unused expressions (in only a subset of test cases)
+                // even when `SIMPLIFY_EXPRESSIONS` is disabled. It's not yet clear what causes this, or
+                // if it should be allowed in the long term, but as long as the coverage capability
+                // still works, generate warning messages only, for now.
+                const ALLOW_UNUSED_EXPRESSIONS: bool = true;
+                if self.debug_expressions_cache.is_some() || ALLOW_UNUSED_EXPRESSIONS {
+                    // Note, the debugging const `SIMPLIFY_EXPRESSIONS`, which initializes the
+                    // `debug_expressions_cache` can cause some counters to become unused, and
+                    // is not a bug.
+                    //
+                    // For example, converting `x + (y - x)` to just `y` removes a dependency
+                    // on `y - x`. If that expression is not a dependency elsewhere, and if it is
+                    // not associated with a `CoverageSpan`, it is now considered `unused`.
+                    debug!("WARNING: {}", unused_counter_message);
+                } else {
+                    bug!("{}", unused_counter_message);
+                }
+            }
         }
 
         for intermediate_expression in collect_intermediate_expressions {
