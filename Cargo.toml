@@ -36,7 +36,7 @@ rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util"}
 tempfile = { version = "3.1.0", optional = true }
 
 [dev-dependencies]
-cargo_metadata = "0.11.1"
+cargo_metadata = "0.12"
 compiletest_rs = { version = "0.5.0", features = ["tmp"] }
 tester = "0.7"
 clippy-mini-macro-test = { version = "0.2", path = "mini-macro" }
