@@ -4,8 +4,18 @@ error[E0423]: expected value, found enum `A`
 LL |     A.foo();
    |     ^
    |
-   = help: you might have meant to use one of the enum's other variants that have fields
-help: try using one of the enum's variants
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:1:1
+   |
+LL | / enum A {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | |     Struct {},
+LL | |     Tuple(),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: you might have meant to use one of the following enum variants
    |
 LL |     (A::Struct {}).foo();
    |     ^^^^^^^^^^^^^^
@@ -13,6 +23,12 @@ LL |     (A::Tuple()).foo();
    |     ^^^^^^^^^^^^
 LL |     A::Unit.foo();
    |     ^^^^^^^
+help: the following enum variants are available
+   |
+LL |     (A::StructWithFields { /* fields */ }).foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     (A::TupleWithFields(/* fields */)).foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0423]: expected value, found enum `B`
   --> $DIR/issue-73427.rs:31:5
@@ -20,23 +36,69 @@ error[E0423]: expected value, found enum `B`
 LL |     B.foo();
    |     ^
    |
-   = help: you might have meant to use one of the enum's variants
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:9:1
+   |
+LL | / enum B {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | | }
+   | |_^
+help: the following enum variants are available
+   |
+LL |     (B::StructWithFields { /* fields */ }).foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     (B::TupleWithFields(/* fields */)).foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0423]: expected value, found enum `C`
   --> $DIR/issue-73427.rs:33:5
    |
 LL |     C.foo();
-   |     ^ help: try using one of the enum's variants: `C::Unit`
+   |     ^
    |
-   = help: you might have meant to use one of the enum's other variants that have fields
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:14:1
+   |
+LL | / enum C {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: you might have meant to use the following enum variant
+   |
+LL |     C::Unit.foo();
+   |     ^^^^^^^
+help: the following enum variants are available
+   |
+LL |     (C::StructWithFields { /* fields */ }).foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     (C::TupleWithFields(/* fields */)).foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0423]: expected value, found enum `D`
   --> $DIR/issue-73427.rs:35:5
    |
 LL |     D.foo();
-   |     ^ help: try using one of the enum's variants: `D::Unit`
+   |     ^
    |
-   = help: you might have meant to use the enum's other variant that has fields
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:20:1
+   |
+LL | / enum D {
+LL | |     TupleWithFields(()),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: you might have meant to use the following enum variant
+   |
+LL |     D::Unit.foo();
+   |     ^^^^^^^
+help: the following enum variant is available
+   |
+LL |     (D::TupleWithFields(/* fields */)).foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0423]: expected function, tuple struct or tuple variant, found enum `A`
   --> $DIR/issue-73427.rs:40:13
@@ -45,7 +107,18 @@ LL |     let x = A(3);
    |             ^
    |
    = help: you might have meant to construct one of the enum's non-tuple variants
-help: try using one of the enum's variants
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:1:1
+   |
+LL | / enum A {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | |     Struct {},
+LL | |     Tuple(),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: try to construct one of the enum's variants
    |
 LL |     let x = A::TupleWithFields(3);
    |             ^^^^^^^^^^^^^^^^^^
@@ -59,7 +132,18 @@ LL |     if let A(3) = x { }
    |            ^
    |
    = help: you might have meant to match against one of the enum's non-tuple variants
-help: try using one of the enum's variants
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:1:1
+   |
+LL | / enum A {
+LL | |     StructWithFields { x: () },
+LL | |     TupleWithFields(()),
+LL | |     Struct {},
+LL | |     Tuple(),
+LL | |     Unit,
+LL | | }
+   | |_^
+help: try to match against one of the enum's variants
    |
 LL |     if let A::TupleWithFields(3) = x { }
    |            ^^^^^^^^^^^^^^^^^^
