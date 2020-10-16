@@ -1,5 +1,6 @@
 // run-pass
 
+#![allow(incomplete_features)]
 #![feature(inline_const)]
 const MMIO_BIT1: u8 = 4;
 const MMIO_BIT2: u8 = 5;

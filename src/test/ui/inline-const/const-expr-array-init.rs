@@ -1,5 +1,6 @@
 // build-pass
 
+#![allow(incomplete_features)]
 #![feature(inline_const)]
 
 use std::cell::Cell;
