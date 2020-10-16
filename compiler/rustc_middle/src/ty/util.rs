@@ -6,9 +6,9 @@ use crate::mir::interpret::{sign_extend, truncate};
 use crate::ty::fold::TypeFolder;
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
-use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
+use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::TyKind::*;
-use crate::ty::{self, DefIdTree, GenericParamDefKind, List, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, DefIdTree, List, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
@@ -507,20 +507,6 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::ClosureKind::FnOnce => closure_ty,
         };
         Some(ty::Binder::bind(env_ty))
-    }
-
-    /// Given the `DefId` of some item that has no type or const parameters, make
-    /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> SubstsRef<'tcx> {
-        InternalSubsts::for_item(self, item_def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => self.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } => {
-                bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
-            }
-            GenericParamDefKind::Const { .. } => {
-                bug!("empty_substs_for_def_id: {:?} has const parameters", item_def_id)
-            }
-        })
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.

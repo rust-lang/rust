@@ -6,7 +6,7 @@
 
 use rustc_hir as hir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{Instance, TyCtxt};
+use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
@@ -36,8 +36,11 @@ impl SymbolNamesTest<'tcx> {
         let def_id = tcx.hir().local_def_id(hir_id);
         for attr in tcx.get_attrs(def_id.to_def_id()).iter() {
             if tcx.sess.check_name(attr, SYMBOL_NAME) {
-                // for now, can only use on monomorphic names
-                let instance = Instance::mono(tcx, def_id.to_def_id());
+                let def_id = def_id.to_def_id();
+                let instance = Instance::new(
+                    def_id,
+                    tcx.erase_regions(&InternalSubsts::identity_for_item(tcx, def_id)),
+                );
                 let mangled = tcx.symbol_name(instance);
                 tcx.sess.span_err(attr.span, &format!("symbol-name({})", mangled));
                 if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
