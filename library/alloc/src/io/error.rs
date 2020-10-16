@@ -74,7 +74,7 @@ enum Repr {
 #[derive(Debug)]
 struct Custom {
     kind: ErrorKind,
-    error: Box<dyn error::Error + Send + Sync>,
+    error: String,
 }
 
 /// A list specifying general categories of I/O error.
@@ -177,6 +177,12 @@ pub enum ErrorKind {
     /// read.
     #[stable(feature = "read_exact", since = "1.6.0")]
     UnexpectedEof,
+
+    /// A marker variant that tells the compiler that users of this enum cannot
+    /// match it exhaustively.
+    #[doc(hidden)]
+    #[stable(feature = "read_exact", since = "1.6.0")]
+    __Nonexhaustive,
 }
 
 impl ErrorKind {
@@ -200,6 +206,7 @@ impl ErrorKind {
             ErrorKind::Interrupted => "operation interrupted",
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
+            _ => "unknown error",
         }
     }
 }
@@ -249,31 +256,13 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
     where
-        E: Into<Box<dyn error::Error + Send + Sync>>,
+        E: Into<String>,
     {
         Self::_new(kind, error.into())
     }
 
-    fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
+    fn _new(kind: ErrorKind, error: String) -> Error {
         Error { repr: Repr::Custom(Box::new(Custom { kind, error })) }
-    }
-
-    /// Returns an error representing the last OS error which occurred.
-    ///
-    /// This function reads the value of `errno` for the target platform (e.g.
-    /// `GetLastError` on Windows) and will return a corresponding instance of
-    /// [`Error`] for the error code.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::io::Error;
-    ///
-    /// println!("last OS error: {:?}", Error::last_os_error());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::os::errno() as i32)
     }
 
     /// Creates a new instance of an [`Error`] from a particular OS error code.
@@ -372,11 +361,11 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
+    pub fn get_ref(&self) -> Option<&String> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
-            Repr::Custom(ref c) => Some(&*c.error),
+            Repr::Custom(ref c) => Some(&c.error),
         }
     }
 
@@ -443,11 +432,11 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
+    pub fn get_mut(&mut self) -> Option<&mut String> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
-            Repr::Custom(ref mut c) => Some(&mut *c.error),
+            Repr::Custom(ref mut c) => Some(&mut c.error),
         }
     }
 
@@ -479,7 +468,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
-    pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
+    pub fn into_inner(self) -> Option<String> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
@@ -508,7 +497,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> ErrorKind {
         match self.repr {
-            Repr::Os(code) => sys::decode_error_kind(code),
+            Repr::Os(_code) => ErrorKind::Other,
             Repr::Custom(ref c) => c.kind,
             Repr::Simple(kind) => kind,
         }
@@ -521,8 +510,6 @@ impl fmt::Debug for Repr {
             Repr::Os(code) => fmt
                 .debug_struct("Os")
                 .field("code", &code)
-                .field("kind", &sys::decode_error_kind(code))
-                .field("message", &sys::os::error_string(code))
                 .finish(),
             Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
             Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
@@ -535,39 +522,10 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr {
             Repr::Os(code) => {
-                let detail = sys::os::error_string(code);
-                write!(fmt, "{} (os error {})", detail, code)
+                write!(fmt, "os error {}", code)
             }
             Repr::Custom(ref c) => c.error.fmt(fmt),
             Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
-        }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl error::Error for Error {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        match self.repr {
-            Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
-            Repr::Custom(ref c) => c.error.description(),
-        }
-    }
-
-    #[allow(deprecated)]
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::Custom(ref c) => c.error.cause(),
-        }
-    }
-
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::Custom(ref c) => c.error.source(),
         }
     }
 }
