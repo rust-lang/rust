@@ -31,8 +31,7 @@ use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
     method_resolution,
-    traits::Solution,
-    traits::SolutionVariables,
+    traits::{FnTrait, Solution, SolutionVariables},
     ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
     InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, Ty,
     TyDefId, TyKind, TypeCtor,
@@ -1382,6 +1381,28 @@ impl Type {
             self.ty.environment.clone(),
             krate,
             std_future_trait,
+        )
+    }
+
+    /// Checks that particular type `ty` implements `std::ops::FnOnce`.
+    ///
+    /// This function can be used to check if a particular type is callable, since FnOnce is a
+    /// supertrait of Fn and FnMut, so all callable types implements at least FnOnce.
+    pub fn impls_fnonce(&self, db: &dyn HirDatabase) -> bool {
+        let krate = self.krate;
+
+        let fnonce_trait = match FnTrait::FnOnce.get_id(db, krate) {
+            Some(it) => it,
+            None => return false,
+        };
+
+        let canonical_ty = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
+        method_resolution::implements_trait(
+            &canonical_ty,
+            db,
+            self.ty.environment.clone(),
+            krate,
+            fnonce_trait,
         )
     }
 

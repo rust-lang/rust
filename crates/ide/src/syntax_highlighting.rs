@@ -763,7 +763,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
                 h |= HighlightModifier::Mutable;
             }
-            if local.ty(db).as_callable(db).is_some() {
+            if local.ty(db).as_callable(db).is_some() || local.ty(db).impls_fnonce(db) {
                 h |= HighlightModifier::Callable;
             }
             return h;
