@@ -2516,24 +2516,13 @@ impl<T> VecDeque<T> {
     where
         F: FnMut(&'a T) -> Ordering,
     {
-        if self.is_empty() {
-            return Err(0);
-        }
-
         let (front, back) = self.as_slices();
 
-        match back.first().map(|elem| f(elem)) {
-            Some(Ordering::Equal) => return Ok(front.len()),
-            Some(Ordering::Less) => {
-                return back[1..]
-                    .binary_search_by(f)
-                    .map(|idx| idx + front.len() + 1)
-                    .map_err(|idx| idx + front.len() + 1);
-            }
-            _ => {}
+        if let Some(Ordering::Less | Ordering::Equal) = back.first().map(|elem| f(elem)) {
+            back.binary_search_by(f).map(|idx| idx + front.len()).map_err(|idx| idx + front.len())
+        } else {
+            front.binary_search_by(f)
         }
-
-        front.binary_search_by(f)
     }
 
     /// Binary searches this sorted `VecDeque` with a key extraction function.
