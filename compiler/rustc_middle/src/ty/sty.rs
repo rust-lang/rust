@@ -702,16 +702,14 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => self
-                .map_bound_ref(|_| tr)
-                .with_self_ty(tcx, self_ty)
-                .without_const()
-                .to_predicate(tcx),
+            ExistentialPredicate::Trait(tr) => {
+                self.rebind(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
+            }
             ExistentialPredicate::Projection(p) => {
-                self.map_bound_ref(|_| p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
+                self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
-                let trait_ref = self.map_bound_ref(|_| ty::TraitRef {
+                let trait_ref = self.rebind(ty::TraitRef {
                     def_id: did,
                     substs: tcx.mk_substs_trait(self_ty, &[]),
                 });
@@ -779,7 +777,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
 impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     pub fn principal(&self) -> Option<ty::Binder<ExistentialTraitRef<'tcx>>> {
-        self.map_bound_ref(|b| b.principal()).transpose()
+        self.map_bound(|b| b.principal()).transpose()
     }
 
     pub fn principal_def_id(&self) -> Option<DefId> {
@@ -1002,6 +1000,14 @@ impl<T> Binder<T> {
         F: FnOnce(T) -> U,
     {
         Binder(f(self.0))
+    }
+
+    /// Wraps a `value` in a binder, using the same bound variables as the
+    /// current `Binder`. This should not be used if the new value *changes*
+    /// the bound variables. Note: the (old or new) value itself does not
+    /// necessarily need to *name* all the bound variables.
+    pub fn rebind<U>(&self, value: U) -> Binder<U> {
+        Binder(value)
     }
 
     /// Unwraps and returns the value within, but only if it contains

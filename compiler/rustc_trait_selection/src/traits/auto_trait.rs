@@ -651,10 +651,10 @@ impl AutoTraitFinder<'tcx> {
                     {
                         self.add_user_pred(computed_preds, predicate);
                     }
-                    predicates.push_back(bound_predicate.map_bound_ref(|_| p));
+                    predicates.push_back(bound_predicate.rebind(p));
                 }
                 ty::PredicateAtom::Projection(p) => {
-                    let p = bound_predicate.map_bound_ref(|_| p);
+                    let p = bound_predicate.rebind(p);
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
                         predicate
@@ -784,13 +784,13 @@ impl AutoTraitFinder<'tcx> {
                     }
                 }
                 ty::PredicateAtom::RegionOutlives(binder) => {
-                    let binder = bound_predicate.map_bound_ref(|_| binder);
+                    let binder = bound_predicate.rebind(binder);
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
                 ty::PredicateAtom::TypeOutlives(binder) => {
-                    let binder = bound_predicate.map_bound_ref(|_| binder);
+                    let binder = bound_predicate.rebind(binder);
                     match (
                         binder.no_bound_vars(),
                         binder.map_bound_ref(|pred| pred.0).no_bound_vars(),

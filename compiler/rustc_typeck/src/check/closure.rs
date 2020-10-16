@@ -200,7 +200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // the complete signature.
                     self.deduce_sig_from_projection(
                         Some(obligation.cause.span),
-                        bound_predicate.map_bound_ref(|_| proj_predicate),
+                        bound_predicate.rebind(proj_predicate),
                     )
                 } else {
                     None

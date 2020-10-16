@@ -640,7 +640,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let bound_predicate = pred.bound_atom(tcx);
                         match bound_predicate.skip_binder() {
                             ty::PredicateAtom::Projection(pred) => {
-                                let pred = bound_predicate.map_bound_ref(|_| pred);
+                                let pred = bound_predicate.rebind(pred);
                                 // `<Foo as Iterator>::Item = String`.
                                 let trait_ref =
                                     pred.skip_binder().projection_ty.trait_ref(self.tcx);

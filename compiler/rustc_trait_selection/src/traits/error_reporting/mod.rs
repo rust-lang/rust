@@ -258,7 +258,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let bound_predicate = obligation.predicate.bound_atom(self.tcx);
                 match bound_predicate.skip_binder() {
                     ty::PredicateAtom::Trait(trait_predicate, _) => {
-                        let trait_predicate = bound_predicate.map_bound_ref(|_| trait_predicate);
+                        let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(&trait_predicate);
 
                         if self.tcx.sess.has_errors() && trait_predicate.references_error() {
@@ -532,7 +532,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateAtom::RegionOutlives(predicate) => {
-                        let predicate = bound_predicate.map_bound_ref(|_| predicate);
+                        let predicate = bound_predicate.rebind(predicate);
                         let predicate = self.resolve_vars_if_possible(&predicate);
                         let err = self
                             .region_outlives_predicate(&obligation.cause, predicate)
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         let bound_error = error.bound_atom(self.tcx);
         let (cond, error) = match (cond.skip_binders(), bound_error.skip_binder()) {
             (ty::PredicateAtom::Trait(..), ty::PredicateAtom::Trait(error, _)) => {
-                (cond, bound_error.map_bound_ref(|_| error))
+                (cond, bound_error.rebind(error))
             }
             _ => {
                 // FIXME: make this work in other cases too.
@@ -1094,7 +1094,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             let bound_predicate = obligation.predicate.bound_atom(self.tcx);
             if let ty::PredicateAtom::Trait(implication, _) = bound_predicate.skip_binder() {
                 let error = error.to_poly_trait_ref();
-                let implication = bound_predicate.map_bound_ref(|_| implication.trait_ref);
+                let implication = bound_predicate.rebind(implication.trait_ref);
                 // FIXME: I'm just not taking associated types at all here.
                 // Eventually I'll need to implement param-env-aware
                 // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
@@ -1178,7 +1178,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let (data, _) = self.replace_bound_vars_with_fresh_vars(
                     obligation.cause.span,
                     infer::LateBoundRegionConversionTime::HigherRankedType,
-                    &bound_predicate.map_bound_ref(|_| data),
+                    &bound_predicate.rebind(data),
                 );
                 let mut obligations = vec![];
                 let normalized_ty = super::normalize_projection_type(
@@ -1463,7 +1463,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut err = match bound_predicate.skip_binder() {
             ty::PredicateAtom::Trait(data, _) => {
                 let self_ty = data.trait_ref.self_ty();
-                let trait_ref = bound_predicate.map_bound_ref(|_| data.trait_ref);
+                let trait_ref = bound_predicate.rebind(data.trait_ref);
                 debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.kind(), trait_ref);
 
                 if predicate.references_error() {
@@ -1587,7 +1587,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282)
             }
             ty::PredicateAtom::Projection(data) => {
-                let trait_ref = bound_predicate.map_bound_ref(|_| data).to_poly_trait_ref(self.tcx);
+                let trait_ref = bound_predicate.rebind(data).to_poly_trait_ref(self.tcx);
                 let self_ty = trait_ref.skip_binder().self_ty();
                 let ty = data.ty;
                 if predicate.references_error() {

@@ -1004,6 +1004,6 @@ where
         self.first_free_index.shift_in(1);
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         self.first_free_index.shift_out(1);
-        Ok(a.map_bound(|_| result))
+        Ok(ty::Binder::bind(result))
     }
 }

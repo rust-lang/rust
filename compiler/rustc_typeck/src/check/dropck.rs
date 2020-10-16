@@ -229,12 +229,12 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             let bound_predicate = predicate.bound_atom(tcx);
             let bound_p = p.bound_atom(tcx);
             match (predicate.skip_binders(), p.skip_binders()) {
-                (ty::PredicateAtom::Trait(a, _), ty::PredicateAtom::Trait(b, _)) => relator
-                    .relate(bound_predicate.map_bound_ref(|_| a), bound_p.map_bound_ref(|_| b))
-                    .is_ok(),
-                (ty::PredicateAtom::Projection(a), ty::PredicateAtom::Projection(b)) => relator
-                    .relate(bound_predicate.map_bound_ref(|_| a), bound_p.map_bound_ref(|_| b))
-                    .is_ok(),
+                (ty::PredicateAtom::Trait(a, _), ty::PredicateAtom::Trait(b, _)) => {
+                    relator.relate(bound_predicate.rebind(a), bound_p.rebind(b)).is_ok()
+                }
+                (ty::PredicateAtom::Projection(a), ty::PredicateAtom::Projection(b)) => {
+                    relator.relate(bound_predicate.rebind(a), bound_p.rebind(b)).is_ok()
+                }
                 _ => predicate == p,
             }
         };

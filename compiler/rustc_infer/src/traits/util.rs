@@ -134,7 +134,7 @@ impl Elaborator<'tcx> {
 
                 let obligations = predicates.predicates.iter().map(|&(pred, _)| {
                     predicate_obligation(
-                        pred.subst_supertrait(tcx, &bound_predicate.map_bound(|_| data.trait_ref)),
+                        pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
                         obligation.param_env,
                         obligation.cause.clone(),
                     )

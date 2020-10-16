@@ -595,7 +595,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    bound_predicate.map_bound_ref(|_| trait_pred)
+                    bound_predicate.rebind(trait_pred)
                 }
                 _ => {
                     coercion.obligations.push(obligation);

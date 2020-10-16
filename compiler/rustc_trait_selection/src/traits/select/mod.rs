@@ -449,17 +449,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let result = ensure_sufficient_stack(|| {
-            let bound_predicate = obligation.predicate.bound_atom(self.infcx().tcx);
+            let bound_predicate =
+                obligation.predicate.bound_atom_with_opt_escaping(self.infcx().tcx);
             match bound_predicate.skip_binder() {
                 ty::PredicateAtom::Trait(t, _) => {
-                    let t = bound_predicate.map_bound_ref(|_| t);
+                    let t = bound_predicate.rebind(t);
                     debug_assert!(!t.has_escaping_bound_vars());
                     let obligation = obligation.with(t);
                     self.evaluate_trait_predicate_recursively(previous_stack, obligation)
                 }
 
                 ty::PredicateAtom::Subtype(p) => {
-                    let p = bound_predicate.map_bound_ref(|_| p);
+                    let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
                         Some(Ok(InferOk { mut obligations, .. })) => {
@@ -503,7 +504,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateAtom::Projection(data) => {
-                    let data = bound_predicate.map_bound_ref(|_| data);
+                    let data = bound_predicate.rebind(data);
                     let project_obligation = obligation.with(data);
                     match project::poly_project_and_unify_type(self, &project_obligation) {
                         Ok(Ok(Some(mut subobligations))) => {
@@ -1177,7 +1178,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .filter_map(|(idx, bound)| {
                 let bound_predicate = bound.bound_atom(self.infcx.tcx);
                 if let ty::PredicateAtom::Trait(pred, _) = bound_predicate.skip_binder() {
-                    let bound = bound_predicate.map_bound_ref(|_| pred.trait_ref);
+                    let bound = bound_predicate.rebind(pred.trait_ref);
                     if self.infcx.probe(|_| {
                         match self.match_projection(
                             obligation,
@@ -1534,15 +1535,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Tuple(tys) => Where(
                 obligation
                     .predicate
-                    .map_bound_ref(|_| tys.last().into_iter().map(|k| k.expect_ty()).collect()),
+                    .rebind(tys.last().into_iter().map(|k| k.expect_ty()).collect()),
             ),
 
             ty::Adt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
-                Where(obligation.predicate.map_bound_ref(|_| {
-                    sized_crit.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
-                }))
+                Where(
+                    obligation.predicate.rebind({
+                        sized_crit.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
+                    }),
+                )
             }
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => None,
@@ -1594,16 +1597,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Array(element_ty, _) => {
                 // (*) binder moved here
-                Where(obligation.predicate.map_bound_ref(|_| vec![*element_ty]))
+                Where(obligation.predicate.rebind(vec![*element_ty]))
             }
 
             ty::Tuple(tys) => {
                 // (*) binder moved here
-                Where(
-                    obligation
-                        .predicate
-                        .map_bound_ref(|_| tys.iter().map(|k| k.expect_ty()).collect()),
-                )
+                Where(obligation.predicate.rebind(tys.iter().map(|k| k.expect_ty()).collect()))
             }
 
             ty::Closure(_, substs) => {
@@ -1613,11 +1612,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // Not yet resolved.
                     Ambiguous
                 } else {
-                    Where(
-                        obligation
-                            .predicate
-                            .map_bound_ref(|_| substs.as_closure().upvar_tys().collect()),
-                    )
+                    Where(obligation.predicate.rebind(substs.as_closure().upvar_tys().collect()))
                 }
             }
 

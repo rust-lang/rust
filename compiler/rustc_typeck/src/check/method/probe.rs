@@ -803,7 +803,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 ty::PredicateAtom::Trait(trait_predicate, _) => {
                     match trait_predicate.trait_ref.self_ty().kind() {
                         ty::Param(ref p) if *p == param_ty => {
-                            Some(bound_predicate.map_bound_ref(|_| trait_predicate.trait_ref))
+                            Some(bound_predicate.rebind(trait_predicate.trait_ref))
                         }
                         _ => None,
                     }

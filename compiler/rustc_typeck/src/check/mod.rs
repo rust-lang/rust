@@ -862,7 +862,7 @@ fn bounds_from_generic_predicates<'tcx>(
                 }
             }
             ty::PredicateAtom::Projection(projection_pred) => {
-                projections.push(bound_predicate.map_bound_ref(|_| projection_pred));
+                projections.push(bound_predicate.rebind(projection_pred));
             }
             _ => {}
         }
