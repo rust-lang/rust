@@ -98,10 +98,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
-        let mut result = SmallVec::<[_; 8]>::new();
-        cdata.each_child_of_item(def_id.index,
-          |child| result.push(child.res.def_id()), tcx.sess);
-        tcx.arena.alloc_slice(&result)
+        tcx.arena.alloc_from_iter(tcx.item_children(def_id).iter().map(|child| child.res.def_id()))
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
