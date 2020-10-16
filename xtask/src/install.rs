@@ -13,8 +13,43 @@ pub struct InstallCmd {
     pub server: Option<ServerOpt>,
 }
 
+#[derive(Clone, Copy)]
 pub enum ClientOpt {
     VsCode,
+    VsCodeInsiders,
+    VsCodium,
+    VsCodeOss,
+    Any,
+}
+
+impl ClientOpt {
+    pub const fn as_cmds(&self) -> &'static [&'static str] {
+        match self {
+            ClientOpt::VsCode => &["code"],
+            ClientOpt::VsCodeInsiders => &["code-insiders"],
+            ClientOpt::VsCodium => &["codium"],
+            ClientOpt::VsCodeOss => &["code-oss"],
+            ClientOpt::Any => &["code", "code-insiders", "codium", "code-oss"],
+        }
+    }
+}
+
+impl Default for ClientOpt {
+    fn default() -> Self {
+        ClientOpt::Any
+    }
+}
+
+impl std::str::FromStr for ClientOpt {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        [ClientOpt::VsCode, ClientOpt::VsCodeInsiders, ClientOpt::VsCodium, ClientOpt::VsCodeOss]
+            .iter()
+            .copied()
+            .find(|c| [s] == c.as_cmds())
+            .ok_or_else(|| anyhow::format_err!("no such client"))
+    }
 }
 
 pub struct ServerOpt {
@@ -74,17 +109,13 @@ fn fix_path_for_mac() -> Result<()> {
     Ok(())
 }
 
-fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
-    let _dir = pushd("./editors/code")?;
+fn install_client(client_opt: ClientOpt) -> Result<()> {
+    let _dir = pushd("./editors/code");
 
     let find_code = |f: fn(&str) -> bool| -> Result<&'static str> {
-        ["code", "code-insiders", "codium", "code-oss"]
-            .iter()
-            .copied()
-            .find(|bin| f(bin))
-            .ok_or_else(|| {
-                format_err!("Can't execute `code --version`. Perhaps it is not in $PATH?")
-            })
+        client_opt.as_cmds().iter().copied().find(|bin| f(bin)).ok_or_else(|| {
+            format_err!("Can't execute `code --version`. Perhaps it is not in $PATH?")
+        })
     };
 
     let installed_extensions = if cfg!(unix) {

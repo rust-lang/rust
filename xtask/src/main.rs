@@ -16,7 +16,7 @@ use xshell::pushd;
 use xtask::{
     codegen::{self, Mode},
     dist::DistCmd,
-    install::{ClientOpt, InstallCmd, Malloc, ServerOpt},
+    install::{InstallCmd, Malloc, ServerOpt},
     metrics::MetricsCmd,
     pre_cache::PreCacheCmd,
     pre_commit, project_root,
@@ -46,10 +46,11 @@ USAGE:
     cargo xtask install [FLAGS]
 
 FLAGS:
-        --client-code    Install only VS Code plugin
-        --server         Install only the language server
-        --mimalloc       Use mimalloc for server
-    -h, --help           Prints help information
+        --client-code[=CLIENT]    Install only VS Code plugin.
+                                  CLIENT is one of 'code', 'code-insiders', 'codium', or 'code-oss'
+        --server                  Install only the language server
+        --mimalloc                Use mimalloc for server
+    -h, --help                    Prints help information
         "
                 );
                 return Ok(());
@@ -67,10 +68,12 @@ FLAGS:
             let malloc =
                 if args.contains("--mimalloc") { Malloc::Mimalloc } else { Malloc::System };
 
+            let client_opt = args.opt_value_from_str("--client-code")?;
+
             args.finish()?;
 
             InstallCmd {
-                client: if server { None } else { Some(ClientOpt::VsCode) },
+                client: if server { None } else { Some(client_opt.unwrap_or_default()) },
                 server: if client_code { None } else { Some(ServerOpt { malloc }) },
             }
             .run()
