@@ -1603,50 +1603,6 @@ impl<T: Clone> Vec<T> {
     }
 }
 
-impl<T: Default> Vec<T> {
-    /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
-    ///
-    /// If `new_len` is greater than `len`, the `Vec` is extended by the
-    /// difference, with each additional slot filled with [`Default::default()`].
-    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
-    ///
-    /// This method uses [`Default`] to create new values on every push. If
-    /// you'd rather [`Clone`] a given value, use [`resize`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// #![feature(vec_resize_default)]
-    ///
-    /// let mut vec = vec![1, 2, 3];
-    /// vec.resize_default(5);
-    /// assert_eq!(vec, [1, 2, 3, 0, 0]);
-    ///
-    /// let mut vec = vec![1, 2, 3, 4];
-    /// vec.resize_default(2);
-    /// assert_eq!(vec, [1, 2]);
-    /// ```
-    ///
-    /// [`resize`]: Vec::resize
-    #[unstable(feature = "vec_resize_default", issue = "41758")]
-    #[rustc_deprecated(
-        reason = "This is moving towards being removed in favor \
-                  of `.resize_with(Default::default)`.  If you disagree, please comment \
-                  in the tracking issue.",
-        since = "1.33.0"
-    )]
-    pub fn resize_default(&mut self, new_len: usize) {
-        let len = self.len();
-
-        if new_len > len {
-            self.extend_with(new_len - len, ExtendDefault);
-        } else {
-            self.truncate(new_len);
-        }
-    }
-}
-
 // This code generalizes `extend_with_{element,default}`.
 trait ExtendWith<T> {
     fn next(&mut self) -> T;
