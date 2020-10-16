@@ -257,8 +257,13 @@ impl<K, V> Root<K, V> {
 ///   `NodeRef` points to an internal node, and when this is `LeafOrInternal` the
 ///   `NodeRef` could be pointing to either type of node.
 pub struct NodeRef<BorrowType, K, V, Type> {
-    /// The number of levels below the node.
+    /// The number of levels below the node, a property of the node that cannot be
+    /// entirely described by `Type` and that the node does not store itself either.
+    /// Unconstrained if `Type` is `LeafOrInternal`, must be zero if `Type` is `Leaf`,
+    /// and must be non-zero if `Type` is `Internal`.
     height: usize,
+    /// The pointer to the leaf or internal node. The definition of `InternalNode`
+    /// ensures that the pointer is valid either way.
     node: NonNull<LeafNode<K, V>>,
     _marker: PhantomData<(BorrowType, Type)>,
 }
@@ -315,8 +320,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         unsafe { usize::from((*self.as_leaf_ptr()).len) }
     }
 
-    /// Returns the height of this node in the whole tree. Zero height denotes the
-    /// leaf level.
+    /// Returns the height of this node with respect to the leaf level. Zero height means the
+    /// node is a leaf itself.
     pub fn height(&self) -> usize {
         self.height
     }
@@ -584,9 +589,11 @@ impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
         // to avoid aliasing with outstanding references to other elements,
         // in particular, those returned to the caller in earlier iterations.
         let leaf = self.node.as_ptr();
+        let keys = unsafe { &raw const (*leaf).keys };
+        let vals = unsafe { &raw mut (*leaf).vals };
         // We must coerce to unsized array pointers because of Rust issue #74679.
-        let keys: *const [_] = unsafe { &raw const (*leaf).keys };
-        let vals: *mut [_] = unsafe { &raw mut (*leaf).vals };
+        let keys: *const [_] = keys;
+        let vals: *mut [_] = vals;
         // SAFETY: The keys and values of a node must always be initialized up to length.
         let key = unsafe { (&*keys.get_unchecked(idx)).assume_init_ref() };
         let val = unsafe { (&mut *vals.get_unchecked_mut(idx)).assume_init_mut() };
@@ -817,11 +824,25 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
     }
 }
 
+impl<BorrowType, K, V, NodeType> NodeRef<BorrowType, K, V, NodeType> {
+    /// Could be a public implementation of PartialEq, but only used in this module.
+    fn eq(&self, other: &Self) -> bool {
+        let Self { node, height, _marker: _ } = self;
+        if *node == other.node {
+            debug_assert_eq!(*height, other.height);
+            true
+        } else {
+            false
+        }
+    }
+}
+
 impl<BorrowType, K, V, NodeType, HandleType> PartialEq
     for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
     fn eq(&self, other: &Self) -> bool {
-        self.node.node == other.node.node && self.idx == other.idx
+        let Self { node, idx, _marker: _ } = self;
+        node.eq(&other.node) && *idx == other.idx
     }
 }
 
@@ -829,7 +850,8 @@ impl<BorrowType, K, V, NodeType, HandleType> PartialOrd
     for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.node.node == other.node.node { Some(self.idx.cmp(&other.idx)) } else { None }
+        let Self { node, idx, _marker: _ } = self;
+        if node.eq(&other.node) { Some(idx.cmp(&other.idx)) } else { None }
     }
 }
 
