@@ -1383,7 +1383,8 @@ impl CStr {
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
     /// [`Cow`]`::`[`Owned`]`(`[`String`]`)` with the result.
     ///
-    /// [`str`]: prim@str
+    /// [`str`]: primitive@str
+    /// [`&str`]: primitive@str
     /// [`Borrowed`]: Cow::Borrowed
     /// [`Owned`]: Cow::Owned
     /// [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
