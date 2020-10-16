@@ -1,18 +1,27 @@
 error[E0445]: private trait `Foo` in public interface
   --> $DIR/E0445.rs:5:1
    |
+LL | trait Foo {
+   | --------- `Foo` declared as private
+...
 LL | pub trait Bar : Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `Foo` in public interface
   --> $DIR/E0445.rs:7:1
    |
+LL | trait Foo {
+   | --------- `Foo` declared as private
+...
 LL | pub struct Bar2<T: Foo>(pub T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `Foo` in public interface
   --> $DIR/E0445.rs:9:1
    |
+LL | trait Foo {
+   | --------- `Foo` declared as private
+...
 LL | pub fn foo<T: Foo> (t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 

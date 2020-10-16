@@ -2,7 +2,7 @@ error[E0446]: private type `Bar` in public interface
   --> $DIR/E0446.rs:4:5
    |
 LL |     struct Bar(u32);
-   |     - `Bar` declared as private
+   |     ---------------- `Bar` declared as private
 LL | 
 LL |     pub fn bar() -> Bar {
    |     ^^^^^^^^^^^^^^^^^^^ can't leak private type

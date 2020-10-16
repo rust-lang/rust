@@ -2,7 +2,7 @@ error[E0445]: private trait `Private<<Self as Public>::P, <Self as Public>::R>` 
   --> $DIR/issue-18389.rs:7:1
    |
 LL |   trait Private<P, R> {
-   |   - `Private<<Self as Public>::P, <Self as Public>::R>` declared as private
+   |   ------------------- `Private<<Self as Public>::P, <Self as Public>::R>` declared as private
 ...
 LL | / pub trait Public: Private<
 LL | |

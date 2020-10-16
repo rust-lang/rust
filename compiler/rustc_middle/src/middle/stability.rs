@@ -256,24 +256,12 @@ pub enum EvalResult {
 }
 
 // See issue #38412.
-fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
-    // Check if `def_id` is a trait method.
-    match tcx.def_kind(def_id) {
-        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
-            if let ty::TraitContainer(trait_def_id) = tcx.associated_item(def_id).container {
-                // Trait methods do not declare visibility (even
-                // for visibility info in cstore). Use containing
-                // trait instead, so methods of `pub` traits are
-                // themselves considered `pub`.
-                def_id = trait_def_id;
-            }
-        }
-        _ => {}
+fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    if tcx.def_kind(def_id) == DefKind::TyParam {
+        // Have no visibility, considered public for the purpose of this check.
+        return false;
     }
-
-    let visibility = tcx.visibility(def_id);
-
-    match visibility {
+    match tcx.visibility(def_id) {
         // Must check stability for `pub` items.
         ty::Visibility::Public => false,
 

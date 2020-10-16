@@ -1267,6 +1267,7 @@ rustc_queries! {
 
     TypeChecking {
         query visibility(def_id: DefId) -> ty::Visibility {
+            eval_always
             desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         }
     }
