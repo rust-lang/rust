@@ -39,7 +39,7 @@ impl<T> Poll<T> {
 
     /// Returns `true` if this is `Poll::Ready`
     #[inline]
-    #[rustc_const_stable(feature = "const_poll", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_poll", since = "1.49.0")]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub const fn is_ready(&self) -> bool {
         matches!(*self, Poll::Ready(_))
@@ -47,7 +47,7 @@ impl<T> Poll<T> {
 
     /// Returns `true` if this is `Poll::Pending`
     #[inline]
-    #[rustc_const_stable(feature = "const_poll", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_poll", since = "1.49.0")]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub const fn is_pending(&self) -> bool {
         !self.is_ready()
