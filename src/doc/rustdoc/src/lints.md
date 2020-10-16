@@ -285,3 +285,40 @@ warning: unclosed HTML tag `h1`
 
 warning: 2 warnings emitted
 ```
+
+## automatic_links
+
+This lint is **nightly-only** and **warns by default**. It detects links which
+could use the "automatic" link syntax. For example:
+
+```rust
+/// http://hello.rs
+/// [http://a.com](http://a.com)
+/// [http://b.com]
+///
+/// [http://b.com]: http://b.com
+pub fn foo() {}
+```
+
+Which will give:
+
+```text
+warning: this URL is not a hyperlink
+ --> foo.rs:3:5
+  |
+3 | /// http://hello.rs
+  |     ^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://hello.rs>`
+  |
+
+warning: unneeded long form for URL
+ --> foo.rs:4:5
+  |
+4 | /// [http://a.com](http://a.com)
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://a.com>`
+
+warning: unneeded long form for URL
+ --> foo.rs:5:5
+  |
+5 | /// [http://b.com]
+  |     ^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://b.com>`
+```
