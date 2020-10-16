@@ -305,7 +305,7 @@ impl<R: Read> Read for BufReader<R> {
 
     // we can't skip unconditionally because of the large buffer case in read.
     unsafe fn initializer(&self) -> Initializer {
-        unsafe { (*self).initializer() }
+        unsafe { self.inner.initializer() }
     }
 }
 
