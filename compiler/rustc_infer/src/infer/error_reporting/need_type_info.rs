@@ -366,12 +366,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 None
             };
             printer.name_resolver = Some(Box::new(&getter));
-            let _ = if let ty::FnDef(..) = ty.kind() {
+            let _ = match ty.kind() {
                 // We don't want the regular output for `fn`s because it includes its path in
                 // invalid pseudo-syntax, we want the `fn`-pointer output instead.
-                ty.fn_sig(self.tcx).print(printer)
-            } else {
-                ty.print(printer)
+                ty::FnDef(..) => ty.fn_sig(self.tcx).print(printer),
+                ty::Ref(_, ref_ty, mutability) => {
+                    match ref_ty.kind() {
+                        ty::Array(ty, _) => {
+                            // Do not suggest `&[_; 0]`, instead suggest `&[_]`.
+                            let _ = ty.print(printer);
+                            return format!("&{}[{}]", mutability.prefix_str(), s);
+                        }
+                        _ => ty.print(printer),
+                    }
+                }
+                _ => ty.print(printer),
             };
             s
         };

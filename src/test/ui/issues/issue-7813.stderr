@@ -1,13 +1,13 @@
-error[E0282]: type annotations needed for `&[_; 0]`
+error[E0282]: type annotations needed for `&[_]`
   --> $DIR/issue-7813.rs:2:13
    |
 LL |     let v = &[];
    |             ^^^ cannot infer type
    |
-help: consider giving this binding the explicit type `&[_; 0]`, with the type parameters specified
+help: consider giving this binding the explicit type `&[_]`, with the type parameters specified
    |
-LL |     let v: &[_; 0] = &[];
-   |          ^^^^^^^^^
+LL |     let v: &[_] = &[];
+   |          ^^^^^^
 
 error: aborting due to previous error
 
