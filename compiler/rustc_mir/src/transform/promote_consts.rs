@@ -124,6 +124,15 @@ impl Candidate {
             Candidate::Argument { .. } | Candidate::InlineAsm { .. } => true,
         }
     }
+
+    fn source_info(&self, body: &Body<'_>) -> SourceInfo {
+        match self {
+            Candidate::Ref(location) | Candidate::Repeat(location) => *body.source_info(*location),
+            Candidate::Argument { bb, .. } | Candidate::InlineAsm { bb, .. } => {
+                *body.source_info(body.terminator_loc(*bb))
+            }
+        }
+    }
 }
 
 fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
@@ -953,6 +962,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             from_hir_call,
                             fn_span,
                         },
+                        source_info: SourceInfo::outermost(terminator.source_info.span),
                         ..terminator
                     };
                 }
@@ -1163,12 +1173,13 @@ pub fn promote_candidates<'tcx>(
         // Declare return place local so that `mir::Body::new` doesn't complain.
         let initial_locals = iter::once(LocalDecl::new(tcx.types.never, body.span)).collect();
 
+        let mut scope = body.source_scopes[candidate.source_info(body).scope].clone();
+        scope.parent_scope = None;
+
         let mut promoted = Body::new(
             body.source, // `promoted` gets filled in below
             IndexVec::new(),
-            // FIXME: maybe try to filter this to avoid blowing up
-            // memory usage?
-            body.source_scopes.clone(),
+            IndexVec::from_elem_n(scope, 1),
             initial_locals,
             IndexVec::new(),
             0,
