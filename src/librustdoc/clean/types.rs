@@ -14,6 +14,7 @@ use rustc_ast::{self as ast, AttrStyle};
 use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_attr::{Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -679,9 +680,13 @@ impl Attributes {
                                     "../".repeat(depth)
                                 }
                                 Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
-                                Some(&(_, _, ExternalLocation::Unknown)) | None => {
-                                    String::from("https://doc.rust-lang.org/nightly")
-                                }
+                                Some(&(_, _, ExternalLocation::Unknown)) | None => String::from(
+                                    if UnstableFeatures::from_environment().is_nightly_build() {
+                                        "https://doc.rust-lang.org/nightly"
+                                    } else {
+                                        "https://doc.rust-lang.org"
+                                    },
+                                ),
                             };
                             // This is a primitive so the url is done "by hand".
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
