@@ -1,14 +1,15 @@
-use rustc_lint::{LateLintPass, LateContext};
+use crate::utils::{is_type_lang_item, match_function_call, paths, span_lint_and_help};
+use rustc_hir::{lang_items, Expr};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_hir::*;
-use crate::utils::{match_function_call, is_type_lang_item, paths, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** Prevents the safe `std::mem::drop` function from being called on `std::mem::ManuallyDrop`.
     ///
     /// **Why is this bad?** The safe `drop` function does not drop the inner value of a `ManuallyDrop`.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Does not catch cases if the user binds `std::mem::drop`
+    /// to a different name and calls it that way.
     ///
     /// **Example:**
     ///
@@ -20,7 +21,7 @@ declare_clippy_lint! {
     /// ```rust
     /// struct S;
     /// unsafe {
-    ///     std::mem::ManuallyDrop::drop(std::mem::ManuallyDrop::new(S));
+    ///     std::mem::ManuallyDrop::drop(&mut std::mem::ManuallyDrop::new(S));
     /// }
     /// ```
     pub UNDROPPED_MANUALLY_DROPS,
@@ -41,7 +42,7 @@ impl LateLintPass<'tcx> for UndroppedManuallyDrops {
                     expr.span,
                     "the inner value of this ManuallyDrop will not be dropped",
                     None,
-                    "to drop a `ManuallyDrop<T>`, use std::mem::ManuallyDrop::drop"
+                    "to drop a `ManuallyDrop<T>`, use std::mem::ManuallyDrop::drop",
                 );
             }
         }

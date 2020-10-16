@@ -1524,6 +1524,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::UNIT_CMP),
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
+        LintId::of(&undropped_manually_drops::UNDROPPED_MANUALLY_DROPS),
         LintId::of(&unicode::INVISIBLE_CHARACTERS),
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
