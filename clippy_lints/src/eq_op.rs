@@ -1,5 +1,5 @@
 use crate::utils::{
-    eq_expr_value, implements_trait, in_macro, is_copy, is_expn_of, multispan_sugg, snippet, span_lint,
+    eq_expr_value, higher, implements_trait, in_macro, is_copy, is_expn_of, multispan_sugg, snippet, span_lint,
     span_lint_and_then,
 };
 use if_chain::if_chain;
@@ -71,13 +71,9 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                     if_chain! {
                         if is_expn_of(stmt.span, amn).is_some();
                         if let StmtKind::Semi(ref matchexpr) = stmt.kind;
-                        if let ExprKind::Block(ref matchblock, _) = matchexpr.kind;
-                        if let Some(ref matchheader) = matchblock.expr;
-                        if let ExprKind::Match(ref headerexpr, _, _) = matchheader.kind;
-                        if let ExprKind::Tup(ref conditions) = headerexpr.kind;
-                        if conditions.len() == 2;
-                        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref lhs) = conditions[0].kind;
-                        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref rhs) = conditions[1].kind;
+                        if let Some(macro_args) = higher::extract_assert_macro_args(matchexpr);
+                        if macro_args.len() == 2;
+                        let (lhs, rhs) = (macro_args[0], macro_args[1]);
                         if eq_expr_value(cx, lhs, rhs);
 
                         then {

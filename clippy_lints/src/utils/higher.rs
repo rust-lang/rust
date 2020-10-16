@@ -7,6 +7,7 @@ use crate::utils::{is_expn_of, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_hir as hir;
+use rustc_hir::{BorrowKind, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::LateContext;
 
 /// Converts a hir binary operator to the corresponding `ast` type.
@@ -239,5 +240,58 @@ pub fn vec_macro<'e>(cx: &LateContext<'_>, expr: &'e hir::Expr<'_>) -> Option<Ve
         }
     }
 
+    None
+}
+
+/// Extract args from an assert-like macro.
+/// Currently working with:
+/// - `assert!`, `assert_eq!` and `assert_ne!`
+/// - `debug_assert!`, `debug_assert_eq!` and `debug_assert_ne!`
+/// For example:
+/// `assert!(expr)` will return Some([expr])
+/// `debug_assert_eq!(a, b)` will return Some([a, b])
+pub fn extract_assert_macro_args<'tcx>(e: &'tcx Expr<'tcx>) -> Option<Vec<&'tcx Expr<'tcx>>> {
+    /// Try to match the AST for a pattern that contains a match, for example when two args are
+    /// compared
+    fn ast_matchblock(matchblock_expr: &'tcx Expr<'tcx>) -> Option<Vec<&Expr<'_>>> {
+        if_chain! {
+            if let ExprKind::Match(ref headerexpr, _, _) = &matchblock_expr.kind;
+            if let ExprKind::Tup([lhs, rhs]) = &headerexpr.kind;
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, lhs) = lhs.kind;
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, rhs) = rhs.kind;
+            then {
+                return Some(vec![lhs, rhs]);
+            }
+        }
+        None
+    }
+
+    if let ExprKind::Block(ref block, _) = e.kind {
+        if block.stmts.len() == 1 {
+            if let StmtKind::Semi(ref matchexpr) = block.stmts[0].kind {
+                // macros with unique arg: `{debug_}assert!` (e.g., `debug_assert!(some_condition)`)
+                if_chain! {
+                    if let ExprKind::Match(ref ifclause, _, _) = matchexpr.kind;
+                    if let ExprKind::DropTemps(ref droptmp) = ifclause.kind;
+                    if let ExprKind::Unary(UnOp::UnNot, condition) = droptmp.kind;
+                    then {
+                        return Some(vec![condition]);
+                    }
+                }
+
+                // debug macros with two args: `debug_assert_{ne, eq}` (e.g., `assert_ne!(a, b)`)
+                if_chain! {
+                    if let ExprKind::Block(ref matchblock,_) = matchexpr.kind;
+                    if let Some(ref matchblock_expr) = matchblock.expr;
+                    then {
+                        return ast_matchblock(matchblock_expr);
+                    }
+                }
+            }
+        } else if let Some(matchblock_expr) = block.expr {
+            // macros with two args: `assert_{ne, eq}` (e.g., `assert_ne!(a, b)`)
+            return ast_matchblock(&matchblock_expr);
+        }
+    }
     None
 }
