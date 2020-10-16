@@ -366,27 +366,66 @@ People read things from top to bottom, so place most important things first.
 
 Specifically, if all items except one are private, always put the non-private item on top.
 
-Put `struct`s and `enum`s first, functions and impls last.
+```rust
+// Good
+pub(crate) fn frobnicate() {
+    Helper::act()
+}
 
-Do
+#[derive(Default)]
+struct Helper { stuff: i32 }
+
+impl Helper {
+    fn act(&self) {
+
+    }
+}
+
+// Not as good
+#[derive(Default)]
+struct Helper { stuff: i32 }
+
+pub(crate) fn frobnicate() {
+    Helper::act()
+}
+
+impl Helper {
+    fn act(&self) {
+
+    }
+}
+```
+
+If there's a mixture of private and public items, put public items first.
+If function bodies are folded in the editor, the source code should read as documentation for the public API.
+
+Put `struct`s and `enum`s first, functions and impls last. Order types declarations in top-down manner.
 
 ```rust
 // Good
-struct Foo {
-    bars: Vec<Bar>
+struct Parent {
+    children: Vec<Child>
 }
 
-struct Bar;
-```
+struct Child;
 
-rather than
+impl Parent {
+}
 
-```rust
+impl Child {
+}
+
 // Not as good
-struct Bar;
+struct Child;
 
-struct Foo {
-    bars: Vec<Bar>
+impl Child {
+}
+
+struct Parent {
+    children: Vec<Child>
+}
+
+impl Parent {
 }
 ```
 
