@@ -2716,10 +2716,6 @@ function defocusSearchBar() {
         };
     }
 
-    window.onresize = function() {
-        hideSidebar();
-    };
-
     if (main) {
         onEachLazy(main.getElementsByClassName("loading-content"), function(e) {
             e.remove();
