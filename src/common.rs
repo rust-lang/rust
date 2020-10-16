@@ -352,7 +352,7 @@ impl<'tcx, M: Module> layout::HasParamEnv<'tcx> for FunctionCx<'_, 'tcx, M> {
 
 impl<'tcx, M: Module> HasTargetSpec for FunctionCx<'_, 'tcx, M> {
     fn target_spec(&self) -> &Target {
-        &self.tcx.sess.target.target
+        &self.tcx.sess.target
     }
 }
 

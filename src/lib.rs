@@ -246,7 +246,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    sess.target.target.llvm_target.parse().unwrap()
+    sess.target.llvm_target.parse().unwrap()
 }
 
 fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'static> {

@@ -91,10 +91,10 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 } else if stem == "link" || stem == "lld-link" {
                     LinkerFlavor::Msvc
                 } else if stem == "lld" || stem == "rust-lld" {
-                    LinkerFlavor::Lld(sess.target.target.options.lld_flavor)
+                    LinkerFlavor::Lld(sess.target.options.lld_flavor)
                 } else {
                     // fall back to the value in the target spec
-                    sess.target.target.linker_flavor
+                    sess.target.linker_flavor
                 };
 
                 Some((linker, flavor))
@@ -115,8 +115,8 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     if let Some(ret) = infer_from(
         sess,
-        sess.target.target.options.linker.clone().map(PathBuf::from),
-        Some(sess.target.target.linker_flavor),
+        sess.target.options.linker.clone().map(PathBuf::from),
+        Some(sess.target.linker_flavor),
     ) {
         return ret;
     }

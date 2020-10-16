@@ -226,9 +226,7 @@ pub(crate) fn write_clif_file<'tcx>(
             .expect("value location ranges")
     });
 
-    let clif_output_dir = tcx
-        .output_filenames(LOCAL_CRATE)
-        .with_extension("clif");
+    let clif_output_dir = tcx.output_filenames(LOCAL_CRATE).with_extension("clif");
 
     match std::fs::create_dir(&clif_output_dir) {
         Ok(()) => {}
