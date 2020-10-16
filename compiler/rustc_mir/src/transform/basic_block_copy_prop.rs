@@ -35,17 +35,17 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use smallvec::SmallVec;
 
-use super::{MirPass, MirSource};
+use super::MirPass;
 
 pub struct BasicBlockCopyProp;
 
 impl<'tcx> MirPass<'tcx> for BasicBlockCopyProp {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return;
         }
 
-        debug!("processing {:?}", source.def_id());
+        debug!("processing {:?}", body.source.def_id());
 
         let mut borrows = BorrowCollector { locals: BitSet::new_empty(body.local_decls.len()) };
         borrows.visit_body(body);
