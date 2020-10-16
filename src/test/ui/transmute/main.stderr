@@ -1,5 +1,5 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/main.rs:16:5
+  --> $DIR/main.rs:13:5
    |
 LL |     transmute(x)
    |     ^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     transmute(x)
    = note: `<C as TypeConstructor>::T` does not have a fixed size
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/main.rs:20:17
+  --> $DIR/main.rs:17:17
    |
 LL |     let x: u8 = transmute(10u16);
    |                 ^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     let x: u8 = transmute(10u16);
    = note: target type: `u8` (8 bits)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/main.rs:24:17
+  --> $DIR/main.rs:21:17
    |
 LL |     let x: u8 = transmute("test");
    |                 ^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     let x: u8 = transmute("test");
    = note: target type: `u8` (8 bits)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/main.rs:29:18
+  --> $DIR/main.rs:26:18
    |
 LL |     let x: Foo = transmute(10);
    |                  ^^^^^^^^^

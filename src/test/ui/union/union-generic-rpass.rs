@@ -1,8 +1,6 @@
 // run-pass
 #![allow(dead_code)]
 
-#![feature(untagged_unions)]
-
 use std::mem::ManuallyDrop;
 
 union MaybeItem<T: Iterator> {
@@ -16,7 +14,7 @@ union U<A, B> where A: Copy, B: Copy {
 }
 
 unsafe fn union_transmute<A, B>(a: A) -> B where A: Copy, B: Copy {
-    U { a: a }.b
+    U { a }.b
 }
 
 fn main() {
