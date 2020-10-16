@@ -1330,58 +1330,17 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         let suggest_only_tuple_variants =
             matches!(source, PathSource::TupleStruct(..)) || source.is_call();
-        let mut suggestable_variants = if suggest_only_tuple_variants {
+        if suggest_only_tuple_variants {
             // Suggest only tuple variants regardless of whether they have fields and do not
             // suggest path with added parenthesis.
-            variants
+            let mut suggestable_variants = variants
                 .iter()
                 .filter(|(.., kind)| *kind == CtorKind::Fn)
                 .map(|(variant, ..)| path_names_to_string(variant))
-                .collect::<Vec<_>>()
-        } else {
-            variants
-                .iter()
-                .filter(|(_, def_id, kind)| {
-                    // Suggest only variants that have no fields (these can definitely
-                    // be constructed).
-                    let has_fields =
-                        self.r.field_names.get(&def_id).map(|f| f.is_empty()).unwrap_or(false);
-                    match kind {
-                        CtorKind::Const => true,
-                        CtorKind::Fn | CtorKind::Fictive if has_fields => true,
-                        _ => false,
-                    }
-                })
-                .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
-                .map(|(variant_str, kind)| {
-                    // Add constructor syntax where appropriate.
-                    match kind {
-                        CtorKind::Const => variant_str,
-                        CtorKind::Fn => format!("({}())", variant_str),
-                        CtorKind::Fictive => format!("({} {{}})", variant_str),
-                    }
-                })
-                .collect::<Vec<_>>()
-        };
+                .collect::<Vec<_>>();
 
-        let non_suggestable_variant_count = variants.len() - suggestable_variants.len();
+            let non_suggestable_variant_count = variants.len() - suggestable_variants.len();
 
-        if !suggestable_variants.is_empty() {
-            let msg = if non_suggestable_variant_count == 0 && suggestable_variants.len() == 1 {
-                "try using the enum's variant"
-            } else {
-                "try using one of the enum's variants"
-            };
-
-            err.span_suggestions(
-                span,
-                msg,
-                suggestable_variants.drain(..),
-                Applicability::MaybeIncorrect,
-            );
-        }
-
-        if suggest_only_tuple_variants {
             let source_msg = if source.is_call() {
                 "to construct"
             } else if matches!(source, PathSource::TupleStruct(..)) {
@@ -1389,6 +1348,21 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             } else {
                 unreachable!()
             };
+
+            if !suggestable_variants.is_empty() {
+                let msg = if non_suggestable_variant_count == 0 && suggestable_variants.len() == 1 {
+                    format!("try {} the enum's variant", source_msg)
+                } else {
+                    format!("try {} one of the enum's variants", source_msg)
+                };
+
+                err.span_suggestions(
+                    span,
+                    &msg,
+                    suggestable_variants.drain(..),
+                    Applicability::MaybeIncorrect,
+                );
+            }
 
             // If the enum has no tuple variants..
             if non_suggestable_variant_count == variants.len() {
@@ -1408,24 +1382,76 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 ));
             }
         } else {
-            let made_suggestion = non_suggestable_variant_count != variants.len();
-            if made_suggestion {
-                if non_suggestable_variant_count == 1 {
-                    err.help(
-                        "you might have meant to use the enum's other variant that has fields",
-                    );
-                } else if non_suggestable_variant_count >= 1 {
-                    err.help(
-                        "you might have meant to use one of the enum's other variants that \
-                         have fields",
-                    );
+            let needs_placeholder = |def_id: DefId, kind: CtorKind| {
+                let has_no_fields =
+                    self.r.field_names.get(&def_id).map(|f| f.is_empty()).unwrap_or(false);
+                match kind {
+                    CtorKind::Const => false,
+                    CtorKind::Fn | CtorKind::Fictive if has_no_fields => false,
+                    _ => true,
                 }
-            } else {
-                if non_suggestable_variant_count == 1 {
-                    err.help("you might have meant to use the enum's variant");
-                } else if non_suggestable_variant_count >= 1 {
-                    err.help("you might have meant to use one of the enum's variants");
-                }
+            };
+
+            let mut suggestable_variants = variants
+                .iter()
+                .filter(|(_, def_id, kind)| !needs_placeholder(*def_id, *kind))
+                .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
+                .map(|(variant, kind)| match kind {
+                    CtorKind::Const => variant,
+                    CtorKind::Fn => format!("({}())", variant),
+                    CtorKind::Fictive => format!("({} {{}})", variant),
+                })
+                .collect::<Vec<_>>();
+
+            if !suggestable_variants.is_empty() {
+                let msg = if suggestable_variants.len() == 1 {
+                    "you might have meant to use the following enum variant"
+                } else {
+                    "you might have meant to use one of the following enum variants"
+                };
+
+                err.span_suggestions(
+                    span,
+                    msg,
+                    suggestable_variants.drain(..),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+
+            let mut suggestable_variants_with_placeholders = variants
+                .iter()
+                .filter(|(_, def_id, kind)| needs_placeholder(*def_id, *kind))
+                .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
+                .filter_map(|(variant, kind)| match kind {
+                    CtorKind::Fn => Some(format!("({}(/* fields */))", variant)),
+                    CtorKind::Fictive => Some(format!("({} {{ /* fields */ }})", variant)),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            if !suggestable_variants_with_placeholders.is_empty() {
+                let msg = match (
+                    suggestable_variants.is_empty(),
+                    suggestable_variants_with_placeholders.len(),
+                ) {
+                    (true, 1) => "the following enum variant is available",
+                    (true, _) => "the following enum variants are available",
+                    (false, 1) => "alternatively, the following enum variant is available",
+                    (false, _) => "alternatively, the following enum variants are also available",
+                };
+
+                err.span_suggestions(
+                    span,
+                    msg,
+                    suggestable_variants_with_placeholders.drain(..),
+                    Applicability::HasPlaceholders,
+                );
+            }
+        };
+
+        if def_id.is_local() {
+            if let Some(span) = self.def_span(def_id) {
+                err.span_note(span, "the enum is defined here");
             }
         }
     }
