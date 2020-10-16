@@ -2011,17 +2011,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
-        let mut generic_args: Vec<_> = lifetime_params[..input_lifetimes_count]
-            .iter()
-            .map(|&(span, hir_name)| {
+        let mut generic_args = Vec::with_capacity(lifetime_params.len());
+        generic_args.extend(lifetime_params[..input_lifetimes_count].iter().map(
+            |&(span, hir_name)| {
                 // Input lifetime like `'a` or `'1`:
                 GenericArg::Lifetime(hir::Lifetime {
                     hir_id: self.next_id(),
                     span,
                     name: hir::LifetimeName::Param(hir_name),
                 })
-            })
-            .collect();
+            },
+        ));
         generic_args.extend(lifetime_params[input_lifetimes_count..].iter().map(|&(span, _)|
             // Output lifetime like `'_`.
             GenericArg::Lifetime(hir::Lifetime {
