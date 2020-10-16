@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `U1: Copy` is not satisfied
-  --> $DIR/union-derive-clone.rs:5:10
+  --> $DIR/union-derive-clone.rs:3:10
    |
 LL | #[derive(Clone)]
    |          ^^^^^ the trait `Copy` is not implemented for `U1`
@@ -12,7 +12,7 @@ LL | pub struct AssertParamIsCopy<T: Copy + ?Sized> {
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: no method named `clone` found for union `U5<CloneNoCopy>` in the current scope
-  --> $DIR/union-derive-clone.rs:37:15
+  --> $DIR/union-derive-clone.rs:35:15
    |
 LL | union U5<T> {
    | -----------

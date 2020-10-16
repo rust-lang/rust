@@ -348,8 +348,7 @@ pub(super) fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     check_packed(tcx, span, def);
 }
 
-/// When the `#![feature(untagged_unions)]` gate is active,
-/// check that the fields of the `union` does not contain fields that need dropping.
+/// Check that the fields of the `union` do not need dropping.
 pub(super) fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> bool {
     let item_type = tcx.type_of(item_def_id);
     if let ty::Adt(def, substs) = item_type.kind() {

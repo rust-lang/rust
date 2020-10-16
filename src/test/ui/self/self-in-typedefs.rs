@@ -1,7 +1,4 @@
 // build-pass (FIXME(62277): could be check-pass?)
-
-#![feature(untagged_unions)]
-
 #![allow(dead_code)]
 
 use std::mem::ManuallyDrop;

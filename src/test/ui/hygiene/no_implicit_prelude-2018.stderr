@@ -3,6 +3,9 @@ error: cannot find macro `print` in this scope
    |
 LL |         print!();
    |         ^^^^^
+   |
+   = note: consider importing this macro:
+           std::print
 
 error: aborting due to previous error
 

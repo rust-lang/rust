@@ -4,8 +4,6 @@
 
 // Some traits can be derived for unions.
 
-#![feature(untagged_unions)]
-
 #[derive(
     Copy,
     Clone,

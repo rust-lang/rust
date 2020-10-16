@@ -131,7 +131,7 @@
 #![feature(transparent_unions)]
 #![feature(unboxed_closures)]
 #![feature(unsized_locals)]
-#![feature(untagged_unions)]
+#![cfg_attr(bootstrap, feature(untagged_unions))]
 #![feature(unwind_attributes)]
 #![feature(variant_count)]
 #![feature(tbm_target_feature)]

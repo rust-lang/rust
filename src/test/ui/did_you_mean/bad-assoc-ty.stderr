@@ -57,19 +57,6 @@ LL | type J = ty!(u8);
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0658]: unions with non-`Copy` fields are unstable
-  --> $DIR/bad-assoc-ty.rs:69:1
-   |
-LL | / union O<F> where F: Fn() -> _ {
-LL | |
-LL | |
-LL | |     foo: F,
-LL | | }
-   | |_^
-   |
-   = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
-   = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
-
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:1:10
    |
@@ -215,7 +202,7 @@ LL | union O<F, T> where F: Fn() -> T {
    |          ^^^                   ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/bad-assoc-ty.rs:75:29
+  --> $DIR/bad-assoc-ty.rs:74:29
    |
 LL | trait P<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
@@ -226,7 +213,7 @@ LL | trait P<F, T> where F: Fn() -> T {
    |          ^^^                   ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/bad-assoc-ty.rs:80:38
+  --> $DIR/bad-assoc-ty.rs:79:38
    |
 LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
    |                                      ^ not allowed in type signatures
@@ -236,7 +223,7 @@ help: use type parameters instead
 LL |     fn foo<F, T>(_: F) where F: Fn() -> T {}
    |             ^^^                         ^
 
-error: aborting due to 29 previous errors
+error: aborting due to 28 previous errors
 
-Some errors have detailed explanations: E0121, E0223, E0658.
+Some errors have detailed explanations: E0121, E0223.
 For more information about an error, try `rustc --explain E0121`.
