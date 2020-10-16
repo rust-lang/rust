@@ -3,9 +3,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use xshell::{cmd, read_file};
 use xtask::{
     codegen::{self, Mode},
-    not_bash::{fs2, run},
     project_root, run_rustfmt, rust_files,
 };
 
@@ -48,14 +48,13 @@ fn smoke_test_docs_generation() {
 fn check_lsp_extensions_docs() {
     let expected_hash = {
         let lsp_ext_rs =
-            fs2::read_to_string(project_root().join("crates/rust-analyzer/src/lsp_ext.rs"))
-                .unwrap();
+            read_file(project_root().join("crates/rust-analyzer/src/lsp_ext.rs")).unwrap();
         stable_hash(lsp_ext_rs.as_str())
     };
 
     let actual_hash = {
         let lsp_extensions_md =
-            fs2::read_to_string(project_root().join("docs/dev/lsp-extensions.md")).unwrap();
+            read_file(project_root().join("docs/dev/lsp-extensions.md")).unwrap();
         let text = lsp_extensions_md
             .lines()
             .find_map(|line| line.strip_prefix("lsp_ext.rs hash:"))
@@ -83,7 +82,7 @@ Please adjust docs/dev/lsp-extensions.md.
 fn rust_files_are_tidy() {
     let mut tidy_docs = TidyDocs::default();
     for path in rust_files(&project_root().join("crates")) {
-        let text = fs2::read_to_string(&path).unwrap();
+        let text = read_file(&path).unwrap();
         check_todo(&path, &text);
         check_trailing_ws(&path, &text);
         deny_clippy(&path, &text);
@@ -94,8 +93,10 @@ fn rust_files_are_tidy() {
 
 #[test]
 fn check_merge_commits() {
-    let stdout = run!("git rev-list --merges --invert-grep --author 'bors\\[bot\\]' HEAD~19.."; echo = false)
-        .unwrap();
+    let stdout =
+        dbg!(cmd!("git rev-list --merges --invert-grep --author 'bors\\[bot\\]' HEAD~19.."))
+            .read()
+            .unwrap();
     if !stdout.is_empty() {
         panic!(
             "
@@ -168,7 +169,7 @@ Zlib OR Apache-2.0 OR MIT
     .filter(|it| !it.is_empty())
     .collect::<Vec<_>>();
 
-    let meta = run!("cargo metadata --format-version 1"; echo = false).unwrap();
+    let meta = cmd!("cargo metadata --format-version 1").read().unwrap();
     let mut licenses = meta
         .split(|c| c == ',' || c == '{' || c == '}')
         .filter(|it| it.contains(r#""license""#))
@@ -177,6 +178,25 @@ Zlib OR Apache-2.0 OR MIT
         .collect::<Vec<_>>();
     licenses.sort();
     licenses.dedup();
+    if licenses != expected {
+        let mut diff = String::new();
+
+        diff += &format!("New Licenses:\n");
+        for &l in licenses.iter() {
+            if !expected.contains(&l) {
+                diff += &format!("  {}\n", l)
+            }
+        }
+
+        diff += &format!("\nMissing Licenses:\n");
+        for &l in expected.iter() {
+            if !licenses.contains(&l) {
+                diff += &format!("  {}\n", l)
+            }
+        }
+
+        panic!("different set of licenses!\n{}", diff);
+    }
     assert_eq!(licenses, expected);
 }
 

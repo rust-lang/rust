@@ -12,12 +12,12 @@ use std::env;
 
 use codegen::CodegenCmd;
 use pico_args::Arguments;
+use xshell::pushd;
 use xtask::{
     codegen::{self, Mode},
     dist::DistCmd,
     install::{ClientOpt, InstallCmd, Malloc, ServerOpt},
     metrics::MetricsCmd,
-    not_bash::pushd,
     pre_cache::PreCacheCmd,
     pre_commit, project_root,
     release::{PromoteCmd, ReleaseCmd},
@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         return pre_commit::run_hook();
     }
 
-    let _d = pushd(project_root());
+    let _d = pushd(project_root())?;
 
     let mut args = Arguments::from_env();
     let subcommand = args.subcommand()?.unwrap_or_default();

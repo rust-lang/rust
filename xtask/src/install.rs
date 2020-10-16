@@ -3,8 +3,7 @@
 use std::{env, path::PathBuf, str};
 
 use anyhow::{bail, format_err, Context, Result};
-
-use crate::not_bash::{pushd, run};
+use xshell::{cmd, pushd};
 
 // Latest stable, feel free to send a PR if this lags behind.
 const REQUIRED_RUST_VERSION: u32 = 47;
@@ -76,7 +75,7 @@ fn fix_path_for_mac() -> Result<()> {
 }
 
 fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
-    let _dir = pushd("./editors/code");
+    let _dir = pushd("./editors/code")?;
 
     let find_code = |f: fn(&str) -> bool| -> Result<&'static str> {
         ["code", "code-insiders", "codium", "code-oss"]
@@ -89,24 +88,25 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     };
 
     let installed_extensions = if cfg!(unix) {
-        run!("npm --version").context("`npm` is required to build the VS Code plugin")?;
-        run!("npm install")?;
+        cmd!("npm --version").run().context("`npm` is required to build the VS Code plugin")?;
+        cmd!("npm install").run()?;
 
-        run!("npm run package --scripts-prepend-node-path")?;
+        cmd!("npm run package --scripts-prepend-node-path").run()?;
 
-        let code = find_code(|bin| run!("{} --version", bin).is_ok())?;
-        run!("{} --install-extension rust-analyzer.vsix --force", code)?;
-        run!("{} --list-extensions", code; echo = false)?
+        let code = find_code(|bin| cmd!("{bin} --version").read().is_ok())?;
+        cmd!("{code} --install-extension rust-analyzer.vsix --force").run()?;
+        cmd!("{code} --list-extensions").read()?
     } else {
-        run!("cmd.exe /c npm --version")
+        cmd!("cmd.exe /c npm --version")
+            .run()
             .context("`npm` is required to build the VS Code plugin")?;
-        run!("cmd.exe /c npm install")?;
+        cmd!("cmd.exe /c npm install").run()?;
 
-        run!("cmd.exe /c npm run package")?;
+        cmd!("cmd.exe /c npm run package").run()?;
 
-        let code = find_code(|bin| run!("cmd.exe /c {}.cmd --version", bin).is_ok())?;
-        run!(r"cmd.exe /c {}.cmd --install-extension rust-analyzer.vsix --force", code)?;
-        run!("cmd.exe /c {}.cmd --list-extensions", code; echo = false)?
+        let code = find_code(|bin| cmd!("cmd.exe /c {bin}.cmd --version").read().is_ok())?;
+        cmd!("cmd.exe /c {code}.cmd --install-extension rust-analyzer.vsix --force").run()?;
+        cmd!("cmd.exe /c {code}.cmd --list-extensions").read()?
     };
 
     if !installed_extensions.contains("rust-analyzer") {
@@ -122,7 +122,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
 fn install_server(opts: ServerOpt) -> Result<()> {
     let mut old_rust = false;
-    if let Ok(stdout) = run!("cargo --version") {
+    if let Ok(stdout) = cmd!("cargo --version").read() {
         if !check_version(&stdout, REQUIRED_RUST_VERSION) {
             old_rust = true;
         }
@@ -134,12 +134,13 @@ fn install_server(opts: ServerOpt) -> Result<()> {
             REQUIRED_RUST_VERSION,
         )
     }
-
-    let malloc_feature = match opts.malloc {
-        Malloc::System => "",
-        Malloc::Mimalloc => "--features mimalloc",
+    let features = match opts.malloc {
+        Malloc::System => &[][..],
+        Malloc::Mimalloc => &["--features", "mimalloc"],
     };
-    let res = run!("cargo install --path crates/rust-analyzer --locked --force {}", malloc_feature);
+
+    let cmd = cmd!("cargo install --path crates/rust-analyzer --locked --force {features...}");
+    let res = cmd.run();
 
     if res.is_err() && old_rust {
         eprintln!(
@@ -148,7 +149,8 @@ fn install_server(opts: ServerOpt) -> Result<()> {
         );
     }
 
-    res.map(drop)
+    res?;
+    Ok(())
 }
 
 fn check_version(version_output: &str, min_minor_version: u32) -> bool {

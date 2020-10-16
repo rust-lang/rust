@@ -2,7 +2,6 @@
 //!
 //! See https://github.com/matklad/cargo-xtask/
 
-pub mod not_bash;
 pub mod codegen;
 mod ast_src;
 
@@ -19,11 +18,9 @@ use std::{
 };
 
 use walkdir::{DirEntry, WalkDir};
+use xshell::{cmd, pushd, pushenv};
 
-use crate::{
-    codegen::Mode,
-    not_bash::{pushd, pushenv},
-};
+use crate::codegen::Mode;
 
 pub use anyhow::{bail, Context as _, Result};
 
@@ -53,18 +50,19 @@ pub fn rust_files(path: &Path) -> impl Iterator<Item = PathBuf> {
 }
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
-    let _dir = pushd(project_root());
+    let _dir = pushd(project_root())?;
     let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
     ensure_rustfmt()?;
-    match mode {
-        Mode::Overwrite => run!("cargo fmt"),
-        Mode::Verify => run!("cargo fmt -- --check"),
-    }?;
+    let check = match mode {
+        Mode::Overwrite => &[][..],
+        Mode::Verify => &["--", "--check"],
+    };
+    cmd!("cargo fmt {check...}").run()?;
     Ok(())
 }
 
 fn ensure_rustfmt() -> Result<()> {
-    let out = run!("rustfmt --version")?;
+    let out = cmd!("rustfmt --version").read()?;
     if !out.contains("stable") {
         bail!(
             "Failed to run rustfmt from toolchain 'stable'. \
@@ -75,38 +73,44 @@ fn ensure_rustfmt() -> Result<()> {
 }
 
 pub fn run_clippy() -> Result<()> {
-    if run!("cargo clippy --version").is_err() {
+    if cmd!("cargo clippy --version").read().is_err() {
         bail!(
             "Failed run cargo clippy. \
             Please run `rustup component add clippy` to install it.",
         )
     }
 
-    let allowed_lints = [
-        "clippy::collapsible_if",
-        "clippy::needless_pass_by_value",
-        "clippy::nonminimal_bool",
-        "clippy::redundant_pattern_matching",
-    ];
-    run!("cargo clippy --all-features --all-targets -- -A {}", allowed_lints.join(" -A "))?;
+    let allowed_lints = "
+        -A clippy::collapsible_if
+        -A clippy::needless_pass_by_value
+        -A clippy::nonminimal_bool
+        -A clippy::redundant_pattern_matching
+    "
+    .split_ascii_whitespace();
+    cmd!("cargo clippy --all-features --all-targets -- {allowed_lints...}").run()?;
     Ok(())
 }
 
 pub fn run_fuzzer() -> Result<()> {
-    let _d = pushd("./crates/syntax");
+    let _d = pushd("./crates/syntax")?;
     let _e = pushenv("RUSTUP_TOOLCHAIN", "nightly");
-    if run!("cargo fuzz --help").is_err() {
-        run!("cargo install cargo-fuzz")?;
+    if cmd!("cargo fuzz --help").read().is_err() {
+        cmd!("cargo install cargo-fuzz").run()?;
     };
 
     // Expecting nightly rustc
-    let out = run!("rustc --version")?;
+    let out = cmd!("rustc --version").read()?;
     if !out.contains("nightly") {
         bail!("fuzz tests require nightly rustc")
     }
 
-    run!("cargo fuzz run parser")?;
+    cmd!("cargo fuzz run parser").run()?;
     Ok(())
+}
+
+fn date_iso() -> Result<String> {
+    let res = cmd!("date --iso --utc").read()?;
+    Ok(res)
 }
 
 fn is_release_tag(tag: &str) -> bool {

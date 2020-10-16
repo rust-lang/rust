@@ -3,15 +3,13 @@ use std::path::{Path, PathBuf};
 
 use quote::quote;
 use walkdir::WalkDir;
+use xshell::{cmd, read_file};
 
-use crate::{
-    codegen::{project_root, reformat, update, Mode, Result},
-    not_bash::{fs2, run},
-};
+use crate::codegen::{project_root, reformat, update, Mode, Result};
 
 pub fn generate_features(mode: Mode) -> Result<()> {
     if !Path::new("./target/rust").exists() {
-        run!("git clone https://github.com/rust-lang/rust ./target/rust")?;
+        cmd!("git clone https://github.com/rust-lang/rust ./target/rust").run()?;
     }
 
     let contents = generate_descriptor("./target/rust/src/doc/unstable-book/src".into())?;
@@ -34,7 +32,7 @@ fn generate_descriptor(src_dir: PathBuf) -> Result<String> {
         .map(|entry| {
             let path = entry.path();
             let feature_ident = path.file_stem().unwrap().to_str().unwrap().replace("-", "_");
-            let doc = fs2::read_to_string(path).unwrap();
+            let doc = read_file(path).unwrap();
 
             quote! { LintCompletion { label: #feature_ident, description: #doc } }
         });

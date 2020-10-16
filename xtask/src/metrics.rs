@@ -7,8 +7,7 @@ use std::{
 };
 
 use anyhow::{bail, format_err, Result};
-
-use crate::not_bash::{fs2, pushd, pushenv, rm_rf, run};
+use xshell::{cmd, mkdir_p, pushd, pushenv, read_file, rm_rf};
 
 type Unit = String;
 
@@ -23,12 +22,13 @@ impl MetricsCmd {
             rm_rf("./target/release")?;
         }
         if !Path::new("./target/rustc-perf").exists() {
-            fs2::create_dir_all("./target/rustc-perf")?;
-            run!("git clone https://github.com/rust-lang/rustc-perf.git ./target/rustc-perf")?;
+            mkdir_p("./target/rustc-perf")?;
+            cmd!("git clone https://github.com/rust-lang/rustc-perf.git ./target/rustc-perf")
+                .run()?;
         }
         {
-            let _d = pushd("./target/rustc-perf");
-            run!("git reset --hard 1d9288b0da7febf2599917da1b57dc241a1af033")?;
+            let _d = pushd("./target/rustc-perf")?;
+            cmd!("git reset --hard 1d9288b0da7febf2599917da1b57dc241a1af033").run()?;
         }
 
         let _env = pushenv("RA_METRICS", "1");
@@ -39,17 +39,20 @@ impl MetricsCmd {
         metrics.measure_analysis_stats("webrender")?;
 
         if !self.dry_run {
-            let _d = pushd("target");
+            let _d = pushd("target")?;
             let metrics_token = env::var("METRICS_TOKEN").unwrap();
-            let repo = format!("https://{}@github.com/rust-analyzer/metrics.git", metrics_token);
-            run!("git clone --depth 1 {}", repo)?;
-            let _d = pushd("metrics");
+            cmd!(
+                "git clone --depth 1 https://{metrics_token}@github.com/rust-analyzer/metrics.git"
+            )
+            .run()?;
+            let _d = pushd("metrics")?;
 
             let mut file = std::fs::OpenOptions::new().append(true).open("metrics.json")?;
             writeln!(file, "{}", metrics.json())?;
-            run!("git add .")?;
-            run!("git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")?;
-            run!("git push origin master")?;
+            cmd!("git add .").run()?;
+            cmd!("git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")
+                .run()?;
+            cmd!("git push origin master").run()?;
         }
         eprintln!("{:#?}", metrics);
         Ok(())
@@ -59,10 +62,10 @@ impl MetricsCmd {
 impl Metrics {
     fn measure_build(&mut self) -> Result<()> {
         eprintln!("\nMeasuring build");
-        run!("cargo fetch")?;
+        cmd!("cargo fetch").run()?;
 
         let time = Instant::now();
-        run!("cargo build --release --package rust-analyzer --bin rust-analyzer")?;
+        cmd!("cargo build --release --package rust-analyzer --bin rust-analyzer").run()?;
         let time = time.elapsed();
         self.report("build", time.as_millis() as u64, "ms".into());
         Ok(())
@@ -78,7 +81,7 @@ impl Metrics {
     }
     fn measure_analysis_stats_path(&mut self, name: &str, path: &str) -> Result<()> {
         eprintln!("\nMeasuring analysis-stats/{}", name);
-        let output = run!("./target/release/rust-analyzer analysis-stats --quiet {}", path)?;
+        let output = cmd!("./target/release/rust-analyzer analysis-stats --quiet {path}").read()?;
         for (metric, value, unit) in parse_metrics(&output) {
             self.report(&format!("analysis-stats/{}/{}", name, metric), value, unit.into());
         }
@@ -118,7 +121,7 @@ impl Metrics {
     fn new() -> Result<Metrics> {
         let host = Host::new()?;
         let timestamp = SystemTime::now();
-        let revision = run!("git rev-parse HEAD")?;
+        let revision = cmd!("git rev-parse HEAD").read()?;
         Ok(Metrics { host, timestamp, revision, metrics: BTreeMap::new() })
     }
 
@@ -160,7 +163,7 @@ impl Host {
         return Ok(Host { os, cpu, mem });
 
         fn read_field<'a>(path: &str, field: &str) -> Result<String> {
-            let text = fs2::read_to_string(path)?;
+            let text = read_file(path)?;
 
             let line = text
                 .lines()
