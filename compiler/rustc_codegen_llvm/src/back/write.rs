@@ -936,8 +936,8 @@ unsafe fn embed_bitcode(
         llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
     } else {
         let asm = "
-            .section .llvmbc,\"e\"
-            .section .llvmcmd,\"e\"
+            .section .llvmbc,\"a\"
+            .section .llvmcmd,\"a\"
         ";
         llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
     }
