@@ -23,9 +23,9 @@ use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc_mir::const_eval::{is_const_fn, is_min_const_fn, is_unstable_const_fn};
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, Pos};
+use rustc_span::{self, ExpnKind, Pos};
 use rustc_typeck::hir_ty_to_ty;
 
 use std::collections::hash_map::Entry;
@@ -2231,6 +2231,13 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
 
 impl Clean<Vec<Item>> for doctree::Import<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
+        // We need this comparison because some imports (for std types for example)
+        // are "inserted" as well but directly by the compiler and they should not be
+        // taken into account.
+        if self.span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::StdImports) {
+            return Vec::new();
+        }
+
         // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
