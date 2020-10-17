@@ -282,6 +282,7 @@ pub enum ExprPrecedence {
     ForLoop,
     Loop,
     Match,
+    ConstBlock,
     Block,
     TryBlock,
     Struct,
@@ -346,6 +347,7 @@ impl ExprPrecedence {
             ExprPrecedence::ForLoop |
             ExprPrecedence::Loop |
             ExprPrecedence::Match |
+            ExprPrecedence::ConstBlock |
             ExprPrecedence::Block |
             ExprPrecedence::TryBlock |
             ExprPrecedence::Async |

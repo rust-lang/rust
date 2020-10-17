@@ -1361,6 +1361,7 @@ impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
             ExprKind::Box(_) => ExprPrecedence::Box,
+            ExprKind::ConstBlock(_) => ExprPrecedence::ConstBlock,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,
             ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
@@ -1446,6 +1447,7 @@ impl Expr<'_> {
             | ExprKind::LlvmInlineAsm(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Lit(_)
+            | ExprKind::ConstBlock(..)
             | ExprKind::Unary(..)
             | ExprKind::Box(..)
             | ExprKind::AddrOf(..)
@@ -1501,6 +1503,8 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
 pub enum ExprKind<'hir> {
     /// A `box x` expression.
     Box(&'hir Expr<'hir>),
+    /// Allow anonymous constants from an inline `const` block
+    ConstBlock(AnonConst),
     /// An array (e.g., `[a, b, c, d]`).
     Array(&'hir [Expr<'hir>]),
     /// A function call.

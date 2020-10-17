@@ -234,6 +234,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Yield { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::ConstBlock { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::Block { .. }
             | ExprKind::Match { .. }

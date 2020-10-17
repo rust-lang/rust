@@ -511,6 +511,12 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             inputs: asm.inputs_exprs.to_ref(),
         },
 
+        hir::ExprKind::ConstBlock(ref anon_const) => {
+            let anon_const_def_id = cx.tcx.hir().local_def_id(anon_const.hir_id);
+            let value = ty::Const::from_anon_const(cx.tcx, anon_const_def_id);
+
+            ExprKind::ConstBlock { value }
+        }
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
             let count_def_id = cx.tcx.hir().local_def_id(count.hir_id);

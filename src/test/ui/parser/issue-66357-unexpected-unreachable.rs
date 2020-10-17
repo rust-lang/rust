@@ -13,4 +13,4 @@
 
 fn f() { |[](* }
 //~^ ERROR expected one of `,` or `:`, found `(`
-//~| ERROR expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`
+//~| ERROR expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `const`, `mut`, `ref`, `|`, identifier, or path, found `*`

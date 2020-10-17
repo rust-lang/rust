@@ -195,6 +195,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_expr_post, e);
     }
 
+    fn visit_generic_arg(&mut self, arg: &'a ast::GenericArg) {
+        run_early_pass!(self, check_generic_arg, arg);
+        ast_visit::walk_generic_arg(self, arg);
+    }
+
     fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
         run_early_pass!(self, check_generic_param, param);
         ast_visit::walk_generic_param(self, param);

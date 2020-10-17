@@ -111,6 +111,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirIdMap, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -528,7 +529,20 @@ fn typeck_with_fallback<'tcx>(
                     hir::TyKind::Infer => Some(AstConv::ast_ty_to_ty(&fcx, ty)),
                     _ => None,
                 })
-                .unwrap_or_else(fallback);
+                .unwrap_or_else(|| match tcx.hir().get(id) {
+                    Node::AnonConst(_) => match tcx.hir().get(tcx.hir().get_parent_node(id)) {
+                        Node::Expr(&hir::Expr {
+                            kind: hir::ExprKind::ConstBlock(ref anon_const),
+                            ..
+                        }) if anon_const.hir_id == id => fcx.next_ty_var(TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::TypeInference,
+                            span,
+                        }),
+                        _ => fallback(),
+                    },
+                    _ => fallback(),
+                });
+
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 

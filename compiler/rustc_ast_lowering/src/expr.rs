@@ -30,6 +30,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let kind = match e.kind {
                 ExprKind::Box(ref inner) => hir::ExprKind::Box(self.lower_expr(inner)),
                 ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
+                ExprKind::ConstBlock(ref anon_const) => {
+                    let anon_const = self.lower_anon_const(anon_const);
+                    hir::ExprKind::ConstBlock(anon_const)
+                }
                 ExprKind::Repeat(ref expr, ref count) => {
                     let expr = self.lower_expr(expr);
                     let count = self.lower_anon_const(count);
