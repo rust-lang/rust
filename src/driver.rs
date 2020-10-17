@@ -277,27 +277,34 @@ pub fn main() {
             args.extend(vec!["--sysroot".into(), sys_root]);
         };
 
+        let mut no_deps = false;
+        let clippy_args = env::var("CLIPPY_ARGS")
+            .unwrap_or_default()
+            .split("__CLIPPY_HACKERY__")
+            .filter_map(|s| match s {
+                "" => None,
+                "--no-deps" => {
+                    no_deps = true;
+                    None
+                },
+                _ => Some(s.to_string()),
+            })
+            .chain(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()])
+            .collect::<Vec<String>>();
+
         // this check ensures that dependencies are built but not linted and the final
         // crate is linted but not built
-        let clippy_enabled = env::var("CLIPPY_TESTS").map_or(false, |val| val == "true")
-            || arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_none();
+        let clippy_disabled = env::var("CLIPPY_TESTS").map_or(false, |val| val != "true")
+            || arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
+            || no_deps && env::var("CARGO_PRIMARY_PACKAGE").is_err();
 
-        if clippy_enabled {
-            args.extend(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()]);
-            if let Ok(extra_args) = env::var("CLIPPY_ARGS") {
-                args.extend(extra_args.split("__CLIPPY_HACKERY__").filter_map(|s| {
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(s.to_string())
-                    }
-                }));
-            }
+        if !clippy_disabled {
+            args.extend(clippy_args);
         }
         let mut clippy = ClippyCallbacks;
         let mut default = DefaultCallbacks;
         let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
-            if clippy_enabled { &mut clippy } else { &mut default };
+            if clippy_disabled { &mut default } else { &mut clippy };
         rustc_driver::RunCompiler::new(&args, callbacks).run()
     }))
 }
