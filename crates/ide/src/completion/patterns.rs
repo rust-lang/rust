@@ -35,19 +35,22 @@ fn test_has_impl_parent() {
     check_pattern_is_applicable(r"impl A { f<|> }", has_impl_parent);
 }
 
-pub(crate) fn has_impl_trait_parent(element: SyntaxElement) -> bool {
-    not_same_range_ancestor(element)
-        .filter(|it| it.kind() == ASSOC_ITEM_LIST)
-        .and_then(|it| it.parent())
-        .filter(|it| it.kind() == IMPL)
+pub(crate) fn inside_impl_trait_block(element: SyntaxElement) -> bool {
+    // Here we search `impl` keyword up through the all ancestors, unlike in `has_impl_parent`,
+    // where we only check the first parent with different text range.
+    element
+        .ancestors()
+        .find(|it| it.kind() == IMPL)
         .map(|it| ast::Impl::cast(it).unwrap())
         .map(|it| it.trait_().is_some())
         .unwrap_or(false)
 }
 #[test]
-fn test_has_impl_trait_parent() {
-    check_pattern_is_applicable(r"impl Foo for Bar { f<|> }", has_impl_trait_parent);
-    check_pattern_is_not_applicable(r"impl A { f<|> }", has_impl_trait_parent);
+fn test_inside_impl_trait_block() {
+    check_pattern_is_applicable(r"impl Foo for Bar { f<|> }", inside_impl_trait_block);
+    check_pattern_is_applicable(r"impl Foo for Bar { fn f<|> }", inside_impl_trait_block);
+    check_pattern_is_not_applicable(r"impl A { f<|> }", inside_impl_trait_block);
+    check_pattern_is_not_applicable(r"impl A { fn f<|> }", inside_impl_trait_block);
 }
 
 pub(crate) fn has_field_list_parent(element: SyntaxElement) -> bool {

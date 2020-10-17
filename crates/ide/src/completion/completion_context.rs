@@ -18,8 +18,8 @@ use crate::{
         patterns::{
             fn_is_prev, for_is_prev2, has_bind_pat_parent, has_block_expr_parent,
             has_field_list_parent, has_impl_as_prev_sibling, has_impl_parent,
-            has_impl_trait_parent, has_item_list_or_source_file_parent, has_ref_parent,
-            has_trait_as_prev_sibling, has_trait_parent, if_is_prev, is_in_loop_body, is_match_arm,
+            has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
+            has_trait_parent, if_is_prev, inside_impl_trait_block, is_in_loop_body, is_match_arm,
             unsafe_is_prev,
         },
         CompletionConfig,
@@ -87,7 +87,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) in_loop_body: bool,
     pub(super) has_trait_parent: bool,
     pub(super) has_impl_parent: bool,
-    pub(super) has_impl_trait_parent: bool,
+    pub(super) inside_impl_trait_block: bool,
     pub(super) has_field_list_parent: bool,
     pub(super) trait_as_prev_sibling: bool,
     pub(super) impl_as_prev_sibling: bool,
@@ -172,7 +172,7 @@ impl<'a> CompletionContext<'a> {
             block_expr_parent: false,
             has_trait_parent: false,
             has_impl_parent: false,
-            has_impl_trait_parent: false,
+            inside_impl_trait_block: false,
             has_field_list_parent: false,
             trait_as_prev_sibling: false,
             impl_as_prev_sibling: false,
@@ -234,7 +234,7 @@ impl<'a> CompletionContext<'a> {
     ///   Exception for this case is `impl Trait for Foo`, where we would like to hint trait method names.
     /// - `for _ i<|>` -- obviously, it'll be "in" keyword.
     pub(crate) fn no_completion_required(&self) -> bool {
-        (self.fn_is_prev && !self.has_impl_trait_parent) || self.for_is_prev2
+        (self.fn_is_prev && !self.inside_impl_trait_block) || self.for_is_prev2
     }
 
     /// The range of the identifier that is being completed.
@@ -260,7 +260,7 @@ impl<'a> CompletionContext<'a> {
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
         self.has_trait_parent = has_trait_parent(syntax_element.clone());
         self.has_impl_parent = has_impl_parent(syntax_element.clone());
-        self.has_impl_trait_parent = has_impl_trait_parent(syntax_element.clone());
+        self.inside_impl_trait_block = inside_impl_trait_block(syntax_element.clone());
         self.has_field_list_parent = has_field_list_parent(syntax_element.clone());
         self.impl_as_prev_sibling = has_impl_as_prev_sibling(syntax_element.clone());
         self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
