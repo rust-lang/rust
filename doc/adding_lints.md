@@ -104,7 +104,8 @@ every time before running `tests/ui/update-all-references.sh`.
 Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
 our lint, we need to commit the generated `.stderr` files, too. In general, you
 should only commit files changed by `tests/ui/update-all-references.sh` for the
-specific lint you are creating/editing.
+specific lint you are creating/editing. Note that if the generated files are
+empty, they should be removed.
 
 ### Cargo lints
 
@@ -453,12 +454,12 @@ Before submitting your PR make sure you followed all of the basic requirements:
 
 <!-- Sync this with `.github/PULL_REQUEST_TEMPLATE` -->
 
-- [ ] Followed [lint naming conventions][lint_naming]
-- [ ] Added passing UI tests (including committed `.stderr` file)
-- [ ] `cargo test` passes locally
-- [ ] Executed `cargo dev update_lints`
-- [ ] Added lint documentation
-- [ ] Run `cargo dev fmt`
+- \[ ] Followed [lint naming conventions][lint_naming]
+- \[ ] Added passing UI tests (including committed `.stderr` file)
+- \[ ] `cargo test` passes locally
+- \[ ] Executed `cargo dev update_lints`
+- \[ ] Added lint documentation
+- \[ ] Run `cargo dev fmt`
 
 ## Cheatsheet
 

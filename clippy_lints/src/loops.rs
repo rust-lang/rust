@@ -5,9 +5,8 @@ use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
-    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
-    SpanlessEq,
+    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -770,13 +769,26 @@ fn check_for_loop<'tcx>(
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
 ) {
-    check_for_loop_range(cx, pat, arg, body, expr);
+    let is_manual_memcpy_triggered = detect_manual_memcpy(cx, pat, arg, body, expr);
+    if !is_manual_memcpy_triggered {
+        check_for_loop_range(cx, pat, arg, body, expr);
+        check_for_loop_explicit_counter(cx, pat, arg, body, expr);
+    }
     check_for_loop_arg(cx, pat, arg, expr);
-    check_for_loop_explicit_counter(cx, pat, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
-    detect_manual_memcpy(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
+}
+
+// this function assumes the given expression is a `for` loop.
+fn get_span_of_entire_for_loop(expr: &Expr<'_>) -> Span {
+    // for some reason this is the only way to get the `Span`
+    // of the entire `for` loop
+    if let ExprKind::Match(_, arms, _) = &expr.kind {
+        arms[0].body.span
+    } else {
+        unreachable!()
+    }
 }
 
 fn same_var<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
@@ -794,36 +806,131 @@ fn same_var<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
     }
 }
 
+/// a wrapper of `Sugg`. Besides what `Sugg` do, this removes unnecessary `0`;
+/// and also, it avoids subtracting a variable from the same one by replacing it with `0`.
+/// it exists for the convenience of the overloaded operators while normal functions can do the
+/// same.
+#[derive(Clone)]
+struct MinifyingSugg<'a>(Sugg<'a>);
+
+impl<'a> MinifyingSugg<'a> {
+    fn as_str(&self) -> &str {
+        let Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) = &self.0;
+        s.as_ref()
+    }
+
+    fn into_sugg(self) -> Sugg<'a> {
+        self.0
+    }
+}
+
+impl<'a> From<Sugg<'a>> for MinifyingSugg<'a> {
+    fn from(sugg: Sugg<'a>) -> Self {
+        Self(sugg)
+    }
+}
+
+impl std::ops::Add for &MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            ("0", _) => rhs.clone(),
+            (_, "0") => self.clone(),
+            (_, _) => (&self.0 + &rhs.0).into(),
+        }
+    }
+}
+
+impl std::ops::Sub for &MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            (_, "0") => self.clone(),
+            ("0", _) => (-rhs.0.clone()).into(),
+            (x, y) if x == y => sugg::ZERO.into(),
+            (_, _) => (&self.0 - &rhs.0).into(),
+        }
+    }
+}
+
+impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            ("0", _) => rhs.clone(),
+            (_, "0") => self,
+            (_, _) => (self.0 + &rhs.0).into(),
+        }
+    }
+}
+
+impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            (_, "0") => self,
+            ("0", _) => (-rhs.0.clone()).into(),
+            (x, y) if x == y => sugg::ZERO.into(),
+            (_, _) => (self.0 - &rhs.0).into(),
+        }
+    }
+}
+
+/// a wrapper around `MinifyingSugg`, which carries a operator like currying
+/// so that the suggested code become more efficient (e.g. `foo + -bar` `foo - bar`).
+struct Offset {
+    value: MinifyingSugg<'static>,
+    sign: OffsetSign,
+}
+
 #[derive(Clone, Copy)]
 enum OffsetSign {
     Positive,
     Negative,
 }
 
-struct Offset {
-    value: String,
-    sign: OffsetSign,
-}
-
 impl Offset {
-    fn negative(value: String) -> Self {
+    fn negative(value: Sugg<'static>) -> Self {
         Self {
-            value,
+            value: value.into(),
             sign: OffsetSign::Negative,
         }
     }
 
-    fn positive(value: String) -> Self {
+    fn positive(value: Sugg<'static>) -> Self {
         Self {
-            value,
+            value: value.into(),
             sign: OffsetSign::Positive,
         }
     }
+
+    fn empty() -> Self {
+        Self::positive(sugg::ZERO)
+    }
 }
 
-struct FixedOffsetVar<'hir> {
-    var: &'hir Expr<'hir>,
-    offset: Offset,
+fn apply_offset(lhs: &MinifyingSugg<'static>, rhs: &Offset) -> MinifyingSugg<'static> {
+    match rhs.sign {
+        OffsetSign::Positive => lhs + &rhs.value,
+        OffsetSign::Negative => lhs - &rhs.value,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum StartKind<'hir> {
+    Range,
+    Counter { initializer: &'hir Expr<'hir> },
+}
+
+struct IndexExpr<'hir> {
+    base: &'hir Expr<'hir>,
+    idx: StartKind<'hir>,
+    idx_offset: Offset,
+}
+
+struct Start<'hir> {
+    id: HirId,
+    kind: StartKind<'hir>,
 }
 
 fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
@@ -846,14 +953,28 @@ fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     }
 }
 
-fn get_offset<'tcx>(cx: &LateContext<'tcx>, idx: &Expr<'_>, var: HirId) -> Option<Offset> {
-    fn extract_offset<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, var: HirId) -> Option<String> {
+fn get_details_from_idx<'tcx>(
+    cx: &LateContext<'tcx>,
+    idx: &Expr<'_>,
+    starts: &[Start<'tcx>],
+) -> Option<(StartKind<'tcx>, Offset)> {
+    fn get_start<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, starts: &[Start<'tcx>]) -> Option<StartKind<'tcx>> {
+        starts.iter().find_map(|start| {
+            if same_var(cx, e, start.id) {
+                Some(start.kind)
+            } else {
+                None
+            }
+        })
+    }
+
+    fn get_offset<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, starts: &[Start<'tcx>]) -> Option<Sugg<'static>> {
         match &e.kind {
             ExprKind::Lit(l) => match l.node {
-                ast::LitKind::Int(x, _ty) => Some(x.to_string()),
+                ast::LitKind::Int(x, _ty) => Some(Sugg::NonParen(x.to_string().into())),
                 _ => None,
             },
-            ExprKind::Path(..) if !same_var(cx, e, var) => Some(snippet_opt(cx, e.span).unwrap_or_else(|| "??".into())),
+            ExprKind::Path(..) if get_start(cx, e, starts).is_none() => Some(Sugg::hir(cx, e, "???")),
             _ => None,
         }
     }
@@ -861,55 +982,89 @@ fn get_offset<'tcx>(cx: &LateContext<'tcx>, idx: &Expr<'_>, var: HirId) -> Optio
     match idx.kind {
         ExprKind::Binary(op, lhs, rhs) => match op.node {
             BinOpKind::Add => {
-                let offset_opt = if same_var(cx, lhs, var) {
-                    extract_offset(cx, rhs, var)
-                } else if same_var(cx, rhs, var) {
-                    extract_offset(cx, lhs, var)
-                } else {
-                    None
-                };
+                let offset_opt = get_start(cx, lhs, starts)
+                    .and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, o)))
+                    .or_else(|| get_start(cx, rhs, starts).and_then(|s| get_offset(cx, lhs, starts).map(|o| (s, o))));
 
-                offset_opt.map(Offset::positive)
+                offset_opt.map(|(s, o)| (s, Offset::positive(o)))
             },
-            BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
+            BinOpKind::Sub => {
+                get_start(cx, lhs, starts).and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, Offset::negative(o))))
+            },
             _ => None,
         },
-        ExprKind::Path(..) if same_var(cx, idx, var) => Some(Offset::positive("0".into())),
+        ExprKind::Path(..) => get_start(cx, idx, starts).map(|s| (s, Offset::empty())),
         _ => None,
     }
 }
 
-fn get_assignments<'tcx>(body: &'tcx Expr<'tcx>) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> {
-    fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
-        if let ExprKind::Assign(lhs, rhs, _) = e.kind {
-            Some((lhs, rhs))
-        } else {
-            None
-        }
-    }
-
-    // This is one of few ways to return different iterators
-    // derived from: https://stackoverflow.com/questions/29760668/conditionally-iterate-over-one-of-several-possible-iterators/52064434#52064434
-    let mut iter_a = None;
-    let mut iter_b = None;
-
-    if let ExprKind::Block(b, _) = body.kind {
-        let Block { stmts, expr, .. } = *b;
-
-        iter_a = stmts
-            .iter()
-            .filter_map(|stmt| match stmt.kind {
-                StmtKind::Local(..) | StmtKind::Item(..) => None,
-                StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
-            })
-            .chain(expr.into_iter())
-            .map(get_assignment)
-            .into()
+fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
+    if let ExprKind::Assign(lhs, rhs, _) = e.kind {
+        Some((lhs, rhs))
     } else {
-        iter_b = Some(get_assignment(body))
+        None
     }
+}
 
-    iter_a.into_iter().flatten().chain(iter_b.into_iter())
+/// Get assignments from the given block.
+/// The returned iterator yields `None` if no assignment expressions are there,
+/// filtering out the increments of the given whitelisted loop counters;
+/// because its job is to make sure there's nothing other than assignments and the increments.
+fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
+    cx: &'a LateContext<'tcx>,
+    Block { stmts, expr, .. }: &'tcx Block<'tcx>,
+    loop_counters: &'c [Start<'tcx>],
+) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> + 'c {
+    // As the `filter` and `map` below do different things, I think putting together
+    // just increases complexity. (cc #3188 and #4193)
+    #[allow(clippy::filter_map)]
+    stmts
+        .iter()
+        .filter_map(move |stmt| match stmt.kind {
+            StmtKind::Local(..) | StmtKind::Item(..) => None,
+            StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
+        })
+        .chain((*expr).into_iter())
+        .filter(move |e| {
+            if let ExprKind::AssignOp(_, place, _) = e.kind {
+                !loop_counters
+                    .iter()
+                    // skip the first item which should be `StartKind::Range`
+                    // this makes it possible to use the slice with `StartKind::Range` in the same iterator loop.
+                    .skip(1)
+                    .any(|counter| same_var(cx, place, counter.id))
+            } else {
+                true
+            }
+        })
+        .map(get_assignment)
+}
+
+fn get_loop_counters<'a, 'tcx>(
+    cx: &'a LateContext<'tcx>,
+    body: &'tcx Block<'tcx>,
+    expr: &'tcx Expr<'_>,
+) -> Option<impl Iterator<Item = Start<'tcx>> + 'a> {
+    // Look for variables that are incremented once per loop iteration.
+    let mut increment_visitor = IncrementVisitor::new(cx);
+    walk_block(&mut increment_visitor, body);
+
+    // For each candidate, check the parent block to see if
+    // it's initialized to zero at the start of the loop.
+    get_enclosing_block(&cx, expr.hir_id).and_then(|block| {
+        increment_visitor
+            .into_results()
+            .filter_map(move |var_id| {
+                let mut initialize_visitor = InitializeVisitor::new(cx, expr, var_id);
+                walk_block(&mut initialize_visitor, block);
+
+                initialize_visitor.get_result().map(|(_, initializer)| Start {
+                    id: var_id,
+                    kind: StartKind::Counter { initializer },
+                })
+            })
+            .into()
+    })
 }
 
 fn build_manual_memcpy_suggestion<'tcx>(
@@ -917,80 +1072,97 @@ fn build_manual_memcpy_suggestion<'tcx>(
     start: &Expr<'_>,
     end: &Expr<'_>,
     limits: ast::RangeLimits,
-    dst_var: FixedOffsetVar<'_>,
-    src_var: FixedOffsetVar<'_>,
+    dst: &IndexExpr<'_>,
+    src: &IndexExpr<'_>,
 ) -> String {
-    fn print_sum(arg1: &str, arg2: &Offset) -> String {
-        match (arg1, &arg2.value[..], arg2.sign) {
-            ("0", "0", _) => "0".into(),
-            ("0", x, OffsetSign::Positive) | (x, "0", _) => x.into(),
-            ("0", x, OffsetSign::Negative) => format!("-{}", x),
-            (x, y, OffsetSign::Positive) => format!("({} + {})", x, y),
-            (x, y, OffsetSign::Negative) => {
-                if x == y {
-                    "0".into()
-                } else {
-                    format!("({} - {})", x, y)
-                }
-            },
-        }
-    }
-
-    fn print_offset(start_str: &str, inline_offset: &Offset) -> String {
-        let offset = print_sum(start_str, inline_offset);
+    fn print_offset(offset: MinifyingSugg<'static>) -> MinifyingSugg<'static> {
         if offset.as_str() == "0" {
-            "".into()
+            sugg::EMPTY.into()
         } else {
             offset
         }
     }
 
-    let print_limit = |end: &Expr<'_>, offset: Offset, var: &Expr<'_>| {
+    let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| {
         if_chain! {
             if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
             if method.ident.name == sym!(len);
             if len_args.len() == 1;
             if let Some(arg) = len_args.get(0);
-            if var_def_id(cx, arg) == var_def_id(cx, var);
+            if var_def_id(cx, arg) == var_def_id(cx, base);
             then {
-                match offset.sign {
-                    OffsetSign::Negative => format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value),
-                    OffsetSign::Positive => "".into(),
+                if sugg.as_str() == end_str {
+                    sugg::EMPTY.into()
+                } else {
+                    sugg
                 }
             } else {
-                let end_str = match limits {
+                match limits {
                     ast::RangeLimits::Closed => {
-                        let end = sugg::Sugg::hir(cx, end, "<count>");
-                        format!("{}", end + sugg::ONE)
+                        sugg + &sugg::ONE.into()
                     },
-                    ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
-                };
-
-                print_sum(&end_str, &offset)
+                    ast::RangeLimits::HalfOpen => sugg,
+                }
             }
         }
     };
 
-    let start_str = snippet(cx, start.span, "").to_string();
-    let dst_offset = print_offset(&start_str, &dst_var.offset);
-    let dst_limit = print_limit(end, dst_var.offset, dst_var.var);
-    let src_offset = print_offset(&start_str, &src_var.offset);
-    let src_limit = print_limit(end, src_var.offset, src_var.var);
+    let start_str = Sugg::hir(cx, start, "").into();
+    let end_str: MinifyingSugg<'_> = Sugg::hir(cx, end, "").into();
 
-    let dst_var_name = snippet_opt(cx, dst_var.var.span).unwrap_or_else(|| "???".into());
-    let src_var_name = snippet_opt(cx, src_var.var.span).unwrap_or_else(|| "???".into());
+    let print_offset_and_limit = |idx_expr: &IndexExpr<'_>| match idx_expr.idx {
+        StartKind::Range => (
+            print_offset(apply_offset(&start_str, &idx_expr.idx_offset)).into_sugg(),
+            print_limit(
+                end,
+                end_str.as_str(),
+                idx_expr.base,
+                apply_offset(&end_str, &idx_expr.idx_offset),
+            )
+            .into_sugg(),
+        ),
+        StartKind::Counter { initializer } => {
+            let counter_start = Sugg::hir(cx, initializer, "").into();
+            (
+                print_offset(apply_offset(&counter_start, &idx_expr.idx_offset)).into_sugg(),
+                print_limit(
+                    end,
+                    end_str.as_str(),
+                    idx_expr.base,
+                    apply_offset(&end_str, &idx_expr.idx_offset) + &counter_start - &start_str,
+                )
+                .into_sugg(),
+            )
+        },
+    };
 
-    let dst = if dst_offset == "" && dst_limit == "" {
-        dst_var_name
+    let (dst_offset, dst_limit) = print_offset_and_limit(&dst);
+    let (src_offset, src_limit) = print_offset_and_limit(&src);
+
+    let dst_base_str = snippet(cx, dst.base.span, "???");
+    let src_base_str = snippet(cx, src.base.span, "???");
+
+    let dst = if dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY {
+        dst_base_str
     } else {
-        format!("{}[{}..{}]", dst_var_name, dst_offset, dst_limit)
+        format!(
+            "{}[{}..{}]",
+            dst_base_str,
+            dst_offset.maybe_par(),
+            dst_limit.maybe_par()
+        )
+        .into()
     };
 
     format!(
-        "{}.clone_from_slice(&{}[{}..{}])",
-        dst, src_var_name, src_offset, src_limit
+        "{}.clone_from_slice(&{}[{}..{}]);",
+        dst,
+        src_base_str,
+        src_offset.maybe_par(),
+        src_limit.maybe_par()
     )
 }
+
 /// Checks for for loops that sequentially copy items from one slice-like
 /// object to another.
 fn detect_manual_memcpy<'tcx>(
@@ -999,7 +1171,7 @@ fn detect_manual_memcpy<'tcx>(
     arg: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
-) {
+) -> bool {
     if let Some(higher::Range {
         start: Some(start),
         end: Some(end),
@@ -1008,32 +1180,53 @@ fn detect_manual_memcpy<'tcx>(
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
-            // The only statements in the for loops can be indexed assignments from
-            // indexed retrievals.
-            let big_sugg = get_assignments(body)
+            let mut starts = vec![Start {
+                id: canonical_id,
+                kind: StartKind::Range,
+            }];
+
+            // This is one of few ways to return different iterators
+            // derived from: https://stackoverflow.com/questions/29760668/conditionally-iterate-over-one-of-several-possible-iterators/52064434#52064434
+            let mut iter_a = None;
+            let mut iter_b = None;
+
+            if let ExprKind::Block(block, _) = body.kind {
+                if let Some(loop_counters) = get_loop_counters(cx, block, expr) {
+                    starts.extend(loop_counters);
+                }
+                iter_a = Some(get_assignments(cx, block, &starts));
+            } else {
+                iter_b = Some(get_assignment(body));
+            }
+
+            let assignments = iter_a.into_iter().flatten().chain(iter_b.into_iter());
+
+            let big_sugg = assignments
+                // The only statements in the for loops can be indexed assignments from
+                // indexed retrievals (except increments of loop counters).
                 .map(|o| {
                     o.and_then(|(lhs, rhs)| {
                         let rhs = fetch_cloned_expr(rhs);
                         if_chain! {
-                            if let ExprKind::Index(seqexpr_left, idx_left) = lhs.kind;
-                            if let ExprKind::Index(seqexpr_right, idx_right) = rhs.kind;
-                            if is_slice_like(cx, cx.typeck_results().expr_ty(seqexpr_left))
-                                && is_slice_like(cx, cx.typeck_results().expr_ty(seqexpr_right));
-                            if let Some(offset_left) = get_offset(cx, &idx_left, canonical_id);
-                            if let Some(offset_right) = get_offset(cx, &idx_right, canonical_id);
+                            if let ExprKind::Index(base_left, idx_left) = lhs.kind;
+                            if let ExprKind::Index(base_right, idx_right) = rhs.kind;
+                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_left))
+                                && is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
+                            if let Some((start_left, offset_left)) = get_details_from_idx(cx, &idx_left, &starts);
+                            if let Some((start_right, offset_right)) = get_details_from_idx(cx, &idx_right, &starts);
 
                             // Source and destination must be different
-                            if var_def_id(cx, seqexpr_left) != var_def_id(cx, seqexpr_right);
+                            if var_def_id(cx, base_left) != var_def_id(cx, base_right);
                             then {
-                                Some((FixedOffsetVar { var: seqexpr_left, offset: offset_left },
-                                    FixedOffsetVar { var: seqexpr_right, offset: offset_right }))
+                                Some((IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
+                                    IndexExpr { base: base_right, idx: start_right, idx_offset: offset_right }))
                             } else {
                                 None
                             }
                         }
                     })
                 })
-                .map(|o| o.map(|(dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, dst, src)))
+                .map(|o| o.map(|(dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, &dst, &src)))
                 .collect::<Option<Vec<_>>>()
                 .filter(|v| !v.is_empty())
                 .map(|v| v.join("\n    "));
@@ -1042,15 +1235,17 @@ fn detect_manual_memcpy<'tcx>(
                 span_lint_and_sugg(
                     cx,
                     MANUAL_MEMCPY,
-                    expr.span,
+                    get_span_of_entire_for_loop(expr),
                     "it looks like you're manually copying between slices",
                     "try replacing the loop by",
                     big_sugg,
                     Applicability::Unspecified,
                 );
+                return true;
             }
         }
     }
+    false
 }
 
 // Scans the body of the for loop and determines whether lint should be given
@@ -1533,6 +1728,9 @@ fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     }
 }
 
+// To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
+// incremented exactly once in the loop body, and initialized to zero
+// at the start of the loop.
 fn check_for_loop_explicit_counter<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
@@ -1541,40 +1739,23 @@ fn check_for_loop_explicit_counter<'tcx>(
     expr: &'tcx Expr<'_>,
 ) {
     // Look for variables that are incremented once per loop iteration.
-    let mut visitor = IncrementVisitor {
-        cx,
-        states: FxHashMap::default(),
-        depth: 0,
-        done: false,
-    };
-    walk_expr(&mut visitor, body);
+    let mut increment_visitor = IncrementVisitor::new(cx);
+    walk_expr(&mut increment_visitor, body);
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
     if let Some(block) = get_enclosing_block(&cx, expr.hir_id) {
-        for (id, _) in visitor.states.iter().filter(|&(_, v)| *v == VarState::IncrOnce) {
-            let mut visitor2 = InitializeVisitor {
-                cx,
-                end_expr: expr,
-                var_id: *id,
-                state: VarState::IncrOnce,
-                name: None,
-                depth: 0,
-                past_loop: false,
-            };
-            walk_block(&mut visitor2, block);
+        for id in increment_visitor.into_results() {
+            let mut initialize_visitor = InitializeVisitor::new(cx, expr, id);
+            walk_block(&mut initialize_visitor, block);
 
-            if visitor2.state == VarState::Warn {
-                if let Some(name) = visitor2.name {
+            if_chain! {
+                if let Some((name, initializer)) = initialize_visitor.get_result();
+                if is_integer_const(cx, initializer, 0);
+                then {
                     let mut applicability = Applicability::MachineApplicable;
 
-                    // for some reason this is the only way to get the `Span`
-                    // of the entire `for` loop
-                    let for_span = if let ExprKind::Match(_, arms, _) = &expr.kind {
-                        arms[0].body.span
-                    } else {
-                        unreachable!()
-                    };
+                    let for_span = get_span_of_entire_for_loop(expr);
 
                     span_lint_and_sugg(
                         cx,
@@ -2127,24 +2308,40 @@ fn is_simple_break_expr(expr: &Expr<'_>) -> bool {
     }
 }
 
-// To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
-// incremented exactly once in the loop body, and initialized to zero
-// at the start of the loop.
 #[derive(Debug, PartialEq)]
-enum VarState {
+enum IncrementVisitorVarState {
     Initial,  // Not examined yet
     IncrOnce, // Incremented exactly once, may be a loop counter
-    Declared, // Declared but not (yet) initialized to zero
-    Warn,
     DontWarn,
 }
 
 /// Scan a for loop for variables that are incremented exactly once and not used after that.
 struct IncrementVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,          // context reference
-    states: FxHashMap<HirId, VarState>, // incremented variables
-    depth: u32,                         // depth of conditional expressions
+    cx: &'a LateContext<'tcx>,                          // context reference
+    states: FxHashMap<HirId, IncrementVisitorVarState>, // incremented variables
+    depth: u32,                                         // depth of conditional expressions
     done: bool,
+}
+
+impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'tcx>) -> Self {
+        Self {
+            cx,
+            states: FxHashMap::default(),
+            depth: 0,
+            done: false,
+        }
+    }
+
+    fn into_results(self) -> impl Iterator<Item = HirId> {
+        self.states.into_iter().filter_map(|(id, state)| {
+            if state == IncrementVisitorVarState::IncrOnce {
+                Some(id)
+            } else {
+                None
+            }
+        })
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
@@ -2158,58 +2355,93 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         // If node is a variable
         if let Some(def_id) = var_def_id(self.cx, expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
-                let state = self.states.entry(def_id).or_insert(VarState::Initial);
-                if *state == VarState::IncrOnce {
-                    *state = VarState::DontWarn;
+                let state = self.states.entry(def_id).or_insert(IncrementVisitorVarState::Initial);
+                if *state == IncrementVisitorVarState::IncrOnce {
+                    *state = IncrementVisitorVarState::DontWarn;
                     return;
                 }
 
                 match parent.kind {
                     ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                         if lhs.hir_id == expr.hir_id {
-                            if op.node == BinOpKind::Add && is_integer_const(self.cx, rhs, 1) {
-                                *state = match *state {
-                                    VarState::Initial if self.depth == 0 => VarState::IncrOnce,
-                                    _ => VarState::DontWarn,
-                                };
+                            *state = if op.node == BinOpKind::Add
+                                && is_integer_const(self.cx, rhs, 1)
+                                && *state == IncrementVisitorVarState::Initial
+                                && self.depth == 0
+                            {
+                                IncrementVisitorVarState::IncrOnce
                             } else {
-                                // Assigned some other value
-                                *state = VarState::DontWarn;
-                            }
+                                // Assigned some other value or assigned multiple times
+                                IncrementVisitorVarState::DontWarn
+                            };
                         }
                     },
-                    ExprKind::Assign(ref lhs, _, _) if lhs.hir_id == expr.hir_id => *state = VarState::DontWarn,
+                    ExprKind::Assign(ref lhs, _, _) if lhs.hir_id == expr.hir_id => {
+                        *state = IncrementVisitorVarState::DontWarn
+                    },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
-                        *state = VarState::DontWarn
+                        *state = IncrementVisitorVarState::DontWarn
                     },
                     _ => (),
                 }
             }
+
+            walk_expr(self, expr);
         } else if is_loop(expr) || is_conditional(expr) {
             self.depth += 1;
             walk_expr(self, expr);
             self.depth -= 1;
-            return;
         } else if let ExprKind::Continue(_) = expr.kind {
             self.done = true;
-            return;
+        } else {
+            walk_expr(self, expr);
         }
-        walk_expr(self, expr);
     }
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 }
 
-/// Checks whether a variable is initialized to zero at the start of a loop.
+enum InitializeVisitorState<'hir> {
+    Initial,          // Not examined yet
+    Declared(Symbol), // Declared but not (yet) initialized
+    Initialized {
+        name: Symbol,
+        initializer: &'hir Expr<'hir>,
+    },
+    DontWarn,
+}
+
+/// Checks whether a variable is initialized at the start of a loop and not modified
+/// and used after the loop.
 struct InitializeVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,  // context reference
     end_expr: &'tcx Expr<'tcx>, // the for loop. Stop scanning here.
     var_id: HirId,
-    state: VarState,
-    name: Option<Symbol>,
+    state: InitializeVisitorState<'tcx>,
     depth: u32, // depth of conditional expressions
     past_loop: bool,
+}
+
+impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'tcx>, end_expr: &'tcx Expr<'tcx>, var_id: HirId) -> Self {
+        Self {
+            cx,
+            end_expr,
+            var_id,
+            state: InitializeVisitorState::Initial,
+            depth: 0,
+            past_loop: false,
+        }
+    }
+
+    fn get_result(&self) -> Option<(Symbol, &'tcx Expr<'tcx>)> {
+        if let InitializeVisitorState::Initialized { name, initializer } = self.state {
+            Some((name, initializer))
+        } else {
+            None
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
@@ -2217,26 +2449,24 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         // Look for declarations of the variable
-        if let StmtKind::Local(ref local) = stmt.kind {
-            if local.pat.hir_id == self.var_id {
-                if let PatKind::Binding(.., ident, _) = local.pat.kind {
-                    self.name = Some(ident.name);
-
-                    self.state = local.init.as_ref().map_or(VarState::Declared, |init| {
-                        if is_integer_const(&self.cx, init, 0) {
-                            VarState::Warn
-                        } else {
-                            VarState::Declared
-                        }
-                    })
-                }
+        if_chain! {
+            if let StmtKind::Local(ref local) = stmt.kind;
+            if local.pat.hir_id == self.var_id;
+            if let PatKind::Binding(.., ident, _) = local.pat.kind;
+            then {
+                self.state = local.init.map_or(InitializeVisitorState::Declared(ident.name), |init| {
+                    InitializeVisitorState::Initialized {
+                        initializer: init,
+                        name: ident.name,
+                    }
+                })
             }
         }
         walk_stmt(self, stmt);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.state == VarState::DontWarn {
+        if matches!(self.state, InitializeVisitorState::DontWarn) {
             return;
         }
         if expr.hir_id == self.end_expr.hir_id {
@@ -2245,45 +2475,51 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         }
         // No need to visit expressions before the variable is
         // declared
-        if self.state == VarState::IncrOnce {
+        if matches!(self.state, InitializeVisitorState::Initial) {
             return;
         }
 
         // If node is the desired variable, see how it's used
         if var_def_id(self.cx, expr) == Some(self.var_id) {
+            if self.past_loop {
+                self.state = InitializeVisitorState::DontWarn;
+                return;
+            }
+
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 match parent.kind {
                     ExprKind::AssignOp(_, ref lhs, _) if lhs.hir_id == expr.hir_id => {
-                        self.state = VarState::DontWarn;
+                        self.state = InitializeVisitorState::DontWarn;
                     },
                     ExprKind::Assign(ref lhs, ref rhs, _) if lhs.hir_id == expr.hir_id => {
-                        self.state = if is_integer_const(&self.cx, rhs, 0) && self.depth == 0 {
-                            VarState::Warn
-                        } else {
-                            VarState::DontWarn
+                        self.state = if_chain! {
+                            if self.depth == 0;
+                            if let InitializeVisitorState::Declared(name)
+                                | InitializeVisitorState::Initialized { name, ..} = self.state;
+                            then {
+                                InitializeVisitorState::Initialized { initializer: rhs, name }
+                            } else {
+                                InitializeVisitorState::DontWarn
+                            }
                         }
                     },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
-                        self.state = VarState::DontWarn
+                        self.state = InitializeVisitorState::DontWarn
                     },
                     _ => (),
                 }
             }
 
-            if self.past_loop {
-                self.state = VarState::DontWarn;
-                return;
-            }
+            walk_expr(self, expr);
         } else if !self.past_loop && is_loop(expr) {
-            self.state = VarState::DontWarn;
-            return;
+            self.state = InitializeVisitorState::DontWarn;
         } else if is_conditional(expr) {
             self.depth += 1;
             walk_expr(self, expr);
             self.depth -= 1;
-            return;
+        } else {
+            walk_expr(self, expr);
         }
-        walk_expr(self, expr);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

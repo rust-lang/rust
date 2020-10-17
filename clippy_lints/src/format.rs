@@ -1,6 +1,6 @@
 use crate::utils::paths;
 use crate::utils::{
-    is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet,
+    is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet, snippet_opt,
     span_lint_and_then,
 };
 use if_chain::if_chain;
@@ -132,7 +132,11 @@ fn on_new_v1<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Strin
         then {
             // `format!("foo")` expansion contains `match () { () => [], }`
             if tup.is_empty() {
-                return Some(format!("{:?}.to_string()", s.as_str()));
+                if let Some(s_src) = snippet_opt(cx, lit.span) {
+                    // Simulate macro expansion, converting {{ and }} to { and }.
+                    let s_expand = s_src.replace("{{", "{").replace("}}", "}");
+                    return Some(format!("{}.to_string()", s_expand))
+                }
             } else if s.as_str().is_empty() {
                 return on_argumentv1_new(cx, &tup[0], arms);
             }
