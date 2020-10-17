@@ -23,7 +23,7 @@ use rustc_middle::hir::map::Map;
 /// This function is named so to stress that it isn't exhaustive and returns FNs.
 fn identify_some_pure_patterns(expr: &Expr<'_>) -> bool {
     match expr.kind {
-        ExprKind::Lit(..) | ExprKind::Path(..) | ExprKind::Field(..) => true,
+        ExprKind::Lit(..) | ExprKind::ConstBlock(..) | ExprKind::Path(..) | ExprKind::Field(..) => true,
         ExprKind::AddrOf(_, _, addr_of_expr) => identify_some_pure_patterns(addr_of_expr),
         ExprKind::Tup(tup_exprs) => tup_exprs.iter().all(|expr| identify_some_pure_patterns(expr)),
         ExprKind::Struct(_, fields, expr) => {
