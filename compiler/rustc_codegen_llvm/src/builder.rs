@@ -139,7 +139,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMGetInsertBlock(self.llbuilder) }
     }
 
-    fn set_span(&self, _span: Span) {}
+    fn set_span(&mut self, _span: Span) {}
 
     fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
