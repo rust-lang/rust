@@ -1557,11 +1557,7 @@ h4 > .notable-traits {
 }
 
 @media (max-width: 416px) {
-	#titles {
-		height: 73px;
-	}
-
-	#titles > div {
+	#titles, #titles > div {
 		height: 73px;
 	}
 }
