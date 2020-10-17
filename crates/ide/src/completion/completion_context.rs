@@ -16,10 +16,11 @@ use crate::{
     call_info::ActiveParameter,
     completion::{
         patterns::{
-            has_bind_pat_parent, has_block_expr_parent, has_field_list_parent,
-            has_impl_as_prev_sibling, has_impl_parent, has_item_list_or_source_file_parent,
-            has_ref_parent, has_trait_as_prev_sibling, has_trait_parent, if_is_prev,
-            is_in_loop_body, is_match_arm, unsafe_is_prev,
+            fn_is_prev, for_is_prev2, has_bind_pat_parent, has_block_expr_parent,
+            has_field_list_parent, has_impl_as_prev_sibling, has_impl_parent,
+            has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
+            has_trait_parent, if_is_prev, inside_impl_trait_block, is_in_loop_body, is_match_arm,
+            unsafe_is_prev,
         },
         CompletionConfig,
     },
@@ -86,11 +87,14 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) in_loop_body: bool,
     pub(super) has_trait_parent: bool,
     pub(super) has_impl_parent: bool,
+    pub(super) inside_impl_trait_block: bool,
     pub(super) has_field_list_parent: bool,
     pub(super) trait_as_prev_sibling: bool,
     pub(super) impl_as_prev_sibling: bool,
     pub(super) is_match_arm: bool,
     pub(super) has_item_list_or_source_file_parent: bool,
+    pub(super) for_is_prev2: bool,
+    pub(super) fn_is_prev: bool,
     pub(super) locals: Vec<(String, Local)>,
 }
 
@@ -168,12 +172,15 @@ impl<'a> CompletionContext<'a> {
             block_expr_parent: false,
             has_trait_parent: false,
             has_impl_parent: false,
+            inside_impl_trait_block: false,
             has_field_list_parent: false,
             trait_as_prev_sibling: false,
             impl_as_prev_sibling: false,
             if_is_prev: false,
             is_match_arm: false,
             has_item_list_or_source_file_parent: false,
+            for_is_prev2: false,
+            fn_is_prev: false,
             locals,
         };
 
@@ -221,6 +228,15 @@ impl<'a> CompletionContext<'a> {
         Some(ctx)
     }
 
+    /// Checks whether completions in that particular case don't make much sense.
+    /// Examples:
+    /// - `fn <|>` -- we expect function name, it's unlikely that "hint" will be helpful.
+    ///   Exception for this case is `impl Trait for Foo`, where we would like to hint trait method names.
+    /// - `for _ i<|>` -- obviously, it'll be "in" keyword.
+    pub(crate) fn no_completion_required(&self) -> bool {
+        (self.fn_is_prev && !self.inside_impl_trait_block) || self.for_is_prev2
+    }
+
     /// The range of the identifier that is being completed.
     pub(crate) fn source_range(&self) -> TextRange {
         // check kind of macro-expanded token, but use range of original token
@@ -244,6 +260,7 @@ impl<'a> CompletionContext<'a> {
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
         self.has_trait_parent = has_trait_parent(syntax_element.clone());
         self.has_impl_parent = has_impl_parent(syntax_element.clone());
+        self.inside_impl_trait_block = inside_impl_trait_block(syntax_element.clone());
         self.has_field_list_parent = has_field_list_parent(syntax_element.clone());
         self.impl_as_prev_sibling = has_impl_as_prev_sibling(syntax_element.clone());
         self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
@@ -253,6 +270,8 @@ impl<'a> CompletionContext<'a> {
         self.mod_declaration_under_caret =
             find_node_at_offset::<ast::Module>(&file_with_fake_ident, offset)
                 .filter(|module| module.item_list().is_none());
+        self.for_is_prev2 = for_is_prev2(syntax_element.clone());
+        self.fn_is_prev = fn_is_prev(syntax_element.clone());
     }
 
     fn fill(

@@ -9,7 +9,7 @@ use syntax::{
 };
 
 #[cfg(test)]
-use crate::completion::test_utils::check_pattern_is_applicable;
+use crate::completion::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
 
 pub(crate) fn has_trait_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element)
@@ -34,6 +34,25 @@ pub(crate) fn has_impl_parent(element: SyntaxElement) -> bool {
 fn test_has_impl_parent() {
     check_pattern_is_applicable(r"impl A { f<|> }", has_impl_parent);
 }
+
+pub(crate) fn inside_impl_trait_block(element: SyntaxElement) -> bool {
+    // Here we search `impl` keyword up through the all ancestors, unlike in `has_impl_parent`,
+    // where we only check the first parent with different text range.
+    element
+        .ancestors()
+        .find(|it| it.kind() == IMPL)
+        .map(|it| ast::Impl::cast(it).unwrap())
+        .map(|it| it.trait_().is_some())
+        .unwrap_or(false)
+}
+#[test]
+fn test_inside_impl_trait_block() {
+    check_pattern_is_applicable(r"impl Foo for Bar { f<|> }", inside_impl_trait_block);
+    check_pattern_is_applicable(r"impl Foo for Bar { fn f<|> }", inside_impl_trait_block);
+    check_pattern_is_not_applicable(r"impl A { f<|> }", inside_impl_trait_block);
+    check_pattern_is_not_applicable(r"impl A { fn f<|> }", inside_impl_trait_block);
+}
+
 pub(crate) fn has_field_list_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element).filter(|it| it.kind() == RECORD_FIELD_LIST).is_some()
 }
@@ -114,6 +133,33 @@ pub(crate) fn if_is_prev(element: SyntaxElement) -> bool {
         .and_then(|it| previous_non_trivia_token(it))
         .filter(|it| it.kind() == IF_KW)
         .is_some()
+}
+
+pub(crate) fn fn_is_prev(element: SyntaxElement) -> bool {
+    element
+        .into_token()
+        .and_then(|it| previous_non_trivia_token(it))
+        .filter(|it| it.kind() == FN_KW)
+        .is_some()
+}
+#[test]
+fn test_fn_is_prev() {
+    check_pattern_is_applicable(r"fn l<|>", fn_is_prev);
+}
+
+/// Check if the token previous to the previous one is `for`.
+/// For example, `for _ i<|>` => true.
+pub(crate) fn for_is_prev2(element: SyntaxElement) -> bool {
+    element
+        .into_token()
+        .and_then(|it| previous_non_trivia_token(it))
+        .and_then(|it| previous_non_trivia_token(it))
+        .filter(|it| it.kind() == FOR_KW)
+        .is_some()
+}
+#[test]
+fn test_for_is_prev2() {
+    check_pattern_is_applicable(r"for i i<|>", for_is_prev2);
 }
 
 #[test]
